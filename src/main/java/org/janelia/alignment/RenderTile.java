@@ -17,13 +17,13 @@
 package org.janelia.alignment;
 
 import ij.IJ;
-import ij.ImageJ;
 import ij.ImagePlus;
 import ij.io.Opener;
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
 
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.io.File;
@@ -114,11 +114,11 @@ public class RenderTile
         @Parameter( names = "--targetPath", description = "Path to the target image if any", required = false )
         public String targetPath = null;
         
-        @Parameter( names = "--x", description = "Target image left coordinate", required = true )
-        private long x;
+        @Parameter( names = "--x", description = "Target image left coordinate", required = false )
+        public long x = 0;
         
-        @Parameter( names = "--y", description = "Target image top coordinate", required = true )
-        private long y;
+        @Parameter( names = "--y", description = "Target image top coordinate", required = false )
+        public long y = 0;
         
         @Parameter( names = "--width", description = "Target image width", required = false )
         public int width = 256;
@@ -128,6 +128,93 @@ public class RenderTile
         
         @Parameter( names = "--threads", description = "Number of threads to be used", required = false )
         public int numThreads = Runtime.getRuntime().availableProcessors();
+	}
+	
+	
+	
+	final static public ImagePlus openImagePlus( final String pathString )
+	{
+		final ImagePlus imp = new Opener().openImage( pathString );
+		return imp;
+	}
+	
+	final static public ImagePlus openImagePlusUrl( final String urlString )
+	{
+		final ImagePlus imp = new Opener().openURL( imageJUrl( urlString ) );
+		return imp;
+	}
+	
+	final static public BufferedImage openImageUrl( final String urlString )
+	{
+		BufferedImage image;
+		try
+		{
+			final URL url = new URL( urlString );
+			final BufferedImage imageTemp = ImageIO.read( url );
+			
+			/* This gymnastic is necessary to get reproducible gray
+			 * values, just opening a JPG or PNG, even when saved by
+			 * ImageIO, and grabbing its pixels results in gray values
+			 * with a non-matching gamma transfer function, I cannot tell
+			 * why... */
+		    image = new BufferedImage( imageTemp.getWidth(), imageTemp.getHeight(), BufferedImage.TYPE_INT_ARGB );
+			image.createGraphics().drawImage( imageTemp, 0, 0, null );
+		}
+		catch ( final Exception e )
+		{
+			try
+			{
+				final ImagePlus imp = openImagePlusUrl( urlString );
+				if ( imp != null )
+				{
+					image = imp.getBufferedImage();
+				}
+				else image = null;
+			}
+			catch ( final Exception f )
+			{
+				image = null;
+			}
+		}
+		return image;
+	}
+	
+	final static public BufferedImage openImage( final String path )
+	{
+		BufferedImage image = null;
+		try
+		{
+			final File file = new File( path );
+			if ( file.exists() )
+			{
+				final BufferedImage jpg = ImageIO.read( file );
+				
+				/* This gymnastic is necessary to get reproducible gray
+				 * values, just opening a JPG or PNG, even when saved by
+				 * ImageIO, and grabbing its pixels results in gray values
+				 * with a non-matching gamma transfer function, I cannot tell
+				 * why... */
+			    image = new BufferedImage( jpg.getWidth(), jpg.getHeight(), BufferedImage.TYPE_INT_ARGB );
+				image.createGraphics().drawImage( jpg, 0, 0, null );
+			}
+		}
+		catch ( final Exception e )
+		{
+			try
+			{
+				final ImagePlus imp = openImagePlus( path );
+				if ( imp != null )
+				{
+					image = imp.getBufferedImage();
+				}
+				else image = null;
+			}
+			catch ( final Exception f )
+			{
+				image = null;
+			}
+		}
+		return image;
 	}
 	
 	/**
@@ -183,10 +270,8 @@ public class RenderTile
 	
 	public static void main( final String[] args )
 	{
-		new ImageJ();
+//		new ImageJ();
 		
-		final Opener opener = new Opener();
-    	
 		final Params params = new Params();
 		try
         {
@@ -200,13 +285,13 @@ public class RenderTile
         catch ( final Exception e )
         {
         	e.printStackTrace();
-        	System.out.println( "HELP!" );
             final JCommander jc = new JCommander( params );
         	jc.setProgramName( "java [-options] -cp render.jar org.janelia.alignment.RenderTile" );
         	jc.usage(); 
         	return;
         }
 		
+		/* open tilespec */
 		final URL url;
 		final TileSpec[] tileSpecs;
 		try
@@ -234,27 +319,20 @@ public class RenderTile
 		}
 		
 		/* open or create target image */
-		final ColorProcessor cpTarget;
-		if ( params.targetPath != null )
-		{
-			final ImagePlus impTarget = opener.openImage( params.targetPath );
-			if ( impTarget != null )
-				cpTarget = impTarget.getProcessor().convertToColorProcessor();
-			else
-				cpTarget = new ColorProcessor( params.width, params.height );
-		}
-		else
-			cpTarget = new ColorProcessor( params.width, params.height );
+		BufferedImage targetImage = openImage( params.targetPath );
+		if ( targetImage == null )
+			targetImage = new BufferedImage( params.width, params.height, BufferedImage.TYPE_INT_ARGB );
+		
+		final Graphics2D targetGraphics = targetImage.createGraphics();
 		
 		for ( final TileSpec ts : tileSpecs )
 		{
 			/* load image TODO use Bioformats for strange formats */
-			final ImagePlus imp = opener.openURL( imageJUrl( ts.imageUrl ) );
+			final ImagePlus imp = openImagePlusUrl( ts.imageUrl );
 			if ( imp == null )
 				System.err.println( "Failed to load image '" + ts.imageUrl + "'." );
 			else
 			{
-				imp.show();
 				final ImageProcessor ip = imp.getProcessor();
 				final ImageProcessor tp = ip.createProcessor( params.width, params.height );
 				
@@ -264,7 +342,7 @@ public class RenderTile
 				final ByteProcessor bpMaskTarget;
 				if ( ts.maskUrl != null )
 				{
-					final ImagePlus impMask = opener.openURL( imageJUrl( ts.maskUrl ) );
+					final ImagePlus impMask = openImagePlusUrl( ts.maskUrl );
 					if ( impMask == null )
 					{
 						System.err.println( "Failed to load mask '" + ts.maskUrl + "'." );
@@ -300,17 +378,38 @@ public class RenderTile
 				tp.setMinAndMax( ts.minIntensity, ts.maxIntensity );
 				final ColorProcessor cp = tp.convertToColorProcessor();
 				
+				final int[] cpPixels = ( int[] )cp.getPixels();
+				final byte[] alphaPixels;
+				
+				
 				/* set alpha channel */
 				if ( bpMaskTarget != null )
-				{
-					final int[] cpPixels = ( int[] )cp.getPixels();
-					final byte[] alphaPixels = ( byte[] )bpMaskTarget.getPixels();
-					for ( int i = 0; i < cpPixels.length; ++i )
-						cpPixels[ i ] &= 0x00ffffff | ( alphaPixels[ i ] << 24 );
-				}
+					alphaPixels = ( byte[] )bpMaskTarget.getPixels();
+				else
+					alphaPixels = ( byte[] )target.outside.getPixels();
+
+				for ( int i = 0; i < cpPixels.length; ++i )
+					cpPixels[ i ] &= 0x00ffffff | ( alphaPixels[ i ] << 24 );
+
+				final BufferedImage image = new BufferedImage( cp.getWidth(), cp.getHeight(), BufferedImage.TYPE_INT_ARGB );
+				final WritableRaster raster = image.getRaster();
+				raster.setDataElements( 0, 0, cp.getWidth(), cp.getHeight(), cpPixels );
 				
-				new ImagePlus( ts.imageUrl, cp ).show();
+				targetGraphics.drawImage( image, 0, 0, null );
 			}
 		}
+		
+		/* save the modified image (alpha correct) */
+		try
+		{
+			final File targetFile = new File( params.targetPath );
+			ImageIO.write( targetImage, params.targetPath.substring( params.targetPath.lastIndexOf( '.' ) + 1 ), targetFile );
+		}
+		catch ( final IOException e )
+		{
+			e.printStackTrace( System.err );
+		}
+		
+//		new ImagePlus( params.targetPath ).show();
 	}
 }
