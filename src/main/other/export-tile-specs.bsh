@@ -12,7 +12,7 @@ void flattenTransforms(ct, list) {
 }
 
 String createTransforms(patch) {
-	ct = patch.getCoordinateTransform();
+	ct = patch.getFullCoordinateTransform();
 	if (ct == null)
 		return null;
 
@@ -61,7 +61,7 @@ String createTileSpec(patch) {
 	b = new StringBuffer("{");
 
 	b.append(nl);
-	b.append("  imageUrl : \"file:/");
+	b.append("  imageUrl : \"file:");
 	b.append(patch.getFilePath());
 	b.append("\",");
 	b.append(nl);
