@@ -16,7 +16,10 @@
  */
 package org.janelia.alignment;
 
+import ij.IJ;
+import ij.ImageJ;
 import ij.ImagePlus;
+import ij.io.Opener;
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
@@ -31,9 +34,9 @@ import java.net.URL;
 
 import javax.imageio.ImageIO;
 
-import mpicbg.ij.TransformMeshMapping;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
+import mpicbg.models.CoordinateTransformMesh;
 import mpicbg.models.TransformMesh;
 import mpicbg.models.TranslationModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
@@ -127,6 +130,15 @@ public class RenderTile
         public int numThreads = Runtime.getRuntime().availableProcessors();
 	}
 	
+	/**
+	 * If a URL starts with "file:", replace "file:" with "" because ImageJ wouldn't understand it otherwise
+	 * @return
+	 */
+	final static private String imageJUrl( final String urlString )
+	{
+		return urlString.replace( "^file:", "" );
+	}
+	
 	private RenderTile() {}
 	
 	/**
@@ -171,19 +183,25 @@ public class RenderTile
 	
 	public static void main( final String[] args )
 	{
+		new ImageJ();
+		
+		final Opener opener = new Opener();
+    	
 		final Params params = new Params();
 		try
         {
 			final JCommander jc = new JCommander( params, args );
         	if ( params.help )
             {
-                jc.usage();
+        		jc.usage();
                 return;
             }
         }
         catch ( final Exception e )
         {
-        	final JCommander jc = new JCommander( params );
+        	e.printStackTrace();
+        	System.out.println( "HELP!" );
+            final JCommander jc = new JCommander( params );
         	jc.setProgramName( "java [-options] -cp render.jar org.janelia.alignment.RenderTile" );
         	jc.usage(); 
         	return;
@@ -219,7 +237,7 @@ public class RenderTile
 		final ColorProcessor cpTarget;
 		if ( params.targetPath != null )
 		{
-			final ImagePlus impTarget = new ImagePlus( params.targetPath );
+			final ImagePlus impTarget = opener.openImage( params.targetPath );
 			if ( impTarget != null )
 				cpTarget = impTarget.getProcessor().convertToColorProcessor();
 			else
@@ -230,49 +248,68 @@ public class RenderTile
 		
 		for ( final TileSpec ts : tileSpecs )
 		{
-			final ImagePlus imp = new ImagePlus( ts.imageUrl );
+			/* load image TODO use Bioformats for strange formats */
+			final ImagePlus imp = opener.openURL( imageJUrl( ts.imageUrl ) );
 			if ( imp == null )
 				System.err.println( "Failed to load image '" + ts.imageUrl + "'." );
 			else
 			{
+				imp.show();
 				final ImageProcessor ip = imp.getProcessor();
-				ip.setMinAndMax( ts.minIntensity, ts.maxIntensity );
-				final ColorProcessor cp = ip.convertToColorProcessor();
+				final ImageProcessor tp = ip.createProcessor( params.width, params.height );
 				
-				final ByteProcessor bpMask;
+				
+				/* open mask */
+				final ByteProcessor bpMaskSource;
+				final ByteProcessor bpMaskTarget;
 				if ( ts.maskUrl != null )
 				{
-					final ImagePlus impMask = new ImagePlus( ts.maskUrl );
+					final ImagePlus impMask = opener.openURL( imageJUrl( ts.maskUrl ) );
 					if ( impMask == null )
 					{
 						System.err.println( "Failed to load mask '" + ts.maskUrl + "'." );
-						bpMask = null;
+						bpMaskSource = null;
+						bpMaskTarget = null;
 					}
 					else
-						bpMask = impMask.getProcessor().convertToByteProcessor();
+					{
+						bpMaskSource = impMask.getProcessor().convertToByteProcessor();
+						bpMaskTarget = new ByteProcessor( tp.getWidth(), tp.getHeight() );
+					}
 				}
 				else
 				{
-					bpMask = null;
+					bpMaskSource = null;
+					bpMaskTarget = null;
 				}
 				
+				/* assemble coordinate transformations and add bounding box offset */
 				final CoordinateTransformList< CoordinateTransform > ctl = ts.createTransformList();
 				final TranslationModel2D offset = new TranslationModel2D();
 				offset.set( -params.x, -params.y );
+				IJ.log( params.x + " " + params.y );
 				ctl.add( offset );
-				final TransformMesh mesh = new TransformMesh( params.res, ip.getWidth(), ip.getHeight() );
-				if ( bpMask == null )
+				final CoordinateTransformMesh mesh = new CoordinateTransformMesh( ctl, params.res, ip.getWidth(), ip.getHeight() );
+				
+				final ImageProcessorWithMasks source = new ImageProcessorWithMasks( ip, bpMaskSource, null );
+				final ImageProcessorWithMasks target = new ImageProcessorWithMasks( tp, bpMaskTarget, null );
+				final TransformMeshMappingWithMasks< TransformMesh > mapping = new TransformMeshMappingWithMasks< TransformMesh >( mesh );
+				mapping.mapInterpolated( source, target );
+				
+				/* convert to 24bit RGB */
+				tp.setMinAndMax( ts.minIntensity, ts.maxIntensity );
+				final ColorProcessor cp = tp.convertToColorProcessor();
+				
+				/* set alpha channel */
+				if ( bpMaskTarget != null )
 				{
-					final TransformMeshMapping< TransformMesh > mapping = new TransformMeshMapping< TransformMesh >( mesh );
-					mapping.mapInterpolated( cp, cpTarget, params.numThreads );
+					final int[] cpPixels = ( int[] )cp.getPixels();
+					final byte[] alphaPixels = ( byte[] )bpMaskTarget.getPixels();
+					for ( int i = 0; i < cpPixels.length; ++i )
+						cpPixels[ i ] &= 0x00ffffff | ( alphaPixels[ i ] << 24 );
 				}
-				else
-				{
-					final ImageProcessorWithMasks source = new ImageProcessorWithMasks( cp, bpMask, null );
-					final ImageProcessorWithMasks target = new ImageProcessorWithMasks( cpTarget, null, null );
-					final TransformMeshMappingWithMasks< TransformMesh > mapping = new TransformMeshMappingWithMasks< TransformMesh >( mesh );
-					mapping.mapInterpolated( source, target );
-				}
+				
+				new ImagePlus( ts.imageUrl, cp ).show();
 			}
 		}
 	}
