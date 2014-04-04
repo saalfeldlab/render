@@ -27,25 +27,38 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Writer;
+import java.io.FileWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.imageio.ImageIO;
 
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.CoordinateTransformMesh;
+import mpicbg.models.PointMatch;
 import mpicbg.models.TransformMesh;
 import mpicbg.models.TranslationModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import mpicbg.imagefeatures.Feature;
+import mpicbg.imagefeatures.FloatArray2DSIFT;
+import mpicbg.ij.FeatureTransform;
+import mpicbg.ij.SIFT;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 
 /**
@@ -97,7 +110,7 @@ import com.google.gson.JsonSyntaxException;
  * 
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
-public class RenderTile
+public class MatchSiftFeatures
 {
 	@Parameters
 	static private class Params
@@ -105,29 +118,26 @@ public class RenderTile
 		@Parameter( names = "--help", description = "Display this note", help = true )
         private final boolean help = false;
 
-        @Parameter( names = "--url", description = "URL to JSON tile spec", required = true )
-        private String url;
-
-        @Parameter( names = "--res", description = "Mesh resolution", required = true )
-        private int res;
+        @Parameter( names = "--featurefile1", description = "First feature file", required = true )
+        private String featurefile1;
         
-        @Parameter( names = "--targetPath", description = "Path to the target image if any", required = false )
-        public String targetPath = null;
+        @Parameter( names = "--featurefile2", description = "Second feature file", required = true )
+        private String featurefile2;
         
-        @Parameter( names = "--x", description = "Target image left coordinate", required = false )
-        public long x = 0;
+        @Parameter( names = "--targetPath", description = "Path for the output correspondences", required = true )
+        public String targetPath;
         
-        @Parameter( names = "--y", description = "Target image top coordinate", required = false )
-        public long y = 0;
+        @Parameter( names = "--index1", description = "Image index within first feature file", required = false )
+        public int index1 = 0;
         
-        @Parameter( names = "--width", description = "Target image width", required = false )
-        public int width = 256;
-        
-        @Parameter( names = "--height", description = "Target image height", required = false )
-        public int height = 256;
-        
+        @Parameter( names = "--index2", description = "Image index within second feature file", required = false )
+        public int index2 = 0;
+                
         @Parameter( names = "--threads", description = "Number of threads to be used", required = false )
         public int numThreads = Runtime.getRuntime().availableProcessors();
+        
+        @Parameter( names = "--rod", description = "ROD", required = false )
+        public float rod = 0.92f;
 	}
 	
 	
@@ -226,7 +236,7 @@ public class RenderTile
 		return urlString.replace( "^file:", "" );
 	}
 	
-	private RenderTile() {}
+	private MatchSiftFeatures() {}
 	
 	/**
 	 * Combine a 0x??rgb int[] raster and an unsigned byte[] alpha channel into
@@ -291,20 +301,14 @@ public class RenderTile
         	return;
         }
 		
-		/* open tilespec */
-		final URL url;
-		final TileSpec[] tileSpecs;
+		/* open featurespec */
+		final FeatureSpec[] featureSpecs1;
+		final FeatureSpec[] featureSpecs2;
 		try
 		{
 			final Gson gson = new Gson();
-			url = new URL( params.url );
-			tileSpecs = gson.fromJson( new InputStreamReader( url.openStream() ), TileSpec[].class );
-		}
-		catch ( final MalformedURLException e )
-		{
-			System.err.println( "URL malformed." );
-			e.printStackTrace( System.err );
-			return;
+			featureSpecs1 = gson.fromJson( new FileReader( params.featurefile1 ), FeatureSpec[].class );
+			featureSpecs2 = gson.fromJson( new FileReader( params.featurefile2 ), FeatureSpec[].class );
 		}
 		catch ( final JsonSyntaxException e )
 		{
@@ -317,99 +321,31 @@ public class RenderTile
 			e.printStackTrace( System.err );
 			return;
 		}
-		
-		/* open or create target image */
-		BufferedImage targetImage = openImage( params.targetPath );
-		if ( targetImage == null )
-			targetImage = new BufferedImage( params.width, params.height, BufferedImage.TYPE_INT_ARGB );
-		
-		final Graphics2D targetGraphics = targetImage.createGraphics();
-		
-		for ( final TileSpec ts : tileSpecs )
-		{
-			/* load image TODO use Bioformats for strange formats */
-			final ImagePlus imp = openImagePlus( ts.imageUrl.replaceFirst("file:///", "") );
-			if ( imp == null )
-				System.err.println( "Failed to load image '" + ts.imageUrl + "'." );
-			else
-			{
-				final ImageProcessor ip = imp.getProcessor();
-				final ImageProcessor tp = ip.createProcessor( params.width, params.height );
-				
-				
-				/* open mask */
-				final ByteProcessor bpMaskSource;
-				final ByteProcessor bpMaskTarget;
-				if ( ts.maskUrl != null )
-				{
-					final ImagePlus impMask = openImagePlusUrl( ts.maskUrl.replaceFirst("file:///", "") );
-					if ( impMask == null )
-					{
-						System.err.println( "Failed to load mask '" + ts.maskUrl.replaceFirst("file:///", "") + "'." );
-						bpMaskSource = null;
-						bpMaskTarget = null;
-					}
-					else
-					{
-						bpMaskSource = impMask.getProcessor().convertToByteProcessor();
-						bpMaskTarget = new ByteProcessor( tp.getWidth(), tp.getHeight() );
-					}
-				}
-				else
-				{
-					bpMaskSource = null;
-					bpMaskTarget = null;
-				}
-				
-				/* assemble coordinate transformations and add bounding box offset */
-				final CoordinateTransformList< CoordinateTransform > ctl = ts.createTransformList();
-				final TranslationModel2D offset = new TranslationModel2D();
-				offset.set( -params.x, -params.y );
-				IJ.log( params.x + " " + params.y );
-				ctl.add( offset );
-				final CoordinateTransformMesh mesh = new CoordinateTransformMesh( ctl, params.res, ip.getWidth(), ip.getHeight() );
-				
-				final ImageProcessorWithMasks source = new ImageProcessorWithMasks( ip, bpMaskSource, null );
-				final ImageProcessorWithMasks target = new ImageProcessorWithMasks( tp, bpMaskTarget, null );
-				final TransformMeshMappingWithMasks< TransformMesh > mapping = new TransformMeshMappingWithMasks< TransformMesh >( mesh );
-				mapping.mapInterpolated( source, target );
-				
-				/* convert to 24bit RGB */
-				tp.setMinAndMax( ts.minIntensity, ts.maxIntensity );
-				final ColorProcessor cp = tp.convertToColorProcessor();
-				
-				final int[] cpPixels = ( int[] )cp.getPixels();
-				final byte[] alphaPixels;
-				
-				
-				/* set alpha channel */
-				if ( bpMaskTarget != null )
-					alphaPixels = ( byte[] )bpMaskTarget.getPixels();
-				else
-					alphaPixels = ( byte[] )target.outside.getPixels();
 
-				for ( int i = 0; i < cpPixels.length; ++i )
-					cpPixels[ i ] &= 0x00ffffff | ( alphaPixels[ i ] << 24 );
-
-				final BufferedImage image = new BufferedImage( cp.getWidth(), cp.getHeight(), BufferedImage.TYPE_INT_ARGB );
-				final WritableRaster raster = image.getRaster();
-				raster.setDataElements( 0, 0, cp.getWidth(), cp.getHeight(), cpPixels );
-				
-				targetGraphics.drawImage( image, 0, 0, null );
-			}
-		}
+		final List< Feature > fs1 = featureSpecs1[ params.index1 ].featureList;
+		final List< Feature > fs2 = featureSpecs2[ params.index2 ].featureList;
 		
-		/* save the modified image (alpha correct) */
-		try
-		{
-			final File targetFile = new File( params.targetPath );
-			ImageIO.write( targetImage, params.targetPath.substring( params.targetPath.lastIndexOf( '.' ) + 1 ), targetFile );
-		}
+		final List< PointMatch > candidates = new ArrayList< PointMatch >();
+		FeatureTransform.matchFeatures( fs1, fs2, candidates, params.rod );
+		
+		List< CorrespondenceSpec > corr_data = new ArrayList< CorrespondenceSpec >();
+		
+		corr_data.add(new CorrespondenceSpec(
+				featureSpecs1[ params.index1 ].imageUrl,
+				featureSpecs2[ params.index2 ].imageUrl,
+				candidates));
+					
+		try {
+			Writer writer = new FileWriter(params.targetPath);
+	        //Gson gson = new GsonBuilder().create();
+	        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+	        gson.toJson(corr_data, writer);
+	        writer.close();
+	    }
 		catch ( final IOException e )
 		{
+			System.err.println( "Error writing JSON file: " + params.targetPath );
 			e.printStackTrace( System.err );
 		}
-		
-//		new ImagePlus( params.targetPath ).show();
 	}
 }

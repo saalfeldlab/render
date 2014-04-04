@@ -29,8 +29,14 @@ import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Writer;
+import java.io.FileWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.imageio.ImageIO;
 
@@ -41,11 +47,15 @@ import mpicbg.models.TransformMesh;
 import mpicbg.models.TranslationModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import mpicbg.imagefeatures.Feature;
+import mpicbg.imagefeatures.FloatArray2DSIFT;
+import mpicbg.ij.SIFT;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 
 /**
@@ -97,7 +107,7 @@ import com.google.gson.JsonSyntaxException;
  * 
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
-public class RenderTile
+public class ComputeSiftFeatures
 {
 	@Parameters
 	static private class Params
@@ -108,10 +118,10 @@ public class RenderTile
         @Parameter( names = "--url", description = "URL to JSON tile spec", required = true )
         private String url;
 
-        @Parameter( names = "--res", description = "Mesh resolution", required = true )
-        private int res;
+        @Parameter( names = "--index", description = "Tile index", required = false )
+        private int index = 0;
         
-        @Parameter( names = "--targetPath", description = "Path to the target image if any", required = false )
+        @Parameter( names = "--targetPath", description = "Path to the target image if any", required = true )
         public String targetPath = null;
         
         @Parameter( names = "--x", description = "Target image left coordinate", required = false )
@@ -226,7 +236,7 @@ public class RenderTile
 		return urlString.replace( "^file:", "" );
 	}
 	
-	private RenderTile() {}
+	private ComputeSiftFeatures() {}
 	
 	/**
 	 * Combine a 0x??rgb int[] raster and an unsigned byte[] alpha channel into
@@ -317,99 +327,40 @@ public class RenderTile
 			e.printStackTrace( System.err );
 			return;
 		}
+						
+		List< FeatureSpec > feature_data = new ArrayList< FeatureSpec >();
 		
-		/* open or create target image */
-		BufferedImage targetImage = openImage( params.targetPath );
-		if ( targetImage == null )
-			targetImage = new BufferedImage( params.width, params.height, BufferedImage.TYPE_INT_ARGB );
+		TileSpec ts = tileSpecs[params.index];
 		
-		final Graphics2D targetGraphics = targetImage.createGraphics();
-		
-		for ( final TileSpec ts : tileSpecs )
+		/* load image TODO use Bioformats for strange formats */
+		final ImagePlus imp = openImagePlus( ts.imageUrl.replaceFirst("file:///", "").replaceFirst("file://", "").replaceFirst("file:/", "") );
+		if ( imp == null )
+			System.err.println( "Failed to load image '" + ts.imageUrl + "'." );
+		else
 		{
-			/* load image TODO use Bioformats for strange formats */
-			final ImagePlus imp = openImagePlus( ts.imageUrl.replaceFirst("file:///", "") );
-			if ( imp == null )
-				System.err.println( "Failed to load image '" + ts.imageUrl + "'." );
-			else
-			{
-				final ImageProcessor ip = imp.getProcessor();
-				final ImageProcessor tp = ip.createProcessor( params.width, params.height );
-				
-				
-				/* open mask */
-				final ByteProcessor bpMaskSource;
-				final ByteProcessor bpMaskTarget;
-				if ( ts.maskUrl != null )
-				{
-					final ImagePlus impMask = openImagePlusUrl( ts.maskUrl.replaceFirst("file:///", "") );
-					if ( impMask == null )
-					{
-						System.err.println( "Failed to load mask '" + ts.maskUrl.replaceFirst("file:///", "") + "'." );
-						bpMaskSource = null;
-						bpMaskTarget = null;
-					}
-					else
-					{
-						bpMaskSource = impMask.getProcessor().convertToByteProcessor();
-						bpMaskTarget = new ByteProcessor( tp.getWidth(), tp.getHeight() );
-					}
-				}
-				else
-				{
-					bpMaskSource = null;
-					bpMaskTarget = null;
-				}
-				
-				/* assemble coordinate transformations and add bounding box offset */
-				final CoordinateTransformList< CoordinateTransform > ctl = ts.createTransformList();
-				final TranslationModel2D offset = new TranslationModel2D();
-				offset.set( -params.x, -params.y );
-				IJ.log( params.x + " " + params.y );
-				ctl.add( offset );
-				final CoordinateTransformMesh mesh = new CoordinateTransformMesh( ctl, params.res, ip.getWidth(), ip.getHeight() );
-				
-				final ImageProcessorWithMasks source = new ImageProcessorWithMasks( ip, bpMaskSource, null );
-				final ImageProcessorWithMasks target = new ImageProcessorWithMasks( tp, bpMaskTarget, null );
-				final TransformMeshMappingWithMasks< TransformMesh > mapping = new TransformMeshMappingWithMasks< TransformMesh >( mesh );
-				mapping.mapInterpolated( source, target );
-				
-				/* convert to 24bit RGB */
-				tp.setMinAndMax( ts.minIntensity, ts.maxIntensity );
-				final ColorProcessor cp = tp.convertToColorProcessor();
-				
-				final int[] cpPixels = ( int[] )cp.getPixels();
-				final byte[] alphaPixels;
-				
-				
-				/* set alpha channel */
-				if ( bpMaskTarget != null )
-					alphaPixels = ( byte[] )bpMaskTarget.getPixels();
-				else
-					alphaPixels = ( byte[] )target.outside.getPixels();
-
-				for ( int i = 0; i < cpPixels.length; ++i )
-					cpPixels[ i ] &= 0x00ffffff | ( alphaPixels[ i ] << 24 );
-
-				final BufferedImage image = new BufferedImage( cp.getWidth(), cp.getHeight(), BufferedImage.TYPE_INT_ARGB );
-				final WritableRaster raster = image.getRaster();
-				raster.setDataElements( 0, 0, cp.getWidth(), cp.getHeight(), cpPixels );
-				
-				targetGraphics.drawImage( image, 0, 0, null );
-			}
+			/* calculate sift features for the image or sub-region */
+			System.out.println( "Calculating SIFT features for image '" + ts.imageUrl + "'." );
+			FloatArray2DSIFT.Param siftParam = new FloatArray2DSIFT.Param();			
+			FloatArray2DSIFT sift = new FloatArray2DSIFT(siftParam);
+			SIFT ijSIFT = new SIFT(sift);
+							
+			final List< Feature > fs = new ArrayList< Feature >();
+			ijSIFT.extractFeatures( imp.getProcessor(), fs );
+			
+			feature_data.add(new FeatureSpec(ts.imageUrl, fs));
 		}
 		
-		/* save the modified image (alpha correct) */
-		try
-		{
-			final File targetFile = new File( params.targetPath );
-			ImageIO.write( targetImage, params.targetPath.substring( params.targetPath.lastIndexOf( '.' ) + 1 ), targetFile );
-		}
+		try {
+			Writer writer = new FileWriter(params.targetPath);
+	        //Gson gson = new GsonBuilder().create();
+	        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+	        gson.toJson(feature_data, writer);
+	        writer.close();
+	    }
 		catch ( final IOException e )
 		{
+			System.err.println( "Error writing JSON file: " + params.targetPath );
 			e.printStackTrace( System.err );
 		}
-		
-//		new ImagePlus( params.targetPath ).show();
 	}
 }
