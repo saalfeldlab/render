@@ -16,9 +16,7 @@
  */
 package org.janelia.alignment;
 
-import ij.IJ;
 import ij.ImagePlus;
-import ij.io.Opener;
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
@@ -68,13 +66,14 @@ import com.google.gson.JsonSyntaxException;
  *      Display this note
  *      Default: false
  * *     --res
- *      Mesh resolution
- *      Default: 0
- *       --targetPath
- *      Path to the target image if any
+ *      Mesh resolution, specified by the desired size of a triangle in pixels
+ *       --in
+ *      Path to the input image if any
+ *       --out
+ *      Path to the output image
  *       --threads
  *      Number of threads to be used
- *      Default: 48
+ *      Default: number of available CPUs
  * *     --url
  *      URL to JSON tile spec
  *       --width
@@ -108,11 +107,14 @@ public class RenderTile
         @Parameter( names = "--url", description = "URL to JSON tile spec", required = true )
         private String url;
 
-        @Parameter( names = "--res", description = "Mesh resolution", required = true )
-        private int res;
+        @Parameter( names = "--res", description = " Mesh resolution, specified by the desired size of a triangle in pixels", required = false )
+        public int res = 64;
         
-        @Parameter( names = "--targetPath", description = "Path to the target image if any", required = false )
-        public String targetPath = null;
+        @Parameter( names = "--in", description = "Path to the input image if any", required = false )
+        public String in;
+        
+        @Parameter( names = "--out", description = "Path to the output image", required = true )
+        public String out;
         
         @Parameter( names = "--x", description = "Target image left coordinate", required = false )
         public long x = 0;
@@ -130,117 +132,7 @@ public class RenderTile
         public int numThreads = Runtime.getRuntime().availableProcessors();
 	}
 	
-	
-	
-	final static public ImagePlus openImagePlus( final String pathString )
-	{
-		final ImagePlus imp = new Opener().openImage( pathString );
-		return imp;
-	}
-	
-	final static public ImagePlus openImagePlusUrl( final String urlString )
-	{
-		final ImagePlus imp = new Opener().openURL( imageJUrl( urlString ) );
-		return imp;
-	}
-	
-	final static public BufferedImage openImageUrl( final String urlString )
-	{
-		BufferedImage image;
-		try
-		{
-			final URL url = new URL( urlString );
-			final BufferedImage imageTemp = ImageIO.read( url );
-			
-			/* This gymnastic is necessary to get reproducible gray
-			 * values, just opening a JPG or PNG, even when saved by
-			 * ImageIO, and grabbing its pixels results in gray values
-			 * with a non-matching gamma transfer function, I cannot tell
-			 * why... */
-		    image = new BufferedImage( imageTemp.getWidth(), imageTemp.getHeight(), BufferedImage.TYPE_INT_ARGB );
-			image.createGraphics().drawImage( imageTemp, 0, 0, null );
-		}
-		catch ( final Exception e )
-		{
-			try
-			{
-				final ImagePlus imp = openImagePlusUrl( urlString );
-				if ( imp != null )
-				{
-					image = imp.getBufferedImage();
-				}
-				else image = null;
-			}
-			catch ( final Exception f )
-			{
-				image = null;
-			}
-		}
-		return image;
-	}
-	
-	final static public BufferedImage openImage( final String path )
-	{
-		BufferedImage image = null;
-		try
-		{
-			final File file = new File( path );
-			if ( file.exists() )
-			{
-				final BufferedImage jpg = ImageIO.read( file );
-				
-				/* This gymnastic is necessary to get reproducible gray
-				 * values, just opening a JPG or PNG, even when saved by
-				 * ImageIO, and grabbing its pixels results in gray values
-				 * with a non-matching gamma transfer function, I cannot tell
-				 * why... */
-			    image = new BufferedImage( jpg.getWidth(), jpg.getHeight(), BufferedImage.TYPE_INT_ARGB );
-				image.createGraphics().drawImage( jpg, 0, 0, null );
-			}
-		}
-		catch ( final Exception e )
-		{
-			try
-			{
-				final ImagePlus imp = openImagePlus( path );
-				if ( imp != null )
-				{
-					image = imp.getBufferedImage();
-				}
-				else image = null;
-			}
-			catch ( final Exception f )
-			{
-				image = null;
-			}
-		}
-		return image;
-	}
-	
-	/**
-	 * If a URL starts with "file:", replace "file:" with "" because ImageJ wouldn't understand it otherwise
-	 * @return
-	 */
-	final static private String imageJUrl( final String urlString )
-	{
-		return urlString.replace( "^file:", "" );
-	}
-	
 	private RenderTile() {}
-	
-	/**
-	 * Combine a 0x??rgb int[] raster and an unsigned byte[] alpha channel into
-	 * a 0xargb int[] raster.  The operation is perfomed in place on the int[]
-	 * raster.
-	 */
-	final static public void combineARGB( final int[] rgb, final byte[] a )
-	{
-		for ( int i = 0; i < rgb.length; ++i )
-		{
-			rgb[ i ] &= 0x00ffffff;
-			rgb[ i ] |= ( a[ i ] & 0xff ) << 24;
-		}
-	}
 	
 	/**
 	 * Create a {@link BufferedImage} from an existing pixel array.  Make sure
@@ -266,6 +158,104 @@ public class RenderTile
 	final static void saveImage( final BufferedImage image, final String path, final String format ) throws IOException
 	{
 		ImageIO.write( image, format, new File( path ) );
+	}
+	
+	final static public void render(
+			final TileSpec[] tileSpecs,
+			final BufferedImage targetImage,
+			final double x,
+			final double y,
+			final double triangleSize )
+	{
+		final Graphics2D targetGraphics = targetImage.createGraphics();
+		
+		for ( final TileSpec ts : tileSpecs )
+		{
+			/* load image TODO use Bioformats for strange formats */
+			final ImagePlus imp = Utils.openImagePlusUrl( ts.imageUrl );
+			if ( imp == null )
+				System.err.println( "Failed to load image '" + ts.imageUrl + "'." );
+			else
+			{
+				final ImageProcessor ip = imp.getProcessor();
+				final ImageProcessor tp = ip.createProcessor( targetImage.getWidth(), targetImage.getHeight() );
+				
+				/* assemble coordinate transformations and add bounding box offset */
+				final CoordinateTransformList< CoordinateTransform > ctl = ts.createTransformList();
+				final TranslationModel2D offset = new TranslationModel2D();
+				offset.set( -( float )x, -( float )y );
+				ctl.add( offset );
+				
+				/* estiamte average scale */
+				final double scale = Utils.sampleAverageScale( ctl, ip.getWidth(), ip.getHeight(), triangleSize );
+				final int mipmapLevel = Utils.bestMipmapLevel( scale );
+				
+				/* create according mipmap level */
+				final ImageProcessor ipMipmap = Downsampler.downsampleImageProcessor( ip, mipmapLevel );
+				
+				/* open mask */
+				final ByteProcessor bpMaskSource;
+				final ByteProcessor bpMaskTarget;
+				if ( ts.maskUrl != null )
+				{
+					final ImagePlus impMask = Utils.openImagePlusUrl( ts.maskUrl );
+					if ( impMask == null )
+					{
+						System.err.println( "Failed to load mask '" + ts.maskUrl + "'." );
+						bpMaskSource = null;
+						bpMaskTarget = null;
+					}
+					else
+					{
+						/* create according mipmap level */
+						bpMaskSource = Downsampler.downsampleByteProcessor( impMask.getProcessor().convertToByteProcessor(), mipmapLevel );
+						bpMaskTarget = new ByteProcessor( tp.getWidth(), tp.getHeight() );
+					}
+				}
+				else
+				{
+					bpMaskSource = null;
+					bpMaskTarget = null;
+				}
+				
+				
+				/* attach mipmap transformation */
+				final CoordinateTransformList< CoordinateTransform > ctlMipmap = new CoordinateTransformList< CoordinateTransform >();
+				ctlMipmap.add( Utils.createScaleLevelTransform( mipmapLevel ) );
+				ctlMipmap.add( ctl );
+				
+				/* create mesh */
+				final CoordinateTransformMesh mesh = new CoordinateTransformMesh( ctlMipmap,  ( int )( ip.getWidth() / triangleSize + 0.5 ), ipMipmap.getWidth(), ipMipmap.getHeight() );
+				
+				final ImageProcessorWithMasks source = new ImageProcessorWithMasks( ipMipmap, bpMaskSource, null );
+				final ImageProcessorWithMasks target = new ImageProcessorWithMasks( tp, bpMaskTarget, null );
+				final TransformMeshMappingWithMasks< TransformMesh > mapping = new TransformMeshMappingWithMasks< TransformMesh >( mesh );
+				mapping.mapInterpolated( source, target );
+				
+				/* convert to 24bit RGB */
+				tp.setMinAndMax( ts.minIntensity, ts.maxIntensity );
+				final ColorProcessor cp = tp.convertToColorProcessor();
+				
+				final int[] cpPixels = ( int[] )cp.getPixels();
+				final byte[] alphaPixels;
+				
+				
+				/* set alpha channel */
+				if ( bpMaskTarget != null )
+					alphaPixels = ( byte[] )bpMaskTarget.getPixels();
+				else
+					alphaPixels = ( byte[] )target.outside.getPixels();
+
+				for ( int i = 0; i < cpPixels.length; ++i )
+					cpPixels[ i ] &= 0x00ffffff | ( alphaPixels[ i ] << 24 );
+
+				final BufferedImage image = new BufferedImage( cp.getWidth(), cp.getHeight(), BufferedImage.TYPE_INT_ARGB );
+				final WritableRaster raster = image.getRaster();
+				raster.setDataElements( 0, 0, cp.getWidth(), cp.getHeight(), cpPixels );
+				
+				targetGraphics.drawImage( image, 0, 0, null );
+			}
+		}
 	}
 	
 	public static void main( final String[] args )
@@ -319,97 +309,24 @@ public class RenderTile
 		}
 		
 		/* open or create target image */
-		BufferedImage targetImage = openImage( params.targetPath );
+		BufferedImage targetImage = null;
+		if ( params.in != null )
+		{
+			targetImage = Utils.openImage( params.in );
+			if ( targetImage != null )
+			{
+				params.width = targetImage.getWidth();
+				params.height = targetImage.getHeight();
+			}
+		}
 		if ( targetImage == null )
 			targetImage = new BufferedImage( params.width, params.height, BufferedImage.TYPE_INT_ARGB );
 		
-		final Graphics2D targetGraphics = targetImage.createGraphics();
+		render( tileSpecs, targetImage, params.x, params.y, params.res );
 		
-		for ( final TileSpec ts : tileSpecs )
-		{
-			/* load image TODO use Bioformats for strange formats */
-			final ImagePlus imp = openImagePlusUrl( ts.imageUrl );
-			if ( imp == null )
-				System.err.println( "Failed to load image '" + ts.imageUrl + "'." );
-			else
-			{
-				final ImageProcessor ip = imp.getProcessor();
-				final ImageProcessor tp = ip.createProcessor( params.width, params.height );
-				
-				
-				/* open mask */
-				final ByteProcessor bpMaskSource;
-				final ByteProcessor bpMaskTarget;
-				if ( ts.maskUrl != null )
-				{
-					final ImagePlus impMask = openImagePlusUrl( ts.maskUrl );
-					if ( impMask == null )
-					{
-						System.err.println( "Failed to load mask '" + ts.maskUrl + "'." );
-						bpMaskSource = null;
-						bpMaskTarget = null;
-					}
-					else
-					{
-						bpMaskSource = impMask.getProcessor().convertToByteProcessor();
-						bpMaskTarget = new ByteProcessor( tp.getWidth(), tp.getHeight() );
-					}
-				}
-				else
-				{
-					bpMaskSource = null;
-					bpMaskTarget = null;
-				}
-				
-				/* assemble coordinate transformations and add bounding box offset */
-				final CoordinateTransformList< CoordinateTransform > ctl = ts.createTransformList();
-				final TranslationModel2D offset = new TranslationModel2D();
-				offset.set( -params.x, -params.y );
-				IJ.log( params.x + " " + params.y );
-				ctl.add( offset );
-				final CoordinateTransformMesh mesh = new CoordinateTransformMesh( ctl, params.res, ip.getWidth(), ip.getHeight() );
-				
-				final ImageProcessorWithMasks source = new ImageProcessorWithMasks( ip, bpMaskSource, null );
-				final ImageProcessorWithMasks target = new ImageProcessorWithMasks( tp, bpMaskTarget, null );
-				final TransformMeshMappingWithMasks< TransformMesh > mapping = new TransformMeshMappingWithMasks< TransformMesh >( mesh );
-				mapping.mapInterpolated( source, target );
-				
-				/* convert to 24bit RGB */
-				tp.setMinAndMax( ts.minIntensity, ts.maxIntensity );
-				final ColorProcessor cp = tp.convertToColorProcessor();
-				
-				final int[] cpPixels = ( int[] )cp.getPixels();
-				final byte[] alphaPixels;
-				
-				
-				/* set alpha channel */
-				if ( bpMaskTarget != null )
-					alphaPixels = ( byte[] )bpMaskTarget.getPixels();
-				else
-					alphaPixels = ( byte[] )target.outside.getPixels();
-
-				for ( int i = 0; i < cpPixels.length; ++i )
-					cpPixels[ i ] &= 0x00ffffff | ( alphaPixels[ i ] << 24 );
-
-				final BufferedImage image = new BufferedImage( cp.getWidth(), cp.getHeight(), BufferedImage.TYPE_INT_ARGB );
-				final WritableRaster raster = image.getRaster();
-				raster.setDataElements( 0, 0, cp.getWidth(), cp.getHeight(), cpPixels );
-				
-				targetGraphics.drawImage( image, 0, 0, null );
-			}
-		}
+		/* save the modified image */
+		Utils.saveImage( targetImage, params.out, params.out.substring( params.out.lastIndexOf( '.' ) + 1 ) );
 		
-		/* save the modified image (alpha correct) */
-		try
-		{
-			final File targetFile = new File( params.targetPath );
-			ImageIO.write( targetImage, params.targetPath.substring( params.targetPath.lastIndexOf( '.' ) + 1 ), targetFile );
-		}
-		catch ( final IOException e )
-		{
-			e.printStackTrace( System.err );
-		}
-		
-//		new ImagePlus( params.targetPath ).show();
+//		new ImagePlus( params.out ).show();
 	}
 }
