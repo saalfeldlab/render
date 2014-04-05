@@ -16,6 +16,7 @@
  */
 package org.janelia.alignment;
 
+import ij.ImageJ;
 import ij.ImagePlus;
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
@@ -32,11 +33,11 @@ import java.net.URL;
 
 import javax.imageio.ImageIO;
 
+import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.CoordinateTransformMesh;
 import mpicbg.models.TransformMesh;
-import mpicbg.models.TranslationModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
@@ -47,14 +48,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 
 /**
- * Render an image tile as an ARGB TIFF or PNG image.  The result image covers
- * the minimal bounding box required to render the transformed image.
- * 
- * <p>
- * Start the renderer with the absolute path of the the JSON file that contains
- * all specifications of the tile, and the resolution of the mesh used for
- * rendering.  E.g.
- * </p>
+ * Render a set of image tile as an ARGB image.
  * 
  * <pre>
  * Usage: java [-options] -cp render.jar org.janelia.alignment.RenderTile [options]
@@ -89,14 +83,16 @@ import com.google.gson.JsonSyntaxException;
  * <p>E.g.:</p>
  * <pre>java -cp render.jar org.janelia.alignment.RenderTile \
  *   --url "file://absolute/path/to/tile-spec.json" \
- *   --targetPath "/absolute/path/to/output" \
+ *   --out "/absolute/path/to/output.png" \
  *   --x 16536
  *   --y 32
+ *   --width 1024
+ *   --height 1024
  *   --res 64</pre>
  * 
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
-public class RenderTile
+public class Render
 {
 	@Parameters
 	static private class Params
@@ -105,7 +101,7 @@ public class RenderTile
         private final boolean help = false;
 
         @Parameter( names = "--url", description = "URL to JSON tile spec", required = true )
-        private String url;
+        public String url;
 
         @Parameter( names = "--res", description = " Mesh resolution, specified by the desired size of a triangle in pixels", required = false )
         public int res = 64;
@@ -117,10 +113,10 @@ public class RenderTile
         public String out;
         
         @Parameter( names = "--x", description = "Target image left coordinate", required = false )
-        public long x = 0;
+        public double x = 0;
         
         @Parameter( names = "--y", description = "Target image top coordinate", required = false )
-        public long y = 0;
+        public double y = 0;
         
         @Parameter( names = "--width", description = "Target image width", required = false )
         public int width = 256;
@@ -130,9 +126,18 @@ public class RenderTile
         
         @Parameter( names = "--threads", description = "Number of threads to be used", required = false )
         public int numThreads = Runtime.getRuntime().availableProcessors();
+        
+        @Parameter( names = "--scale", description = "scale factor applied to the target image (overrides --mipmap_level)", required = false )
+        public double scale = -Double.NaN;
+        
+        @Parameter( names = "--mipmap_level", description = "scale level in a mipmap pyramid", required = false )
+        public int mipmapLevel = 0;
+        
+        @Parameter( names = "--area_offset", description = "scale level in a mipmap pyramid", required = false )
+        public boolean areaOffset = false;
 	}
 	
-	private RenderTile() {}
+	private Render() {}
 	
 	/**
 	 * Create a {@link BufferedImage} from an existing pixel array.  Make sure
@@ -160,12 +165,47 @@ public class RenderTile
 		ImageIO.write( image, format, new File( path ) );
 	}
 	
+	final static Params parseParams( final String[] args )
+	{
+		final Params params = new Params();
+		try
+        {
+			final JCommander jc = new JCommander( params, args );
+        	if ( params.help )
+            {
+        		jc.usage();
+                return null;
+            }
+        }
+        catch ( final Exception e )
+        {
+        	e.printStackTrace();
+            final JCommander jc = new JCommander( params );
+        	jc.setProgramName( "java [-options] -cp render.jar + " + Render.class.getCanonicalName() );
+        	jc.usage(); 
+        	return null;
+        }
+		
+		/* process params */
+		if ( Double.isNaN( params.scale ) )
+			params.scale = 1.0 / ( 1L << params.mipmapLevel );
+		
+		params.width *= params.scale;
+		params.height *= params.scale;
+		
+		System.out.println( params.areaOffset );
+		
+		return params;
+	}
+	
 	final static public void render(
 			final TileSpec[] tileSpecs,
 			final BufferedImage targetImage,
 			final double x,
 			final double y,
-			final double triangleSize )
+			final double triangleSize,
+			final double scale,
+			final boolean areaOffset )
 	{
 		final Graphics2D targetGraphics = targetImage.createGraphics();
 		
@@ -182,13 +222,21 @@ public class RenderTile
 				
 				/* assemble coordinate transformations and add bounding box offset */
 				final CoordinateTransformList< CoordinateTransform > ctl = ts.createTransformList();
-				final TranslationModel2D offset = new TranslationModel2D();
-				offset.set( -( float )x, -( float )y );
-				ctl.add( offset );
+				final AffineModel2D scaleAndOffset = new AffineModel2D();
+				System.out.println( scale );
+				if ( areaOffset )
+				{
+					final double offset = ( 1 - scale ) * 0.5;
+					scaleAndOffset.set( ( float )scale, 0, 0, ( float )scale, -( float )( x * scale + offset ), -( float )( y * scale + offset ) );
+				}
+				else
+					scaleAndOffset.set( ( float )scale, 0, 0, ( float )scale, -( float )( x * scale ), -( float )( y * scale ) );
+				
+				ctl.add( scaleAndOffset );
 				
 				/* estiamte average scale */
-				final double scale = Utils.sampleAverageScale( ctl, ip.getWidth(), ip.getHeight(), triangleSize );
-				final int mipmapLevel = Utils.bestMipmapLevel( scale );
+				final double s = Utils.sampleAverageScale( ctl, ip.getWidth(), ip.getHeight(), triangleSize );
+				final int mipmapLevel = Utils.bestMipmapLevel( s );
 				
 				/* create according mipmap level */
 				final ImageProcessor ipMipmap = Downsampler.downsampleImageProcessor( ip, mipmapLevel );
@@ -258,28 +306,53 @@ public class RenderTile
 		}
 	}
 	
+	final static public void render(
+			final TileSpec[] tileSpecs,
+			final BufferedImage targetImage,
+			final double x,
+			final double y,
+			final double triangleSize )
+	{
+		render( tileSpecs, targetImage, x, y, triangleSize, 1.0, false );
+	}
+	
+	final static public BufferedImage render(
+			final TileSpec[] tileSpecs,
+			final double x,
+			final double y,
+			final int width,
+			final int height,
+			final double triangleSize,
+			final double scale,
+			final boolean areaOffset )
+	{
+		final BufferedImage image = new BufferedImage( width, height, BufferedImage.TYPE_INT_ARGB );
+		render( tileSpecs, image, x, y, triangleSize, scale, areaOffset );
+		return image;
+	}
+	
+	final static public BufferedImage render(
+			final TileSpec[] tileSpecs,
+			final double x,
+			final double y,
+			final int width,
+			final int height,
+			final double triangleSize )
+	{
+		final BufferedImage image = new BufferedImage( width, height, BufferedImage.TYPE_INT_ARGB );
+		render( tileSpecs, image, x, y, triangleSize, 1.0, false );
+		return image;
+	}
+	
 	public static void main( final String[] args )
 	{
-//		new ImageJ();
+		new ImageJ();
 		
-		final Params params = new Params();
-		try
-        {
-			final JCommander jc = new JCommander( params, args );
-        	if ( params.help )
-            {
-        		jc.usage();
-                return;
-            }
-        }
-        catch ( final Exception e )
-        {
-        	e.printStackTrace();
-            final JCommander jc = new JCommander( params );
-        	jc.setProgramName( "java [-options] -cp render.jar org.janelia.alignment.RenderTile" );
-        	jc.usage(); 
-        	return;
-        }
+		final Params params = parseParams( args );
+		
+		if ( params == null )
+			return;
+		
 		
 		/* open tilespec */
 		final URL url;
@@ -322,11 +395,15 @@ public class RenderTile
 		if ( targetImage == null )
 			targetImage = new BufferedImage( params.width, params.height, BufferedImage.TYPE_INT_ARGB );
 		
-		render( tileSpecs, targetImage, params.x, params.y, params.res );
+		render( tileSpecs, targetImage, params.x, params.y, params.res, params.scale, params.areaOffset );
+		ColorProcessor cp = new ColorProcessor( render( tileSpecs, params.x, params.y, ( int )( params.width / params.scale ), ( int )( params.height / params.scale ), params.res, 1.0, false ) );
+		cp = Downsampler.downsampleColorProcessor( cp, params.mipmapLevel );
+		new ImagePlus( "downsampled", cp ).show();
+		new ImagePlus( "result", new ColorProcessor( targetImage ) ).show();
 		
 		/* save the modified image */
 		Utils.saveImage( targetImage, params.out, params.out.substring( params.out.lastIndexOf( '.' ) + 1 ) );
 		
-//		new ImagePlus( params.out ).show();
+		new ImagePlus( params.out ).show();
 	}
 }
