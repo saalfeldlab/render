@@ -108,7 +108,7 @@ import com.google.gson.JsonSyntaxException;
  *   --y 32
  *   --res 64</pre>
  * 
- * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
+ * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>, Seymour Knowles-Barley
  */
 public class MatchSiftFeatures
 {

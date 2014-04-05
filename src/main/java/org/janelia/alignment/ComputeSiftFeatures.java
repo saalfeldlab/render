@@ -105,7 +105,7 @@ import com.google.gson.JsonSyntaxException;
  *   --y 32
  *   --res 64</pre>
  * 
- * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
+ * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>, Seymour Knowles-Barley
  */
 public class ComputeSiftFeatures
 {
@@ -343,7 +343,7 @@ public class ComputeSiftFeatures
 			FloatArray2DSIFT.Param siftParam = new FloatArray2DSIFT.Param();			
 			FloatArray2DSIFT sift = new FloatArray2DSIFT(siftParam);
 			SIFT ijSIFT = new SIFT(sift);
-							
+					
 			final List< Feature > fs = new ArrayList< Feature >();
 			ijSIFT.extractFeatures( imp.getProcessor(), fs );
 			
