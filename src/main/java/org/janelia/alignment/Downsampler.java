@@ -274,6 +274,14 @@ final public class Downsampler
 		return b;
 	}
 	
+	final static public ColorProcessor downsampleColorProcessor( ColorProcessor a, final int level )
+	{
+		for ( int i = 0; i < level; ++i )
+			a = downsampleColorProcessor( a );
+		
+		return a;
+	}
+	
 	
 	/**
 	 * Convenience call for abstract {@link ImageProcessor}.  Do not use if you
