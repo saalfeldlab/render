@@ -18,7 +18,6 @@ package org.janelia.alignment;
 
 import java.util.List;
 
-import mpicbg.imagefeatures.Feature;
 import mpicbg.models.PointMatch;
 
 /**
