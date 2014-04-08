@@ -23,12 +23,12 @@ String createTransforms(patch) {
 	b = new StringBuffer("  transforms : [");
 	b.append("{");
 	b.append(nl);
-	b.append("    className : \"");
+	b.append("    \"className\" : \"");
 	b.append(t.getClass().getCanonicalName());
 	b.append("\",");
 	b.append(nl);
 	
-	b.append("    dataString : \"");
+	b.append("    \"dataString\" : \"");
 	b.append(t.toDataString());
 	b.append("\"");
 	b.append(nl);
@@ -39,12 +39,12 @@ String createTransforms(patch) {
 		b.append(", {");
 		b.append(nl);
 
-		b.append("    className : \"");
+		b.append("    \"className\" : \"");
 		b.append(t.getClass().getCanonicalName());
 		b.append("\",");
 		b.append(nl);
 		
-		b.append("    dataString : \"");
+		b.append("    \"dataString\" : \"");
 		b.append(t.toDataString());
 		b.append("\"");
 		b.append(nl);
@@ -61,18 +61,36 @@ String createTileSpec(patch) {
 	b = new StringBuffer("{");
 
 	b.append(nl);
-	b.append("  imageUrl : \"file:");
+	b.append("  \"mipmapLevels\" : {");
+	b.append(nl);
+	b.append("    \"0\" : {";
+	b.append{nl);
+	b.append{"      \"imageUrl\" : \"file:");
 	b.append(patch.getFilePath());
-	b.append("\",");
+	b.append("\"");
+	b.append(nl);
+	b.append("    }");
+	b.append(nl);
+	b.append("  },");
 	b.append(nl);
 	
-	b.append("  minIntensity : ");
+	b.append("  \"minIntensity\" : ");
 	b.append(patch.getMin());
 	b.append(",");
 	b.append(nl);
 	
-	b.append("  maxIntensity : ");
+	b.append("  \"maxIntensity\" : ");
 	b.append(patch.getMax());
+	b.append(",");
+	b.append(nl);
+	
+	b.append("  \"width\" : ");
+	b.append(patch.getOWidth());
+	b.append(",");
+	b.append(nl);
+	
+	b.append("  \"height\" : ");
+	b.append(patch.getOHeight());
 	
 	transforms = createTransforms(patch);
 	if (transforms != null)
