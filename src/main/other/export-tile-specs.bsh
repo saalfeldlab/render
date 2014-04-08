@@ -20,7 +20,7 @@ String createTransforms(patch) {
 	flattenTransforms(ct, transforms);
 	
 	t = transforms.get(0);
-	b = new StringBuffer("  transforms : [");
+	b = new StringBuffer("  \"transforms\" : [");
 	b.append("{");
 	b.append(nl);
 	b.append("    \"className\" : \"");
@@ -63,9 +63,9 @@ String createTileSpec(patch) {
 	b.append(nl);
 	b.append("  \"mipmapLevels\" : {");
 	b.append(nl);
-	b.append("    \"0\" : {";
-	b.append{nl);
-	b.append{"      \"imageUrl\" : \"file:");
+	b.append("    \"0\" : {");
+	b.append(nl);
+	b.append("      \"imageUrl\" : \"file:");
 	b.append(patch.getFilePath());
 	b.append("\"");
 	b.append(nl);
