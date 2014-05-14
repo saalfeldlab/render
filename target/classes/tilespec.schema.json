@@ -1,0 +1,38 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "TileSpec",
+    "description": "Specification of an image tile",
+    "type": "object",
+    "properties" : {
+    	"url" : {
+    		"description" : "URL to the image file",
+    		"type" : "string"
+    	},
+    	"minIntensity" : {
+    		"description" : "minimal intensity (mapped to 0)",
+    		"type" : "number"
+    	},
+    	"maxIntensity" : {
+    		"description" : "minimal intensity (mapped to 0)",
+    		"type" : "number"
+    	},
+    	"transforms" : {
+    		"description" : "list of transformations",
+    		"type" : "array",
+    		"items" : {
+    			"title" : "Transform",
+    			"type" : "object",
+    			"properties" : {
+    				"className" : {
+    					"description" : "Full Java class name",
+    					"type : " string"
+    				},
+    				"dataString" : {
+    					"description" : "Properties specifying the transformation",
+    					"type : " string"
+    				}
+    			}
+    		}
+    	}
+    }
+}
