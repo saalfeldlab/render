@@ -1,0 +1,65 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"title": "TileSpec",
+	"description": "Specification of an image tile",
+	"type": "object",
+	"properties" : {
+		"mipmapLevels" : {
+			"description" : "URLs to mipmap level images and masks",
+			"type" : "object",
+			"patternProperties" : {
+				"^[0-9]+$": {
+					"type": "object",
+					"properties" : {
+						"imageUrl" : {
+							"description" : "URL to mipmap level image",
+							"type" : "string"
+						},
+						"maskUrl" : {
+							"description" : "URL to mipmap level alpha mask",
+							"type" : "string"
+						}
+					},
+					"required" : [ "imageUrl" ]
+				}
+			}
+		},
+		"minIntensity" : {
+			"description" : "minimal intensity (mapped to 0)",
+			"type" : "number"
+		},
+		"maxIntensity" : {
+			"description" : "minimal intensity (mapped to 0)",
+			"type" : "number"
+		},
+		"width" : {
+			"description" : "width of the input image, if not present or set to -1",
+			"type" : "number",
+			"default" : -1
+		},
+		"height" : {
+			"description" : "width of the input image, if not present or set to -1",
+			"type" : "number",
+			"default" : -1
+		},
+		"transforms" : {
+			"description" : "list of transformations",
+			"type" : "array",
+			"items" : {
+				"title" : "Transform",
+				"type" : "object",
+				"properties" : {
+					"className" : {
+						"description" : "Full Java class name",
+						"type" : "string"
+					},
+					"dataString" : {
+						"description" : "Properties specifying the transformation",
+						"type" : "string"
+					}
+				}
+			}
+		}
+	},
+	"required": [ "mipmapLevels" ]
+}

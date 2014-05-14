@@ -16,6 +16,8 @@
  */
 package org.janelia.alignment;
 
+import java.util.TreeMap;
+
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 
@@ -26,8 +28,20 @@ import mpicbg.models.CoordinateTransformList;
  */
 public class TileSpec
 {
-	public String imageUrl;
-	public String maskUrl;
+	final static private class IntegerStringComparator implements java.util.Comparator< String >
+	{
+		@Override
+		public int compare( final String o1, final String o2 )
+		{
+			final int a = Integer.parseInt( o1 );
+			final int b = Integer.parseInt( o2 );
+			return  ( a == b ) ? 0 : ( ( a < b ) ? -1 : 1 );
+		}
+	}
+	
+	final private TreeMap< String, ImageAndMask > mipmapLevels = new TreeMap< String, ImageAndMask >( new IntegerStringComparator() );
+	public int width = -1;
+	public int height = -1;
 	public double minIntensity = 0;
 	public double maxIntensity = 255;
 	public Transform[] transforms = null;
@@ -41,5 +55,12 @@ public class TileSpec
 				ctl. add( t.createTransform() );
 		
 		return ctl;
+	}
+	
+	final public TreeMap< String, ImageAndMask > getMipmapLevels()
+	{
+		final TreeMap< String, ImageAndMask > a = new TreeMap< String, ImageAndMask >( new IntegerStringComparator() );
+		a.putAll( mipmapLevels );
+		return a;
 	}
 }

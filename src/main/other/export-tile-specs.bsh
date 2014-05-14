@@ -1,0 +1,109 @@
+import mpicbg.models.CoordinateTransformList;
+
+nl = "\n";
+
+void flattenTransforms(ct, list) {
+	if (CoordinateTransformList.class.isInstance(ct)) {
+		for(cti : ct.getList(null))
+			flattenTransforms(cti, list);
+	}
+	else
+		list.add(ct);
+}
+
+String createTransforms(patch) {
+	ct = patch.getFullCoordinateTransform();
+	if (ct == null)
+		return null;
+
+	transforms = new ArrayList();
+	flattenTransforms(ct, transforms);
+	
+	t = transforms.get(0);
+	b = new StringBuffer("  \"transforms\" : [");
+	b.append("{");
+	b.append(nl);
+	b.append("    \"className\" : \"");
+	b.append(t.getClass().getCanonicalName());
+	b.append("\",");
+	b.append(nl);
+	
+	b.append("    \"dataString\" : \"");
+	b.append(t.toDataString());
+	b.append("\"");
+	b.append(nl);
+	b.append("  }");
+
+	for (int i = 1; i < transforms.size(); ++i) {
+		t = transforms.get(i);
+		b.append(", {");
+		b.append(nl);
+
+		b.append("    \"className\" : \"");
+		b.append(t.getClass().getCanonicalName());
+		b.append("\",");
+		b.append(nl);
+		
+		b.append("    \"dataString\" : \"");
+		b.append(t.toDataString());
+		b.append("\"");
+		b.append(nl);
+
+		b.append("  }");
+	}
+
+	b.append("]");
+	return b.toString();
+}
+
+
+String createTileSpec(patch) {
+	b = new StringBuffer("{");
+
+	b.append(nl);
+	b.append("  \"mipmapLevels\" : {");
+	b.append(nl);
+	b.append("    \"0\" : {");
+	b.append(nl);
+	b.append("      \"imageUrl\" : \"file:");
+	b.append(patch.getFilePath());
+	b.append("\"");
+	b.append(nl);
+	b.append("    }");
+	b.append(nl);
+	b.append("  },");
+	b.append(nl);
+	
+	b.append("  \"minIntensity\" : ");
+	b.append(patch.getMin());
+	b.append(",");
+	b.append(nl);
+	
+	b.append("  \"maxIntensity\" : ");
+	b.append(patch.getMax());
+	b.append(",");
+	b.append(nl);
+	
+	b.append("  \"width\" : ");
+	b.append(patch.getOWidth());
+	b.append(",");
+	b.append(nl);
+	
+	b.append("  \"height\" : ");
+	b.append(patch.getOHeight());
+	
+	transforms = createTransforms(patch);
+	if (transforms != null)
+	{
+		b.append(",");
+		b.append(nl);
+		b.append(transforms);
+	}
+
+	b.append(nl);
+	b.append("}");
+
+	return b.toString();
+}
+
+IJ.log(createTileSpec(Display.getFront().getActive()));
