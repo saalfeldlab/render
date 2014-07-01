@@ -46,7 +46,7 @@ public class TileSpec
 	public double maxIntensity = 255;
 	public Transform[] transforms = null;
 	
-	final public CoordinateTransformList< CoordinateTransform > createTransformList()
+	final public CoordinateTransformList< CoordinateTransform > createTransformList() throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
 	{
 		final CoordinateTransformList< CoordinateTransform > ctl = new CoordinateTransformList< CoordinateTransform >();
 		

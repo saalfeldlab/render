@@ -207,7 +207,7 @@ public class Render
 			final double y,
 			final double triangleSize,
 			final double scale,
-			final boolean areaOffset )
+			final boolean areaOffset ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
 	{
 		final Graphics2D targetGraphics = targetImage.createGraphics();
 		
@@ -363,7 +363,7 @@ public class Render
 			final BufferedImage targetImage,
 			final double x,
 			final double y,
-			final double triangleSize )
+			final double triangleSize ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
 	{
 		render( tileSpecs, targetImage, x, y, triangleSize, 1.0, false );
 	}
@@ -376,7 +376,7 @@ public class Render
 			final int height,
 			final double triangleSize,
 			final double scale,
-			final boolean areaOffset )
+			final boolean areaOffset ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
 	{
 		final BufferedImage image = new BufferedImage( width, height, BufferedImage.TYPE_INT_ARGB );
 		render( tileSpecs, image, x, y, triangleSize, scale, areaOffset );
@@ -389,14 +389,14 @@ public class Render
 			final double y,
 			final int width,
 			final int height,
-			final double triangleSize )
+			final double triangleSize ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
 	{
 		final BufferedImage image = new BufferedImage( width, height, BufferedImage.TYPE_INT_ARGB );
 		render( tileSpecs, image, x, y, triangleSize, 1.0, false );
 		return image;
 	}
 	
-	public static void main( final String[] args )
+	public static void main( final String[] args ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
 	{
 		new ImageJ();
 		

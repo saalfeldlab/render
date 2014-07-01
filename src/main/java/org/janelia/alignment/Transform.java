@@ -17,7 +17,6 @@
 package org.janelia.alignment;
 
 import mpicbg.models.CoordinateTransform;
-import mpicbg.models.IdentityModel;
 
 /**
  * 
@@ -29,18 +28,11 @@ public class Transform
 	public String className;
 	public String dataString;
 	
-	final public CoordinateTransform createTransform()
+	final public CoordinateTransform createTransform() throws ClassNotFoundException, InstantiationException, IllegalAccessException, NumberFormatException
 	{
-		try
-		{
-			final mpicbg.trakem2.transform.CoordinateTransform ct;
-			ct = ( mpicbg.trakem2.transform.CoordinateTransform )Class.forName( className ).newInstance();
-			ct.init( dataString );
-			return ct;
-		}
-		catch ( final Exception e )
-		{
-			return new IdentityModel();
-		}
+		final mpicbg.trakem2.transform.CoordinateTransform ct;
+		ct = ( mpicbg.trakem2.transform.CoordinateTransform )Class.forName( className ).newInstance();
+		ct.init( dataString );
+		return ct;
 	}
 }
