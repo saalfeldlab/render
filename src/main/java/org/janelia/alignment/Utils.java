@@ -22,6 +22,8 @@ import ij.io.Opener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 
@@ -48,7 +50,7 @@ public class Utils
 	private Utils() {}
 	
 	final static private double LOG2 = Math.log( 2.0 );
-	
+
 	/**
 	 * Save an image using ImageIO.
 	 * 
@@ -65,10 +67,10 @@ public class Utils
 			final String format,
 			final float quality )
 	{
-		final File file = new File( path );
 		final FileImageOutputStream output;
 		try
 		{
+            final File file = getFileForUri( path );
 			file.getParentFile().mkdirs();
 			final ImageWriter writer = ImageIO.getImageWritersByFormatName( format ).next();
 			output = new FileImageOutputStream( file );
@@ -84,10 +86,10 @@ public class Utils
 			}
 			else
 				writer.write( image );
-			
+
 			writer.dispose();
 			output.close();
-			
+
 			return true;
 		}
 		catch ( final IOException e )
@@ -187,7 +189,7 @@ public class Utils
 	
 	/**
 	 * Open an Image from a file.  Try ImageIO first, then ImageJ.
-	 * 
+	 *
 	 * @param urlString
 	 * @return
 	 */
@@ -355,4 +357,15 @@ public class Utils
 		a.set( ( float )scale, 0, 0, ( float )scale, t, t );
 		return a;
 	}
+
+    public static File getFileForUri(String uriString) throws IllegalArgumentException {
+        URI uri;
+        try {
+            uri = new URI(uriString);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("failed to create uniform resource identifier for '" + uriString + "'",
+                                               e);
+        }
+        return new File(uri);
+    }
 }
