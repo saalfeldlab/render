@@ -16,7 +16,6 @@
  */
 package org.janelia.alignment;
 
-import ij.ImageJ;
 import ij.ImagePlus;
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
@@ -398,7 +397,7 @@ public class Render
 	
 	public static void main( final String[] args ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
 	{
-		new ImageJ();
+		//new ImageJ();
 		
 		final Params params = parseParams( args );
 		
@@ -448,14 +447,15 @@ public class Render
 			targetImage = new BufferedImage( params.width, params.height, BufferedImage.TYPE_INT_ARGB );
 		
 		render( tileSpecs, targetImage, params.x, params.y, params.res, params.scale, params.areaOffset );
-		ColorProcessor cp = new ColorProcessor( render( tileSpecs, params.x, params.y, ( int )( params.width / params.scale ), ( int )( params.height / params.scale ), params.res, 1.0, false ) );
-		cp = Downsampler.downsampleColorProcessor( cp, params.mipmapLevel );
-		new ImagePlus( "downsampled", cp ).show();
-		new ImagePlus( "result", new ColorProcessor( targetImage ) ).show();
+//		final ColorProcessor cp = new ColorProcessor( render( tileSpecs, params.x, params.y, targetImage.getWidth(), targetImage.getHeight(), params.res, params.scale, params.areaOffset ) );
+//		ColorProcessor cp = new ColorProcessor( render( tileSpecs, params.x, params.y, ( int )( params.width / params.scale ), ( int )( params.height / params.scale ), params.res, 1.0, false ) );
+//		cp = Downsampler.downsampleColorProcessor( cp, params.mipmapLevel );
+//		new ImagePlus( "downsampled", cp ).show();
+//		new ImagePlus( "result", new ColorProcessor( targetImage ) ).show();
 		
 		/* save the modified image */
 		Utils.saveImage( targetImage, params.out, params.out.substring( params.out.lastIndexOf( '.' ) + 1 ), params.quality );
 		
-		new ImagePlus( params.out ).show();
+		//new ImagePlus( params.out ).show();
 	}
 }
