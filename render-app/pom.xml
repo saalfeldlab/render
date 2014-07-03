@@ -65,7 +65,7 @@
         <dependency>
             <groupId>net.imagej</groupId>
             <artifactId>ij</artifactId>
-            <version>1.49c</version>
+            <version>${imagej1.version}</version>
         </dependency>
         <dependency>
             <groupId>mpicbg</groupId>

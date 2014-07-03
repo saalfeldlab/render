@@ -48,4 +48,8 @@
         </pluginManagement>
     </build>
 
+    <properties>
+        <imagej1.version>1.48s</imagej1.version>
+    </properties>
+
 </project>
