@@ -70,7 +70,7 @@ public class Utils
 		final FileImageOutputStream output;
 		try
 		{
-            final File file = getFileForUri( path );
+            final File file = getFile(path);
 			file.getParentFile().mkdirs();
 			final ImageWriter writer = ImageIO.getImageWritersByFormatName( format ).next();
 			output = new FileImageOutputStream( file );
@@ -358,14 +358,21 @@ public class Utils
 		return a;
 	}
 
-    public static File getFileForUri(String uriString) throws IllegalArgumentException {
+    public static File getFile(String pathOrUriString) throws IllegalArgumentException {
+        File file;
         URI uri;
         try {
-            uri = new URI(uriString);
+            uri = new URI(pathOrUriString);
         } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("failed to create uniform resource identifier for '" + uriString + "'",
-                                               e);
+            throw new IllegalArgumentException("failed to create uniform resource identifier for '" + pathOrUriString + "'", e);
         }
-        return new File(uri);
+
+        if ("file".equalsIgnoreCase(uri.getScheme())) {
+            file = new File(uri);
+        } else {
+            file = new File(pathOrUriString);
+        }
+
+        return file;
     }
 }
