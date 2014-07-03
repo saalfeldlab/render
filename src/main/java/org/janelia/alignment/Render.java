@@ -447,7 +447,6 @@ public class Render
 			targetImage = new BufferedImage( params.width, params.height, BufferedImage.TYPE_INT_ARGB );
 		
 		render( tileSpecs, targetImage, params.x, params.y, params.res, params.scale, params.areaOffset );
-//		final ColorProcessor cp = new ColorProcessor( render( tileSpecs, params.x, params.y, targetImage.getWidth(), targetImage.getHeight(), params.res, params.scale, params.areaOffset ) );
 //		ColorProcessor cp = new ColorProcessor( render( tileSpecs, params.x, params.y, ( int )( params.width / params.scale ), ( int )( params.height / params.scale ), params.res, 1.0, false ) );
 //		cp = Downsampler.downsampleColorProcessor( cp, params.mipmapLevel );
 //		new ImagePlus( "downsampled", cp ).show();

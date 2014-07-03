@@ -20,7 +20,6 @@ import ij.ImagePlus;
 import ij.io.Opener;
 
 import java.awt.image.BufferedImage;
-import java.awt.image.RenderedImage;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -61,7 +60,7 @@ public class Utils
 	 * @return
 	 */
 	final static public boolean saveImage(
-			final RenderedImage image,
+			final BufferedImage image,
 			final String path,
 			final String format,
 			final float quality )
@@ -79,7 +78,9 @@ public class Utils
 				final ImageWriteParam param = writer.getDefaultWriteParam();
 				param.setCompressionMode( ImageWriteParam.MODE_EXPLICIT );
 				param.setCompressionQuality( quality );
-				writer.write( null, new IIOImage( image, null, null ), param );
+				final BufferedImage rgbImage = new BufferedImage( image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB );
+				rgbImage.createGraphics().drawImage( image, 0, 0, null );
+				writer.write( null, new IIOImage( rgbImage, null, null ), param );
 			}
 			else
 				writer.write( image );
@@ -105,7 +106,7 @@ public class Utils
 	 * @param format
 	 */
 	final static public boolean saveImage(
-			final RenderedImage image,
+			final BufferedImage image,
 			final String path,
 			final String format )
 	{
