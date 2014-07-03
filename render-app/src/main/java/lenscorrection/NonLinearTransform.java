@@ -35,9 +35,13 @@
 package lenscorrection;
 
 import Jama.Matrix;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NonLinearTransform implements mpicbg.trakem2.transform.CoordinateTransform
 {
+    private static final Logger LOG = LoggerFactory.getLogger(NonLinearTransform.class);
+
 	private double[][] beta = null;
 	private double[] normMean = null;
 	private double[] normVar = null;
@@ -357,40 +361,41 @@ public class NonLinearTransform implements mpicbg.trakem2.transform.CoordinateTr
 		//FIXME: test if normMean and normVar are still valid for this beta
 	}
 
-	public void print(){
-		System.out.println("beta:");
-		for (int i=0; i < beta.length; i++){
-			for (int j=0; j < beta[i].length; j++){
-				System.out.print(beta[i][j]);
-				System.out.print(" ");
-			}
-			System.out.println();
-		}
-
-		System.out.println("normMean:");
-		for (int i=0; i < normMean.length; i++){
-			System.out.print(normMean[i]);
-			System.out.print(" ");
-		}
-
-		System.out.println("normVar:");
-		for (int i=0; i < normVar.length; i++){
-			System.out.print(normVar[i]);
-			System.out.print(" ");
-		}
-
-		System.out.println("Image size:");
-		System.out.println("width: " + width + " height: " + height);
-
-		System.out.println();
-
-	}
+//	public void print(){
+//		System.out.println("beta:");
+//		for (int i=0; i < beta.length; i++){
+//			for (int j=0; j < beta[i].length; j++){
+//				System.out.print(beta[i][j]);
+//				System.out.print(" ");
+//			}
+//			System.out.println();
+//		}
+//
+//		System.out.println("normMean:");
+//		for (int i=0; i < normMean.length; i++){
+//			System.out.print(normMean[i]);
+//			System.out.print(" ");
+//		}
+//
+//		System.out.println("normVar:");
+//		for (int i=0; i < normVar.length; i++){
+//			System.out.print(normVar[i]);
+//			System.out.print(" ");
+//		}
+//
+//		System.out.println("Image size:");
+//		System.out.println("width: " + width + " height: " + height);
+//
+//		System.out.println();
+//
+//	}
 
 	private double[] multiply(final double beta[][], final double featureVector[]){
 		final double[] result = {0.0,0.0};
 
 		if (beta.length != featureVector.length){
-			System.out.println("Dimension of TransformMatrix and featureVector do not match!");
+            LOG.warn("Dimension of TransformMatrix ({}) and featureVector ({}} do not match!",
+                     beta.length, featureVector.length);
 			return new double[2];
 		}
 

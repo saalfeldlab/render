@@ -39,6 +39,8 @@ import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.SimilarityModel2D;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
@@ -47,21 +49,16 @@ import mpicbg.models.SimilarityModel2D;
  */
 public class Utils
 {
-	private Utils() {}
+    private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
+
+    private Utils() {}
 	
 	final static private double LOG2 = Math.log( 2.0 );
 
 	/**
 	 * Save an image using ImageIO.
-	 * 
-	 * @param image
-	 * @param path
-	 * @param format
-	 * @param quality
-	 * 
-	 * @return
 	 */
-	final static public boolean saveImage(
+	public static boolean saveImage(
 			final BufferedImage image,
 			final String path,
 			final String format,
@@ -94,7 +91,7 @@ public class Utils
 		}
 		catch ( final IOException e )
 		{
-			e.printStackTrace( System.err );
+            LOG.error("failed to save {}", path, e);
 			return false;
 		}
 	}
@@ -288,7 +285,7 @@ public class Utils
 		}
 		catch ( final NotEnoughDataPointsException e )
 		{
-			e.printStackTrace( System.err );
+            LOG.warn("failed to fit samples, returning scale factor of 1", e);
 			return 1;
 		}
 		final double[] data = new double[ 6 ];

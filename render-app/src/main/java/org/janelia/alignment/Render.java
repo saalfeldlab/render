@@ -27,7 +27,6 @@ import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.TreeMap;
 
@@ -45,7 +44,8 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Render a set of image tile as an ARGB image.
@@ -94,11 +94,14 @@ import com.google.gson.JsonSyntaxException;
  */
 public class Render
 {
-	@Parameters
+
+    private static final Logger LOG = LoggerFactory.getLogger(Render.class);
+
+    @Parameters
 	static private class Params
 	{
 		@Parameter( names = "--help", description = "Display this note", help = true )
-        private final boolean help = false;
+        public boolean help = false;
 
         @Parameter( names = "--url", description = "URL to JSON tile spec", required = true )
         public String url;
@@ -138,7 +141,27 @@ public class Render
         
         @Parameter( names = "--quality", description = "JPEG quality float [0, 1]", required = false )
         public float quality = 0.85f;
-	}
+
+        @Override
+        public String toString() {
+            return "{" +
+                   "help=" + help +
+                   ", url='" + url + '\'' +
+                   ", res=" + res +
+                   ", in='" + in + '\'' +
+                   ", out='" + out + '\'' +
+                   ", x=" + x +
+                   ", y=" + y +
+                   ", width=" + width +
+                   ", height=" + height +
+                   ", numThreads=" + numThreads +
+                   ", scale=" + scale +
+                   ", mipmapLevel=" + mipmapLevel +
+                   ", areaOffset=" + areaOffset +
+                   ", quality=" + quality +
+                   '}';
+        }
+    }
 	
 	private Render() {}
 	
@@ -171,9 +194,11 @@ public class Render
 	final static Params parseParams( final String[] args )
 	{
 		final Params params = new Params();
+        final String programName = "java -jar render.jar " + Render.class.getCanonicalName();
 		try
         {
 			final JCommander jc = new JCommander( params, args );
+            jc.setProgramName(programName);
         	if ( params.help )
             {
         		jc.usage();
@@ -182,9 +207,9 @@ public class Render
         }
         catch ( final Exception e )
         {
-        	e.printStackTrace();
+            LOG.warn("failed to parse command line parameters from {}", new Object[]{args}, e);
             final JCommander jc = new JCommander( params );
-        	jc.setProgramName( "java [-options] -cp render.jar + " + Render.class.getCanonicalName() );
+            jc.setProgramName(programName);
         	jc.usage(); 
         	return null;
         }
@@ -240,7 +265,7 @@ public class Render
 				final ImagePlus imp = Utils.openImagePlusUrl( imgUrl );
 				if ( imp == null )
 				{
-					System.err.println( "Failed to load image '" + imgUrl + "'." );
+                    LOG.warn("Failed to load image '" + imgUrl + "'.");
 					continue;
 				}
 				ip = imp.getProcessor();
@@ -270,7 +295,7 @@ public class Render
 				final ImagePlus imp = Utils.openImagePlusUrl( imgUrl );
 				if ( imp == null )
 				{
-					System.err.println( "Failed to load image '" + imgUrl + "'." );
+                    LOG.error("Failed to load image '" + imgUrl + "'.");
 					continue;
 				}
 				ip = imp.getProcessor();
@@ -301,7 +326,7 @@ public class Render
 				final ImagePlus impMask = Utils.openImagePlusUrl( maskUrl );
 				if ( impMask == null )
 				{
-					System.err.println( "Failed to load mask '" + maskUrl + "'." );
+                    LOG.error("Failed to load mask '" + maskUrl + "'.");
 					bpMaskSource = null;
 					bpMaskTarget = null;
 				}
@@ -400,7 +425,9 @@ public class Render
 		//new ImageJ();
 		
 		final Params params = parseParams( args );
-		
+
+        LOG.info("main: entry, params={}", params);
+
 		if ( params == null )
 			return;
 		
@@ -414,24 +441,12 @@ public class Render
 			url = new URL( params.url );
 			tileSpecs = gson.fromJson( new InputStreamReader( url.openStream() ), TileSpec[].class );
 		}
-		catch ( final MalformedURLException e )
+		catch (Exception e)
 		{
-			System.err.println( "URL malformed." );
-			e.printStackTrace( System.err );
+            LOG.error("failed to parse tile specifications", e);
 			return;
 		}
-		catch ( final JsonSyntaxException e )
-		{
-			System.err.println( "JSON syntax malformed." );
-			e.printStackTrace( System.err );
-			return;
-		}
-		catch ( final Exception e )
-		{
-			e.printStackTrace( System.err );
-			return;
-		}
-		
+
 		/* open or create target image */
 		BufferedImage targetImage = null;
 		if ( params.in != null )
@@ -454,7 +469,9 @@ public class Render
 		
 		/* save the modified image */
 		Utils.saveImage( targetImage, params.out, params.out.substring( params.out.lastIndexOf( '.' ) + 1 ), params.quality );
-		
+
+        LOG.info("main: exit, saved " + params.out);
+
 		//new ImagePlus( params.out ).show();
 	}
 }

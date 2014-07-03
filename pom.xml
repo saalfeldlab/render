@@ -5,7 +5,7 @@
   <name>Janelia Rendering Utilities</name>
   <groupId>org.janelia</groupId>
   <artifactId>render</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.0.2-SNAPSHOT</version>
 
     <packaging>pom</packaging>
 
@@ -16,21 +16,24 @@
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>log4j</groupId>
-                <artifactId>log4j</artifactId>
-                <version>1.2.8</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.1.2</version>
+        </dependency>
+
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.5</version>
             <scope>test</scope>
-        </dependency>        
+        </dependency>
+
     </dependencies>
 
     <build>
