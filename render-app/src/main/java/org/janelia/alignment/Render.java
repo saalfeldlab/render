@@ -234,9 +234,22 @@ public class Render
 			final boolean areaOffset ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
 	{
 		final Graphics2D targetGraphics = targetImage.createGraphics();
-		
+
+        LOG.debug("render: entry, processing {} tile specifications", tileSpecs.length);
+
+        long tileLoopStart = System.currentTimeMillis();
+        int tileSpecIndex = 0;
+        long tileSpecStart;
+        long loadMipStop;
+        long scaleMipStop;
+        long loadMaskStop;
+        long mapInterpolatedStop;
+        long drawImageStop;
+
 		for ( final TileSpec ts : tileSpecs )
 		{
+            tileSpecStart = System.currentTimeMillis();
+
 			/* assemble coordinate transformations and add bounding box offset */
 			final CoordinateTransformList< CoordinateTransform > ctl = ts.createTransformList();
 			final AffineModel2D scaleAndOffset = new AffineModel2D();
@@ -277,7 +290,9 @@ public class Render
 				width = ts.width;
 				height = ts.height;
 			}
-			
+
+            loadMipStop = System.currentTimeMillis();
+
 			/* estimate average scale */
 			final double s = Utils.sampleAverageScale( ctl, width, height, triangleSize );
 			int mipmapLevel = Utils.bestMipmapLevel( s );
@@ -313,10 +328,12 @@ public class Render
 				/* create according mipmap level */
 				ipMipmap = Downsampler.downsampleImageProcessor( ip, mipmapLevel );
 			}
-			
+
 			/* create a target */
 			final ImageProcessor tp = ipMipmap.createProcessor( targetImage.getWidth(), targetImage.getHeight() );
-			
+
+            scaleMipStop = System.currentTimeMillis();
+
 			/* open mask */
 			final ByteProcessor bpMaskSource;
 			final ByteProcessor bpMaskTarget;
@@ -342,8 +359,9 @@ public class Render
 				bpMaskSource = null;
 				bpMaskTarget = null;
 			}
-			
-			
+
+            loadMaskStop = System.currentTimeMillis();
+
 			/* attach mipmap transformation */
 			final CoordinateTransformList< CoordinateTransform > ctlMipmap = new CoordinateTransformList< CoordinateTransform >();
 			ctlMipmap.add( Utils.createScaleLevelTransform( mipmapLevel ) );
@@ -356,7 +374,9 @@ public class Render
 			final ImageProcessorWithMasks target = new ImageProcessorWithMasks( tp, bpMaskTarget, null );
 			final TransformMeshMappingWithMasks< TransformMesh > mapping = new TransformMeshMappingWithMasks< TransformMesh >( mesh );
 			mapping.mapInterpolated( source, target );
-			
+
+            mapInterpolatedStop = System.currentTimeMillis();
+
 			/* convert to 24bit RGB */
 			tp.setMinAndMax( ts.minIntensity, ts.maxIntensity );
 			final ColorProcessor cp = tp.convertToColorProcessor();
@@ -379,8 +399,25 @@ public class Render
 			raster.setDataElements( 0, 0, cp.getWidth(), cp.getHeight(), cpPixels );
 			
 			targetGraphics.drawImage( image, 0, 0, null );
-		}
-	}
+
+            drawImageStop = System.currentTimeMillis();
+
+            LOG.debug("render: tile {} took {} milliseconds to process (load mip:{}, scale mip:{}, load/scale mask:{}, map interpolated:{}, draw image:{})",
+                      tileSpecIndex,
+                      drawImageStop - tileSpecStart,
+                      loadMipStop - tileSpecStart,
+                      scaleMipStop - loadMipStop,
+                      loadMaskStop - scaleMipStop,
+                      mapInterpolatedStop - loadMaskStop,
+                      drawImageStop - mapInterpolatedStop);
+
+            tileSpecIndex++;
+        }
+
+        LOG.debug("render: exit, {} tiles processed in {} milliseconds",
+                  tileSpecs.length,
+                  System.currentTimeMillis() - tileLoopStart);
+    }
 	
 	final static public void render(
 			final TileSpec[] tileSpecs,
@@ -423,15 +460,18 @@ public class Render
 	public static void main( final String[] args ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
 	{
 		//new ImageJ();
-		
-		final Params params = parseParams( args );
+
+        final long mainStart = System.currentTimeMillis();
+
+        final Params params = parseParams( args );
 
         LOG.info("main: entry, params={}", params);
 
 		if ( params == null )
 			return;
-		
-		
+
+        final long commandParseStop = System.currentTimeMillis();
+
 		/* open tilespec */
 		final URL url;
 		final TileSpec[] tileSpecs;
@@ -447,6 +487,8 @@ public class Render
 			return;
 		}
 
+        final long jsonParseStop = System.currentTimeMillis();
+
 		/* open or create target image */
 		BufferedImage targetImage = null;
 		if ( params.in != null )
@@ -460,15 +502,29 @@ public class Render
 		}
 		if ( targetImage == null )
 			targetImage = new BufferedImage( params.width, params.height, BufferedImage.TYPE_INT_ARGB );
-		
+
+        final long targetOpenStop = System.currentTimeMillis();
+
 		render( tileSpecs, targetImage, params.x, params.y, params.res, params.scale, params.areaOffset );
 //		ColorProcessor cp = new ColorProcessor( render( tileSpecs, params.x, params.y, ( int )( params.width / params.scale ), ( int )( params.height / params.scale ), params.res, 1.0, false ) );
 //		cp = Downsampler.downsampleColorProcessor( cp, params.mipmapLevel );
 //		new ImagePlus( "downsampled", cp ).show();
 //		new ImagePlus( "result", new ColorProcessor( targetImage ) ).show();
-		
+
+        final long saveStart = System.currentTimeMillis();
+
 		/* save the modified image */
 		Utils.saveImage( targetImage, params.out, params.out.substring( params.out.lastIndexOf( '.' ) + 1 ), params.quality );
+
+        final long saveStop = System.currentTimeMillis();
+
+        LOG.debug("main: processing took {} milliseconds (parse command:{}, parse json:{}, open target:{}, render tiles:{}, save target:{})",
+                  saveStop - mainStart,
+                  commandParseStop - mainStart,
+                  jsonParseStop - commandParseStop,
+                  targetOpenStop - jsonParseStop,
+                  saveStart - targetOpenStop,
+                  saveStop - saveStart);
 
         LOG.info("main: exit, saved " + params.out);
 
