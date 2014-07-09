@@ -16,6 +16,10 @@
  */
 package org.janelia.alignment;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 
 import mpicbg.models.CoordinateTransform;
@@ -26,41 +30,81 @@ import mpicbg.models.CoordinateTransformList;
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
-public class TileSpec
-{
-	final static private class IntegerStringComparator implements java.util.Comparator< String >
-	{
-		@Override
-		public int compare( final String o1, final String o2 )
-		{
-			final int a = Integer.parseInt( o1 );
-			final int b = Integer.parseInt( o2 );
-			return  ( a == b ) ? 0 : ( ( a < b ) ? -1 : 1 );
-		}
-	}
-	
-	final private TreeMap< String, ImageAndMask > mipmapLevels = new TreeMap< String, ImageAndMask >( new IntegerStringComparator() );
-	public int width = -1;
-	public int height = -1;
-	public double minIntensity = 0;
-	public double maxIntensity = 255;
-	public Transform[] transforms = null;
-	
-	final public CoordinateTransformList< CoordinateTransform > createTransformList() throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
-	{
-		final CoordinateTransformList< CoordinateTransform > ctl = new CoordinateTransformList< CoordinateTransform >();
-		
-		if ( transforms != null )
-			for ( final Transform t : transforms )
-				ctl. add( t.createTransform() );
-		
-		return ctl;
-	}
-	
-	final public TreeMap< String, ImageAndMask > getMipmapLevels()
-	{
-		final TreeMap< String, ImageAndMask > a = new TreeMap< String, ImageAndMask >( new IntegerStringComparator() );
-		a.putAll( mipmapLevels );
-		return a;
-	}
+public class TileSpec {
+
+    private TreeMap<String, ImageAndMask> mipmapLevels;
+    private int width;
+    private int height;
+    private double minIntensity;
+    private double maxIntensity;
+    private List<Transform> transforms;
+
+    public TileSpec() {
+        this.mipmapLevels = new TreeMap<String, ImageAndMask>(LEVEL_COMPARATOR);
+        this.width = -1;
+        this.height = -1;
+        this.minIntensity = 0;
+        this.maxIntensity = 255;
+        this.transforms = new ArrayList<Transform>();
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
+    public double getMinIntensity() {
+        return minIntensity;
+    }
+
+    public double getMaxIntensity() {
+        return maxIntensity;
+    }
+
+    public Map.Entry<String, ImageAndMask> getFirstMipMapEntry() {
+        return mipmapLevels.firstEntry();
+    }
+
+    public Map.Entry<String, ImageAndMask> getFloorMipMapEntry(String mipMapLevel) {
+        Map.Entry<String, ImageAndMask> floorEntry = mipmapLevels.floorEntry(mipMapLevel);
+        if (floorEntry == null) {
+            floorEntry = mipmapLevels.firstEntry();
+        }
+        return floorEntry;
+    }
+
+    public CoordinateTransformList<CoordinateTransform> createTransformList()
+            throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+
+        final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList< CoordinateTransform >();
+        if (transforms != null) {
+            for (Transform t : transforms) {
+                ctl.add(t.createTransform());
+            }
+        }
+
+        return ctl;
+    }
+
+    public void addLevel(String level,
+                         ImageAndMask imageAndMask) {
+        mipmapLevels.put(level, imageAndMask);
+    }
+
+    public void addTransform(Transform transform) {
+        transforms.add(transform);
+    }
+
+    private static final Comparator<String> LEVEL_COMPARATOR = new Comparator<String>() {
+        @Override
+        public int compare(String o1,
+                           String o2) {
+            final Integer i1 = new Integer(o1);
+            final Integer i2 = new Integer(o2);
+            return  i1.compareTo(i2);
+        }
+    };
 }

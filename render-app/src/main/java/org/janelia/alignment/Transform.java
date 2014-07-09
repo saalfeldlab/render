@@ -23,16 +23,22 @@ import mpicbg.models.CoordinateTransform;
  *
  * @author Stephan Saalfeld <saalfeld@mpi-cbg.de>
  */
-public class Transform
-{
-	public String className;
-	public String dataString;
-	
-	final public CoordinateTransform createTransform() throws ClassNotFoundException, InstantiationException, IllegalAccessException, NumberFormatException
-	{
-		final mpicbg.trakem2.transform.CoordinateTransform ct;
-		ct = ( mpicbg.trakem2.transform.CoordinateTransform )Class.forName( className ).newInstance();
-		ct.init( dataString );
-		return ct;
-	}
+public class Transform {
+
+    private String className;
+    private String dataString;
+
+    public Transform(String className,
+                     String dataString) {
+        this.className = className;
+        this.dataString = dataString;
+    }
+
+    public CoordinateTransform createTransform()
+            throws ClassNotFoundException, InstantiationException, IllegalAccessException, NumberFormatException {
+        final mpicbg.trakem2.transform.CoordinateTransform ct =
+                (mpicbg.trakem2.transform.CoordinateTransform) Class.forName(className).newInstance();
+        ct.init(dataString);
+        return ct;
+    }
 }

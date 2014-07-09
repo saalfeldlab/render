@@ -21,8 +21,22 @@ package org.janelia.alignment;
  *
  * @author Stephan Saalfeld <saalfeld@mpi-cbg.de>
  */
-public class ImageAndMask
-{
-	public String imageUrl = null;
-	public String maskUrl = null;
+public class ImageAndMask {
+
+    private String imageUrl;
+    private String maskUrl;
+
+    public ImageAndMask(String imageUrl,
+                        String maskUrl) {
+        this.imageUrl = imageUrl;
+        this.maskUrl = maskUrl;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public String getMaskUrl() {
+        return maskUrl;
+    }
 }

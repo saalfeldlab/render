@@ -28,7 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
-import java.util.TreeMap;
+import java.util.Map;
 
 import javax.imageio.ImageIO;
 
@@ -262,19 +262,18 @@ public class Render
 				scaleAndOffset.set( ( float )scale, 0, 0, ( float )scale, -( float )( x * scale ), -( float )( y * scale ) );
 			
 			ctl.add( scaleAndOffset );
-			
-			/* obtain available mipmap urls as a sorted map */
-			final TreeMap< String, ImageAndMask > mipmapLevels = ts.getMipmapLevels();
-			
-			ImageAndMask mipmapEntry = null;
+
+            Map.Entry<String, ImageAndMask> mipmapEntry = null;
+            ImageAndMask imageAndMask = null;
 			ImageProcessor ip = null;
-			final int width, height;
+            int width = ts.getWidth();
+            int height = ts.getHeight();
 			/* figure width and height */
-			if ( ts.width < 0 || ts.height < 0 )
-			{
-				mipmapEntry = mipmapLevels.get( "0" );
+            if ((width < 0) || (height < 0)) {
+                mipmapEntry = ts.getFirstMipMapEntry();
+                imageAndMask = mipmapEntry.getValue();
 				/* load image TODO use Bioformats for strange formats */
-				final String imgUrl = mipmapEntry.imageUrl;
+                final String imgUrl = imageAndMask.getImageUrl();
 				final ImagePlus imp = Utils.openImagePlusUrl( imgUrl );
 				if ( imp == null )
 				{
@@ -284,11 +283,6 @@ public class Render
 				ip = imp.getProcessor();
 				width = imp.getWidth();
 				height = imp.getHeight();
-			}
-			else
-			{
-				width = ts.width;
-				height = ts.height;
 			}
 
             loadMipStop = System.currentTimeMillis();
@@ -300,13 +294,10 @@ public class Render
 			final ImageProcessor ipMipmap;
 			if ( ip == null )
 			{
-				String key = mipmapLevels.floorKey( String.valueOf( mipmapLevel ) );
-				if ( key == null )
-					key = mipmapLevels.firstKey();
-				
 				/* load image TODO use Bioformats for strange formats */
-				mipmapEntry = mipmapLevels.get( key );
-				final String imgUrl = mipmapEntry.imageUrl;
+                mipmapEntry = ts.getFloorMipMapEntry(String.valueOf(mipmapLevel));
+                imageAndMask = mipmapEntry.getValue();
+                final String imgUrl = imageAndMask.getImageUrl();
 				final ImagePlus imp = Utils.openImagePlusUrl( imgUrl );
 				if ( imp == null )
 				{
@@ -314,7 +305,7 @@ public class Render
 					continue;
 				}
 				ip = imp.getProcessor();
-				final int currentMipmapLevel = Integer.parseInt( key );
+                final int currentMipmapLevel = Integer.parseInt(mipmapEntry.getKey());
 				if ( currentMipmapLevel >= mipmapLevel )
 				{
 					mipmapLevel = currentMipmapLevel;
@@ -337,7 +328,7 @@ public class Render
 			/* open mask */
 			final ByteProcessor bpMaskSource;
 			final ByteProcessor bpMaskTarget;
-			final String maskUrl = mipmapEntry.maskUrl;
+			final String maskUrl = imageAndMask.getMaskUrl();
 			if ( maskUrl != null )
 			{
 				final ImagePlus impMask = Utils.openImagePlusUrl( maskUrl );
@@ -378,7 +369,7 @@ public class Render
             mapInterpolatedStop = System.currentTimeMillis();
 
 			/* convert to 24bit RGB */
-			tp.setMinAndMax( ts.minIntensity, ts.maxIntensity );
+            tp.setMinAndMax(ts.getMinIntensity(), ts.getMaxIntensity());
 			final ColorProcessor cp = tp.convertToColorProcessor();
 			
 			final int[] cpPixels = ( int[] )cp.getPixels();
