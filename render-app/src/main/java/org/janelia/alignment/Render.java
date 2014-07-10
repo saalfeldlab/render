@@ -24,13 +24,8 @@ import ij.process.ImageProcessor;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URL;
+import java.util.List;
 import java.util.Map;
-
-import javax.imageio.ImageIO;
 
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
@@ -40,10 +35,6 @@ import mpicbg.models.TransformMesh;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.Parameters;
-import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,145 +88,39 @@ public class Render
 
     private static final Logger LOG = LoggerFactory.getLogger(Render.class);
 
-    @Parameters
-	static private class Params
-	{
-		@Parameter( names = "--help", description = "Display this note", help = true )
-        public boolean help = false;
-
-        @Parameter( names = "--url", description = "URL to JSON tile spec", required = true )
-        public String url;
-
-        @Parameter( names = "--res", description = " Mesh resolution, specified by the desired size of a triangle in pixels", required = false )
-        public int res = 64;
-        
-        @Parameter( names = "--in", description = "Path to the input image if any", required = false )
-        public String in;
-        
-        @Parameter( names = "--out", description = "Path to the output image", required = true )
-        public String out;
-        
-        @Parameter( names = "--x", description = "Target image left coordinate", required = false )
-        public double x = 0;
-        
-        @Parameter( names = "--y", description = "Target image top coordinate", required = false )
-        public double y = 0;
-        
-        @Parameter( names = "--width", description = "Target image width", required = false )
-        public int width = 256;
-        
-        @Parameter( names = "--height", description = "Target image height", required = false )
-        public int height = 256;
-        
-        @Parameter( names = "--threads", description = "Number of threads to be used", required = false )
-        public int numThreads = Runtime.getRuntime().availableProcessors();
-        
-        @Parameter( names = "--scale", description = "scale factor applied to the target image (overrides --mipmap_level)", required = false )
-        public double scale = -Double.NaN;
-        
-        @Parameter( names = "--mipmap_level", description = "scale level in a mipmap pyramid", required = false )
-        public int mipmapLevel = 0;
-        
-        @Parameter( names = "--area_offset", description = "scale level in a mipmap pyramid", required = false )
-        public boolean areaOffset = false;
-        
-        @Parameter( names = "--quality", description = "JPEG quality float [0, 1]", required = false )
-        public float quality = 0.85f;
-
-        @Override
-        public String toString() {
-            return "{" +
-                   "help=" + help +
-                   ", url='" + url + '\'' +
-                   ", res=" + res +
-                   ", in='" + in + '\'' +
-                   ", out='" + out + '\'' +
-                   ", x=" + x +
-                   ", y=" + y +
-                   ", width=" + width +
-                   ", height=" + height +
-                   ", numThreads=" + numThreads +
-                   ", scale=" + scale +
-                   ", mipmapLevel=" + mipmapLevel +
-                   ", areaOffset=" + areaOffset +
-                   ", quality=" + quality +
-                   '}';
-        }
-    }
-	
 	private Render() {}
 	
 	/**
 	 * Create a {@link BufferedImage} from an existing pixel array.  Make sure
 	 * that pixels.length == width * height.
-	 * 
-	 * @param pixels
-	 * @param width
-	 * @param height
-	 * 
-	 * @return BufferedImage
 	 */
-	final static public BufferedImage createARGBImage( final int[] pixels, final int width, final int height )
-	{
-		assert( pixels.length == width * height ) : "The number of pixels is not equal to width * height.";
-		
-		final BufferedImage image = new BufferedImage( width, height, BufferedImage.TYPE_INT_ARGB );
-		final WritableRaster raster = image.getRaster();
-		raster.setDataElements( 0, 0, width, height, pixels );
-		return image;
-	}
+//	final static public BufferedImage createARGBImage( final int[] pixels, final int width, final int height )
+//	{
+//		assert( pixels.length == width * height ) : "The number of pixels is not equal to width * height.";
+//
+//		final BufferedImage image = new BufferedImage( width, height, BufferedImage.TYPE_INT_ARGB );
+//		final WritableRaster raster = image.getRaster();
+//		raster.setDataElements( 0, 0, width, height, pixels );
+//		return image;
+//	}
 	
 	
-	final static void saveImage( final BufferedImage image, final String path, final String format ) throws IOException
-	{
-		ImageIO.write( image, format, new File( path ) );
-	}
+//	final static void saveImage( final BufferedImage image, final String path, final String format ) throws IOException
+//	{
+//		ImageIO.write( image, format, new File( path ) );
+//	}
 	
-	final static Params parseParams( final String[] args )
-	{
-		final Params params = new Params();
-        final String programName = "java -jar render.jar " + Render.class.getCanonicalName();
-		try
-        {
-			final JCommander jc = new JCommander( params, args );
-            jc.setProgramName(programName);
-        	if ( params.help )
-            {
-        		jc.usage();
-                return null;
-            }
-        }
-        catch ( final Exception e )
-        {
-            LOG.warn("failed to parse command line parameters from {}", new Object[]{args}, e);
-            final JCommander jc = new JCommander( params );
-            jc.setProgramName(programName);
-        	jc.usage(); 
-        	return null;
-        }
-		
-		/* process params */
-		if ( Double.isNaN( params.scale ) )
-			params.scale = 1.0 / ( 1L << params.mipmapLevel );
-		
-		params.width *= params.scale;
-		params.height *= params.scale;
-		
-		return params;
-	}
-	
-	final static public void render(
-			final TileSpec[] tileSpecs,
-			final BufferedImage targetImage,
-			final double x,
-			final double y,
-			final double triangleSize,
-			final double scale,
-			final boolean areaOffset ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
-	{
-		final Graphics2D targetGraphics = targetImage.createGraphics();
+    public static void render(final List<TileSpec> tileSpecs,
+                              final BufferedImage targetImage,
+                              final double x,
+                              final double y,
+                              final double triangleSize,
+                              final double scale,
+                              final boolean areaOffset ) throws IllegalArgumentException {
 
-        LOG.debug("render: entry, processing {} tile specifications", tileSpecs.length);
+        final Graphics2D targetGraphics = targetImage.createGraphics();
+
+        LOG.debug("render: entry, processing {} tile specifications", tileSpecs.size());
 
         long tileLoopStart = System.currentTimeMillis();
         int tileSpecIndex = 0;
@@ -263,7 +148,7 @@ public class Render
 			
 			ctl.add( scaleAndOffset );
 
-            Map.Entry<String, ImageAndMask> mipmapEntry = null;
+            Map.Entry<String, ImageAndMask> mipmapEntry;
             ImageAndMask imageAndMask = null;
 			ImageProcessor ip = null;
             int width = ts.getWidth();
@@ -406,118 +291,118 @@ public class Render
         }
 
         LOG.debug("render: exit, {} tiles processed in {} milliseconds",
-                  tileSpecs.length,
+                  tileSpecs.size(),
                   System.currentTimeMillis() - tileLoopStart);
     }
-	
-	final static public void render(
-			final TileSpec[] tileSpecs,
-			final BufferedImage targetImage,
-			final double x,
-			final double y,
-			final double triangleSize ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
-	{
-		render( tileSpecs, targetImage, x, y, triangleSize, 1.0, false );
-	}
-	
-	final static public BufferedImage render(
-			final TileSpec[] tileSpecs,
-			final double x,
-			final double y,
-			final int width,
-			final int height,
-			final double triangleSize,
-			final double scale,
-			final boolean areaOffset ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
-	{
-		final BufferedImage image = new BufferedImage( width, height, BufferedImage.TYPE_INT_ARGB );
-		render( tileSpecs, image, x, y, triangleSize, scale, areaOffset );
-		return image;
-	}
-	
-	final static public BufferedImage render(
-			final TileSpec[] tileSpecs,
-			final double x,
-			final double y,
-			final int width,
-			final int height,
-			final double triangleSize ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
-	{
-		final BufferedImage image = new BufferedImage( width, height, BufferedImage.TYPE_INT_ARGB );
-		render( tileSpecs, image, x, y, triangleSize, 1.0, false );
-		return image;
-	}
-	
-	public static void main( final String[] args ) throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException
+
+    public static void render(final List<TileSpec> tileSpecs,
+                              final BufferedImage targetImage,
+                              final double x,
+                              final double y,
+                              final double triangleSize)
+            throws IllegalArgumentException {
+        render(tileSpecs, targetImage, x, y, triangleSize, 1.0, false);
+    }
+
+    public static BufferedImage render(final List<TileSpec> tileSpecs,
+                                       final double x,
+                                       final double y,
+                                       final int width,
+                                       final int height,
+                                       final double triangleSize,
+                                       final double scale,
+                                       final boolean areaOffset)
+            throws IllegalArgumentException {
+        final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        render(tileSpecs, image, x, y, triangleSize, scale, areaOffset);
+        return image;
+    }
+
+    public static BufferedImage render(final List<TileSpec> tileSpecs,
+                                       final double x,
+                                       final double y,
+                                       final int width,
+                                       final int height,
+                                       final double triangleSize)
+            throws IllegalArgumentException {
+        return render(tileSpecs, x, y, width, height, triangleSize, 1.0, false);
+    }
+
+    public static void main( final String[] args )
 	{
 		//new ImageJ();
 
-        final long mainStart = System.currentTimeMillis();
+        try {
 
-        final Params params = parseParams( args );
+            final long mainStart = System.currentTimeMillis();
+            long parseStop = mainStart;
+            long targetOpenStop = mainStart;
+            long saveStart = mainStart;
+            long saveStop = mainStart;
 
-        LOG.info("main: entry, params={}", params);
+            final RenderParameters params = RenderParameters.parse(args);
 
-		if ( params == null )
-			return;
+            if (params.displayHelp()) {
 
-        final long commandParseStop = System.currentTimeMillis();
+                params.showUsage();
 
-		/* open tilespec */
-		final URL url;
-		final TileSpec[] tileSpecs;
-		try
-		{
-			final Gson gson = new Gson();
-			url = new URL( params.url );
-			tileSpecs = gson.fromJson( new InputStreamReader( url.openStream() ), TileSpec[].class );
-		}
-		catch (Exception e)
-		{
-            LOG.error("failed to parse tile specifications", e);
-			return;
-		}
+            } else {
 
-        final long jsonParseStop = System.currentTimeMillis();
+                LOG.info("main: entry, params={}", params);
 
-		/* open or create target image */
-		BufferedImage targetImage = null;
-		if ( params.in != null )
-		{
-			targetImage = Utils.openImage( params.in );
-			if ( targetImage != null )
-			{
-				params.width = targetImage.getWidth();
-				params.height = targetImage.getHeight();
-			}
-		}
-		if ( targetImage == null )
-			targetImage = new BufferedImage( params.width, params.height, BufferedImage.TYPE_INT_ARGB );
+                params.validate();
 
-        final long targetOpenStop = System.currentTimeMillis();
+                parseStop = System.currentTimeMillis();
 
-		render( tileSpecs, targetImage, params.x, params.y, params.res, params.scale, params.areaOffset );
-//		ColorProcessor cp = new ColorProcessor( render( tileSpecs, params.x, params.y, ( int )( params.width / params.scale ), ( int )( params.height / params.scale ), params.res, 1.0, false ) );
-//		cp = Downsampler.downsampleColorProcessor( cp, params.mipmapLevel );
-//		new ImagePlus( "downsampled", cp ).show();
-//		new ImagePlus( "result", new ColorProcessor( targetImage ) ).show();
+                BufferedImage targetImage = params.openTargetImage();
 
-        final long saveStart = System.currentTimeMillis();
+                targetOpenStop = System.currentTimeMillis();
 
-		/* save the modified image */
-		Utils.saveImage( targetImage, params.out, params.out.substring( params.out.lastIndexOf( '.' ) + 1 ), params.quality );
+                render(params.getTileSpecs(),
+                       targetImage,
+                       params.getX(),
+                       params.getY(),
+                       params.getRes(),
+                       params.getScale(),
+                       params.isAreaOffset());
 
-        final long saveStop = System.currentTimeMillis();
+//                final BufferedImage downSampledImage = render(params.getTileSpecs(),
+//                                                              params.getX(),
+//                                                              params.getY(),
+//                                                              (int) (params.getWidth() / params.getScale()),
+//                                                              (int) (params.getHeight() / params.getScale()),
+//                                                              params.getRes(),
+//                                                              1.0,
+//                                                              false);
+//                ColorProcessor cp = new ColorProcessor(downSampledImage);
+//                cp = Downsampler.downsampleColorProcessor(cp, params.getMipmapLevel());
+//                new ImagePlus("downsampled", cp).show();
+//                new ImagePlus("result", new ColorProcessor(targetImage)).show();
 
-        LOG.debug("main: processing took {} milliseconds (parse command:{}, parse json:{}, open target:{}, render tiles:{}, save target:{})",
-                  saveStop - mainStart,
-                  commandParseStop - mainStart,
-                  jsonParseStop - commandParseStop,
-                  targetOpenStop - jsonParseStop,
-                  saveStart - targetOpenStop,
-                  saveStop - saveStart);
+                saveStart = System.currentTimeMillis();
 
-        LOG.info("main: exit, saved " + params.out);
+                /* save the modified image */
+                final String out = params.getOut();
+                Utils.saveImage(targetImage,
+                                params.getOut(),
+                                out.substring(out.lastIndexOf('.') + 1),
+                                params.getQuality());
+
+                saveStop = System.currentTimeMillis();
+
+                LOG.info("main: saved " + params.getOut());
+            }
+
+            LOG.debug("main: processing took {} milliseconds (parse command:{}, open target:{}, render tiles:{}, save target:{})",
+                      saveStop - mainStart,
+                      parseStop - mainStart,
+                      targetOpenStop - parseStop,
+                      saveStart - targetOpenStop,
+                      saveStop - saveStart);
+
+        } catch (Exception e) {
+            LOG.error("main: caught exception", e);
+        }
 
 		//new ImagePlus( params.out ).show();
 	}

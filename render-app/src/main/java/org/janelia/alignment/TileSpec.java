@@ -26,7 +26,8 @@ import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 
 /**
- * 
+ * Specifies a set of mipmap level images and masks along with
+ * a list of transformations to perform against them.
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
@@ -76,8 +77,23 @@ public class TileSpec {
         return floorEntry;
     }
 
+    /**
+     * @throws IllegalArgumentException
+     *   if this specification is invalid.
+     */
+    public void validate() throws IllegalArgumentException {
+
+        if (mipmapLevels.size() == 0) {
+            throw new IllegalArgumentException("tile specification does not contain any mipmapLevel elements");
+        }
+
+        for (Transform transform : transforms) {
+            transform.validate();
+        }
+    }
+
     public CoordinateTransformList<CoordinateTransform> createTransformList()
-            throws NumberFormatException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+            throws IllegalArgumentException {
 
         final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList< CoordinateTransform >();
         if (transforms != null) {
