@@ -56,7 +56,7 @@ public class Transform {
     public CoordinateTransform createTransform()
             throws IllegalArgumentException {
 
-        if (instance == null) {
+        if ((instance == null) && (validationInstance != null)) {
             instance = validationInstance;
         } else {
             instance = createAndInitTransform();
