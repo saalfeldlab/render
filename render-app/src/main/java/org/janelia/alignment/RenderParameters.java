@@ -28,6 +28,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.lang.reflect.Type;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -89,6 +91,7 @@ public class RenderParameters {
     private List<TileSpec> tileSpecs;
 
     private transient JCommander jCommander;
+    private transient URI outUri;
 
     public RenderParameters() {
         this.help = false;
@@ -129,6 +132,17 @@ public class RenderParameters {
 
     public String getOut() {
         return out;
+    }
+
+    public URI getOutUri() throws IllegalArgumentException {
+        if ((outUri == null) && (out != null)) {
+            try {
+                outUri = new URI(out);
+            } catch (URISyntaxException e) {
+                throw new IllegalArgumentException("failed to create uniform resource identifier for '" + out + "'", e);
+            }
+        }
+        return outUri;
     }
 
     public double getX() {
@@ -175,6 +189,10 @@ public class RenderParameters {
      *   if this set of parameters is invalid.
      */
     public void validate() throws IllegalArgumentException {
+
+        // validate specified out parameter is a valid URI
+        getOutUri();
+
         for (TileSpec tileSpec : tileSpecs) {
             tileSpec.validate();
         }

@@ -26,12 +26,14 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.FileImageOutputStream;
+import javax.imageio.stream.ImageOutputStream;
 
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
@@ -49,70 +51,104 @@ import org.slf4j.LoggerFactory;
  */
 public class Utils
 {
+    public static final String JPEG_FORMAT = "jpg";
+    public static final String PNG_FORMAT = "png";
+
     private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
 
     private Utils() {}
 	
 	final static private double LOG2 = Math.log( 2.0 );
 
-	/**
-	 * Save an image using ImageIO.
-	 */
-	public static boolean saveImage(
-			final BufferedImage image,
-			final String path,
-			final String format,
-			final float quality )
-	{
-		final FileImageOutputStream output;
-		try
-		{
-            final File file = getFile(path);
-			file.getParentFile().mkdirs();
-			final ImageWriter writer = ImageIO.getImageWritersByFormatName( format ).next();
-			output = new FileImageOutputStream( file );
-			writer.setOutput( output );
-			if ( format.equalsIgnoreCase( "jpg" ) )
-			{
-				final ImageWriteParam param = writer.getDefaultWriteParam();
-				param.setCompressionMode( ImageWriteParam.MODE_EXPLICIT );
-				param.setCompressionQuality( quality );
-				final BufferedImage rgbImage = new BufferedImage( image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB );
-				rgbImage.createGraphics().drawImage( image, 0, 0, null );
-				writer.write( null, new IIOImage( rgbImage, null, null ), param );
-			}
-			else
-				writer.write( image );
+    /**
+     * @return {@link FileImageOutputStream} for the specified file path.
+     */
+    public static FileImageOutputStream getFileImageOutputStream(final String pathOrUriString)
+            throws IllegalArgumentException {
 
-			writer.dispose();
-			output.close();
+        FileImageOutputStream output;
+        final File file = Utils.getFile(pathOrUriString);
+        final File parentDirectory = file.getParentFile();
+        if ((parentDirectory != null) && (! parentDirectory.exists())) {
+            if (! parentDirectory.mkdirs()) {
+                throw new IllegalArgumentException("failed to create directory " + parentDirectory.getAbsolutePath());
+            }
+        }
 
-			return true;
-		}
-		catch ( final IOException e )
-		{
-            LOG.error("failed to save {}", path, e);
-			return false;
-		}
-	}
-	
-	
-	/**
-	 * Save an image using ImageIO.
-	 * 
-	 * @param image
-	 * @param path
-	 * @param format
-	 */
-	final static public boolean saveImage(
-			final BufferedImage image,
-			final String path,
-			final String format )
-	{
-		return saveImage( image, path, format, 0.85f );
-	}
-	
-	/**
+        try {
+            output = new FileImageOutputStream(file);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("failed to create output stream for " + file.getAbsolutePath(), e);
+        }
+
+        return output;
+    }
+
+    /**
+     * Writes the specified image using ImageIO.
+     */
+    public static void writeImage(final BufferedImage image,
+                                  final String format,
+                                  final float quality,
+                                  final ImageOutputStream outputStream)
+            throws IOException {
+
+        // As part of the JPG save fix, the signature of this method was changed to accept
+        // BufferedImage instead of RenderedImage.  A better solution would be highly appreciated.
+
+        final Iterator<ImageWriter> writersForFormat = ImageIO.getImageWritersByFormatName(format);
+
+        if ((writersForFormat != null) && writersForFormat.hasNext()) {
+            final ImageWriter writer = writersForFormat.next();
+            try {
+                writer.setOutput(outputStream);
+                if (format.equalsIgnoreCase(JPEG_FORMAT)) {
+                    final ImageWriteParam param = writer.getDefaultWriteParam();
+                    param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+                    param.setCompressionQuality(quality);
+
+                    // Fixed JPG saving through converting INT_ARGB to INT_RGB.
+                    // Previously, JPGs ended up being saved as four channel CMYKs.
+                    // Now, conversion goes through drawing the INT_ARGB image
+                    // into an INT_RGB image which feels wasteful.
+                    final BufferedImage rgbImage =
+                            new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+                    rgbImage.createGraphics().drawImage(image, 0, 0, null);
+                    writer.write(null, new IIOImage(rgbImage, null, null), param);
+                } else {
+                    writer.write(image);
+                }
+            } finally {
+                if (writer != null) {
+                    writer.dispose();
+                }
+            }
+        } else {
+            throw new IOException("no ImageIO writers exist for the '" + format + "' format");
+        }
+    }
+
+    /**
+     * Saves the specified image to a file using ImageIO.
+     */
+    public static void saveImage(final BufferedImage image,
+                                 final String pathOrUriString,
+                                 final String format,
+                                 final float quality)
+            throws IOException {
+        FileImageOutputStream outputStream = null;
+        try {
+            outputStream = getFileImageOutputStream(pathOrUriString);
+            writeImage(image, format, quality, outputStream);
+            LOG.info("saveImage: exit, saved {}", pathOrUriString);
+        } finally {
+            if (outputStream != null) {
+                outputStream.close();
+            }
+        }
+    }
+
+    /**
 	 * Open an ImagePlus from a file.
 	 * 
 	 * @param pathString
@@ -186,9 +222,6 @@ public class Utils
 	
 	/**
 	 * Open an Image from a file.  Try ImageIO first, then ImageJ.
-	 *
-	 * @param urlString
-	 * @return
 	 */
 	final static public BufferedImage openImage( final String path )
 	{

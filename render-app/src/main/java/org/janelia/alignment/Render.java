@@ -382,15 +382,11 @@ public class Render
                 saveStart = System.currentTimeMillis();
 
                 /* save the modified image */
-                final String out = params.getOut();
-                Utils.saveImage(targetImage,
-                                params.getOut(),
-                                out.substring(out.lastIndexOf('.') + 1),
-                                params.getQuality());
+                final String outputPathOrUri = params.getOut();
+                final String outputFormat = outputPathOrUri.substring(outputPathOrUri.lastIndexOf('.') + 1);
+                Utils.saveImage(targetImage, outputPathOrUri, outputFormat, params.getQuality());
 
                 saveStop = System.currentTimeMillis();
-
-                LOG.info("main: saved " + params.getOut());
             }
 
             LOG.debug("main: processing took {} milliseconds (parse command:{}, open target:{}, render tiles:{}, save target:{})",
@@ -400,8 +396,8 @@ public class Render
                       saveStart - targetOpenStop,
                       saveStop - saveStart);
 
-        } catch (Exception e) {
-            LOG.error("main: caught exception", e);
+        } catch (Throwable t) {
+            LOG.error("main: caught exception", t);
         }
 
 		//new ImagePlus( params.out ).show();
