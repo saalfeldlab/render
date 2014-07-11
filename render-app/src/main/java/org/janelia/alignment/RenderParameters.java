@@ -92,6 +92,7 @@ public class RenderParameters {
 
     private transient JCommander jCommander;
     private transient URI outUri;
+    private transient boolean initialized;
 
     public RenderParameters() {
         this.help = false;
@@ -112,14 +113,27 @@ public class RenderParameters {
         this.tileSpecs = new ArrayList<TileSpec>();
         this.jCommander = new JCommander(this);
         this.jCommander.setProgramName(PROGRAM_NAME);
+
+        this.outUri = null;
+        this.initialized = false;
     }
 
     public static RenderParameters parse(String[] args) throws IllegalArgumentException {
         RenderParameters parameters = new RenderParameters();
         parameters.jCommander.parse(args);
-        parameters.scaleData();
-        parameters.parseTileSpecs();
+        parameters.initializeDerivedValues();
         return parameters;
+    }
+
+    /**
+     * Initialize derived parameter values.
+     */
+    public void initializeDerivedValues() {
+        if (! initialized) {
+            scaleData();
+            parseTileSpecs();
+            initialized = true;
+        }
     }
 
     public boolean displayHelp() {
@@ -187,11 +201,18 @@ public class RenderParameters {
     /**
      * @throws IllegalArgumentException
      *   if this set of parameters is invalid.
+     *
+     * @throws IllegalStateException
+     *   if the derived parameters have not been initialized.
      */
-    public void validate() throws IllegalArgumentException {
+    public void validate() throws IllegalArgumentException, IllegalStateException {
 
         // validate specified out parameter is a valid URI
         getOutUri();
+
+        if (! initialized) {
+            throw new IllegalStateException("derived parameters have not been initialized");
+        }
 
         for (TileSpec tileSpec : tileSpecs) {
             tileSpec.validate();
