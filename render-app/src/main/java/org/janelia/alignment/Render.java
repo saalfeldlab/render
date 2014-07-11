@@ -162,8 +162,8 @@ public class Render
 				final ImagePlus imp = Utils.openImagePlusUrl( imgUrl );
 				if ( imp == null )
 				{
-                    LOG.warn("Failed to load image '" + imgUrl + "'.");
-					continue;
+                    throw new IllegalArgumentException("failed to load mipmap level " + mipmapEntry.getKey() +
+                                                       " image '" + imgUrl + "'");
 				}
 				ip = imp.getProcessor();
 				width = imp.getWidth();
@@ -186,8 +186,8 @@ public class Render
 				final ImagePlus imp = Utils.openImagePlusUrl( imgUrl );
 				if ( imp == null )
 				{
-                    LOG.error("Failed to load image '" + imgUrl + "'.");
-					continue;
+                    throw new IllegalArgumentException("failed to load mipmap level " + mipmapEntry.getKey() +
+                                                       " image '" + imgUrl + "' for scaling");
 				}
 				ip = imp.getProcessor();
                 final int currentMipmapLevel = mipmapEntry.getKey();
