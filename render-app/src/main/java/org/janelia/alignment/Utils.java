@@ -159,24 +159,14 @@ public class Utils
 		final ImagePlus imp = new Opener().openImage( pathString );
 		return imp;
 	}
-	
-	/**int scaleLevel = 0;
-		while ( invScale > 1 )
-		{
-			invScale >>= 1;
-			++scaleLevel;
-		}
-		return scaleLevel
-	 * Open an ImagePlus from a URL
-	 * 
-	 * @param urlString
-	 * @return
-	 */
-	final static public ImagePlus openImagePlusUrl( final String urlString )
-	{
-		final ImagePlus imp = new Opener().openURL( imageJUrl( urlString ) );
-		return imp;
-	}
+
+    /**
+     * Open an ImagePlus from a URL
+     */
+    public static ImagePlus openImagePlusUrl(final String urlString) {
+        final Opener opener = new Opener();
+        return opener.openURL(urlString);
+    }
 	
 	/**
 	 * Open an Image from a URL.  Try ImageIO first, then ImageJ.
@@ -204,7 +194,7 @@ public class Utils
 		{
 			try
 			{
-				final ImagePlus imp = openImagePlusUrl( urlString );
+				final ImagePlus imp = openImagePlusUrl(urlString);
 				if ( imp != null )
 				{
 					image = imp.getBufferedImage();
@@ -259,16 +249,6 @@ public class Utils
 			}
 		}
 		return image;
-	}
-	
-	
-	/**
-	 * If a URL starts with "file:", replace "file:" with "" because ImageJ wouldn't understand it otherwise
-	 * @return
-	 */
-	final static private String imageJUrl( final String urlString )
-	{
-		return urlString.replace( "^file:", "" );
 	}
 	
 	
