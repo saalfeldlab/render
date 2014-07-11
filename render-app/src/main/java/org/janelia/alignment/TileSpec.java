@@ -86,6 +86,10 @@ public class TileSpec {
             throw new IllegalArgumentException("tile specification does not contain any mipmapLevel elements");
         }
 
+        for (ImageAndMask imageAndMask : mipmapLevels.values()) {
+            imageAndMask.validate();
+        }
+
         for (Transform transform : transforms) {
             transform.validate();
         }
