@@ -16,14 +16,13 @@
  */
 package org.janelia.alignment;
 
+import mpicbg.models.CoordinateTransform;
+import mpicbg.models.CoordinateTransformList;
+
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.CoordinateTransformList;
 
 /**
  * Specifies a set of mipmap level images and masks along with
@@ -33,7 +32,7 @@ import mpicbg.models.CoordinateTransformList;
  */
 public class TileSpec {
 
-    private TreeMap<String, ImageAndMask> mipmapLevels;
+    private TreeMap<Integer, ImageAndMask> mipmapLevels;
     private int width;
     private int height;
     private double minIntensity;
@@ -41,7 +40,7 @@ public class TileSpec {
     private List<Transform> transforms;
 
     public TileSpec() {
-        this.mipmapLevels = new TreeMap<String, ImageAndMask>(LEVEL_COMPARATOR);
+        this.mipmapLevels = new TreeMap<Integer, ImageAndMask>();
         this.width = -1;
         this.height = -1;
         this.minIntensity = 0;
@@ -65,12 +64,12 @@ public class TileSpec {
         return maxIntensity;
     }
 
-    public Map.Entry<String, ImageAndMask> getFirstMipMapEntry() {
+    public Map.Entry<Integer, ImageAndMask> getFirstMipMapEntry() {
         return mipmapLevels.firstEntry();
     }
 
-    public Map.Entry<String, ImageAndMask> getFloorMipMapEntry(String mipMapLevel) {
-        Map.Entry<String, ImageAndMask> floorEntry = mipmapLevels.floorEntry(mipMapLevel);
+    public Map.Entry<Integer, ImageAndMask> getFloorMipMapEntry(Integer mipMapLevel) {
+        Map.Entry<Integer, ImageAndMask> floorEntry = mipmapLevels.floorEntry(mipMapLevel);
         if (floorEntry == null) {
             floorEntry = mipmapLevels.firstEntry();
         }
@@ -105,7 +104,7 @@ public class TileSpec {
         return ctl;
     }
 
-    public void addLevel(String level,
+    public void addLevel(Integer level,
                          ImageAndMask imageAndMask) {
         mipmapLevels.put(level, imageAndMask);
     }
@@ -113,14 +112,4 @@ public class TileSpec {
     public void addTransform(Transform transform) {
         transforms.add(transform);
     }
-
-    private static final Comparator<String> LEVEL_COMPARATOR = new Comparator<String>() {
-        @Override
-        public int compare(String o1,
-                           String o2) {
-            final Integer i1 = new Integer(o1);
-            final Integer i2 = new Integer(o2);
-            return  i1.compareTo(i2);
-        }
-    };
 }

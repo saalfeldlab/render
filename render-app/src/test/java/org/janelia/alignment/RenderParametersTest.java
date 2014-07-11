@@ -40,18 +40,17 @@ public class RenderParametersTest {
         Assert.assertNotNull("json parse returned null tileSpecs", tileSpecs);
         Assert.assertEquals("invalid number of tileSpecs parsed", 2, tileSpecs.size());
 
-        // validate that out of order mipmap levels get sorted during parse/load
         final String generatedJson = parameters.toJson();
-        Assert.assertEquals("re-serialized json does not match original", ORDERED_JSON, generatedJson);
+        Assert.assertEquals("re-serialized json does not match original", PARAMETERS_JSON, generatedJson);
     }
 
     private RenderParameters getTestParameters() {
-        return RenderParameters.DEFAULT_GSON.fromJson(UNORDERED_JSON, RenderParameters.class);
+        return RenderParameters.DEFAULT_GSON.fromJson(PARAMETERS_JSON, RenderParameters.class);
     }
 
     private static final int EXPECTED_WIDTH = 5300;
 
-    private static final String TOP_JSON =
+    private static final String PARAMETERS_JSON =
             "{\n" +
             "  \"url\": \"file:///Users/trautmane/renderer-test.json\",\n" +
             "  \"res\": 64,\n" +
@@ -67,20 +66,7 @@ public class RenderParametersTest {
             "  \"quality\": 0.85,\n" +
             "  \"tileSpecs\": [\n" +
             "    {\n" +
-            "      \"mipmapLevels\": {\n";
-
-    private static final String UNORDERED_LEVELS_JSON =
-            "        \"2\": {\n" +
-            "          \"imageUrl\": \"file:///Users/trautmane/spec0-level2.png\"\n" +
-            "        },\n" +
-            "        \"0\": {\n" +
-            "          \"imageUrl\": \"file:///Users/trautmane/spec0-level0.png\"\n" +
-            "        },\n" +
-            "        \"1\": {\n" +
-            "          \"imageUrl\": \"file:///Users/trautmane/spec0-level1.png\"\n" +
-            "        }\n";
-
-    private static final String ORDERED_LEVELS_JSON =
+            "      \"mipmapLevels\": {\n" +
             "        \"0\": {\n" +
             "          \"imageUrl\": \"file:///Users/trautmane/spec0-level0.png\"\n" +
             "        },\n" +
@@ -89,9 +75,7 @@ public class RenderParametersTest {
             "        },\n" +
             "        \"2\": {\n" +
             "          \"imageUrl\": \"file:///Users/trautmane/spec0-level2.png\"\n" +
-            "        }\n";
-
-    private static final String BOTTOM_JSON =
+            "        }\n" +
             "      },\n" +
             "      \"width\": -1,\n" +
             "      \"height\": -1,\n" +
@@ -123,7 +107,4 @@ public class RenderParametersTest {
             "    }\n" +
             "  ]\n" +
             "}";
-
-    private static final String UNORDERED_JSON = TOP_JSON + UNORDERED_LEVELS_JSON + BOTTOM_JSON;
-    private static final String ORDERED_JSON = TOP_JSON + ORDERED_LEVELS_JSON + BOTTOM_JSON;
 }

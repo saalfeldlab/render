@@ -148,7 +148,7 @@ public class Render
 			
 			ctl.add( scaleAndOffset );
 
-            Map.Entry<String, ImageAndMask> mipmapEntry;
+            Map.Entry<Integer, ImageAndMask> mipmapEntry;
             ImageAndMask imageAndMask = null;
 			ImageProcessor ip = null;
             int width = ts.getWidth();
@@ -180,7 +180,7 @@ public class Render
 			if ( ip == null )
 			{
 				/* load image TODO use Bioformats for strange formats */
-                mipmapEntry = ts.getFloorMipMapEntry(String.valueOf(mipmapLevel));
+                mipmapEntry = ts.getFloorMipMapEntry(mipmapLevel);
                 imageAndMask = mipmapEntry.getValue();
                 final String imgUrl = imageAndMask.getImageUrl();
 				final ImagePlus imp = Utils.openImagePlusUrl( imgUrl );
@@ -190,7 +190,7 @@ public class Render
 					continue;
 				}
 				ip = imp.getProcessor();
-                final int currentMipmapLevel = Integer.parseInt(mipmapEntry.getKey());
+                final int currentMipmapLevel = mipmapEntry.getKey();
 				if ( currentMipmapLevel >= mipmapLevel )
 				{
 					mipmapLevel = currentMipmapLevel;
