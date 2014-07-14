@@ -112,6 +112,10 @@ public class Render {
         long mapInterpolatedStop;
         long drawImageStop;
 
+        final ByteProcessorCache byteProcessorCache = new ByteProcessorCache();
+        ByteProcessor bpMaskSource;
+        ByteProcessor bpMaskTarget;
+
         for (final TileSpec ts : tileSpecs) {
             tileSpecStart = System.currentTimeMillis();
 
@@ -184,25 +188,15 @@ public class Render {
 
             scaleMipStop = System.currentTimeMillis();
 
-			/* open mask */
-            final ByteProcessor bpMaskSource;
-            final ByteProcessor bpMaskTarget;
+            // open mask
+            bpMaskSource = null;
+            bpMaskTarget = null;
             final String maskUrl = imageAndMask.getMaskUrl();
             if (maskUrl != null) {
-                final ImagePlus impMask = Utils.openImagePlusUrl(maskUrl);
-                if (impMask == null) {
-                    LOG.error("Failed to load mask '" + maskUrl + "'.");
-                    bpMaskSource = null;
-                    bpMaskTarget = null;
-                } else {
-					/* create according mipmap level */
-                    bpMaskSource =
-                            Downsampler.downsampleByteProcessor(impMask.getProcessor().convertToByteProcessor(), mipmapLevel);
+                bpMaskSource = byteProcessorCache.getProcessor(maskUrl, mipmapLevel);
+                if (bpMaskSource != null) {
                     bpMaskTarget = new ByteProcessor(tp.getWidth(), tp.getHeight());
                 }
-            } else {
-                bpMaskSource = null;
-                bpMaskTarget = null;
             }
 
             loadMaskStop = System.currentTimeMillis();
