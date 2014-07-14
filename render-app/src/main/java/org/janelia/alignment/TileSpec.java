@@ -108,12 +108,4 @@ public class TileSpec {
         return ctl;
     }
 
-    public void addLevel(Integer level,
-                         ImageAndMask imageAndMask) {
-        mipmapLevels.put(level, imageAndMask);
-    }
-
-    public void addTransform(Transform transform) {
-        transforms.add(transform);
-    }
 }
