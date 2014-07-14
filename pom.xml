@@ -12,10 +12,36 @@
     <modules>
         <module>trakem2-transform</module>
         <module>render-app</module>
+        <module>render-ws</module>
     </modules>
 
     <dependencyManagement>
         <dependencies>
+
+            <dependency>
+                <groupId>org.janelia</groupId>
+                <artifactId>trakem2-transform</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.janelia</groupId>
+                <artifactId>render-app</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>2.2.4</version>
+            </dependency>
+
+            <dependency>
+                <groupId>net.imagej</groupId>
+                <artifactId>ij</artifactId>
+                <version>${imagej1.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
