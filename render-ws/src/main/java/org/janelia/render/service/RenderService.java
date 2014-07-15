@@ -31,6 +31,12 @@ import java.io.OutputStream;
 @Path("/v1/project")
 public class RenderService {
 
+    private RenderParametersDao renderParametersDao;
+
+    public RenderService() {
+        this.renderParametersDao = new RenderParametersDao(new File("/groups/flyTEM/flyTEM/trautmane/parameters"));
+    }
+
     @Path("{projectId}/stack/{stackId}/box/{x},{y},{width},{height}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -44,9 +50,13 @@ public class RenderService {
         LOG.info("getRenderParameters: entry, projectId={}, stackId={}, x={}, y={}, width={}, height={}",
                  projectId, stackId, x, y, width, height);
 
-        // TODO: retrieve parameters from file system or database ...
-
-        return new RenderParameters();
+        RenderParameters parameters = null;
+        try {
+            parameters = renderParametersDao.getParameters(projectId, stackId, x, y, width, height);
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+        return parameters;
     }
 
     @Path("{projectId}/stack/{stackId}/box/{x},{y},{width},{height}/jpeg-image")
@@ -128,23 +138,24 @@ public class RenderService {
 
         logMemoryStats();
 
-        Response.ResponseBuilder responseBuilder;
+        Response response = null;
         try {
             final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters);
             final BufferedImageStreamingOutput out =
                     new BufferedImageStreamingOutput(targetImage, format, renderParameters.getQuality());
 
-            responseBuilder = Response.ok(out, mimeType);
+            final Response.ResponseBuilder responseBuilder = Response.ok(out, mimeType);
+            response = responseBuilder.build();
 
         } catch (Throwable t) {
-            responseBuilder = getBuilderForError(t, renderParameters);
+            throwServiceException(t);
         }
 
         logMemoryStats();
 
         LOG.info("renderImageStream: exit");
 
-        return responseBuilder.build();
+        return response;
     }
 
     private Response renderImageFile(RenderParameters renderParameters,
@@ -154,33 +165,35 @@ public class RenderService {
 
         logMemoryStats();
 
-        Response.ResponseBuilder responseBuilder;
+        Response response = null;
         try {
             final String outputPathOrUri = renderParameters.getOut();
             if (outputPathOrUri == null) {
                 throw new IllegalArgumentException("output file not specified");
             } else {
+                Response.ResponseBuilder responseBuilder;
                 final File outputFile = Utils.getFile(outputPathOrUri);
                 if (outputFile.exists()) {
-                    throw new IllegalArgumentException("output file " + outputFile.getAbsolutePath() +
-                                                       " already exists");
+                    // TODO: discuss how we really want to handle existing output files
+                    LOG.info("renderImageFile: output file " + outputFile.getAbsolutePath() + " already exists");
+                    responseBuilder = Response.ok();
+                } else {
+                    final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters);
+                    Utils.saveImage(targetImage, outputPathOrUri, format, renderParameters.getQuality());
+                    responseBuilder = Response.created(renderParameters.getOutUri());
                 }
+                response = responseBuilder.build();
             }
 
-            final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters);
-            Utils.saveImage(targetImage, outputPathOrUri, format, renderParameters.getQuality());
-
-            responseBuilder = Response.created(renderParameters.getOutUri());
-
         } catch (Throwable t) {
-            responseBuilder = getBuilderForError(t, renderParameters);
+            throwServiceException(t);
         }
 
         logMemoryStats();
 
         LOG.info("renderImageFile: exit");
 
-        return responseBuilder.build();
+        return response;
     }
 
     private BufferedImage validateParametersAndRenderImage(RenderParameters renderParameters)
@@ -206,21 +219,16 @@ public class RenderService {
         return targetImage;
     }
 
-    private Response.ResponseBuilder getBuilderForError(Throwable t,
-                                                        RenderParameters renderParameters) {
-        Response.ResponseBuilder responseBuilder;
+    private void throwServiceException(Throwable t)
+            throws ServiceException {
 
-        if (t instanceof IllegalArgumentException) {
-            LOG.error("bad request, renderParameters=" + renderParameters, t);
-            responseBuilder = Response.status(Response.Status.BAD_REQUEST);
+        if (t instanceof ServiceException) {
+            throw (ServiceException) t;
+        } else if (t instanceof IllegalArgumentException) {
+            throw new IllegalServiceArgumentException(t.getMessage(), t);
         } else {
-            LOG.error("server error, renderParameters=" + renderParameters, t);
-            responseBuilder = Response.serverError();
+            throw new ServiceException(t.getMessage(), t);
         }
-
-        responseBuilder.entity(t.getMessage() + "\n").type(MediaType.TEXT_PLAIN_TYPE);
-
-        return responseBuilder;
     }
 
     private class BufferedImageStreamingOutput
