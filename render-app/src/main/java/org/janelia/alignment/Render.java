@@ -119,15 +119,24 @@ public class Render {
         for (final TileSpec ts : tileSpecs) {
             tileSpecStart = System.currentTimeMillis();
 
-			/* assemble coordinate transformations and add bounding box offset */
+            // assemble coordinate transformations and add bounding box offset
             final CoordinateTransformList<CoordinateTransform> ctl = ts.createTransformList();
             final AffineModel2D scaleAndOffset = new AffineModel2D();
             if (areaOffset) {
                 final double offset = (1 - scale) * 0.5;
-                scaleAndOffset.set((float) scale, 0, 0, (float) scale, -(float) (x * scale + offset), -(float) (
-                        y * scale + offset));
+                scaleAndOffset.set((float) scale,
+                                   0,
+                                   0,
+                                   (float) scale,
+                                   -(float) (x * scale + offset),
+                                   -(float) (y * scale + offset));
             } else {
-                scaleAndOffset.set((float) scale, 0, 0, (float) scale, -(float) (x * scale), -(float) (y * scale));
+                scaleAndOffset.set((float) scale,
+                                   0,
+                                   0,
+                                   (float) scale,
+                                   -(float) (x * scale),
+                                   -(float) (y * scale));
             }
 
             ctl.add(scaleAndOffset);
@@ -137,11 +146,11 @@ public class Render {
             ImageProcessor ip = null;
             int width = ts.getWidth();
             int height = ts.getHeight();
-            /* figure width and height */
+            // figure width and height
             if ((width < 0) || (height < 0)) {
                 mipmapEntry = ts.getFirstMipMapEntry();
                 imageAndMask = mipmapEntry.getValue();
-				/* load image TODO use Bioformats for strange formats */
+                // load image TODO use Bioformats for strange formats
                 final String imgUrl = imageAndMask.getImageUrl();
                 final ImagePlus imp = Utils.openImagePlusUrl(imgUrl);
                 if (imp == null) {
@@ -155,13 +164,13 @@ public class Render {
 
             loadMipStop = System.currentTimeMillis();
 
-			/* estimate average scale */
+            // estimate average scale
             final double s = Utils.sampleAverageScale(ctl, width, height, triangleSize);
             int mipmapLevel = Utils.bestMipmapLevel(s);
 
             final ImageProcessor ipMipmap;
             if (ip == null) {
-				/* load image TODO use Bioformats for strange formats */
+                // load image TODO use Bioformats for strange formats
                 mipmapEntry = ts.getFloorMipMapEntry(mipmapLevel);
                 imageAndMask = mipmapEntry.getValue();
                 final String imgUrl = imageAndMask.getImageUrl();
@@ -179,11 +188,11 @@ public class Render {
                     ipMipmap = Downsampler.downsampleImageProcessor(ip, mipmapLevel - currentMipmapLevel);
                 }
             } else {
-				/* create according mipmap level */
+                // create according mipmap level
                 ipMipmap = Downsampler.downsampleImageProcessor(ip, mipmapLevel);
             }
 
-			/* create a target */
+            // create a target
             final ImageProcessor tp = ipMipmap.createProcessor(targetImage.getWidth(), targetImage.getHeight());
 
             scaleMipStop = System.currentTimeMillis();
@@ -201,33 +210,32 @@ public class Render {
 
             loadMaskStop = System.currentTimeMillis();
 
-			/* attach mipmap transformation */
-            final CoordinateTransformList<CoordinateTransform> ctlMipmap =
-                    new CoordinateTransformList<CoordinateTransform>();
+            // attach mipmap transformation
+            final CoordinateTransformList<CoordinateTransform> ctlMipmap = new CoordinateTransformList<CoordinateTransform>();
             ctlMipmap.add(Utils.createScaleLevelTransform(mipmapLevel));
             ctlMipmap.add(ctl);
-			
-			/* create mesh */
-            final CoordinateTransformMesh mesh = new CoordinateTransformMesh(ctlMipmap, (int) (width / triangleSize +
-                                                                                               0.5), ipMipmap.getWidth(), ipMipmap.getHeight());
+
+            // create mesh
+            final CoordinateTransformMesh mesh = new CoordinateTransformMesh(ctlMipmap,
+                                                                             (int) (width / triangleSize + 0.5),
+                                                                             ipMipmap.getWidth(),
+                                                                             ipMipmap.getHeight());
 
             final ImageProcessorWithMasks source = new ImageProcessorWithMasks(ipMipmap, bpMaskSource, null);
             final ImageProcessorWithMasks target = new ImageProcessorWithMasks(tp, bpMaskTarget, null);
-            final TransformMeshMappingWithMasks<TransformMesh> mapping =
-                    new TransformMeshMappingWithMasks<TransformMesh>(mesh);
+            final TransformMeshMappingWithMasks<TransformMesh> mapping = new TransformMeshMappingWithMasks<TransformMesh>(mesh);
             mapping.mapInterpolated(source, target);
 
             mapInterpolatedStop = System.currentTimeMillis();
 
-			/* convert to 24bit RGB */
+            // convert to 24bit RGB
             tp.setMinAndMax(ts.getMinIntensity(), ts.getMaxIntensity());
             final ColorProcessor cp = tp.convertToColorProcessor();
 
             final int[] cpPixels = (int[]) cp.getPixels();
             final byte[] alphaPixels;
-			
-			
-			/* set alpha channel */
+
+            // set alpha channel
             if (bpMaskTarget != null) {
                 alphaPixels = (byte[]) bpMaskTarget.getPixels();
             } else {
@@ -334,7 +342,7 @@ public class Render {
 
                 saveStart = System.currentTimeMillis();
 
-                /* save the modified image */
+                // save the modified image
                 final String outputPathOrUri = params.getOut();
                 final String outputFormat = outputPathOrUri.substring(outputPathOrUri.lastIndexOf('.') + 1);
                 Utils.saveImage(targetImage, outputPathOrUri, outputFormat, params.getQuality());
