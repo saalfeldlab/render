@@ -2,8 +2,8 @@
 	{
 		"mipmapLevels": {
 			"0": {
-				"imageUrl": "file:///Users/trautmane/projects/git/render/render-app/src/test/resources/stitch-test/col0075_row0021_cam1.png",
-				"maskUrl": "file:///Users/trautmane/projects/git/render/render-app/src/test/resources/stitch-test/test_mask.jpg"
+				"imageUrl": "file://${MODULE_DIR}/src/test/resources/stitch-test/col0075_row0021_cam1.png",
+				"maskUrl": "file://${MODULE_DIR}/src/test/resources/stitch-test/test_mask.jpg"
 			}
 		},
 		"transforms": [
