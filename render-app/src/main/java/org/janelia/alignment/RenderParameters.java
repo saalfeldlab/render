@@ -76,7 +76,7 @@ public class RenderParameters {
     private int numThreads;
 
     @Parameter(names = "--scale", description = "scale factor applied to the target image (overrides --mipmap_level)", required = false)
-    private double scale;
+    private Double scale;
 
     @Parameter(names = "--mipmap_level", description = "scale level in a mipmap pyramid", required = false)
     private int mipmapLevel;
@@ -105,7 +105,7 @@ public class RenderParameters {
         this.width = 256;
         this.height = 256;
         this.numThreads = Runtime.getRuntime().availableProcessors();
-        this.scale = -Double.NaN;
+        this.scale = null;
         this.mipmapLevel = 0;
         this.areaOffset = false;
         this.quality = 0.85f;
@@ -130,7 +130,6 @@ public class RenderParameters {
      */
     public void initializeDerivedValues() {
         if (! initialized) {
-            scaleData();
             parseTileSpecs();
             initialized = true;
         }
@@ -171,11 +170,10 @@ public class RenderParameters {
         return width;
     }
 
-    public int getHeight() {
-        return height;
-    }
-
     public double getScale() {
+        if (scale == null) {
+            scale = 1.0 / (1L << mipmapLevel);
+        }
         return scale;
     }
 
@@ -231,14 +229,13 @@ public class RenderParameters {
 
         if (in != null) {
             targetImage = Utils.openImage(in);
-            if (targetImage != null) {
-                width = targetImage.getWidth();
-                height = targetImage.getHeight();
-            }
         }
 
         if (targetImage == null) {
-            targetImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            final double derivedScale = getScale();
+            final int targetWidth = (int) (derivedScale * width);
+            final int targetHeight = (int) (derivedScale * height);
+            targetImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
         }
 
         return targetImage;
@@ -266,14 +263,6 @@ public class RenderParameters {
 
     public String toJson() {
         return DEFAULT_GSON.toJson(this);
-    }
-
-    private void scaleData() {
-        if (Double.isNaN(scale)) {
-            scale = 1.0 / (1L << mipmapLevel);
-        }
-        width *= scale;
-        height *= scale;
     }
 
     private void parseTileSpecs()
