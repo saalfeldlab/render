@@ -56,9 +56,6 @@ import org.slf4j.LoggerFactory;
  *      Path to the input image if any
  *       --out
  *      Path to the output image
- *       --threads
- *      Number of threads to be used
- *      Default: number of available CPUs
  * *     --url
  *      URL to JSON tile spec
  *       --width
