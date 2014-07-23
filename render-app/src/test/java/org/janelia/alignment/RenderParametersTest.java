@@ -45,7 +45,7 @@ public class RenderParametersTest {
     }
 
     private RenderParameters getTestParameters() {
-        return RenderParameters.DEFAULT_GSON.fromJson(PARAMETERS_JSON, RenderParameters.class);
+        return RenderParameters.parseJson(PARAMETERS_JSON);
     }
 
     private static final int EXPECTED_WIDTH = 5300;
@@ -59,7 +59,6 @@ public class RenderParametersTest {
             "  \"y\": 0.0,\n" +
             "  \"width\": " + EXPECTED_WIDTH + ",\n" +
             "  \"height\": 2260,\n" +
-            "  \"numThreads\": 8,\n" +
             "  \"scale\": 1.0,\n" +
             "  \"mipmapLevel\": 0,\n" +
             "  \"areaOffset\": false,\n" +

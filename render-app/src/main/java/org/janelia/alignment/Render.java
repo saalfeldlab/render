@@ -314,7 +314,7 @@ public class Render {
             long saveStart = mainStart;
             long saveStop = mainStart;
 
-            final RenderParameters params = RenderParameters.parse(args);
+            final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
 
             if (params.displayHelp()) {
 

@@ -22,8 +22,14 @@ import com.beust.jcommander.Parameters;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -72,9 +78,6 @@ public class RenderParameters {
     @Parameter(names = "--height", description = "Target image height", required = false)
     private int height;
 
-    @Parameter(names = "--threads", description = "Number of threads to be used", required = false)
-    private int numThreads;
-
     @Parameter(names = "--scale", description = "scale factor applied to the target image (overrides --mipmap_level)", required = false)
     private Double scale;
 
@@ -97,31 +100,119 @@ public class RenderParameters {
     public RenderParameters() {
         this.help = false;
         this.url = null;
-        this.res = 64;
+        this.res = DEFAULT_RESOLUTION;
         this.in = null;
         this.out = null;
-        this.x = 0;
-        this.y = 0;
-        this.width = 256;
-        this.height = 256;
-        this.numThreads = Runtime.getRuntime().availableProcessors();
+        this.x = DEFAULT_X_AND_Y;
+        this.y = DEFAULT_X_AND_Y;
+        this.width = DEFAULT_HEIGHT_AND_WIDTH;
+        this.height = DEFAULT_HEIGHT_AND_WIDTH;
         this.scale = null;
-        this.mipmapLevel = 0;
+        this.mipmapLevel = DEFAULT_MIPMAP_LEVEL;
         this.areaOffset = false;
-        this.quality = 0.85f;
-
+        this.quality = DEFAULT_QUALITY;
         this.tileSpecs = new ArrayList<TileSpec>();
-        this.jCommander = new JCommander(this);
-        this.jCommander.setProgramName(PROGRAM_NAME);
 
+        this.jCommander = null;
         this.outUri = null;
         this.initialized = false;
     }
 
-    public static RenderParameters parse(String[] args) throws IllegalArgumentException {
+    /**
+     * @param  args  arguments to parse.
+     *
+     * @return parameters instance populated by parsing the specified arguments.
+     *
+     * @throws IllegalArgumentException
+     *   if any invalid arguments are specified.
+     */
+    public static RenderParameters parseCommandLineArgs(String[] args) throws IllegalArgumentException {
         RenderParameters parameters = new RenderParameters();
-        parameters.jCommander.parse(args);
+        parameters.setCommander();
+        try {
+            parameters.jCommander.parse(args);
+        } catch (Throwable t) {
+            throw new IllegalArgumentException("failed to parse command line arguments", t);
+        }
         parameters.initializeDerivedValues();
+        return parameters;
+    }
+
+    /**
+     * @param  jsonText  text to parse.
+     *
+     * @return parameters instance populated by parsing the specified json text.
+     *
+     * @throws IllegalArgumentException
+     *   if the json cannot be parsed.
+     */
+    public static RenderParameters parseJson(String jsonText) throws IllegalArgumentException {
+        RenderParameters parameters;
+        try {
+            parameters = DEFAULT_GSON.fromJson(jsonText, RenderParameters.class);
+        } catch (Throwable t) {
+            throw new IllegalArgumentException("failed to parse json text", t);
+        }
+        return parameters;
+    }
+
+    /**
+     * @param  jsonReader  reader to parse.
+     *
+     * @return parameters instance populated by parsing the specified json reader's stream.
+     *
+     * @throws IllegalArgumentException
+     *   if the json cannot be parsed.
+     */
+    public static RenderParameters parseJson(Reader jsonReader) throws IllegalArgumentException {
+        RenderParameters parameters;
+        try {
+            parameters = DEFAULT_GSON.fromJson(jsonReader, RenderParameters.class);
+        } catch (Throwable t) {
+            throw new IllegalArgumentException("failed to parse json reader stream", t);
+        }
+        return parameters;
+    }
+
+    /**
+     * @param  jsonFile  reader to parse.
+     *
+     * @return parameters instance populated by parsing the specified json reader's stream.
+     *
+     * @throws IllegalArgumentException
+     *   if the json cannot be parsed.
+     */
+    public static RenderParameters parseJson(File jsonFile) throws IllegalArgumentException {
+
+        if (! jsonFile.exists()) {
+            throw new IllegalArgumentException("render parameters json file " + jsonFile.getAbsolutePath() +
+                                               " does not exist");
+        }
+
+        if (! jsonFile.canRead()) {
+            throw new IllegalArgumentException("render parameters json file " + jsonFile.getAbsolutePath() +
+                                               " is not readable");
+        }
+
+        FileReader parametersReader;
+        try {
+            parametersReader = new FileReader(jsonFile);
+        } catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("render parameters json file " + jsonFile.getAbsolutePath() +
+                                               " does not exist", e);
+        }
+
+        RenderParameters parameters;
+        try {
+            parameters = RenderParameters.parseJson(parametersReader);
+        } finally {
+            try {
+                parametersReader.close();
+            } catch (IOException e) {
+                LOG.warn("failed to close reader for " + jsonFile.getAbsolutePath() + ", ignoring error", e);
+            }
+        }
+
         return parameters;
     }
 
@@ -193,6 +284,9 @@ public class RenderParameters {
      * Displays command usage information on the console (standard-out).
      */
     public void showUsage() {
+        if (jCommander == null) {
+            setCommander();
+        }
         jCommander.usage();
     }
 
@@ -241,34 +335,87 @@ public class RenderParameters {
         return targetImage;
     }
 
+    /**
+     * @return string representation of these parameters (only non-default values are included).
+     */
     @Override
     public String toString() {
-        return "{" +
-               "help=" + help +
-               ", url='" + url + '\'' +
-               ", res=" + res +
-               ", in='" + in + '\'' +
-               ", out='" + out + '\'' +
-               ", x=" + x +
-               ", y=" + y +
-               ", width=" + width +
-               ", height=" + height +
-               ", numThreads=" + numThreads +
-               ", scale=" + scale +
-               ", mipmapLevel=" + mipmapLevel +
-               ", areaOffset=" + areaOffset +
-               ", quality=" + quality +
-               '}';
+        final StringBuilder sb = new StringBuilder();
+
+        sb.append('{');
+
+        if (readTileSpecsFromUrl()) {
+            sb.append("url='").append(url).append("', ");
+        } else if (tileSpecs != null) {
+            sb.append("tileSpecs=[").append(tileSpecs.size()).append(" items], ");
+        }
+
+        if (x != DEFAULT_X_AND_Y) {
+            sb.append("x=").append(x).append(", ");
+        }
+
+        if (y != DEFAULT_X_AND_Y) {
+            sb.append("y=").append(y).append(", ");
+        }
+
+        if (width != DEFAULT_HEIGHT_AND_WIDTH) {
+            sb.append("width=").append(width).append(", ");
+        }
+
+        if (height != DEFAULT_HEIGHT_AND_WIDTH) {
+            sb.append("height=").append(height).append(", ");
+        }
+
+        if (scale != null) {
+            sb.append("scale=").append(scale).append(", ");
+        }
+
+        if (mipmapLevel != DEFAULT_MIPMAP_LEVEL) {
+            sb.append("mipmapLevel=").append(mipmapLevel).append(", ");
+        }
+
+        if (res != DEFAULT_RESOLUTION) {
+            sb.append("res=").append(res).append(", ");
+        }
+
+        if (quality != DEFAULT_QUALITY) {
+            sb.append("quality=").append(quality).append(", ");
+        }
+
+        if (areaOffset) {
+            sb.append("areaOffset=true, ");
+        }
+
+        if (in != null) {
+            sb.append("in='").append(in).append("', ");
+        }
+
+        if (out != null) {
+            sb.append("out='").append(out).append("', ");
+        }
+
+        if (sb.length() > 2) {
+            sb.setLength(sb.length() - 2); // trim last ", "
+        }
+
+        sb.append('}');
+
+        return sb.toString();
     }
 
     public String toJson() {
         return DEFAULT_GSON.toJson(this);
     }
 
+    private void setCommander() {
+        jCommander = new JCommander(this);
+        jCommander.setProgramName("java -jar render.jar");
+    }
+
     private void parseTileSpecs()
             throws IllegalArgumentException {
 
-        if ((url != null) && ((tileSpecs == null) || (tileSpecs.size() == 0))) {
+        if (readTileSpecsFromUrl()) {
             final URL urlObject;
             try {
                 urlObject = new URL(url);
@@ -293,5 +440,15 @@ public class RenderParameters {
         }
     }
 
-    private static final String PROGRAM_NAME = "java -jar render.jar " + Render.class.getCanonicalName();
+    private boolean readTileSpecsFromUrl() {
+        return ((url != null) && ((tileSpecs == null) || (tileSpecs.size() == 0)));
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(RenderParameters.class);
+
+    private static final int DEFAULT_RESOLUTION = 64;
+    private static final int DEFAULT_X_AND_Y = 0;
+    private static final int DEFAULT_HEIGHT_AND_WIDTH = 256;
+    private static final int DEFAULT_MIPMAP_LEVEL = 0;
+    private static final float DEFAULT_QUALITY = 0.85f;
 }
