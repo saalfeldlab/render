@@ -22,36 +22,38 @@ import ij.process.ImageProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
- * Simple cache of mask byte processor instances.
+ * Simple cache of the last mask byte processor instance created.
  * This was created to help performance of processing a single request with many tiles that use the same mask.
  * This is not thread safe and one instance should not be shared by different requests!
- * If we decide a shared instance is worthwhile, this cache should be re-implemented as a thread-safe LRU cache.
+ * If we decide a shared instance or caching of multiple mask processors is worthwhile,
+ * this cache should be re-implemented as a thread-safe LRU cache
+ * (see commit log for a more detailed discussion about implementation options).
  *
  * @author Eric Trautman
  */
 public class ByteProcessorCache {
 
-    private Map<String, ByteProcessor> urlToProcessorMap;
+    private String lastUrlString;
+    private int lastMipmapLevel;
+    private ByteProcessor lastByteProcessor;
 
     public ByteProcessorCache() {
-        this.urlToProcessorMap = new HashMap<String, ByteProcessor>();
+        this.lastUrlString = null;
+        this.lastMipmapLevel = 0;
+        this.lastByteProcessor = null;
     }
 
     public ByteProcessor getProcessor(String urlString,
                                       int mipmapLevel) {
-        final String key = getCacheKey(urlString, mipmapLevel);
-        ByteProcessor processor = urlToProcessorMap.get(key);
-        if (processor ==  null) {
-            processor = buildByteProcessor(urlString, mipmapLevel);
-            if (processor != null) {
-                urlToProcessorMap.put(key, processor);
-            }
+        if ((lastByteProcessor == null) ||
+            (! urlString.equals(lastUrlString)) ||
+            (mipmapLevel != lastMipmapLevel)) {
+            lastByteProcessor = buildByteProcessor(urlString, mipmapLevel);
+            lastUrlString = urlString;
+            lastMipmapLevel = mipmapLevel;
         }
-        return processor;
+        return lastByteProcessor;
     }
 
     private ByteProcessor buildByteProcessor(String urlString,
@@ -60,7 +62,7 @@ public class ByteProcessorCache {
         if (urlString != null) {
             final ImagePlus imagePlus = Utils.openImagePlusUrl(urlString);
             if (imagePlus == null) {
-                LOG.error("buildByteProcessor: failed to load image plus for '" + urlString + "'.");
+                LOG.error("buildByteProcessor: failed to load image plus for '{}'.", urlString);
             } else {
                 final ImageProcessor imageProcessor = imagePlus.getProcessor();
                 byteProcessor = Downsampler.downsampleByteProcessor(imageProcessor.convertToByteProcessor(),
@@ -68,11 +70,6 @@ public class ByteProcessorCache {
             }
         }
         return byteProcessor;
-    }
-
-    private String getCacheKey(String urlString,
-                               int mipmapLevel) {
-        return urlString + '|' + mipmapLevel; // hack! but good enough for now ...
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(Render.class);
