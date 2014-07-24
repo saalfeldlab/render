@@ -13,6 +13,7 @@
         <module>trakem2-transform</module>
         <module>render-app</module>
         <module>render-ws</module>
+        <module>render-ws-java-client</module>
     </modules>
 
     <dependencyManagement>

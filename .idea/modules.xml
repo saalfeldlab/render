@@ -5,6 +5,7 @@
       <module fileurl="file://$PROJECT_DIR$/render.iml" filepath="$PROJECT_DIR$/render.iml" />
       <module fileurl="file://$PROJECT_DIR$/render-app/render-app.iml" filepath="$PROJECT_DIR$/render-app/render-app.iml" />
       <module fileurl="file://$PROJECT_DIR$/render-ws/render-ws.iml" filepath="$PROJECT_DIR$/render-ws/render-ws.iml" />
+      <module fileurl="file://$PROJECT_DIR$/render-ws-java-client/render-ws-java-client.iml" filepath="$PROJECT_DIR$/render-ws-java-client/render-ws-java-client.iml" />
       <module fileurl="file://$PROJECT_DIR$/trakem2-transform/trakem2-transform.iml" filepath="$PROJECT_DIR$/trakem2-transform/trakem2-transform.iml" />
     </modules>
   </component>
