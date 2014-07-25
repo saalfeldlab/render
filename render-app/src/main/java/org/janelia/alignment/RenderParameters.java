@@ -84,7 +84,7 @@ public class RenderParameters {
     @Parameter(names = "--mipmap_level", description = "scale level in a mipmap pyramid", required = false)
     private int mipmapLevel;
 
-    @Parameter(names = "--area_offset", description = "scale level in a mipmap pyramid", required = false)
+    @Parameter(names = "--area_offset", description = "add bounding box offset", required = false)
     private boolean areaOffset;
 
     @Parameter(names = "--quality", description = "JPEG quality float [0, 1]", required = false)
@@ -98,19 +98,35 @@ public class RenderParameters {
     private transient boolean initialized;
 
     public RenderParameters() {
+        this(null,
+             DEFAULT_X_AND_Y,
+             DEFAULT_X_AND_Y,
+             DEFAULT_HEIGHT_AND_WIDTH,
+             DEFAULT_HEIGHT_AND_WIDTH,
+             DEFAULT_MIPMAP_LEVEL);
+    }
+
+    public RenderParameters(String url,
+                            double x,
+                            double y,
+                            int width,
+                            int height,
+                            int mipmapLevel) {
+        this.url = url;
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.mipmapLevel = mipmapLevel;
+
         this.help = false;
-        this.url = null;
         this.res = DEFAULT_RESOLUTION;
         this.in = null;
         this.out = null;
-        this.x = DEFAULT_X_AND_Y;
-        this.y = DEFAULT_X_AND_Y;
-        this.width = DEFAULT_HEIGHT_AND_WIDTH;
-        this.height = DEFAULT_HEIGHT_AND_WIDTH;
         this.scale = null;
-        this.mipmapLevel = DEFAULT_MIPMAP_LEVEL;
         this.areaOffset = false;
         this.quality = DEFAULT_QUALITY;
+
         this.tileSpecs = new ArrayList<TileSpec>();
 
         this.jCommander = null;
