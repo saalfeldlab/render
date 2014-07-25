@@ -18,23 +18,6 @@ package org.janelia.alignment;
 
 import ij.ImagePlus;
 import ij.io.Opener;
-
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Iterator;
-
-import javax.imageio.IIOImage;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
-import javax.imageio.stream.FileImageOutputStream;
-import javax.imageio.stream.ImageOutputStream;
-
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.NotEnoughDataPointsException;
@@ -44,45 +27,32 @@ import mpicbg.models.SimilarityModel2D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.FileImageOutputStream;
+import javax.imageio.stream.ImageOutputStream;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Iterator;
+
 /**
- * 
- *
  * @author Stephan Saalfeld <saalfeld@janelia.hhmi.org>
  */
-public class Utils
-{
+public class Utils {
     public static final String JPEG_FORMAT = "jpg";
     public static final String PNG_FORMAT = "png";
 
     private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
 
-    private Utils() {}
-	
-	final static private double LOG2 = Math.log( 2.0 );
-
-    /**
-     * @return {@link FileImageOutputStream} for the specified file path.
-     */
-    public static FileImageOutputStream getFileImageOutputStream(final String pathOrUriString)
-            throws IllegalArgumentException {
-
-        FileImageOutputStream output;
-        final File file = Utils.getFile(pathOrUriString);
-        final File parentDirectory = file.getParentFile();
-        if ((parentDirectory != null) && (! parentDirectory.exists())) {
-            if (! parentDirectory.mkdirs()) {
-                throw new IllegalArgumentException("failed to create directory " + parentDirectory.getAbsolutePath());
-            }
-        }
-
-        try {
-            output = new FileImageOutputStream(file);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("failed to create output stream for " + file.getAbsolutePath(), e);
-        }
-
-        return output;
+    private Utils() {
     }
+
+//    final static private double LOG2 = Math.log(2.0);
 
     /**
      * Writes the specified image using ImageIO.
@@ -138,9 +108,26 @@ public class Utils
             throws IOException {
         FileImageOutputStream outputStream = null;
         try {
-            outputStream = getFileImageOutputStream(pathOrUriString);
+            final File file = new File(convertPathOrUriStringToUri(pathOrUriString));
+
+            final File parentDirectory = file.getParentFile();
+            if ((parentDirectory != null) && (!parentDirectory.exists())) {
+                if (!parentDirectory.mkdirs()) {
+                    throw new IllegalArgumentException("failed to create directory " +
+                                                       parentDirectory.getAbsolutePath());
+                }
+            }
+
+            try {
+                outputStream = new FileImageOutputStream(file);
+            } catch (IOException e) {
+                throw new IllegalArgumentException("failed to create output stream for " + file.getAbsolutePath(), e);
+            }
+
             writeImage(image, format, quality, outputStream);
-            LOG.info("saveImage: exit, saved {}", pathOrUriString);
+
+            LOG.info("saveImage: exit, saved {}", file.getAbsolutePath());
+
         } finally {
             if (outputStream != null) {
                 outputStream.close();
@@ -149,16 +136,12 @@ public class Utils
     }
 
     /**
-	 * Open an ImagePlus from a file.
-	 * 
-	 * @param pathString
-	 * @return
-	 */
-	final static public ImagePlus openImagePlus( final String pathString )
-	{
-		final ImagePlus imp = new Opener().openImage( pathString );
-		return imp;
-	}
+     * Open an ImagePlus from a file.
+     */
+    public static ImagePlus openImagePlus(final String pathString) {
+        final Opener opener = new Opener();
+        return opener.openImage(pathString);
+    }
 
     /**
      * Open an ImagePlus from a URL
@@ -167,222 +150,185 @@ public class Utils
         final Opener opener = new Opener();
         return opener.openURL(urlString);
     }
-	
-	/**
-	 * Open an Image from a URL.  Try ImageIO first, then ImageJ.
-	 * 
-	 * @param urlString
-	 * @return
-	 */
-	final static public BufferedImage openImageUrl( final String urlString )
-	{
-		BufferedImage image;
-		try
-		{
-			final URL url = new URL( urlString );
-			final BufferedImage imageTemp = ImageIO.read( url );
-			
-			/* This gymnastic is necessary to get reproducible gray
-			 * values, just opening a JPG or PNG, even when saved by
-			 * ImageIO, and grabbing its pixels results in gray values
-			 * with a non-matching gamma transfer function, I cannot tell
-			 * why... */
-		    image = new BufferedImage( imageTemp.getWidth(), imageTemp.getHeight(), BufferedImage.TYPE_INT_ARGB );
-			image.createGraphics().drawImage( imageTemp, 0, 0, null );
-		}
-		catch ( final Exception e )
-		{
-			try
-			{
-				final ImagePlus imp = openImagePlusUrl(urlString);
-				if ( imp != null )
-				{
-					image = imp.getBufferedImage();
-				}
-				else image = null;
-			}
-			catch ( final Exception f )
-			{
-				image = null;
-			}
-		}
-		return image;
-	}
-	
-	
-	/**
-	 * Open an Image from a file.  Try ImageIO first, then ImageJ.
-	 */
-	final static public BufferedImage openImage( final String path )
-	{
-		BufferedImage image = null;
-		try
-		{
-			final File file = new File( path );
-			if ( file.exists() )
-			{
-				final BufferedImage jpg = ImageIO.read( file );
-				
-				/* This gymnastic is necessary to get reproducible gray
-				 * values, just opening a JPG or PNG, even when saved by
-				 * ImageIO, and grabbing its pixels results in gray values
-				 * with a non-matching gamma transfer function, I cannot tell
-				 * why... */
-			    image = new BufferedImage( jpg.getWidth(), jpg.getHeight(), BufferedImage.TYPE_INT_ARGB );
-				image.createGraphics().drawImage( jpg, 0, 0, null );
-			}
-		}
-		catch ( final Exception e )
-		{
-			try
-			{
-				final ImagePlus imp = openImagePlus( path );
-				if ( imp != null )
-				{
-					image = imp.getBufferedImage();
-				}
-				else image = null;
-			}
-			catch ( final Exception f )
-			{
-				image = null;
-			}
-		}
-		return image;
-	}
-	
-	
-	/**
-	 * Combine a 0x??rgb int[] raster and an unsigned byte[] alpha channel into
-	 * a 0xargb int[] raster.  The operation is perfomed in place on the int[]
-	 * raster.
-	 */
-	final static public void combineARGB( final int[] rgb, final byte[] a )
-	{
-		for ( int i = 0; i < rgb.length; ++i )
-		{
-			rgb[ i ] &= 0x00ffffff;
-			rgb[ i ] |= ( a[ i ] & 0xff ) << 24;
-		}
-	}
-	
-	
-	/**
-	 * Sample the average scaling of a given {@link CoordinateTransform} by transferring
-	 * a set of point samples using the {@link CoordinateTransform} and then
-	 * least-squares fitting a {@link SimilarityModel2D} to it.
-	 * 
-	 * @param ct
-	 * @param width of the samples set
-	 * @param height of the samples set
-	 * @param dx spacing between samples
-	 * 
-	 * @return average scale factor
-	 */
-	final static public double sampleAverageScale( final CoordinateTransform ct, final int width, final int height, final double dx )
-	{
-		final ArrayList< PointMatch > samples = new ArrayList< PointMatch >();
-		for ( float y = 0; y < height; y += dx )
-		{
-			for ( float x = 0; x < width; x += dx )
-			{
-				final Point p = new Point( new float[]{ x, y } );
-				p.apply( ct );
-				samples.add( new PointMatch( p, p ) );
-			}
-		}
-		final SimilarityModel2D model = new SimilarityModel2D();
-		try
-		{
-			model.fit( samples );
-		}
-		catch ( final NotEnoughDataPointsException e )
-		{
-            LOG.warn("failed to fit samples, returning scale factor of 1", e);
-			return 1;
-		}
-		final double[] data = new double[ 6 ];
-		model.toArray( data );
-//		return 1;
-		return Math.sqrt( data[ 0 ] * data[ 0 ] + data[ 1 ] * data[ 1 ] );
-	}
-	
-	
-	final static public int bestMipmapLevel( final double scale )
-	{
-		int invScale = ( int )( 1.0 / scale );
-		int scaleLevel = 0;
-		while ( invScale > 1 )
-		{
-			invScale >>= 1;
-			++scaleLevel;
-		}
-		return scaleLevel;
-	}
-	
-	
-	/**
-	 * Returns the exact fractional `index' of the desired scale in a power of
-	 * 2 mipmap pyramid.
-	 * 
-	 * @param scale
-	 * @return
-	 */
-	final static public double mipmapLevel( final double scale )
-	{
-		return Math.log( 1.0 / scale ) / LOG2;
-	}
-	
-	
-	/**
-	 * Create an affine transformation that compensates for both scale and
-	 * pixel shift of a mipmap level that was generated by top-left pixel
-	 * averaging.
-	 * 
-	 * @param scaleLevel
-	 * @return
-	 */
-	final static AffineModel2D createScaleLevelTransform( final int scaleLevel )
-	{
-		final AffineModel2D a = new AffineModel2D();
-		final int scale = 1 << scaleLevel;
-		final float t = ( scale - 1 ) * 0.5f;
-		a.set( scale, 0, 0, scale, t, t );
-		return a;
-	}
-	
-	/**
-	 * Create an affine transformation that compensates for both scale and
-	 * pixel shift of a mipmap level that was generated by top-left pixel
-	 * averaging.
-	 * 
-	 * @param scaleLevel
-	 * @return
-	 */
-	final static AffineModel2D createScaleLevelTransform( final double scaleLevel )
-	{
-		final AffineModel2D a = new AffineModel2D();
-		final double scale = Math.pow( 2, scaleLevel );
-		final float t = ( float )( ( scale - 1 ) * 0.5 );
-		a.set( ( float )scale, 0, 0, ( float )scale, t, t );
-		return a;
-	}
 
-    public static File getFile(String pathOrUriString) throws IllegalArgumentException {
-        File file;
-        URI uri;
+//    /**
+//     * Open an Image from a URL.  Try ImageIO first, then ImageJ.
+//     */
+//    public static BufferedImage openImageUrl(final String urlString) {
+//        BufferedImage image;
+//        try {
+//            final URL url = new URL(urlString);
+//            final BufferedImage imageTemp = ImageIO.read(url);
+//
+//            // This gymnastic is necessary to get reproducible gray
+//            // values, just opening a JPG or PNG, even when saved by
+//            // ImageIO, and grabbing its pixels results in gray values
+//            // with a non-matching gamma transfer function, I cannot tell
+//            // why...
+//            image = new BufferedImage(imageTemp.getWidth(), imageTemp.getHeight(), BufferedImage.TYPE_INT_ARGB);
+//            image.createGraphics().drawImage(imageTemp, 0, 0, null);
+//        } catch (final Exception e) {
+//            try {
+//                final ImagePlus imp = openImagePlusUrl(urlString);
+//                if (imp != null) {
+//                    image = imp.getBufferedImage();
+//                } else {
+//                    image = null;
+//                }
+//            } catch (final Exception f) {
+//                image = null;
+//            }
+//        }
+//        return image;
+//    }
+
+
+    /**
+     * Open an Image from a file.  Try ImageIO first, then ImageJ.
+     */
+    public static BufferedImage openImage(final String path) {
+        BufferedImage image = null;
         try {
-            uri = new URI(pathOrUriString);
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("failed to create uniform resource identifier for '" + pathOrUriString + "'", e);
-        }
+            final File file = new File(path);
+            if (file.exists()) {
+                final BufferedImage jpg = ImageIO.read(file);
 
-        if ("file".equalsIgnoreCase(uri.getScheme())) {
-            file = new File(uri);
-        } else {
-            file = new File(pathOrUriString);
+                // This gymnastic is necessary to get reproducible gray
+                // values, just opening a JPG or PNG, even when saved by
+                // ImageIO, and grabbing its pixels results in gray values
+                // with a non-matching gamma transfer function, I cannot tell
+                // why...
+                image = new BufferedImage(jpg.getWidth(), jpg.getHeight(), BufferedImage.TYPE_INT_ARGB);
+                image.createGraphics().drawImage(jpg, 0, 0, null);
+            }
+        } catch (final Exception e) {
+            try {
+                final ImagePlus imp = openImagePlus(path);
+                if (imp != null) {
+                    image = imp.getBufferedImage();
+                } else {
+                    image = null;
+                }
+            } catch (final Exception f) {
+                image = null;
+            }
         }
-
-        return file;
+        return image;
     }
+
+
+//    /**
+//     * Combine a 0x??rgb int[] raster and an unsigned byte[] alpha channel into a 0xargb int[] raster.  The operation is
+//     * perfomed in place on the int[] raster.
+//     */
+//    public static void combineARGB(final int[] rgb,
+//                                         final byte[] a) {
+//        for (int i = 0; i < rgb.length; ++i) {
+//            rgb[i] &= 0x00ffffff;
+//            rgb[i] |= (a[i] & 0xff) << 24;
+//        }
+//    }
+
+
+    /**
+     * Sample the average scaling of a given {@link CoordinateTransform} by transferring a set of point samples using
+     * the {@link CoordinateTransform} and then least-squares fitting a {@link SimilarityModel2D} to it.
+     *
+     * @param width  of the samples set
+     * @param height of the samples set
+     * @param dx     spacing between samples
+     *
+     * @return average scale factor
+     */
+    public static double sampleAverageScale(final CoordinateTransform ct,
+                                            final int width,
+                                            final int height,
+                                            final double dx) {
+        final ArrayList<PointMatch> samples = new ArrayList<PointMatch>();
+        for (float y = 0; y < height; y += dx) {
+            for (float x = 0; x < width; x += dx) {
+                final Point p = new Point(new float[]{x, y});
+                p.apply(ct);
+                samples.add(new PointMatch(p, p));
+            }
+        }
+        final SimilarityModel2D model = new SimilarityModel2D();
+        try {
+            model.fit(samples);
+        } catch (final NotEnoughDataPointsException e) {
+            LOG.warn("failed to fit samples, returning scale factor of 1", e);
+            return 1;
+        }
+        final double[] data = new double[6];
+        model.toArray(data);
+        // return 1;
+        return Math.sqrt(data[0] * data[0] + data[1] * data[1]);
+    }
+
+
+    public static int bestMipmapLevel(final double scale) {
+        int invScale = (int) (1.0 / scale);
+        int scaleLevel = 0;
+        while (invScale > 1) {
+            invScale >>= 1;
+            ++scaleLevel;
+        }
+        return scaleLevel;
+    }
+
+
+//    /**
+//     * Returns the exact fractional `index' of the desired scale in a power of 2 mipmap pyramid.
+//     */
+//    public static double mipmapLevel(final double scale) {
+//        return Math.log(1.0 / scale) / LOG2;
+//    }
+
+
+    /**
+     * Create an affine transformation that compensates for both scale and pixel shift of a mipmap level that was
+     * generated by top-left pixel averaging.
+     */
+    public static AffineModel2D createScaleLevelTransform(final int scaleLevel) {
+        final AffineModel2D a = new AffineModel2D();
+        final int scale = 1 << scaleLevel;
+        final float t = (scale - 1) * 0.5f;
+        a.set(scale, 0, 0, scale, t, t);
+        return a;
+    }
+
+//    /**
+//     * Create an affine transformation that compensates for both scale and pixel shift of a mipmap level that was
+//     * generated by top-left pixel averaging.
+//     */
+//    public static AffineModel2D createScaleLevelTransform(final double scaleLevel) {
+//        final AffineModel2D a = new AffineModel2D();
+//        final double scale = Math.pow(2, scaleLevel);
+//        final float t = (float) ((scale - 1) * 0.5);
+//        a.set((float) scale, 0, 0, (float) scale, t, t);
+//        return a;
+//    }
+
+    public static URI convertPathOrUriStringToUri(String pathOrUriString)
+            throws IllegalArgumentException {
+        URI uri;
+        if (pathOrUriString.indexOf(':') == -1) {
+            // convert relative path to fully qualified URL
+            File file = new File(pathOrUriString);
+            try {
+                file = file.getCanonicalFile();
+                uri = file.toURI();
+            } catch (Throwable t) {
+                throw new IllegalArgumentException("failed to convert '" + pathOrUriString + "' to a URI", t);
+            }
+        } else {
+            try {
+                uri = new URI(pathOrUriString);
+            } catch (Throwable t) {
+                throw new IllegalArgumentException("failed to create URI for '" + pathOrUriString + "'", t);
+            }
+        }
+        return uri;
+    }
+
 }

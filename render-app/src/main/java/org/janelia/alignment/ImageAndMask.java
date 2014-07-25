@@ -18,7 +18,6 @@ package org.janelia.alignment;
 
 import java.io.File;
 import java.net.URI;
-import java.net.URISyntaxException;
 
 /**
  * 
@@ -30,18 +29,31 @@ public class ImageAndMask {
     private String imageUrl;
     private String maskUrl;
 
+    // cached full path URL strings (in case relative paths were specified),
+    // marked transient to prevent serialization
+    private transient String validatedImageUrl;
+    private transient String validatedMaskUrl;
+
     public ImageAndMask(String imageUrl,
                         String maskUrl) {
         this.imageUrl = imageUrl;
         this.maskUrl = maskUrl;
+        this.validatedImageUrl = null;
+        this.validatedMaskUrl = null;
     }
 
-    public String getImageUrl() {
-        return imageUrl;
+    public String getImageUrl() throws IllegalArgumentException {
+        if ((validatedImageUrl == null) && (imageUrl != null)) {
+            validatedImageUrl = getUrlString(getUri(imageUrl));
+        }
+        return validatedImageUrl;
     }
 
-    public String getMaskUrl() {
-        return maskUrl;
+    public String getMaskUrl() throws IllegalArgumentException {
+        if ((validatedMaskUrl == null) && (maskUrl != null)) {
+            validatedMaskUrl = getUrlString(getUri(maskUrl));
+        }
+        return validatedMaskUrl;
     }
 
     /**
@@ -52,36 +64,47 @@ public class ImageAndMask {
         if (imageUrl == null) {
             throw new IllegalArgumentException("no imageUrl specified");
         }
-        validateUrlString(imageUrl, "imageUrl");
-        validateUrlString(maskUrl, "maskUrl");
+
+        final URI imageUri = getUri(imageUrl);
+        validateFile(imageUri, "imageUrl");
+        validatedImageUrl = getUrlString(imageUri);
+
+        final URI maskUri = getUri(maskUrl);
+        validateFile(maskUri, "maskUrl");
+        validatedMaskUrl = getUrlString(maskUri);
     }
 
-    private void validateUrlString(String urlString,
-                                   String context)
+    private URI getUri(String urlString) {
+        URI uri = null;
+        if (urlString != null) {
+            uri = Utils.convertPathOrUriStringToUri(urlString);
+        }
+        return uri;
+    }
+
+    private String getUrlString(URI uri) {
+        String urlString = null;
+        if (uri != null) {
+            urlString = uri.toString();
+        }
+        return urlString;
+    }
+
+    private void validateFile(URI uri,
+                              String context)
             throws IllegalArgumentException {
 
-        if (urlString != null) {
-
-            URI uri;
-            try {
-                uri = new URI(urlString);
-            } catch (URISyntaxException e) {
-                throw new IllegalArgumentException("cannot parse " + context + " '" + urlString + "'", e);
+        final String scheme = uri.getScheme();
+        if ((scheme == null) || FILE_SCHEME.equals(scheme)) {
+            final File file = new File(uri);
+            if (! file.exists()) {
+                throw new IllegalArgumentException("cannot find " + context + " file '" +
+                                                   file.getAbsolutePath() + "'");
             }
-
-            final String scheme = uri.getScheme();
-            if ((scheme == null) || FILE_SCHEME.equals(scheme)) {
-                final File file = new File(uri);
-                if (! file.exists()) {
-                    throw new IllegalArgumentException("cannot find " + context + " file '" +
-                                                       file.getAbsolutePath() + "'");
-                }
-                if (! file.canRead()) {
-                    throw new IllegalArgumentException("no read access for " + context + " file '" +
-                                                       file.getAbsolutePath() + "'");
-                }
+            if (! file.canRead()) {
+                throw new IllegalArgumentException("no read access for " + context + " file '" +
+                                                   file.getAbsolutePath() + "'");
             }
-
         }
     }
 

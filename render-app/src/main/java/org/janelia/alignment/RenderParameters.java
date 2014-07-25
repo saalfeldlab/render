@@ -432,11 +432,15 @@ public class RenderParameters {
             throws IllegalArgumentException {
 
         if (readTileSpecsFromUrl()) {
+
+            final URI uri = Utils.convertPathOrUriStringToUri(url);
+
             final URL urlObject;
             try {
-                urlObject = new URL(url);
+                urlObject = uri.toURL();
             } catch (Throwable t) {
-                throw new IllegalArgumentException("failed to parse tile specification URL '" + url + "'", t);
+                throw new IllegalArgumentException("failed to convert URI '" + uri +
+                                                   "' built from tile specification URL parameter '" + url + "'", t);
             }
 
             final InputStream urlStream;

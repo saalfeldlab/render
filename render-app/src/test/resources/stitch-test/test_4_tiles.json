@@ -2,8 +2,8 @@
 	{
 		"mipmapLevels": {
 			"0": {
-				"imageUrl": "file://${MODULE_DIR}/src/test/resources/stitch-test/col0075_row0021_cam1.png",
-				"maskUrl": "file://${MODULE_DIR}/src/test/resources/stitch-test/test_mask.jpg"
+				"imageUrl": "src/test/resources/stitch-test/col0075_row0021_cam1.png",
+				"maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
 			}
 		},
 		"transforms": [
@@ -20,8 +20,8 @@
 	{
 		"mipmapLevels": {
 			"0": {
-				"imageUrl": "file://${MODULE_DIR}/src/test/resources/stitch-test/col0075_row0022_cam3.png",
-				"maskUrl": "file://${MODULE_DIR}/src/test/resources/stitch-test/test_mask.jpg"
+				"imageUrl": "src/test/resources/stitch-test/col0075_row0022_cam3.png",
+				"maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
 			}
 		},
 		"transforms": [
@@ -38,8 +38,8 @@
 	{
 		"mipmapLevels": {
 			"0": {
-				"imageUrl": "file://${MODULE_DIR}/src/test/resources/stitch-test/col0076_row0021_cam0.png",
-				"maskUrl": "file://${MODULE_DIR}/src/test/resources/stitch-test/test_mask.jpg"
+				"imageUrl": "src/test/resources/stitch-test/col0076_row0021_cam0.png",
+				"maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
 			}
 		},
 		"transforms": [
@@ -56,8 +56,8 @@
 	{
 		"mipmapLevels": {
 			"0": {
-				"imageUrl": "file://${MODULE_DIR}/src/test/resources/stitch-test/col0076_row0022_cam2.png",
-				"maskUrl": "file://${MODULE_DIR}/src/test/resources/stitch-test/test_mask.jpg"
+				"imageUrl": "src/test/resources/stitch-test/col0076_row0022_cam2.png",
+				"maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
 			}
 		},
 		"transforms": [
