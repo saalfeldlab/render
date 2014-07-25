@@ -37,55 +37,75 @@ public class RenderService {
         this.renderParametersDao = new RenderParametersDao(new File("/groups/flyTEM/flyTEM/trautmane/parameters"));
     }
 
-    @Path("{projectId}/stack/{stackId}/box/{x},{y},{width},{height}/render-parameters")
+    @Path("{projectId}/stack/{stackId}/box/{x},{y},{z},{width},{height},{zoomLevel}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public RenderParameters getRenderParameters(@PathParam("projectId") String projectId,
                                                 @PathParam("stackId") String stackId,
-                                                @PathParam("x") Integer x,
-                                                @PathParam("y") Integer y,
+                                                @PathParam("x") Double x,
+                                                @PathParam("y") Double y,
+                                                @PathParam("z") Integer z,
                                                 @PathParam("width") Integer width,
-                                                @PathParam("height") Integer height) {
+                                                @PathParam("height") Integer height,
+                                                @PathParam("zoomLevel") Integer zoomLevel) {
 
-        LOG.info("getRenderParameters: entry, projectId={}, stackId={}, x={}, y={}, width={}, height={}",
-                 projectId, stackId, x, y, width, height);
+        LOG.info("getRenderParameters: entry, projectId={}, stackId={}, x={}, y={}, z={}, width={}, height={}, zoomLevel={}",
+                 projectId, stackId, x, y, z, width, height, zoomLevel);
 
         RenderParameters parameters = null;
         try {
-            parameters = renderParametersDao.getParameters(projectId, stackId, x, y, width, height);
+            parameters = renderParametersDao.getParameters(projectId, stackId, x, y, z, width, height, zoomLevel);
         } catch (Throwable t) {
             throwServiceException(t);
         }
         return parameters;
     }
 
-    @Path("{projectId}/stack/{stackId}/box/{x},{y},{width},{height}/jpeg-image")
+    @Path("{projectId}/stack/{stackId}/box/{x},{y},{z},{width},{height},{zoomLevel}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
     public Response renderJpegImageForBox(@PathParam("projectId") String projectId,
                                           @PathParam("stackId") String stackId,
-                                          @PathParam("x") Integer x,
-                                          @PathParam("y") Integer y,
+                                          @PathParam("x") Double x,
+                                          @PathParam("y") Double y,
+                                          @PathParam("z") Integer z,
                                           @PathParam("width") Integer width,
-                                          @PathParam("height") Integer height) {
+                                          @PathParam("height") Integer height,
+                                          @PathParam("zoomLevel") Integer zoomLevel) {
 
         LOG.info("renderJpegImageForBox: entry");
-        final RenderParameters renderParameters = getRenderParameters(projectId, stackId, x, y, width, height);
+        final RenderParameters renderParameters = getRenderParameters(projectId,
+                                                                      stackId,
+                                                                      x,
+                                                                      y,
+                                                                      z,
+                                                                      width,
+                                                                      height,
+                                                                      zoomLevel);
         return renderJpegImage(projectId, renderParameters);
     }
 
-    @Path("{projectId}/stack/{stackId}/box/{x},{y},{width},{height}/png-image")
+    @Path("{projectId}/stack/{stackId}/box/{x},{y},{z},{width},{height},{zoomLevel}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
     public Response renderPngImageForBox(@PathParam("projectId") String projectId,
                                          @PathParam("stackId") String stackId,
-                                         @PathParam("x") Integer x,
-                                         @PathParam("y") Integer y,
+                                         @PathParam("x") Double x,
+                                         @PathParam("y") Double y,
+                                         @PathParam("z") Integer z,
                                          @PathParam("width") Integer width,
-                                         @PathParam("height") Integer height) {
+                                         @PathParam("height") Integer height,
+                                         @PathParam("zoomLevel") Integer zoomLevel) {
 
         LOG.info("renderPngImageForBox: entry");
-        final RenderParameters renderParameters = getRenderParameters(projectId, stackId, x, y, width, height);
+        final RenderParameters renderParameters = getRenderParameters(projectId,
+                                                                      stackId,
+                                                                      x,
+                                                                      y,
+                                                                      z,
+                                                                      width,
+                                                                      height,
+                                                                      zoomLevel);
         return renderPngImage(projectId, renderParameters);
     }
 

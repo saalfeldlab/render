@@ -1,19 +1,18 @@
 package org.janelia.render.service;
 
 import org.janelia.alignment.RenderParameters;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.net.URI;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Data access object for render parameters.
+ *
+ * This is just a "stub" to load specs directly from the file system
+ * until we figure out the long term data architecture.
  *
  * @author Eric Trautman
  */
@@ -21,6 +20,9 @@ public class RenderParametersDao {
 
     private File baseDirectory;
 
+    /**
+     * @param  baseDirectory  root directory for all specs.
+     */
     public RenderParametersDao(File baseDirectory) {
         try {
             this.baseDirectory = baseDirectory.getCanonicalFile();
@@ -36,47 +38,39 @@ public class RenderParametersDao {
         }
     }
 
+    /**
+     * @return a render parameters object for the specified stack.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     */
     public RenderParameters getParameters(String projectId,
                                           String stackId,
-                                          Integer x,
-                                          Integer y,
+                                          Double x,
+                                          Double y,
+                                          Integer z,
                                           Integer width,
-                                          Integer height)
+                                          Integer height,
+                                          Integer zoomLevel)
             throws IllegalArgumentException {
 
         validateIdName("projectId", projectId);
         validateIdName("stackId", stackId);
         validateRequiredParameter("x", x);
         validateRequiredParameter("y", y);
+        validateRequiredParameter("z", z);
         validateRequiredParameter("width", width);
         validateRequiredParameter("height", height);
+        validateRequiredParameter("zoomLevel", zoomLevel);
 
-        RenderParameters parameters = null;
-
-        final File parameterFile = getParameterFile(projectId, stackId, x, y, width, height);
-        BufferedReader reader = null;
-        try {
-
-            reader = new BufferedReader(new FileReader(parameterFile));
-            parameters = RenderParameters.DEFAULT_GSON.fromJson(reader, RenderParameters.class);
-
-        } catch (FileNotFoundException e) {
-            throw new IllegalArgumentException("parameter file " + parameterFile.getAbsolutePath() + " does not exist",
-                                               e);
-        } catch (Throwable t) {
-            throw new IllegalArgumentException("failed to parse parameter file " + parameterFile.getAbsolutePath(), t);
-
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    LOG.warn("failed to close " + parameterFile.getAbsolutePath(), e);
-                }
-            }
-        }
-
-        return parameters;
+        final File tileSpecFile = getTileSpecFile(projectId, stackId, z);
+        final URI tileSpecUri = tileSpecFile.toURI();
+        return new RenderParameters(tileSpecUri.toString(),
+                                    x,
+                                    y,
+                                    width,
+                                    height,
+                                    zoomLevel);
     }
 
     private void validateIdName(String context,
@@ -100,16 +94,13 @@ public class RenderParametersDao {
         }
     }
 
-    private File getParameterFile(String projectId,
-                                  String stackId,
-                                  Integer x,
-                                  Integer y,
-                                  Integer width,
-                                  Integer height)
+    private File getTileSpecFile(String projectId,
+                                 String stackId,
+                                 Integer z)
             throws IllegalArgumentException {
 
-        final String relativePath = projectId + '/' + stackId + '/' + x + '/' + y + '/' + width + '/' + height +'/';
-        final String name = projectId + '_' + stackId + '_' + x + '_' + y + '_' + width + '_' + height + ".json";
+        final String relativePath = projectId + '/' + stackId + '/';
+        final String name = projectId + '_' + stackId + '_' + z + ".json";
         File file = new File(baseDirectory, relativePath + name);
         try {
             file = file.getCanonicalFile();
@@ -118,8 +109,6 @@ public class RenderParametersDao {
         }
         return file;
     }
-
-    private static final Logger LOG = LoggerFactory.getLogger(RenderService.class);
 
     private static final Pattern VALID_ID_NAME = Pattern.compile("[A-Za-z0-9\\-]++");
 }
