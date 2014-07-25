@@ -130,26 +130,6 @@ public class RenderService {
         return renderImageStream(renderParameters, Utils.PNG_FORMAT, IMAGE_PNG_MIME_TYPE);
     }
 
-    @Path("{projectId}/jpeg-file")
-    @PUT
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response renderJpegFile(@PathParam("projectId") String projectId,
-                                   RenderParameters renderParameters) {
-
-        LOG.info("renderJpegFile: entry, projectId={}", projectId);
-        return renderImageFile(renderParameters, Utils.JPEG_FORMAT);
-    }
-
-    @Path("{projectId}/png-file")
-    @PUT
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response renderPngFile(@PathParam("projectId") String projectId,
-                                  RenderParameters renderParameters) {
-
-        LOG.info("renderPngFile: entry, projectId={}", projectId);
-        return renderImageFile(renderParameters, Utils.PNG_FORMAT);
-    }
-
     private Response renderImageStream(RenderParameters renderParameters,
                                        String format,
                                        String mimeType) {
@@ -174,44 +154,6 @@ public class RenderService {
         logMemoryStats();
 
         LOG.info("renderImageStream: exit");
-
-        return response;
-    }
-
-    private Response renderImageFile(RenderParameters renderParameters,
-                                     String format) {
-
-        LOG.info("renderImageFile: entry, format={}", format);
-
-        logMemoryStats();
-
-        Response response = null;
-        try {
-            final String outputPathOrUri = renderParameters.getOut();
-            if (outputPathOrUri == null) {
-                throw new IllegalArgumentException("output file not specified");
-            } else {
-                Response.ResponseBuilder responseBuilder;
-                final File outputFile = Utils.getFile(outputPathOrUri);
-                if (outputFile.exists()) {
-                    // TODO: discuss how we really want to handle existing output files
-                    LOG.info("renderImageFile: output file " + outputFile.getAbsolutePath() + " already exists");
-                    responseBuilder = Response.ok();
-                } else {
-                    final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters);
-                    Utils.saveImage(targetImage, outputPathOrUri, format, renderParameters.getQuality());
-                    responseBuilder = Response.created(renderParameters.getOutUri());
-                }
-                response = responseBuilder.build();
-            }
-
-        } catch (Throwable t) {
-            throwServiceException(t);
-        }
-
-        logMemoryStats();
-
-        LOG.info("renderImageFile: exit");
 
         return response;
     }
