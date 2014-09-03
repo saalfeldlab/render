@@ -69,9 +69,11 @@ public class ImageAndMask {
         validateFile(imageUri, "imageUrl");
         validatedImageUrl = getUrlString(imageUri);
 
-        final URI maskUri = getUri(maskUrl);
-        validateFile(maskUri, "maskUrl");
-        validatedMaskUrl = getUrlString(maskUri);
+        if (maskUrl != null) {
+            final URI maskUri = getUri(maskUrl);
+            validateFile(maskUri, "maskUrl");
+            validatedMaskUrl = getUrlString(maskUri);
+        }
     }
 
     private URI getUri(String urlString) {
@@ -96,7 +98,12 @@ public class ImageAndMask {
 
         final String scheme = uri.getScheme();
         if ((scheme == null) || FILE_SCHEME.equals(scheme)) {
-            final File file = new File(uri);
+            final File file;
+            try {
+                file = new File(uri);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("failed to convert '" + uri + "' to a file reference", e);
+            }
             if (! file.exists()) {
                 throw new IllegalArgumentException("cannot find " + context + " file '" +
                                                    file.getAbsolutePath() + "'");
