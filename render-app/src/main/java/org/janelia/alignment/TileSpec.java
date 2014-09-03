@@ -52,8 +52,26 @@ public class TileSpec {
         return width;
     }
 
+    public void setWidth(Double width) {
+        if (width != null) {
+            this.width = width.intValue();
+        }
+    }
+
     public int getHeight() {
         return height;
+    }
+
+    public void setHeight(Double height) {
+        if (height != null) {
+            this.height = height.intValue();
+        }
+    }
+
+    public void setMinIntensity(Double minIntensity) {
+        if (minIntensity != null) {
+            this.minIntensity = minIntensity;
+        }
     }
 
     public double getMinIntensity() {
@@ -62,6 +80,21 @@ public class TileSpec {
 
     public double getMaxIntensity() {
         return maxIntensity;
+    }
+
+    public void setMaxIntensity(Double maxIntensity) {
+        if (maxIntensity != null) {
+            this.maxIntensity = maxIntensity;
+        }
+    }
+
+    public void putMipmap(Integer level,
+                          ImageAndMask value) {
+        this.mipmapLevels.put(level, value);
+    }
+
+    public void addTransforms(List<Transform> transforms) {
+        this.transforms.addAll(transforms);
     }
 
     public Map.Entry<Integer, ImageAndMask> getFirstMipMapEntry() {
