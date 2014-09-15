@@ -220,13 +220,14 @@ public class Render {
                                                                              ipMipmap.getHeight());
 
             final ImageProcessorWithMasks source = new ImageProcessorWithMasks(ipMipmap, bpMaskSource, null);
-            ImageProcessorWithMasks target;
+            final ImageProcessorWithMasks target = new ImageProcessorWithMasks(tp, bpMaskTarget, null);
+            final TransformMeshMappingWithMasks<TransformMesh> mapping = new TransformMeshMappingWithMasks<TransformMesh>(mesh);
+            String mapType;
             if (skipInterpolation) {
-                target = source;
+                mapType = "";
+                mapping.map(source, target);
             } else {
-                target = new ImageProcessorWithMasks(tp, bpMaskTarget, null);
-                final TransformMeshMappingWithMasks<TransformMesh> mapping =
-                        new TransformMeshMappingWithMasks<TransformMesh>(mesh);
+                mapType = " interpolated";
                 mapping.mapInterpolated(source, target);
             }
 
@@ -258,12 +259,13 @@ public class Render {
 
             drawImageStop = System.currentTimeMillis();
 
-            LOG.debug("render: tile {} took {} milliseconds to process (load mip:{}, scale mip:{}, load/scale mask:{}, map interpolated:{}, draw image:{})",
+            LOG.debug("render: tile {} took {} milliseconds to process (load mip:{}, scale mip:{}, load/scale mask:{}, map{}:{}, draw image:{})",
                       tileSpecIndex,
                       drawImageStop - tileSpecStart,
                       loadMipStop - tileSpecStart,
                       scaleMipStop - loadMipStop,
                       loadMaskStop - scaleMipStop,
+                      mapType,
                       mapInterpolatedStop - loadMaskStop,
                       drawImageStop - mapInterpolatedStop);
 
