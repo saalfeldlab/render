@@ -93,7 +93,8 @@ public class Render {
                               final double y,
                               final double triangleSize,
                               final double scale,
-                              final boolean areaOffset)
+                              final boolean areaOffset,
+                              final boolean skipInterpolation)
             throws IllegalArgumentException {
 
         final Graphics2D targetGraphics = targetImage.createGraphics();
@@ -219,9 +220,15 @@ public class Render {
                                                                              ipMipmap.getHeight());
 
             final ImageProcessorWithMasks source = new ImageProcessorWithMasks(ipMipmap, bpMaskSource, null);
-            final ImageProcessorWithMasks target = new ImageProcessorWithMasks(tp, bpMaskTarget, null);
-            final TransformMeshMappingWithMasks<TransformMesh> mapping = new TransformMeshMappingWithMasks<TransformMesh>(mesh);
-            mapping.mapInterpolated(source, target);
+            ImageProcessorWithMasks target;
+            if (skipInterpolation) {
+                target = source;
+            } else {
+                target = new ImageProcessorWithMasks(tp, bpMaskTarget, null);
+                final TransformMeshMappingWithMasks<TransformMesh> mapping =
+                        new TransformMeshMappingWithMasks<TransformMesh>(mesh);
+                mapping.mapInterpolated(source, target);
+            }
 
             mapInterpolatedStop = System.currentTimeMillis();
 
@@ -272,9 +279,10 @@ public class Render {
                               final BufferedImage targetImage,
                               final double x,
                               final double y,
-                              final double triangleSize)
+                              final double triangleSize,
+                              final boolean skipInterpolation)
             throws IllegalArgumentException {
-        render(tileSpecs, targetImage, x, y, triangleSize, 1.0, false);
+        render(tileSpecs, targetImage, x, y, triangleSize, 1.0, false, skipInterpolation);
     }
 
     public static BufferedImage render(final List<TileSpec> tileSpecs,
@@ -284,10 +292,11 @@ public class Render {
                                        final int height,
                                        final double triangleSize,
                                        final double scale,
-                                       final boolean areaOffset)
+                                       final boolean areaOffset,
+                                       final boolean skipInterpolation)
             throws IllegalArgumentException {
         final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        render(tileSpecs, image, x, y, triangleSize, scale, areaOffset);
+        render(tileSpecs, image, x, y, triangleSize, scale, areaOffset, skipInterpolation);
         return image;
     }
 
@@ -296,9 +305,10 @@ public class Render {
                                        final double y,
                                        final int width,
                                        final int height,
-                                       final double triangleSize)
+                                       final double triangleSize,
+                                       final boolean skipInterpolation)
             throws IllegalArgumentException {
-        return render(tileSpecs, x, y, width, height, triangleSize, 1.0, false);
+        return render(tileSpecs, x, y, width, height, triangleSize, 1.0, false, skipInterpolation);
     }
 
     public static void main(final String[] args) {
@@ -335,7 +345,8 @@ public class Render {
                        params.getY(),
                        params.getRes(),
                        params.getScale(),
-                       params.isAreaOffset());
+                       params.isAreaOffset(),
+                       params.skipInterpolation());
 
                 saveStart = System.currentTimeMillis();
 

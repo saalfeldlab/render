@@ -90,6 +90,9 @@ public class RenderParameters {
     @Parameter(names = "--quality", description = "JPEG quality float [0, 1]", required = false)
     private float quality;
 
+    @Parameter(names = "--skip_interpolation", description = "enable sloppy but fast rendering by skipping interpolation", required = false)
+    private boolean skipInterpolation;
+
     /** List of tile specifications parsed from --url or deserialized directly from json. */
     private List<TileSpec> tileSpecs;
 
@@ -126,6 +129,7 @@ public class RenderParameters {
         this.scale = null;
         this.areaOffset = false;
         this.quality = DEFAULT_QUALITY;
+        this.skipInterpolation = false;
 
         this.tileSpecs = new ArrayList<TileSpec>();
 
@@ -292,8 +296,28 @@ public class RenderParameters {
         return quality;
     }
 
+    public boolean skipInterpolation() {
+        return skipInterpolation;
+    }
+
+    public boolean hasTileSpecs() {
+        return ((tileSpecs != null) && (tileSpecs.size() > 0));
+    }
+
+    public int numberOfTileSpecs() {
+        int count = 0;
+        if (tileSpecs != null) {
+            count = tileSpecs.size();
+        }
+        return count;
+    }
+
     public List<TileSpec> getTileSpecs() {
         return tileSpecs;
+    }
+
+    public void addTileSpec(TileSpec tileSpec) {
+        tileSpecs.add(tileSpec);
     }
 
     /**
@@ -461,7 +485,7 @@ public class RenderParameters {
     }
 
     private boolean readTileSpecsFromUrl() {
-        return ((url != null) && ((tileSpecs == null) || (tileSpecs.size() == 0)));
+        return ((url != null) && (! hasTileSpecs()));
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParameters.class);

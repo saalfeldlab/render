@@ -63,6 +63,7 @@ public class RenderParametersTest {
             "  \"mipmapLevel\": 0,\n" +
             "  \"areaOffset\": false,\n" +
             "  \"quality\": 0.85,\n" +
+            "  \"skipInterpolation\": false,\n" +
             "  \"tileSpecs\": [\n" +
             "    {\n" +
             "      \"mipmapLevels\": {\n" +
