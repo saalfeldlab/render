@@ -8,7 +8,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.util.List;
 
 /**
@@ -22,19 +21,19 @@ public class RenderParametersDaoTest {
 
     @BeforeClass
     public static void before() throws Exception {
-        dao = new RenderParametersDao(new File("src/test/resources/parameters"));
+        dao = new RenderParametersDao();
     }
 
     @Test
     public void testGetParameters() throws Exception {
 
-        final String project = "test-project";
-        final String stack = "stack-a";
-        final Double x = 0.0;
-        final Double y = 0.0;
-        final Integer z = 0;
-        final Integer width = 4576;
-        final Integer height = 4173;
+        final String project = "tile";
+        final String stack = "elastic";
+        final Double x = 1000.0;
+        final Double y = 3000.0;
+        final Double z = 3903.0;
+        final Integer width = 5000;
+        final Integer height = 2000;
         final Integer zoomLevel = 1;
 
         final RenderParameters parameters = dao.getParameters(project, stack, x, y, z, width, height, zoomLevel);
@@ -54,7 +53,7 @@ public class RenderParametersDaoTest {
         parameters.initializeDerivedValues();
         final List<TileSpec> tileSpecs = parameters.getTileSpecs();
         Assert.assertNotNull("null tile specs value after init", tileSpecs);
-        Assert.assertEquals("invalid number of tiles after init", 4, tileSpecs.size());
+        Assert.assertEquals("invalid number of tiles after init", 6, tileSpecs.size());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParametersDaoTest.class);

@@ -1,41 +1,56 @@
 package org.janelia.render.service;
 
+import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
+import com.mongodb.DBObject;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoCredential;
+import com.mongodb.QueryOperators;
+import com.mongodb.ServerAddress;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.TileSpec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
+import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Data access object for render parameters.
  *
- * This is just a "stub" to load specs directly from the file system
- * until we figure out the long term data architecture.
- *
  * @author Eric Trautman
  */
 public class RenderParametersDao {
 
-    private File baseDirectory;
+    private DB db;
+
+    public RenderParametersDao()
+            throws UnknownHostException {
+        // TODO: load connection parameters from a file (currently need to insert actual password below)
+        this("tile-mongodb.int.janelia.org",
+             "tileAdmin",
+             "tile",
+             "<password-here>");
+    }
 
     /**
-     * @param  baseDirectory  root directory for all specs.
+     * @param  host  database host.
      */
-    public RenderParametersDao(File baseDirectory) {
-        try {
-            this.baseDirectory = baseDirectory.getCanonicalFile();
-        } catch (IOException e) {
-            throw new IllegalArgumentException("cannot derive canonical path for render parameters base directory " +
-                                               baseDirectory.getAbsolutePath(),
-                                               e);
-        }
-
-        if (! this.baseDirectory.exists()) {
-            throw new IllegalArgumentException("render parameters base directory " + baseDirectory.getAbsolutePath() +
-                                               " does not exist");
-        }
+    public RenderParametersDao(String host,
+                               String userName,
+                               String databaseName,
+                               String password)
+            throws UnknownHostException {
+        final ServerAddress serverAddress = new ServerAddress(host);
+        final MongoCredential credential = MongoCredential.createMongoCRCredential(userName,
+                                                                                   databaseName,
+                                                                                   password.toCharArray());
+        MongoClient client = new MongoClient(serverAddress, Arrays.asList(credential));
+        this.db = client.getDB(databaseName);
     }
 
     /**
@@ -48,7 +63,7 @@ public class RenderParametersDao {
                                           String stackId,
                                           Double x,
                                           Double y,
-                                          Integer z,
+                                          Double z,
                                           Integer width,
                                           Integer height,
                                           Integer zoomLevel)
@@ -63,14 +78,58 @@ public class RenderParametersDao {
         validateRequiredParameter("height", height);
         validateRequiredParameter("zoomLevel", zoomLevel);
 
-        final File tileSpecFile = getTileSpecFile(projectId, stackId, z);
-        final URI tileSpecUri = tileSpecFile.toURI();
-        return new RenderParameters(tileSpecUri.toString(),
-                                    x,
-                                    y,
-                                    width,
-                                    height,
-                                    zoomLevel);
+        // TODO: integrate project into collection name
+
+        // TODO: this will create the collection if it doesn't exist, need efficient way to detect existence
+        final DBCollection dbCollection = db.getCollection(stackId);
+
+        final double lowerRightX = x + width;
+        final double lowerRightY = y + height;
+
+        // intersection logic stolen from java.awt.Rectangle#intersects (without overflow checks)
+        //   rx => minX, ry => minY, rw => maxX,        rh => maxY
+        //   tx => x,    ty => y,    tw => lowerRightX, th => lowerRightY
+        final DBObject tileQuery = new BasicDBObject("z", z).append(
+                                                     "minX", lte(lowerRightX)).append(
+                                                     "minY", lte(lowerRightY)).append(
+                                                     "maxX", gte(x)).append(
+                                                     "maxY", gte(y));
+
+        final DBObject keys = new BasicDBObject("tileSpec", 1).append("_id", 0);
+
+        RenderParameters renderParameters = new RenderParameters(null, x, y, width, height, zoomLevel);
+
+        final DBCursor cursor = dbCollection.find(tileQuery, keys);
+        try {
+            DBObject document;
+            Object tileSpecObject;
+            TileSpec tileSpec;
+            while (cursor.hasNext()) {
+                document = cursor.next();
+                tileSpecObject = document.get("tileSpec");
+                tileSpec = RenderParameters.DEFAULT_GSON.fromJson(tileSpecObject.toString(), TileSpec.class);
+                renderParameters.addTileSpec(tileSpec);
+            }
+        } finally {
+            cursor.close();
+        }
+
+        // TODO: is returning black image okay or do we want to throw an exception?
+//        if (! renderParameters.hasTileSpecs()) {
+//            throw new IllegalArgumentException("no tile specifications found");
+//        }
+
+        LOG.debug("found {} tile spec(s) matching {}", renderParameters.numberOfTileSpecs(), tileQuery);
+
+        return renderParameters;
+    }
+
+    private DBObject lte(double value) {
+        return new BasicDBObject(QueryOperators.LTE, value);
+    }
+
+    private DBObject gte(double value) {
+        return new BasicDBObject(QueryOperators.GTE, value);
     }
 
     private void validateIdName(String context,
@@ -94,21 +153,6 @@ public class RenderParametersDao {
         }
     }
 
-    private File getTileSpecFile(String projectId,
-                                 String stackId,
-                                 Integer z)
-            throws IllegalArgumentException {
-
-        final String relativePath = projectId + '/' + stackId + '/';
-        final String name = projectId + '_' + stackId + '_' + z + ".json";
-        File file = new File(baseDirectory, relativePath + name);
-        try {
-            file = file.getCanonicalFile();
-        } catch (IOException e) {
-            throw new IllegalArgumentException("cannot derive canonical path for " + file.getAbsolutePath(), e);
-        }
-        return file;
-    }
-
+    private static final Logger LOG = LoggerFactory.getLogger(RenderParametersDao.class);
     private static final Pattern VALID_ID_NAME = Pattern.compile("[A-Za-z0-9\\-]++");
 }

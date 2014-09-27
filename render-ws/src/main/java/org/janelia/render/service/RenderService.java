@@ -19,9 +19,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.UnknownHostException;
 
 /**
  * RESTful web service API for {@link Render} tool.
@@ -33,8 +33,9 @@ public class RenderService {
 
     private RenderParametersDao renderParametersDao;
 
-    public RenderService() {
-        this.renderParametersDao = new RenderParametersDao(new File("/groups/flyTEM/flyTEM/trautmane/parameters"));
+    public RenderService()
+            throws UnknownHostException {
+        this.renderParametersDao = new RenderParametersDao();
     }
 
     @Path("{projectId}/stack/{stackId}/box/{x},{y},{z},{width},{height},{zoomLevel}/render-parameters")
@@ -44,7 +45,7 @@ public class RenderService {
                                                 @PathParam("stackId") String stackId,
                                                 @PathParam("x") Double x,
                                                 @PathParam("y") Double y,
-                                                @PathParam("z") Integer z,
+                                                @PathParam("z") Double z,
                                                 @PathParam("width") Integer width,
                                                 @PathParam("height") Integer height,
                                                 @PathParam("zoomLevel") Integer zoomLevel) {
@@ -68,7 +69,7 @@ public class RenderService {
                                           @PathParam("stackId") String stackId,
                                           @PathParam("x") Double x,
                                           @PathParam("y") Double y,
-                                          @PathParam("z") Integer z,
+                                          @PathParam("z") Double z,
                                           @PathParam("width") Integer width,
                                           @PathParam("height") Integer height,
                                           @PathParam("zoomLevel") Integer zoomLevel) {
@@ -92,7 +93,7 @@ public class RenderService {
                                          @PathParam("stackId") String stackId,
                                          @PathParam("x") Double x,
                                          @PathParam("y") Double y,
-                                         @PathParam("z") Integer z,
+                                         @PathParam("z") Double z,
                                          @PathParam("width") Integer width,
                                          @PathParam("height") Integer height,
                                          @PathParam("zoomLevel") Integer zoomLevel) {
@@ -174,7 +175,8 @@ public class RenderService {
                       renderParameters.getY(),
                       renderParameters.getRes(),
                       renderParameters.getScale(),
-                      renderParameters.isAreaOffset());
+                      renderParameters.isAreaOffset(),
+                      renderParameters.skipInterpolation());
 
         LOG.info("validateParametersAndRenderImage: exit");
 
