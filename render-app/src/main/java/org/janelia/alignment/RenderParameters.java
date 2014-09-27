@@ -281,6 +281,10 @@ public class RenderParameters {
         return width;
     }
 
+    public int getHeight() {
+        return height;
+    }
+
     public double getScale() {
         if (scale == null) {
             scale = 1.0 / (1L << mipmapLevel);
