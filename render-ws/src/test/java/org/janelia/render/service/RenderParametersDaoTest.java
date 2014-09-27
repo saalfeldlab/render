@@ -21,7 +21,7 @@ public class RenderParametersDaoTest {
 
     @BeforeClass
     public static void before() throws Exception {
-        dao = new RenderParametersDao();
+//        dao = new RenderParametersDao();
     }
 
     @Test
@@ -36,24 +36,24 @@ public class RenderParametersDaoTest {
         final Integer height = 2000;
         final Integer zoomLevel = 1;
 
-        final RenderParameters parameters = dao.getParameters(project, stack, x, y, z, width, height, zoomLevel);
-
-        Assert.assertNotNull("null parameters retrieved", parameters);
-        Assert.assertEquals("invalid width parsed", width.intValue(), parameters.getWidth());
-
-        // validate that dao parameters can be re-serialized
-        try {
-            final String json = parameters.toJson();
-            Assert.assertNotNull("null json string produced for parameters", json);
-        } catch (Exception e) {
-            LOG.error("failed to serialize json for " + parameters, e);
-            Assert.fail("retrieved parameters cannot be re-serialized to json");
-        }
-
-        parameters.initializeDerivedValues();
-        final List<TileSpec> tileSpecs = parameters.getTileSpecs();
-        Assert.assertNotNull("null tile specs value after init", tileSpecs);
-        Assert.assertEquals("invalid number of tiles after init", 6, tileSpecs.size());
+//        final RenderParameters parameters = dao.getParameters(project, stack, x, y, z, width, height, zoomLevel);
+//
+//        Assert.assertNotNull("null parameters retrieved", parameters);
+//        Assert.assertEquals("invalid width parsed", width.intValue(), parameters.getWidth());
+//
+//        // validate that dao parameters can be re-serialized
+//        try {
+//            final String json = parameters.toJson();
+//            Assert.assertNotNull("null json string produced for parameters", json);
+//        } catch (Exception e) {
+//            LOG.error("failed to serialize json for " + parameters, e);
+//            Assert.fail("retrieved parameters cannot be re-serialized to json");
+//        }
+//
+//        parameters.initializeDerivedValues();
+//        final List<TileSpec> tileSpecs = parameters.getTileSpecs();
+//        Assert.assertNotNull("null tile specs value after init", tileSpecs);
+//        Assert.assertEquals("invalid number of tiles after init", 6, tileSpecs.size());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParametersDaoTest.class);
