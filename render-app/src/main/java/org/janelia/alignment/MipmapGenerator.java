@@ -103,7 +103,7 @@ public class MipmapGenerator {
     private String format;
     private float jpegQuality;
 
-    // TODO: cache and reuse mask files if possible
+    // TODO: handle TrakEM2 zip file masks which have different names but are really the same file
 
     /**
      * Constructs a generator for use with a specific base path.
@@ -232,16 +232,18 @@ public class MipmapGenerator {
                                     int mipmapLevelDelta)
             throws IOException {
 
-        FileOutputStream outputStream = null;
-        try {
-            outputStream = new FileOutputStream(targetMipmapFile);
-            generateMipmap(sourceUrl, mipmapLevelDelta, format, jpegQuality, outputStream);
-        } finally {
-            if (outputStream != null) {
-                try {
-                    outputStream.close();
-                } catch (Throwable t) {
-                    LOG.warn("failed to close " + targetMipmapFile.getAbsolutePath() + " (ignoring error)", t);
+        if (! targetMipmapFile.exists()) {
+            FileOutputStream outputStream = null;
+            try {
+                outputStream = new FileOutputStream(targetMipmapFile);
+                generateMipmap(sourceUrl, mipmapLevelDelta, format, jpegQuality, outputStream);
+            } finally {
+                if (outputStream != null) {
+                    try {
+                        outputStream.close();
+                    } catch (Throwable t) {
+                        LOG.warn("failed to close " + targetMipmapFile.getAbsolutePath() + " (ignoring error)", t);
+                    }
                 }
             }
         }
