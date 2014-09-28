@@ -33,59 +33,81 @@ import java.util.TreeMap;
 public class TileSpec {
 
     private TreeMap<Integer, ImageAndMask> mipmapLevels;
-    private int width;
-    private int height;
-    private double minIntensity;
-    private double maxIntensity;
+    private Double width;
+    private Double height;
+    private Double minIntensity;
+    private Double maxIntensity;
     private List<Transform> transforms;
 
     public TileSpec() {
         this.mipmapLevels = new TreeMap<Integer, ImageAndMask>();
-        this.width = -1;
-        this.height = -1;
-        this.minIntensity = 0;
-        this.maxIntensity = 255;
         this.transforms = new ArrayList<Transform>();
     }
 
     public int getWidth() {
-        return width;
+        int value = -1;
+        if (width != null) {
+            value = width.intValue();
+        }
+        return value;
     }
 
     public void setWidth(Double width) {
-        if (width != null) {
-            this.width = width.intValue();
-        }
+        this.width = width;
     }
 
     public int getHeight() {
-        return height;
+        int value = -1;
+        if (height != null) {
+            value = height.intValue();
+        }
+        return value;
     }
 
     public void setHeight(Double height) {
-        if (height != null) {
-            this.height = height.intValue();
-        }
+        this.height = height;
     }
 
     public void setMinIntensity(Double minIntensity) {
-        if (minIntensity != null) {
-            this.minIntensity = minIntensity;
-        }
+        this.minIntensity = minIntensity;
     }
 
     public double getMinIntensity() {
-        return minIntensity;
+        double value = 0;
+        if (minIntensity != null) {
+            value = minIntensity;
+        }
+        return value;
     }
 
     public double getMaxIntensity() {
-        return maxIntensity;
+        double value = 255;
+        if (maxIntensity != null) {
+            value = maxIntensity;
+        }
+        return value;
     }
 
     public void setMaxIntensity(Double maxIntensity) {
-        if (maxIntensity != null) {
-            this.maxIntensity = maxIntensity;
-        }
+        this.maxIntensity = maxIntensity;
+    }
+
+    /**
+     * @param  level  desired mipmap level.
+     *
+     * @return true if this tile spec contains mipmap for the specified level; otherwise false.
+     */
+    public boolean hasMipmap(Integer level) {
+        return mipmapLevels.containsKey(level);
+    }
+
+    /**
+     * @param  level  desired mipmap level.
+     *
+     * @return the mipmap for the specified level or null if none exists.
+     */
+    public ImageAndMask getMipmap(Integer level) {
+        return mipmapLevels.get(level);
     }
 
     public void putMipmap(Integer level,
@@ -97,12 +119,12 @@ public class TileSpec {
         this.transforms.addAll(transforms);
     }
 
-    public Map.Entry<Integer, ImageAndMask> getFirstMipMapEntry() {
+    public Map.Entry<Integer, ImageAndMask> getFirstMipmapEntry() {
         return mipmapLevels.firstEntry();
     }
 
-    public Map.Entry<Integer, ImageAndMask> getFloorMipMapEntry(Integer mipMapLevel) {
-        Map.Entry<Integer, ImageAndMask> floorEntry = mipmapLevels.floorEntry(mipMapLevel);
+    public Map.Entry<Integer, ImageAndMask> getFloorMipmapEntry(Integer mipmapLevel) {
+        Map.Entry<Integer, ImageAndMask> floorEntry = mipmapLevels.floorEntry(mipmapLevel);
         if (floorEntry == null) {
             floorEntry = mipmapLevels.firstEntry();
         }
