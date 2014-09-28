@@ -36,12 +36,12 @@ public class TileSpecTest {
         Assert.assertNotNull("json parse returned null spec", tileSpec);
         Assert.assertEquals("invalid width parsed", EXPECTED_WIDTH, tileSpec.getWidth());
 
-        final Map.Entry<Integer, ImageAndMask> firstMipMap = tileSpec.getFirstMipMapEntry();
+        final Map.Entry<Integer, ImageAndMask> firstMipMap = tileSpec.getFirstMipmapEntry();
         Assert.assertNotNull("first mipmap entry is null", firstMipMap);
         Assert.assertEquals("mipmap sorting failed, unexpected first entry returned",
                             new Integer(0), firstMipMap.getKey());
 
-        final Map.Entry<Integer, ImageAndMask> floorMipMap = tileSpec.getFloorMipMapEntry(3);
+        final Map.Entry<Integer, ImageAndMask> floorMipMap = tileSpec.getFloorMipmapEntry(3);
         Assert.assertNotNull("floor 3 mipmap entry is null", floorMipMap);
         Assert.assertEquals("invalid key for floor 3 mipmap entry",
                             new Integer(2), floorMipMap.getKey());

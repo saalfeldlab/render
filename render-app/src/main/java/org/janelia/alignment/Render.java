@@ -146,7 +146,7 @@ public class Render {
             int height = ts.getHeight();
             // figure width and height
             if ((width < 0) || (height < 0)) {
-                mipmapEntry = ts.getFirstMipMapEntry();
+                mipmapEntry = ts.getFirstMipmapEntry();
                 imageAndMask = mipmapEntry.getValue();
                 // load image TODO use Bioformats for strange formats
                 final String imgUrl = imageAndMask.getImageUrl();
@@ -169,7 +169,7 @@ public class Render {
             final ImageProcessor ipMipmap;
             if (ip == null) {
                 // load image TODO use Bioformats for strange formats
-                mipmapEntry = ts.getFloorMipMapEntry(mipmapLevel);
+                mipmapEntry = ts.getFloorMipmapEntry(mipmapLevel);
                 imageAndMask = mipmapEntry.getValue();
                 final String imgUrl = imageAndMask.getImageUrl();
                 final ImagePlus imp = Utils.openImagePlusUrl(imgUrl);

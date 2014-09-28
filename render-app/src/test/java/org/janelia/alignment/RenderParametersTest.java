@@ -77,10 +77,6 @@ public class RenderParametersTest {
             "          \"imageUrl\": \"file:///Users/trautmane/spec0-level2.png\"\n" +
             "        }\n" +
             "      },\n" +
-            "      \"width\": -1,\n" +
-            "      \"height\": -1,\n" +
-            "      \"minIntensity\": 0.0,\n" +
-            "      \"maxIntensity\": 255.0,\n" +
             "      \"transforms\": [\n" +
             "        {\n" +
             "          \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
@@ -94,10 +90,6 @@ public class RenderParametersTest {
             "          \"imageUrl\": \"file:///Users/trautmane/spec1-level0.png\"\n" +
             "        }\n" +
             "      },\n" +
-            "      \"width\": -1,\n" +
-            "      \"height\": -1,\n" +
-            "      \"minIntensity\": 0.0,\n" +
-            "      \"maxIntensity\": 255.0,\n" +
             "      \"transforms\": [\n" +
             "        {\n" +
             "          \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
