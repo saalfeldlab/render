@@ -1,0 +1,1 @@
+This file exists to make sure the mipmap-test parent directory gets created by git for testing.

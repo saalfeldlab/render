@@ -27,7 +27,7 @@ public class ImageAndMaskTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testValidateWithNullImage() throws Exception {
-        ImageAndMask imageAndMask = new ImageAndMask(null, null);
+        ImageAndMask imageAndMask = new ImageAndMask();
         imageAndMask.validate();
     }
 

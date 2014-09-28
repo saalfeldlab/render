@@ -34,6 +34,13 @@ public class ImageAndMask {
     private transient String validatedImageUrl;
     private transient String validatedMaskUrl;
 
+    public ImageAndMask() {
+        this.imageUrl = null;
+        this.maskUrl = null;
+        this.validatedImageUrl = null;
+        this.validatedMaskUrl = null;
+    }
+
     public ImageAndMask(String imageUrl,
                         String maskUrl) {
         this.imageUrl = imageUrl;
@@ -42,11 +49,31 @@ public class ImageAndMask {
         this.validatedMaskUrl = null;
     }
 
+    public ImageAndMask(File imageFile,
+                        File maskFile) {
+        if (imageFile != null) {
+            this.imageUrl = imageFile.toURI().toString();
+        }
+        if (maskFile != null) {
+            this.maskUrl = maskFile.toURI().toString();
+        }
+        this.validatedImageUrl = null;
+        this.validatedMaskUrl = null;
+    }
+
+    public boolean hasImage() {
+        return imageUrl != null;
+    }
+
     public String getImageUrl() throws IllegalArgumentException {
         if ((validatedImageUrl == null) && (imageUrl != null)) {
             validatedImageUrl = getUrlString(getUri(imageUrl));
         }
         return validatedImageUrl;
+    }
+
+    public boolean hasMask() {
+        return maskUrl != null;
     }
 
     public String getMaskUrl() throws IllegalArgumentException {
