@@ -9,11 +9,21 @@ import javax.imageio.stream.ImageOutputStream;
 import javax.imageio.stream.MemoryCacheImageOutputStream;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.net.URI;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /**
  * Utility to generate mipmap files.
@@ -58,7 +68,8 @@ public class MipmapGenerator {
 
                 MipmapGenerator mipmapGenerator = new MipmapGenerator(params.getRootDirectory(),
                                                                       params.getFormat(),
-                                                                      params.getQuality());
+                                                                      params.getQuality(),
+                                                                      params.consolidateMasks());
 
                 final int mipmapLevel = params.getMipmapLevel();
                 final List<TileSpec> tileSpecs = params.getTileSpecs();
@@ -102,22 +113,35 @@ public class MipmapGenerator {
     private File rootDirectory;
     private String format;
     private float jpegQuality;
-
-    // TODO: handle TrakEM2 zip file masks which have different names but are really the same file
+    private boolean consolidateMasks;
+    private MessageDigest messageDigest;
+    private Map<String, File> sourceDigestToMaskMipmapBaseFileMap;
 
     /**
      * Constructs a generator for use with a specific base path.
      *
-     * @param  rootDirectory  the root directory for all generated mipmap files.
-     * @param  format         the format for all generated mipmap files.
-     * @param  jpegQuality    the jpg quality factor (0.0 to 1.0) which is only used when generating jpg mipmaps.
+     * @param  rootDirectory     the root directory for all generated mipmap files.
+     * @param  format            the format for all generated mipmap files.
+     * @param  jpegQuality       the jpg quality factor (0.0 to 1.0) which is only used when generating jpg mipmaps.
+     * @param  consolidateMasks  if true, consolidate equivalent zipped TrakEM2 mask files.
      */
     public MipmapGenerator(File rootDirectory,
                            String format,
-                           float jpegQuality) {
+                           float jpegQuality,
+                           boolean consolidateMasks) {
         this.rootDirectory = rootDirectory;
         this.format = format;
         this.jpegQuality = jpegQuality;
+        this.consolidateMasks = consolidateMasks;
+
+        if (consolidateMasks) {
+            try {
+                messageDigest = MessageDigest.getInstance("MD5");
+            } catch (NoSuchAlgorithmException e) {
+                throw new IllegalStateException("failed to create MD5 message digest for TrakEM2 mask files", e);
+            }
+            this.sourceDigestToMaskMipmapBaseFileMap = new HashMap<String, File>();
+        }
     }
 
     /**
@@ -147,14 +171,24 @@ public class MipmapGenerator {
             throw new IllegalArgumentException("level 0 mipmap is missing from " + tileSpec);
         }
 
-        final boolean hasMask = imageAndMask.hasMask();
-
         final File imageMipmapBaseFile = getMipmapBaseFile(imageAndMask.getImageUrl(), true);
-        final File maskMipmapBaseFile;
+
+        File maskMipmapBaseFile = null;
+        final boolean hasMask = imageAndMask.hasMask();
         if (hasMask) {
+
             maskMipmapBaseFile = getMipmapBaseFile(imageAndMask.getMaskUrl(), true);
-        } else {
-            maskMipmapBaseFile = null;
+
+            if (consolidateMasks) {
+                final File sourceMaskFile = getFileForUrlString(imageAndMask.getMaskUrl());
+                final String sourceDigest = getDigest(sourceMaskFile);
+                if (sourceDigestToMaskMipmapBaseFileMap.containsKey(sourceDigest)) {
+                    maskMipmapBaseFile = sourceDigestToMaskMipmapBaseFileMap.get(sourceDigest);
+                } else {
+                    sourceDigestToMaskMipmapBaseFileMap.put(sourceDigest, maskMipmapBaseFile);
+                }
+            }
+
         }
 
         File imageMipmapFile;
@@ -207,8 +241,7 @@ public class MipmapGenerator {
     protected File getMipmapBaseFile(String levelZeroSourceUrl,
                                      boolean createMissingDirectories)
             throws IllegalArgumentException, IOException {
-        final URI uri = Utils.convertPathOrUriStringToUri(levelZeroSourceUrl);
-        final File sourceFile = new File(uri);
+        final File sourceFile = getFileForUrlString(levelZeroSourceUrl);
         final File sourceDirectory = sourceFile.getParentFile().getCanonicalFile();
         final File mipmapBaseDirectory = new File(rootDirectory, sourceDirectory.getAbsolutePath()).getCanonicalFile();
         if (! mipmapBaseDirectory.exists()) {
@@ -220,6 +253,11 @@ public class MipmapGenerator {
             }
         }
         return new File(mipmapBaseDirectory, sourceFile.getName());
+    }
+
+    private File getFileForUrlString(String url) {
+        final URI uri = Utils.convertPathOrUriStringToUri(url);
+        return new File(uri);
     }
 
     private File getMipmapFile(File mipmapBaseFile,
@@ -247,6 +285,61 @@ public class MipmapGenerator {
                 }
             }
         }
+    }
+
+    private String getDigest(File file)
+            throws IOException {
+
+        messageDigest.reset();
+
+        ZipFile zipFile = null;
+        InputStream inputStream = null;
+        try {
+
+            if (file.getAbsolutePath().endsWith(".zip")) {
+                zipFile = new ZipFile(file);
+                final Enumeration<? extends ZipEntry> e = zipFile.entries();
+                if (e.hasMoreElements()) {
+                    final ZipEntry zipEntry = e.nextElement();
+                    // only use unzipped input stream if the zipped file contains a single mask
+                    if (! e.hasMoreElements()) {
+                        inputStream = zipFile.getInputStream(zipEntry);
+                    }
+                }
+            }
+
+            if (inputStream == null) {
+                inputStream = new FileInputStream(file);
+            }
+
+            final byte[] bytes = new byte[2048];
+            int numBytes;
+            while ((numBytes = inputStream.read(bytes)) != -1) {
+                messageDigest.update(bytes, 0, numBytes);
+            }
+
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    LOG.warn("failed to close " + file.getAbsolutePath() + ", ignoring error", e);
+                }
+            }
+            if (zipFile != null) {
+                try {
+                    zipFile.close();
+                } catch (IOException e) {
+                    LOG.warn("failed to close zip file " + file.getAbsolutePath() + ", ignoring error", e);
+                }
+            }
+        }
+
+        final byte[] digest = messageDigest.digest();
+
+        // create string representation of digest that matches output generated by tools like md5sum
+        BigInteger bigInt = new BigInteger(1, digest);
+        return bigInt.toString(16);
     }
 
     /**

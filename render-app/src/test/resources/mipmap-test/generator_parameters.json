@@ -1,0 +1,9 @@
+{
+    "rootDirectoryPath": "src/test",
+    "mipmapLevel": 2,
+    "format": "jpg",
+    "quality": 0.85,
+    "outputFileName": "src/test/updated_tile_specs.json",
+    "url": "src/test/resources/mipmap-test/generator_tile_specs.json"
+}
+

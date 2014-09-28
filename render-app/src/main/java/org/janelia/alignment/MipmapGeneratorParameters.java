@@ -10,6 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -46,11 +48,14 @@ public class MipmapGeneratorParameters {
     @Parameter(names = "--quality", description = "JPEG quality float [0, 1] (default is 0.85)", required = false)
     private float quality;
 
-    @Parameter(names = "--url", description = "url referencing input tile spec data (JSON)", required = false)
+    @Parameter(names = "--url", description = "URL referencing input tile spec data (JSON)", required = false)
     private String url;
 
-    @Parameter(names = "--out", description = "output file for updated JSON tile spec data ", required = false)
+    @Parameter(names = "--out", description = "Output file for updated JSON tile spec data ", required = false)
     private String outputFileName;
+
+    @Parameter(names = "--consolidate_masks", description = "Consolidate equivalent zipped TrakEM2 mask files", required = false)
+    private boolean consolidateMasks;
 
     /** List of tile specifications parsed from --url or deserialized directly from json. */
     private List<TileSpec> tileSpecs;
@@ -72,6 +77,7 @@ public class MipmapGeneratorParameters {
         this.quality = DEFAULT_QUALITY;
         this.url = null;
         this.outputFileName = null;
+        this.consolidateMasks = false;
 
         this.tileSpecs = new ArrayList<TileSpec>();
 
@@ -96,6 +102,66 @@ public class MipmapGeneratorParameters {
             throw new IllegalArgumentException("failed to parse command line arguments", t);
         }
         parameters.initializeDerivedValues();
+        return parameters;
+    }
+
+    /**
+     * @param  jsonReader  reader to parse.
+     *
+     * @return parameters instance populated by parsing the specified json reader's stream.
+     *
+     * @throws IllegalArgumentException
+     *   if the json cannot be parsed.
+     */
+    public static MipmapGeneratorParameters parseJson(Reader jsonReader) throws IllegalArgumentException {
+        MipmapGeneratorParameters parameters;
+        try {
+            parameters = DEFAULT_GSON.fromJson(jsonReader, MipmapGeneratorParameters.class);
+        } catch (Throwable t) {
+            throw new IllegalArgumentException("failed to parse json reader stream", t);
+        }
+        return parameters;
+    }
+
+    /**
+     * @param  jsonFile  reader to parse.
+     *
+     * @return parameters instance populated by parsing the specified json reader's stream.
+     *
+     * @throws IllegalArgumentException
+     *   if the json cannot be parsed.
+     */
+    public static MipmapGeneratorParameters parseJson(File jsonFile) throws IllegalArgumentException {
+
+        if (! jsonFile.exists()) {
+            throw new IllegalArgumentException("mipmap generator parameters json file " + jsonFile.getAbsolutePath() +
+                                               " does not exist");
+        }
+
+        if (! jsonFile.canRead()) {
+            throw new IllegalArgumentException("mipmap generator parameters json file " + jsonFile.getAbsolutePath() +
+                                               " is not readable");
+        }
+
+        FileReader parametersReader;
+        try {
+            parametersReader = new FileReader(jsonFile);
+        } catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("mipmap generator parameters json file " + jsonFile.getAbsolutePath() +
+                                               " does not exist", e);
+        }
+
+        MipmapGeneratorParameters parameters;
+        try {
+            parameters = MipmapGeneratorParameters.parseJson(parametersReader);
+        } finally {
+            try {
+                parametersReader.close();
+            } catch (IOException e) {
+                LOG.warn("failed to close reader for " + jsonFile.getAbsolutePath() + ", ignoring error", e);
+            }
+        }
+
         return parameters;
     }
 
@@ -137,6 +203,10 @@ public class MipmapGeneratorParameters {
             outputFile = getCanonicalFile(outputFileName);
         }
         return outputFile;
+    }
+
+    public boolean consolidateMasks() {
+        return consolidateMasks;
     }
 
     public boolean hasTileSpecs() {
@@ -226,6 +296,7 @@ public class MipmapGeneratorParameters {
                ", quality=" + quality +
                ", url='" + url + '\'' +
                ", outputFileName='" + outputFileName + '\'' +
+               ", consolidateMasks=" + consolidateMasks +
                ", numberOfTileSpecs=" + numberOfTileSpecs() +
                ", initialized=" + initialized +
                '}';

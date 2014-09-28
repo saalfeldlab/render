@@ -1,0 +1,34 @@
+[
+    {
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/col0075_row0021_cam1.png",
+                "maskUrl": "src/test/resources/mipmap-test/mask-49.134.zip"
+            }
+        }
+    },
+    {
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/col0075_row0022_cam3.png",
+                "maskUrl": "src/test/resources/mipmap-test/mask-50.135.zip"
+            }
+        }
+    },
+    {
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/col0076_row0021_cam0.png",
+                "maskUrl": "src/test/resources/mipmap-test/mask-51.136.tif"
+            }
+        }
+    },
+    {
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/col0076_row0022_cam2.png",
+                "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
+            }
+        }
+    }
+]
