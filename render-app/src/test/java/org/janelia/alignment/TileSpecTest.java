@@ -34,6 +34,7 @@ public class TileSpecTest {
         final TileSpec tileSpec = getTileSpec(JSON_WITH_UNSORTED_MIPMAP_LEVELS);
 
         Assert.assertNotNull("json parse returned null spec", tileSpec);
+        Assert.assertEquals("invalid tileId parsed", EXPECTED_TILE_ID, tileSpec.getTileId());
         Assert.assertEquals("invalid width parsed", EXPECTED_WIDTH, tileSpec.getWidth());
 
         final Map.Entry<Integer, ImageAndMask> firstMipMap = tileSpec.getFirstMipmapEntry();
@@ -41,10 +42,15 @@ public class TileSpecTest {
         Assert.assertEquals("mipmap sorting failed, unexpected first entry returned",
                             new Integer(0), firstMipMap.getKey());
 
-        final Map.Entry<Integer, ImageAndMask> floorMipMap = tileSpec.getFloorMipmapEntry(3);
+        Map.Entry<Integer, ImageAndMask> floorMipMap = tileSpec.getFloorMipmapEntry(3);
         Assert.assertNotNull("floor 3 mipmap entry is null", floorMipMap);
         Assert.assertEquals("invalid key for floor 3 mipmap entry",
-                            new Integer(2), floorMipMap.getKey());
+                            new Integer(3), floorMipMap.getKey());
+
+        floorMipMap = tileSpec.getFloorMipmapEntry(4);
+        Assert.assertNotNull("floor 4 mipmap entry is null", floorMipMap);
+        Assert.assertEquals("invalid key for floor 3 mipmap entry",
+                            new Integer(3), floorMipMap.getKey());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -62,10 +68,16 @@ public class TileSpecTest {
         return RenderParameters.DEFAULT_GSON.fromJson(json, TileSpec.class);
     }
 
+    private static final String EXPECTED_TILE_ID = "test-tile-id";
     private static final int EXPECTED_WIDTH = 99;
 
     private static final String JSON_WITH_UNSORTED_MIPMAP_LEVELS =
             "{\n" +
+            "  \"tileId\": " + EXPECTED_TILE_ID + ",\n" +
+            "  \"width\": " + EXPECTED_WIDTH + ",\n" +
+            "  \"height\": -1,\n" +
+            "  \"minIntensity\": 0.0,\n" +
+            "  \"maxIntensity\": 255.0,\n" +
             "  \"mipmapLevels\": {\n" +
             "    \"2\": {\n" +
             "      \"imageUrl\": \"file:///Users/trautmane/spec0-level2.png\"\n" +
@@ -75,12 +87,11 @@ public class TileSpecTest {
             "    },\n" +
             "    \"1\": {\n" +
             "      \"imageUrl\": \"file:///Users/trautmane/spec0-level1.png\"\n" +
+            "    },\n" +
+            "    \"3\": {\n" +
+            "      \"imageUrl\": \"file:///Users/trautmane/spec0-level3.png\"\n" +
             "    }\n" +
             "  },\n" +
-            "  \"width\": " + EXPECTED_WIDTH + ",\n" +
-            "  \"height\": -1,\n" +
-            "  \"minIntensity\": 0.0,\n" +
-            "  \"maxIntensity\": 255.0,\n" +
             "  \"transforms\": [\n" +
             "    {\n" +
             "      \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
