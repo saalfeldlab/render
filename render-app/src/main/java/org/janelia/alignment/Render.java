@@ -220,6 +220,15 @@ public class Render {
                                                                              ipMipmap.getHeight());
 
             final ImageProcessorWithMasks source = new ImageProcessorWithMasks(ipMipmap, bpMaskSource, null);
+
+            // if source.mask gets "quietly" removed (because of size), we need to also remove bpMaskSource
+            if ((bpMaskTarget != null) && (source.mask == null)) {
+                LOG.warn("removing mask because ipMipmap and bpMaskSource differ in size, ipMipmap: " +
+                         ipMipmap.getWidth() + "x" + ipMipmap.getHeight() + ", bpMaskSource: " +
+                         bpMaskSource.getWidth() + "x" + bpMaskSource.getHeight());
+                bpMaskTarget = null;
+            }
+
             final ImageProcessorWithMasks target = new ImageProcessorWithMasks(tp, bpMaskTarget, null);
             final TransformMeshMappingWithMasks<TransformMesh> mapping = new TransformMeshMappingWithMasks<TransformMesh>(mesh);
             String mapType;
