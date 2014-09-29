@@ -83,6 +83,14 @@ public class ImageAndMask {
         return validatedMaskUrl;
     }
 
+    @Override
+    public String toString() {
+        return "ImageAndMask{" +
+               "imageUrl='" + imageUrl + '\'' +
+               ", maskUrl='" + maskUrl + '\'' +
+               '}';
+    }
+
     /**
      * @throws IllegalArgumentException
      *   if the image or mask URLs are invalid.
