@@ -95,19 +95,15 @@ public class RenderParametersDao {
                                                      "maxX", gte(x)).append(
                                                      "maxY", gte(y));
 
-        final DBObject keys = new BasicDBObject("tileSpec", 1).append("_id", 0);
-
         RenderParameters renderParameters = new RenderParameters(null, x, y, width, height, zoomLevel);
 
-        final DBCursor cursor = dbCollection.find(tileQuery, keys);
+        final DBCursor cursor = dbCollection.find(tileQuery);
         try {
             DBObject document;
-            Object tileSpecObject;
             TileSpec tileSpec;
             while (cursor.hasNext()) {
                 document = cursor.next();
-                tileSpecObject = document.get("tileSpec");
-                tileSpec = RenderParameters.DEFAULT_GSON.fromJson(tileSpecObject.toString(), TileSpec.class);
+                tileSpec = RenderParameters.DEFAULT_GSON.fromJson(document.toString(), TileSpec.class);
                 renderParameters.addTileSpec(tileSpec);
             }
         } finally {
