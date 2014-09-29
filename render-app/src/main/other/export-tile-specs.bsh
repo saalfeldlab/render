@@ -1,109 +1,120 @@
-import mpicbg.models.CoordinateTransformList;
+import ij.*;
+import ij.gui.*;
+import ij.io.*;
+import ini.trakem2.display.*;
+import mpicbg.trakem2.transform.*;
 
-nl = "\n";
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
-void flattenTransforms(ct, list) {
-	if (CoordinateTransformList.class.isInstance(ct)) {
-		for(cti : ct.getList(null))
-			flattenTransforms(cti, list);
-	}
-	else
-		list.add(ct);
-}
+    public void flattenTransforms(CoordinateTransform ct, List flattenedList) {
+        if (CoordinateTransformList.class.isInstance(ct)) {
+            for (CoordinateTransform ctListItem : ct.getList(null)) {
+                flattenTransforms(ctListItem, flattenedList);
+            }
+        } else {
+            flattenedList.add(ct);
+        }
+    }
 
-String createTransforms(patch) {
-	ct = patch.getFullCoordinateTransform();
-	if (ct == null)
-		return null;
+    public boolean appendIfNotFirst(boolean isFirst,
+                                    String text,
+                                    StringBuilder b) {
+        if (! isFirst) {
+            b.append(text);
+        }
+        return false;
+    }
 
-	transforms = new ArrayList();
-	flattenTransforms(ct, transforms);
-	
-	t = transforms.get(0);
-	b = new StringBuffer("  \"transforms\" : [");
-	b.append("{");
-	b.append(nl);
-	b.append("    \"className\" : \"");
-	b.append(t.getClass().getCanonicalName());
-	b.append("\",");
-	b.append(nl);
-	
-	b.append("    \"dataString\" : \"");
-	b.append(t.toDataString());
-	b.append("\"");
-	b.append(nl);
-	b.append("  }");
+    public void appendTransformsJson(List transforms,
+                                     StringBuilder b) {
 
-	for (int i = 1; i < transforms.size(); ++i) {
-		t = transforms.get(i);
-		b.append(", {");
-		b.append(nl);
+        b.append("  \"transforms\": [\n");
 
-		b.append("    \"className\" : \"");
-		b.append(t.getClass().getCanonicalName());
-		b.append("\",");
-		b.append(nl);
-		
-		b.append("    \"dataString\" : \"");
-		b.append(t.toDataString());
-		b.append("\"");
-		b.append(nl);
+        boolean isFirst = true;
+        for (CoordinateTransform t : transforms) {
+            isFirst = appendIfNotFirst(isFirst, ",\n", b);
+            b.append("    {\n");
+            b.append("      \"className\": \"").append(t.getClass().getCanonicalName()).append("\",\n");
+            b.append("      \"dataString\": \"").append(t.toDataString()).append("\"\n");
+            b.append("    }");
+        }
 
-		b.append("  }");
-	}
+        b.append("\n  ]");
+    }
 
-	b.append("]");
-	return b.toString();
-}
+    public void appendPatchJson(Patch patch,
+                                double z,
+                                StringBuilder b) {
+
+        CoordinateTransform ct = patch.getFullCoordinateTransform();
+
+        List transforms = new ArrayList();
+        flattenTransforms(ct, transforms);
+
+        TransformMesh m = new TransformMesh(ct, patch.getMeshResolution(), patch.getOWidth(), patch.getOHeight());
+        Rectangle box = m.getBoundingBox();
+
+        b.append("{\n");
+        b.append("  \"tileId\": \"").append(patch.getUniqueIdentifier()).append("\",\n");
+        b.append("  \"z\": ").append(z).append(",\n");
+        b.append("  \"minX\": ").append(box.getX()).append(",\n");
+        b.append("  \"minY\": ").append(box.getY()).append(",\n");
+        b.append("  \"maxX\": ").append(box.getMaxX()).append(",\n");
+        b.append("  \"maxY\": ").append(box.getMaxY()).append(",\n");
+        b.append("  \"width\": ").append(patch.getOWidth()).append(",\n");
+        b.append("  \"height\": ").append(patch.getOHeight()).append(",\n");
+        b.append("  \"minIntensity\": ").append(patch.getMin()).append(",\n");
+        b.append("  \"maxIntensity\": ").append(patch.getMax()).append(",\n");
+        b.append("  \"mipmapLevels\": {\n");
+        b.append("    \"0\": {\n");
+        b.append("      \"imageUrl\": \"file:").append(patch.getFilePath()).append("\",\n");
+        b.append("      \"maskUrl\": \"file:").append(patch.getAlphaMaskFilePath()).append("\"\n");
+        b.append("    }\n");
+        b.append("  },\n");
+
+        appendTransformsJson(transforms, b);
+
+        b.append("\n}");
+    }
 
 
-String createTileSpec(patch) {
-	b = new StringBuffer("{");
+    public String layerToJson(Layer layer) {
+        StringBuilder json = new StringBuilder(2048);
+        boolean isFirst = true;
+        for (Displayable p : layer.getDisplayables(Patch.class)) {
+            isFirst = appendIfNotFirst(isFirst, ",\n", json);
+            appendPatchJson((Patch) p, layer.getZ(), json);
+        }
+        return json.toString();
+    }
 
-	b.append(nl);
-	b.append("  \"mipmapLevels\" : {");
-	b.append(nl);
-	b.append("    \"0\" : {");
-	b.append(nl);
-	b.append("      \"imageUrl\" : \"file:");
-	b.append(patch.getFilePath());
-	b.append("\"");
-	b.append(nl);
-	b.append("    }");
-	b.append(nl);
-	b.append("  },");
-	b.append(nl);
-	
-	b.append("  \"minIntensity\" : ");
-	b.append(patch.getMin());
-	b.append(",");
-	b.append(nl);
-	
-	b.append("  \"maxIntensity\" : ");
-	b.append(patch.getMax());
-	b.append(",");
-	b.append(nl);
-	
-	b.append("  \"width\" : ");
-	b.append(patch.getOWidth());
-	b.append(",");
-	b.append(nl);
-	
-	b.append("  \"height\" : ");
-	b.append(patch.getOHeight());
-	
-	transforms = createTransforms(patch);
-	if (transforms != null)
-	{
-		b.append(",");
-		b.append(nl);
-		b.append(transforms);
-	}
+    public void logLayerSetJson(LayerSet layerSet) {
+        boolean isFirst = true;
+        for (Layer layer : layerSet.getLayers()) {
+            if (isFirst) {
+                isFirst = false;
+                IJ.log("[");
+            } else {
+                IJ.log(",");
+            }
+            IJ.log(layerToJson(layer));
+        }
+        IJ.log("]");
+    }
 
-	b.append(nl);
-	b.append("}");
+    public void logCurrentLayer() {
+        IJ.log(layerToJson(Display.getFront().getLayer()));
+        print("Done");
+    }
 
-	return b.toString();
-}
+    public void logCurrentLayerSet() {
+        logLayerSetJson(Display.getFront().getLayerSet());
+        print("Done");
+    }    
 
-IJ.log(createTileSpec(Display.getFront().getActive()));
+//logCurrentLayer();
+logCurrentLayerSet();
+
+
