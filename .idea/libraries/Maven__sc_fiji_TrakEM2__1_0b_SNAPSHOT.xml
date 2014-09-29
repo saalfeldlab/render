@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: sc.fiji:TrakEM2_:1.0b-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/sc/fiji/TrakEM2_/1.0b-SNAPSHOT/TrakEM2_-1.0b-20140408.224302-38.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/sc/fiji/TrakEM2_/1.0b-SNAPSHOT/TrakEM2_-1.0b-20140408.224302-38-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/sc/fiji/TrakEM2_/1.0b-SNAPSHOT/TrakEM2_-1.0b-20140408.224302-38-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
