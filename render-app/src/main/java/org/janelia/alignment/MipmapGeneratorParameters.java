@@ -304,7 +304,7 @@ public class MipmapGeneratorParameters {
 
     private void setCommander() {
         jCommander = new JCommander(this);
-        jCommander.setProgramName("java -cp render-app.jar " + MipmapGenerator.class);
+        jCommander.setProgramName("java -cp render-app.jar " + MipmapGenerator.class.getName());
     }
 
     private File getCanonicalFile(String name) {
