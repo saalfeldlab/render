@@ -18,7 +18,9 @@ package org.janelia.alignment;
 
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
+import mpicbg.trakem2.transform.TransformMesh;
 
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,16 +34,80 @@ import java.util.TreeMap;
  */
 public class TileSpec {
 
-    private TreeMap<Integer, ImageAndMask> mipmapLevels;
+    private String tileId;
+    private Double z;
+    private Double minX;
+    private Double minY;
+    private Double maxX;
+    private Double maxY;
     private Double width;
     private Double height;
     private Double minIntensity;
     private Double maxIntensity;
+    private TreeMap<Integer, ImageAndMask> mipmapLevels;
     private List<Transform> transforms;
 
     public TileSpec() {
         this.mipmapLevels = new TreeMap<Integer, ImageAndMask>();
         this.transforms = new ArrayList<Transform>();
+    }
+
+    public String getTileId() {
+        return tileId;
+    }
+
+    public void setTileId(String tileId) {
+        this.tileId = tileId;
+    }
+
+    public Double getZ() {
+        return z;
+    }
+
+    public void setZ(Double z) {
+        this.z = z;
+    }
+
+    public boolean isBoundingBoxDefined() {
+        return ((minX != null) && (minY != null) && (maxX != null) && (maxY != null));
+    }
+
+    public void setBoundingBox(Rectangle box) {
+        this.minX = box.getX();
+        this.minY = box.getY();
+        this.maxX = box.getMaxX();
+        this.maxY = box.getMaxY();
+    }
+
+    /**
+     * Derives this tile's bounding box attributes.
+     *
+     * @param  force  if true, attributes will always be derived;
+     *                otherwise attributes will only be derived if they do not already exist.
+     *
+     * @throws IllegalStateException
+     *   if width, height, or transforms have not been defined for this tile.
+     */
+    public void deriveBoundingBox(boolean force)
+            throws IllegalStateException {
+
+        if (force || (! isBoundingBoxDefined())) {
+
+            if ((width == null) || (height == null)) {
+                throw new IllegalStateException("width and height must be set to derive bounding box");
+            }
+
+            if (! hasTransforms()) {
+                throw new IllegalStateException("transforms must be set to derive bounding box");
+            }
+
+            final CoordinateTransformList<CoordinateTransform> ctList = createTransformList();
+            final TransformMesh mesh = new TransformMesh(ctList,
+                                                         32,
+                                                         width.floatValue(),
+                                                         height.floatValue());
+            setBoundingBox(mesh.getBoundingBox());
+        }
     }
 
     public int getWidth() {
@@ -115,10 +181,6 @@ public class TileSpec {
         this.mipmapLevels.put(level, value);
     }
 
-    public void addTransforms(List<Transform> transforms) {
-        this.transforms.addAll(transforms);
-    }
-
     public Map.Entry<Integer, ImageAndMask> getFirstMipmapEntry() {
         return mipmapLevels.firstEntry();
     }
@@ -129,6 +191,14 @@ public class TileSpec {
             floorEntry = mipmapLevels.firstEntry();
         }
         return floorEntry;
+    }
+
+    public boolean hasTransforms() {
+        return ((transforms != null) && (transforms.size() > 0));
+    }
+
+    public void addTransforms(List<Transform> transforms) {
+        this.transforms.addAll(transforms);
     }
 
     /**
