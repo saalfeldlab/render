@@ -26,7 +26,6 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -337,20 +336,6 @@ public class Converter {
         @XmlElement(name = "ict_transform_list") public IctTransformList transforms;
 
         private AffineTransform fullCoordinateTransform;
-
-        // TODO: remove this after verification
-        public Rectangle getNaiveBoundingBox() {
-            final AffineTransform at = getFullCoordinateTransform();
-            final Point2D.Double upperLeft = new Point2D.Double();
-            at.transform(new Point2D.Double(0, 0), upperLeft);
-
-            final Point2D.Double lowerRight = new Point2D.Double();
-            at.transform(new Point2D.Double(oWidth, oHeight), lowerRight);
-
-            final int width = (int) (lowerRight.getX() - upperLeft.getX());
-            final int height = (int) (lowerRight.getY() - upperLeft.getY());
-            return new Rectangle((int) upperLeft.x, (int) upperLeft.y, width, height);
-        }
 
         // projectPath  = '/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/'
         // baseMaskPath = '/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/'
