@@ -45,11 +45,12 @@ public class ByteProcessorCache {
     }
 
     public ByteProcessor getProcessor(String urlString,
-                                      int mipmapLevel) {
+                                      int mipmapLevel,
+                                      boolean isDownSamplingNeeded) {
         if ((lastByteProcessor == null) ||
             (! urlString.equals(lastUrlString)) ||
             (mipmapLevel != lastMipmapLevel)) {
-            lastByteProcessor = buildByteProcessor(urlString, mipmapLevel);
+            lastByteProcessor = buildByteProcessor(urlString, mipmapLevel, isDownSamplingNeeded);
             lastUrlString = urlString;
             lastMipmapLevel = mipmapLevel;
         }
@@ -57,7 +58,8 @@ public class ByteProcessorCache {
     }
 
     private ByteProcessor buildByteProcessor(String urlString,
-                                             int mipmapLevel) {
+                                             int mipmapLevel,
+                                             boolean isDownSamplingNeeded) {
         ByteProcessor byteProcessor = null;
         if (urlString != null) {
             final ImagePlus imagePlus = Utils.openImagePlusUrl(urlString);
@@ -65,8 +67,11 @@ public class ByteProcessorCache {
                 LOG.error("buildByteProcessor: failed to load image plus for '{}'.", urlString);
             } else {
                 final ImageProcessor imageProcessor = imagePlus.getProcessor();
-                byteProcessor = Downsampler.downsampleByteProcessor(imageProcessor.convertToByteProcessor(),
-                                                                    mipmapLevel);
+                byteProcessor = imageProcessor.convertToByteProcessor();
+                if (isDownSamplingNeeded) {
+                    byteProcessor = Downsampler.downsampleByteProcessor(byteProcessor,
+                                                                        mipmapLevel);
+                }
             }
         }
         return byteProcessor;

@@ -54,7 +54,7 @@ public class RenderTest {
     }
 
     @Test
-    public void testMain() throws Exception {
+    public void testStitching() throws Exception {
 
         final File expectedFile =
                 new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
@@ -75,6 +75,34 @@ public class RenderTest {
         final String actualDigestString = getDigestString(outputFile);
 
         Assert.assertEquals("stitched file MD5 hash differs from expected result",
+                            expectedDigestString, actualDigestString);
+    }
+
+    @Test
+    public void testMaskMipmap() throws Exception {
+
+        final File expectedFile =
+                new File(modulePath + "/src/test/resources/mipmap-test/mask_mipmap_expected_result.jpg");
+
+        final String[] args = {
+                "--url", "src/test/resources/mipmap-test/mask_mipmap_test.json",
+                "--out", outputFile.getAbsolutePath(),
+                "--x", "1000",
+                "--y", "3000",
+                "--width", "1000",
+                "--height", "1000",
+                "--scale", "0.125"
+        };
+
+        Render.main(args);
+
+        Assert.assertTrue("rendered file " + outputFile.getAbsolutePath() + " not created",
+                          outputFile.exists());
+
+        final String expectedDigestString = getDigestString(expectedFile);
+        final String actualDigestString = getDigestString(outputFile);
+
+        Assert.assertEquals("rendered file MD5 hash differs from expected result",
                             expectedDigestString, actualDigestString);
     }
 
