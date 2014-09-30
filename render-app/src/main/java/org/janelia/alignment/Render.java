@@ -166,7 +166,7 @@ public class Render {
             final double s = Utils.sampleAverageScale(ctl, width, height, triangleSize);
             int mipmapLevel = Utils.bestMipmapLevel(s);
 
-            boolean isDownSamplingNeeded = true;
+            Integer downSampleLevels = null;
             final ImageProcessor ipMipmap;
             if (ip == null) {
                 // load image TODO use Bioformats for strange formats
@@ -183,13 +183,14 @@ public class Render {
                 if (currentMipmapLevel >= mipmapLevel) {
                     mipmapLevel = currentMipmapLevel;
                     ipMipmap = ip;
-                    isDownSamplingNeeded = false;
                 } else {
-                    ipMipmap = Downsampler.downsampleImageProcessor(ip, mipmapLevel - currentMipmapLevel);
+                    downSampleLevels = mipmapLevel - currentMipmapLevel;
+                    ipMipmap = Downsampler.downsampleImageProcessor(ip, downSampleLevels);
                 }
             } else {
                 // create according mipmap level
-                ipMipmap = Downsampler.downsampleImageProcessor(ip, mipmapLevel);
+                downSampleLevels = mipmapLevel;
+                ipMipmap = Downsampler.downsampleImageProcessor(ip, downSampleLevels);
             }
 
             // create a target
@@ -202,7 +203,7 @@ public class Render {
             bpMaskTarget = null;
             final String maskUrl = imageAndMask.getMaskUrl();
             if (maskUrl != null) {
-                bpMaskSource = byteProcessorCache.getProcessor(maskUrl, mipmapLevel, isDownSamplingNeeded);
+                bpMaskSource = byteProcessorCache.getProcessor(maskUrl, downSampleLevels);
                 if (bpMaskSource != null) {
                     bpMaskTarget = new ByteProcessor(tp.getWidth(), tp.getHeight());
                 }

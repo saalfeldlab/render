@@ -35,31 +35,39 @@ import org.slf4j.LoggerFactory;
 public class ByteProcessorCache {
 
     private String lastUrlString;
-    private int lastMipmapLevel;
+    private Integer lastDownSampleLevels;
     private ByteProcessor lastByteProcessor;
 
     public ByteProcessorCache() {
         this.lastUrlString = null;
-        this.lastMipmapLevel = 0;
+        this.lastDownSampleLevels = null;
         this.lastByteProcessor = null;
     }
 
+    /**
+     * @param  urlString         url or path for the mask.
+     *
+     * @param  downSampleLevels  the amount of down sampling needed
+     *                           (delta between level of the mask and the desired level for rendering).
+     *
+     * @return a processor (possibly already cached) for the specified mask and down sampling factor.
+     */
     public ByteProcessor getProcessor(String urlString,
-                                      int mipmapLevel,
-                                      boolean isDownSamplingNeeded) {
+                                      Integer downSampleLevels) {
         if ((lastByteProcessor == null) ||
             (! urlString.equals(lastUrlString)) ||
-            (mipmapLevel != lastMipmapLevel)) {
-            lastByteProcessor = buildByteProcessor(urlString, mipmapLevel, isDownSamplingNeeded);
+            ((downSampleLevels == null) && (lastDownSampleLevels != null)) ||
+            ((downSampleLevels != null) && (! downSampleLevels.equals(lastDownSampleLevels)))) {
+
+            lastByteProcessor = buildByteProcessor(urlString, downSampleLevels);
             lastUrlString = urlString;
-            lastMipmapLevel = mipmapLevel;
+            lastDownSampleLevels = downSampleLevels;
         }
         return lastByteProcessor;
     }
 
     private ByteProcessor buildByteProcessor(String urlString,
-                                             int mipmapLevel,
-                                             boolean isDownSamplingNeeded) {
+                                             Integer downSampleLevels) {
         ByteProcessor byteProcessor = null;
         if (urlString != null) {
             final ImagePlus imagePlus = Utils.openImagePlusUrl(urlString);
@@ -68,14 +76,14 @@ public class ByteProcessorCache {
             } else {
                 final ImageProcessor imageProcessor = imagePlus.getProcessor();
                 byteProcessor = imageProcessor.convertToByteProcessor();
-                if (isDownSamplingNeeded) {
+                if (downSampleLevels != null) {
                     byteProcessor = Downsampler.downsampleByteProcessor(byteProcessor,
-                                                                        mipmapLevel);
+                                                                        downSampleLevels);
                 }
             }
         }
         return byteProcessor;
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(Render.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ByteProcessorCache.class);
 }

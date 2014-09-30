@@ -1,9 +1,15 @@
 [
     {
+        "width": 2650.0,
+        "height": 2260.0,
         "mipmapLevels": {
             "0": {
                 "imageUrl": "src/test/resources/stitch-test/col0075_row0021_cam1.png",
                 "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
+            },
+            "1": {
+                "imageUrl": "src/test/resources/stitch-test/col0075_row0021_cam1.png_level_1_mipmap.png",
+                "maskUrl": "src/test/resources/stitch-test/test_mask.jpg_level_1_mipmap.png"
             }
         },
         "transforms": [
@@ -18,10 +24,16 @@
         ]
     },
     {
+        "width": 2650.0,
+        "height": 2260.0,
         "mipmapLevels": {
             "0": {
                 "imageUrl": "src/test/resources/stitch-test/col0075_row0022_cam3.png",
                 "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
+            },
+            "1": {
+                "imageUrl": "src/test/resources/stitch-test/col0075_row0022_cam3.png_level_1_mipmap.png",
+                "maskUrl": "src/test/resources/stitch-test/test_mask.jpg_level_1_mipmap.png"
             }
         },
         "transforms": [
@@ -36,10 +48,16 @@
         ]
     },
     {
+        "width": 2650.0,
+        "height": 2260.0,
         "mipmapLevels": {
             "0": {
                 "imageUrl": "src/test/resources/stitch-test/col0076_row0021_cam0.png",
                 "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
+            },
+            "1": {
+                "imageUrl": "src/test/resources/stitch-test/col0076_row0021_cam0.png_level_1_mipmap.png",
+                "maskUrl": "src/test/resources/stitch-test/test_mask.jpg_level_1_mipmap.png"
             }
         },
         "transforms": [
@@ -54,10 +72,16 @@
         ]
     },
     {
+        "width": 2650.0,
+        "height": 2260.0,
         "mipmapLevels": {
             "0": {
                 "imageUrl": "src/test/resources/stitch-test/col0076_row0022_cam2.png",
                 "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
+            },
+            "1": {
+                "imageUrl": "src/test/resources/stitch-test/col0076_row0022_cam2.png_level_1_mipmap.png",
+                "maskUrl": "src/test/resources/stitch-test/test_mask.jpg_level_1_mipmap.png"
             }
         },
         "transforms": [

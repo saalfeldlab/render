@@ -79,6 +79,31 @@ public class RenderTest {
     }
 
     @Test
+    public void testStitchingWithLevel1Masks() throws Exception {
+
+        final File expectedFile =
+                new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
+
+        final String[] args = {
+                "--url", "src/test/resources/stitch-test/test_4_tiles_level_1.json",
+                "--out", outputFile.getAbsolutePath(),
+                "--width", "4576",
+                "--height", "4173",
+                "--scale", "0.05"
+        };
+
+        Render.main(args);
+
+        Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+
+        final String expectedDigestString = getDigestString(expectedFile);
+        final String actualDigestString = getDigestString(outputFile);
+
+        Assert.assertEquals("stitched file MD5 hash differs from expected result",
+                            expectedDigestString, actualDigestString);
+    }
+
+    @Test
     public void testMaskMipmap() throws Exception {
 
         final File expectedFile =
