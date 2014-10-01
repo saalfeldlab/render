@@ -1,7 +1,7 @@
 package org.janelia.render.service;
 
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.TileSpec;
+import org.janelia.alignment.spec.TileSpec;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;

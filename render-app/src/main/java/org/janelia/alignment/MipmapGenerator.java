@@ -3,6 +3,7 @@ package org.janelia.alignment;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

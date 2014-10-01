@@ -16,6 +16,7 @@
  */
 package org.janelia.alignment;
 
+import org.janelia.alignment.spec.TileSpec;
 import org.junit.Assert;
 import org.junit.Test;
 

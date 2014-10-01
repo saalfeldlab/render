@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Tests the {@link org.janelia.alignment.TileSpec} class.
+ * Tests the {@link TransformSpec} class.
  *
  * @author Eric Trautman
  */

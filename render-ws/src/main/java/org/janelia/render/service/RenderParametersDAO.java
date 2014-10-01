@@ -11,7 +11,7 @@ import com.mongodb.QueryOperators;
 import com.mongodb.ServerAddress;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.TileSpec;
+import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

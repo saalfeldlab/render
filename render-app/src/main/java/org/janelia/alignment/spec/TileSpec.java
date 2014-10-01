@@ -14,12 +14,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package org.janelia.alignment;
+package org.janelia.alignment.spec;
 
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMesh;
-import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.ImageAndMask;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -36,6 +36,7 @@ import java.util.TreeMap;
 public class TileSpec {
 
     private String tileId;
+    private LayoutData layout;
     private Double z;
     private Double minX;
     private Double minY;
@@ -59,6 +60,14 @@ public class TileSpec {
 
     public void setTileId(String tileId) {
         this.tileId = tileId;
+    }
+
+    public LayoutData getLayout() {
+        return layout;
+    }
+
+    public void setLayout(LayoutData layout) {
+        this.layout = layout;
     }
 
     public Double getZ() {

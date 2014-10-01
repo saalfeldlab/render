@@ -6,7 +6,7 @@ import mpicbg.trakem2.transform.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMesh;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.json.JsonUtils;
-import org.janelia.alignment.TileSpec;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.slf4j.Logger;

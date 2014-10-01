@@ -1,6 +1,7 @@
 package org.janelia.alignment;
 
 import junit.framework.Assert;
+import org.janelia.alignment.spec.TileSpec;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

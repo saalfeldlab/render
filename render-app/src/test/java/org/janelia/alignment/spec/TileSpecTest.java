@@ -14,8 +14,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package org.janelia.alignment;
+package org.janelia.alignment.spec;
 
+import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.json.JsonUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -23,7 +24,7 @@ import org.junit.Test;
 import java.util.Map;
 
 /**
- * Tests the {@link TileSpec} class.
+ * Tests the {@link org.janelia.alignment.spec.TileSpec} class.
  *
  * @author Eric Trautman
  */
@@ -52,6 +53,31 @@ public class TileSpecTest {
         Assert.assertNotNull("floor 4 mipmap entry is null", floorMipMap);
         Assert.assertEquals("invalid key for floor 3 mipmap entry",
                             new Integer(3), floorMipMap.getKey());
+    }
+
+    @Test
+    public void testLayoutData() throws Exception {
+        final TileSpec tileSpec = new TileSpec();
+        tileSpec.setTileId(EXPECTED_TILE_ID);
+        String[] values = {"array-a", "camera-b", "row-c", "col-d"};
+        final LayoutData layoutData = new LayoutData(values[0], values[1], values[2], values[3]);
+        tileSpec.setLayout(layoutData);
+
+        final String json = JsonUtils.GSON.toJson(tileSpec);
+
+        Assert.assertNotNull("json generation returned null string", json);
+
+        final TileSpec parsedSpec = getTileSpec(json);
+
+        Assert.assertNotNull("json parse returned null spec", parsedSpec);
+        Assert.assertEquals("invalid tileId parsed", EXPECTED_TILE_ID, parsedSpec.getTileId());
+
+        final LayoutData parsedLayoutData = parsedSpec.getLayout();
+        Assert.assertNotNull("json parse returned null layout data", parsedLayoutData);
+        Assert.assertEquals("bad array value", values[0], parsedLayoutData.getTemca());
+        Assert.assertEquals("bad camera value", values[1], parsedLayoutData.getCamera());
+        Assert.assertEquals("bad row value", values[2], parsedLayoutData.getImageRow());
+        Assert.assertEquals("bad col value", values[3], parsedLayoutData.getImageCol());
     }
 
     @Test(expected = IllegalArgumentException.class)
