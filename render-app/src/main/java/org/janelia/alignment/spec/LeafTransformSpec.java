@@ -14,9 +14,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package org.janelia.alignment;
+package org.janelia.alignment.spec;
 
 import mpicbg.models.CoordinateTransform;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * Specifies a {@link mpicbg.trakem2.transform.CoordinateTransform} implementation
@@ -24,44 +27,66 @@ import mpicbg.models.CoordinateTransform;
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
-public class Transform {
+public class LeafTransformSpec extends TransformSpec {
+
+    public static final String TYPE = null; // use null type for leaf specs so legacy in-lined data
 
     private String className;
     private String dataString;
 
     private transient Class clazz;
-    private transient mpicbg.trakem2.transform.CoordinateTransform validationInstance;
-    private transient mpicbg.trakem2.transform.CoordinateTransform instance;
 
-    public Transform(String className,
-                     String dataString) {
+    /**
+     * "Legacy" constructor that supports simple specs without ids or metadata.
+     *
+     * @param  className   name of transformation implementation (java) class.
+     * @param  dataString  data with which transformation implementation should be initialized.
+     */
+    public LeafTransformSpec(String className,
+                             String dataString) {
+        super(null, TYPE, null);
         this.className = className;
         this.dataString = dataString;
     }
 
     /**
-     * @throws IllegalArgumentException
-     *   if a {@link CoordinateTransform} instance cannot be created based upon this specification.
+     * Full constructor.
+     *
+     * @param  id          identifier for this specification.
+     * @param  metaData    meta data about the specification.
+     * @param  className   name of transformation implementation (java) class.
+     * @param  dataString  data with which transformation implementation should be initialized.
      */
-    public void validate() throws IllegalArgumentException {
-        validationInstance = createAndInitTransform(); // cache instance for first createTransform call
+    public LeafTransformSpec(String id,
+                             TransformSpecMetaData metaData,
+                             String className,
+                             String dataString) {
+        super(id, TYPE, metaData);
+        this.className = className;
+        this.dataString = dataString;
     }
 
-    /**
-     * @return a new {@link CoordinateTransform} instance based upon this specification.
-     *
-     * @throws IllegalArgumentException
-     *   if the instance cannot be created.
-     */
-    public CoordinateTransform createTransform()
+    @Override
+    public boolean isFullyResolved() {
+        return true;
+    }
+
+    @Override
+    public void appendUnresolvedIds(List<String> unresolvedIdList) {
+        // nothing to do
+    }
+
+    @Override
+    public void resolveReferences(Map<String, TransformSpec> idToSpecMap) {
+        // nothing to do
+    }
+
+    protected CoordinateTransform buildInstance()
             throws IllegalArgumentException {
 
-        if ((instance == null) && (validationInstance != null)) {
-            instance = validationInstance;
-        } else {
-            instance = createAndInitTransform();
-        }
-        return instance;
+        final mpicbg.trakem2.transform.CoordinateTransform ct = newInstance();
+        ct.init(dataString);
+        return ct;
     }
 
     private Class getClazz() throws IllegalArgumentException {
@@ -91,17 +116,10 @@ public class Transform {
             coordinateTransform = (mpicbg.trakem2.transform.CoordinateTransform) instance;
         } else {
             throw new IllegalArgumentException("transform class '" + className + "' does not implement the '" +
-                                            mpicbg.trakem2.transform.CoordinateTransform.class + "' interface");
+                                               mpicbg.trakem2.transform.CoordinateTransform.class + "' interface");
         }
 
         return coordinateTransform;
     }
 
-    private mpicbg.trakem2.transform.CoordinateTransform createAndInitTransform()
-            throws IllegalArgumentException {
-
-        final mpicbg.trakem2.transform.CoordinateTransform ct = newInstance();
-        ct.init(dataString);
-        return ct;
-    }
 }

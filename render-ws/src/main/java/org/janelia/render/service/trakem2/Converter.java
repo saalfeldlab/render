@@ -7,7 +7,8 @@ import mpicbg.trakem2.transform.TransformMesh;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.TileSpec;
-import org.janelia.alignment.Transform;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.TransformSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.InputSource;
@@ -276,7 +277,7 @@ public class Converter {
     }
 
     private interface Transformable {
-        public void addToList(List<Transform> list);
+        public void addToList(List<TransformSpec> list);
         public void addToCoordinateTransformList(CoordinateTransformList<CoordinateTransform> list)
                 throws Exception;
     }
@@ -285,8 +286,8 @@ public class Converter {
     private static class IctTransform implements Transformable {
         @XmlAttribute(name = "class") public String className;
         @XmlAttribute(name = "data")  public String data;
-        public void addToList(List<Transform> list) {
-            list.add(new Transform(className, data));
+        public void addToList(List<TransformSpec> list) {
+            list.add(new LeafTransformSpec(className, data));
         }
         public void addToCoordinateTransformList(CoordinateTransformList<CoordinateTransform> list)
                 throws Exception {
@@ -309,7 +310,7 @@ public class Converter {
                                 @XmlElementRef(type = IctTransformList.class)
                         })
         public List<Transformable> ictList;
-        public void addToList(List<Transform> list) {
+        public void addToList(List<TransformSpec> list) {
             for (Transformable t : ictList) {
                 t.addToList(list);
             }
@@ -356,7 +357,7 @@ public class Converter {
                 maskUrl = "file:" + baseMaskPath + createIdPath(alphaMaskId, oid, ".zip");
             }
 
-            List<Transform> transformList = new ArrayList<Transform>();
+            List<TransformSpec> transformList = new ArrayList<TransformSpec>();
 
             // add all nested ict transforms
             transforms.addToList(transformList);
@@ -364,8 +365,8 @@ public class Converter {
             // add final world coordinate transform
             final AffineModel2D affine = new AffineModel2D();
             affine.set(getFullCoordinateTransform());
-            final Transform worldCoordinateTransform =
-                    new Transform(affine.getClass().getCanonicalName(), affine.toDataString());
+            final LeafTransformSpec worldCoordinateTransform =
+                    new LeafTransformSpec(affine.getClass().getCanonicalName(), affine.toDataString());
             transformList.add(worldCoordinateTransform);
 
             // convert to tile spec (which can ultimately be serialized as json)

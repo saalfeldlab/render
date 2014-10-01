@@ -19,6 +19,7 @@ package org.janelia.alignment;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMesh;
+import org.janelia.alignment.spec.TransformSpec;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -45,11 +46,11 @@ public class TileSpec {
     private Double minIntensity;
     private Double maxIntensity;
     private TreeMap<Integer, ImageAndMask> mipmapLevels;
-    private List<Transform> transforms;
+    private List<TransformSpec> transforms;
 
     public TileSpec() {
         this.mipmapLevels = new TreeMap<Integer, ImageAndMask>();
-        this.transforms = new ArrayList<Transform>();
+        this.transforms = new ArrayList<TransformSpec>();
     }
 
     public String getTileId() {
@@ -197,7 +198,7 @@ public class TileSpec {
         return ((transforms != null) && (transforms.size() > 0));
     }
 
-    public void addTransforms(List<Transform> transforms) {
+    public void addTransforms(List<TransformSpec> transforms) {
         this.transforms.addAll(transforms);
     }
 
@@ -215,7 +216,7 @@ public class TileSpec {
             imageAndMask.validate();
         }
 
-        for (Transform transform : transforms) {
+        for (TransformSpec transform : transforms) {
             transform.validate();
         }
     }
@@ -225,8 +226,8 @@ public class TileSpec {
 
         final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList< CoordinateTransform >();
         if (transforms != null) {
-            for (Transform t : transforms) {
-                ctl.add(t.createTransform());
+            for (TransformSpec spec : transforms) {
+                ctl.add(spec.getInstance());
             }
         }
 
