@@ -5,7 +5,7 @@ import mpicbg.trakem2.transform.CoordinateTransform;
 import mpicbg.trakem2.transform.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMesh;
 import org.janelia.alignment.ImageAndMask;
-import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.TileSpec;
 import org.janelia.alignment.Transform;
 import org.slf4j.Logger;
@@ -163,7 +163,7 @@ public class Converter {
                     tileSpec.validate();
                 }
 
-                RenderParameters.DEFAULT_GSON.toJson(tileSpec, json);
+                JsonUtils.GSON.toJson(tileSpec, json);
 
                 try {
                     jsonStream.write(json.toString().getBytes());

@@ -2,6 +2,7 @@ package org.janelia.alignment;
 
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
+import org.janelia.alignment.json.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,7 +84,7 @@ public class MipmapGenerator {
                     if (tileCount != 0) {
                         outputStream.write(",\n".getBytes());
                     }
-                    outputStream.write(MipmapGeneratorParameters.DEFAULT_GSON.toJson(updatedTileSpec).getBytes());
+                    outputStream.write(JsonUtils.GSON.toJson(updatedTileSpec).getBytes());
                     tileCount++;
                     if ((System.currentTimeMillis() - timeOfLastProgressLog) > 10000) {
                         LOG.info("main: updated tile {} of {}", tileCount, tileSpecs.size());

@@ -19,9 +19,8 @@ package org.janelia.alignment;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import org.janelia.alignment.json.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,9 +46,6 @@ import java.util.List;
  */
 @Parameters
 public class RenderParameters {
-
-    /** Default GSON instance used to de-serialize tile specifications. */
-    public static final Gson DEFAULT_GSON = new GsonBuilder().setPrettyPrinting().create();
 
     @Parameter(names = "--help", description = "Display this note", help = true)
     private transient boolean help;
@@ -169,7 +165,7 @@ public class RenderParameters {
     public static RenderParameters parseJson(String jsonText) throws IllegalArgumentException {
         RenderParameters parameters;
         try {
-            parameters = DEFAULT_GSON.fromJson(jsonText, RenderParameters.class);
+            parameters = JsonUtils.GSON.fromJson(jsonText, RenderParameters.class);
         } catch (Throwable t) {
             throw new IllegalArgumentException("failed to parse json text", t);
         }
@@ -187,7 +183,7 @@ public class RenderParameters {
     public static RenderParameters parseJson(Reader jsonReader) throws IllegalArgumentException {
         RenderParameters parameters;
         try {
-            parameters = DEFAULT_GSON.fromJson(jsonReader, RenderParameters.class);
+            parameters = JsonUtils.GSON.fromJson(jsonReader, RenderParameters.class);
         } catch (Throwable t) {
             throw new IllegalArgumentException("failed to parse json reader stream", t);
         }
@@ -448,7 +444,7 @@ public class RenderParameters {
     }
 
     public String toJson() {
-        return DEFAULT_GSON.toJson(this);
+        return JsonUtils.GSON.toJson(this);
     }
 
     private void setCommander() {
@@ -481,7 +477,7 @@ public class RenderParameters {
             final Reader reader = new InputStreamReader(urlStream);
             final Type collectionType = new TypeToken<List<TileSpec>>(){}.getType();
             try {
-                tileSpecs = DEFAULT_GSON.fromJson(reader, collectionType);
+                tileSpecs = JsonUtils.GSON.fromJson(reader, collectionType);
             } catch (Throwable t) {
                 throw new IllegalArgumentException("failed to parse tile specification loaded from " + urlObject, t);
             }

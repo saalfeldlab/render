@@ -1,7 +1,7 @@
 package org.janelia.render.service;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import org.janelia.alignment.json.JsonUtils;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.Produces;
@@ -43,8 +43,7 @@ public final class GsonMessageBodyHandler
 
     private Gson getGson() {
         if (gson == null) {
-            final GsonBuilder gsonBuilder = new GsonBuilder();
-            gson = gsonBuilder.setPrettyPrinting().create();
+            gson = JsonUtils.GSON;
         }
         return gson;
     }

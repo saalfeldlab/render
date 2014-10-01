@@ -9,6 +9,7 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoCredential;
 import com.mongodb.QueryOperators;
 import com.mongodb.ServerAddress;
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.TileSpec;
 import org.slf4j.Logger;
@@ -103,7 +104,7 @@ public class RenderParametersDao {
             TileSpec tileSpec;
             while (cursor.hasNext()) {
                 document = cursor.next();
-                tileSpec = RenderParameters.DEFAULT_GSON.fromJson(document.toString(), TileSpec.class);
+                tileSpec = JsonUtils.GSON.fromJson(document.toString(), TileSpec.class);
                 renderParameters.addTileSpec(tileSpec);
             }
         } finally {

@@ -16,6 +16,7 @@
  */
 package org.janelia.alignment;
 
+import org.janelia.alignment.json.JsonUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -65,7 +66,7 @@ public class TileSpecTest {
     }
 
     private TileSpec getTileSpec(String json) {
-        return RenderParameters.DEFAULT_GSON.fromJson(json, TileSpec.class);
+        return JsonUtils.GSON.fromJson(json, TileSpec.class);
     }
 
     private static final String EXPECTED_TILE_ID = "test-tile-id";
