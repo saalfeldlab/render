@@ -1,0 +1,290 @@
+[
+{
+  "tileId": "134",
+  "z": 3903.0,
+  "minX": 1094.0,
+  "minY": 2006.0,
+  "maxX": 3817.0,
+  "maxY": 4402.0,
+  "width": 2560,
+  "height": 2160,
+  "minIntensity": 0.0,
+  "maxIntensity": 255.0,
+  "mipmapLevels": {
+    "0": {
+      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0060/col0060_row0140_cam0.tif",
+      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/49.134.zip"
+    }
+  },
+  "transforms": [
+    {
+      "className": "mpicbg.trakem2.transform.AffineModel2D",
+      "dataString": "0.99414426 -0.057523947 0.05564594 1.0000075 1108.6772 2104.6455"
+    }
+  ]
+},
+{
+  "tileId": "135",
+  "z": 3903.0,
+  "minX": 1167.0,
+  "minY": 3999.0,
+  "maxX": 3900.0,
+  "maxY": 6404.0,
+  "width": 2560,
+  "height": 2160,
+  "minIntensity": 0.0,
+  "maxIntensity": 255.0,
+  "mipmapLevels": {
+    "0": {
+      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0060/col0060_row0141_cam0.tif",
+      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/50.135.zip"
+    }
+  },
+  "transforms": [
+    {
+      "className": "mpicbg.trakem2.transform.AffineModel2D",
+      "dataString": "0.99592423 -0.055764105 0.05447873 0.9996287 1196.9395 4097.79"
+    }
+  ]
+},
+{
+  "tileId": "136",
+  "z": 3903.0,
+  "minX": 1334.0,
+  "minY": 5949.0,
+  "maxX": 3972.0,
+  "maxY": 8301.0,
+  "width": 2560,
+  "height": 2160,
+  "minIntensity": 0.0,
+  "maxIntensity": 255.0,
+  "mipmapLevels": {
+    "0": {
+      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0060/col0060_row0142_cam2.tif",
+      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/51.136.zip"
+    }
+  },
+  "transforms": [
+    {
+      "className": "mpicbg.trakem2.transform.AffineModel2D",
+      "dataString": "0.9913575 -0.058919735 0.057347752 0.99965155 1349.9885 6063.5864"
+    }
+  ]
+},
+{
+  "tileId": "171",
+  "z": 3903.0,
+  "minX": 3084.0,
+  "minY": 1914.0,
+  "maxX": 5841.0,
+  "maxY": 4322.0,
+  "width": 2560,
+  "height": 2160,
+  "minIntensity": 0.0,
+  "maxIntensity": 255.0,
+  "mipmapLevels": {
+    "0": {
+      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0061/col0061_row0140_cam0.tif",
+      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/52.171.zip"
+    }
+  },
+  "transforms": [
+    {
+      "className": "mpicbg.trakem2.transform.AffineModel2D",
+      "dataString": "0.9943567 -0.05588002 0.05643784 1.0003457 3088.0857 2029.7766"
+    }
+  ]
+},
+{
+  "tileId": "172",
+  "z": 3903.0,
+  "minX": 3149.0,
+  "minY": 3914.0,
+  "maxX": 5921.0,
+  "maxY": 6328.0,
+  "width": 2560,
+  "height": 2160,
+  "minIntensity": 0.0,
+  "maxIntensity": 255.0,
+  "mipmapLevels": {
+    "0": {
+      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0061/col0061_row0141_cam0.tif",
+      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/53.172.zip"
+    }
+  },
+  "transforms": [
+    {
+      "className": "mpicbg.trakem2.transform.AffineModel2D",
+      "dataString": "0.9947488 -0.05416369 0.054831393 1.0011361 3175.3252 4013.4036"
+    }
+  ]
+},
+{
+  "tileId": "173",
+  "z": 3903.0,
+  "minX": 3319.0,
+  "minY": 5853.0,
+  "maxX": 5970.0,
+  "maxY": 8213.0,
+  "width": 2560,
+  "height": 2160,
+  "minIntensity": 0.0,
+  "maxIntensity": 255.0,
+  "mipmapLevels": {
+    "0": {
+      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0061/col0061_row0142_cam2.tif",
+      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/54.173.zip"
+    }
+  },
+  "transforms": [
+    {
+      "className": "mpicbg.trakem2.transform.AffineModel2D",
+      "dataString": "0.99289185 -0.0582524 0.05823086 0.999609 3329.7793 5993.6826"
+    }
+  ]
+},
+{
+  "tileId": "211",
+  "z": 3903.0,
+  "minX": 5039.0,
+  "minY": 1846.0,
+  "maxX": 7673.0,
+  "maxY": 4120.0,
+  "width": 2560,
+  "height": 2160,
+  "minIntensity": 0.0,
+  "maxIntensity": 255.0,
+  "mipmapLevels": {
+    "0": {
+      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0062/col0062_row0140_cam1.tif",
+      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/55.211.zip"
+    }
+  },
+  "transforms": [
+    {
+      "className": "mpicbg.trakem2.transform.AffineModel2D",
+      "dataString": "0.9941132 -0.05609252 0.05479387 0.99765146 5029.6543 1949.9537"
+    }
+  ]
+},
+{
+  "tileId": "212",
+  "z": 3903.0,
+  "minX": 5154.0,
+  "minY": 3852.0,
+  "maxX": 7785.0,
+  "maxY": 6109.0,
+  "width": 2560,
+  "height": 2160,
+  "minIntensity": 0.0,
+  "maxIntensity": 255.0,
+  "mipmapLevels": {
+    "0": {
+      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0062/col0062_row0141_cam1.tif",
+      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/56.212.zip"
+    }
+  },
+  "transforms": [
+    {
+      "className": "mpicbg.trakem2.transform.AffineModel2D",
+      "dataString": "0.99465203 -0.053911783 0.052386533 0.99702805 5123.45 3944.4204"
+    }
+  ]
+},
+{
+  "tileId": "213",
+  "z": 3903.0,
+  "minX": 5184.0,
+  "minY": 5781.0,
+  "maxX": 7914.0,
+  "maxY": 8050.0,
+  "width": 2560,
+  "height": 2160,
+  "minIntensity": 0.0,
+  "maxIntensity": 255.0,
+  "mipmapLevels": {
+    "0": {
+      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0062/col0062_row0142_cam3.tif",
+      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/57.213.zip"
+    }
+  },
+  "transforms": [
+    {
+      "className": "mpicbg.trakem2.transform.AffineModel2D",
+      "dataString": "0.99388546 -0.057174623 0.05560094 0.99924517 5155.2544 5894.4053"
+    }
+  ]
+},
+{
+  "tileId": "252",
+  "z": 3903.0,
+  "minX": 6994.0,
+  "minY": 1769.0,
+  "maxX": 9639.0,
+  "maxY": 4051.0,
+  "width": 2560,
+  "height": 2160,
+  "minIntensity": 0.0,
+  "maxIntensity": 255.0,
+  "mipmapLevels": {
+    "0": {
+      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0063/col0063_row0140_cam1.tif",
+      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/58.252.zip"
+    }
+  },
+  "transforms": [
+    {
+      "className": "mpicbg.trakem2.transform.AffineModel2D",
+      "dataString": "0.9939746 -0.055080198 0.05561745 0.99831355 7006.176 1882.3069"
+    }
+  ]
+},
+{
+  "tileId": "253",
+  "z": 3903.0,
+  "minX": 7115.0,
+  "minY": 3759.0,
+  "maxX": 9762.0,
+  "maxY": 6029.0,
+  "width": 2560,
+  "height": 2160,
+  "minIntensity": 0.0,
+  "maxIntensity": 255.0,
+  "mipmapLevels": {
+    "0": {
+      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0063/col0063_row0141_cam1.tif",
+      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/59.253.zip"
+    }
+  },
+  "transforms": [
+    {
+      "className": "mpicbg.trakem2.transform.AffineModel2D",
+      "dataString": "0.9942009 -0.05370996 0.054293048 0.9993026 7095.8853 3873.5237"
+    }
+  ]
+},
+{
+  "tileId": "254",
+  "z": 3903.0,
+  "minX": 7178.0,
+  "minY": 5696.0,
+  "maxX": 9917.0,
+  "maxY": 7981.0,
+  "width": 2560,
+  "height": 2160,
+  "minIntensity": 0.0,
+  "maxIntensity": 255.0,
+  "mipmapLevels": {
+    "0": {
+      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0063/col0063_row0142_cam3.tif",
+      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/60.254.zip"
+    }
+  },
+  "transforms": [
+    {
+      "className": "mpicbg.trakem2.transform.AffineModel2D",
+      "dataString": "0.99463373 -0.056387194 0.060674008 0.9994255 7137.8975 5835.948"
+    }
+  ]
+}
+]

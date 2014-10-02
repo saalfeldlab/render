@@ -54,6 +54,10 @@ public class RenderParametersDao {
         this.db = client.getDB(databaseName);
     }
 
+    public RenderParametersDao(DB db) {
+        this.db = db;
+    }
+
     /**
      * @return a render parameters object for the specified stack.
      *
