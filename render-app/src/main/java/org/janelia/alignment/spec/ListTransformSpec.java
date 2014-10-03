@@ -6,6 +6,7 @@ import mpicbg.models.CoordinateTransformList;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * List of transform specifications.
@@ -54,9 +55,9 @@ public class ListTransformSpec extends TransformSpec {
     }
 
     @Override
-    public void appendUnresolvedIds(List<String> unresolvedIdList) {
+    public void addUnresolvedIds(Set<String> unresolvedIds) {
         for (TransformSpec spec : specList) {
-            spec.appendUnresolvedIds(unresolvedIdList);
+            spec.addUnresolvedIds(unresolvedIds);
         }
     }
 

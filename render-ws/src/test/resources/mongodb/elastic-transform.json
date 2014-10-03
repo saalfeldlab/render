@@ -1,0 +1,48 @@
+[
+    {
+        "id": "1",
+        "className": "mpicbg.trakem2.transform.AffineModel2D",
+        "dataString": "0.99414426 -0.057523947 0.05564594 1.0000075 1108.6772 2104.6455"
+    },
+    {
+        "id": "2",
+        "type": "list",
+        "metaData": {
+            "group": "lens correction",
+            "temca": "0",
+            "camera": "2"
+        },
+        "specList": [
+            {
+                "className": "mpicbg.trakem2.transform.AffineModel2D",
+                "dataString": "3  0  0  3  0  0"
+            },
+            {
+                "type": "interpolated",
+                "a": {
+                    "type": "ref",
+                    "refId": "1"
+                },
+                "b": {
+                    "type": "list",
+                    "specList": [
+                        {
+                            "className": "mpicbg.trakem2.transform.AffineModel2D",
+                            "dataString": "1  0  0  1  0  0"
+                        },
+                        {
+                            "type": "ref",
+                            "refId": "3"
+                        }
+                    ]
+                },
+                "lambda": 2.3
+            }
+        ]
+    },
+    {
+        "id": "3",
+        "className": "mpicbg.trakem2.transform.AffineModel2D",
+        "dataString": "0.99592423 -0.055764105 0.05447873 0.9996287 1196.9395 4097.79"
+    }
+]

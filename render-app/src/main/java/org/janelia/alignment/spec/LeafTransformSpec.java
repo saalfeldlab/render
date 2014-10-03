@@ -18,8 +18,8 @@ package org.janelia.alignment.spec;
 
 import mpicbg.models.CoordinateTransform;
 
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Specifies a {@link mpicbg.trakem2.transform.CoordinateTransform} implementation
@@ -72,7 +72,7 @@ public class LeafTransformSpec extends TransformSpec {
     }
 
     @Override
-    public void appendUnresolvedIds(List<String> unresolvedIdList) {
+    public void addUnresolvedIds(Set<String> unresolvedIds) {
         // nothing to do
     }
 

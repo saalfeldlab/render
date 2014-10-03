@@ -8,10 +8,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Tests the {@link TransformSpec} class.
@@ -143,9 +142,8 @@ public class TransformSpecTest {
     private void validateUnresolvedSize(String context,
                                         TransformSpec spec,
                                         int expectedSize) {
-        List<String> unresolvedList = new ArrayList<String>();
-        spec.appendUnresolvedIds(unresolvedList);
-        Assert.assertEquals("invalid number of unresolved references " + context, expectedSize, unresolvedList.size());
+        final Set<String> unresolvedIds = spec.getUnresolvedIds();
+        Assert.assertEquals("invalid number of unresolved references " + context, expectedSize, unresolvedIds.size());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TransformSpecTest.class);

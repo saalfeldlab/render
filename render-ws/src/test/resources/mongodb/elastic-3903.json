@@ -12,14 +12,14 @@
   "maxIntensity": 255.0,
   "mipmapLevels": {
     "0": {
-      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0060/col0060_row0140_cam0.tif",
-      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/49.134.zip"
+      "imageUrl": "data/140318164943_100x192/col0060/col0060_row0140_cam0.tif",
+      "maskUrl": "masks/13/21/49.134.zip"
     }
   },
   "transforms": [
     {
-      "className": "mpicbg.trakem2.transform.AffineModel2D",
-      "dataString": "0.99414426 -0.057523947 0.05564594 1.0000075 1108.6772 2104.6455"
+        "type": "ref",
+        "refId": "1"
     }
   ]
 },
@@ -36,14 +36,14 @@
   "maxIntensity": 255.0,
   "mipmapLevels": {
     "0": {
-      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0060/col0060_row0141_cam0.tif",
-      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/50.135.zip"
+      "imageUrl": "data/140318164943_100x192/col0060/col0060_row0141_cam0.tif",
+      "maskUrl": "masks/13/21/50.135.zip"
     }
   },
   "transforms": [
     {
-      "className": "mpicbg.trakem2.transform.AffineModel2D",
-      "dataString": "0.99592423 -0.055764105 0.05447873 0.9996287 1196.9395 4097.79"
+        "type": "ref",
+        "refId": "2"
     }
   ]
 },
@@ -60,8 +60,8 @@
   "maxIntensity": 255.0,
   "mipmapLevels": {
     "0": {
-      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0060/col0060_row0142_cam2.tif",
-      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/51.136.zip"
+      "imageUrl": "data/140318164943_100x192/col0060/col0060_row0142_cam2.tif",
+      "maskUrl": "masks/13/21/51.136.zip"
     }
   },
   "transforms": [
@@ -84,8 +84,8 @@
   "maxIntensity": 255.0,
   "mipmapLevels": {
     "0": {
-      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0061/col0061_row0140_cam0.tif",
-      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/52.171.zip"
+      "imageUrl": "data/140318164943_100x192/col0061/col0061_row0140_cam0.tif",
+      "maskUrl": "masks/13/21/52.171.zip"
     }
   },
   "transforms": [
@@ -108,8 +108,8 @@
   "maxIntensity": 255.0,
   "mipmapLevels": {
     "0": {
-      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0061/col0061_row0141_cam0.tif",
-      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/53.172.zip"
+      "imageUrl": "data/140318164943_100x192/col0061/col0061_row0141_cam0.tif",
+      "maskUrl": "masks/13/21/53.172.zip"
     }
   },
   "transforms": [
@@ -132,8 +132,8 @@
   "maxIntensity": 255.0,
   "mipmapLevels": {
     "0": {
-      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0061/col0061_row0142_cam2.tif",
-      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/54.173.zip"
+      "imageUrl": "data/140318164943_100x192/col0061/col0061_row0142_cam2.tif",
+      "maskUrl": "masks/13/21/54.173.zip"
     }
   },
   "transforms": [
@@ -156,8 +156,8 @@
   "maxIntensity": 255.0,
   "mipmapLevels": {
     "0": {
-      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0062/col0062_row0140_cam1.tif",
-      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/55.211.zip"
+      "imageUrl": "data/140318164943_100x192/col0062/col0062_row0140_cam1.tif",
+      "maskUrl": "masks/13/21/55.211.zip"
     }
   },
   "transforms": [
@@ -180,8 +180,8 @@
   "maxIntensity": 255.0,
   "mipmapLevels": {
     "0": {
-      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0062/col0062_row0141_cam1.tif",
-      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/56.212.zip"
+      "imageUrl": "data/140318164943_100x192/col0062/col0062_row0141_cam1.tif",
+      "maskUrl": "masks/13/21/56.212.zip"
     }
   },
   "transforms": [
@@ -204,8 +204,8 @@
   "maxIntensity": 255.0,
   "mipmapLevels": {
     "0": {
-      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0062/col0062_row0142_cam3.tif",
-      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/57.213.zip"
+      "imageUrl": "data/140318164943_100x192/col0062/col0062_row0142_cam3.tif",
+      "maskUrl": "masks/13/21/57.213.zip"
     }
   },
   "transforms": [
@@ -228,8 +228,8 @@
   "maxIntensity": 255.0,
   "mipmapLevels": {
     "0": {
-      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0063/col0063_row0140_cam1.tif",
-      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/58.252.zip"
+      "imageUrl": "data/140318164943_100x192/col0063/col0063_row0140_cam1.tif",
+      "maskUrl": "masks/13/21/58.252.zip"
     }
   },
   "transforms": [
@@ -252,8 +252,8 @@
   "maxIntensity": 255.0,
   "mipmapLevels": {
     "0": {
-      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0063/col0063_row0141_cam1.tif",
-      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/59.253.zip"
+      "imageUrl": "data/140318164943_100x192/col0063/col0063_row0141_cam1.tif",
+      "maskUrl": "masks/13/21/59.253.zip"
     }
   },
   "transforms": [
@@ -276,8 +276,8 @@
   "maxIntensity": 255.0,
   "mipmapLevels": {
     "0": {
-      "imageUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/data/140318164943_100x192/col0063/col0063_row0142_cam3.tif",
-      "maskUrl": "file:/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/13/21/60.254.zip"
+      "imageUrl": "data/140318164943_100x192/col0063/col0063_row0142_cam3.tif",
+      "maskUrl": "masks/13/21/60.254.zip"
     }
   },
   "transforms": [

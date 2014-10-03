@@ -3,9 +3,9 @@ package org.janelia.alignment.spec;
 import mpicbg.models.CoordinateTransform;
 import org.janelia.alignment.json.JsonUtils;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Abstract base for all transformation specifications.
@@ -56,8 +56,8 @@ public abstract class TransformSpec {
             throws IllegalArgumentException {
         if (instance == null) {
             if (! isFullyResolved()) {
-                final List<String> unresolvedIdList = new ArrayList<String>();
-                appendUnresolvedIds(unresolvedIdList);
+                final Set<String> unresolvedIdList = new HashSet<String>();
+                addUnresolvedIds(unresolvedIdList);
                 throw new IllegalArgumentException("spec '" + id +
                                                    "' has the following unresolved references: " + unresolvedIdList);
             }
@@ -86,11 +86,20 @@ public abstract class TransformSpec {
     public abstract boolean isFullyResolved();
 
     /**
-     * Append the ids for any unresolved spec references to the specified list.
+     * Add the ids for any unresolved spec references to the specified set.
      *
-     * @param  unresolvedIdList  list to which unresolved ids will be appended.
+     * @param  unresolvedIds  set to which unresolved ids will be added.
      */
-    public abstract void appendUnresolvedIds(List<String> unresolvedIdList);
+    public abstract void addUnresolvedIds(Set<String> unresolvedIds);
+
+    /**
+     * @return the set of unresolved spec references within this spec.
+     */
+    public Set<String> getUnresolvedIds() {
+        final Set<String> unresolvedIds = new HashSet<String>();
+        addUnresolvedIds(unresolvedIds);
+        return unresolvedIds;
+    }
 
     /**
      * Uses the specified map to resolve any spec references within this spec.

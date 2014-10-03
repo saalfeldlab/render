@@ -25,6 +25,7 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -209,6 +210,42 @@ public class TileSpec {
 
     public void addTransforms(List<TransformSpec> transforms) {
         this.transforms.addAll(transforms);
+    }
+
+    /**
+     * @return true if all spec references within this spec have been resolved; otherwise false.
+     */
+    public boolean isFullyResolved() {
+        boolean allSpecsResolved = true;
+        for (TransformSpec spec : transforms) {
+            if (! spec.isFullyResolved()) {
+                allSpecsResolved = false;
+                break;
+            }
+        }
+        return allSpecsResolved;
+    }
+
+    /**
+     * Add the ids for any unresolved transform references to the specified set.
+     *
+     * @param  unresolvedIds  set to which unresolved ids will be added.
+     */
+    public void addUnresolvedIds(Set<String> unresolvedIds) {
+        for (TransformSpec spec : transforms) {
+            spec.addUnresolvedIds(unresolvedIds);
+        }
+    }
+
+    /**
+     * Uses the specified map to resolve any unresolved transform references.
+     *
+     * @param  idToSpecMap  map of transform ids to resolved specs.
+     */
+    public void resolveReferences(Map<String, TransformSpec> idToSpecMap) {
+        for (TransformSpec spec : transforms) {
+            spec.resolveReferences(idToSpecMap);
+        }
     }
 
     /**

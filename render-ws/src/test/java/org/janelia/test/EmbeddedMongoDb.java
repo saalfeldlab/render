@@ -1,4 +1,4 @@
-package org.janelia.render.service;
+package org.janelia.test;
 
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
@@ -33,6 +33,7 @@ public class EmbeddedMongoDb {
     private int port;
     private MongodExecutable mongodExecutable;
     private MongodProcess mongodProcess;
+    private MongoClient mongoClient;
     private DB db;
 
     public EmbeddedMongoDb(String dbName)
@@ -51,18 +52,13 @@ public class EmbeddedMongoDb {
                                                         .build());
         this.mongodProcess = mongodExecutable.start();
 
-        final MongoClient mongoClient = new MongoClient("localhost", port);
+        this.mongoClient = new MongoClient("localhost", port);
+
         this.db = mongoClient.getDB(dbName);
     }
 
-    public void stop() throws Exception {
-        db.dropDatabase();
-        mongodProcess.stop();
-        mongodExecutable.stop();
-    }
-
-    public DB getDb() {
-        return db;
+    public MongoClient getMongoClient() {
+        return mongoClient;
     }
 
     public void importCollection(String collectionName,
@@ -87,4 +83,9 @@ public class EmbeddedMongoDb {
         mongoImportExecutable.start();
     }
 
+    public void stop() throws Exception {
+        db.dropDatabase();
+        mongodProcess.stop();
+        mongodExecutable.stop();
+    }
 }

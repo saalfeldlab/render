@@ -3,8 +3,8 @@ package org.janelia.alignment.spec;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.InterpolatedCoordinateTransform;
 
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Specification for an {@link InterpolatedCoordinateTransform}.
@@ -45,9 +45,9 @@ public class InterpolatedTransformSpec
     }
 
     @Override
-    public void appendUnresolvedIds(List<String> unresolvedIdList) {
-        a.appendUnresolvedIds(unresolvedIdList);
-        b.appendUnresolvedIds(unresolvedIdList);
+    public void addUnresolvedIds(Set<String> unresolvedIds) {
+        a.addUnresolvedIds(unresolvedIds);
+        b.addUnresolvedIds(unresolvedIds);
     }
 
     @Override

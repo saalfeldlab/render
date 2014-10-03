@@ -2,8 +2,8 @@ package org.janelia.alignment.spec;
 
 import mpicbg.models.CoordinateTransform;
 
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A reference to another {@link TransformSpec} instance.
@@ -39,27 +39,34 @@ public class ReferenceTransformSpec extends TransformSpec {
         return refId;
     }
 
+    public String getEffectiveRefId() {
+        if (effectiveRefId == null) {
+            effectiveRefId = refId;
+        }
+        return effectiveRefId;
+    }
+
     @Override
     public boolean isFullyResolved() {
         return ((resolvedInstance != null) && (resolvedInstance.isFullyResolved()));
     }
 
     @Override
-    public void appendUnresolvedIds(List<String> unresolvedIdList) {
+    public void addUnresolvedIds(Set<String> unresolvedIds) {
         if (resolvedInstance == null) {
-            unresolvedIdList.add(effectiveRefId);
+            unresolvedIds.add(getEffectiveRefId());
         } else {
-            resolvedInstance.appendUnresolvedIds(unresolvedIdList);
+            resolvedInstance.addUnresolvedIds(unresolvedIds);
         }
     }
 
     @Override
     public void resolveReferences(Map<String, TransformSpec> idToSpecMap) {
         if (resolvedInstance == null) {
-            final TransformSpec spec = idToSpecMap.get(effectiveRefId);
+            final TransformSpec spec = idToSpecMap.get(getEffectiveRefId());
             if (spec != null) {
                 if (spec instanceof ReferenceTransformSpec) {
-                    effectiveRefId = ((ReferenceTransformSpec) spec).effectiveRefId;
+                    effectiveRefId = ((ReferenceTransformSpec) spec).getEffectiveRefId();
                 } else {
                     resolvedInstance = spec;
                 }

@@ -1,7 +1,8 @@
-package org.janelia.render.service;
+package org.janelia.render.service.dao;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -13,21 +14,23 @@ import java.io.File;
 import java.util.List;
 
 /**
- * Tests the {@link RenderParametersDao} class.
+ * Tests the {@link org.janelia.render.service.dao.RenderParametersDao} class.
  *
  * @author Eric Trautman
  */
 public class RenderParametersDaoTest {
 
     private static String project;
+    private static String stack;
     private static EmbeddedMongoDb embeddedMongoDb;
     private static RenderParametersDao dao;
 
     @BeforeClass
     public static void before() throws Exception {
         project = "test";
-        embeddedMongoDb = new EmbeddedMongoDb(project);
-        dao = new RenderParametersDao(embeddedMongoDb.getDb());
+        stack = "elastic";
+        embeddedMongoDb = new EmbeddedMongoDb(RenderParametersDao.getDatabaseName(project, stack));
+        dao = new RenderParametersDao(embeddedMongoDb.getMongoClient());
     }
 
     @AfterClass
@@ -38,10 +41,14 @@ public class RenderParametersDaoTest {
     @Test
     public void testGetParameters() throws Exception {
 
-        final String stack = "test";
-
-        embeddedMongoDb.importCollection(stack,
+        embeddedMongoDb.importCollection(RenderParametersDao.TILE_COLLECTION_NAME,
                                          new File("src/test/resources/mongodb/elastic-3903.json"),
+                                         true,
+                                         false,
+                                         true);
+
+        embeddedMongoDb.importCollection(RenderParametersDao.TRANSFORM_COLLECTION_NAME,
+                                         new File("src/test/resources/mongodb/elastic-transform.json"),
                                          true,
                                          false,
                                          true);
@@ -71,6 +78,11 @@ public class RenderParametersDaoTest {
         final List<TileSpec> tileSpecs = parameters.getTileSpecs();
         Assert.assertNotNull("null tile specs value after init", tileSpecs);
         Assert.assertEquals("invalid number of tiles after init", 6, tileSpecs.size());
+
+        for (TileSpec tileSpec : tileSpecs) {
+            Assert.assertTrue("tileSpec " + tileSpec.getTileId() + " is not fully resolved",
+                              tileSpec.isFullyResolved());
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParametersDaoTest.class);

@@ -3,6 +3,8 @@ package org.janelia.render.service;
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
+import org.janelia.render.service.dao.DbConfig;
+import org.janelia.render.service.dao.RenderParametersDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +21,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
@@ -35,7 +38,8 @@ public class RenderService {
 
     public RenderService()
             throws UnknownHostException {
-        this.renderParametersDao = new RenderParametersDao();
+        final DbConfig dbConfig = DbConfig.fromFile(new File("render-db.properties"));
+        this.renderParametersDao = new RenderParametersDao(dbConfig);
     }
 
     @Path("{projectId}/stack/{stackId}/box/{x},{y},{z},{width},{height},{zoomLevel}/render-parameters")
