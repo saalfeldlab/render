@@ -382,7 +382,7 @@ public class Converter {
             tileSpec.setMaxIntensity(max); // xml: 207.0, beanshell: 255.0
 
             tileSpec.putMipmap(0, new ImageAndMask(imageUrl, maskUrl));
-            tileSpec.addTransforms(transformList);
+            tileSpec.addTransformSpecs(transformList);
 
             tileSpec.deriveBoundingBox(true);
 

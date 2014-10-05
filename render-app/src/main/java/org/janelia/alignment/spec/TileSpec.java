@@ -22,10 +22,8 @@ import mpicbg.trakem2.transform.TransformMesh;
 import org.janelia.alignment.ImageAndMask;
 
 import java.awt.*;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -48,11 +46,11 @@ public class TileSpec {
     private Double minIntensity;
     private Double maxIntensity;
     private TreeMap<Integer, ImageAndMask> mipmapLevels;
-    private List<TransformSpec> transforms;
+    private ListTransformSpec transforms;
 
     public TileSpec() {
         this.mipmapLevels = new TreeMap<Integer, ImageAndMask>();
-        this.transforms = new ArrayList<TransformSpec>();
+        this.transforms = new ListTransformSpec();
     }
 
     public String getTileId() {
@@ -208,44 +206,12 @@ public class TileSpec {
         return ((transforms != null) && (transforms.size() > 0));
     }
 
-    public void addTransforms(List<TransformSpec> transforms) {
-        this.transforms.addAll(transforms);
+    public ListTransformSpec getTransforms() {
+        return transforms;
     }
 
-    /**
-     * @return true if all spec references within this spec have been resolved; otherwise false.
-     */
-    public boolean isFullyResolved() {
-        boolean allSpecsResolved = true;
-        for (TransformSpec spec : transforms) {
-            if (! spec.isFullyResolved()) {
-                allSpecsResolved = false;
-                break;
-            }
-        }
-        return allSpecsResolved;
-    }
-
-    /**
-     * Add the ids for any unresolved transform references to the specified set.
-     *
-     * @param  unresolvedIds  set to which unresolved ids will be added.
-     */
-    public void addUnresolvedIds(Set<String> unresolvedIds) {
-        for (TransformSpec spec : transforms) {
-            spec.addUnresolvedIds(unresolvedIds);
-        }
-    }
-
-    /**
-     * Uses the specified map to resolve any unresolved transform references.
-     *
-     * @param  idToSpecMap  map of transform ids to resolved specs.
-     */
-    public void resolveReferences(Map<String, TransformSpec> idToSpecMap) {
-        for (TransformSpec spec : transforms) {
-            spec.resolveReferences(idToSpecMap);
-        }
+    public void addTransformSpecs(List<TransformSpec> transformSpecs) {
+        transforms.addAllSpecs(transformSpecs);
     }
 
     /**
@@ -262,19 +228,17 @@ public class TileSpec {
             imageAndMask.validate();
         }
 
-        for (TransformSpec transform : transforms) {
-            transform.validate();
-        }
+        transforms.validate();
     }
 
     public CoordinateTransformList<CoordinateTransform> createTransformList()
             throws IllegalArgumentException {
 
-        final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList< CoordinateTransform >();
-        if (transforms != null) {
-            for (TransformSpec spec : transforms) {
-                ctl.add(spec.getInstance());
-            }
+        CoordinateTransformList<CoordinateTransform> ctl;
+        if (transforms == null) {
+            ctl = new CoordinateTransformList< CoordinateTransform >();
+        } else {
+            ctl = transforms.getInstanceAsList();
         }
 
         return ctl;

@@ -1,6 +1,7 @@
 package org.janelia.render.service.dao;
 
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
@@ -79,9 +80,11 @@ public class RenderParametersDaoTest {
         Assert.assertNotNull("null tile specs value after init", tileSpecs);
         Assert.assertEquals("invalid number of tiles after init", 6, tileSpecs.size());
 
+        ListTransformSpec transforms;
         for (TileSpec tileSpec : tileSpecs) {
+            transforms = tileSpec.getTransforms();
             Assert.assertTrue("tileSpec " + tileSpec.getTileId() + " is not fully resolved",
-                              tileSpec.isFullyResolved());
+                              transforms.isFullyResolved());
         }
     }
 

@@ -16,10 +16,13 @@
  */
 package org.janelia.alignment;
 
+import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -32,72 +35,49 @@ public class RenderParametersTest {
     @Test
     public void testJsonProcessing() throws Exception {
 
-        final RenderParameters parameters = getTestParameters();
+        final String url = "file:///Users/trautmane/renderer-test.json";
+        final double x = 0.0;
+        final double y = 1.0;
+        final int width = 2;
+        final int height = 3;
+        final int mipmapLevel = 4;
 
-        Assert.assertNotNull("json parse returned null parameters", parameters);
-        Assert.assertEquals("invalid width parsed", EXPECTED_WIDTH, parameters.getWidth());
+        final RenderParameters parameters = new RenderParameters(url, x, y, width, height, mipmapLevel);
 
-        final List<TileSpec> tileSpecs = parameters.getTileSpecs();
-        Assert.assertNotNull("json parse returned null tileSpecs", tileSpecs);
-        Assert.assertEquals("invalid number of tileSpecs parsed", 2, tileSpecs.size());
+        final TileSpec tileSpec0 = new TileSpec();
+        tileSpec0.putMipmap(0, new ImageAndMask("spec0-level0.png", null));
+        tileSpec0.putMipmap(1, new ImageAndMask("spec0-level1.png", null));
+        tileSpec0.putMipmap(2, new ImageAndMask("spec0-level2.png", null));
 
-        final String generatedJson = parameters.toJson();
-        Assert.assertEquals("re-serialized json does not match original", PARAMETERS_JSON, generatedJson);
+        List<TransformSpec> transformSpecList = new ArrayList<TransformSpec>();
+        transformSpecList.add(new LeafTransformSpec("mpicbg.trakem2.transform.AffineModel2D", "1 0 0 1 0 0"));
+
+        tileSpec0.addTransformSpecs(transformSpecList);
+
+        parameters.addTileSpec(tileSpec0);
+
+        final TileSpec tileSpec1 = new TileSpec();
+        tileSpec1.putMipmap(0, new ImageAndMask("spec1-level0.png", null));
+
+        transformSpecList = new ArrayList<TransformSpec>();
+        transformSpecList.add(new LeafTransformSpec("mpicbg.trakem2.transform.AffineModel2D", "1 0 0 1 1650 0"));
+
+        tileSpec1.addTransformSpecs(transformSpecList);
+
+        parameters.addTileSpec(tileSpec1);
+
+        final String json = parameters.toJson();
+
+        Assert.assertNotNull("json not generated", json);
+
+        final RenderParameters parsedParameters = RenderParameters.parseJson(json);
+
+        Assert.assertNotNull("json parse returned null parameters", parsedParameters);
+        Assert.assertEquals("invalid width parsed", width, parsedParameters.getWidth());
+
+        final List<TileSpec> parsedTileSpecs = parsedParameters.getTileSpecs();
+        Assert.assertNotNull("json parse returned null tileSpecs", parsedTileSpecs);
+        Assert.assertEquals("invalid number of tileSpecs parsed", 2, parsedTileSpecs.size());
     }
 
-    private RenderParameters getTestParameters() {
-        return RenderParameters.parseJson(PARAMETERS_JSON);
-    }
-
-    private static final int EXPECTED_WIDTH = 5300;
-
-    private static final String PARAMETERS_JSON =
-            "{\n" +
-            "  \"url\": \"file:///Users/trautmane/renderer-test.json\",\n" +
-            "  \"res\": 64,\n" +
-            "  \"out\": \"renderer-test-out.jpg\",\n" +
-            "  \"x\": 0.0,\n" +
-            "  \"y\": 0.0,\n" +
-            "  \"width\": " + EXPECTED_WIDTH + ",\n" +
-            "  \"height\": 2260,\n" +
-            "  \"scale\": 1.0,\n" +
-            "  \"mipmapLevel\": 0,\n" +
-            "  \"areaOffset\": false,\n" +
-            "  \"quality\": 0.85,\n" +
-            "  \"skipInterpolation\": false,\n" +
-            "  \"tileSpecs\": [\n" +
-            "    {\n" +
-            "      \"mipmapLevels\": {\n" +
-            "        \"0\": {\n" +
-            "          \"imageUrl\": \"file:///Users/trautmane/spec0-level0.png\"\n" +
-            "        },\n" +
-            "        \"1\": {\n" +
-            "          \"imageUrl\": \"file:///Users/trautmane/spec0-level1.png\"\n" +
-            "        },\n" +
-            "        \"2\": {\n" +
-            "          \"imageUrl\": \"file:///Users/trautmane/spec0-level2.png\"\n" +
-            "        }\n" +
-            "      },\n" +
-            "      \"transforms\": [\n" +
-            "        {\n" +
-            "          \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
-            "          \"dataString\": \"1 0 0 1 0 0\"\n" +
-            "        }\n" +
-            "      ]\n" +
-            "    },\n" +
-            "    {\n" +
-            "      \"mipmapLevels\": {\n" +
-            "        \"0\": {\n" +
-            "          \"imageUrl\": \"file:///Users/trautmane/spec1-level0.png\"\n" +
-            "        }\n" +
-            "      },\n" +
-            "      \"transforms\": [\n" +
-            "        {\n" +
-            "          \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
-            "          \"dataString\": \"1 0 0 1 1650 0\"\n" +
-            "        }\n" +
-            "      ]\n" +
-            "    }\n" +
-            "  ]\n" +
-            "}";
 }

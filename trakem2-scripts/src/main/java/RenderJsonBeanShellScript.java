@@ -45,18 +45,21 @@ public class RenderJsonBeanShellScript extends BeanShellScript {
     public void appendTransformsJson(List<CoordinateTransform> transforms,
                                      StringBuilder b) {
 
-        b.append("  \"transforms\": [\n");
+        b.append("  \"transforms\": {\n");
+        b.append("    \"type\": \"list\"\n");
+        b.append("    \"specList\": [\n");
 
         boolean isFirst = true;
         for (CoordinateTransform t : transforms) {
             isFirst = appendIfNotFirst(isFirst, ",\n", b);
-            b.append("    {\n");
-            b.append("      \"className\": \"").append(t.getClass().getCanonicalName()).append("\",\n");
-            b.append("      \"dataString\": \"").append(t.toDataString()).append("\"\n");
-            b.append("    }");
+            b.append("      {\n");
+            b.append("        \"className\": \"").append(t.getClass().getCanonicalName()).append("\",\n");
+            b.append("        \"dataString\": \"").append(t.toDataString()).append("\"\n");
+            b.append("      }");
         }
 
-        b.append("\n  ]");
+        b.append("\n    ]");
+        b.append("\n  }");
     }
 
     public void appendPatchJson(Patch patch,

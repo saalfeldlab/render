@@ -119,12 +119,15 @@ public class TileSpecTest {
             "      \"imageUrl\": \"file:///Users/trautmane/spec0-level3.png\"\n" +
             "    }\n" +
             "  },\n" +
-            "  \"transforms\": [\n" +
-            "    {\n" +
-            "      \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
-            "      \"dataString\": \"1 0 0 1 0 0\"\n" +
-            "    }\n" +
-            "  ]\n" +
+            "  \"transforms\": {\n" +
+            "    type= \"list\",\n" +
+            "    specList= [\n" +
+            "      {\n" +
+            "        \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
+            "        \"dataString\": \"1 0 0 1 0 0\"\n" +
+            "      }\n" +
+            "    ]\n" +
+            "  }\n" +
             "}";
 
     private static final String JSON_WITH_MISSING_MIPMAP_LEVELS =
@@ -133,11 +136,14 @@ public class TileSpecTest {
             "  \"height\": -1,\n" +
             "  \"minIntensity\": 0.0,\n" +
             "  \"maxIntensity\": 255.0,\n" +
-            "  \"transforms\": [\n" +
-            "    {\n" +
-            "      \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
-            "      \"dataString\": \"1 0 0 1 0 0\"\n" +
-            "    }\n" +
-            "  ]\n" +
+            "  \"transforms\": {\n" +
+            "    type= \"list\",\n" +
+            "    specList= [\n" +
+            "      {\n" +
+            "        \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
+            "        \"dataString\": \"1 0 0 1 0 0\"\n" +
+            "      }\n" +
+            "    ]\n" +
+            "  }\n" +
             "}";
 }

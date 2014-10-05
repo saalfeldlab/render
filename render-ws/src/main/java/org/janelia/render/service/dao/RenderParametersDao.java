@@ -11,6 +11,7 @@ import com.mongodb.QueryOperators;
 import com.mongodb.ServerAddress;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.slf4j.Logger;
@@ -206,8 +207,12 @@ public class RenderParametersDao {
             throws IllegalStateException {
 
         final Set<String> unresolvedIds = new HashSet<String>();
+        ListTransformSpec transforms;
         for (TileSpec tileSpec : tileSpecs) {
-            tileSpec.addUnresolvedIds(unresolvedIds);
+            transforms = tileSpec.getTransforms();
+            if (transforms != null) {
+                transforms.addUnresolvedIds(unresolvedIds);
+            }
         }
 
         final int unresolvedCount = unresolvedIds.size();
@@ -225,8 +230,9 @@ public class RenderParametersDao {
 
             // apply fully resolved transform specs to tiles
             for (TileSpec tileSpec : tileSpecs) {
-                tileSpec.resolveReferences(resolvedIdToSpecMap);
-                if (! tileSpec.isFullyResolved()) {
+                transforms = tileSpec.getTransforms();
+                transforms.resolveReferences(resolvedIdToSpecMap);
+                if (! transforms.isFullyResolved()) {
                     throw new IllegalStateException("tile spec " + tileSpec.getTileId() +
                                                     " is not fully resolved after applying the following transform specs: " +
                                                     resolvedIdToSpecMap.keySet());

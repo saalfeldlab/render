@@ -24,6 +24,10 @@ public class ListTransformSpec extends TransformSpec {
 
     private List<TransformSpec> specList;
 
+    public ListTransformSpec() {
+        this(null, null);
+    }
+
     public ListTransformSpec(String id,
                              TransformSpecMetaData metaData) {
         super(id, TYPE, metaData);
@@ -36,6 +40,10 @@ public class ListTransformSpec extends TransformSpec {
 
     public void addSpec(TransformSpec spec) {
         specList.add(spec);
+    }
+
+    public void addAllSpecs(List<TransformSpec> specs) {
+        this.specList.addAll(specs);
     }
 
     public int size() {
@@ -66,6 +74,12 @@ public class ListTransformSpec extends TransformSpec {
         for (TransformSpec spec : specList) {
             spec.resolveReferences(idToSpecMap);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    public CoordinateTransformList<CoordinateTransform> getInstanceAsList()
+            throws IllegalArgumentException {
+        return (CoordinateTransformList<CoordinateTransform>) super.getInstance();
     }
 
     @Override
