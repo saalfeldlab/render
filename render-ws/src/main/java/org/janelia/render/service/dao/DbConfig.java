@@ -19,18 +19,18 @@ public class DbConfig {
     private String host;
     private Integer port;
     private String userName;
-    private String userNameSource; // typically the database where userName is defined
+    private String authenticationDatabase;
     private String password;
 
     public DbConfig(String host,
                     Integer port,
                     String userName,
-                    String userNameSource,
+                    String authenticationDatabase,
                     String password) {
         this.host = host;
         this.port = port;
         this.userName = userName;
-        this.userNameSource = userNameSource;
+        this.authenticationDatabase = authenticationDatabase;
         this.password = password;
     }
 
@@ -46,8 +46,8 @@ public class DbConfig {
         return userName;
     }
 
-    public String getUserNameSource() {
-        return userNameSource;
+    public String getAuthenticationDatabase() {
+        return authenticationDatabase;
     }
 
     public char[] getPassword() {
@@ -69,7 +69,7 @@ public class DbConfig {
 
             final String host = getRequiredProperty("host", properties, path);
             final String userName = getRequiredProperty("userName", properties, path);
-            final String userNameSource = getRequiredProperty("userNameSource", properties, path);
+            final String userNameSource = getRequiredProperty("authenticationDatabase", properties, path);
             final String password = getRequiredProperty("password", properties, path);
 
             Integer port;

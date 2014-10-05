@@ -49,7 +49,7 @@ public class RenderParametersDao {
             throws UnknownHostException {
         final ServerAddress serverAddress = new ServerAddress(dbConfig.getHost(), dbConfig.getPort());
         final MongoCredential credential = MongoCredential.createMongoCRCredential(dbConfig.getUserName(),
-                                                                                   dbConfig.getUserNameSource(),
+                                                                                   dbConfig.getAuthenticationDatabase(),
                                                                                    dbConfig.getPassword());
         client = new MongoClient(serverAddress, Arrays.asList(credential));
     }
