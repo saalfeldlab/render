@@ -1,6 +1,6 @@
 <component name="ArtifactManager">
   <artifact type="exploded-war" name="render-ws:war exploded">
-    <output-path>$PROJECT_DIR$/render-ws/target/render-ws-0.0.2-SNAPSHOT</output-path>
+    <output-path>$PROJECT_DIR$/render-ws/target/render-ws-0.0.3-SNAPSHOT</output-path>
     <root id="root">
       <element id="javaee-facet-resources" facet="render-ws/web/Web" />
       <element id="directory" name="WEB-INF">
@@ -8,10 +8,10 @@
           <element id="module-output" name="render-ws" />
         </element>
         <element id="directory" name="lib">
-          <element id="archive" name="render-app-0.0.2-SNAPSHOT.jar">
+          <element id="archive" name="render-app-0.0.3-SNAPSHOT.jar">
             <element id="module-output" name="render-app" />
           </element>
-          <element id="archive" name="trakem2-transform-0.0.2-SNAPSHOT.jar">
+          <element id="archive" name="trakem2-transform-0.0.3-SNAPSHOT.jar">
             <element id="module-output" name="trakem2-transform" />
           </element>
           <element id="library" level="project" name="Maven: mpicbg:mpicbg:0.6.1" />
