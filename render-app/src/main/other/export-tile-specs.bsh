@@ -31,7 +31,7 @@ import java.util.List;
                                      StringBuilder b) {
 
         b.append("  \"transforms\": {\n");
-        b.append("    \"type\": \"list\"\n");
+        b.append("    \"type\": \"list\",\n");
         b.append("    \"specList\": [\n");
 
         boolean isFirst = true;

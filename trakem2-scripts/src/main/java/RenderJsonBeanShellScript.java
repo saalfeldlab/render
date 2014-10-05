@@ -46,7 +46,7 @@ public class RenderJsonBeanShellScript extends BeanShellScript {
                                      StringBuilder b) {
 
         b.append("  \"transforms\": {\n");
-        b.append("    \"type\": \"list\"\n");
+        b.append("    \"type\": \"list\",\n");
         b.append("    \"specList\": [\n");
 
         boolean isFirst = true;
