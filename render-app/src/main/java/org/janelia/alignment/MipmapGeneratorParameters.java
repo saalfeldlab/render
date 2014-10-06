@@ -54,6 +54,9 @@ public class MipmapGeneratorParameters {
     @Parameter(names = "--consolidate_masks", description = "Consolidate equivalent zipped TrakEM2 mask files", required = false)
     private boolean consolidateMasks;
 
+    @Parameter(names = "--force_box", description = "Force calculation of tile bounding box attributes", required = false)
+    private boolean forceBoxCalculation;
+
     /** List of tile specifications parsed from --url or deserialized directly from json. */
     private List<TileSpec> tileSpecs;
 
@@ -75,6 +78,7 @@ public class MipmapGeneratorParameters {
         this.url = null;
         this.outputFileName = null;
         this.consolidateMasks = false;
+        this.forceBoxCalculation = false;
 
         this.tileSpecs = new ArrayList<TileSpec>();
 
@@ -204,6 +208,10 @@ public class MipmapGeneratorParameters {
 
     public boolean consolidateMasks() {
         return consolidateMasks;
+    }
+
+    public boolean forceBoxCalculation() {
+        return forceBoxCalculation;
     }
 
     public boolean hasTileSpecs() {

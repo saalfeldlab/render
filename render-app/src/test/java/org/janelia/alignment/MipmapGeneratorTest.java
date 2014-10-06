@@ -44,6 +44,7 @@ public class MipmapGeneratorTest {
         final MipmapGenerator mipmapGenerator = new MipmapGenerator(baseMipmapDirectory,
                                                                     Utils.JPEG_FORMAT,
                                                                     0.85f,
+                                                                    false,
                                                                     false);
 
         final String sourcePath = "/groups/saalfeld/raw-data/stack-1/file1.tif";
@@ -68,7 +69,8 @@ public class MipmapGeneratorTest {
         final MipmapGenerator mipmapGenerator = new MipmapGenerator(baseMipmapDirectory,
                                                                     parameters.getFormat(),
                                                                     parameters.getQuality(),
-                                                                    true);
+                                                                    true,
+                                                                    false);
         ImageAndMask consolidatedLevel1imageAndMask = null;
         ImageAndMask consolidatedLevel2imageAndMask = null;
         TileSpec tileSpec;

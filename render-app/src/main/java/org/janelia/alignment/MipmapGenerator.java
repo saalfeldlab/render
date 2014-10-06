@@ -71,7 +71,8 @@ public class MipmapGenerator {
                 MipmapGenerator mipmapGenerator = new MipmapGenerator(params.getRootDirectory(),
                                                                       params.getFormat(),
                                                                       params.getQuality(),
-                                                                      params.consolidateMasks());
+                                                                      params.consolidateMasks(),
+                                                                      params.forceBoxCalculation());
 
                 final int mipmapLevel = params.getMipmapLevel();
                 final List<TileSpec> tileSpecs = params.getTileSpecs();
@@ -116,6 +117,7 @@ public class MipmapGenerator {
     private String format;
     private float jpegQuality;
     private boolean consolidateMasks;
+    private boolean forceBoxCalculation;
     private MessageDigest messageDigest;
     private Map<String, File> sourceDigestToMaskMipmapBaseFileMap;
 
@@ -126,15 +128,18 @@ public class MipmapGenerator {
      * @param  format            the format for all generated mipmap files.
      * @param  jpegQuality       the jpg quality factor (0.0 to 1.0) which is only used when generating jpg mipmaps.
      * @param  consolidateMasks  if true, consolidate equivalent zipped TrakEM2 mask files.
+     * @param  forceBoxCalculation  if true, recalculate tile bounding box attributes even if they already exist.
      */
     public MipmapGenerator(File rootDirectory,
                            String format,
                            float jpegQuality,
-                           boolean consolidateMasks) {
+                           boolean consolidateMasks,
+                           boolean forceBoxCalculation) {
         this.rootDirectory = rootDirectory;
         this.format = format;
         this.jpegQuality = jpegQuality;
         this.consolidateMasks = consolidateMasks;
+        this.forceBoxCalculation = forceBoxCalculation;
 
         if (consolidateMasks) {
             try {
@@ -214,6 +219,8 @@ public class MipmapGenerator {
                 imageAndMask = tileSpec.getMipmap(mipmapLevel);
             }
         }
+
+        tileSpec = Render.deriveBoundingBox(tileSpec, forceBoxCalculation);
 
         return tileSpec;
     }

@@ -149,13 +149,7 @@ public class Render {
             if ((width < 0) || (height < 0)) {
                 mipmapEntry = ts.getFirstMipmapEntry();
                 imageAndMask = mipmapEntry.getValue();
-                // load image TODO use Bioformats for strange formats
-                final String imgUrl = imageAndMask.getImageUrl();
-                final ImagePlus imp = Utils.openImagePlusUrl(imgUrl);
-                if (imp == null) {
-                    throw new IllegalArgumentException("failed to load mipmap level " + mipmapEntry.getKey() +
-                                                       " image '" + imgUrl + "'");
-                }
+                final ImagePlus imp = getImagePlusForMipmap(imageAndMask);
                 ip = imp.getProcessor();
                 width = imp.getWidth();
                 height = imp.getHeight();
@@ -170,27 +164,24 @@ public class Render {
             Integer downSampleLevels = null;
             final ImageProcessor ipMipmap;
             if (ip == null) {
-                // load image TODO use Bioformats for strange formats
                 mipmapEntry = ts.getFloorMipmapEntry(mipmapLevel);
                 imageAndMask = mipmapEntry.getValue();
-                final String imgUrl = imageAndMask.getImageUrl();
-                final ImagePlus imp = Utils.openImagePlusUrl(imgUrl);
-                if (imp == null) {
-                    throw new IllegalArgumentException("failed to load mipmap level " + mipmapEntry.getKey() +
-                                                       " image '" + imgUrl + "' for scaling");
-                }
+                final ImagePlus imp = getImagePlusForMipmap(imageAndMask);
                 ip = imp.getProcessor();
                 final int currentMipmapLevel = mipmapEntry.getKey();
                 if (currentMipmapLevel >= mipmapLevel) {
                     mipmapLevel = currentMipmapLevel;
                     ipMipmap = ip;
+                    LOG.debug("render: using existing mipmap level {}", mipmapLevel);
                 } else {
                     downSampleLevels = mipmapLevel - currentMipmapLevel;
+                    LOG.debug("render: need to down sample from mipmap level {} to {}", currentMipmapLevel, mipmapLevel);
                     ipMipmap = Downsampler.downsampleImageProcessor(ip, downSampleLevels);
                 }
             } else {
                 // create according mipmap level
                 downSampleLevels = mipmapLevel;
+                LOG.debug("render: full down sample to level {}", mipmapLevel);
                 ipMipmap = Downsampler.downsampleImageProcessor(ip, downSampleLevels);
             }
 
@@ -227,7 +218,7 @@ public class Render {
 
             // if source.mask gets "quietly" removed (because of size), we need to also remove bpMaskSource
             if ((bpMaskTarget != null) && (source.mask == null)) {
-                LOG.warn("removing mask because ipMipmap and bpMaskSource differ in size, ipMipmap: " +
+                LOG.warn("render: removing mask because ipMipmap and bpMaskSource differ in size, ipMipmap: " +
                          ipMipmap.getWidth() + "x" + ipMipmap.getHeight() + ", bpMaskSource: " +
                          bpMaskSource.getWidth() + "x" + bpMaskSource.getHeight());
                 bpMaskTarget = null;
@@ -272,10 +263,11 @@ public class Render {
 
             drawImageStop = System.currentTimeMillis();
 
-            LOG.debug("render: tile {} took {} milliseconds to process (load mip:{}, scale mip:{}, load/scale mask:{}, map{}:{}, draw image:{})",
+            LOG.debug("render: tile {} took {} milliseconds to process (load mip:{}, scale mip ({} downsample levels):{}, load/scale mask:{}, map{}:{}, draw image:{})",
                       tileSpecIndex,
                       drawImageStop - tileSpecStart,
                       loadMipStop - tileSpecStart,
+                      downSampleLevels,
                       scaleMipStop - loadMipStop,
                       loadMaskStop - scaleMipStop,
                       mapType,
@@ -324,6 +316,31 @@ public class Render {
                                        final boolean skipInterpolation)
             throws IllegalArgumentException {
         return render(tileSpecs, x, y, width, height, triangleSize, 1.0, false, skipInterpolation);
+    }
+
+    public static TileSpec deriveBoundingBox(final TileSpec tileSpec,
+                                             final boolean force) {
+
+        if (! tileSpec.hasWidthAndHeightDefined()) {
+            final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
+            final ImagePlus imp = getImagePlusForMipmap(mipmapEntry.getValue());
+            tileSpec.setWidth((double) imp.getWidth());
+            tileSpec.setHeight((double) imp.getHeight());
+        }
+
+        tileSpec.deriveBoundingBox(force);
+
+        return tileSpec;
+    }
+
+    private static ImagePlus getImagePlusForMipmap(ImageAndMask imageAndMask) {
+        // load image TODO use Bioformats for strange formats
+        final String imgUrl = imageAndMask.getImageUrl();
+        final ImagePlus imp = Utils.openImagePlusUrl(imgUrl);
+        if (imp == null) {
+            throw new IllegalArgumentException("failed to load image '" + imgUrl + "'");
+        }
+        return imp;
     }
 
     public static void main(final String[] args) {
