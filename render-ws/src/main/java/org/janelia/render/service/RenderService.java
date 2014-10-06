@@ -200,7 +200,7 @@ public class RenderService {
                                                                       width,
                                                                       height,
                                                                       mipmapLevel);
-        return renderJpegImage(projectId, renderParameters);
+        return renderJpegImage(renderParameters);
     }
 
     @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{mipmapLevel}/png-image")
@@ -226,16 +226,15 @@ public class RenderService {
                                                                       width,
                                                                       height,
                                                                       mipmapLevel);
-        return renderPngImage(projectId, renderParameters);
+        return renderPngImage(renderParameters);
     }
 
     @Path("jpeg-image")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    public Response renderJpegImage(@PathParam("projectId") String projectId,
-                                    RenderParameters renderParameters) {
-        LOG.info("renderJpegImage: entry, projectId={}", projectId);
+    public Response renderJpegImage(RenderParameters renderParameters) {
+        LOG.info("renderJpegImage: entry, renderParameters={}", renderParameters);
         return renderImageStream(renderParameters, Utils.JPEG_FORMAT, IMAGE_JPEG_MIME_TYPE);
     }
 
@@ -244,9 +243,8 @@ public class RenderService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    public Response renderPngImage(@PathParam("projectId") String projectId,
-                                    RenderParameters renderParameters) {
-        LOG.info("renderPngImage: entry, projectId={}", projectId);
+    public Response renderPngImage(RenderParameters renderParameters) {
+        LOG.info("renderPngImage: entry, renderParameters={}", renderParameters);
         return renderImageStream(renderParameters, Utils.PNG_FORMAT, IMAGE_PNG_MIME_TYPE);
     }
 
