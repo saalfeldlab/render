@@ -38,9 +38,10 @@ public class RenderParametersDao {
     public static final String TILE_COLLECTION_NAME = "tile";
     public static final String TRANSFORM_COLLECTION_NAME = "transform";
 
-    public static String getDatabaseName(String projectId,
+    public static String getDatabaseName(String owner,
+                                         String projectId,
                                          String stackId) {
-        return projectId + "-" + stackId;
+        return owner + "-" + projectId + "-" + stackId;
     }
 
     private MongoClient client;
@@ -64,14 +65,15 @@ public class RenderParametersDao {
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
-    public RenderParameters getParameters(String projectId,
+    public RenderParameters getParameters(String owner,
+                                          String projectId,
                                           String stackId,
                                           Double x,
                                           Double y,
                                           Double z,
                                           Integer width,
                                           Integer height,
-                                          Integer zoomLevel)
+                                          Integer mipmapLevel)
             throws IllegalArgumentException {
 
         validateRequiredParameter("x", x);
@@ -79,9 +81,9 @@ public class RenderParametersDao {
         validateRequiredParameter("z", z);
         validateRequiredParameter("width", width);
         validateRequiredParameter("height", height);
-        validateRequiredParameter("zoomLevel", zoomLevel);
+        validateRequiredParameter("mipmapLevel", mipmapLevel);
 
-        final DB db = getDatabase(projectId, stackId);
+        final DB db = getDatabase(owner, projectId, stackId);
 
         final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
 
@@ -97,7 +99,7 @@ public class RenderParametersDao {
                                                      "maxX", gte(x)).append(
                                                      "maxY", gte(y));
 
-        RenderParameters renderParameters = new RenderParameters(null, x, y, width, height, zoomLevel);
+        RenderParameters renderParameters = new RenderParameters(null, x, y, width, height, mipmapLevel);
 
         final DBCursor cursor = tileCollection.find(tileQuery);
         try {
@@ -125,12 +127,14 @@ public class RenderParametersDao {
         return renderParameters;
     }
 
-    private DB getDatabase(String projectId,
+    private DB getDatabase(String owner,
+                           String projectId,
                            String stackId) {
+        validateIdName("owner", owner);
         validateIdName("projectId", projectId);
         validateIdName("stackId", stackId);
 
-        return client.getDB(getDatabaseName(projectId, stackId));
+        return client.getDB(getDatabaseName(owner, projectId, stackId));
     }
 
     private List<TransformSpec> getTransformSpecs(DBCollection transformCollection,

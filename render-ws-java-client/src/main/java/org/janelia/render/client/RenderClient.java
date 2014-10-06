@@ -57,13 +57,13 @@ public class RenderClient {
 
     /**
      * @param  baseUriString  base URI for web service (e.g. http://renderer.int.janelia.org/render-ws/v1).
-     * @param  projectId      project identifier (e.g. 'test') for all requests.
+     * @param  owner          owner (e.g. 'flyTEM') for all requests.
      *
      * @throws IllegalArgumentException
      *   if the render URI instances cannot be constructed.
      */
     public RenderClient(String baseUriString,
-                        String projectId) throws IllegalArgumentException {
+                        String owner) throws IllegalArgumentException {
 
         final String trimmedBaseUriString;
         if (baseUriString.endsWith("/")) {
@@ -72,7 +72,7 @@ public class RenderClient {
             trimmedBaseUriString = baseUriString;
         }
 
-        final String projectUriString = trimmedBaseUriString + "/project/" + projectId;
+        final String projectUriString = trimmedBaseUriString + "/owner/" + owner;
         final URI jpegUri = createUri(projectUriString + "/jpeg-image");
         final URI pngUri = createUri(projectUriString + "/png-image");
         final Map<String, URI> map = new LinkedHashMap<String, URI>();

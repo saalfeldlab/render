@@ -21,6 +21,7 @@ import java.util.List;
  */
 public class RenderParametersDaoTest {
 
+    private static String owner;
     private static String project;
     private static String stack;
     private static EmbeddedMongoDb embeddedMongoDb;
@@ -28,9 +29,10 @@ public class RenderParametersDaoTest {
 
     @BeforeClass
     public static void before() throws Exception {
+        owner = "flyTEM";
         project = "test";
         stack = "elastic";
-        embeddedMongoDb = new EmbeddedMongoDb(RenderParametersDao.getDatabaseName(project, stack));
+        embeddedMongoDb = new EmbeddedMongoDb(RenderParametersDao.getDatabaseName(owner, project, stack));
         dao = new RenderParametersDao(embeddedMongoDb.getMongoClient());
     }
 
@@ -61,7 +63,7 @@ public class RenderParametersDaoTest {
         final Integer height = 2000;
         final Integer zoomLevel = 1;
 
-        final RenderParameters parameters = dao.getParameters(project, stack, x, y, z, width, height, zoomLevel);
+        final RenderParameters parameters = dao.getParameters(owner, project, stack, x, y, z, width, height, zoomLevel);
 
         Assert.assertNotNull("null parameters retrieved", parameters);
         Assert.assertEquals("invalid width parsed", width.intValue(), parameters.getWidth());

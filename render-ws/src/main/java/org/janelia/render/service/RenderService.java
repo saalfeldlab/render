@@ -31,7 +31,7 @@ import java.net.UnknownHostException;
  *
  * @author Eric Trautman
  */
-@Path("/v1/project")
+@Path("/v1/owner/{owner}")
 public class RenderService {
 
     private RenderParametersDao renderParametersDao;
@@ -42,79 +42,84 @@ public class RenderService {
         this.renderParametersDao = new RenderParametersDao(dbConfig);
     }
 
-    @Path("{projectId}/stack/{stackId}/box/{x},{y},{z},{width},{height},{zoomLevel}/render-parameters")
+    @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{mipmapLevel}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public RenderParameters getRenderParameters(@PathParam("projectId") String projectId,
+    public RenderParameters getRenderParameters(@PathParam("owner") String owner,
+                                                @PathParam("projectId") String projectId,
                                                 @PathParam("stackId") String stackId,
                                                 @PathParam("x") Double x,
                                                 @PathParam("y") Double y,
                                                 @PathParam("z") Double z,
                                                 @PathParam("width") Integer width,
                                                 @PathParam("height") Integer height,
-                                                @PathParam("zoomLevel") Integer zoomLevel) {
+                                                @PathParam("mipmapLevel") Integer mipmapLevel) {
 
-        LOG.info("getRenderParameters: entry, projectId={}, stackId={}, x={}, y={}, z={}, width={}, height={}, zoomLevel={}",
-                 projectId, stackId, x, y, z, width, height, zoomLevel);
+        LOG.info("getRenderParameters: entry, projectId={}, stackId={}, x={}, y={}, z={}, width={}, height={}, mipmapLevel={}",
+                 projectId, stackId, x, y, z, width, height, mipmapLevel);
 
         RenderParameters parameters = null;
         try {
-            parameters = renderParametersDao.getParameters(projectId, stackId, x, y, z, width, height, zoomLevel);
+            parameters = renderParametersDao.getParameters(owner, projectId, stackId, x, y, z, width, height, mipmapLevel);
         } catch (Throwable t) {
             throwServiceException(t);
         }
         return parameters;
     }
 
-    @Path("{projectId}/stack/{stackId}/box/{x},{y},{z},{width},{height},{zoomLevel}/jpeg-image")
+    @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{mipmapLevel}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    public Response renderJpegImageForBox(@PathParam("projectId") String projectId,
+    public Response renderJpegImageForBox(@PathParam("owner") String owner,
+                                          @PathParam("projectId") String projectId,
                                           @PathParam("stackId") String stackId,
                                           @PathParam("x") Double x,
                                           @PathParam("y") Double y,
                                           @PathParam("z") Double z,
                                           @PathParam("width") Integer width,
                                           @PathParam("height") Integer height,
-                                          @PathParam("zoomLevel") Integer zoomLevel) {
+                                          @PathParam("mipmapLevel") Integer mipmapLevel) {
 
         LOG.info("renderJpegImageForBox: entry");
-        final RenderParameters renderParameters = getRenderParameters(projectId,
+        final RenderParameters renderParameters = getRenderParameters(owner,
+                                                                      projectId,
                                                                       stackId,
                                                                       x,
                                                                       y,
                                                                       z,
                                                                       width,
                                                                       height,
-                                                                      zoomLevel);
+                                                                      mipmapLevel);
         return renderJpegImage(projectId, renderParameters);
     }
 
-    @Path("{projectId}/stack/{stackId}/box/{x},{y},{z},{width},{height},{zoomLevel}/png-image")
+    @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{mipmapLevel}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
-    public Response renderPngImageForBox(@PathParam("projectId") String projectId,
+    public Response renderPngImageForBox(@PathParam("owner") String owner,
+                                         @PathParam("projectId") String projectId,
                                          @PathParam("stackId") String stackId,
                                          @PathParam("x") Double x,
                                          @PathParam("y") Double y,
                                          @PathParam("z") Double z,
                                          @PathParam("width") Integer width,
                                          @PathParam("height") Integer height,
-                                         @PathParam("zoomLevel") Integer zoomLevel) {
+                                         @PathParam("mipmapLevel") Integer mipmapLevel) {
 
         LOG.info("renderPngImageForBox: entry");
-        final RenderParameters renderParameters = getRenderParameters(projectId,
+        final RenderParameters renderParameters = getRenderParameters(owner,
+                                                                      projectId,
                                                                       stackId,
                                                                       x,
                                                                       y,
                                                                       z,
                                                                       width,
                                                                       height,
-                                                                      zoomLevel);
+                                                                      mipmapLevel);
         return renderPngImage(projectId, renderParameters);
     }
 
-    @Path("{projectId}/jpeg-image")
+    @Path("jpeg-image")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(IMAGE_JPEG_MIME_TYPE)
@@ -125,7 +130,7 @@ public class RenderService {
     }
 
 
-    @Path("{projectId}/png-image")
+    @Path("png-image")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(IMAGE_JPEG_MIME_TYPE)
