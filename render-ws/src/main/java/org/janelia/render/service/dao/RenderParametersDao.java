@@ -143,20 +143,16 @@ public class RenderParametersDao {
     public TileSpec getTileSpec(String owner,
                                 String projectId,
                                 String stackId,
-                                Double z,
                                 String tileId)
             throws IllegalArgumentException,
                    ObjectNotFoundException {
 
-        validateRequiredParameter("z", z);
         validateRequiredParameter("tileId", tileId);
 
         final DB db = getDatabase(owner, projectId, stackId);
-
         final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
 
         final BasicDBObject query = new BasicDBObject();
-        query.put("z", z);
         query.put("tileId", tileId);
 
         LOG.debug("getTileSpec: {}.{}.find({})",
@@ -165,7 +161,7 @@ public class RenderParametersDao {
         final DBObject document = tileCollection.findOne(query);
 
         if (document == null) {
-            throw new ObjectNotFoundException("tile with id '" + tileId + "' does not exist in the " +
+            throw new ObjectNotFoundException("tile spec with id '" + tileId + "' does not exist in the " +
                                               db.getName() + " " + TILE_COLLECTION_NAME + " collection");
         }
 
@@ -192,17 +188,15 @@ public class RenderParametersDao {
             throws IllegalArgumentException {
 
         validateRequiredParameter("tileSpec", tileSpec);
-        validateRequiredParameter("tileSpec.z", tileSpec.getZ());
         validateRequiredParameter("tileSpec.tileId", tileSpec.getTileId());
 
         final DB db = getDatabase(owner, projectId, stackId);
         final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
 
-        final String context = "tile spec with id '" + tileSpec.getTileId() + "' and z " + tileSpec.getZ();
+        final String context = "tile spec with id '" + tileSpec.getTileId();
         validateTransformReferences(context, tileSpec.getTransforms(), db);
 
         final BasicDBObject query = new BasicDBObject();
-        query.put("z", tileSpec.getZ());
         query.put("tileId", tileSpec.getTileId());
 
         final DBObject tileSpecObject = (DBObject) JSON.parse(tileSpec.toJson());
@@ -217,9 +211,94 @@ public class RenderParametersDao {
         }
 
         LOG.debug("saveTileSpec: {}.{}.{},({}), upsertedId is {}",
-                  tileCollection.getDB().getName(), tileCollection.getName(), action, query, result.getUpsertedId());
+                  tileCollection.getDB().getName(), TILE_COLLECTION_NAME, action, query, result.getUpsertedId());
 
         return tileSpec;
+    }
+
+    /**
+     * @return the specified transform spec.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing.
+     *
+     * @throws ObjectNotFoundException
+     *   if a spec with the specified transformId cannot be found.
+     */
+    public TransformSpec getTransformSpec(String owner,
+                                          String projectId,
+                                          String stackId,
+                                          String transformId)
+            throws IllegalArgumentException,
+                   ObjectNotFoundException {
+
+        validateRequiredParameter("transformId", transformId);
+
+        final DB db = getDatabase(owner, projectId, stackId);
+        final DBCollection transformCollection = db.getCollection(TRANSFORM_COLLECTION_NAME);
+
+        final BasicDBObject query = new BasicDBObject();
+        query.put("id", transformId);
+
+        LOG.debug("getTransformSpec: {}.{}.find({})",
+                  transformCollection.getDB().getName(), transformCollection.getName(), query);
+
+        final DBObject document = transformCollection.findOne(query);
+
+        if (document == null) {
+            throw new ObjectNotFoundException("transform spec with id '" + transformId + "' does not exist in the " +
+                                              db.getName() + " " + TRANSFORM_COLLECTION_NAME + " collection");
+        }
+
+        return JsonUtils.GSON.fromJson(document.toString(), TransformSpec.class);
+    }
+
+    /**
+     * Saves the specified transform spec to the database.
+     *
+     * @param  owner          data owner.
+     * @param  projectId      project identifier.
+     * @param  stackId        stack identifier.
+     * @param  transformSpec  specification to be saved.
+     *
+     * @return the specification updated with any attributes that were modified by the save.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters or transform spec references are missing.
+     */
+    public TransformSpec saveTransformSpec(String owner,
+                                           String projectId,
+                                           String stackId,
+                                           TransformSpec transformSpec)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("transformSpec", transformSpec);
+        validateRequiredParameter("transformSpec.id", transformSpec.getId());
+
+        final DB db = getDatabase(owner, projectId, stackId);
+        final DBCollection transformCollection = db.getCollection(TRANSFORM_COLLECTION_NAME);
+
+        final String context = "transform spec with id '" + transformSpec.getId() + "'";
+        validateTransformReferences(context, transformSpec, db);
+
+        final BasicDBObject query = new BasicDBObject();
+        query.put("id", transformSpec.getId());
+
+        final DBObject transformSpecObject = (DBObject) JSON.parse(transformSpec.toJson());
+
+        final WriteResult result = transformCollection.update(query, transformSpecObject, true, false);
+
+        String action;
+        if (result.isUpdateOfExisting()) {
+            action = "update";
+        } else {
+            action = "insert";
+        }
+
+        LOG.debug("saveTransformSpec: {}.{}.{},({}), upsertedId is {}",
+                  transformCollection.getDB().getName(), TRANSFORM_COLLECTION_NAME, action, query, result.getUpsertedId());
+
+        return transformSpec;
     }
 
     private DB getDatabase(String owner,

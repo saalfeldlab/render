@@ -1,11 +1,14 @@
 package org.janelia.render.service.dao;
 
+import mpicbg.trakem2.transform.AffineModel2D;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.TransformSpecMetaData;
 import org.janelia.render.service.ObjectNotFoundException;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
@@ -97,40 +100,30 @@ public class RenderParametersDaoTest {
 
     @Test
     public void testGetTileSpec() throws Exception {
-        final Double z = 3903.0;
-        final TileSpec tileSpec = dao.getTileSpec(owner, project, stack, z, "134");
-
+        final String existingTileId = "134";
+        final TileSpec tileSpec = dao.getTileSpec(owner, project, stack, existingTileId);
         Assert.assertNotNull("null tileSpec retrieved", tileSpec);
-        Assert.assertEquals("invalid z retrieved", String.valueOf(z), String.valueOf(tileSpec.getZ()));
-    }
-
-    @Test(expected = ObjectNotFoundException.class)
-    public void testGetTileSpecWithBadZ() throws Exception {
-        final Double z = 1234.5;
-        dao.getTileSpec(owner, project, stack, z, "134");
+        Assert.assertEquals("invalid tileId retrieved", existingTileId, tileSpec.getTileId());
     }
 
     @Test(expected = ObjectNotFoundException.class)
     public void testGetTileSpecWithBadId() throws Exception {
-        final Double z = 3903.0;
-        dao.getTileSpec(owner, project, stack, z, "missingId");
+        dao.getTileSpec(owner, project, stack, "missingId");
     }
 
     @Test
     public void testSaveTileSpec() throws Exception {
-        final Double z = 123.0;
         final String tileId = "new-tile-1";
         final String temca = "0";
         final LayoutData layoutData = new LayoutData(temca, null, null, null);
 
         TileSpec tileSpec = new TileSpec();
-        tileSpec.setZ(z);
         tileSpec.setTileId(tileId);
         tileSpec.setLayout(layoutData);
 
         dao.saveTileSpec(owner, project, stack, tileSpec);
 
-        final TileSpec insertedTileSpec = dao.getTileSpec(owner, project, stack, z, tileId);
+        final TileSpec insertedTileSpec = dao.getTileSpec(owner, project, stack, tileId);
 
         Assert.assertNotNull("null tileSpec retrieved after insert", insertedTileSpec);
         final LayoutData insertedLayoutData = insertedTileSpec.getLayout();
@@ -147,7 +140,7 @@ public class RenderParametersDaoTest {
 
         dao.saveTileSpec(owner, project, stack, tileSpec);
 
-        final TileSpec updatedTileSpec = dao.getTileSpec(owner, project, stack, z, tileId);
+        final TileSpec updatedTileSpec = dao.getTileSpec(owner, project, stack, tileId);
 
         Assert.assertNotNull("null tileSpec retrieved after update", updatedTileSpec);
         final LayoutData updatedLayoutData = updatedTileSpec.getLayout();
@@ -168,6 +161,64 @@ public class RenderParametersDaoTest {
         dao.saveTileSpec(owner, project, stack, tileSpec);
     }
 
+    @Test
+    public void testGetTransformSpec() throws Exception {
+        final TransformSpec transformSpec = dao.getTransformSpec(owner, project, stack, "2");
+        Assert.assertNotNull("null transformSpec retrieved", transformSpec);
+        Assert.assertEquals("invalid type retrieved", "list", transformSpec.getType());
+    }
+
+    @Test(expected = ObjectNotFoundException.class)
+    public void testGetTransformSpecWithBadId() throws Exception {
+        dao.getTransformSpec(owner, project, stack, "missingId");
+    }
+
+    @Test
+    public void testSaveTransformSpec() throws Exception {
+
+        final String transformId = "new-transform-1";
+        final TransformSpecMetaData metaData = new TransformSpecMetaData();
+        metaData.setGroup("test-group");
+
+        final LeafTransformSpec leafSpec = new LeafTransformSpec(transformId,
+                                                                 metaData,
+                                                                 AffineModel2D.class.getName(),
+                                                                 "1  0  0  1  0  0");
+        dao.saveTransformSpec(owner, project, stack, leafSpec);
+
+        final TransformSpec insertedSpec = dao.getTransformSpec(owner, project, stack, transformId);
+
+        Assert.assertNotNull("null transformSpec retrieved after insert", insertedSpec);
+        final TransformSpecMetaData insertedMetaData = insertedSpec.getMetaData();
+        Assert.assertNotNull("null meta data retrieved after insert", insertedMetaData);
+        Assert.assertEquals("invalid group retrieved after insert",
+                            metaData.getGroup(), insertedMetaData.getGroup());
+
+        final TransformSpecMetaData changedMetaData = new TransformSpecMetaData();
+        changedMetaData.setGroup("updated-group");
+
+        final ListTransformSpec listSpec = new ListTransformSpec(transformId, changedMetaData);
+        listSpec.addSpec(new ReferenceTransformSpec("1"));
+
+        dao.saveTransformSpec(owner, project, stack, listSpec);
+
+        final TransformSpec updatedSpec = dao.getTransformSpec(owner, project, stack, transformId);
+
+        Assert.assertNotNull("null transformSpec retrieved after update", updatedSpec);
+        final TransformSpecMetaData updatedMetaData = updatedSpec.getMetaData();
+        Assert.assertNotNull("null meta data retrieved after update", updatedMetaData);
+        Assert.assertEquals("invalid group retrieved after update",
+                            changedMetaData.getGroup(), updatedMetaData.getGroup());
+        Assert.assertFalse("transformSpec should not be resolved after update", updatedSpec.isFullyResolved());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSaveTransformSpecWithBadTransformReference() throws Exception {
+        final ListTransformSpec listSpec = new ListTransformSpec("bad-ref-transform", null);
+        listSpec.addSpec(new ReferenceTransformSpec("missing-id"));
+
+        dao.saveTransformSpec(owner, project, stack, listSpec);
+    }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParametersDaoTest.class);
 }

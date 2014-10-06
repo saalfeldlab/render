@@ -4,6 +4,7 @@ import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.service.dao.DbConfig;
 import org.janelia.render.service.dao.RenderParametersDao;
 import org.slf4j.Logger;
@@ -18,9 +19,11 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
+import javax.ws.rs.core.UriInfo;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -43,57 +46,110 @@ public class RenderService {
         this.renderParametersDao = new RenderParametersDao(dbConfig);
     }
 
-    @Path("project/{projectId}/stack/{stackId}/z/{z}/tile/{tileId}")
+    @Path("project/{projectId}/stack/{stackId}/tile/{tileId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public TileSpec getTileSpec(@PathParam("owner") String owner,
                                 @PathParam("projectId") String projectId,
                                 @PathParam("stackId") String stackId,
-                                @PathParam("z") Double z,
                                 @PathParam("tileId") String tileId) {
 
-        LOG.info("getTileSpec: entry, projectId={}, stackId={}, z={}, tileId={}",
-                 projectId, stackId, z, tileId);
+        LOG.info("getTileSpec: entry, projectId={}, stackId={}, tileId={}",
+                 projectId, stackId, tileId);
 
         TileSpec tileSpec = null;
         try {
-            tileSpec = renderParametersDao.getTileSpec(owner, projectId, stackId, z, tileId);
+            tileSpec = renderParametersDao.getTileSpec(owner, projectId, stackId, tileId);
         } catch (Throwable t) {
             throwServiceException(t);
         }
+
         return tileSpec;
     }
 
-    @Path("project/{projectId}/stack/{stackId}/z/{z}/tile/{tileId}")
+    @Path("project/{projectId}/stack/{stackId}/tile/{tileId}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    public TileSpec saveTileSpec(@PathParam("owner") String owner,
+    public Response saveTileSpec(@PathParam("owner") String owner,
                                  @PathParam("projectId") String projectId,
                                  @PathParam("stackId") String stackId,
-                                 @PathParam("z") Double z,
                                  @PathParam("tileId") String tileId,
+                                 @Context UriInfo uriInfo,
                                  TileSpec tileSpec) {
 
-        LOG.info("saveTileSpec: entry, projectId={}, stackId={}, z={}, tileId={}",
-                 projectId, stackId, z, tileId);
+        LOG.info("saveTileSpec: entry, projectId={}, stackId={}, tileId={}",
+                 projectId, stackId, tileId);
 
         if (tileSpec == null) {
             throw new IllegalServiceArgumentException("no tile spec provided");
-        } else if (z.compareTo(tileSpec.getZ()) != 0) {
-            throw new IllegalServiceArgumentException("request z value (" + z +
-                                                      ") does not match tile spec z value (" + tileSpec.getZ() + ")");
         } else if (! tileId.equals(tileSpec.getTileId())) {
-            throw new IllegalServiceArgumentException("request tileId value (" + z +
+            throw new IllegalServiceArgumentException("request tileId value (" + tileId +
                                                       ") does not match tile spec tileId value (" +
                                                       tileSpec.getTileId() + ")");
         }
 
         try {
-            tileSpec = renderParametersDao.saveTileSpec(owner, projectId, stackId, tileSpec);
+            renderParametersDao.saveTileSpec(owner, projectId, stackId, tileSpec);
         } catch (Throwable t) {
             throwServiceException(t);
         }
-        return tileSpec;
+
+        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
+
+        return responseBuilder.build();
+    }
+
+    @Path("project/{projectId}/stack/{stackId}/transform/{transformId}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public TransformSpec getTransformSpec(@PathParam("owner") String owner,
+                                          @PathParam("projectId") String projectId,
+                                          @PathParam("stackId") String stackId,
+                                          @PathParam("transformId") String transformId) {
+
+        LOG.info("getTransformSpec: entry, projectId={}, stackId={}, transformId={}",
+                 projectId, stackId, transformId);
+
+        TransformSpec transformSpec = null;
+        try {
+            transformSpec = renderParametersDao.getTransformSpec(owner, projectId, stackId, transformId);
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+
+        return transformSpec;
+    }
+
+    @Path("project/{projectId}/stack/{stackId}/transform/{transformId}")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response saveTransformSpec(@PathParam("owner") String owner,
+                                      @PathParam("projectId") String projectId,
+                                      @PathParam("stackId") String stackId,
+                                      @PathParam("transformId") String transformId,
+                                      @Context UriInfo uriInfo,
+                                      TransformSpec transformSpec) {
+
+        LOG.info("saveTransformSpec: entry, projectId={}, stackId={}, transformId={}",
+                 projectId, stackId, transformId);
+
+        if (transformSpec == null) {
+            throw new IllegalServiceArgumentException("no transform spec provided");
+        } else if (! transformId.equals(transformSpec.getId())) {
+            throw new IllegalServiceArgumentException("request transformId value (" + transformId +
+                                                      ") does not match transform spec id value (" +
+                                                      transformSpec.getId() + ")");
+        }
+
+        try {
+            renderParametersDao.saveTransformSpec(owner, projectId, stackId, transformSpec);
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+
+        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
+
+        return responseBuilder.build();
     }
 
     @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{mipmapLevel}/render-parameters")
