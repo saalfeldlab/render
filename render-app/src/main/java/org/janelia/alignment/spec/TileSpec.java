@@ -20,6 +20,7 @@ import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMesh;
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.json.JsonUtils;
 
 import java.awt.*;
 import java.util.List;
@@ -102,12 +103,8 @@ public class TileSpec {
 
         if (force || (! isBoundingBoxDefined())) {
 
-            if ((width == null) || (height == null)) {
+            if (! hasWidthAndHeightDefined()) {
                 throw new IllegalStateException("width and height must be set to derive bounding box");
-            }
-
-            if (! hasTransforms()) {
-                throw new IllegalStateException("transforms must be set to derive bounding box");
             }
 
             final CoordinateTransformList<CoordinateTransform> ctList = createTransformList();
@@ -117,6 +114,10 @@ public class TileSpec {
                                                          height.floatValue());
             setBoundingBox(mesh.getBoundingBox());
         }
+    }
+
+    public boolean hasWidthAndHeightDefined() {
+        return ((width != null) && (height != null));
     }
 
     public int getWidth() {
@@ -244,4 +245,7 @@ public class TileSpec {
         return ctl;
     }
 
+    public String toJson() {
+        return JsonUtils.GSON.toJson(this, TileSpec.class);
+    }
 }

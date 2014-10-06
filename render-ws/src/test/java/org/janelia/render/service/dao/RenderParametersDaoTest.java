@@ -1,8 +1,12 @@
 package org.janelia.render.service.dao;
 
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.ListTransformSpec;
+import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.render.service.ObjectNotFoundException;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -12,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -34,15 +39,6 @@ public class RenderParametersDaoTest {
         stack = "elastic";
         embeddedMongoDb = new EmbeddedMongoDb(RenderParametersDao.getDatabaseName(owner, project, stack));
         dao = new RenderParametersDao(embeddedMongoDb.getMongoClient());
-    }
-
-    @AfterClass
-    public static void after() throws Exception {
-        embeddedMongoDb.stop();
-    }
-
-    @Test
-    public void testGetParameters() throws Exception {
 
         embeddedMongoDb.importCollection(RenderParametersDao.TILE_COLLECTION_NAME,
                                          new File("src/test/resources/mongodb/elastic-3903.json"),
@@ -55,6 +51,15 @@ public class RenderParametersDaoTest {
                                          true,
                                          false,
                                          true);
+    }
+
+    @AfterClass
+    public static void after() throws Exception {
+        embeddedMongoDb.stop();
+    }
+
+    @Test
+    public void testGetParameters() throws Exception {
 
         final Double x = 1000.0;
         final Double y = 3000.0;
@@ -89,6 +94,80 @@ public class RenderParametersDaoTest {
                               transforms.isFullyResolved());
         }
     }
+
+    @Test
+    public void testGetTileSpec() throws Exception {
+        final Double z = 3903.0;
+        final TileSpec tileSpec = dao.getTileSpec(owner, project, stack, z, "134");
+
+        Assert.assertNotNull("null tileSpec retrieved", tileSpec);
+        Assert.assertEquals("invalid z retrieved", String.valueOf(z), String.valueOf(tileSpec.getZ()));
+    }
+
+    @Test(expected = ObjectNotFoundException.class)
+    public void testGetTileSpecWithBadZ() throws Exception {
+        final Double z = 1234.5;
+        dao.getTileSpec(owner, project, stack, z, "134");
+    }
+
+    @Test(expected = ObjectNotFoundException.class)
+    public void testGetTileSpecWithBadId() throws Exception {
+        final Double z = 3903.0;
+        dao.getTileSpec(owner, project, stack, z, "missingId");
+    }
+
+    @Test
+    public void testSaveTileSpec() throws Exception {
+        final Double z = 123.0;
+        final String tileId = "new-tile-1";
+        final String temca = "0";
+        final LayoutData layoutData = new LayoutData(temca, null, null, null);
+
+        TileSpec tileSpec = new TileSpec();
+        tileSpec.setZ(z);
+        tileSpec.setTileId(tileId);
+        tileSpec.setLayout(layoutData);
+
+        dao.saveTileSpec(owner, project, stack, tileSpec);
+
+        final TileSpec insertedTileSpec = dao.getTileSpec(owner, project, stack, z, tileId);
+
+        Assert.assertNotNull("null tileSpec retrieved after insert", insertedTileSpec);
+        final LayoutData insertedLayoutData = insertedTileSpec.getLayout();
+        Assert.assertNotNull("null layout retrieved after insert", insertedLayoutData);
+        Assert.assertEquals("invalid temca retrieved after insert", temca, insertedLayoutData.getTemca());
+        Assert.assertFalse("tileSpec is has transforms after insert", tileSpec.hasTransforms());
+
+        final String changedTemca = "1";
+        final LayoutData changedLayoutData = new LayoutData(changedTemca, null, null, null);
+        tileSpec.setLayout(changedLayoutData);
+        final List<TransformSpec> list = new ArrayList<TransformSpec>();
+        list.add(new ReferenceTransformSpec("1"));
+        tileSpec.addTransformSpecs(list);
+
+        dao.saveTileSpec(owner, project, stack, tileSpec);
+
+        final TileSpec updatedTileSpec = dao.getTileSpec(owner, project, stack, z, tileId);
+
+        Assert.assertNotNull("null tileSpec retrieved after update", updatedTileSpec);
+        final LayoutData updatedLayoutData = updatedTileSpec.getLayout();
+        Assert.assertNotNull("null layout retrieved after update", updatedLayoutData);
+        Assert.assertEquals("invalid temca retrieved after update", changedTemca, updatedLayoutData.getTemca());
+        Assert.assertTrue("tileSpec is missing transforms after update", tileSpec.hasTransforms());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSaveTileSpecWithBadTransformReference() throws Exception {
+        final TileSpec tileSpec = new TileSpec();
+        tileSpec.setZ(12.3);
+        tileSpec.setTileId("bad-ref-tile");
+        final List<TransformSpec> list = new ArrayList<TransformSpec>();
+        list.add(new ReferenceTransformSpec("missing-id"));
+        tileSpec.addTransformSpecs(list);
+
+        dao.saveTileSpec(owner, project, stack, tileSpec);
+    }
+
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParametersDaoTest.class);
 }

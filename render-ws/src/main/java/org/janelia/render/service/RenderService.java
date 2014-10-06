@@ -3,6 +3,7 @@ package org.janelia.render.service;
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.service.dao.DbConfig;
 import org.janelia.render.service.dao.RenderParametersDao;
 import org.slf4j.Logger;
@@ -40,6 +41,59 @@ public class RenderService {
             throws UnknownHostException {
         final DbConfig dbConfig = DbConfig.fromFile(new File("render-db.properties"));
         this.renderParametersDao = new RenderParametersDao(dbConfig);
+    }
+
+    @Path("project/{projectId}/stack/{stackId}/z/{z}/tile/{tileId}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public TileSpec getTileSpec(@PathParam("owner") String owner,
+                                @PathParam("projectId") String projectId,
+                                @PathParam("stackId") String stackId,
+                                @PathParam("z") Double z,
+                                @PathParam("tileId") String tileId) {
+
+        LOG.info("getTileSpec: entry, projectId={}, stackId={}, z={}, tileId={}",
+                 projectId, stackId, z, tileId);
+
+        TileSpec tileSpec = null;
+        try {
+            tileSpec = renderParametersDao.getTileSpec(owner, projectId, stackId, z, tileId);
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+        return tileSpec;
+    }
+
+    @Path("project/{projectId}/stack/{stackId}/z/{z}/tile/{tileId}")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    public TileSpec saveTileSpec(@PathParam("owner") String owner,
+                                 @PathParam("projectId") String projectId,
+                                 @PathParam("stackId") String stackId,
+                                 @PathParam("z") Double z,
+                                 @PathParam("tileId") String tileId,
+                                 TileSpec tileSpec) {
+
+        LOG.info("saveTileSpec: entry, projectId={}, stackId={}, z={}, tileId={}",
+                 projectId, stackId, z, tileId);
+
+        if (tileSpec == null) {
+            throw new IllegalServiceArgumentException("no tile spec provided");
+        } else if (z.compareTo(tileSpec.getZ()) != 0) {
+            throw new IllegalServiceArgumentException("request z value (" + z +
+                                                      ") does not match tile spec z value (" + tileSpec.getZ() + ")");
+        } else if (! tileId.equals(tileSpec.getTileId())) {
+            throw new IllegalServiceArgumentException("request tileId value (" + z +
+                                                      ") does not match tile spec tileId value (" +
+                                                      tileSpec.getTileId() + ")");
+        }
+
+        try {
+            tileSpec = renderParametersDao.saveTileSpec(owner, projectId, stackId, tileSpec);
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+        return tileSpec;
     }
 
     @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{mipmapLevel}/render-parameters")

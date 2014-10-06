@@ -9,11 +9,14 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoCredential;
 import com.mongodb.QueryOperators;
 import com.mongodb.ServerAddress;
+import com.mongodb.WriteResult;
+import com.mongodb.util.JSON;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.render.service.ObjectNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -125,6 +129,97 @@ public class RenderParametersDao {
 //        }
 
         return renderParameters;
+    }
+
+    /**
+     * @return the specified tile spec.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing.
+     *
+     * @throws ObjectNotFoundException
+     *   if a spec with the specified z and tileId cannot be found.
+     */
+    public TileSpec getTileSpec(String owner,
+                                String projectId,
+                                String stackId,
+                                Double z,
+                                String tileId)
+            throws IllegalArgumentException,
+                   ObjectNotFoundException {
+
+        validateRequiredParameter("z", z);
+        validateRequiredParameter("tileId", tileId);
+
+        final DB db = getDatabase(owner, projectId, stackId);
+
+        final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
+
+        final BasicDBObject query = new BasicDBObject();
+        query.put("z", z);
+        query.put("tileId", tileId);
+
+        LOG.debug("getTileSpec: {}.{}.find({})",
+                  tileCollection.getDB().getName(), tileCollection.getName(), query);
+
+        final DBObject document = tileCollection.findOne(query);
+
+        if (document == null) {
+            throw new ObjectNotFoundException("tile with id '" + tileId + "' does not exist in the " +
+                                              db.getName() + " " + TILE_COLLECTION_NAME + " collection");
+        }
+
+        return JsonUtils.GSON.fromJson(document.toString(), TileSpec.class);
+    }
+
+    /**
+     * Saves the specified tile spec to the database.
+     *
+     * @param  owner      data owner.
+     * @param  projectId  project identifier.
+     * @param  stackId    stack identifier.
+     * @param  tileSpec   specification to be saved.
+     *
+     * @return the specification updated with any attributes that were modified by the save.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters or transform spec references are missing.
+     */
+    public TileSpec saveTileSpec(String owner,
+                                 String projectId,
+                                 String stackId,
+                                 TileSpec tileSpec)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("tileSpec", tileSpec);
+        validateRequiredParameter("tileSpec.z", tileSpec.getZ());
+        validateRequiredParameter("tileSpec.tileId", tileSpec.getTileId());
+
+        final DB db = getDatabase(owner, projectId, stackId);
+        final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
+
+        final String context = "tile spec with id '" + tileSpec.getTileId() + "' and z " + tileSpec.getZ();
+        validateTransformReferences(context, tileSpec.getTransforms(), db);
+
+        final BasicDBObject query = new BasicDBObject();
+        query.put("z", tileSpec.getZ());
+        query.put("tileId", tileSpec.getTileId());
+
+        final DBObject tileSpecObject = (DBObject) JSON.parse(tileSpec.toJson());
+
+        final WriteResult result = tileCollection.update(query, tileSpecObject, true, false);
+
+        String action;
+        if (result.isUpdateOfExisting()) {
+            action = "update";
+        } else {
+            action = "insert";
+        }
+
+        LOG.debug("saveTileSpec: {}.{}.{},({}), upsertedId is {}",
+                  tileCollection.getDB().getName(), tileCollection.getName(), action, query, result.getUpsertedId());
+
+        return tileSpec;
     }
 
     private DB getDatabase(String owner,
@@ -272,6 +367,34 @@ public class RenderParametersDao {
 
         if (value == null) {
             throw new IllegalArgumentException(context + " value must be specified");
+        }
+    }
+
+    private void validateTransformReferences(String context,
+                                             TransformSpec transformSpec,
+                                             DB db) {
+
+        final Set<String> unresolvedTransformSpecIds = transformSpec.getUnresolvedIds();
+
+        if (unresolvedTransformSpecIds.size() > 0) {
+            final DBCollection transformCollection = db.getCollection(TRANSFORM_COLLECTION_NAME);
+            final List<TransformSpec> transformSpecList = getTransformSpecs(transformCollection,
+                                                                            unresolvedTransformSpecIds);
+            if (transformSpecList.size() != unresolvedTransformSpecIds.size()) {
+                final Set<String> existingIds = new HashSet<String>(transformSpecList.size());
+                for (TransformSpec existingTransformSpec : transformSpecList) {
+                    existingIds.add(existingTransformSpec.getId());
+                }
+                final Set<String> missingIds = new TreeSet<String>();
+                for (String id : unresolvedTransformSpecIds) {
+                    if (! existingIds.contains(id)) {
+                        missingIds.add(id);
+                    }
+                }
+                throw new IllegalArgumentException(context + " references transform id(s) " + missingIds +
+                                                   " which do not exist in the " + db.getName() + "." +
+                                                   TRANSFORM_COLLECTION_NAME + " collection");
+            }
         }
     }
 

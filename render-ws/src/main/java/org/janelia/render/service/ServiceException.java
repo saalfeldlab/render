@@ -18,10 +18,10 @@ public class ServiceException
 //        this(message, Response.Status.INTERNAL_SERVER_ERROR, null);
 //    }
 //
-//    public ServiceException(String message,
-//                            Response.Status status) {
-//        this(message, status, null);
-//    }
+    public ServiceException(String message,
+                            Response.Status status) {
+        this(message, status, null);
+    }
 
     public ServiceException(String message,
                             Throwable cause) {
