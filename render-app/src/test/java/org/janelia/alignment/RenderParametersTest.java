@@ -80,4 +80,23 @@ public class RenderParametersTest {
         Assert.assertEquals("invalid number of tileSpecs parsed", 2, parsedTileSpecs.size());
     }
 
+    @Test
+    public void testMergeParameters() throws Exception {
+
+        final String overrideOut = "test-out.jpg";
+        final String overrideScale = "0.3";
+        final String[] args = {
+                "--parameters_url", "src/test/resources/render-parameters-test/render.json",
+                "--out", overrideOut,
+                "--scale", overrideScale
+        };
+        RenderParameters parameters = RenderParameters.parseCommandLineArgs(args);
+
+        Assert.assertEquals("invalid out parameter",
+                            overrideOut, parameters.getOut());
+        Assert.assertEquals("invalid scale parameter",
+                            overrideScale, String.valueOf(parameters.getScale()));
+        Assert.assertEquals("x parameter not loaded from parameters_url file",
+                            "1.0", String.valueOf(parameters.getX()));
+    }
 }

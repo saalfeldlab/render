@@ -1,0 +1,8 @@
+{
+    "x": 1,
+    "y": 2,
+    "width": 3,
+    "height": 4,
+    "scale": 0.05,
+    "tileSpecUrl": "src/test/resources/stitch-test/test_4_tiles.json"
+}

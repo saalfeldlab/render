@@ -51,8 +51,8 @@ public class RenderParameters {
     @Parameter(names = "--help", description = "Display this note", help = true)
     private transient boolean help;
 
-    @Parameter(names = "--url", description = "URL to JSON tile spec", required = true)
-    private String url;
+    @Parameter(names = "--tile_spec_url", description = "URL to JSON tile spec", required = false)
+    private String tileSpecUrl;
 
     @Parameter( names = "--res", description = " Mesh resolution, specified by the desired size of a triangle in pixels", required = false)
     private int res;
@@ -90,7 +90,10 @@ public class RenderParameters {
     @Parameter(names = "--skip_interpolation", description = "enable sloppy but fast rendering by skipping interpolation", required = false)
     private boolean skipInterpolation;
 
-    /** List of tile specifications parsed from --url or deserialized directly from json. */
+    @Parameter(names = "--parameters_url", description = "URL to base JSON parameters file (to be applied to any unspecified or default parameters)", required = false)
+    private String parametersUrl;
+
+    /** List of tile specifications parsed from --tileSpecUrl or deserialized directly from json. */
     private List<TileSpec> tileSpecs;
 
     private transient JCommander jCommander;
@@ -106,13 +109,13 @@ public class RenderParameters {
              DEFAULT_MIPMAP_LEVEL);
     }
 
-    public RenderParameters(String url,
+    public RenderParameters(String tileSpecUrl,
                             double x,
                             double y,
                             int width,
                             int height,
                             int mipmapLevel) {
-        this.url = url;
+        this.tileSpecUrl = tileSpecUrl;
         this.x = x;
         this.y = y;
         this.width = width;
@@ -127,6 +130,7 @@ public class RenderParameters {
         this.areaOffset = false;
         this.quality = DEFAULT_QUALITY;
         this.skipInterpolation = false;
+        this.parametersUrl = null;
 
         this.tileSpecs = new ArrayList<TileSpec>();
 
@@ -151,6 +155,13 @@ public class RenderParameters {
         } catch (Throwable t) {
             throw new IllegalArgumentException("failed to parse command line arguments", t);
         }
+
+        parameters.applyBaseParameters();
+
+        if (parameters.tileSpecUrl == null) {
+            throw new IllegalArgumentException("either the --parameters_url or --tile_spec_url parameter must be specified");
+        }
+
         parameters.initializeDerivedValues();
         return parameters;
     }
@@ -386,7 +397,7 @@ public class RenderParameters {
         sb.append('{');
 
         if (readTileSpecsFromUrl()) {
-            sb.append("url='").append(url).append("', ");
+            sb.append("tileSpecUrl='").append(tileSpecUrl).append("', ");
         } else if (tileSpecs != null) {
             sb.append("tileSpecs=[").append(tileSpecs.size()).append(" items], ");
         }
@@ -458,35 +469,156 @@ public class RenderParameters {
 
         if (readTileSpecsFromUrl()) {
 
-            final URI uri = Utils.convertPathOrUriStringToUri(url);
+            final URI uri = Utils.convertPathOrUriStringToUri(tileSpecUrl);
 
             final URL urlObject;
             try {
                 urlObject = uri.toURL();
             } catch (Throwable t) {
                 throw new IllegalArgumentException("failed to convert URI '" + uri +
-                                                   "' built from tile specification URL parameter '" + url + "'", t);
+                                                   "' built from tile specification URL parameter '" + tileSpecUrl + "'", t);
             }
 
-            final InputStream urlStream;
+            InputStream urlStream = null;
             try {
-                urlStream = urlObject.openStream();
-            } catch (Throwable t) {
-                throw new IllegalArgumentException("failed to load tile specification from " + urlObject, t);
-            }
+                try {
+                    urlStream = urlObject.openStream();
+                } catch (Throwable t) {
+                    throw new IllegalArgumentException("failed to load tile specification from " + urlObject, t);
+                }
 
-            final Reader reader = new InputStreamReader(urlStream);
-            final Type collectionType = new TypeToken<List<TileSpec>>(){}.getType();
-            try {
-                tileSpecs = JsonUtils.GSON.fromJson(reader, collectionType);
-            } catch (Throwable t) {
-                throw new IllegalArgumentException("failed to parse tile specification loaded from " + urlObject, t);
+                final Reader reader = new InputStreamReader(urlStream);
+                final Type collectionType = new TypeToken<List<TileSpec>>() {
+                }.getType();
+                try {
+                    tileSpecs = JsonUtils.GSON.fromJson(reader, collectionType);
+                } catch (Throwable t) {
+                    throw new IllegalArgumentException(
+                            "failed to parse tile specification loaded from " + urlObject, t);
+                }
+            } finally {
+                if (urlStream != null) {
+                    try {
+                        urlStream.close();
+                    } catch (IOException e) {
+                        LOG.warn("failed to close " + uri + ", ignoring error", e);
+                    }
+                }
             }
         }
     }
 
     private boolean readTileSpecsFromUrl() {
-        return ((url != null) && (! hasTileSpecs()));
+        return ((tileSpecUrl != null) && (! hasTileSpecs()));
+    }
+
+    /**
+     * If a parametersUrl has been specified, load those values and apply them to any default or unset values in
+     * this set of values.  This is a little messy because many of the values are primitives instead of objects
+     * which makes it impossible to definitively identify unset values.
+     * For now, if a primitive value is set to its default it will be overridden by the parametersUrl value.
+     *
+     * @throws IllegalArgumentException
+     */
+    private void applyBaseParameters() throws IllegalArgumentException {
+
+        if (parametersUrl != null) {
+            final RenderParameters baseParameters = loadParametersUrl();
+
+            tileSpecUrl = mergedValue(tileSpecUrl, baseParameters.tileSpecUrl);
+            res = mergedValue(res, baseParameters.res, DEFAULT_RESOLUTION);
+            in = mergedValue(in, baseParameters.in);
+            out = mergedValue(out, baseParameters.out);
+            x = mergedValue(x, baseParameters.x, DEFAULT_X_AND_Y);
+            y = mergedValue(y, baseParameters.y, DEFAULT_X_AND_Y);
+            width = mergedValue(width, baseParameters.width, DEFAULT_HEIGHT_AND_WIDTH);
+            height = mergedValue(height, baseParameters.height, DEFAULT_HEIGHT_AND_WIDTH);
+            mipmapLevel = mergedValue(mipmapLevel, baseParameters.mipmapLevel, DEFAULT_MIPMAP_LEVEL);
+            areaOffset = mergedValue(areaOffset, baseParameters.areaOffset, false);
+            skipInterpolation = mergedValue(skipInterpolation, baseParameters.skipInterpolation, false);
+
+            if (scale == null) {
+                scale = baseParameters.scale;
+            }
+
+            if (quality == DEFAULT_QUALITY) {
+                quality = baseParameters.quality;
+            }
+        }
+    }
+
+    private RenderParameters loadParametersUrl() throws IllegalArgumentException {
+
+        final URI uri = Utils.convertPathOrUriStringToUri(parametersUrl);
+
+        final URL urlObject;
+        try {
+            urlObject = uri.toURL();
+        } catch (Throwable t) {
+            throw new IllegalArgumentException("failed to convert URI '" + uri + "'", t);
+        }
+
+        RenderParameters parameters;
+        InputStream urlStream = null;
+        try {
+            try {
+                urlStream = urlObject.openStream();
+            } catch (Throwable t) {
+                throw new IllegalArgumentException("failed to load render parameters from " + urlObject, t);
+            }
+
+            parameters = parseJson(new InputStreamReader(urlStream));
+
+        } finally {
+            if (urlStream != null) {
+                try {
+                    urlStream.close();
+                } catch (IOException e) {
+                    LOG.warn("failed to close " + uri + ", ignoring error", e);
+                }
+            }
+        }
+
+        return parameters;
+    }
+
+    private String mergedValue(String currentValue,
+                               String baseValue) {
+        String value = currentValue;
+        if (currentValue == null) {
+            value = baseValue;
+        }
+        return value;
+    }
+
+    private int mergedValue(int currentValue,
+                            int baseValue,
+                            int defaultValue) {
+        int value = currentValue;
+        if (currentValue == defaultValue) {
+            value = baseValue;
+        }
+        return value;
+    }
+
+    private double mergedValue(double currentValue,
+                               double baseValue,
+                               double defaultValue) {
+        double value = currentValue;
+        if (currentValue == defaultValue) {
+            value = baseValue;
+        }
+        return value;
+    }
+
+    private boolean mergedValue(boolean currentValue,
+                                boolean baseValue,
+                                boolean defaultValue) {
+        boolean value = currentValue;
+        if (currentValue == defaultValue) {
+            value = baseValue;
+        }
+        return value;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParameters.class);

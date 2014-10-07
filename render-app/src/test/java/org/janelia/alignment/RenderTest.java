@@ -60,7 +60,7 @@ public class RenderTest {
                 new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
 
         final String[] args = {
-                "--url", "src/test/resources/stitch-test/test_4_tiles.json",
+                "--tile_spec_url", "src/test/resources/stitch-test/test_4_tiles.json",
                 "--out", outputFile.getAbsolutePath(),
                 "--width", "4576",
                 "--height", "4173",
@@ -85,7 +85,7 @@ public class RenderTest {
                 new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
 
         final String[] args = {
-                "--url", "src/test/resources/stitch-test/test_4_tiles_level_1.json",
+                "--tile_spec_url", "src/test/resources/stitch-test/test_4_tiles_level_1.json",
                 "--out", outputFile.getAbsolutePath(),
                 "--width", "4576",
                 "--height", "4173",
@@ -110,7 +110,7 @@ public class RenderTest {
                 new File(modulePath + "/src/test/resources/mipmap-test/mask_mipmap_expected_result.jpg");
 
         final String[] args = {
-                "--url", "src/test/resources/mipmap-test/mask_mipmap_test.json",
+                "--tile_spec_url", "src/test/resources/mipmap-test/mask_mipmap_test.json",
                 "--out", outputFile.getAbsolutePath(),
                 "--x", "1000",
                 "--y", "3000",
