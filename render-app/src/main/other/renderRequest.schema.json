@@ -1,0 +1,68 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Render Request",
+    "description": "specification of a render request",
+    "type": "object",
+    "properties" : {
+        "res" : {
+            "description" : "Mesh resolution, specified by the desired size of a triangle in pixels",
+            "type" : "number"
+        },
+        "in" : {
+            "description" : "Path to the input image if any",
+            "type" : "string"
+        },
+        "out" : {
+            "description" : "Path to the output image",
+            "type" : "string"
+        },
+        "x" : {
+            "description" : "Target image left coordinate",
+            "type" : "number"
+        },
+        "y" : {
+            "description" : "Target image top coordinate",
+            "type" : "number"
+        },
+        "width" : {
+            "description" : "Target image width",
+            "type" : "number"
+        },
+        "height" : {
+            "description" : "Target image height",
+            "type" : "number"
+        },
+        "scale" : {
+            "description" : "scale factor applied to the target image (overrides mipmapLevel)",
+            "type" : "number"
+        },
+        "mipmapLevel" : {
+            "description" : "scale level in a mipmap pyramid",
+            "type" : "number"
+        },
+        "areaOffset" : {
+            "description" : "add bounding box offset",
+            "type" : "boolean"
+        },
+        "quality" : {
+            "description" : "JPEG quality float [0, 1]",
+            "type" : "number"
+        },
+        "skipInterpolation" : {
+            "description" : "enable sloppy but faster rendering by skipping interpolation",
+            "type" : "boolean"
+        },
+        "parametersUrl" : {
+            "description" : "URL to base JSON parameters file (to be applied to any unspecified or default parameters)",
+            "type" : "string"
+        },
+        "tileSpecUrl" : {
+            "description" : "URL to JSON tile spec",
+            "type" : "string"
+        },
+        "tileSpecs" :  {
+            "type": "array",
+            "items": { "$ref": "tileSpec.schema.json" }
+        }
+    }
+}
