@@ -1,4 +1,4 @@
-package org.janelia.render.service.trakem2;
+package org.janelia.alignment.trakem2;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 import mpicbg.trakem2.transform.CoordinateTransform;
@@ -359,8 +359,10 @@ public class Converter {
 
             List<TransformSpec> transformList = new ArrayList<TransformSpec>();
 
-            // add all nested ict transforms
-            transforms.addToList(transformList);
+            if (transforms != null) {
+                // add all nested ict transforms
+                transforms.addToList(transformList);
+            }
 
             // add final world coordinate transform
             final AffineModel2D affine = new AffineModel2D();
@@ -390,27 +392,32 @@ public class Converter {
         }
 
         // Adapted from getFullCoordinateTransform method in TrakEM2 Patch class implementation.
-        // See https://github.com/fiji/TrakEM2/blob/6cb318e3ca077e217444158090ab607223cf921c/TrakEM2_/
-        //                        src/main/java/ini/trakem2/display/Patch.java
+        // See https://github.com/fiji/TrakEM2/blob/6cb318e3ca077e217444158090ab607223cf921c/TrakEM2_/src/main/java/ini/trakem2/display/Patch.java#L1389-L1412
         private AffineTransform getFullCoordinateTransform() {
+
             if (fullCoordinateTransform == null) {
-                Rectangle box;
-                try {
-                    CoordinateTransformList<CoordinateTransform> ctList = new CoordinateTransformList<CoordinateTransform>();
-                    transforms.addToCoordinateTransformList(ctList);
-                    final TransformMesh mesh = new TransformMesh(ctList,
-                                                                 meshResolution,
-                                                                 oWidth.floatValue(),
-                                                                 oHeight.floatValue());
-                    box = mesh.getBoundingBox();
-                } catch (Exception e) {
-                    throw new RuntimeException("failed to build ct list for patch " + oid, e);
-                }
 
                 final double[] d = getPatchTransformData();
                 fullCoordinateTransform = new AffineTransform(d[0], d[1], d[2], d[3], d[4], d[5]);
-                fullCoordinateTransform.translate(-box.x, -box.y);
+
+                if (transforms != null) {
+                    Rectangle box;
+                    try {
+                        CoordinateTransformList<CoordinateTransform> ctList =
+                                new CoordinateTransformList<CoordinateTransform>();
+                        transforms.addToCoordinateTransformList(ctList);
+                        final TransformMesh mesh = new TransformMesh(ctList,
+                                                                     meshResolution,
+                                                                     oWidth.floatValue(),
+                                                                     oHeight.floatValue());
+                        box = mesh.getBoundingBox();
+                    } catch (Exception e) {
+                        throw new RuntimeException("failed to build ct list for patch " + oid, e);
+                    }
+                    fullCoordinateTransform.translate(-box.x, -box.y);
+                }
             }
+
             return fullCoordinateTransform;
         }
 
