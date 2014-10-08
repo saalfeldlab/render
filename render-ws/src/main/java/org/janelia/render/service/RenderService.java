@@ -152,7 +152,7 @@ public class RenderService {
         return responseBuilder.build();
     }
 
-    @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{mipmapLevel}/render-parameters")
+    @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public RenderParameters getRenderParameters(@PathParam("owner") String owner,
@@ -163,21 +163,21 @@ public class RenderService {
                                                 @PathParam("z") Double z,
                                                 @PathParam("width") Integer width,
                                                 @PathParam("height") Integer height,
-                                                @PathParam("mipmapLevel") Integer mipmapLevel) {
+                                                @PathParam("scale") Double scale) {
 
-        LOG.info("getRenderParameters: entry, projectId={}, stackId={}, x={}, y={}, z={}, width={}, height={}, mipmapLevel={}",
-                 projectId, stackId, x, y, z, width, height, mipmapLevel);
+        LOG.info("getRenderParameters: entry, projectId={}, stackId={}, x={}, y={}, z={}, width={}, height={}, scale={}",
+                 projectId, stackId, x, y, z, width, height, scale);
 
         RenderParameters parameters = null;
         try {
-            parameters = renderParametersDao.getParameters(owner, projectId, stackId, x, y, z, width, height, mipmapLevel);
+            parameters = renderParametersDao.getParameters(owner, projectId, stackId, x, y, z, width, height, scale);
         } catch (Throwable t) {
             throwServiceException(t);
         }
         return parameters;
     }
 
-    @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{mipmapLevel}/jpeg-image")
+    @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
     public Response renderJpegImageForBox(@PathParam("owner") String owner,
@@ -188,7 +188,7 @@ public class RenderService {
                                           @PathParam("z") Double z,
                                           @PathParam("width") Integer width,
                                           @PathParam("height") Integer height,
-                                          @PathParam("mipmapLevel") Integer mipmapLevel) {
+                                          @PathParam("scale") Double scale) {
 
         LOG.info("renderJpegImageForBox: entry");
         final RenderParameters renderParameters = getRenderParameters(owner,
@@ -199,11 +199,11 @@ public class RenderService {
                                                                       z,
                                                                       width,
                                                                       height,
-                                                                      mipmapLevel);
+                                                                      scale);
         return renderJpegImage(renderParameters);
     }
 
-    @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{mipmapLevel}/png-image")
+    @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
     public Response renderPngImageForBox(@PathParam("owner") String owner,
@@ -214,7 +214,7 @@ public class RenderService {
                                          @PathParam("z") Double z,
                                          @PathParam("width") Integer width,
                                          @PathParam("height") Integer height,
-                                         @PathParam("mipmapLevel") Integer mipmapLevel) {
+                                         @PathParam("scale") Double scale) {
 
         LOG.info("renderPngImageForBox: entry");
         final RenderParameters renderParameters = getRenderParameters(owner,
@@ -225,7 +225,7 @@ public class RenderService {
                                                                       z,
                                                                       width,
                                                                       height,
-                                                                      mipmapLevel);
+                                                                      scale);
         return renderPngImage(renderParameters);
     }
 

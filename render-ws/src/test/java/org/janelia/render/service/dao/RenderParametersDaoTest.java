@@ -69,9 +69,9 @@ public class RenderParametersDaoTest {
         final Double z = 3903.0;
         final Integer width = 5000;
         final Integer height = 2000;
-        final Integer zoomLevel = 1;
+        final Double scale = 0.5;
 
-        final RenderParameters parameters = dao.getParameters(owner, project, stack, x, y, z, width, height, zoomLevel);
+        final RenderParameters parameters = dao.getParameters(owner, project, stack, x, y, z, width, height, scale);
 
         Assert.assertNotNull("null parameters retrieved", parameters);
         Assert.assertEquals("invalid width parsed", width.intValue(), parameters.getWidth());

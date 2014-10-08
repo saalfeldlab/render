@@ -75,11 +75,8 @@ public class RenderParameters {
     @Parameter(names = "--height", description = "Target image height", required = false)
     private int height;
 
-    @Parameter(names = "--scale", description = "scale factor applied to the target image (overrides --mipmap_level)", required = false)
-    private Double scale;
-
-    @Parameter(names = "--mipmap_level", description = "scale level in a mipmap pyramid", required = false)
-    private int mipmapLevel;
+    @Parameter(names = "--scale", description = "scale factor applied to the target image", required = false)
+    private double scale;
 
     @Parameter(names = "--area_offset", description = "add bounding box offset", required = false)
     private boolean areaOffset;
@@ -106,7 +103,7 @@ public class RenderParameters {
              DEFAULT_X_AND_Y,
              DEFAULT_HEIGHT_AND_WIDTH,
              DEFAULT_HEIGHT_AND_WIDTH,
-             DEFAULT_MIPMAP_LEVEL);
+             DEFAULT_SCALE);
     }
 
     public RenderParameters(String tileSpecUrl,
@@ -114,19 +111,18 @@ public class RenderParameters {
                             double y,
                             int width,
                             int height,
-                            int mipmapLevel) {
+                            double scale) {
         this.tileSpecUrl = tileSpecUrl;
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
-        this.mipmapLevel = mipmapLevel;
+        this.scale = scale;
 
         this.help = false;
         this.res = DEFAULT_RESOLUTION;
         this.in = null;
         this.out = null;
-        this.scale = null;
         this.areaOffset = false;
         this.quality = DEFAULT_QUALITY;
         this.skipInterpolation = false;
@@ -294,9 +290,6 @@ public class RenderParameters {
     }
 
     public double getScale() {
-        if (scale == null) {
-            scale = 1.0 / (1L << mipmapLevel);
-        }
         return scale;
     }
 
@@ -418,12 +411,8 @@ public class RenderParameters {
             sb.append("height=").append(height).append(", ");
         }
 
-        if (scale != null) {
+        if (scale != DEFAULT_SCALE) {
             sb.append("scale=").append(scale).append(", ");
-        }
-
-        if (mipmapLevel != DEFAULT_MIPMAP_LEVEL) {
-            sb.append("mipmapLevel=").append(mipmapLevel).append(", ");
         }
 
         if (res != DEFAULT_RESOLUTION) {
@@ -533,13 +522,9 @@ public class RenderParameters {
             y = mergedValue(y, baseParameters.y, DEFAULT_X_AND_Y);
             width = mergedValue(width, baseParameters.width, DEFAULT_HEIGHT_AND_WIDTH);
             height = mergedValue(height, baseParameters.height, DEFAULT_HEIGHT_AND_WIDTH);
-            mipmapLevel = mergedValue(mipmapLevel, baseParameters.mipmapLevel, DEFAULT_MIPMAP_LEVEL);
+            scale = mergedValue(scale, baseParameters.scale, DEFAULT_SCALE);
             areaOffset = mergedValue(areaOffset, baseParameters.areaOffset, false);
             skipInterpolation = mergedValue(skipInterpolation, baseParameters.skipInterpolation, false);
-
-            if (scale == null) {
-                scale = baseParameters.scale;
-            }
 
             if (quality == DEFAULT_QUALITY) {
                 quality = baseParameters.quality;
@@ -626,6 +611,6 @@ public class RenderParameters {
     private static final int DEFAULT_RESOLUTION = 64;
     private static final int DEFAULT_X_AND_Y = 0;
     private static final int DEFAULT_HEIGHT_AND_WIDTH = 256;
-    private static final int DEFAULT_MIPMAP_LEVEL = 0;
+    private static final Double DEFAULT_SCALE = 1.0;
     private static final float DEFAULT_QUALITY = 0.85f;
 }

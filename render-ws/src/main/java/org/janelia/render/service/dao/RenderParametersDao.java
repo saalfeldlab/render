@@ -77,7 +77,7 @@ public class RenderParametersDao {
                                           Double z,
                                           Integer width,
                                           Integer height,
-                                          Integer mipmapLevel)
+                                          Double scale)
             throws IllegalArgumentException {
 
         validateRequiredParameter("x", x);
@@ -85,7 +85,7 @@ public class RenderParametersDao {
         validateRequiredParameter("z", z);
         validateRequiredParameter("width", width);
         validateRequiredParameter("height", height);
-        validateRequiredParameter("mipmapLevel", mipmapLevel);
+        validateRequiredParameter("scale", scale);
 
         final DB db = getDatabase(owner, projectId, stackId);
 
@@ -103,7 +103,7 @@ public class RenderParametersDao {
                                                      "maxX", gte(x)).append(
                                                      "maxY", gte(y));
 
-        RenderParameters renderParameters = new RenderParameters(null, x, y, width, height, mipmapLevel);
+        RenderParameters renderParameters = new RenderParameters(null, x, y, width, height, scale);
 
         final DBCursor cursor = tileCollection.find(tileQuery);
         try {

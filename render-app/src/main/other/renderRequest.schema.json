@@ -33,11 +33,7 @@
             "type" : "number"
         },
         "scale" : {
-            "description" : "scale factor applied to the target image (overrides mipmapLevel)",
-            "type" : "number"
-        },
-        "mipmapLevel" : {
-            "description" : "scale level in a mipmap pyramid",
+            "description" : "scale factor applied to the target image",
             "type" : "number"
         },
         "areaOffset" : {

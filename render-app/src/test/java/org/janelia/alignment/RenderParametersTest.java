@@ -40,9 +40,9 @@ public class RenderParametersTest {
         final double y = 1.0;
         final int width = 2;
         final int height = 3;
-        final int mipmapLevel = 4;
+        final double scale = 0.125;
 
-        final RenderParameters parameters = new RenderParameters(url, x, y, width, height, mipmapLevel);
+        final RenderParameters parameters = new RenderParameters(url, x, y, width, height, scale);
 
         final TileSpec tileSpec0 = new TileSpec();
         tileSpec0.putMipmap(0, new ImageAndMask("spec0-level0.png", null));
