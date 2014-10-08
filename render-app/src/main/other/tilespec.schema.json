@@ -24,6 +24,52 @@
                 }
             }
         },
+        "tileId": {
+            "description" : "unique identifier for tile within the stack",
+            "type" : "string"
+        },
+        "layout": {
+            "description" : "capture layout data for the tile",
+            "type" : "object",
+            "properties" : {
+                "temca" : {
+                    "description" : "TEM camera array identifier",
+                    "type" : "string"
+                },
+                "camera"  : {
+                    "description" : "camera identifier",
+                    "type" : "string"
+                },
+                "imageRow" : {
+                    "description" : "image row identifier",
+                    "type" : "string"
+                },
+                "imageCol" : {
+                    "description" : "image column identifier",
+                    "type" : "string"
+                }
+            }
+        },
+        "z": {
+            "description" : "z value or layer of this tile within the stack",
+            "type" : "number"
+        },
+        "minX": {
+            "description" : "left coordinate of the bounding box for this tile",
+            "type" : "number"
+        },
+        "minY": {
+            "description" : "top coordinate of the bounding box for this tile",
+            "type" : "number"
+        },
+        "maxX": {
+            "description" : "right coordinate of the bounding box for this tile",
+            "type" : "number"
+        },
+        "maxY": {
+            "description" : "bottom coordinate of the bounding box for this tile",
+            "type" : "number"
+        },
         "minIntensity" : {
             "description" : "minimal intensity (mapped to 0)",
             "type" : "number"
