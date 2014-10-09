@@ -153,12 +153,8 @@ public class RenderParameters {
         }
 
         parameters.applyBaseParameters();
-
-        if (parameters.tileSpecUrl == null) {
-            throw new IllegalArgumentException("either the --parameters_url or --tile_spec_url parameter must be specified");
-        }
-
         parameters.initializeDerivedValues();
+
         return parameters;
     }
 
@@ -529,6 +525,8 @@ public class RenderParameters {
             if (quality == DEFAULT_QUALITY) {
                 quality = baseParameters.quality;
             }
+
+            tileSpecs.addAll(baseParameters.tileSpecs);
         }
     }
 
