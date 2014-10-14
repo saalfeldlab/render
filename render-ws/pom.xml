@@ -84,6 +84,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- override project dependency with provided scope since logback should be installed into tomcat directly -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.1.2</version>
+            <scope>provided</scope>
+        </dependency>
+
     </dependencies>
 
     <properties>
