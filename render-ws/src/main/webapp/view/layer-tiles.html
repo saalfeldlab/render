@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="utf-8">
+    <title>Layer Tiles</title>
+
+    <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
+
+    <script type="text/javascript">
+
+        function updateStackData(message) {
+            $('#stackData').text(message);
+        }
+
+        function loadJSON(path, success, error) {
+
+            updateStackData("Loading " + path);
+
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        if (success) {
+                            success(JSON.parse(xhr.responseText));
+                        }
+                    } else if (error) {
+                        error(xhr);
+                    }
+                }
+            };
+
+            var nonCachedPath = path + "?t=" + new Date().getTime();
+            xhr.open("GET", nonCachedPath, true);
+            xhr.send();
+        }
+
+        function sizeEverything(polygonList, canvas) {
+            var maxX = 0;
+            var maxY = 0;
+            var i;
+            var j;
+            var polygon;
+            var point;
+            for (i = 0; i < polygonList.length; i++) {
+                polygon = polygonList[i];
+                // console.log("sizeEverything: checking", polygon);
+                for (j = 0; j < polygon.length; j++) {
+                    point = polygon[j];
+                    if (point[0] > maxX) {
+                        maxX = point[0];
+                    }
+                    if (point[1] > maxY) {
+                        maxY = point[1];
+                    }
+                }
+            }
+
+            var scale = 1.0;
+            if ((maxX < 100) && (maxY < 100)) {
+                scale = 10;
+            } else if ((maxX > 10000) && (maxY > 10000)) {
+                scale = 0.01;
+            } else if ((maxX > 1000) && (maxY > 1000)) {
+                scale = 0.1;
+            }
+
+            updateStackData("Layer: " + tiles.length + " tiles, maxX=" + maxX + ", maxY=" + maxY);
+
+            if (scale != 1.0) {
+                console.log("sizeEverything: using scale of ", scale);
+                for (i = 0; i < polygonList.length; i++) {
+                    polygon = polygonList[i];
+                    for (j = 0; j < polygon.length; j++) {
+                        point = polygon[j];
+                        point[0] = point[0] * scale;
+                        point[1] = point[1] * scale;
+                    }
+                }
+                maxX = maxX * scale;
+                maxY = maxY * scale;
+            }
+
+            canvas.height = maxY + 10;
+            canvas.width = maxX + 10;
+
+            var canvasDiv = $('#canvasDiv');
+            canvasDiv.height(canvas.height);
+            canvasDiv.width(canvas.width);
+        }
+
+        function drawPolygon(polygon, color, canvas) {
+
+            // console.log("drawPolygon: entry, polygon=", polygon, ", color=", color);
+
+            if (canvas.getContext) {
+                var context = canvas.getContext('2d');
+
+                var point;
+                if (polygon.length > 1) {
+
+                    point = polygon[0];
+
+                    context.beginPath();
+                    context.moveTo(point[0], point[1]);
+
+                    for (var index = 1; index < polygon.length; index++) {
+                        point = polygon[index];
+                        context.lineTo(point[0], point[1]);
+                    }
+
+                    context.closePath();
+
+                    // set line color
+                    context.strokeStyle = '#000000';
+                    context.stroke();
+
+                    context.fillStyle = color;
+                    context.fill();
+                }
+
+            } else {
+                alert('You need an HTML5 compatible browser!');
+            }
+        }
+
+        function drawBoxes(data) {
+
+            updateStackData("Retrieved " + data.length + " tiles");
+
+            tiles = data;
+
+            var colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#00FFFF', '#FF00FF', '#C0C0C0' ];
+
+            var index;
+            var tile;
+            var box;
+            var polygonList = [];
+            for (index = 0; index < data.length; index++) {
+                tile = data[index];
+                box = [
+                    [tile.minX, tile.minY],
+                    [tile.maxX, tile.minY],
+                    [tile.maxX, tile.maxY],
+                    [tile.minX, tile.maxY],
+                    [tile.minX, tile.minY]
+                ];
+                polygonList.push(box);
+            }
+
+            var canvas = document.getElementById('canvasBox');
+
+            sizeEverything(polygonList, canvas);
+
+            for (index = 0; index < polygonList.length; index++) {
+                drawPolygon(polygonList[index], colors[index % colors.length], canvas);
+            }
+        }
+
+        function getSelectedValue(id) {
+            var select = document.getElementById(id);
+            return select.options[select.selectedIndex].value;
+        }
+
+        function getStackId() {
+            var stackIdIndex = getSelectedValue("stackId");
+            return stackIds[stackIdIndex];
+        }
+
+        function loadTileData() {
+            var sid = getStackId();
+            var z = getSelectedValue("z");
+
+            var jsonUrl = baseUrl + "project/" + sid.project + "/stack/" + sid.stack + "/z/" + z + "/tileBounds";
+
+            loadJSON(jsonUrl,
+                     function(data) { drawBoxes(data); },
+                     function(xhr) { console.error(xhr); });
+        }
+
+        function updateZValues(data) {
+
+            var zSelect = $('#z');
+
+            zSelect.find('option').remove().end();
+
+            for (index = 0; index < data.length; index++) {
+                var z = data[index];
+                zSelect.append($('<option>', { value: z }).text(z));
+            }
+
+            zSelect.change(function() {
+                loadTileData()
+            });
+
+            if (data.length > 0) {
+                zSelect.val(data[0]);
+                zSelect.change();
+            }
+        }
+
+        function getStackIdName(stackId) {
+            return stackId.owner + "-" + stackId.project + "-" + stackId.stack;
+        }
+
+        function updateStackIds(data) {
+
+            stackIds = data;
+
+            var stackIdSelect = $('#stackId');
+
+            for (index = 0; index < stackIds.length; index++) {
+                var name = getStackIdName(stackIds[index]);
+                stackIdSelect.append($('<option>', { value : index }).text(name));
+            }
+
+            stackIdSelect.change(function() {
+                var sid = getStackId();
+                var zValuesUrl = baseUrl + "project/" + sid.project + "/stack/" + sid.stack + "/zValues";
+                loadJSON(zValuesUrl,
+                         function(data) { updateZValues(data); },
+                         function(xhr) { console.error(xhr); });
+            });
+
+            if (stackIds.length > 0) {
+                stackIdSelect.val(0);
+                stackIdSelect.change();
+            }
+        }
+
+        var baseUrl = "http://renderer.int.janelia.org:8080/render-ws/v1/owner/flyTEM/";
+        var stackIds;
+        var tiles;
+
+        function initPage() {
+            var stackIdsUrl = baseUrl + "stackIds";
+            loadJSON(stackIdsUrl,
+                     function(data) { updateStackIds(data); },
+                     function(xhr) { console.error(xhr); });
+        }
+
+    </script>
+
+</head>
+
+<body>
+
+<script>
+    $(document).ready(initPage());
+</script>
+
+<div>
+    <form onsubmit="return false">
+        <label for="stackId" style="padding: 10px">StackId:</label><select id="stackId" name="stackId"></select>
+        <label for="z" style="padding: 10px">Z:</label><select id="z" name="z"></select>
+    </form>
+
+    <p id="stackData" style="padding: 10px"></p>
+</div>
+
+<div id="canvasDiv" style="margin-top: 10px; border: 1px solid black">
+    <canvas id="canvasBox"></canvas>
+</div>
+
+</body>
+</html>

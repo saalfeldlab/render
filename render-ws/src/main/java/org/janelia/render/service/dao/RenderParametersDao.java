@@ -14,9 +14,11 @@ import com.mongodb.util.JSON;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.ListTransformSpec;
+import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.service.ObjectNotFoundException;
+import org.janelia.render.service.StackId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,8 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Data access object for render parameters.
@@ -41,12 +41,6 @@ public class RenderParametersDao {
 
     public static final String TILE_COLLECTION_NAME = "tile";
     public static final String TRANSFORM_COLLECTION_NAME = "transform";
-
-    public static String getDatabaseName(String owner,
-                                         String projectId,
-                                         String stackId) {
-        return owner + "-" + projectId + "-" + stackId;
-    }
 
     private MongoClient client;
 
@@ -69,9 +63,7 @@ public class RenderParametersDao {
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
-    public RenderParameters getParameters(String owner,
-                                          String projectId,
-                                          String stackId,
+    public RenderParameters getParameters(StackId stackId,
                                           Double x,
                                           Double y,
                                           Double z,
@@ -87,7 +79,7 @@ public class RenderParametersDao {
         validateRequiredParameter("height", height);
         validateRequiredParameter("scale", scale);
 
-        final DB db = getDatabase(owner, projectId, stackId);
+        final DB db = getDatabase(stackId);
 
         final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
 
@@ -140,16 +132,14 @@ public class RenderParametersDao {
      * @throws ObjectNotFoundException
      *   if a spec with the specified z and tileId cannot be found.
      */
-    public TileSpec getTileSpec(String owner,
-                                String projectId,
-                                String stackId,
+    public TileSpec getTileSpec(StackId stackId,
                                 String tileId)
             throws IllegalArgumentException,
                    ObjectNotFoundException {
 
         validateRequiredParameter("tileId", tileId);
 
-        final DB db = getDatabase(owner, projectId, stackId);
+        final DB db = getDatabase(stackId);
         final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
 
         final BasicDBObject query = new BasicDBObject();
@@ -171,8 +161,6 @@ public class RenderParametersDao {
     /**
      * Saves the specified tile spec to the database.
      *
-     * @param  owner      data owner.
-     * @param  projectId  project identifier.
      * @param  stackId    stack identifier.
      * @param  tileSpec   specification to be saved.
      *
@@ -181,16 +169,14 @@ public class RenderParametersDao {
      * @throws IllegalArgumentException
      *   if any required parameters or transform spec references are missing.
      */
-    public TileSpec saveTileSpec(String owner,
-                                 String projectId,
-                                 String stackId,
+    public TileSpec saveTileSpec(StackId stackId,
                                  TileSpec tileSpec)
             throws IllegalArgumentException {
 
         validateRequiredParameter("tileSpec", tileSpec);
         validateRequiredParameter("tileSpec.tileId", tileSpec.getTileId());
 
-        final DB db = getDatabase(owner, projectId, stackId);
+        final DB db = getDatabase(stackId);
         final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
 
         final String context = "tile spec with id '" + tileSpec.getTileId();
@@ -225,16 +211,14 @@ public class RenderParametersDao {
      * @throws ObjectNotFoundException
      *   if a spec with the specified transformId cannot be found.
      */
-    public TransformSpec getTransformSpec(String owner,
-                                          String projectId,
-                                          String stackId,
+    public TransformSpec getTransformSpec(StackId stackId,
                                           String transformId)
             throws IllegalArgumentException,
                    ObjectNotFoundException {
 
         validateRequiredParameter("transformId", transformId);
 
-        final DB db = getDatabase(owner, projectId, stackId);
+        final DB db = getDatabase(stackId);
         final DBCollection transformCollection = db.getCollection(TRANSFORM_COLLECTION_NAME);
 
         final BasicDBObject query = new BasicDBObject();
@@ -256,8 +240,6 @@ public class RenderParametersDao {
     /**
      * Saves the specified transform spec to the database.
      *
-     * @param  owner          data owner.
-     * @param  projectId      project identifier.
      * @param  stackId        stack identifier.
      * @param  transformSpec  specification to be saved.
      *
@@ -266,16 +248,14 @@ public class RenderParametersDao {
      * @throws IllegalArgumentException
      *   if any required parameters or transform spec references are missing.
      */
-    public TransformSpec saveTransformSpec(String owner,
-                                           String projectId,
-                                           String stackId,
+    public TransformSpec saveTransformSpec(StackId stackId,
                                            TransformSpec transformSpec)
             throws IllegalArgumentException {
 
         validateRequiredParameter("transformSpec", transformSpec);
         validateRequiredParameter("transformSpec.id", transformSpec.getId());
 
-        final DB db = getDatabase(owner, projectId, stackId);
+        final DB db = getDatabase(stackId);
         final DBCollection transformCollection = db.getCollection(TRANSFORM_COLLECTION_NAME);
 
         final String context = "transform spec with id '" + transformSpec.getId() + "'";
@@ -301,14 +281,93 @@ public class RenderParametersDao {
         return transformSpec;
     }
 
-    private DB getDatabase(String owner,
-                           String projectId,
-                           String stackId) {
-        validateIdName("owner", owner);
-        validateIdName("projectId", projectId);
-        validateIdName("stackId", stackId);
+    /**
+     * @return list of databases for the specified owner.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     */
+    public List<StackId> getStackIds(String owner)
+            throws IllegalArgumentException {
 
-        return client.getDB(getDatabaseName(owner, projectId, stackId));
+        validateRequiredParameter("owner", owner);
+
+        final List<StackId> list = new ArrayList<StackId>();
+        for (String name : client.getDatabaseNames()) {
+            if (name.startsWith(owner)) {
+                list.add(StackId.fromDatabaseName(name));
+            }
+        }
+
+        LOG.debug("getStackIds: returning {}", list);
+
+        return list;
+    }
+
+    /**
+     * @return list of distinct z values (layers) for the specified stackId.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     */
+    public List<Double> getZValues(StackId stackId)
+            throws IllegalArgumentException {
+
+        final DB db = getDatabase(stackId);
+
+        final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
+
+        final List<Double> list = new ArrayList<Double>();
+        for (Object zValue : tileCollection.distinct("z")) {
+            list.add(new Double(zValue.toString()));
+        }
+
+        LOG.debug("getZValues: returning {} values for {}", list.size(), stackId);
+
+        return list;
+    }
+
+    /**
+     * @return spatial data for all tiles in the specified stack layer.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     */
+    public List<TileBounds> getTileBounds(StackId stackId,
+                                          Double z)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("z", z);
+
+        final DB db = getDatabase(stackId);
+
+        final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
+
+        final DBObject tileQuery = new BasicDBObject("z", z);
+        final DBObject tileKeys =
+                new BasicDBObject("tileId", 1).append("minX", 1).append("minY", 1).append("maxX", 1).append("maxY", 1);
+
+        List<TileBounds> list = new ArrayList<TileBounds>();
+
+        final DBCursor cursor = tileCollection.find(tileQuery, tileKeys);
+        try {
+            DBObject document;
+            while (cursor.hasNext()) {
+                document = cursor.next();
+                list.add(TileBounds.fromJson(document.toString()));
+            }
+        } finally {
+            cursor.close();
+        }
+
+        LOG.debug("getTileBounds: found {} tile spec(s) for {}.{}.find({},{})",
+                  list.size(), db.getName(), tileCollection.getName(), tileQuery, tileKeys);
+
+        return list;
+    }
+
+    private DB getDatabase(StackId stackId) {
+        return client.getDB(stackId.getDatabaseName());
     }
 
     private List<TransformSpec> getTransformSpecs(DBCollection transformCollection,
@@ -428,18 +487,6 @@ public class RenderParametersDao {
         return new BasicDBObject(QueryOperators.GTE, value);
     }
 
-    private void validateIdName(String context,
-                                String idName)
-            throws IllegalArgumentException {
-
-        validateRequiredParameter(context, idName);
-
-        final Matcher m = VALID_ID_NAME.matcher(idName);
-        if (! m.matches()) {
-            throw new IllegalArgumentException("invalid " + context + " name '" + idName + "' specified");
-        }
-    }
-
     private void validateRequiredParameter(String context,
                                            Object value)
             throws IllegalArgumentException {
@@ -478,5 +525,4 @@ public class RenderParametersDao {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParametersDao.class);
-    private static final Pattern VALID_ID_NAME = Pattern.compile("[A-Za-z0-9\\-]++");
 }

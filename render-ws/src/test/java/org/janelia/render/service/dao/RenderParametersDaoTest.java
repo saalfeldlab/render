@@ -6,10 +6,12 @@ import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
+import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.TransformSpecMetaData;
 import org.janelia.render.service.ObjectNotFoundException;
+import org.janelia.render.service.StackId;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -29,18 +31,14 @@ import java.util.List;
  */
 public class RenderParametersDaoTest {
 
-    private static String owner;
-    private static String project;
-    private static String stack;
+    private static StackId stackId;
     private static EmbeddedMongoDb embeddedMongoDb;
     private static RenderParametersDao dao;
 
     @BeforeClass
     public static void before() throws Exception {
-        owner = "flyTEM";
-        project = "test";
-        stack = "elastic";
-        embeddedMongoDb = new EmbeddedMongoDb(RenderParametersDao.getDatabaseName(owner, project, stack));
+        stackId = new StackId("flyTEM", "test", "elastic");
+        embeddedMongoDb = new EmbeddedMongoDb(stackId.getDatabaseName());
         dao = new RenderParametersDao(embeddedMongoDb.getMongoClient());
 
         embeddedMongoDb.importCollection(RenderParametersDao.TILE_COLLECTION_NAME,
@@ -71,7 +69,7 @@ public class RenderParametersDaoTest {
         final Integer height = 2000;
         final Double scale = 0.5;
 
-        final RenderParameters parameters = dao.getParameters(owner, project, stack, x, y, z, width, height, scale);
+        final RenderParameters parameters = dao.getParameters(stackId, x, y, z, width, height, scale);
 
         Assert.assertNotNull("null parameters retrieved", parameters);
         Assert.assertEquals("invalid width parsed", width.intValue(), parameters.getWidth());
@@ -101,14 +99,14 @@ public class RenderParametersDaoTest {
     @Test
     public void testGetTileSpec() throws Exception {
         final String existingTileId = "134";
-        final TileSpec tileSpec = dao.getTileSpec(owner, project, stack, existingTileId);
+        final TileSpec tileSpec = dao.getTileSpec(stackId, existingTileId);
         Assert.assertNotNull("null tileSpec retrieved", tileSpec);
         Assert.assertEquals("invalid tileId retrieved", existingTileId, tileSpec.getTileId());
     }
 
     @Test(expected = ObjectNotFoundException.class)
     public void testGetTileSpecWithBadId() throws Exception {
-        dao.getTileSpec(owner, project, stack, "missingId");
+        dao.getTileSpec(stackId, "missingId");
     }
 
     @Test
@@ -121,9 +119,9 @@ public class RenderParametersDaoTest {
         tileSpec.setTileId(tileId);
         tileSpec.setLayout(layoutData);
 
-        dao.saveTileSpec(owner, project, stack, tileSpec);
+        dao.saveTileSpec(stackId, tileSpec);
 
-        final TileSpec insertedTileSpec = dao.getTileSpec(owner, project, stack, tileId);
+        final TileSpec insertedTileSpec = dao.getTileSpec(stackId, tileId);
 
         Assert.assertNotNull("null tileSpec retrieved after insert", insertedTileSpec);
         final LayoutData insertedLayoutData = insertedTileSpec.getLayout();
@@ -138,9 +136,9 @@ public class RenderParametersDaoTest {
         list.add(new ReferenceTransformSpec("1"));
         tileSpec.addTransformSpecs(list);
 
-        dao.saveTileSpec(owner, project, stack, tileSpec);
+        dao.saveTileSpec(stackId, tileSpec);
 
-        final TileSpec updatedTileSpec = dao.getTileSpec(owner, project, stack, tileId);
+        final TileSpec updatedTileSpec = dao.getTileSpec(stackId, tileId);
 
         Assert.assertNotNull("null tileSpec retrieved after update", updatedTileSpec);
         final LayoutData updatedLayoutData = updatedTileSpec.getLayout();
@@ -158,19 +156,19 @@ public class RenderParametersDaoTest {
         list.add(new ReferenceTransformSpec("missing-id"));
         tileSpec.addTransformSpecs(list);
 
-        dao.saveTileSpec(owner, project, stack, tileSpec);
+        dao.saveTileSpec(stackId, tileSpec);
     }
 
     @Test
     public void testGetTransformSpec() throws Exception {
-        final TransformSpec transformSpec = dao.getTransformSpec(owner, project, stack, "2");
+        final TransformSpec transformSpec = dao.getTransformSpec(stackId, "2");
         Assert.assertNotNull("null transformSpec retrieved", transformSpec);
         Assert.assertEquals("invalid type retrieved", "list", transformSpec.getType());
     }
 
     @Test(expected = ObjectNotFoundException.class)
     public void testGetTransformSpecWithBadId() throws Exception {
-        dao.getTransformSpec(owner, project, stack, "missingId");
+        dao.getTransformSpec(stackId, "missingId");
     }
 
     @Test
@@ -184,9 +182,9 @@ public class RenderParametersDaoTest {
                                                                  metaData,
                                                                  AffineModel2D.class.getName(),
                                                                  "1  0  0  1  0  0");
-        dao.saveTransformSpec(owner, project, stack, leafSpec);
+        dao.saveTransformSpec(stackId, leafSpec);
 
-        final TransformSpec insertedSpec = dao.getTransformSpec(owner, project, stack, transformId);
+        final TransformSpec insertedSpec = dao.getTransformSpec(stackId, transformId);
 
         Assert.assertNotNull("null transformSpec retrieved after insert", insertedSpec);
         final TransformSpecMetaData insertedMetaData = insertedSpec.getMetaData();
@@ -200,9 +198,9 @@ public class RenderParametersDaoTest {
         final ListTransformSpec listSpec = new ListTransformSpec(transformId, changedMetaData);
         listSpec.addSpec(new ReferenceTransformSpec("1"));
 
-        dao.saveTransformSpec(owner, project, stack, listSpec);
+        dao.saveTransformSpec(stackId, listSpec);
 
-        final TransformSpec updatedSpec = dao.getTransformSpec(owner, project, stack, transformId);
+        final TransformSpec updatedSpec = dao.getTransformSpec(stackId, transformId);
 
         Assert.assertNotNull("null transformSpec retrieved after update", updatedSpec);
         final TransformSpecMetaData updatedMetaData = updatedSpec.getMetaData();
@@ -217,7 +215,38 @@ public class RenderParametersDaoTest {
         final ListTransformSpec listSpec = new ListTransformSpec("bad-ref-transform", null);
         listSpec.addSpec(new ReferenceTransformSpec("missing-id"));
 
-        dao.saveTransformSpec(owner, project, stack, listSpec);
+        dao.saveTransformSpec(stackId, listSpec);
+    }
+
+    @Test
+    public void testGetStackIds() throws Exception {
+        final List<StackId> list = dao.getStackIds(stackId.getOwner());
+
+        Assert.assertNotNull("null list retrieved", list);
+        Assert.assertEquals("invalid number of stack ids found", 1, list.size());
+    }
+
+    @Test
+    public void testGetZValues() throws Exception {
+        final List<Double> list = dao.getZValues(stackId);
+
+        Assert.assertNotNull("null list retrieved", list);
+        Assert.assertEquals("invalid number of layers found", 1, list.size());
+    }
+
+    @Test
+    public void testTileBounds() throws Exception {
+        final Double z = 3903.0;
+        final List<TileBounds> list = dao.getTileBounds(stackId, z);
+
+        Assert.assertNotNull("null list retrieved", list);
+        Assert.assertEquals("invalid number of tiles found", 12, list.size());
+
+        final TileBounds firstTileBounds = list.get(0);
+
+        Assert.assertNotNull("null bounds for first tile", firstTileBounds);
+        Assert.assertEquals("incorrect id for first tile", "134", firstTileBounds.getTileId());
+        Assert.assertTrue("bound box not defined for first tile", firstTileBounds.isBoundingBoxDefined());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParametersDaoTest.class);

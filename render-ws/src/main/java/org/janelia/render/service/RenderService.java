@@ -3,6 +3,7 @@ package org.janelia.render.service;
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.service.dao.DbConfig;
@@ -29,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
+import java.util.List;
 
 /**
  * RESTful web service API for {@link Render} tool.
@@ -46,20 +48,21 @@ public class RenderService {
         this.renderParametersDao = new RenderParametersDao(dbConfig);
     }
 
-    @Path("project/{projectId}/stack/{stackId}/tile/{tileId}")
+    @Path("project/{project}/stack/{stack}/tile/{tileId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public TileSpec getTileSpec(@PathParam("owner") String owner,
-                                @PathParam("projectId") String projectId,
-                                @PathParam("stackId") String stackId,
+                                @PathParam("project") String project,
+                                @PathParam("stack") String stack,
                                 @PathParam("tileId") String tileId) {
 
-        LOG.info("getTileSpec: entry, projectId={}, stackId={}, tileId={}",
-                 projectId, stackId, tileId);
+        LOG.info("getTileSpec: entry, owner={}, project={}, stack={}, tileId={}",
+                 owner, project, stack, tileId);
 
         TileSpec tileSpec = null;
         try {
-            tileSpec = renderParametersDao.getTileSpec(owner, projectId, stackId, tileId);
+            final StackId stackId = new StackId(owner, project, stack);
+            tileSpec = renderParametersDao.getTileSpec(stackId, tileId);
         } catch (Throwable t) {
             throwServiceException(t);
         }
@@ -67,18 +70,18 @@ public class RenderService {
         return tileSpec;
     }
 
-    @Path("project/{projectId}/stack/{stackId}/tile/{tileId}")
+    @Path("project/{project}/stack/{stack}/tile/{tileId}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     public Response saveTileSpec(@PathParam("owner") String owner,
-                                 @PathParam("projectId") String projectId,
-                                 @PathParam("stackId") String stackId,
+                                 @PathParam("project") String project,
+                                 @PathParam("stack") String stack,
                                  @PathParam("tileId") String tileId,
                                  @Context UriInfo uriInfo,
                                  TileSpec tileSpec) {
 
-        LOG.info("saveTileSpec: entry, projectId={}, stackId={}, tileId={}",
-                 projectId, stackId, tileId);
+        LOG.info("saveTileSpec: entry, owner={}, project={}, stack={}, tileId={}",
+                 owner, project, stack, tileId);
 
         if (tileSpec == null) {
             throw new IllegalServiceArgumentException("no tile spec provided");
@@ -89,7 +92,8 @@ public class RenderService {
         }
 
         try {
-            renderParametersDao.saveTileSpec(owner, projectId, stackId, tileSpec);
+            final StackId stackId = new StackId(owner, project, stack);
+            renderParametersDao.saveTileSpec(stackId, tileSpec);
         } catch (Throwable t) {
             throwServiceException(t);
         }
@@ -99,20 +103,21 @@ public class RenderService {
         return responseBuilder.build();
     }
 
-    @Path("project/{projectId}/stack/{stackId}/transform/{transformId}")
+    @Path("project/{project}/stack/{stack}/transform/{transformId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public TransformSpec getTransformSpec(@PathParam("owner") String owner,
-                                          @PathParam("projectId") String projectId,
-                                          @PathParam("stackId") String stackId,
+                                          @PathParam("project") String project,
+                                          @PathParam("stack") String stack,
                                           @PathParam("transformId") String transformId) {
 
-        LOG.info("getTransformSpec: entry, projectId={}, stackId={}, transformId={}",
-                 projectId, stackId, transformId);
+        LOG.info("getTransformSpec: entry, owner={}, project={}, stack={}, transformId={}",
+                 owner, project, stack, transformId);
 
         TransformSpec transformSpec = null;
         try {
-            transformSpec = renderParametersDao.getTransformSpec(owner, projectId, stackId, transformId);
+            final StackId stackId = new StackId(owner, project, stack);
+            transformSpec = renderParametersDao.getTransformSpec(stackId, transformId);
         } catch (Throwable t) {
             throwServiceException(t);
         }
@@ -120,18 +125,18 @@ public class RenderService {
         return transformSpec;
     }
 
-    @Path("project/{projectId}/stack/{stackId}/transform/{transformId}")
+    @Path("project/{project}/stack/{stack}/transform/{transformId}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     public Response saveTransformSpec(@PathParam("owner") String owner,
-                                      @PathParam("projectId") String projectId,
-                                      @PathParam("stackId") String stackId,
+                                      @PathParam("project") String project,
+                                      @PathParam("stack") String stack,
                                       @PathParam("transformId") String transformId,
                                       @Context UriInfo uriInfo,
                                       TransformSpec transformSpec) {
 
-        LOG.info("saveTransformSpec: entry, projectId={}, stackId={}, transformId={}",
-                 projectId, stackId, transformId);
+        LOG.info("saveTransformSpec: entry, owner={}, project={}, stack={}, transformId={}",
+                 owner, project, stack, transformId);
 
         if (transformSpec == null) {
             throw new IllegalServiceArgumentException("no transform spec provided");
@@ -142,7 +147,8 @@ public class RenderService {
         }
 
         try {
-            renderParametersDao.saveTransformSpec(owner, projectId, stackId, transformSpec);
+            final StackId stackId = new StackId(owner, project, stack);
+            renderParametersDao.saveTransformSpec(stackId, transformSpec);
         } catch (Throwable t) {
             throwServiceException(t);
         }
@@ -152,12 +158,69 @@ public class RenderService {
         return responseBuilder.build();
     }
 
-    @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
+    @Path("stackIds")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<StackId> getStackIds(@PathParam("owner") String owner) {
+
+        LOG.info("getStackIds: entry, owner={}", owner);
+
+        List<StackId> list = null;
+        try {
+            list = renderParametersDao.getStackIds(owner);
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+        return list;
+    }
+
+    @Path("project/{project}/stack/{stack}/zValues")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<Double> getZValues(@PathParam("owner") String owner,
+                                   @PathParam("project") String project,
+                                   @PathParam("stack") String stack) {
+
+        LOG.info("getTileBounds: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        List<Double> list = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            list = renderParametersDao.getZValues(stackId);
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+        return list;
+    }
+
+    @Path("project/{project}/stack/{stack}/z/{z}/tileBounds")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<TileBounds> getTileBounds(@PathParam("owner") String owner,
+                                          @PathParam("project") String project,
+                                          @PathParam("stack") String stack,
+                                          @PathParam("z") Double z) {
+
+        LOG.info("getTileBounds: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
+
+        List<TileBounds> list = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            list = renderParametersDao.getTileBounds(stackId, z);
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+        return list;
+    }
+
+    @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public RenderParameters getRenderParameters(@PathParam("owner") String owner,
-                                                @PathParam("projectId") String projectId,
-                                                @PathParam("stackId") String stackId,
+                                                @PathParam("project") String project,
+                                                @PathParam("stack") String stack,
                                                 @PathParam("x") Double x,
                                                 @PathParam("y") Double y,
                                                 @PathParam("z") Double z,
@@ -165,12 +228,13 @@ public class RenderService {
                                                 @PathParam("height") Integer height,
                                                 @PathParam("scale") Double scale) {
 
-        LOG.info("getRenderParameters: entry, projectId={}, stackId={}, x={}, y={}, z={}, width={}, height={}, scale={}",
-                 projectId, stackId, x, y, z, width, height, scale);
+        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, x={}, y={}, z={}, width={}, height={}, scale={}",
+                 owner, project, stack, x, y, z, width, height, scale);
 
         RenderParameters parameters = null;
         try {
-            parameters = renderParametersDao.getParameters(owner, projectId, stackId, x, y, z, width, height, scale);
+            final StackId stackId = new StackId(owner, project, stack);
+            parameters = renderParametersDao.getParameters(stackId, x, y, z, width, height, scale);
         } catch (Throwable t) {
             throwServiceException(t);
         }
