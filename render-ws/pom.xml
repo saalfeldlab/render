@@ -100,7 +100,7 @@
 
     <properties>
         <!--<resteasy.version>3.0.8.Final</resteasy.version>-->
-        <resteasy.version>2.3.4.Final</resteasy.version>
+        <resteasy.version>2.3.7.Final</resteasy.version>
     </properties>
 
 </project>
