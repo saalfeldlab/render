@@ -6,9 +6,7 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
-import com.mongodb.MongoCredential;
 import com.mongodb.QueryOperators;
-import com.mongodb.ServerAddress;
 import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 import org.janelia.alignment.RenderParameters;
@@ -22,9 +20,7 @@ import org.janelia.render.service.StackId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -43,15 +39,6 @@ public class RenderParametersDao {
     public static final String TRANSFORM_COLLECTION_NAME = "transform";
 
     private MongoClient client;
-
-    public RenderParametersDao(DbConfig dbConfig)
-            throws UnknownHostException {
-        final ServerAddress serverAddress = new ServerAddress(dbConfig.getHost(), dbConfig.getPort());
-        final MongoCredential credential = MongoCredential.createMongoCRCredential(dbConfig.getUserName(),
-                                                                                   dbConfig.getAuthenticationDatabase(),
-                                                                                   dbConfig.getPassword());
-        client = new MongoClient(serverAddress, Arrays.asList(credential));
-    }
 
     public RenderParametersDao(MongoClient client) {
         this.client = client;

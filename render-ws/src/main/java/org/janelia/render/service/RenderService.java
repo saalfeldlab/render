@@ -1,13 +1,14 @@
 package org.janelia.render.service;
 
+import com.mongodb.MongoClient;
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.render.service.dao.DbConfig;
 import org.janelia.render.service.dao.RenderParametersDao;
+import org.janelia.render.service.dao.SharedMongoClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,8 +45,9 @@ public class RenderService {
 
     public RenderService()
             throws UnknownHostException {
-        final DbConfig dbConfig = DbConfig.fromFile(new File("render-db.properties"));
-        this.renderParametersDao = new RenderParametersDao(dbConfig);
+        final File dbConfigFile = new File("render-db.properties");
+        final MongoClient mongoClient = SharedMongoClient.getInstance(dbConfigFile);
+        this.renderParametersDao = new RenderParametersDao(mongoClient);
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}")
