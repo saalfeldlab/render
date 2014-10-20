@@ -4,6 +4,7 @@ import com.mongodb.MongoClient;
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -314,6 +315,58 @@ public class RenderService {
         return renderImageStream(renderParameters, Utils.PNG_FORMAT, IMAGE_PNG_MIME_TYPE);
     }
 
+    @Path("validate-json/render")
+    @PUT
+    @Consumes(MediaType.WILDCARD)
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response validateRenderParametersJson(String json) {
+        LOG.info("validateRenderParametersJson: entry");
+        Response response;
+        try {
+            final RenderParameters renderParameters = JsonUtils.GSON.fromJson(json, RenderParameters.class);
+            renderParameters.initializeDerivedValues();
+            renderParameters.validate();
+            response = getParseSuccessResponse(renderParameters);
+        } catch (Throwable t) {
+            response = getParseFailureResponse(t, RenderParameters.class.getName(), json);
+        }
+        return response;
+    }
+
+    @Path("validate-json/tile")
+    @PUT
+    @Consumes(MediaType.WILDCARD)
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response validateTileJson(String json) {
+        LOG.info("validateTileJson: entry");
+        Response response;
+        try {
+            final TileSpec tileSpec = JsonUtils.GSON.fromJson(json, TileSpec.class);
+            tileSpec.validate();
+            response = getParseSuccessResponse(tileSpec);
+        } catch (Throwable t) {
+            response = getParseFailureResponse(t, TileSpec.class.getName(), json);
+        }
+        return response;
+    }
+
+    @Path("validate-json/transform")
+    @PUT
+    @Consumes(MediaType.WILDCARD)
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response validateTransformJson(String json) {
+        LOG.info("validateTransformJson: entry");
+        Response response;
+        try {
+            final TransformSpec transformSpec = JsonUtils.GSON.fromJson(json, TransformSpec.class);
+            transformSpec.validate();
+            response = getParseSuccessResponse(transformSpec);
+        } catch (Throwable t) {
+            response = getParseFailureResponse(t, TransformSpec.class.getName(), json);
+        }
+        return response;
+    }
+
     private Response renderImageStream(RenderParameters renderParameters,
                                        String format,
                                        String mimeType) {
@@ -364,6 +417,30 @@ public class RenderService {
         LOG.info("validateParametersAndRenderImage: exit");
 
         return targetImage;
+    }
+
+    private Response getParseFailureResponse(Throwable t,
+                                             String className,
+                                             String json) {
+        final String message = "Failed to parse " + className +
+                               " instance from JSON text.  Specific error is: " + t.getMessage();
+        String logJson = json;
+        final int maxMsgLength = 1024;
+        if (json.length() > maxMsgLength) {
+            logJson = json.substring(0, maxMsgLength) + "...";
+        }
+        LOG.warn(message + "  JSON text is:\n" + logJson, t);
+
+        final Response.ResponseBuilder responseBuilder = Response.status(Response.Status.BAD_REQUEST).entity(message);
+        return responseBuilder.build();
+    }
+
+    private Response getParseSuccessResponse(Object instance) {
+        final String message = "Successfully parsed " + instance.getClass().getName() +
+                               " instance from JSON text.  Parsed value is " + instance;
+        LOG.info(message);
+        final Response.ResponseBuilder responseBuilder = Response.ok(message);
+        return responseBuilder.build();
     }
 
     private void throwServiceException(Throwable t)
