@@ -40,7 +40,8 @@ public class InterpolatedTransformSpec
     }
 
     @Override
-    public boolean isFullyResolved() {
+    public boolean isFullyResolved()
+            throws IllegalStateException {
         return (a.isFullyResolved() && b.isFullyResolved());
     }
 

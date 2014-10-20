@@ -22,6 +22,7 @@ import org.janelia.alignment.spec.TransformSpec;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -99,4 +100,13 @@ public class RenderParametersTest {
         Assert.assertEquals("x parameter not loaded from parameters_url file",
                             "1.0", String.valueOf(parameters.getX()));
     }
+
+    @Test(expected = IllegalStateException.class)
+    public void testExtraneousComma() throws Exception {
+        final File jsonFile = new File("src/test/resources/render-parameters-test/extraneous-comma-render.json");
+        final RenderParameters parameters = RenderParameters.parseJson(jsonFile);
+        parameters.initializeDerivedValues();
+        parameters.validate();
+    }
+
 }

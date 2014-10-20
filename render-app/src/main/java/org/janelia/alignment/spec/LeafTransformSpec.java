@@ -85,12 +85,20 @@ public class LeafTransformSpec extends TransformSpec {
             throws IllegalArgumentException {
 
         final mpicbg.trakem2.transform.CoordinateTransform ct = newInstance();
+        if (dataString == null) {
+            throw new IllegalArgumentException("no dataString defined for leaf transform spec with id '" +
+                                               getId() + "'");
+        }
         ct.init(dataString);
         return ct;
     }
 
     private Class getClazz() throws IllegalArgumentException {
         if (clazz == null) {
+            if (className == null) {
+                throw new IllegalArgumentException("no className defined for leaf transform spec with id '" +
+                                                   getId() + "'");
+            }
             try {
                 clazz = Class.forName(className);
             } catch (ClassNotFoundException e) {

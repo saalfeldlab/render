@@ -82,8 +82,11 @@ public abstract class TransformSpec {
 
     /**
      * @return true if all spec references within this spec have been resolved; otherwise false.
+     *
+     * @throws IllegalStateException
+     *   if the spec's current state prevents checking resolution.
      */
-    public abstract boolean isFullyResolved();
+    public abstract boolean isFullyResolved() throws IllegalStateException;
 
     /**
      * Add the ids for any unresolved spec references to the specified set.

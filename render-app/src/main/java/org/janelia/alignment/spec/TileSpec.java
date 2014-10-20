@@ -222,7 +222,8 @@ public class TileSpec {
     public void validate() throws IllegalArgumentException {
 
         if (mipmapLevels.size() == 0) {
-            throw new IllegalArgumentException("tile specification does not contain any mipmapLevel elements");
+            throw new IllegalArgumentException("tile specification with id '" + tileId +
+                                               "' does not contain any mipmapLevel elements");
         }
 
         for (ImageAndMask imageAndMask : mipmapLevels.values()) {

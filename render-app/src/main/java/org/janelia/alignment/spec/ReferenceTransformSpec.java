@@ -47,7 +47,8 @@ public class ReferenceTransformSpec extends TransformSpec {
     }
 
     @Override
-    public boolean isFullyResolved() {
+    public boolean isFullyResolved()
+            throws IllegalStateException {
         return ((resolvedInstance != null) && (resolvedInstance.isFullyResolved()));
     }
 

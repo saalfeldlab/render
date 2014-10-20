@@ -51,9 +51,14 @@ public class ListTransformSpec extends TransformSpec {
     }
 
     @Override
-    public boolean isFullyResolved() {
+    public boolean isFullyResolved()
+            throws IllegalStateException {
         boolean allSpecsResolved = true;
         for (TransformSpec spec : specList) {
+            if (spec == null) {
+                throw new IllegalStateException("A null spec is part of the transform spec list with id '" + getId() +
+                                                "'.  Check for an extraneous comma at the end of the list.");
+            }
             if (! spec.isFullyResolved()) {
                 allSpecsResolved = false;
                 break;

@@ -1,0 +1,25 @@
+{
+    "tileSpecs": [
+        {
+            "tileId": "999",
+            "mipmapLevels": {
+                "0": {
+                    "imageUrl": "src/test/resources/stitch-test/col0075_row0021_cam1.png"
+                }
+            },
+            "transforms": {
+                "type": "list",
+                "specList": [
+                    {
+                        "className" : "mpicbg.trakem2.transform.AffineModel2D",
+                        "dataString" : "1.00756 0.037597496 -0.028139953 0.98089 0.0 0.0"
+                    },
+                    {
+                        "className": "mpicbg.trakem2.transform.AffineModel2D",
+                        "dataString": "1  0  0  1  85 25"
+                    },
+                ]
+            }
+        }
+    ]
+}
