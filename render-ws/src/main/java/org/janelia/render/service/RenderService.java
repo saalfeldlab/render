@@ -6,7 +6,6 @@ import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.json.JsonUtils;
-import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -375,13 +374,19 @@ public class RenderService {
     @Produces(MediaType.APPLICATION_JSON)
     public float[] getTransformedPoint(@PathParam("x") float x,
                                        @PathParam("y") float y,
-                                       ListTransformSpec listTransformSpec) {
+                                       TileSpec tileSpec) {
 
         float[] worldCoordinates = null;
         try {
             final Point p = new Point(new float[]{x, y});
-            p.apply(listTransformSpec.getInstanceAsList());
-            worldCoordinates = p.getW();
+            p.apply(tileSpec.createTransformList());
+            final float[] w = p.getW();
+            final Double z = tileSpec.getZ();
+            if (z == null) {
+                worldCoordinates = w;
+            } else {
+                worldCoordinates = new float[]{w[0], w[1], z.floatValue()};
+            }
         } catch (Throwable t) {
             throwServiceException(t);
         }
