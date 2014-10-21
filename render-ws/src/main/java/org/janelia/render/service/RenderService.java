@@ -1,10 +1,12 @@
 package org.janelia.render.service;
 
 import com.mongodb.MongoClient;
+import mpicbg.models.Point;
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -365,6 +367,28 @@ public class RenderService {
             response = getParseFailureResponse(t, TransformSpec.class.getName(), json);
         }
         return response;
+    }
+
+    @Path("transformed-point/{x},{y}")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public float[] getTransformedPoint(@PathParam("x") float x,
+                                       @PathParam("y") float y,
+                                       ListTransformSpec listTransformSpec) {
+
+        float[] worldCoordinates = null;
+        try {
+            final Point p = new Point(new float[]{x, y});
+            p.apply(listTransformSpec.getInstanceAsList());
+            worldCoordinates = p.getW();
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+
+        LOG.info("getTransformedPoint: returning {} for ({},{})", worldCoordinates, x, y);
+
+        return worldCoordinates;
     }
 
     private Response renderImageStream(RenderParameters renderParameters,
