@@ -347,10 +347,6 @@ public class RenderParameters {
             throw new IllegalStateException("derived parameters have not been initialized");
         }
 
-        if (! hasTileSpecs()) {
-            throw new IllegalArgumentException("no tile specs exist for render parameters");
-        }
-
         for (TileSpec tileSpec : tileSpecs) {
             tileSpec.validate();
         }
