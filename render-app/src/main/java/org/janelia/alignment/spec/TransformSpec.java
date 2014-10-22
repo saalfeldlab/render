@@ -36,6 +36,10 @@ public abstract class TransformSpec {
         this.metaData = metaData;
     }
 
+    public boolean hasId() {
+        return (id != null);
+    }
+
     public String getId() {
         return id;
     }

@@ -1,5 +1,6 @@
 package org.janelia.render.service;
 
+import com.google.gson.reflect.TypeToken;
 import com.mongodb.MongoClient;
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
@@ -31,8 +32,12 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Type;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * RESTful web service API for {@link Render} tool.
@@ -321,14 +326,15 @@ public class RenderService {
     @Produces(MediaType.TEXT_PLAIN)
     public Response validateRenderParametersJson(String json) {
         LOG.info("validateRenderParametersJson: entry");
+        final String context = RenderParameters.class.getName() + " instance";
         Response response;
         try {
             final RenderParameters renderParameters = RenderParameters.parseJson(json);
             renderParameters.initializeDerivedValues();
             renderParameters.validate();
-            response = getParseSuccessResponse(renderParameters);
+            response = getParseSuccessResponse(context, String.valueOf(renderParameters));
         } catch (Throwable t) {
-            response = getParseFailureResponse(t, RenderParameters.class.getName(), json);
+            response = getParseFailureResponse(t, context, json);
         }
         return response;
     }
@@ -339,13 +345,36 @@ public class RenderService {
     @Produces(MediaType.TEXT_PLAIN)
     public Response validateTileJson(String json) {
         LOG.info("validateTileJson: entry");
+        final String context = TileSpec.class.getName() + " instance";
         Response response;
         try {
             final TileSpec tileSpec = TileSpec.fromJson(json);
             tileSpec.validate();
-            response = getParseSuccessResponse(tileSpec);
+            response = getParseSuccessResponse(context, String.valueOf(tileSpec));
         } catch (Throwable t) {
-            response = getParseFailureResponse(t, TileSpec.class.getName(), json);
+            response = getParseFailureResponse(t, context, json);
+        }
+        return response;
+    }
+
+    @Path("validate-json/tile-array")
+    @PUT
+    @Consumes(MediaType.WILDCARD)
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response validateTileJsonArray(String json) {
+        LOG.info("validateTileJsonArray: entry");
+        final String context = "array of " + TileSpec.class.getName() + " instances";
+        Response response;
+        try {
+            final Type listType = new TypeToken<ArrayList<TileSpec>>(){}.getType();
+            final List<TileSpec> list = JsonUtils.GSON.fromJson(json, listType);
+            for (TileSpec spec : list) {
+                spec.validateMipmaps();
+            }
+            final String value = "array of " + list.size() + " tile specifications";
+            response = getParseSuccessResponse(context, value);
+        } catch (Throwable t) {
+            response = getParseFailureResponse(t, context, json);
         }
         return response;
     }
@@ -356,13 +385,43 @@ public class RenderService {
     @Produces(MediaType.TEXT_PLAIN)
     public Response validateTransformJson(String json) {
         LOG.info("validateTransformJson: entry");
+        final String context = TransformSpec.class.getName() + " instance";
         Response response;
         try {
             final TransformSpec transformSpec = JsonUtils.GSON.fromJson(json, TransformSpec.class);
             transformSpec.validate();
-            response = getParseSuccessResponse(transformSpec);
+            response = getParseSuccessResponse(context, String.valueOf(transformSpec));
         } catch (Throwable t) {
-            response = getParseFailureResponse(t, TransformSpec.class.getName(), json);
+            response = getParseFailureResponse(t, context, json);
+        }
+        return response;
+    }
+
+    @Path("validate-json/transform-array")
+    @PUT
+    @Consumes(MediaType.WILDCARD)
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response validateTransformJsonArray(String json) {
+        LOG.info("validateTransformJsonArray: entry");
+        final String context = "array of " + TransformSpec.class.getName() + " instances";
+        Response response;
+        try {
+            final Type listType = new TypeToken<ArrayList<TransformSpec>>(){}.getType();
+            final List<TransformSpec> list = JsonUtils.GSON.fromJson(json, listType);
+            final Map<String, TransformSpec> map = new HashMap<String, TransformSpec>((int) (list.size() * 1.5));
+            for (TransformSpec spec : list) {
+                if (spec.hasId()) {
+                    map.put(spec.getId(), spec);
+                }
+            }
+            for (TransformSpec spec : list) {
+                spec.resolveReferences(map);
+                spec.validate();
+            }
+            final String value = "array of " + list.size() + " transform specifications";
+            response = getParseSuccessResponse(context, value);
+        } catch (Throwable t) {
+            response = getParseFailureResponse(t, context, json);
         }
         return response;
     }
@@ -456,10 +515,10 @@ public class RenderService {
     }
 
     private Response getParseFailureResponse(Throwable t,
-                                             String className,
+                                             String context,
                                              String json) {
-        final String message = "Failed to parse " + className +
-                               " instance from JSON text.  Specific error is: " + t.getMessage();
+        final String message = "Failed to parse " + context +
+                               " from JSON text.  Specific error is: " + t.getMessage() + "\n";
         String logJson = json;
         final int maxMsgLength = 1024;
         if (json.length() > maxMsgLength) {
@@ -471,9 +530,9 @@ public class RenderService {
         return responseBuilder.build();
     }
 
-    private Response getParseSuccessResponse(Object instance) {
-        final String message = "Successfully parsed " + instance.getClass().getName() +
-                               " instance from JSON text.  Parsed value is " + instance;
+    private Response getParseSuccessResponse(String context,
+                                             String value) {
+        final String message = "Successfully parsed " + context + " from JSON text.  Parsed value is: " + value + ".\n";
         LOG.info(message);
         final Response.ResponseBuilder responseBuilder = Response.ok(message);
         return responseBuilder.build();

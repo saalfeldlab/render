@@ -315,10 +315,9 @@ public class TileSpec {
 
     /**
      * @throws IllegalArgumentException
-     *   if this specification is invalid.
+     *   if this spec's mipmaps are invalid.
      */
-    public void validate() throws IllegalArgumentException {
-
+    public void validateMipmaps() throws IllegalArgumentException {
         if (mipmapLevels.size() == 0) {
             throw new IllegalArgumentException("tile specification with id '" + tileId +
                                                "' does not contain any mipmapLevel elements");
@@ -327,7 +326,14 @@ public class TileSpec {
         for (ImageAndMask imageAndMask : mipmapLevels.values()) {
             imageAndMask.validate();
         }
+    }
 
+    /**
+     * @throws IllegalArgumentException
+     *   if this specification is invalid.
+     */
+    public void validate() throws IllegalArgumentException {
+        validateMipmaps();
         transforms.validate();
     }
 
