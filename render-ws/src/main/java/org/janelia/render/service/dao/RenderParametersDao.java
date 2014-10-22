@@ -90,7 +90,7 @@ public class RenderParametersDao {
             TileSpec tileSpec;
             while (cursor.hasNext()) {
                 document = cursor.next();
-                tileSpec = JsonUtils.GSON.fromJson(document.toString(), TileSpec.class);
+                tileSpec = TileSpec.fromJson(document.toString());
                 renderParameters.addTileSpec(tileSpec);
             }
         } finally {
@@ -142,7 +142,7 @@ public class RenderParametersDao {
                                               db.getName() + " " + TILE_COLLECTION_NAME + " collection");
         }
 
-        return JsonUtils.GSON.fromJson(document.toString(), TileSpec.class);
+        return TileSpec.fromJson(document.toString());
     }
 
     /**

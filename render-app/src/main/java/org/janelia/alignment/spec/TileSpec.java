@@ -18,9 +18,13 @@ package org.janelia.alignment.spec;
 
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
+import mpicbg.models.CoordinateTransformMesh;
+import mpicbg.models.NoninvertibleModelException;
 import mpicbg.trakem2.transform.TransformMesh;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.json.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.util.List;
@@ -90,30 +94,124 @@ public class TileSpec {
     }
 
     /**
+     * @return a transform mesh built from this spec's list of transforms.
+     *
+     * @throws IllegalStateException
+     *   if width or height have not been defined for this tile.
+     */
+    public TransformMesh getTransformMesh()
+            throws IllegalStateException {
+
+        if (! hasWidthAndHeightDefined()) {
+            throw new IllegalStateException("width and height must be set to create transform mesh");
+        }
+
+        final CoordinateTransformList<CoordinateTransform> ctList = createTransformList();
+        return new TransformMesh(ctList,
+                                 TRANSFORM_MESH_TRIANGLE_SIZE,
+                                 width.floatValue(),
+                                 height.floatValue());
+    }
+
+    /**
+     * @return a coordinate transform mesh built from this spec's list of transforms.
+     *
+     * @throws IllegalStateException
+     *   if width or height have not been defined for this tile.
+     */
+    public CoordinateTransformMesh getCoordinateTransformMesh()
+            throws IllegalStateException {
+
+        if (! hasWidthAndHeightDefined()) {
+            throw new IllegalStateException("width and height must be set to create transform mesh");
+        }
+
+        final CoordinateTransformList<CoordinateTransform> ctList = createTransformList();
+        return new CoordinateTransformMesh(ctList,
+                                           // TODO: get Stephan to explain these magic values I stole from Render code
+                                           (int) (width / TRANSFORM_MESH_TRIANGLE_SIZE + 0.5),
+                                           width.floatValue(),
+                                           height.floatValue());
+    }
+
+    /**
      * Derives this tile's bounding box attributes.
      *
      * @param  force  if true, attributes will always be derived;
      *                otherwise attributes will only be derived if they do not already exist.
      *
      * @throws IllegalStateException
-     *   if width, height, or transforms have not been defined for this tile.
+     *   if width or height have not been defined for this tile.
      */
     public void deriveBoundingBox(boolean force)
             throws IllegalStateException {
-
         if (force || (! isBoundingBoxDefined())) {
-
-            if (! hasWidthAndHeightDefined()) {
-                throw new IllegalStateException("width and height must be set to derive bounding box");
-            }
-
-            final CoordinateTransformList<CoordinateTransform> ctList = createTransformList();
-            final TransformMesh mesh = new TransformMesh(ctList,
-                                                         32,
-                                                         width.floatValue(),
-                                                         height.floatValue());
+            final TransformMesh mesh = getTransformMesh();
             setBoundingBox(mesh.getBoundingBox());
         }
+    }
+
+    /**
+     * @param  x  local x coordinate to transform into world coordinate.
+     * @param  y  local y coordinate to transform into world coordinate.
+     *
+     * @return world coordinates (x, y, z) for the specified local coordinates.
+     */
+    public float[] getTransformedCoordinates(float x,
+                                             float y) {
+        float[] worldCoordinates;
+        float[] w = new float[] {x, y};
+
+        if (hasTransforms()) {
+            final CoordinateTransformList<CoordinateTransform> ctl = createTransformList();
+            ctl.applyInPlace(w);
+        }
+
+        if (z == null) {
+            worldCoordinates = w;
+        } else {
+            worldCoordinates = new float[]{w[0], w[1], z.floatValue()};
+        }
+
+        LOG.debug("getTransformedCoordinates: returning {} for [{}, {}]", worldCoordinates, x, y);
+
+        return worldCoordinates;
+    }
+
+    /**
+     * @param  x  world x coordinate to inversely transform into local coordinate.
+     * @param  y  world y coordinate to inversely transform into local coordinate.
+     *
+     * @return local coordinates (x, y, z) for the specified world coordinates.
+     *
+     * @throws IllegalStateException
+     *   if width or height have not been defined for this tile.
+     */
+    public float[] getInverseCoordinates(float x,
+                                         float y)
+            throws IllegalStateException {
+
+        float[] localCoordinates;
+        float[] l = new float[] {x, y};
+        if (hasTransforms()) {
+            final CoordinateTransformMesh mesh = getCoordinateTransformMesh();
+            try {
+                mesh.applyInverseInPlace(l);
+            } catch (NoninvertibleModelException e) {
+                // coordinates still transformed, exception thrown just to let you know they were estimated
+                LOG.debug("getInverseCoordinates: " + e.getMessage());
+            }
+        }
+
+        if (z == null) {
+            localCoordinates = l;
+        } else {
+            localCoordinates = new float[]{l[0], l[1], z.floatValue()};
+        }
+
+        LOG.debug("getInverseCoordinates: returning {} for [{}, {}]", localCoordinates, x, y);
+
+        return localCoordinates;
     }
 
     public boolean hasWidthAndHeightDefined() {
@@ -249,4 +347,12 @@ public class TileSpec {
     public String toJson() {
         return JsonUtils.GSON.toJson(this, TileSpec.class);
     }
+
+    public static TileSpec fromJson(String json) {
+        return JsonUtils.GSON.fromJson(json, TileSpec.class);
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(TileSpec.class);
+
+    private static final int TRANSFORM_MESH_TRIANGLE_SIZE = 32;
 }

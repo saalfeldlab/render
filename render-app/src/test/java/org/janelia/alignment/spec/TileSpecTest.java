@@ -21,6 +21,8 @@ import org.janelia.alignment.json.JsonUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
 
 /**
@@ -80,6 +82,56 @@ public class TileSpecTest {
         Assert.assertEquals("bad col value", values[3], parsedLayoutData.getImageCol());
     }
 
+    @Test
+    public void testCoordinateTransformsWithAffineOnly() throws Exception {
+        final byte[] jsonBytes = Files.readAllBytes(Paths.get("src/test/resources/tile-test/tile_with_only_affine_transforms.json"));
+        final String json = new String(jsonBytes);
+        final TileSpec tileSpec = TileSpec.fromJson(json);
+        final Double expectedZ = tileSpec.getZ();
+
+        final float localX = 30f;
+        final float localY = 40f;
+        final float[] worldCoordinates = tileSpec.getTransformedCoordinates(localX, localY);
+
+        Assert.assertNotNull("worldCoordinates are null", worldCoordinates);
+        Assert.assertEquals("incorrect length for worldCoordinates", 3, worldCoordinates.length);
+        Assert.assertEquals("incorrect z for worldCoordinates", expectedZ, worldCoordinates[2], MAX_DOUBLE_DELTA);
+
+        final float[] localCoordinates = tileSpec.getInverseCoordinates(worldCoordinates[0], worldCoordinates[1]);
+
+        Assert.assertNotNull("localCoordinates are null", localCoordinates);
+        Assert.assertEquals("incorrect length for localCoordinates", 3, localCoordinates.length);
+        Assert.assertEquals("incorrect z for localCoordinates", expectedZ, localCoordinates[2], MAX_DOUBLE_DELTA);
+
+        Assert.assertEquals("incorrect x for localCoordinates", localX, localCoordinates[0], MAX_DOUBLE_DELTA);
+        Assert.assertEquals("incorrect y for localCoordinates", localY, localCoordinates[1], MAX_DOUBLE_DELTA);
+    }
+
+    @Test
+    public void testCoordinateTransformsWithNonInvertible() throws Exception {
+        final byte[] jsonBytes = Files.readAllBytes(Paths.get("src/test/resources/tile-test/tile_with_non_invertible_transforms.json"));
+        final String json = new String(jsonBytes);
+        final TileSpec tileSpec = TileSpec.fromJson(json);
+        final Double expectedZ = tileSpec.getZ();
+
+        final float localX = 30f;
+        final float localY = 40f;
+        final float[] worldCoordinates = tileSpec.getTransformedCoordinates(localX, localY);
+
+        Assert.assertNotNull("worldCoordinates are null", worldCoordinates);
+        Assert.assertEquals("incorrect length for worldCoordinates", 3, worldCoordinates.length);
+        Assert.assertEquals("incorrect z for worldCoordinates", expectedZ, worldCoordinates[2], MAX_DOUBLE_DELTA);
+
+        final float[] localCoordinates = tileSpec.getInverseCoordinates(worldCoordinates[0], worldCoordinates[1]);
+
+        Assert.assertNotNull("localCoordinates are null", localCoordinates);
+        Assert.assertEquals("incorrect length for localCoordinates", 3, localCoordinates.length);
+        Assert.assertEquals("incorrect z for localCoordinates", expectedZ, localCoordinates[2], MAX_DOUBLE_DELTA);
+
+        Assert.assertEquals("incorrect x for localCoordinates", localX, localCoordinates[0], MAX_DOUBLE_DELTA);
+        Assert.assertEquals("incorrect y for localCoordinates", localY, localCoordinates[1], MAX_DOUBLE_DELTA);
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void testValidateWithMissingMipmaps() throws Exception {
 
@@ -97,6 +149,7 @@ public class TileSpecTest {
 
     private static final String EXPECTED_TILE_ID = "test-tile-id";
     private static final int EXPECTED_WIDTH = 99;
+    private static final double MAX_DOUBLE_DELTA = 0.01;
 
     private static final String JSON_WITH_UNSORTED_MIPMAP_LEVELS =
             "{\n" +

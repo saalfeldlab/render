@@ -1,0 +1,33 @@
+{
+    "tileId": "134",
+    "z": 3903.0,
+    "width": 2560.0,
+    "height": 2160.0,
+    "mipmapLevels": {
+        "0": {
+            "imageUrl": "src/test/resources/mipmap-test/scaled-images/col0060_row0140_cam0.tif",
+            "maskUrl": "src/test/resources/mipmap-test/scaled-images/49.134.zip"
+        }
+    },
+    "transforms": {
+        "type": "list",
+        "specList": [
+            {
+                "className": "mpicbg.trakem2.transform.AffineModel2D",
+                "dataString": "1 0 0 1 0 0"
+            },
+            {
+                "className": "mpicbg.trakem2.transform.AffineModel2D",
+                "dataString": "0.99414426 -0.057523947 0.05564594 1.0000075 1108.6772 2104.6455"
+            },
+            {
+                "className": "mpicbg.trakem2.transform.AffineModel2D",
+                "dataString": "1.002662 0.057676636 -0.055793643 0.9967831 -994.2026 -2161.8198"
+            },
+            {
+                "className": "mpicbg.trakem2.transform.AffineModel2D",
+                "dataString": "0.99414426 -0.057523947 0.05564594 1.0000075 1108.6772 2104.6455"
+            }
+        ]
+    }
+}

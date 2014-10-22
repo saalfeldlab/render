@@ -1,7 +1,6 @@
 package org.janelia.render.service;
 
 import com.mongodb.MongoClient;
-import mpicbg.models.Point;
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
@@ -324,7 +323,7 @@ public class RenderService {
         LOG.info("validateRenderParametersJson: entry");
         Response response;
         try {
-            final RenderParameters renderParameters = JsonUtils.GSON.fromJson(json, RenderParameters.class);
+            final RenderParameters renderParameters = RenderParameters.parseJson(json);
             renderParameters.initializeDerivedValues();
             renderParameters.validate();
             response = getParseSuccessResponse(renderParameters);
@@ -342,7 +341,7 @@ public class RenderService {
         LOG.info("validateTileJson: entry");
         Response response;
         try {
-            final TileSpec tileSpec = JsonUtils.GSON.fromJson(json, TileSpec.class);
+            final TileSpec tileSpec = TileSpec.fromJson(json);
             tileSpec.validate();
             response = getParseSuccessResponse(tileSpec);
         } catch (Throwable t) {
@@ -368,32 +367,40 @@ public class RenderService {
         return response;
     }
 
-    @Path("transformed-point/{x},{y}")
+    @Path("transformed-coordinates/{x},{y}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public float[] getTransformedPoint(@PathParam("x") float x,
-                                       @PathParam("y") float y,
-                                       TileSpec tileSpec) {
+    public float[] getTransformedCoordinates(@PathParam("x") float x,
+                                             @PathParam("y") float y,
+                                             TileSpec tileSpec) {
 
         float[] worldCoordinates = null;
         try {
-            final Point p = new Point(new float[]{x, y});
-            p.apply(tileSpec.createTransformList());
-            final float[] w = p.getW();
-            final Double z = tileSpec.getZ();
-            if (z == null) {
-                worldCoordinates = w;
-            } else {
-                worldCoordinates = new float[]{w[0], w[1], z.floatValue()};
-            }
+            worldCoordinates = tileSpec.getTransformedCoordinates(x, y);
         } catch (Throwable t) {
             throwServiceException(t);
         }
 
-        LOG.info("getTransformedPoint: returning {} for ({},{})", worldCoordinates, x, y);
-
         return worldCoordinates;
+    }
+
+    @Path("inverse-coordinates/{x},{y}")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public float[] getInverseCoordinates(@PathParam("x") float x,
+                                         @PathParam("y") float y,
+                                         TileSpec tileSpec) {
+
+        float[] localCoordinates = null;
+        try {
+            localCoordinates = tileSpec.getInverseCoordinates(x, y);
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+
+        return localCoordinates;
     }
 
     private Response renderImageStream(RenderParameters renderParameters,
