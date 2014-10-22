@@ -35,7 +35,7 @@ public class TileSpecTest {
     @Test
     public void testJsonProcessing() throws Exception {
 
-        final TileSpec tileSpec = getTileSpec(JSON_WITH_UNSORTED_MIPMAP_LEVELS);
+        final TileSpec tileSpec = TileSpec.fromJson(JSON_WITH_UNSORTED_MIPMAP_LEVELS);
 
         Assert.assertNotNull("json parse returned null spec", tileSpec);
         Assert.assertEquals("invalid tileId parsed", EXPECTED_TILE_ID, tileSpec.getTileId());
@@ -69,7 +69,7 @@ public class TileSpecTest {
 
         Assert.assertNotNull("json generation returned null string", json);
 
-        final TileSpec parsedSpec = getTileSpec(json);
+        final TileSpec parsedSpec = TileSpec.fromJson(json);
 
         Assert.assertNotNull("json parse returned null spec", parsedSpec);
         Assert.assertEquals("invalid tileId parsed", EXPECTED_TILE_ID, parsedSpec.getTileId());
@@ -135,16 +135,12 @@ public class TileSpecTest {
     @Test(expected = IllegalArgumentException.class)
     public void testValidateWithMissingMipmaps() throws Exception {
 
-        final TileSpec tileSpec = getTileSpec(JSON_WITH_MISSING_MIPMAP_LEVELS);
+        final TileSpec tileSpec = TileSpec.fromJson(JSON_WITH_MISSING_MIPMAP_LEVELS);
 
         Assert.assertNotNull("json parse returned null spec", tileSpec);
         Assert.assertEquals("invalid width parsed", EXPECTED_WIDTH, tileSpec.getWidth());
 
         tileSpec.validate();
-    }
-
-    private TileSpec getTileSpec(String json) {
-        return JsonUtils.GSON.fromJson(json, TileSpec.class);
     }
 
     private static final String EXPECTED_TILE_ID = "test-tile-id";
