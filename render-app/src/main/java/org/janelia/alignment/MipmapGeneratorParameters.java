@@ -5,10 +5,13 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.gson.reflect.TypeToken;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -20,7 +23,9 @@ import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Parameters for mipmap generation.
@@ -48,6 +53,9 @@ public class MipmapGeneratorParameters {
     @Parameter(names = "--url", description = "URL referencing input tile spec data (JSON)", required = false)
     private String url;
 
+    @Parameter(names = "--transformUrl", description = "URL referencing input transform spec data (JSON)", required = false)
+    private String transformUrl;
+
     @Parameter(names = "--out", description = "Output file for updated JSON tile spec data ", required = false)
     private String outputFileName;
 
@@ -59,6 +67,9 @@ public class MipmapGeneratorParameters {
 
     /** List of tile specifications parsed from --url or deserialized directly from json. */
     private List<TileSpec> tileSpecs;
+
+    /** Map of transform ids to specs loaded from from --transformUrl. */
+    private transient Map<String, TransformSpec> transformIdToSpecMap;
 
     private transient JCommander jCommander;
     private transient boolean initialized;
@@ -76,11 +87,13 @@ public class MipmapGeneratorParameters {
         this.format = Utils.JPEG_FORMAT;
         this.quality = DEFAULT_QUALITY;
         this.url = null;
+        this.transformUrl = null;
         this.outputFileName = null;
         this.consolidateMasks = false;
         this.forceBoxCalculation = false;
 
         this.tileSpecs = new ArrayList<TileSpec>();
+        this.transformIdToSpecMap = new HashMap<String, TransformSpec>();
 
         this.jCommander = null;
         this.initialized = false;
@@ -169,9 +182,21 @@ public class MipmapGeneratorParameters {
     /**
      * Initialize derived parameter values.
      */
-    public void initializeDerivedValues() {
+    public void initializeDerivedValues() throws IllegalStateException {
         if (! initialized) {
             parseTileSpecs();
+            parseTransformSpecs();
+            if (transformIdToSpecMap.size() > 0) {
+                resolveTransformSpecReferences(0);
+                ListTransformSpec transforms;
+                for (TileSpec tileSpec : tileSpecs) {
+                    if (tileSpec.hasTransforms()) {
+                        transforms = tileSpec.getTransforms();
+                        transforms.resolveReferences(transformIdToSpecMap);
+                        transforms.validate();
+                    }
+                }
+            }
             initialized = true;
         }
     }
@@ -322,40 +347,105 @@ public class MipmapGeneratorParameters {
         return file;
     }
 
-    private void parseTileSpecs()
+    private Reader getSpecReader(String context,
+                                 String urlString)
             throws IllegalArgumentException {
 
-        if (readTileSpecsFromUrl()) {
+        final URI uri = Utils.convertPathOrUriStringToUri(urlString);
 
-            final URI uri = Utils.convertPathOrUriStringToUri(url);
+        final URL urlObject;
+        try {
+            urlObject = uri.toURL();
+        } catch (Throwable t) {
+            throw new IllegalArgumentException("failed to convert URI '" + uri + "' built from " + context +
+                                               " specifications URL parameter '" + urlString + "'", t);
+        }
 
-            final URL urlObject;
+        final InputStream urlStream;
+        try {
+            urlStream = urlObject.openStream();
+        } catch (Throwable t) {
+            throw new IllegalArgumentException("failed to load " + context + " specifications from " + urlObject,
+                                               t);
+        }
+
+        return new InputStreamReader(urlStream);
+    }
+
+    private void closeStream(String context,
+                             Closeable closeable) {
+        if (closeable != null) {
             try {
-                urlObject = uri.toURL();
-            } catch (Throwable t) {
-                throw new IllegalArgumentException("failed to convert URI '" + uri +
-                                                   "' built from tile specification URL parameter '" + url + "'", t);
-            }
-
-            final InputStream urlStream;
-            try {
-                urlStream = urlObject.openStream();
-            } catch (Throwable t) {
-                throw new IllegalArgumentException("failed to load tile specification from " + urlObject, t);
-            }
-
-            final Reader reader = new InputStreamReader(urlStream);
-            final Type collectionType = new TypeToken<List<TileSpec>>(){}.getType();
-            try {
-                tileSpecs = JsonUtils.GSON.fromJson(reader, collectionType);
-            } catch (Throwable t) {
-                throw new IllegalArgumentException("failed to parse tile specification loaded from " + urlObject, t);
+                closeable.close();
+            } catch (IOException e) {
+                LOG.warn("failed to close " + context + ", ignoring error", e);
             }
         }
     }
 
     private boolean readTileSpecsFromUrl() {
         return ((url != null) && (! hasTileSpecs()));
+    }
+
+    private void parseTileSpecs()
+            throws IllegalArgumentException {
+
+        if (readTileSpecsFromUrl()) {
+            Reader reader = null;
+            try {
+                reader = getSpecReader("tile", url);
+                final Type collectionType = new TypeToken<List<TileSpec>>(){}.getType();
+                tileSpecs = JsonUtils.GSON.fromJson(reader, collectionType);
+            } catch (Throwable t) {
+                throw new IllegalArgumentException("failed to parse tile specifications from " + url, t);
+            } finally {
+                closeStream(url, reader);
+            }
+        }
+    }
+
+    private void parseTransformSpecs()
+            throws IllegalArgumentException {
+
+        if (transformUrl != null) {
+            Reader reader = null;
+            try {
+                reader = getSpecReader("transform", transformUrl);
+                final Type collectionType = new TypeToken<List<TransformSpec>>(){}.getType();
+                final List<TransformSpec> specList = JsonUtils.GSON.fromJson(reader, collectionType);
+                for (TransformSpec spec : specList) {
+                    transformIdToSpecMap.put(spec.getId(), spec);
+                }
+            } catch (Throwable t) {
+                throw new IllegalArgumentException("failed to parse transform specifications from " + transformUrl, t);
+            } finally {
+                closeStream(transformUrl, reader);
+            }
+        }
+    }
+
+    private void resolveTransformSpecReferences(int callCount) {
+        if (callCount > 10) {
+            throw new IllegalStateException(callCount + " passes have been made to resolve transform references, " +
+                                            "exiting in case the data is overly nested or there is a recursion error");
+        }
+
+        int fullyResolvedCount = 0;
+        for (TransformSpec spec : transformIdToSpecMap.values()) {
+            if (spec.isFullyResolved()) {
+                fullyResolvedCount++;
+            } else {
+                spec.resolveReferences(transformIdToSpecMap);
+            }
+        }
+
+        final int numberOfUnresolvedSpecs = transformIdToSpecMap.size() - fullyResolvedCount;
+        if (numberOfUnresolvedSpecs > 0) {
+            LOG.debug("resolveTransformSpecReferences: after pass {}, {} transform specs are still not resolved",
+                      callCount, numberOfUnresolvedSpecs);
+            resolveTransformSpecReferences(callCount + 1);
+        }
+
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MipmapGeneratorParameters.class);

@@ -1,0 +1,17 @@
+[
+    {
+        "id": "1",
+        "className": "mpicbg.trakem2.transform.AffineModel2D",
+        "dataString": "1 0 0 1 0 0"
+    },
+    {
+        "id": "2",
+        "type": "ref",
+        "refId": "3"
+    },
+    {
+        "id": "3",
+        "type": "ref",
+        "refId": "1"
+    }
+]

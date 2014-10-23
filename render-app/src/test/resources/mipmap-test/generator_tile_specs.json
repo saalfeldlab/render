@@ -1,5 +1,6 @@
 [
     {
+        "tileId": "tile-1",
         "mipmapLevels": {
             "0": {
                 "imageUrl": "src/test/resources/stitch-test/col0075_row0021_cam1.png",
@@ -8,6 +9,7 @@
         }
     },
     {
+        "tileId": "tile-2",
         "mipmapLevels": {
             "0": {
                 "imageUrl": "src/test/resources/stitch-test/col0075_row0022_cam3.png",
@@ -16,6 +18,7 @@
         }
     },
     {
+        "tileId": "tile-3",
         "mipmapLevels": {
             "0": {
                 "imageUrl": "src/test/resources/stitch-test/col0076_row0021_cam0.png",
@@ -24,11 +27,22 @@
         }
     },
     {
+        "tileId": "tile-4",
         "mipmapLevels": {
             "0": {
                 "imageUrl": "src/test/resources/stitch-test/col0076_row0022_cam2.png",
                 "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
             }
+        },
+        "transforms": {
+            "id": "tile-4-transforms",
+            "type": "list",
+            "specList": [
+                {
+                    "type": "ref",
+                    "refId": "1"
+                }
+            ]
         }
     }
 ]
