@@ -298,7 +298,7 @@ public class RenderService {
             for (float[] w : worldCoordinatesList) {
                 transformedCoordinates = null;
                 for (TileSpec spec : layerTileSpecs) {
-                    if (spec.containsLocalPoint(w[0], w[1])) {
+                    if (spec.containsWorldPoint(w[0], w[1])) {
                         transformedCoordinates = spec.getTransformedCoordinates(w[0], w[1]);
                         break;
                     }
