@@ -93,6 +93,24 @@ public class TileSpec {
         this.maxY = box.getMaxY();
     }
 
+    public boolean containsLocalPoint(double x,
+                                      double y) {
+        boolean containsPoint = false;
+        if (hasWidthAndHeightDefined()) {
+            containsPoint = (x <= width) && (y <= height) && (x >= 0) && (y >=0 );
+        }
+        return containsPoint;
+    }
+
+    public boolean containsWorldPoint(double x,
+                                      double y) {
+        boolean containsPoint = false;
+        if (isBoundingBoxDefined()) {
+            containsPoint = (minX <= x) && (minY <= y) && (maxX >= x) && (maxY >= y);
+        }
+        return containsPoint;
+    }
+
     /**
      * @return a transform mesh built from this spec's list of transforms.
      *
