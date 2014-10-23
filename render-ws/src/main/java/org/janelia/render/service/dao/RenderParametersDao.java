@@ -82,25 +82,8 @@ public class RenderParametersDao {
                                                      "maxX", gte(x)).append(
                                                      "maxY", gte(y));
 
-        RenderParameters renderParameters = new RenderParameters(null, x, y, width, height, scale);
-
-        final DBCursor cursor = tileCollection.find(tileQuery);
-        try {
-            DBObject document;
-            TileSpec tileSpec;
-            while (cursor.hasNext()) {
-                document = cursor.next();
-                tileSpec = TileSpec.fromJson(document.toString());
-                renderParameters.addTileSpec(tileSpec);
-            }
-        } finally {
-            cursor.close();
-        }
-
-        LOG.debug("getParameters: found {} tile spec(s) for {}.{}.find({})",
-                  renderParameters.numberOfTileSpecs(), db.getName(), tileCollection.getName(), tileQuery);
-
-        resolveTransformReferencesForTiles(db, renderParameters.getTileSpecs());
+        final RenderParameters renderParameters = new RenderParameters(null, x, y, width, height, scale);
+        addResolvedTileSpecs(db, tileCollection, tileQuery, renderParameters);
 
         // TODO: is returning black image okay or do we want to throw an exception?
 //        if (! renderParameters.hasTileSpecs()) {
@@ -108,6 +91,30 @@ public class RenderParametersDao {
 //        }
 
         return renderParameters;
+    }
+
+    /**
+     * @return all tile specifications for the specified stack layer.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     */
+    public List<TileSpec> getTileSpecs(StackId stackId,
+                                       Double z)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("z", z);
+
+        final DB db = getDatabase(stackId);
+
+        final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
+
+        final DBObject tileQuery = new BasicDBObject("z", z);
+
+        final RenderParameters renderParameters = new RenderParameters();
+        addResolvedTileSpecs(db, tileCollection, tileQuery, renderParameters);
+
+        return renderParameters.getTileSpecs();
     }
 
     /**
@@ -424,6 +431,29 @@ public class RenderParametersDao {
                                                   (callCount + 1));
             }
         }
+    }
+
+    private void addResolvedTileSpecs(DB db,
+                                      DBCollection tileCollection,
+                                      DBObject tileQuery,
+                                      RenderParameters renderParameters) {
+        final DBCursor cursor = tileCollection.find(tileQuery);
+        try {
+            DBObject document;
+            TileSpec tileSpec;
+            while (cursor.hasNext()) {
+                document = cursor.next();
+                tileSpec = TileSpec.fromJson(document.toString());
+                renderParameters.addTileSpec(tileSpec);
+            }
+        } finally {
+            cursor.close();
+        }
+
+        LOG.debug("addResolvedTileSpecs: found {} tile spec(s) for {}.{}.find({})",
+                  renderParameters.numberOfTileSpecs(), db.getName(), tileCollection.getName(), tileQuery);
+
+        resolveTransformReferencesForTiles(db, renderParameters.getTileSpecs());
     }
 
     private void resolveTransformReferencesForTiles(DB db,

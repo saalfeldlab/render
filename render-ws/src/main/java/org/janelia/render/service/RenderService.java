@@ -223,6 +223,108 @@ public class RenderService {
         return list;
     }
 
+    @Path("project/{project}/stack/{stack}/z/{z}/transformed-coordinates")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<float[]> getTransformedCoordinates(@PathParam("owner") String owner,
+                                                   @PathParam("project") String project,
+                                                   @PathParam("stack") String stack,
+                                                   @PathParam("z") Double z,
+                                                   List<float[]> localCoordinatesList) {
+
+        LOG.info("getTransformedCoordinates: entry, owner={}, project={}, stack={}, z={}, localCoordinatesList.size()={}",
+                 owner, project, stack, z, localCoordinatesList.size());
+
+        final long startTime = System.currentTimeMillis();
+        long lastStatusTime = startTime;
+        List<float[]> worldCoordinatesList = new ArrayList<float[]>(localCoordinatesList.size());
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            final List<TileSpec> layerTileSpecs = renderParametersDao.getTileSpecs(stackId, z);
+
+            float[] transformedCoordinates;
+            for (float[] l : localCoordinatesList) {
+                transformedCoordinates = null;
+                for (TileSpec spec : layerTileSpecs) {
+                    if (spec.containsLocalPoint(l[0], l[1])) {
+                        transformedCoordinates = spec.getTransformedCoordinates(l[0], l[1]);
+                        break;
+                    }
+                }
+                if (transformedCoordinates == null) {
+                    throw new IllegalArgumentException("layer " + z +
+                                                       " does not have a tile that contains the local point (" +
+                                                       l[0] + ", " + l[1] + ")");
+                }
+                worldCoordinatesList.add(transformedCoordinates);
+                if ((System.currentTimeMillis() - lastStatusTime) > 5000) {
+                    lastStatusTime = System.currentTimeMillis();
+                    LOG.info("getTransformedCoordinates: transformed {} out of {} coordinate pairs",
+                             worldCoordinatesList.size(), localCoordinatesList.size());
+                }
+            }
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+
+        LOG.info("getTransformedCoordinates: transformed {} coordinate pairs in {} ms",
+                 worldCoordinatesList.size(), (System.currentTimeMillis() - startTime));
+
+        return worldCoordinatesList;
+    }
+
+    @Path("project/{project}/stack/{stack}/z/{z}/inverse-coordinates")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<float[]> getInverseCoordinates(@PathParam("owner") String owner,
+                                               @PathParam("project") String project,
+                                               @PathParam("stack") String stack,
+                                               @PathParam("z") Double z,
+                                               List<float[]> worldCoordinatesList) {
+
+        LOG.info("getInverseCoordinates: entry, owner={}, project={}, stack={}, z={}, worldCoordinatesList.size()={}",
+                 owner, project, stack, z, worldCoordinatesList.size());
+
+        final long startTime = System.currentTimeMillis();
+        long lastStatusTime = startTime;
+        List<float[]> localCoordinatesList = new ArrayList<float[]>(worldCoordinatesList.size());
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            final List<TileSpec> layerTileSpecs = renderParametersDao.getTileSpecs(stackId, z);
+
+            float[] transformedCoordinates;
+            for (float[] w : worldCoordinatesList) {
+                transformedCoordinates = null;
+                for (TileSpec spec : layerTileSpecs) {
+                    if (spec.containsLocalPoint(w[0], w[1])) {
+                        transformedCoordinates = spec.getTransformedCoordinates(w[0], w[1]);
+                        break;
+                    }
+                }
+                if (transformedCoordinates == null) {
+                    throw new IllegalArgumentException("layer " + z +
+                                                       " does not have a tile that contains the world point (" +
+                                                       w[0] + ", " + w[1] + ")");
+                }
+                localCoordinatesList.add(transformedCoordinates);
+                if ((System.currentTimeMillis() - lastStatusTime) > 5000) {
+                    lastStatusTime = System.currentTimeMillis();
+                    LOG.info("getInverseCoordinates: transformed {} out of {} points",
+                             localCoordinatesList.size(), worldCoordinatesList.size());
+                }
+            }
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+
+        LOG.info("getInverseCoordinates: transformed {} points in {} ms",
+                 localCoordinatesList.size(), (System.currentTimeMillis() - startTime));
+
+        return localCoordinatesList;
+    }
+
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
