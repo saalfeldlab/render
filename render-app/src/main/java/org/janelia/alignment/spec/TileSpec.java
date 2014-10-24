@@ -111,6 +111,10 @@ public class TileSpec {
         return containsPoint;
     }
 
+    public int getNumberOfTrianglesCoveringWidth() {
+        return (int) (width / TRANSFORM_MESH_TRIANGLE_SIZE + 0.5);
+    }
+
     /**
      * @return a transform mesh built from this spec's list of transforms.
      *
@@ -126,7 +130,7 @@ public class TileSpec {
 
         final CoordinateTransformList<CoordinateTransform> ctList = createTransformList();
         return new TransformMesh(ctList,
-                                 TRANSFORM_MESH_TRIANGLE_SIZE,
+                                 getNumberOfTrianglesCoveringWidth(),
                                  width.floatValue(),
                                  height.floatValue());
     }
@@ -146,8 +150,7 @@ public class TileSpec {
 
         final CoordinateTransformList<CoordinateTransform> ctList = createTransformList();
         return new CoordinateTransformMesh(ctList,
-                                           // TODO: get Stephan to explain these magic values I stole from Render code
-                                           (int) (width / TRANSFORM_MESH_TRIANGLE_SIZE + 0.5),
+                                           getNumberOfTrianglesCoveringWidth(),
                                            width.floatValue(),
                                            height.floatValue());
     }
