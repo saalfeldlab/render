@@ -155,18 +155,20 @@ public class Render {
                 height = imp.getHeight();
             }
 
-            loadMipStop = System.currentTimeMillis();
-
             // estimate average scale
             final double s = Utils.sampleAverageScale(ctl, width, height, triangleSize);
             int mipmapLevel = Utils.bestMipmapLevel(s);
 
             Integer downSampleLevels = null;
             final ImageProcessor ipMipmap;
-            if (ip == null) {
+            if (ip == null) { // width and height were specified
+
                 mipmapEntry = ts.getFloorMipmapEntry(mipmapLevel);
                 imageAndMask = mipmapEntry.getValue();
                 final ImagePlus imp = getImagePlusForMipmap(imageAndMask);
+
+                loadMipStop = System.currentTimeMillis();
+
                 ip = imp.getProcessor();
                 final int currentMipmapLevel = mipmapEntry.getKey();
                 if (currentMipmapLevel >= mipmapLevel) {
@@ -178,7 +180,11 @@ public class Render {
                     LOG.debug("render: need to down sample from mipmap level {} to {}", currentMipmapLevel, mipmapLevel);
                     ipMipmap = Downsampler.downsampleImageProcessor(ip, downSampleLevels);
                 }
+
             } else {
+
+                loadMipStop = System.currentTimeMillis();
+
                 // create according mipmap level
                 downSampleLevels = mipmapLevel;
                 LOG.debug("render: full down sample to level {}", mipmapLevel);
