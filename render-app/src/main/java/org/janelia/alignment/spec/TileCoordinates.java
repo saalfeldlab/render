@@ -12,6 +12,7 @@ public class TileCoordinates {
     private String tileId;
     private float[] local;
     private float[] world;
+    private String error;
 
     public TileCoordinates(String tileId,
                            float[] local,
@@ -19,6 +20,7 @@ public class TileCoordinates {
         this.tileId = tileId;
         this.local = local;
         this.world = world;
+        this.error = null;
     }
 
     public String getTileId() {
@@ -31,6 +33,14 @@ public class TileCoordinates {
 
     public float[] getWorld() {
         return world;
+    }
+
+    public boolean hasError() {
+        return (error != null);
+    }
+
+    public void setError(String error) {
+        this.error = error;
     }
 
     public static TileCoordinates buildLocalInstance(String tileId,

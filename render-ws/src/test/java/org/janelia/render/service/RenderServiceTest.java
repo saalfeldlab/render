@@ -9,7 +9,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -89,16 +89,18 @@ public class RenderServiceTest {
     @Test
     public void testMultiplePointCoordinateMethods() throws Exception {
 
+        final int errorPointIndex = 2;
         final float[][] points = new float[][]{
                 {9000.0f, 7000.0f},
                 {9010.0f, 7010.0f},
+                {109010.0f, 107010.0f},
                 {9020.0f, 7020.0f}
         };
 
-        final List<TileCoordinates> worldCoordinateList = Arrays.asList(
-                TileCoordinates.buildWorldInstance(null, points[0]),
-                TileCoordinates.buildWorldInstance(null, points[1])
-        );
+        final List<TileCoordinates> worldCoordinateList = new ArrayList<TileCoordinates>();
+        for (float[] point : points) {
+            worldCoordinateList.add(TileCoordinates.buildWorldInstance(null, point));
+        }
 
         final List<TileCoordinates> inverseCoordinatesList =
                 service.getInverseCoordinates(stackId.getOwner(),
@@ -114,13 +116,19 @@ public class RenderServiceTest {
         TileCoordinates tileCoordinates;
         for (int i = 0; i < inverseCoordinatesList.size(); i++) {
             tileCoordinates = inverseCoordinatesList.get(i);
-            validateCoordinates("inverse [" + i + "]",
-                                tileCoordinates,
-                                ID_FOR_TILE_WITH_REAL_TRANSFORMS,
-                                true,
-                                null,
-                                null,
-                                Z);
+            if (i == errorPointIndex) {
+                Assert.assertTrue("inverse [" + i + "] should have error", tileCoordinates.hasError());
+                Assert.assertNotNull("inverse [" + i + "] with error should have world values",
+                                     tileCoordinates.getWorld());
+            } else {
+                validateCoordinates("inverse [" + i + "]",
+                                    tileCoordinates,
+                                    ID_FOR_TILE_WITH_REAL_TRANSFORMS,
+                                    true,
+                                    null,
+                                    null,
+                                    Z);
+            }
         }
 
         final List<TileCoordinates> transformedCoordinatesList =
@@ -138,13 +146,19 @@ public class RenderServiceTest {
 
         for (int i = 0; i < transformedCoordinatesList.size(); i++) {
             tileCoordinates = transformedCoordinatesList.get(i);
-            validateCoordinates("transformed [" + i + "]",
-                                tileCoordinates,
-                                ID_FOR_TILE_WITH_REAL_TRANSFORMS,
-                                false,
-                                (double) points[i][0],
-                                (double) points[i][1],
-                                Z);
+            if (i == errorPointIndex) {
+                Assert.assertTrue("transformed [" + i + "] should have error", tileCoordinates.hasError());
+                Assert.assertNotNull("transformed [" + i + "] with error should have world values",
+                                     tileCoordinates.getWorld());
+            } else {
+                validateCoordinates("transformed [" + i + "]",
+                                    tileCoordinates,
+                                    ID_FOR_TILE_WITH_REAL_TRANSFORMS,
+                                    false,
+                                    (double) points[i][0],
+                                    (double) points[i][1],
+                                    Z);
+            }
         }
     }
 

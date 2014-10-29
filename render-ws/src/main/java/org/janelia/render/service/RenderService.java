@@ -268,48 +268,60 @@ public class RenderService {
         final long startTime = System.currentTimeMillis();
         long lastStatusTime = startTime;
         List<TileCoordinates> worldCoordinatesList = new ArrayList<TileCoordinates>(localCoordinatesList.size());
-        try {
-            final StackId stackId = new StackId(owner, project, stack);
-            TileSpec tileSpec;
-            TileCoordinates coordinates;
-            String tileId;
-            float[] local;
-            for (int i = 0; i < localCoordinatesList.size(); i++) {
+        final StackId stackId = new StackId(owner, project, stack);
+        TileSpec tileSpec;
+        TileCoordinates coordinates;
+        String tileId;
+        float[] local;
+        int errorCount = 0;
+        for (int i = 0; i < localCoordinatesList.size(); i++) {
 
-                coordinates = localCoordinatesList.get(i);
+            coordinates = localCoordinatesList.get(i);
+            try {
 
                 if (coordinates == null) {
-                    throw new IllegalArgumentException("input list item [" + i + "] is missing");
+                    throw new IllegalArgumentException("coordinates are missing");
                 }
 
                 tileId = coordinates.getTileId();
-
                 if (tileId == null) {
-                    throw new IllegalArgumentException("input list item [" + i + "] is missing tileId");
+                    throw new IllegalArgumentException("tileId is missing");
                 }
 
                 local = coordinates.getLocal();
                 if (local == null) {
-                    throw new IllegalArgumentException("input list item [" + i + "] is missing local coordinates");
+                    throw new IllegalArgumentException("local values are missing");
                 } else if (local.length < 2) {
-                    throw new IllegalArgumentException("input list item [" + i + "] must include both x and y values");
+                    throw new IllegalArgumentException("local values must include both x and y");
                 }
 
                 tileSpec = renderParametersDao.getTileSpec(stackId, tileId, true);
                 worldCoordinatesList.add(TileCoordinates.getTransformedCoordinates(tileSpec, local[0], local[1]));
 
-                if ((System.currentTimeMillis() - lastStatusTime) > 5000) {
-                    lastStatusTime = System.currentTimeMillis();
-                    LOG.info("getTransformedCoordinates: transformed {} out of {} points",
-                             worldCoordinatesList.size(), localCoordinatesList.size());
+            } catch (Throwable t) {
+
+                LOG.warn("getTransformedCoordinates: caught exception for list item {}, adding original coordinates with error message to list", i, t);
+
+                errorCount++;
+
+                if (coordinates == null) {
+                    coordinates = TileCoordinates.buildLocalInstance(null, null);
                 }
+                coordinates.setError(t.getMessage());
+
+                worldCoordinatesList.add(coordinates);
             }
-        } catch (Throwable t) {
-            throwServiceException(t);
+
+            if ((System.currentTimeMillis() - lastStatusTime) > COORDINATE_PROCESSING_LOG_INTERVAL) {
+                lastStatusTime = System.currentTimeMillis();
+                LOG.info("getTransformedCoordinates: transformed {} out of {} points",
+                         worldCoordinatesList.size(), localCoordinatesList.size());
+            }
+
         }
 
-        LOG.info("getTransformedCoordinates: transformed {} points in {} ms",
-                 worldCoordinatesList.size(), (System.currentTimeMillis() - startTime));
+        LOG.info("getTransformedCoordinates: exit, transformed {} points with {} errors in {} ms",
+                 worldCoordinatesList.size(), errorCount, (System.currentTimeMillis() - startTime));
 
         return worldCoordinatesList;
     }
@@ -356,35 +368,54 @@ public class RenderService {
         final long startTime = System.currentTimeMillis();
         long lastStatusTime = startTime;
         List<TileCoordinates> localCoordinatesList = new ArrayList<TileCoordinates>(worldCoordinatesList.size());
-        try {
-            final StackId stackId = new StackId(owner, project, stack);
-            TileSpec tileSpec;
-            float[] world;
-            for (int i = 0; i < worldCoordinatesList.size(); i++) {
+        final StackId stackId = new StackId(owner, project, stack);
+        TileSpec tileSpec;
+        TileCoordinates coordinates;
+        float[] world;
+        int errorCount = 0;
+        for (int i = 0; i < worldCoordinatesList.size(); i++) {
 
-                world = worldCoordinatesList.get(i).getWorld();
+            coordinates = worldCoordinatesList.get(i);
+            try {
 
+                if (coordinates == null) {
+                    throw new IllegalArgumentException("coordinates are missing");
+                }
+
+                world = coordinates.getWorld();
                 if (world == null) {
-                    throw new IllegalArgumentException("input list item [" + i + "] is missing world coordinates");
+                    throw new IllegalArgumentException("world values are missing");
                 } else if (world.length < 2) {
-                    throw new IllegalArgumentException("input list item [" + i + "] must include both x and y values");
+                    throw new IllegalArgumentException("world values must include both x and y");
                 }
 
                 tileSpec = renderParametersDao.getTileSpec(stackId, (double) world[0], (double) world[1], z);
                 localCoordinatesList.add(TileCoordinates.getInverseCoordinates(tileSpec, world[0], world[1]));
 
-                if ((System.currentTimeMillis() - lastStatusTime) > 5000) {
-                    lastStatusTime = System.currentTimeMillis();
-                    LOG.info("getInverseCoordinates: transformed {} out of {} points",
-                             localCoordinatesList.size(), worldCoordinatesList.size());
+            } catch (Throwable t) {
+
+                LOG.warn("getInverseCoordinates: caught exception for list item {}, adding original coordinates with error message to list", i, t);
+
+                errorCount++;
+
+                if (coordinates == null) {
+                    coordinates = TileCoordinates.buildWorldInstance(null, null);
                 }
+                coordinates.setError(t.getMessage());
+
+                localCoordinatesList.add(coordinates);
             }
-        } catch (Throwable t) {
-            throwServiceException(t);
+
+            if ((System.currentTimeMillis() - lastStatusTime) > COORDINATE_PROCESSING_LOG_INTERVAL) {
+                lastStatusTime = System.currentTimeMillis();
+                LOG.info("getInverseCoordinates: transformed {} out of {} points",
+                         localCoordinatesList.size(), worldCoordinatesList.size());
+            }
+
         }
 
-        LOG.info("getInverseCoordinates: transformed {} points in {} ms",
-                 localCoordinatesList.size(), (System.currentTimeMillis() - startTime));
+        LOG.info("getInverseCoordinates: transformed {} points with {} errors in {} ms",
+                 localCoordinatesList.size(), errorCount, (System.currentTimeMillis() - startTime));
 
         return localCoordinatesList;
     }
@@ -764,4 +795,6 @@ public class RenderService {
     private static final String IMAGE_PNG_MIME_TYPE = "image/png";
 
     private static final int ONE_MEGABYTE = 1024 * 1024;
+
+    private static final long COORDINATE_PROCESSING_LOG_INTERVAL = 5000;
 }
