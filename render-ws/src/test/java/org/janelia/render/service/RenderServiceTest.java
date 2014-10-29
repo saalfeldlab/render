@@ -54,31 +54,31 @@ public class RenderServiceTest {
         final Double x = 9000.0;
         final Double y = 7000.0;
 
-        final TileCoordinates inverseCoordinates =
-                service.getInverseCoordinates(stackId.getOwner(),
-                                              stackId.getProject(),
-                                              stackId.getStack(),
-                                              x,
-                                              y,
-                                              Z);
-        validateCoordinates("inverse",
-                            inverseCoordinates,
+        final TileCoordinates localCoordinates =
+                service.getLocalCoordinates(stackId.getOwner(),
+                                            stackId.getProject(),
+                                            stackId.getStack(),
+                                            x,
+                                            y,
+                                            Z);
+        validateCoordinates("local",
+                            localCoordinates,
                             ID_FOR_TILE_WITH_REAL_TRANSFORMS,
                             true,
                             null,
                             null,
                             Z);
 
-        final float[] local = inverseCoordinates.getLocal();
-        final TileCoordinates transformedCoordinates =
-                service.getTransformedCoordinates(stackId.getOwner(),
-                                                  stackId.getProject(),
-                                                  stackId.getStack(),
-                                                  ID_FOR_TILE_WITH_REAL_TRANSFORMS,
-                                                  (double) local[0],
-                                                  (double) local[1]);
-        validateCoordinates("transformed",
-                            transformedCoordinates,
+        final float[] local = localCoordinates.getLocal();
+        final TileCoordinates worldCoordinates =
+                service.getWorldCoordinates(stackId.getOwner(),
+                                            stackId.getProject(),
+                                            stackId.getStack(),
+                                            ID_FOR_TILE_WITH_REAL_TRANSFORMS,
+                                            (double) local[0],
+                                            (double) local[1]);
+        validateCoordinates("world",
+                            worldCoordinates,
                             ID_FOR_TILE_WITH_REAL_TRANSFORMS,
                             false,
                             x,
@@ -102,26 +102,26 @@ public class RenderServiceTest {
             worldCoordinateList.add(TileCoordinates.buildWorldInstance(null, point));
         }
 
-        final List<TileCoordinates> inverseCoordinatesList =
-                service.getInverseCoordinates(stackId.getOwner(),
-                                              stackId.getProject(),
-                                              stackId.getStack(),
-                                              Z,
-                                              worldCoordinateList);
+        final List<TileCoordinates> localCoordinatesList =
+                service.getLocalCoordinates(stackId.getOwner(),
+                                            stackId.getProject(),
+                                            stackId.getStack(),
+                                            Z,
+                                            worldCoordinateList);
 
-        Assert.assertNotNull("null inverse list retrieved", inverseCoordinatesList);
-        Assert.assertEquals("invalid inverse list size",
-                            worldCoordinateList.size(), inverseCoordinatesList.size());
+        Assert.assertNotNull("null local list retrieved", localCoordinatesList);
+        Assert.assertEquals("invalid local list size",
+                            worldCoordinateList.size(), localCoordinatesList.size());
 
         TileCoordinates tileCoordinates;
-        for (int i = 0; i < inverseCoordinatesList.size(); i++) {
-            tileCoordinates = inverseCoordinatesList.get(i);
+        for (int i = 0; i < localCoordinatesList.size(); i++) {
+            tileCoordinates = localCoordinatesList.get(i);
             if (i == errorPointIndex) {
-                Assert.assertTrue("inverse [" + i + "] should have error", tileCoordinates.hasError());
-                Assert.assertNotNull("inverse [" + i + "] with error should have world values",
+                Assert.assertTrue("local list [" + i + "] should have error", tileCoordinates.hasError());
+                Assert.assertNotNull("local list [" + i + "] with error should have world values",
                                      tileCoordinates.getWorld());
             } else {
-                validateCoordinates("inverse [" + i + "]",
+                validateCoordinates("local list [" + i + "]",
                                     tileCoordinates,
                                     ID_FOR_TILE_WITH_REAL_TRANSFORMS,
                                     true,
@@ -131,27 +131,27 @@ public class RenderServiceTest {
             }
         }
 
-        final List<TileCoordinates> transformedCoordinatesList =
-                service.getTransformedCoordinates(stackId.getOwner(),
-                                                  stackId.getProject(),
-                                                  stackId.getStack(),
-                                                  Z,
-                                                  inverseCoordinatesList);
+        final List<TileCoordinates> worldCoordinatesList =
+                service.getWorldCoordinates(stackId.getOwner(),
+                                            stackId.getProject(),
+                                            stackId.getStack(),
+                                            Z,
+                                            localCoordinatesList);
 
 
 
-        Assert.assertNotNull("null transformed list retrieved", transformedCoordinatesList);
-        Assert.assertEquals("invalid transformed list size",
-                            inverseCoordinatesList.size(), transformedCoordinatesList.size());
+        Assert.assertNotNull("null world list retrieved", worldCoordinatesList);
+        Assert.assertEquals("invalid world list size",
+                            localCoordinatesList.size(), worldCoordinatesList.size());
 
-        for (int i = 0; i < transformedCoordinatesList.size(); i++) {
-            tileCoordinates = transformedCoordinatesList.get(i);
+        for (int i = 0; i < worldCoordinatesList.size(); i++) {
+            tileCoordinates = worldCoordinatesList.get(i);
             if (i == errorPointIndex) {
-                Assert.assertTrue("transformed [" + i + "] should have error", tileCoordinates.hasError());
-                Assert.assertNotNull("transformed [" + i + "] with error should have world values",
+                Assert.assertTrue("world list [" + i + "] should have error", tileCoordinates.hasError());
+                Assert.assertNotNull("world list [" + i + "] with error should have world values",
                                      tileCoordinates.getWorld());
             } else {
-                validateCoordinates("transformed [" + i + "]",
+                validateCoordinates("world list [" + i + "]",
                                     tileCoordinates,
                                     ID_FOR_TILE_WITH_REAL_TRANSFORMS,
                                     false,

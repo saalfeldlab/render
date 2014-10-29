@@ -93,24 +93,6 @@ public class TileSpec {
         this.maxY = box.getMaxY();
     }
 
-    public boolean containsLocalPoint(double x,
-                                      double y) {
-        boolean containsPoint = false;
-        if (hasWidthAndHeightDefined()) {
-            containsPoint = (x <= width) && (y <= height) && (x >= 0) && (y >=0 );
-        }
-        return containsPoint;
-    }
-
-    public boolean containsWorldPoint(double x,
-                                      double y) {
-        boolean containsPoint = false;
-        if (isBoundingBoxDefined()) {
-            containsPoint = (minX <= x) && (minY <= y) && (maxX >= x) && (maxY >= y);
-        }
-        return containsPoint;
-    }
-
     public int getNumberOfTrianglesCoveringWidth() {
         return (int) (width / TRANSFORM_MESH_TRIANGLE_SIZE + 0.5);
     }
@@ -178,8 +160,8 @@ public class TileSpec {
      *
      * @return world coordinates (x, y, z) for the specified local coordinates.
      */
-    public float[] getTransformedCoordinates(float x,
-                                             float y) {
+    public float[] getWorldCoordinates(float x,
+                                       float y) {
         float[] worldCoordinates;
         float[] w = new float[] {x, y};
 
@@ -194,8 +176,6 @@ public class TileSpec {
             worldCoordinates = new float[]{w[0], w[1], z.floatValue()};
         }
 
-        LOG.debug("getTransformedCoordinates: returning {} for [{}, {}]", worldCoordinates, x, y);
-
         return worldCoordinates;
     }
 
@@ -208,8 +188,8 @@ public class TileSpec {
      * @throws IllegalStateException
      *   if width or height have not been defined for this tile.
      */
-    public float[] getInverseCoordinates(float x,
-                                         float y)
+    public float[] getLocalCoordinates(float x,
+                                       float y)
             throws IllegalStateException {
 
         float[] localCoordinates;
@@ -220,7 +200,7 @@ public class TileSpec {
                 mesh.applyInverseInPlace(l);
             } catch (NoninvertibleModelException e) {
                 // coordinates still transformed, exception thrown just to let you know they were estimated
-                LOG.debug("getInverseCoordinates: " + e.getMessage());
+                LOG.debug("getLocalCoordinates: " + e.getMessage());
             }
         }
 
@@ -229,8 +209,6 @@ public class TileSpec {
         } else {
             localCoordinates = new float[]{l[0], l[1], z.floatValue()};
         }
-
-        LOG.debug("getInverseCoordinates: returning {} for [{}, {}]", localCoordinates, x, y);
 
         return localCoordinates;
     }

@@ -91,13 +91,13 @@ public class TileSpecTest {
 
         final float localX = 30f;
         final float localY = 40f;
-        final float[] worldCoordinates = tileSpec.getTransformedCoordinates(localX, localY);
+        final float[] worldCoordinates = tileSpec.getWorldCoordinates(localX, localY);
 
         Assert.assertNotNull("worldCoordinates are null", worldCoordinates);
         Assert.assertEquals("incorrect length for worldCoordinates", 3, worldCoordinates.length);
         Assert.assertEquals("incorrect z for worldCoordinates", expectedZ, worldCoordinates[2], MAX_DOUBLE_DELTA);
 
-        final float[] localCoordinates = tileSpec.getInverseCoordinates(worldCoordinates[0], worldCoordinates[1]);
+        final float[] localCoordinates = tileSpec.getLocalCoordinates(worldCoordinates[0], worldCoordinates[1]);
 
         Assert.assertNotNull("localCoordinates are null", localCoordinates);
         Assert.assertEquals("incorrect length for localCoordinates", 3, localCoordinates.length);
@@ -116,13 +116,13 @@ public class TileSpecTest {
 
         final float localX = 30f;
         final float localY = 40f;
-        final float[] worldCoordinates = tileSpec.getTransformedCoordinates(localX, localY);
+        final float[] worldCoordinates = tileSpec.getWorldCoordinates(localX, localY);
 
         Assert.assertNotNull("worldCoordinates are null", worldCoordinates);
         Assert.assertEquals("incorrect length for worldCoordinates", 3, worldCoordinates.length);
         Assert.assertEquals("incorrect z for worldCoordinates", expectedZ, worldCoordinates[2], MAX_DOUBLE_DELTA);
 
-        final float[] localCoordinates = tileSpec.getInverseCoordinates(worldCoordinates[0], worldCoordinates[1]);
+        final float[] localCoordinates = tileSpec.getLocalCoordinates(worldCoordinates[0], worldCoordinates[1]);
 
         Assert.assertNotNull("localCoordinates are null", localCoordinates);
         Assert.assertEquals("incorrect length for localCoordinates", 3, localCoordinates.length);

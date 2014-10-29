@@ -53,17 +53,17 @@ public class TileCoordinates {
         return new TileCoordinates(tileId, null, world);
     }
 
-    public static TileCoordinates getInverseCoordinates(TileSpec tileSpec,
-                                                        float x,
-                                                        float y) {
-        final float[] local = tileSpec.getInverseCoordinates(x, y);
+    public static TileCoordinates getLocalCoordinates(TileSpec tileSpec,
+                                                      float x,
+                                                      float y) {
+        final float[] local = tileSpec.getLocalCoordinates(x, y);
         return buildLocalInstance(tileSpec.getTileId(), local);
     }
 
-    public static TileCoordinates getTransformedCoordinates(TileSpec tileSpec,
-                                                            float x,
-                                                            float y) {
-        final float[] world = tileSpec.getTransformedCoordinates(x, y);
+    public static TileCoordinates getWorldCoordinates(TileSpec tileSpec,
+                                                      float x,
+                                                      float y) {
+        final float[] world = tileSpec.getWorldCoordinates(x, y);
         return buildWorldInstance(tileSpec.getTileId(), world);
     }
 

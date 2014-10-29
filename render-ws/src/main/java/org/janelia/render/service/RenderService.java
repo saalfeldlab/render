@@ -227,42 +227,42 @@ public class RenderService {
         return list;
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/transformed-coordinates/{x},{y}")
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/local-to-world-coordinates/{x},{y}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public TileCoordinates getTransformedCoordinates(@PathParam("owner") String owner,
-                                                     @PathParam("project") String project,
-                                                     @PathParam("stack") String stack,
-                                                     @PathParam("tileId") String tileId,
-                                                     @PathParam("x") Double x,
-                                                     @PathParam("y") Double y) {
+    public TileCoordinates getWorldCoordinates(@PathParam("owner") String owner,
+                                               @PathParam("project") String project,
+                                               @PathParam("stack") String stack,
+                                               @PathParam("tileId") String tileId,
+                                               @PathParam("x") Double localX,
+                                               @PathParam("y") Double localY) {
 
-        LOG.info("getTransformedCoordinates: entry, owner={}, project={}, stack={}, tileId={}, x={}, y={}",
-                 owner, project, stack, tileId, x, y);
+        LOG.info("getWorldCoordinates: entry, owner={}, project={}, stack={}, tileId={}, localX={}, localY={}",
+                 owner, project, stack, tileId, localX, localY);
 
-        TileCoordinates tileCoordinates = null;
+        TileCoordinates worldCoordinates = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
             final TileSpec tileSpec = renderParametersDao.getTileSpec(stackId, tileId, true);
-            tileCoordinates = TileCoordinates.getTransformedCoordinates(tileSpec, x.floatValue(), y.floatValue());
+            worldCoordinates = TileCoordinates.getWorldCoordinates(tileSpec, localX.floatValue(), localY.floatValue());
         } catch (Throwable t) {
             throwServiceException(t);
         }
 
-        return tileCoordinates;
+        return worldCoordinates;
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/transformed-coordinates")
+    @Path("project/{project}/stack/{stack}/z/{z}/local-to-world-coordinates")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public List<TileCoordinates> getTransformedCoordinates(@PathParam("owner") String owner,
-                                                           @PathParam("project") String project,
-                                                           @PathParam("stack") String stack,
-                                                           @PathParam("z") Double z,
-                                                           List<TileCoordinates> localCoordinatesList) {
+    public List<TileCoordinates> getWorldCoordinates(@PathParam("owner") String owner,
+                                                     @PathParam("project") String project,
+                                                     @PathParam("stack") String stack,
+                                                     @PathParam("z") Double z,
+                                                     List<TileCoordinates> localCoordinatesList) {
 
-        LOG.info("getTransformedCoordinates: entry, owner={}, project={}, stack={}, z={}, localCoordinatesList.size()={}",
+        LOG.info("getWorldCoordinates: entry, owner={}, project={}, stack={}, z={}, localCoordinatesList.size()={}",
                  owner, project, stack, z, localCoordinatesList.size());
 
         final long startTime = System.currentTimeMillis();
@@ -296,11 +296,11 @@ public class RenderService {
                 }
 
                 tileSpec = renderParametersDao.getTileSpec(stackId, tileId, true);
-                worldCoordinatesList.add(TileCoordinates.getTransformedCoordinates(tileSpec, local[0], local[1]));
+                worldCoordinatesList.add(TileCoordinates.getWorldCoordinates(tileSpec, local[0], local[1]));
 
             } catch (Throwable t) {
 
-                LOG.warn("getTransformedCoordinates: caught exception for list item {}, adding original coordinates with error message to list", i, t);
+                LOG.warn("getWorldCoordinates: caught exception for list item {}, adding original coordinates with error message to list", i, t);
 
                 errorCount++;
 
@@ -314,55 +314,54 @@ public class RenderService {
 
             if ((System.currentTimeMillis() - lastStatusTime) > COORDINATE_PROCESSING_LOG_INTERVAL) {
                 lastStatusTime = System.currentTimeMillis();
-                LOG.info("getTransformedCoordinates: transformed {} out of {} points",
+                LOG.info("getWorldCoordinates: transformed {} out of {} points",
                          worldCoordinatesList.size(), localCoordinatesList.size());
             }
 
         }
 
-        LOG.info("getTransformedCoordinates: exit, transformed {} points with {} errors in {} ms",
+        LOG.info("getWorldCoordinates: exit, transformed {} points with {} errors in {} ms",
                  worldCoordinatesList.size(), errorCount, (System.currentTimeMillis() - startTime));
 
         return worldCoordinatesList;
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/inverse-coordinates/{x},{y}")
+    @Path("project/{project}/stack/{stack}/z/{z}/world-to-local-coordinates/{x},{y}")
     @GET
-    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public TileCoordinates getInverseCoordinates(@PathParam("owner") String owner,
-                                                 @PathParam("project") String project,
-                                                 @PathParam("stack") String stack,
-                                                 @PathParam("x") Double x,
-                                                 @PathParam("y") Double y,
-                                                 @PathParam("z") Double z) {
+    public TileCoordinates getLocalCoordinates(@PathParam("owner") String owner,
+                                               @PathParam("project") String project,
+                                               @PathParam("stack") String stack,
+                                               @PathParam("x") Double worldX,
+                                               @PathParam("y") Double worldY,
+                                               @PathParam("z") Double z) {
 
-        LOG.info("getInverseCoordinates: entry, owner={}, project={}, stack={}, x={}, y={}, z={}",
-                 owner, project, stack, x, y, z);
+        LOG.info("getLocalCoordinates: entry, owner={}, project={}, stack={}, worldX={}, worldY={}, z={}",
+                 owner, project, stack, worldX, worldY, z);
 
-        TileCoordinates tileCoordinates = null;
+        TileCoordinates localCoordinates = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            final TileSpec tileSpec = renderParametersDao.getTileSpec(stackId, x, y, z);
-            tileCoordinates = TileCoordinates.getInverseCoordinates(tileSpec, x.floatValue(), y.floatValue());
+            final TileSpec tileSpec = renderParametersDao.getTileSpec(stackId, worldX, worldY, z);
+            localCoordinates = TileCoordinates.getLocalCoordinates(tileSpec, worldX.floatValue(), worldY.floatValue());
         } catch (Throwable t) {
             throwServiceException(t);
         }
 
-        return tileCoordinates;
+        return localCoordinates;
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/inverse-coordinates")
+    @Path("project/{project}/stack/{stack}/z/{z}/world-to-local-coordinates")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public List<TileCoordinates> getInverseCoordinates(@PathParam("owner") String owner,
-                                                       @PathParam("project") String project,
-                                                       @PathParam("stack") String stack,
-                                                       @PathParam("z") Double z,
-                                                       List<TileCoordinates> worldCoordinatesList) {
+    public List<TileCoordinates> getLocalCoordinates(@PathParam("owner") String owner,
+                                                     @PathParam("project") String project,
+                                                     @PathParam("stack") String stack,
+                                                     @PathParam("z") Double z,
+                                                     List<TileCoordinates> worldCoordinatesList) {
 
-        LOG.info("getInverseCoordinates: entry, owner={}, project={}, stack={}, z={}, worldCoordinatesList.size()={}",
+        LOG.info("getLocalCoordinates: entry, owner={}, project={}, stack={}, z={}, worldCoordinatesList.size()={}",
                  owner, project, stack, z, worldCoordinatesList.size());
 
         final long startTime = System.currentTimeMillis();
@@ -390,11 +389,11 @@ public class RenderService {
                 }
 
                 tileSpec = renderParametersDao.getTileSpec(stackId, (double) world[0], (double) world[1], z);
-                localCoordinatesList.add(TileCoordinates.getInverseCoordinates(tileSpec, world[0], world[1]));
+                localCoordinatesList.add(TileCoordinates.getLocalCoordinates(tileSpec, world[0], world[1]));
 
             } catch (Throwable t) {
 
-                LOG.warn("getInverseCoordinates: caught exception for list item {}, adding original coordinates with error message to list", i, t);
+                LOG.warn("getLocalCoordinates: caught exception for list item {}, adding original coordinates with error message to list", i, t);
 
                 errorCount++;
 
@@ -408,13 +407,13 @@ public class RenderService {
 
             if ((System.currentTimeMillis() - lastStatusTime) > COORDINATE_PROCESSING_LOG_INTERVAL) {
                 lastStatusTime = System.currentTimeMillis();
-                LOG.info("getInverseCoordinates: transformed {} out of {} points",
+                LOG.info("getLocalCoordinates: inversely transformed {} out of {} points",
                          localCoordinatesList.size(), worldCoordinatesList.size());
             }
 
         }
 
-        LOG.info("getInverseCoordinates: transformed {} points with {} errors in {} ms",
+        LOG.info("getLocalCoordinates: inversely transformed {} points with {} errors in {} ms",
                  localCoordinatesList.size(), errorCount, (System.currentTimeMillis() - startTime));
 
         return localCoordinatesList;
@@ -623,17 +622,17 @@ public class RenderService {
         return response;
     }
 
-    @Path("transformed-coordinates/{x},{y}")
+    @Path("local-to-world-coordinates/{x},{y}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public float[] getTransformedCoordinates(@PathParam("x") float x,
-                                             @PathParam("y") float y,
-                                             TileSpec tileSpec) {
+    public float[] getWorldCoordinates(@PathParam("x") float x,
+                                       @PathParam("y") float y,
+                                       TileSpec tileSpec) {
 
         float[] worldCoordinates = null;
         try {
-            worldCoordinates = tileSpec.getTransformedCoordinates(x, y);
+            worldCoordinates = tileSpec.getWorldCoordinates(x, y);
         } catch (Throwable t) {
             throwServiceException(t);
         }
@@ -641,17 +640,17 @@ public class RenderService {
         return worldCoordinates;
     }
 
-    @Path("inverse-coordinates/{x},{y}")
+    @Path("world-to-local-coordinates/{x},{y}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public float[] getInverseCoordinates(@PathParam("x") float x,
-                                         @PathParam("y") float y,
-                                         TileSpec tileSpec) {
+    public float[] getLocalCoordinates(@PathParam("x") float x,
+                                       @PathParam("y") float y,
+                                       TileSpec tileSpec) {
 
         float[] localCoordinates = null;
         try {
-            localCoordinates = tileSpec.getInverseCoordinates(x, y);
+            localCoordinates = tileSpec.getLocalCoordinates(x, y);
         } catch (Throwable t) {
             throwServiceException(t);
         }
