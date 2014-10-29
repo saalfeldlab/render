@@ -100,7 +100,8 @@ public class Render {
 
         final Graphics2D targetGraphics = targetImage.createGraphics();
 
-        LOG.debug("render: entry, processing {} tile specifications", tileSpecs.size());
+        LOG.debug("render: entry, processing {} tile specifications, availableProcessors={}",
+                  tileSpecs.size(), Runtime.getRuntime().availableProcessors());
 
         long tileLoopStart = System.currentTimeMillis();
         int tileSpecIndex = 0;
