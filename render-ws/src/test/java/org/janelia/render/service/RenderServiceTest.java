@@ -201,5 +201,5 @@ public class RenderServiceTest {
 
     private static final String ID_FOR_TILE_WITH_REAL_TRANSFORMS = "254-with-real-transforms";
     private static final Double Z = 3903.0;
-    private static final double ACCEPTABLE_DELTA = 0.01;
+    private static final double ACCEPTABLE_DELTA = 0.1;
 }

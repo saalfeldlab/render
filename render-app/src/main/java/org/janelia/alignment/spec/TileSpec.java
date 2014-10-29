@@ -359,5 +359,5 @@ public class TileSpec {
 
     private static final Logger LOG = LoggerFactory.getLogger(TileSpec.class);
 
-    private static final int TRANSFORM_MESH_TRIANGLE_SIZE = 32;
+    private static final int TRANSFORM_MESH_TRIANGLE_SIZE = 64;
 }
