@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -94,30 +95,6 @@ public class RenderParametersDao {
     }
 
     /**
-     * @return all tile specifications for the specified stack layer.
-     *
-     * @throws IllegalArgumentException
-     *   if any required parameters are missing or the stack cannot be found.
-     */
-    public List<TileSpec> getTileSpecs(StackId stackId,
-                                       Double z)
-            throws IllegalArgumentException {
-
-        validateRequiredParameter("z", z);
-
-        final DB db = getDatabase(stackId);
-
-        final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
-
-        final DBObject tileQuery = new BasicDBObject("z", z);
-
-        final RenderParameters renderParameters = new RenderParameters();
-        addResolvedTileSpecs(db, tileCollection, tileQuery, renderParameters);
-
-        return renderParameters.getTileSpecs();
-    }
-
-    /**
      * @return the specified tile spec.
      *
      * @throws IllegalArgumentException
@@ -127,7 +104,8 @@ public class RenderParametersDao {
      *   if a spec with the specified z and tileId cannot be found.
      */
     public TileSpec getTileSpec(StackId stackId,
-                                String tileId)
+                                String tileId,
+                                boolean resolveTransformReferences)
             throws IllegalArgumentException,
                    ObjectNotFoundException {
 
@@ -149,7 +127,51 @@ public class RenderParametersDao {
                                               db.getName() + " " + TILE_COLLECTION_NAME + " collection");
         }
 
-        return TileSpec.fromJson(document.toString());
+        final TileSpec tileSpec = TileSpec.fromJson(document.toString());
+
+        if (resolveTransformReferences) {
+            resolveTransformReferencesForTiles(db, Arrays.asList(tileSpec));
+        }
+
+        return tileSpec;
+    }
+
+    /**
+     * @return the tile specification that encompasses the specified coordinates.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing, the stack cannot be found, or
+     *   a tile that encompasses the coordinates cannot be found.
+     */
+    public TileSpec getTileSpec(StackId stackId,
+                                Double x,
+                                Double y,
+                                Double z)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("x", x);
+        validateRequiredParameter("y", y);
+        validateRequiredParameter("z", z);
+
+        final DB db = getDatabase(stackId);
+
+        final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
+
+        final DBObject tileQuery = new BasicDBObject("z", z).append(
+                "minX", lte(x)).append(
+                "minY", lte(y)).append(
+                "maxX", gte(x)).append(
+                "maxY", gte(y));
+
+        final RenderParameters renderParameters = new RenderParameters();
+        addResolvedTileSpecs(db, tileCollection, tileQuery, renderParameters);
+
+        if (! renderParameters.hasTileSpecs()) {
+            throw new IllegalArgumentException("no tile specifications found in " + stackId +
+                                               " for world coordinates x=" + x + ", y=" + y + ", z=" + z);
+        }
+
+        return renderParameters.getTileSpecs().get(0);
     }
 
     /**

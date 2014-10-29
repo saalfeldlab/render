@@ -32,6 +32,14 @@ public class StackId {
         return owner;
     }
 
+    public String getProject() {
+        return project;
+    }
+
+    public String getStack() {
+        return stack;
+    }
+
     @Override
     public String toString() {
         return "StackId{" +

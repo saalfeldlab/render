@@ -99,14 +99,14 @@ public class RenderParametersDaoTest {
     @Test
     public void testGetTileSpec() throws Exception {
         final String existingTileId = "134";
-        final TileSpec tileSpec = dao.getTileSpec(stackId, existingTileId);
+        final TileSpec tileSpec = dao.getTileSpec(stackId, existingTileId, false);
         Assert.assertNotNull("null tileSpec retrieved", tileSpec);
         Assert.assertEquals("invalid tileId retrieved", existingTileId, tileSpec.getTileId());
     }
 
     @Test(expected = ObjectNotFoundException.class)
     public void testGetTileSpecWithBadId() throws Exception {
-        dao.getTileSpec(stackId, "missingId");
+        dao.getTileSpec(stackId, "missingId", false);
     }
 
     @Test
@@ -121,7 +121,7 @@ public class RenderParametersDaoTest {
 
         dao.saveTileSpec(stackId, tileSpec);
 
-        final TileSpec insertedTileSpec = dao.getTileSpec(stackId, tileId);
+        final TileSpec insertedTileSpec = dao.getTileSpec(stackId, tileId, false);
 
         Assert.assertNotNull("null tileSpec retrieved after insert", insertedTileSpec);
         final LayoutData insertedLayoutData = insertedTileSpec.getLayout();
@@ -138,7 +138,7 @@ public class RenderParametersDaoTest {
 
         dao.saveTileSpec(stackId, tileSpec);
 
-        final TileSpec updatedTileSpec = dao.getTileSpec(stackId, tileId);
+        final TileSpec updatedTileSpec = dao.getTileSpec(stackId, tileId, false);
 
         Assert.assertNotNull("null tileSpec retrieved after update", updatedTileSpec);
         final LayoutData updatedLayoutData = updatedTileSpec.getLayout();

@@ -7,6 +7,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.service.dao.RenderParametersDao;
@@ -49,11 +50,14 @@ public class RenderService {
 
     private RenderParametersDao renderParametersDao;
 
+    @SuppressWarnings("UnusedDeclaration")
     public RenderService()
             throws UnknownHostException {
-        final File dbConfigFile = new File("render-db.properties");
-        final MongoClient mongoClient = SharedMongoClient.getInstance(dbConfigFile);
-        this.renderParametersDao = new RenderParametersDao(mongoClient);
+        this(buildDao());
+    }
+
+    public RenderService(RenderParametersDao renderParametersDao) {
+        this.renderParametersDao = renderParametersDao;
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}")
@@ -70,7 +74,7 @@ public class RenderService {
         TileSpec tileSpec = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            tileSpec = renderParametersDao.getTileSpec(stackId, tileId);
+            tileSpec = renderParametersDao.getTileSpec(stackId, tileId, false);
         } catch (Throwable t) {
             throwServiceException(t);
         }
@@ -223,44 +227,80 @@ public class RenderService {
         return list;
     }
 
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/transformed-coordinates/{x},{y}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public TileCoordinates getTransformedCoordinates(@PathParam("owner") String owner,
+                                                     @PathParam("project") String project,
+                                                     @PathParam("stack") String stack,
+                                                     @PathParam("tileId") String tileId,
+                                                     @PathParam("x") Double x,
+                                                     @PathParam("y") Double y) {
+
+        LOG.info("getTransformedCoordinates: entry, owner={}, project={}, stack={}, tileId={}, x={}, y={}",
+                 owner, project, stack, tileId, x, y);
+
+        TileCoordinates tileCoordinates = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            final TileSpec tileSpec = renderParametersDao.getTileSpec(stackId, tileId, true);
+            tileCoordinates = TileCoordinates.getTransformedCoordinates(tileSpec, x.floatValue(), y.floatValue());
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+
+        return tileCoordinates;
+    }
+
     @Path("project/{project}/stack/{stack}/z/{z}/transformed-coordinates")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public List<float[]> getTransformedCoordinates(@PathParam("owner") String owner,
-                                                   @PathParam("project") String project,
-                                                   @PathParam("stack") String stack,
-                                                   @PathParam("z") Double z,
-                                                   List<float[]> localCoordinatesList) {
+    public List<TileCoordinates> getTransformedCoordinates(@PathParam("owner") String owner,
+                                                           @PathParam("project") String project,
+                                                           @PathParam("stack") String stack,
+                                                           @PathParam("z") Double z,
+                                                           List<TileCoordinates> localCoordinatesList) {
 
         LOG.info("getTransformedCoordinates: entry, owner={}, project={}, stack={}, z={}, localCoordinatesList.size()={}",
                  owner, project, stack, z, localCoordinatesList.size());
 
         final long startTime = System.currentTimeMillis();
         long lastStatusTime = startTime;
-        List<float[]> worldCoordinatesList = new ArrayList<float[]>(localCoordinatesList.size());
+        List<TileCoordinates> worldCoordinatesList = new ArrayList<TileCoordinates>(localCoordinatesList.size());
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            final List<TileSpec> layerTileSpecs = renderParametersDao.getTileSpecs(stackId, z);
+            TileSpec tileSpec;
+            TileCoordinates coordinates;
+            String tileId;
+            float[] local;
+            for (int i = 0; i < localCoordinatesList.size(); i++) {
 
-            float[] transformedCoordinates;
-            for (float[] l : localCoordinatesList) {
-                transformedCoordinates = null;
-                for (TileSpec spec : layerTileSpecs) {
-                    if (spec.containsLocalPoint(l[0], l[1])) {
-                        transformedCoordinates = spec.getTransformedCoordinates(l[0], l[1]);
-                        break;
-                    }
+                coordinates = localCoordinatesList.get(i);
+
+                if (coordinates == null) {
+                    throw new IllegalArgumentException("input list item [" + i + "] is missing");
                 }
-                if (transformedCoordinates == null) {
-                    throw new IllegalArgumentException("layer " + z +
-                                                       " does not have a tile that contains the local point (" +
-                                                       l[0] + ", " + l[1] + ")");
+
+                tileId = coordinates.getTileId();
+
+                if (tileId == null) {
+                    throw new IllegalArgumentException("input list item [" + i + "] is missing tileId");
                 }
-                worldCoordinatesList.add(transformedCoordinates);
+
+                local = coordinates.getLocal();
+                if (local == null) {
+                    throw new IllegalArgumentException("input list item [" + i + "] is missing local coordinates");
+                } else if (local.length < 2) {
+                    throw new IllegalArgumentException("input list item [" + i + "] must include both x and y values");
+                }
+
+                tileSpec = renderParametersDao.getTileSpec(stackId, tileId, true);
+                worldCoordinatesList.add(TileCoordinates.getTransformedCoordinates(tileSpec, local[0], local[1]));
+
                 if ((System.currentTimeMillis() - lastStatusTime) > 5000) {
                     lastStatusTime = System.currentTimeMillis();
-                    LOG.info("getTransformedCoordinates: transformed {} out of {} coordinate pairs",
+                    LOG.info("getTransformedCoordinates: transformed {} out of {} points",
                              worldCoordinatesList.size(), localCoordinatesList.size());
                 }
             }
@@ -268,47 +308,71 @@ public class RenderService {
             throwServiceException(t);
         }
 
-        LOG.info("getTransformedCoordinates: transformed {} coordinate pairs in {} ms",
+        LOG.info("getTransformedCoordinates: transformed {} points in {} ms",
                  worldCoordinatesList.size(), (System.currentTimeMillis() - startTime));
 
         return worldCoordinatesList;
+    }
+
+    @Path("project/{project}/stack/{stack}/z/{z}/inverse-coordinates/{x},{y}")
+    @GET
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public TileCoordinates getInverseCoordinates(@PathParam("owner") String owner,
+                                                 @PathParam("project") String project,
+                                                 @PathParam("stack") String stack,
+                                                 @PathParam("x") Double x,
+                                                 @PathParam("y") Double y,
+                                                 @PathParam("z") Double z) {
+
+        LOG.info("getInverseCoordinates: entry, owner={}, project={}, stack={}, x={}, y={}, z={}",
+                 owner, project, stack, x, y, z);
+
+        TileCoordinates tileCoordinates = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            final TileSpec tileSpec = renderParametersDao.getTileSpec(stackId, x, y, z);
+            tileCoordinates = TileCoordinates.getInverseCoordinates(tileSpec, x.floatValue(), y.floatValue());
+        } catch (Throwable t) {
+            throwServiceException(t);
+        }
+
+        return tileCoordinates;
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/inverse-coordinates")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public List<float[]> getInverseCoordinates(@PathParam("owner") String owner,
-                                               @PathParam("project") String project,
-                                               @PathParam("stack") String stack,
-                                               @PathParam("z") Double z,
-                                               List<float[]> worldCoordinatesList) {
+    public List<TileCoordinates> getInverseCoordinates(@PathParam("owner") String owner,
+                                                       @PathParam("project") String project,
+                                                       @PathParam("stack") String stack,
+                                                       @PathParam("z") Double z,
+                                                       List<TileCoordinates> worldCoordinatesList) {
 
         LOG.info("getInverseCoordinates: entry, owner={}, project={}, stack={}, z={}, worldCoordinatesList.size()={}",
                  owner, project, stack, z, worldCoordinatesList.size());
 
         final long startTime = System.currentTimeMillis();
         long lastStatusTime = startTime;
-        List<float[]> localCoordinatesList = new ArrayList<float[]>(worldCoordinatesList.size());
+        List<TileCoordinates> localCoordinatesList = new ArrayList<TileCoordinates>(worldCoordinatesList.size());
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            final List<TileSpec> layerTileSpecs = renderParametersDao.getTileSpecs(stackId, z);
+            TileSpec tileSpec;
+            float[] world;
+            for (int i = 0; i < worldCoordinatesList.size(); i++) {
 
-            float[] transformedCoordinates;
-            for (float[] w : worldCoordinatesList) {
-                transformedCoordinates = null;
-                for (TileSpec spec : layerTileSpecs) {
-                    if (spec.containsWorldPoint(w[0], w[1])) {
-                        transformedCoordinates = spec.getTransformedCoordinates(w[0], w[1]);
-                        break;
-                    }
+                world = worldCoordinatesList.get(i).getWorld();
+
+                if (world == null) {
+                    throw new IllegalArgumentException("input list item [" + i + "] is missing world coordinates");
+                } else if (world.length < 2) {
+                    throw new IllegalArgumentException("input list item [" + i + "] must include both x and y values");
                 }
-                if (transformedCoordinates == null) {
-                    throw new IllegalArgumentException("layer " + z +
-                                                       " does not have a tile that contains the world point (" +
-                                                       w[0] + ", " + w[1] + ")");
-                }
-                localCoordinatesList.add(transformedCoordinates);
+
+                tileSpec = renderParametersDao.getTileSpec(stackId, (double) world[0], (double) world[1], z);
+                localCoordinatesList.add(TileCoordinates.getInverseCoordinates(tileSpec, world[0], world[1]));
+
                 if ((System.currentTimeMillis() - lastStatusTime) > 5000) {
                     lastStatusTime = System.currentTimeMillis();
                     LOG.info("getInverseCoordinates: transformed {} out of {} points",
@@ -685,6 +749,13 @@ public class RenderService {
             LOG.debug("logMemoryStats: usedMb={}, freeMb={}, totalMb={}",
                       (long) usedMb, (long) freeMb, (long) totalMb);
         }
+    }
+
+    private static RenderParametersDao buildDao()
+            throws UnknownHostException {
+        final File dbConfigFile = new File("render-db.properties");
+        final MongoClient mongoClient = SharedMongoClient.getInstance(dbConfigFile);
+        return new RenderParametersDao(mongoClient);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderService.class);
