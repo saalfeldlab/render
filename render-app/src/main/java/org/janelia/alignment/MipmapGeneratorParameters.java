@@ -192,6 +192,7 @@ public class MipmapGeneratorParameters {
                 for (TileSpec tileSpec : tileSpecs) {
                     if (tileSpec.hasTransforms()) {
                         transforms = tileSpec.getTransforms();
+                        transforms.removeNullSpecs(); // TODO: remove this hack to work around bad data
                         transforms.resolveReferences(transformIdToSpecMap);
                         transforms.validate();
                     }

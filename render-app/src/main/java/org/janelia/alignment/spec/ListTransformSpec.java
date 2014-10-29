@@ -4,6 +4,7 @@ import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -48,6 +49,16 @@ public class ListTransformSpec extends TransformSpec {
 
     public int size() {
         return specList.size();
+    }
+
+    public void removeNullSpecs() {
+        TransformSpec spec;
+        for (Iterator<TransformSpec> i = specList.iterator(); i.hasNext();) {
+            spec = i.next();
+            if (spec == null) {
+                i.remove();
+            }
+        }
     }
 
     @Override
