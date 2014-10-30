@@ -7,19 +7,26 @@ package org.janelia.alignment.spec;
  */
 public class LayoutData {
 
+    private Integer sectionId;
     private String temca;
     private String camera;
     private String imageRow;
     private String imageCol;
 
-    public LayoutData(String temca,
+    public LayoutData(Integer sectionId,
+                      String temca,
                       String camera,
                       String imageRow,
                       String imageCol) {
+        this.sectionId = sectionId;
         this.temca = temca;
         this.camera = camera;
         this.imageRow = imageRow;
         this.imageCol = imageCol;
+    }
+
+    public Integer getSectionId() {
+        return sectionId;
     }
 
     public String getTemca() {

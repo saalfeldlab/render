@@ -61,8 +61,8 @@ public class TileSpecTest {
     public void testLayoutData() throws Exception {
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setTileId(EXPECTED_TILE_ID);
-        String[] values = {"array-a", "camera-b", "row-c", "col-d"};
-        final LayoutData layoutData = new LayoutData(values[0], values[1], values[2], values[3]);
+        String[] values = {"123", "array-a", "camera-b", "row-c", "col-d"};
+        final LayoutData layoutData = new LayoutData(new Integer(values[0]), values[1], values[2], values[3], values[4]);
         tileSpec.setLayout(layoutData);
 
         final String json = JsonUtils.GSON.toJson(tileSpec);
@@ -76,10 +76,11 @@ public class TileSpecTest {
 
         final LayoutData parsedLayoutData = parsedSpec.getLayout();
         Assert.assertNotNull("json parse returned null layout data", parsedLayoutData);
-        Assert.assertEquals("bad array value", values[0], parsedLayoutData.getTemca());
-        Assert.assertEquals("bad camera value", values[1], parsedLayoutData.getCamera());
-        Assert.assertEquals("bad row value", values[2], parsedLayoutData.getImageRow());
-        Assert.assertEquals("bad col value", values[3], parsedLayoutData.getImageCol());
+        Assert.assertEquals("bad sectionId value", values[0], String.valueOf(parsedLayoutData.getSectionId()));
+        Assert.assertEquals("bad array value", values[1], parsedLayoutData.getTemca());
+        Assert.assertEquals("bad camera value", values[2], parsedLayoutData.getCamera());
+        Assert.assertEquals("bad row value", values[3], parsedLayoutData.getImageRow());
+        Assert.assertEquals("bad col value", values[4], parsedLayoutData.getImageCol());
     }
 
     @Test
