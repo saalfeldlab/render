@@ -2,7 +2,7 @@ package org.janelia.render.service;
 
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.render.service.dao.RenderParametersDao;
+import org.janelia.render.service.dao.RenderDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +25,7 @@ import java.util.List;
 @Path("/v1/owner/{owner}")
 public class CoordinateService {
 
-    private RenderParametersDao renderParametersDao;
+    private RenderDao renderDao;
 
     @SuppressWarnings("UnusedDeclaration")
     public CoordinateService()
@@ -33,8 +33,8 @@ public class CoordinateService {
         this(RenderServiceUtil.buildDao());
     }
 
-    public CoordinateService(RenderParametersDao renderParametersDao) {
-        this.renderParametersDao = renderParametersDao;
+    public CoordinateService(RenderDao renderDao) {
+        this.renderDao = renderDao;
     }
 
     @Path("local-to-world-coordinates/{x},{y}")
@@ -89,7 +89,7 @@ public class CoordinateService {
         TileCoordinates worldCoordinates = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            final TileSpec tileSpec = renderParametersDao.getTileSpec(stackId, tileId, true);
+            final TileSpec tileSpec = renderDao.getTileSpec(stackId, tileId, true);
             worldCoordinates = TileCoordinates.getWorldCoordinates(tileSpec, localX.floatValue(), localY.floatValue());
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -141,7 +141,7 @@ public class CoordinateService {
                     throw new IllegalArgumentException("local values must include both x and y");
                 }
 
-                tileSpec = renderParametersDao.getTileSpec(stackId, tileId, true);
+                tileSpec = renderDao.getTileSpec(stackId, tileId, true);
                 worldCoordinatesList.add(TileCoordinates.getWorldCoordinates(tileSpec, local[0], local[1]));
 
             } catch (Throwable t) {
@@ -188,7 +188,7 @@ public class CoordinateService {
         TileCoordinates localCoordinates = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            final TileSpec tileSpec = renderParametersDao.getTileSpec(stackId, worldX, worldY, z);
+            final TileSpec tileSpec = renderDao.getTileSpec(stackId, worldX, worldY, z);
             localCoordinates = TileCoordinates.getLocalCoordinates(tileSpec, worldX.floatValue(), worldY.floatValue());
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -234,7 +234,7 @@ public class CoordinateService {
                     throw new IllegalArgumentException("world values must include both x and y");
                 }
 
-                tileSpec = renderParametersDao.getTileSpec(stackId, (double) world[0], (double) world[1], z);
+                tileSpec = renderDao.getTileSpec(stackId, (double) world[0], (double) world[1], z);
                 localCoordinatesList.add(TileCoordinates.getLocalCoordinates(tileSpec, world[0], world[1]));
 
             } catch (Throwable t) {

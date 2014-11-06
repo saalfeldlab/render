@@ -4,7 +4,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.render.service.dao.RenderParametersDao;
+import org.janelia.render.service.dao.RenderDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +33,7 @@ import java.util.List;
 @Path("/v1/owner/{owner}")
 public class RenderDataService {
 
-    private RenderParametersDao renderParametersDao;
+    private RenderDao renderDao;
 
     @SuppressWarnings("UnusedDeclaration")
     public RenderDataService()
@@ -41,8 +41,8 @@ public class RenderDataService {
         this(RenderServiceUtil.buildDao());
     }
 
-    public RenderDataService(RenderParametersDao renderParametersDao) {
-        this.renderParametersDao = renderParametersDao;
+    public RenderDataService(RenderDao renderDao) {
+        this.renderDao = renderDao;
     }
 
     @Path("stackIds")
@@ -54,7 +54,7 @@ public class RenderDataService {
 
         List<StackId> list = null;
         try {
-            list = renderParametersDao.getStackIds(owner);
+            list = renderDao.getStackIds(owner);
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -78,7 +78,7 @@ public class RenderDataService {
                 @Override
                 public void write(OutputStream output)
                         throws IOException, WebApplicationException {
-                    renderParametersDao.writeLayoutFileData(stackId, output);
+                    renderDao.writeLayoutFileData(stackId, output);
                 }
             };
             response = Response.ok(responseOutput).build();
@@ -102,7 +102,7 @@ public class RenderDataService {
         List<Double> list = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            list = renderParametersDao.getZValues(stackId);
+            list = renderDao.getZValues(stackId);
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -123,7 +123,7 @@ public class RenderDataService {
         List<TileBounds> list = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            list = renderParametersDao.getTileBounds(stackId, z);
+            list = renderDao.getTileBounds(stackId, z);
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -157,7 +157,7 @@ public class RenderDataService {
                                 String tileId,
                                 boolean resolveTransformReferences) {
         final StackId stackId = new StackId(owner, project, stack);
-        return renderParametersDao.getTileSpec(stackId, tileId, resolveTransformReferences);
+        return renderDao.getTileSpec(stackId, tileId, resolveTransformReferences);
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}")
@@ -183,7 +183,7 @@ public class RenderDataService {
 
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            renderParametersDao.saveTileSpec(stackId, tileSpec);
+            renderDao.saveTileSpec(stackId, tileSpec);
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -207,7 +207,7 @@ public class RenderDataService {
         TransformSpec transformSpec = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            transformSpec = renderParametersDao.getTransformSpec(stackId, transformId);
+            transformSpec = renderDao.getTransformSpec(stackId, transformId);
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -238,7 +238,7 @@ public class RenderDataService {
 
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            renderParametersDao.saveTransformSpec(stackId, transformSpec);
+            renderDao.saveTransformSpec(stackId, transformSpec);
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -267,7 +267,7 @@ public class RenderDataService {
         RenderParameters parameters = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            parameters = renderParametersDao.getParameters(stackId, x, y, z, width, height, scale);
+            parameters = renderDao.getParameters(stackId, x, y, z, width, height, scale);
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }

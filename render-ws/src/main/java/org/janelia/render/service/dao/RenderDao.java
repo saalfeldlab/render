@@ -33,18 +33,18 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Data access object for render parameters.
+ * Data access object for Render database.
  *
  * @author Eric Trautman
  */
-public class RenderParametersDao {
+public class RenderDao {
 
     public static final String TILE_COLLECTION_NAME = "tile";
     public static final String TRANSFORM_COLLECTION_NAME = "transform";
 
     private MongoClient client;
 
-    public RenderParametersDao(MongoClient client) {
+    public RenderDao(MongoClient client) {
         this.client = client;
     }
 
@@ -619,5 +619,5 @@ public class RenderParametersDao {
         }
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(RenderParametersDao.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RenderDao.class);
 }

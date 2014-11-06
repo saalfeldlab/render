@@ -1,7 +1,7 @@
 package org.janelia.render.service;
 
 import org.janelia.alignment.spec.TileCoordinates;
-import org.janelia.render.service.dao.RenderParametersDao;
+import org.janelia.render.service.dao.RenderDao;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -27,16 +27,16 @@ public class CoordinateServiceTest {
     public static void before() throws Exception {
         stackId = new StackId("flyTEM", "test", "elastic");
         embeddedMongoDb = new EmbeddedMongoDb(stackId.getDatabaseName());
-        final RenderParametersDao dao = new RenderParametersDao(embeddedMongoDb.getMongoClient());
+        final RenderDao dao = new RenderDao(embeddedMongoDb.getMongoClient());
         service = new CoordinateService(dao);
 
-        embeddedMongoDb.importCollection(RenderParametersDao.TILE_COLLECTION_NAME,
+        embeddedMongoDb.importCollection(RenderDao.TILE_COLLECTION_NAME,
                                          new File("src/test/resources/mongodb/elastic-3903.json"),
                                          true,
                                          false,
                                          true);
 
-        embeddedMongoDb.importCollection(RenderParametersDao.TRANSFORM_COLLECTION_NAME,
+        embeddedMongoDb.importCollection(RenderDao.TRANSFORM_COLLECTION_NAME,
                                          new File("src/test/resources/mongodb/elastic-transform.json"),
                                          true,
                                          false,

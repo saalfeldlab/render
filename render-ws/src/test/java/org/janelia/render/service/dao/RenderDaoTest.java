@@ -25,29 +25,29 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Tests the {@link org.janelia.render.service.dao.RenderParametersDao} class.
+ * Tests the {@link RenderDao} class.
  *
  * @author Eric Trautman
  */
-public class RenderParametersDaoTest {
+public class RenderDaoTest {
 
     private static StackId stackId;
     private static EmbeddedMongoDb embeddedMongoDb;
-    private static RenderParametersDao dao;
+    private static RenderDao dao;
 
     @BeforeClass
     public static void before() throws Exception {
         stackId = new StackId("flyTEM", "test", "elastic");
         embeddedMongoDb = new EmbeddedMongoDb(stackId.getDatabaseName());
-        dao = new RenderParametersDao(embeddedMongoDb.getMongoClient());
+        dao = new RenderDao(embeddedMongoDb.getMongoClient());
 
-        embeddedMongoDb.importCollection(RenderParametersDao.TILE_COLLECTION_NAME,
+        embeddedMongoDb.importCollection(RenderDao.TILE_COLLECTION_NAME,
                                          new File("src/test/resources/mongodb/elastic-3903.json"),
                                          true,
                                          false,
                                          true);
 
-        embeddedMongoDb.importCollection(RenderParametersDao.TRANSFORM_COLLECTION_NAME,
+        embeddedMongoDb.importCollection(RenderDao.TRANSFORM_COLLECTION_NAME,
                                          new File("src/test/resources/mongodb/elastic-transform.json"),
                                          true,
                                          false,
@@ -249,5 +249,5 @@ public class RenderParametersDaoTest {
         Assert.assertTrue("bound box not defined for first tile", firstTileBounds.isBoundingBoxDefined());
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(RenderParametersDaoTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RenderDaoTest.class);
 }
