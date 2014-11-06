@@ -27,10 +27,10 @@ public class SharedMongoClient {
 
     private static SharedMongoClient sharedMongoClient;
 
-    public static MongoClient getInstance(File dbConfigFile)
+    public static MongoClient getInstance()
             throws UnknownHostException {
         if (sharedMongoClient == null) {
-            setSharedMongoClient(dbConfigFile);
+            setSharedMongoClient();
         }
         return sharedMongoClient.client;
     }
@@ -46,9 +46,10 @@ public class SharedMongoClient {
         client = new MongoClient(serverAddress, Arrays.asList(credential));
     }
 
-    private static synchronized void setSharedMongoClient(File dbConfigFile)
+    private static synchronized void setSharedMongoClient()
             throws UnknownHostException {
         if (sharedMongoClient == null) {
+            final File dbConfigFile = new File("render-db.properties");
             final DbConfig dbConfig = DbConfig.fromFile(dbConfigFile);
             sharedMongoClient = new SharedMongoClient(dbConfig);
         }

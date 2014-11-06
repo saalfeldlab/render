@@ -82,6 +82,14 @@ public class TileSpec {
         this.z = z;
     }
 
+    public Double getMinX() {
+        return minX;
+    }
+
+    public Double getMinY() {
+        return minY;
+    }
+
     public boolean isBoundingBoxDefined() {
         return ((minX != null) && (minY != null) && (maxX != null) && (maxY != null));
     }

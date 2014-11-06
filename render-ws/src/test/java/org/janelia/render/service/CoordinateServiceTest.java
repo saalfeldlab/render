@@ -13,22 +13,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Tests the {@link org.janelia.render.service.RenderService} class.
+ * Tests the {@link org.janelia.render.service.CoordinateService} class.
  *
  * @author Eric Trautman
  */
-public class RenderServiceTest {
+public class CoordinateServiceTest {
 
     private static StackId stackId;
     private static EmbeddedMongoDb embeddedMongoDb;
-    private static RenderService service;
+    private static CoordinateService service;
 
     @BeforeClass
     public static void before() throws Exception {
         stackId = new StackId("flyTEM", "test", "elastic");
         embeddedMongoDb = new EmbeddedMongoDb(stackId.getDatabaseName());
         final RenderParametersDao dao = new RenderParametersDao(embeddedMongoDb.getMongoClient());
-        service = new RenderService(dao);
+        service = new CoordinateService(dao);
 
         embeddedMongoDb.importCollection(RenderParametersDao.TILE_COLLECTION_NAME,
                                          new File("src/test/resources/mongodb/elastic-3903.json"),
