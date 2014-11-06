@@ -21,6 +21,7 @@ import org.janelia.alignment.json.JsonUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.awt.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -81,6 +82,17 @@ public class TileSpecTest {
         Assert.assertEquals("bad camera value", values[2], parsedLayoutData.getCamera());
         Assert.assertEquals("bad row value", values[3], parsedLayoutData.getImageRow());
         Assert.assertEquals("bad col value", values[4], parsedLayoutData.getImageCol());
+
+        parsedSpec.setBoundingBox(new Rectangle(11, 12, 21, 22));
+        ImageAndMask imageAndMask = new ImageAndMask("src/test/resources/stitch-test/coll0075_row0021_cam1.png", null);
+        parsedSpec.putMipmap(0, imageAndMask);
+        final String layoutFileFormat = parsedSpec.toLayoutFileFormat();
+        final String hackedFileFormat = layoutFileFormat.replaceFirst("\t[^\t]+coll0075_row0021_cam1.png",
+                                                                      "\timage.png");
+        final String expectedLayoutFormat =
+                values[0] + '\t' + EXPECTED_TILE_ID + "\t1.00\t0.00\t11.0\t0.00\t1.00\t12.0\t" + values[4] + '\t' +
+                values[3] + '\t' + values[2] + "\timage.png\t" + values[1];
+        Assert.assertEquals("bad layout file format generated", expectedLayoutFormat, hackedFileFormat);
     }
 
     @Test
@@ -146,7 +158,7 @@ public class TileSpecTest {
 
     private static final String EXPECTED_TILE_ID = "test-tile-id";
     private static final int EXPECTED_WIDTH = 99;
-    private static final double MAX_DOUBLE_DELTA = 0.01;
+    private static final double MAX_DOUBLE_DELTA = 0.1;
 
     private static final String JSON_WITH_UNSORTED_MIPMAP_LEVELS =
             "{\n" +

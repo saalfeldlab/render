@@ -357,6 +357,32 @@ public class TileSpec {
         return ctl;
     }
 
+    public String toLayoutFileFormat() {
+        Integer sectionId = null;
+        String imageCol = null;
+        String imageRow = null;
+        String camera = null;
+        String temca = null;
+        if (layout != null) {
+            sectionId = layout.getSectionId();
+            imageCol = layout.getImageCol();
+            imageRow = layout.getImageRow();
+            camera = layout.getCamera();
+            temca = layout.getTemca();
+        }
+
+        String rawPath = null;
+        final Map.Entry<Integer, ImageAndMask> firstMipmapEntry = getFirstMipmapEntry();
+        if (firstMipmapEntry != null) {
+            final ImageAndMask imageAndMask = firstMipmapEntry.getValue();
+            rawPath = imageAndMask.getImageFilePath();
+        }
+
+        // sectionId, tileId, 1.00, 0.00, minX, 0.00, 1.00, minY, imageCol, imageRow, camera, rawPath, temca
+        return String.valueOf(sectionId) + '\t' + tileId + '\t' + "1.00\t0.00\t" + minX + "\t0.00\t1.00\t" + minY +
+               '\t' + imageCol + '\t' + imageRow + '\t' + camera + '\t' + rawPath + '\t' + temca;
+    }
+
     public String toJson() {
         return JsonUtils.GSON.toJson(this, TileSpec.class);
     }

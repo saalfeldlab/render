@@ -18,6 +18,8 @@ package org.janelia.alignment;
 
 import java.io.File;
 import java.net.URI;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 
@@ -70,6 +72,12 @@ public class ImageAndMask {
             validatedImageUrl = getUrlString(getUri(imageUrl));
         }
         return validatedImageUrl;
+    }
+
+    public String getImageFilePath() {
+        final String imageUrl = getImageUrl();
+        final Matcher m = FILE_NAME_PATTERN.matcher(imageUrl);
+        return m.replaceFirst("/");
     }
 
     public boolean hasMask() {
@@ -151,4 +159,5 @@ public class ImageAndMask {
     }
 
     private static final String FILE_SCHEME = "file";
+    private static final Pattern FILE_NAME_PATTERN = Pattern.compile("file:[/]+");
 }
