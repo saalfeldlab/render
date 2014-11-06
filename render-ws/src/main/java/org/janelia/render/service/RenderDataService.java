@@ -14,10 +14,14 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.List;
 
@@ -57,6 +61,34 @@ public class RenderDataService {
         return list;
     }
 
+    @Path("project/{project}/stack/{stack}/layoutFile")
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response getLayoutFile(@PathParam("owner") String owner,
+                                  @PathParam("project") String project,
+                                  @PathParam("stack") String stack) {
+
+        LOG.info("getLayoutFile: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        Response response = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            final StreamingOutput responseOutput = new StreamingOutput() {
+                @Override
+                public void write(OutputStream output)
+                        throws IOException, WebApplicationException {
+                    renderParametersDao.writeLayoutFileData(stackId, output);
+                }
+            };
+            response = Response.ok(responseOutput).build();
+        } catch (Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return response;
+    }
+
     @Path("project/{project}/stack/{stack}/zValues")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -64,7 +96,7 @@ public class RenderDataService {
                                    @PathParam("project") String project,
                                    @PathParam("stack") String stack) {
 
-        LOG.info("getTileBounds: entry, owner={}, project={}, stack={}",
+        LOG.info("getZValues: entry, owner={}, project={}, stack={}",
                  owner, project, stack);
 
         List<Double> list = null;

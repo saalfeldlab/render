@@ -16,10 +16,13 @@ import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.service.ObjectNotFoundException;
+import org.janelia.render.service.ProcessTimer;
 import org.janelia.render.service.StackId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -380,6 +383,59 @@ public class RenderParametersDao {
                   list.size(), db.getName(), tileCollection.getName(), tileQuery, tileKeys);
 
         return list;
+    }
+
+    /**
+     * Writes the layout file data for the specified stack to the specified stream.
+     *
+     * @param  stackId        stack identifier.
+     * @param  outputStream   stream to which layout file data is to be written.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     *
+     * @throws IOException
+     *   if the data cannot be written for any reason.
+     */
+    public void writeLayoutFileData(StackId stackId,
+                                    OutputStream outputStream)
+            throws IllegalArgumentException, IOException {
+
+        LOG.debug("writeLayoutFileData: entry, stackId={}", stackId);
+
+        final DB db = getDatabase(stackId);
+
+        final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
+
+        final DBObject tileQuery = new BasicDBObject();
+        final DBObject tileKeys =
+                new BasicDBObject("tileId", 1).append("minX", 1).append("minY", 1).append("layout", 1).append("mipmapLevels", 1);
+
+        final ProcessTimer timer = new ProcessTimer();
+        int tileSpecCount = 0;
+        final DBCursor cursor = tileCollection.find(tileQuery, tileKeys);
+        try {
+            DBObject document;
+            TileSpec tileSpec;
+            String layoutData;
+            while (cursor.hasNext()) {
+                document = cursor.next();
+                tileSpec = TileSpec.fromJson(document.toString());
+                layoutData = tileSpec.toLayoutFileFormat() + "\n"; // TODO: add render parameters URL
+                outputStream.write(layoutData.getBytes());
+                tileSpecCount++;
+
+                if (timer.hasIntervalPassed()) {
+                    LOG.debug("writeLayoutFileData: data written for {} tiles", tileSpecCount);
+                }
+
+            }
+        } finally {
+            cursor.close();
+        }
+
+        LOG.debug("writeLayoutFileData: wrote data for {} tile spec(s) returned by {}.{}.find({},{}), elapsedSeconds={}",
+                  tileSpecCount, db.getName(), tileCollection.getName(), tileQuery, tileKeys, timer.getElapsedSeconds());
     }
 
     private DB getDatabase(StackId stackId) {
