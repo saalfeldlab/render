@@ -188,8 +188,10 @@ public class CoordinateService {
         TileCoordinates localCoordinates = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            final TileSpec tileSpec = renderDao.getTileSpec(stackId, worldX, worldY, z);
-            localCoordinates = TileCoordinates.getLocalCoordinates(tileSpec, worldX.floatValue(), worldY.floatValue());
+            final List<TileSpec> tileSpecList = renderDao.getTileSpecs(stackId, worldX, worldY, z);
+            localCoordinates = TileCoordinates.getLocalCoordinates(tileSpecList,
+                                                                   worldX.floatValue(),
+                                                                   worldY.floatValue());
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -214,7 +216,7 @@ public class CoordinateService {
         long lastStatusTime = startTime;
         List<TileCoordinates> localCoordinatesList = new ArrayList<TileCoordinates>(worldCoordinatesList.size());
         final StackId stackId = new StackId(owner, project, stack);
-        TileSpec tileSpec;
+        List<TileSpec> tileSpecList;
         TileCoordinates coordinates;
         float[] world;
         int errorCount = 0;
@@ -234,8 +236,8 @@ public class CoordinateService {
                     throw new IllegalArgumentException("world values must include both x and y");
                 }
 
-                tileSpec = renderDao.getTileSpec(stackId, (double) world[0], (double) world[1], z);
-                localCoordinatesList.add(TileCoordinates.getLocalCoordinates(tileSpec, world[0], world[1]));
+                tileSpecList = renderDao.getTileSpecs(stackId, (double) world[0], (double) world[1], z);
+                localCoordinatesList.add(TileCoordinates.getLocalCoordinates(tileSpecList, world[0], world[1]));
 
             } catch (Throwable t) {
 

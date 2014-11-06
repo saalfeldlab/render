@@ -23,8 +23,6 @@ import mpicbg.models.NoninvertibleModelException;
 import mpicbg.trakem2.transform.TransformMesh;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.json.JsonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.util.List;
@@ -195,21 +193,19 @@ public class TileSpec {
      *
      * @throws IllegalStateException
      *   if width or height have not been defined for this tile.
+     *
+     * @throws NoninvertibleModelException
+     *   if this tile's transforms cannot be inverted for the specified point.
      */
     public float[] getLocalCoordinates(float x,
                                        float y)
-            throws IllegalStateException {
+            throws IllegalStateException, NoninvertibleModelException {
 
         float[] localCoordinates;
         float[] l = new float[] {x, y};
         if (hasTransforms()) {
             final CoordinateTransformMesh mesh = getCoordinateTransformMesh();
-            try {
-                mesh.applyInverseInPlace(l);
-            } catch (NoninvertibleModelException e) {
-                // coordinates still transformed, exception thrown just to let you know they were estimated
-                LOG.debug("getLocalCoordinates: " + e.getMessage());
-            }
+            mesh.applyInverseInPlace(l);
         }
 
         if (z == null) {
@@ -390,8 +386,6 @@ public class TileSpec {
     public static TileSpec fromJson(String json) {
         return JsonUtils.GSON.fromJson(json, TileSpec.class);
     }
-
-    private static final Logger LOG = LoggerFactory.getLogger(TileSpec.class);
 
     private static final int TRANSFORM_MESH_TRIANGLE_SIZE = 64;
 }

@@ -1,6 +1,12 @@
 package org.janelia.alignment.spec;
 
+import mpicbg.models.NoninvertibleModelException;
 import org.janelia.alignment.json.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Coordinate data associated with a tile.
@@ -53,11 +59,49 @@ public class TileCoordinates {
         return new TileCoordinates(tileId, null, world);
     }
 
-    public static TileCoordinates getLocalCoordinates(TileSpec tileSpec,
+    /**
+     * @param  tileSpecList  list of tiles that contain the specified point.
+     * @param  x             x coordinate.
+     * @param  y             y coordinate.
+     *
+     * @return a local {@link TileCoordinates} instance with the inverse of the specified world point.
+     *
+     * @throws IllegalStateException
+     *   if the specified point cannot be inverted for any of the specified tiles.
+     */
+    public static TileCoordinates getLocalCoordinates(List<TileSpec> tileSpecList,
                                                       float x,
-                                                      float y) {
-        final float[] local = tileSpec.getLocalCoordinates(x, y);
-        return buildLocalInstance(tileSpec.getTileId(), local);
+                                                      float y)
+            throws IllegalStateException {
+
+        TileCoordinates tileCoordinates = null;
+
+        List<String> nonInvertibleTileIds = null;
+        float[] local;
+        for (TileSpec tileSpec : tileSpecList) {
+            try {
+                local = tileSpec.getLocalCoordinates(x, y);
+                tileCoordinates = buildLocalInstance(tileSpec.getTileId(), local);
+                break;
+            } catch (NoninvertibleModelException e) {
+                if (nonInvertibleTileIds == null) {
+                    nonInvertibleTileIds = new ArrayList<String>();
+                }
+                nonInvertibleTileIds.add(tileSpec.getTileId());
+            }
+        }
+
+        if (tileCoordinates == null) {
+            throw new IllegalStateException("world coordinate (" + x + ", " + y + ") found in tile id(s) " +
+                                            nonInvertibleTileIds + " cannot be inverted");
+        }
+
+        if (nonInvertibleTileIds != null) {
+            LOG.info("getLocalCoordinates: skipped inverse transform of ({}, {}) for non-invertible tile id(s) {}, used tile id {} instead",
+                     x, y, nonInvertibleTileIds, tileCoordinates.getTileId());
+        }
+
+        return tileCoordinates;
     }
 
     public static TileCoordinates getWorldCoordinates(TileSpec tileSpec,
@@ -71,4 +115,5 @@ public class TileCoordinates {
         return JsonUtils.GSON.fromJson(json, TileCoordinates.class);
     }
 
+    private static final Logger LOG = LoggerFactory.getLogger(TileCoordinates.class);
 }

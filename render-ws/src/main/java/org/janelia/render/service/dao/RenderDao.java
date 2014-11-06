@@ -140,16 +140,16 @@ public class RenderDao {
     }
 
     /**
-     * @return the tile specification that encompasses the specified coordinates.
+     * @return a list of resolved tile specifications for all tiles that encompass the specified coordinates.
      *
      * @throws IllegalArgumentException
-     *   if any required parameters are missing, the stack cannot be found, or
-     *   a tile that encompasses the coordinates cannot be found.
+     *   if any required parameters are missing, if the stack cannot be found, or
+     *   if no tile can be found that encompasses the coordinates.
      */
-    public TileSpec getTileSpec(StackId stackId,
-                                Double x,
-                                Double y,
-                                Double z)
+    public List<TileSpec> getTileSpecs(StackId stackId,
+                                       Double x,
+                                       Double y,
+                                       Double z)
             throws IllegalArgumentException {
 
         validateRequiredParameter("x", x);
@@ -174,7 +174,7 @@ public class RenderDao {
                                                " for world coordinates x=" + x + ", y=" + y + ", z=" + z);
         }
 
-        return renderParameters.getTileSpecs().get(0);
+        return renderParameters.getTileSpecs();
     }
 
     /**
