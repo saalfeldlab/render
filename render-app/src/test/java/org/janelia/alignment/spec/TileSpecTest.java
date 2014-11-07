@@ -62,8 +62,7 @@ public class TileSpecTest {
     public void testLayoutData() throws Exception {
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setTileId(EXPECTED_TILE_ID);
-        String[] values = {"123", "array-a", "camera-b", "row-c", "col-d"};
-        final LayoutData layoutData = new LayoutData(new Integer(values[0]), values[1], values[2], values[3], values[4]);
+        final LayoutData layoutData = new LayoutData(123, "array-a", "camera-b", "row-c", "col-d", 456.0, 789.0);
         tileSpec.setLayout(layoutData);
 
         final String json = JsonUtils.GSON.toJson(tileSpec);
@@ -77,11 +76,11 @@ public class TileSpecTest {
 
         final LayoutData parsedLayoutData = parsedSpec.getLayout();
         Assert.assertNotNull("json parse returned null layout data", parsedLayoutData);
-        Assert.assertEquals("bad sectionId value", values[0], String.valueOf(parsedLayoutData.getSectionId()));
-        Assert.assertEquals("bad array value", values[1], parsedLayoutData.getTemca());
-        Assert.assertEquals("bad camera value", values[2], parsedLayoutData.getCamera());
-        Assert.assertEquals("bad row value", values[3], parsedLayoutData.getImageRow());
-        Assert.assertEquals("bad col value", values[4], parsedLayoutData.getImageCol());
+        Assert.assertEquals("bad sectionId value", layoutData.getSectionId(), parsedLayoutData.getSectionId());
+        Assert.assertEquals("bad array value", layoutData.getTemca(), parsedLayoutData.getTemca());
+        Assert.assertEquals("bad camera value", layoutData.getCamera(), parsedLayoutData.getCamera());
+        Assert.assertEquals("bad row value", layoutData.getImageRow(), parsedLayoutData.getImageRow());
+        Assert.assertEquals("bad col value", layoutData.getImageCol(), parsedLayoutData.getImageCol());
 
         parsedSpec.setBoundingBox(new Rectangle(11, 12, 21, 22));
         ImageAndMask imageAndMask = new ImageAndMask("src/test/resources/stitch-test/coll0075_row0021_cam1.png", null);
@@ -90,8 +89,10 @@ public class TileSpecTest {
         final String hackedFileFormat = layoutFileFormat.replaceFirst("\t[^\t]+coll0075_row0021_cam1.png",
                                                                       "\timage.png");
         final String expectedLayoutFormat =
-                values[0] + '\t' + EXPECTED_TILE_ID + "\t1.00\t0.00\t11.0\t0.00\t1.00\t12.0\t" + values[4] + '\t' +
-                values[3] + '\t' + values[2] + "\timage.png\t" + values[1];
+                String.valueOf(layoutData.getSectionId()) + '\t' + EXPECTED_TILE_ID + "\t1.00\t0.00\t" +
+                layoutData.getStageX() + "\t0.00\t1.00\t" + layoutData.getStageY() + '\t' +
+                layoutData.getImageCol() + '\t' + layoutData.getImageRow() + '\t' + layoutData.getCamera() +
+                "\timage.png\t" + layoutData.getTemca();
         Assert.assertEquals("bad layout file format generated", expectedLayoutFormat, hackedFileFormat);
     }
 

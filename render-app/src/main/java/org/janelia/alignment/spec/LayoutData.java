@@ -12,17 +12,23 @@ public class LayoutData {
     private String camera;
     private String imageRow;
     private String imageCol;
+    private Double stageX;
+    private Double stageY;
 
     public LayoutData(Integer sectionId,
                       String temca,
                       String camera,
                       String imageRow,
-                      String imageCol) {
+                      String imageCol,
+                      Double stageX,
+                      Double stageY) {
         this.sectionId = sectionId;
         this.temca = temca;
         this.camera = camera;
         this.imageRow = imageRow;
         this.imageCol = imageCol;
+        this.stageX = stageX;
+        this.stageY = stageY;
     }
 
     public Integer getSectionId() {
@@ -43,5 +49,13 @@ public class LayoutData {
 
     public String getImageCol() {
         return imageCol;
+    }
+
+    public Double getStageX() {
+        return stageX;
+    }
+
+    public Double getStageY() {
+        return stageY;
     }
 }
