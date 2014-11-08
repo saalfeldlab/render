@@ -92,6 +92,13 @@ public class ListTransformSpec extends TransformSpec {
         }
     }
 
+    @Override
+    public void flatten(ListTransformSpec flattenedList) throws IllegalStateException {
+        for (TransformSpec spec : specList) {
+            spec.flatten(flattenedList);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     public CoordinateTransformList<CoordinateTransform> getInstanceAsList()
             throws IllegalArgumentException {

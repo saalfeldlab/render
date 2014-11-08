@@ -31,6 +31,22 @@ public class TransformSpecTest {
         final TransformSpecMetaData lcMetaData = new TransformSpecMetaData();
         lcMetaData.setGroup("test");
 
+        // list-6
+        // -- leaf-3
+        // -- interpolated-5
+        //    -- a: ref-1
+        //          -- leaf-1
+        //    -- b: list-4
+        //          -- leaf-1
+        //          -- ref-99
+        //             ** ref-2 (added after first pass to test multiple pass resolution)
+        //                -- leaf-2
+        // -- list-4
+        //    -- leaf-1
+        //    -- ref-99
+        //       ** ref-2 (added after first pass to test multiple pass resolution)
+        //          -- leaf-2
+
         leaf1 = new LeafTransformSpec("1", lcMetaData, AFFINE_2D, "1  0  0  1  0  0");
         leaf2 = new LeafTransformSpec("2", null, AFFINE_2D, "2  0  0  2  0  0");
         leaf3 = new LeafTransformSpec("3", lcMetaData, AFFINE_2D, "3  0  0  3  0  0");
@@ -47,6 +63,7 @@ public class TransformSpecTest {
         listSpec = new ListTransformSpec("6", null);
         listSpec.addSpec(leaf3);
         listSpec.addSpec(interpolated5);
+        listSpec.addSpec(list4);
     }
 
     @Test
@@ -95,7 +112,7 @@ public class TransformSpecTest {
     }
 
     @Test
-    public void testResolveReferences() throws Exception {
+    public void testResolveReferencesAndFlatten() throws Exception {
 
         validateUnresolvedSize("before resolution", listSpec, 2);
 
@@ -112,6 +129,29 @@ public class TransformSpecTest {
         listSpec.resolveReferences(idToSpecMap);
 
         validateUnresolvedSize("after second resolution", listSpec, 0);
+
+        // Flattened structure should look like this:
+        //
+        // list-6
+        // -- leaf-3
+        // -- interpolated-5
+        //    -- a: leaf-1
+        //    -- b: list-4
+        //          -- leaf-1
+        //          -- leaf-2
+        // -- leaf-1
+        // -- leaf-2
+
+        final ListTransformSpec flattenedList = new ListTransformSpec();
+        listSpec.flatten(flattenedList);
+
+        Assert.assertEquals("incorrect size for flattened list", 4, flattenedList.size());
+        final String[] expectedIds = {"3", "5", "1", "2"};
+        TransformSpec spec;
+        for (int i = 0; i < expectedIds.length; i++) {
+            spec = flattenedList.getSpec(i);
+            Assert.assertEquals("invalid spec id for flattened list item " + i, expectedIds[i],spec.getId());
+        }
     }
 
     @Test

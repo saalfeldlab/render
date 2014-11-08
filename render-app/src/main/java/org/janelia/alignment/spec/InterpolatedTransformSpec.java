@@ -58,10 +58,33 @@ public class InterpolatedTransformSpec
     }
 
     @Override
+    public void flatten(ListTransformSpec flattenedList)
+            throws IllegalStateException {
+
+        flattenedList.addSpec(new InterpolatedTransformSpec(getId(),
+                                                            getMetaData(),
+                                                            getFlattenedComponentSpec(a),
+                                                            getFlattenedComponentSpec(b),
+                                                            lambda));
+    }
+
+    @Override
     protected CoordinateTransform buildInstance()
             throws IllegalArgumentException {
         return new InterpolatedCoordinateTransform<CoordinateTransform, CoordinateTransform>(a.buildInstance(),
                                                                                              b.buildInstance(),
                                                                                              lambda);
+    }
+
+    private TransformSpec getFlattenedComponentSpec(TransformSpec spec)
+            throws IllegalStateException {
+
+        final ListTransformSpec flattenedList = new ListTransformSpec();
+        spec.flatten(flattenedList);
+        TransformSpec flattenedSpec = flattenedList;
+        if (flattenedList.size() == 1) {
+            flattenedSpec = flattenedList.getSpec(0);
+        }
+        return flattenedSpec;
     }
 }

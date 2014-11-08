@@ -14,6 +14,7 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
@@ -149,6 +150,39 @@ public class RenderDataService {
         }
 
         return tileSpec;
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/render-parameters")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public RenderParameters getRenderParameters(@PathParam("owner") String owner,
+                                                @PathParam("project") String project,
+                                                @PathParam("stack") String stack,
+                                                @PathParam("tileId") String tileId,
+                                                @QueryParam("scale") Double scale) {
+
+        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}",
+                 owner, project, stack, tileId, scale);
+
+        RenderParameters parameters = null;
+        try {
+            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
+            tileSpec.flattenTransforms();
+            if (scale == null) {
+                scale = 1.0;
+            }
+            parameters = new RenderParameters(null,
+                                              tileSpec.getMinX(),
+                                              tileSpec.getMinY(),
+                                              tileSpec.getWidth(),
+                                              tileSpec.getHeight(),
+                                              scale);
+            parameters.addTileSpec(tileSpec);
+        } catch (Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return parameters;
     }
 
     public TileSpec getTileSpec(String owner,

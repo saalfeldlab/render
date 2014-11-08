@@ -76,6 +76,14 @@ public class ReferenceTransformSpec extends TransformSpec {
     }
 
     @Override
+    public void flatten(ListTransformSpec flattenedList) throws IllegalStateException {
+        if (! isFullyResolved()) {
+            throw new IllegalStateException("cannot flatten unresolved reference to " + getEffectiveRefId());
+        }
+        resolvedInstance.flatten(flattenedList);
+    }
+
+    @Override
     protected CoordinateTransform buildInstance()
             throws IllegalArgumentException {
         if (resolvedInstance == null) {

@@ -81,6 +81,11 @@ public class LeafTransformSpec extends TransformSpec {
         // nothing to do
     }
 
+    @Override
+    public void flatten(ListTransformSpec flattenedList) throws IllegalStateException {
+        flattenedList.addSpec(this);
+    }
+
     protected CoordinateTransform buildInstance()
             throws IllegalArgumentException {
 

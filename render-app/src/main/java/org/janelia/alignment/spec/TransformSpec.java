@@ -115,6 +115,16 @@ public abstract class TransformSpec {
      */
     public abstract void resolveReferences(Map<String, TransformSpec> idToSpecMap);
 
+    /**
+     * Adds a flattened (fully resolved) version of this spec to the specified list.
+     *
+     * @param  flattenedList  list to which flattened specs should be appended.
+     *
+     * @throws IllegalStateException
+     *   if any references have not been resolved.
+     */
+    public abstract void flatten(ListTransformSpec flattenedList) throws IllegalStateException;
+
 
     public String toJson() {
         return JsonUtils.GSON.toJson(this);

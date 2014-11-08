@@ -316,6 +316,12 @@ public class TileSpec {
         transforms.addAllSpecs(transformSpecs);
     }
 
+    public void flattenTransforms() {
+        final ListTransformSpec flattenedList = new ListTransformSpec();
+        transforms.flatten(flattenedList);
+        transforms = flattenedList;
+    }
+
     /**
      * @throws IllegalArgumentException
      *   if this spec's mipmaps are invalid.
