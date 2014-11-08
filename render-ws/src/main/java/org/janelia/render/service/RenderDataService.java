@@ -67,7 +67,8 @@ public class RenderDataService {
     @Produces(MediaType.TEXT_PLAIN)
     public Response getLayoutFile(@PathParam("owner") String owner,
                                   @PathParam("project") String project,
-                                  @PathParam("stack") String stack) {
+                                  @PathParam("stack") String stack,
+                                  @Context UriInfo uriInfo) {
 
         LOG.info("getLayoutFile: entry, owner={}, project={}, stack={}",
                  owner, project, stack);
@@ -75,11 +76,13 @@ public class RenderDataService {
         Response response = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
+
+            final String stackRequestUri = uriInfo.getRequestUri().toString().replace("/layoutFile", "");
             final StreamingOutput responseOutput = new StreamingOutput() {
                 @Override
                 public void write(OutputStream output)
                         throws IOException, WebApplicationException {
-                    renderDao.writeLayoutFileData(stackId, output);
+                    renderDao.writeLayoutFileData(stackId, stackRequestUri, output);
                 }
             };
             response = Response.ok(responseOutput).build();

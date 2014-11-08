@@ -398,6 +398,7 @@ public class RenderDao {
      *   if the data cannot be written for any reason.
      */
     public void writeLayoutFileData(StackId stackId,
+                                    String stackRequestUri,
                                     OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
@@ -415,14 +416,21 @@ public class RenderDao {
         int tileSpecCount = 0;
         final DBCursor cursor = tileCollection.find(tileQuery, tileKeys);
         try {
+            final String baseUriString = '\t' + stackRequestUri + "/tile/";
+
             DBObject document;
             TileSpec tileSpec;
             String layoutData;
+            String uriString;
             while (cursor.hasNext()) {
                 document = cursor.next();
                 tileSpec = TileSpec.fromJson(document.toString());
-                layoutData = tileSpec.toLayoutFileFormat() + "\n"; // TODO: add render parameters URL
+                layoutData = tileSpec.toLayoutFileFormat();
                 outputStream.write(layoutData.getBytes());
+
+                // {stackRequestUri}/tile/{tileId}/render-parameters
+                uriString = baseUriString + tileSpec.getTileId() + "/render-parameters" + "\n";
+                outputStream.write(uriString.getBytes());
                 tileSpecCount++;
 
                 if (timer.hasIntervalPassed()) {
