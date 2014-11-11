@@ -392,7 +392,11 @@ public class Render {
                 // save the modified image
                 final String outputPathOrUri = params.getOut();
                 final String outputFormat = outputPathOrUri.substring(outputPathOrUri.lastIndexOf('.') + 1);
-                Utils.saveImage(targetImage, outputPathOrUri, outputFormat, params.getQuality());
+                Utils.saveImage(targetImage,
+                                outputPathOrUri,
+                                outputFormat,
+                                params.isConvertToGray(),
+                                params.getQuality());
 
                 saveStop = System.currentTimeMillis();
             }

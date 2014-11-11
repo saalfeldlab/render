@@ -394,7 +394,7 @@ public class MipmapGenerator {
         final BufferedImage downSampledImage = downSampledProcessor.getBufferedImage();
         final ImageOutputStream imageOutputStream = new MemoryCacheImageOutputStream(outputStream);
 
-        Utils.writeImage(downSampledImage, format, jpegQuality, imageOutputStream);
+        Utils.writeImage(downSampledImage, format, false, jpegQuality, imageOutputStream);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MipmapGenerator.class);

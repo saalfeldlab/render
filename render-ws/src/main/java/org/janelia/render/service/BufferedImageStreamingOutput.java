@@ -36,7 +36,7 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
             throws IOException, WebApplicationException {
 
         final ImageOutputStream imageOutputStream = new MemoryCacheImageOutputStream(output);
-        Utils.writeImage(targetImage, format, quality, imageOutputStream);
+        Utils.writeImage(targetImage, format, false, quality, imageOutputStream);
     }
 
 }

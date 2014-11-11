@@ -59,6 +59,7 @@ public class Utils {
      */
     public static void writeImage(final BufferedImage image,
                                   final String format,
+                                  final boolean convertToGray,
                                   final float quality,
                                   final ImageOutputStream outputStream)
             throws IOException {
@@ -72,21 +73,36 @@ public class Utils {
             final ImageWriter writer = writersForFormat.next();
             try {
                 writer.setOutput(outputStream);
+
+                // TODO: make gray scale default if there is no need for RGB jpegs
+                BufferedImage convertedImage = image;
+                if (convertToGray) {
+                    convertedImage = new BufferedImage(image.getWidth(),
+                                                       image.getHeight(),
+                                                       BufferedImage.TYPE_BYTE_GRAY);
+                    convertedImage.createGraphics().drawImage(image, 0, 0, null);
+                }
+
                 if (format.equalsIgnoreCase(JPEG_FORMAT)) {
                     final ImageWriteParam param = writer.getDefaultWriteParam();
                     param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
                     param.setCompressionQuality(quality);
 
-                    // Fixed JPG saving through converting INT_ARGB to INT_RGB.
-                    // Previously, JPGs ended up being saved as four channel CMYKs.
-                    // Now, conversion goes through drawing the INT_ARGB image
-                    // into an INT_RGB image which feels wasteful.
-                    final BufferedImage rgbImage =
-                            new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
-                    rgbImage.createGraphics().drawImage(image, 0, 0, null);
-                    writer.write(null, new IIOImage(rgbImage, null, null), param);
+                    if (! convertToGray) {
+                        // Fixed JPG saving through converting INT_ARGB to INT_RGB.
+                        // Previously, JPGs ended up being saved as four channel CMYKs.
+                        // Now, conversion goes through drawing the INT_ARGB image
+                        // into an INT_RGB image which feels wasteful.
+                        convertedImage = new BufferedImage(image.getWidth(),
+                                                           image.getHeight(),
+                                                           BufferedImage.TYPE_INT_RGB);
+                        convertedImage.createGraphics().drawImage(image, 0, 0, null);
+                    }
+
+                    writer.write(null, new IIOImage(convertedImage, null, null), param);
+
                 } else {
-                    writer.write(image);
+                    writer.write(convertedImage);
                 }
             } finally {
                 if (writer != null) {
@@ -104,6 +120,7 @@ public class Utils {
     public static void saveImage(final BufferedImage image,
                                  final String pathOrUriString,
                                  final String format,
+                                 final boolean convertToGray,
                                  final float quality)
             throws IOException {
         FileImageOutputStream outputStream = null;
@@ -124,7 +141,7 @@ public class Utils {
                 throw new IllegalArgumentException("failed to create output stream for " + file.getAbsolutePath(), e);
             }
 
-            writeImage(image, format, quality, outputStream);
+            writeImage(image, format, convertToGray, quality, outputStream);
 
             LOG.info("saveImage: exit, saved {}", file.getAbsolutePath());
 

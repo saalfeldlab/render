@@ -81,6 +81,9 @@ public class RenderParameters {
     @Parameter(names = "--area_offset", description = "add bounding box offset", required = false)
     private boolean areaOffset;
 
+    @Parameter(names = "--gray", description = "convert output to gray scale image", required = false)
+    private boolean convertToGray;
+
     @Parameter(names = "--quality", description = "JPEG quality float [0, 1]", required = false)
     private float quality;
 
@@ -124,6 +127,7 @@ public class RenderParameters {
         this.in = null;
         this.out = null;
         this.areaOffset = false;
+        this.convertToGray = false;
         this.quality = DEFAULT_QUALITY;
         this.skipInterpolation = false;
         this.parametersUrl = null;
@@ -293,6 +297,10 @@ public class RenderParameters {
         return areaOffset;
     }
 
+    public boolean isConvertToGray() {
+        return convertToGray;
+    }
+
     public float getQuality() {
         return quality;
     }
@@ -429,6 +437,10 @@ public class RenderParameters {
             sb.append("areaOffset=true, ");
         }
 
+        if (convertToGray) {
+            sb.append("convertToGray=true, ");
+        }
+
         if (in != null) {
             sb.append("in='").append(in).append("', ");
         }
@@ -526,6 +538,7 @@ public class RenderParameters {
             height = mergedValue(height, baseParameters.height, DEFAULT_HEIGHT_AND_WIDTH);
             scale = mergedValue(scale, baseParameters.scale, DEFAULT_SCALE);
             areaOffset = mergedValue(areaOffset, baseParameters.areaOffset, false);
+            convertToGray = mergedValue(convertToGray, baseParameters.convertToGray, false);
             skipInterpolation = mergedValue(skipInterpolation, baseParameters.skipInterpolation, false);
 
             if (quality == DEFAULT_QUALITY) {
