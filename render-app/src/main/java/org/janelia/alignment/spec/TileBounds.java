@@ -7,32 +7,21 @@ import org.janelia.alignment.json.JsonUtils;
  *
  * @author Eric Trautman
  */
-public class TileBounds {
+public class TileBounds extends Bounds {
 
     private String tileId;
-    private Double minX;
-    private Double minY;
-    private Double maxX;
-    private Double maxY;
 
     public TileBounds(String tileId,
                       Double minX,
                       Double minY,
                       Double maxX,
                       Double maxY) {
+        super(minX, minY, maxX, maxY);
         this.tileId = tileId;
-        this.minX = minX;
-        this.minY = minY;
-        this.maxX = maxX;
-        this.maxY = maxY;
     }
 
     public String getTileId() {
         return tileId;
-    }
-
-    public boolean isBoundingBoxDefined() {
-        return ((minX != null) && (minY != null) && (maxX != null) && (maxY != null));
     }
 
     public static TileBounds fromJson(String json) {

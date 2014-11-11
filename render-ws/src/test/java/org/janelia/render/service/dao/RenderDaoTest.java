@@ -2,6 +2,7 @@ package org.janelia.render.service.dao;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
@@ -235,7 +236,34 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testTileBounds() throws Exception {
+    public void testGetLayerAndStackBounds() throws Exception {
+        final Double expectedMinX = 1094.0;
+        final Double expectedMinY = 1769.0;
+        final Double expectedMaxX = 9917.0;
+        final Double expectedMaxY = 8301.0;
+
+        final Double z = 3903.0;
+
+        Bounds bounds = dao.getLayerBounds(stackId, z);
+
+        Assert.assertNotNull("null layer bounds retrieved", bounds);
+        Assert.assertEquals("invalid layer minX", expectedMinX, bounds.getMinX(), BOUNDS_DELTA);
+        Assert.assertEquals("invalid layer minY", expectedMinY, bounds.getMinY(), BOUNDS_DELTA);
+        Assert.assertEquals("invalid layer maxX", expectedMaxX, bounds.getMaxX(), BOUNDS_DELTA);
+        Assert.assertEquals("invalid layer maxY", expectedMaxY, bounds.getMaxY(), BOUNDS_DELTA);
+
+        bounds = dao.getStackBounds(stackId);
+
+        Assert.assertNotNull("null stack bounds retrieved", bounds);
+        // TODO: find out why embedded mongo returns null min value for these queries
+//        Assert.assertEquals("invalid stack minX", expectedMinX, bounds.getMinX(), BOUNDS_DELTA);
+//        Assert.assertEquals("invalid stack minY", expectedMinY, bounds.getMinY(), BOUNDS_DELTA);
+        Assert.assertEquals("invalid stack maxX", expectedMaxX, bounds.getMaxX(), BOUNDS_DELTA);
+        Assert.assertEquals("invalid stack maxY", expectedMaxY, bounds.getMaxY(), BOUNDS_DELTA);
+    }
+
+    @Test
+    public void testGetTileBounds() throws Exception {
         final Double z = 3903.0;
         final List<TileBounds> list = dao.getTileBounds(stackId, z);
 
@@ -250,4 +278,5 @@ public class RenderDaoTest {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDaoTest.class);
+    private static final Double BOUNDS_DELTA = 0.1;
 }

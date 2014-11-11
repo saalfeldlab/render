@@ -1,6 +1,7 @@
 package org.janelia.render.service;
 
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -111,6 +112,47 @@ public class RenderDataService {
             RenderServiceUtil.throwServiceException(t);
         }
         return list;
+    }
+
+    @Path("project/{project}/stack/{stack}/bounds")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Bounds getStackBounds(@PathParam("owner") String owner,
+                                 @PathParam("project") String project,
+                                 @PathParam("stack") String stack) {
+
+        LOG.info("getStackBounds: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        Bounds bounds = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            bounds = renderDao.getStackBounds(stackId);
+        } catch (Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+        return bounds;
+    }
+
+    @Path("project/{project}/stack/{stack}/z/{z}/bounds")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Bounds getLayerBounds(@PathParam("owner") String owner,
+                                 @PathParam("project") String project,
+                                 @PathParam("stack") String stack,
+                                 @PathParam("z") Double z) {
+
+        LOG.info("getLayerBounds: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
+
+        Bounds bounds = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            bounds = renderDao.getLayerBounds(stackId, z);
+        } catch (Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+        return bounds;
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/tileBounds")

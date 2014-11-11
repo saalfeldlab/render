@@ -11,6 +11,7 @@ import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
@@ -347,6 +348,51 @@ public class RenderDao {
     }
 
     /**
+     * @return coordinate bounds for all tiles in the specified stack.
+     *
+     * @throws IllegalArgumentException
+     *   if the stack cannot be found.
+     */
+    public Bounds getStackBounds(StackId stackId)
+            throws IllegalArgumentException {
+
+        final DB db = getDatabase(stackId);
+        final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
+        final DBObject tileQuery = new BasicDBObject();
+
+        final Double minX = getBound(db, tileCollection, tileQuery, "minX", true);
+        final Double minY = getBound(db, tileCollection, tileQuery, "minY", true);
+        final Double maxX = getBound(db, tileCollection, tileQuery, "maxX", false);
+        final Double maxY = getBound(db, tileCollection, tileQuery, "maxY", false);
+
+        return new Bounds(minX, minY, maxX, maxY);
+    }
+
+    /**
+     * @return coordinate bounds for all tiles in the specified stack layer.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     */
+    public Bounds getLayerBounds(StackId stackId,
+                                 Double z)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("z", z);
+
+        final DB db = getDatabase(stackId);
+        final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
+        final DBObject tileQuery = new BasicDBObject("z", z);
+
+        final Double minX = getBound(db, tileCollection, tileQuery, "minX", true);
+        final Double minY = getBound(db, tileCollection, tileQuery, "minY", true);
+        final Double maxX = getBound(db, tileCollection, tileQuery, "maxX", false);
+        final Double maxY = getBound(db, tileCollection, tileQuery, "maxY", false);
+
+        return new Bounds(minX, minY, maxX, maxY);
+    }
+
+    /**
      * @return spatial data for all tiles in the specified stack layer.
      *
      * @throws IllegalArgumentException
@@ -626,6 +672,41 @@ public class RenderDao {
             }
         }
     }
+
+    private Double getBound(DB db,
+                            DBCollection tileCollection,
+                            DBObject tileQuery,
+                            String boundKey,
+                            boolean isMin) {
+
+        Double bound = null;
+
+        int order = -1;
+        if (isMin) {
+            order = 1;
+        }
+
+        final DBObject tileKeys = new BasicDBObject(boundKey, 1).append("_id", 0);
+        final DBObject orderBy = new BasicDBObject(boundKey, order);
+
+        final DBCursor cursor = tileCollection.find(tileQuery, tileKeys);
+        cursor.sort(orderBy).limit(1);
+        try {
+            DBObject document;
+            if (cursor.hasNext()) {
+                document = cursor.next();
+                bound = (Double) document.get(boundKey);
+            }
+        } finally {
+            cursor.close();
+        }
+
+        LOG.debug("getBound: returning {} for {}.{}.find({},{}).sort({}).limit(1)",
+                  bound, db.getName(), tileCollection.getName(), tileQuery, tileKeys, orderBy);
+
+        return bound;
+    }
+
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDao.class);
 }
