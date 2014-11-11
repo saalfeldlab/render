@@ -86,12 +86,12 @@ public class RenderService {
         return renderJpegImage(renderParameters);
     }
 
-    @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
+    @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
     public Response renderJpegImageForBox(@PathParam("owner") String owner,
-                                          @PathParam("projectId") String projectId,
-                                          @PathParam("stackId") String stackId,
+                                          @PathParam("project") String project,
+                                          @PathParam("stack") String stack,
                                           @PathParam("x") Double x,
                                           @PathParam("y") Double y,
                                           @PathParam("z") Double z,
@@ -100,24 +100,23 @@ public class RenderService {
                                           @PathParam("scale") Double scale) {
 
         LOG.info("renderJpegImageForBox: entry");
-        final RenderParameters renderParameters = renderDataService.getRenderParameters(owner,
-                                                                                        projectId,
-                                                                                        stackId,
-                                                                                        x,
-                                                                                        y,
-                                                                                        z,
-                                                                                        width,
-                                                                                        height,
-                                                                                        scale);
+        final StackId stackId = new StackId(owner, project, stack);
+        final RenderParameters renderParameters = renderDataService.getInternalRenderParameters(stackId,
+                                                                                                x,
+                                                                                                y,
+                                                                                                z,
+                                                                                                width,
+                                                                                                height,
+                                                                                                scale);
         return renderJpegImage(renderParameters);
     }
 
-    @Path("project/{projectId}/stack/{stackId}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
+    @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
     public Response renderPngImageForBox(@PathParam("owner") String owner,
-                                         @PathParam("projectId") String projectId,
-                                         @PathParam("stackId") String stackId,
+                                         @PathParam("project") String project,
+                                         @PathParam("stack") String stack,
                                          @PathParam("x") Double x,
                                          @PathParam("y") Double y,
                                          @PathParam("z") Double z,
@@ -126,15 +125,14 @@ public class RenderService {
                                          @PathParam("scale") Double scale) {
 
         LOG.info("renderPngImageForBox: entry");
-        final RenderParameters renderParameters = renderDataService.getRenderParameters(owner,
-                                                                                        projectId,
-                                                                                        stackId,
-                                                                                        x,
-                                                                                        y,
-                                                                                        z,
-                                                                                        width,
-                                                                                        height,
-                                                                                        scale);
+        final StackId stackId = new StackId(owner, project, stack);
+        final RenderParameters renderParameters = renderDataService.getInternalRenderParameters(stackId,
+                                                                                                x,
+                                                                                                y,
+                                                                                                z,
+                                                                                                width,
+                                                                                                height,
+                                                                                                scale);
         return renderPngImage(renderParameters);
     }
 

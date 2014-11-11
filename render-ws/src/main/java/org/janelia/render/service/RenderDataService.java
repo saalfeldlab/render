@@ -285,30 +285,50 @@ public class RenderDataService {
         return responseBuilder.build();
     }
 
+    /**
+     * @return render parameters for specified bounding box with flattened (and therefore resolved)
+     *         transform specs suitable for external use.
+     */
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public RenderParameters getRenderParameters(@PathParam("owner") String owner,
-                                                @PathParam("project") String project,
-                                                @PathParam("stack") String stack,
-                                                @PathParam("x") Double x,
-                                                @PathParam("y") Double y,
-                                                @PathParam("z") Double z,
-                                                @PathParam("width") Integer width,
-                                                @PathParam("height") Integer height,
-                                                @PathParam("scale") Double scale) {
+    public RenderParameters getExternalRenderParameters(@PathParam("owner") String owner,
+                                                        @PathParam("project") String project,
+                                                        @PathParam("stack") String stack,
+                                                        @PathParam("x") Double x,
+                                                        @PathParam("y") Double y,
+                                                        @PathParam("z") Double z,
+                                                        @PathParam("width") Integer width,
+                                                        @PathParam("height") Integer height,
+                                                        @PathParam("scale") Double scale) {
 
-        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, x={}, y={}, z={}, width={}, height={}, scale={}",
+        LOG.info("getExternalRenderParameters: entry, owner={}, project={}, stack={}, x={}, y={}, z={}, width={}, height={}, scale={}",
                  owner, project, stack, x, y, z, width, height, scale);
 
         RenderParameters parameters = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            parameters = renderDao.getParameters(stackId, x, y, z, width, height, scale);
+            parameters = getInternalRenderParameters(stackId, x, y, z, width, height, scale);
+            parameters.flattenTransforms();
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
         return parameters;
+    }
+
+    /**
+     * @return render parameters for specified bounding box with in-memory resolved
+     *         transform specs suitable for internal use.
+     */
+    public RenderParameters getInternalRenderParameters(final StackId stackId,
+                                                        final Double x,
+                                                        final Double y,
+                                                        final Double z,
+                                                        final Integer width,
+                                                        final Integer height,
+                                                        final Double scale) {
+
+        return renderDao.getParameters(stackId, x, y, z, width, height, scale);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDataService.class);

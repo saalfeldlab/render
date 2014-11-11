@@ -321,6 +321,12 @@ public class RenderParameters {
         tileSpecs.add(tileSpec);
     }
 
+    public void flattenTransforms() {
+        for (TileSpec spec : tileSpecs) {
+            spec.flattenTransforms();
+        }
+    }
+
     /**
      * Displays command usage information on the console (standard-out).
      */
