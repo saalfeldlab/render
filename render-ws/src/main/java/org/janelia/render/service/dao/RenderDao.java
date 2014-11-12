@@ -570,6 +570,9 @@ public class RenderDao {
                                       DBObject tileQuery,
                                       RenderParameters renderParameters) {
         final DBCursor cursor = tileCollection.find(tileQuery);
+        // order tile specs by tileId to ensure consistent coordinate mapping
+        final DBObject orderBy = new BasicDBObject("tileId", 1);
+        cursor.sort(orderBy);
         try {
             DBObject document;
             TileSpec tileSpec;
@@ -582,8 +585,8 @@ public class RenderDao {
             cursor.close();
         }
 
-        LOG.debug("addResolvedTileSpecs: found {} tile spec(s) for {}.{}.find({})",
-                  renderParameters.numberOfTileSpecs(), db.getName(), tileCollection.getName(), tileQuery);
+        LOG.debug("addResolvedTileSpecs: found {} tile spec(s) for {}.{}.find({}).sort({})",
+                  renderParameters.numberOfTileSpecs(), db.getName(), tileCollection.getName(), tileQuery, orderBy);
 
         resolveTransformReferencesForTiles(db, renderParameters.getTileSpecs());
     }
