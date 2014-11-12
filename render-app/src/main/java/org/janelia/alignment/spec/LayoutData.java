@@ -14,6 +14,7 @@ public class LayoutData {
     private String imageCol;
     private Double stageX;
     private Double stageY;
+    private Double rotation;
 
     public LayoutData(Integer sectionId,
                       String temca,
@@ -21,7 +22,8 @@ public class LayoutData {
                       String imageRow,
                       String imageCol,
                       Double stageX,
-                      Double stageY) {
+                      Double stageY,
+                      Double rotation) {
         this.sectionId = sectionId;
         this.temca = temca;
         this.camera = camera;
@@ -29,6 +31,7 @@ public class LayoutData {
         this.imageCol = imageCol;
         this.stageX = stageX;
         this.stageY = stageY;
+        this.rotation = rotation;
     }
 
     public Integer getSectionId() {
@@ -57,5 +60,9 @@ public class LayoutData {
 
     public Double getStageY() {
         return stageY;
+    }
+
+    public Double getRotation() {
+        return rotation;
     }
 }

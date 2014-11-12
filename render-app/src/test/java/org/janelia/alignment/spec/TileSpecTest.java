@@ -62,7 +62,7 @@ public class TileSpecTest {
     public void testLayoutData() throws Exception {
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setTileId(EXPECTED_TILE_ID);
-        final LayoutData layoutData = new LayoutData(123, "array-a", "camera-b", "row-c", "col-d", 456.0, 789.0);
+        final LayoutData layoutData = new LayoutData(123, "array-a", "camera-b", "row-c", "col-d", 456.0, 789.0, 111.0);
         tileSpec.setLayout(layoutData);
 
         final String json = JsonUtils.GSON.toJson(tileSpec);
@@ -81,6 +81,9 @@ public class TileSpecTest {
         Assert.assertEquals("bad camera value", layoutData.getCamera(), parsedLayoutData.getCamera());
         Assert.assertEquals("bad row value", layoutData.getImageRow(), parsedLayoutData.getImageRow());
         Assert.assertEquals("bad col value", layoutData.getImageCol(), parsedLayoutData.getImageCol());
+        Assert.assertEquals("bad stageX value", layoutData.getStageX(), parsedLayoutData.getStageX());
+        Assert.assertEquals("bad stageY value", layoutData.getStageY(), parsedLayoutData.getStageY());
+        Assert.assertEquals("bad rotation value", layoutData.getRotation(), parsedLayoutData.getRotation());
 
         parsedSpec.setBoundingBox(new Rectangle(11, 12, 21, 22));
         ImageAndMask imageAndMask = new ImageAndMask("src/test/resources/stitch-test/coll0075_row0021_cam1.png", null);

@@ -114,7 +114,7 @@ public class RenderDaoTest {
     public void testSaveTileSpec() throws Exception {
         final String tileId = "new-tile-1";
         final String temca = "0";
-        final LayoutData layoutData = new LayoutData(123, temca, null, null, null, null, null);
+        final LayoutData layoutData = new LayoutData(123, temca, null, null, null, null, null, null);
 
         TileSpec tileSpec = new TileSpec();
         tileSpec.setTileId(tileId);
@@ -131,7 +131,7 @@ public class RenderDaoTest {
         Assert.assertFalse("tileSpec is has transforms after insert", tileSpec.hasTransforms());
 
         final String changedTemca = "1";
-        final LayoutData changedLayoutData = new LayoutData(123, changedTemca, null, null, null, null, null);
+        final LayoutData changedLayoutData = new LayoutData(123, changedTemca, null, null, null, null, null, null);
         tileSpec.setLayout(changedLayoutData);
         final List<TransformSpec> list = new ArrayList<TransformSpec>();
         list.add(new ReferenceTransformSpec("1"));
