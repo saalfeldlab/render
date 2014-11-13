@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
  *
  * @author Eric Trautman
  */
-public class StackId {
+public class StackId implements Comparable<StackId> {
 
     private String owner;
     private String project;
@@ -47,6 +47,19 @@ public class StackId {
                ", project='" + project + '\'' +
                ", stack='" + stack + '\'' +
                '}';
+    }
+
+    @SuppressWarnings("NullableProblems")
+    @Override
+    public int compareTo(StackId that) {
+        int v = this.owner.compareTo(that.owner);
+        if (v == 0) {
+            v = this.project.compareTo(that.project);
+            if (v == 0) {
+                v = this.stack.compareTo(that.stack);
+            }
+        }
+        return v;
     }
 
     public String getDatabaseName() {

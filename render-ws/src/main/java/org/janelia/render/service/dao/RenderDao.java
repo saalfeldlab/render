@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -318,6 +319,8 @@ public class RenderDao {
                 list.add(StackId.fromDatabaseName(name));
             }
         }
+
+        Collections.sort(list);
 
         LOG.debug("getStackIds: returning {}", list);
 
