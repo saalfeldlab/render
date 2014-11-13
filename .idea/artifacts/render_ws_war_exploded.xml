@@ -2,7 +2,6 @@
   <artifact type="exploded-war" name="render-ws:war exploded">
     <output-path>$PROJECT_DIR$/render-ws/target/render-ws-0.0.3-SNAPSHOT</output-path>
     <root id="root">
-      <element id="javaee-facet-resources" facet="render-ws/web/Web" />
       <element id="directory" name="WEB-INF">
         <element id="directory" name="classes">
           <element id="module-output" name="render-ws" />
@@ -34,6 +33,7 @@
           <element id="library" level="project" name="Maven: org.mongodb:mongo-java-driver:2.12.3" />
         </element>
       </element>
+      <element id="javaee-facet-resources" facet="render-ws/web/Web" />
     </root>
   </artifact>
 </component>

@@ -31,7 +31,7 @@
     <servlet>
         <servlet-name>Default</servlet-name>
         <servlet-class>
-            org.apache.catalina.servlets.DefaultServlet
+            org.eclipse.jetty.servlet.DefaultServlet
         </servlet-class>
     </servlet>
 
