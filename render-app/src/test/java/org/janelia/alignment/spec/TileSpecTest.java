@@ -92,10 +92,10 @@ public class TileSpecTest {
         final String hackedFileFormat = layoutFileFormat.replaceFirst("\t[^\t]+coll0075_row0021_cam1.png",
                                                                       "\timage.png");
         final String expectedLayoutFormat =
-                String.valueOf(layoutData.getSectionId()) + '\t' + EXPECTED_TILE_ID + "\t1.00\t0.00\t" +
-                layoutData.getStageX() + "\t0.00\t1.00\t" + layoutData.getStageY() + '\t' +
+                String.valueOf(layoutData.getSectionId()) + '\t' + EXPECTED_TILE_ID + "\t1.0\t0.0\t" +
+                layoutData.getStageX() + "\t0.0\t1.0\t" + layoutData.getStageY() + '\t' +
                 layoutData.getImageCol() + '\t' + layoutData.getImageRow() + '\t' + layoutData.getCamera() +
-                "\timage.png\t" + layoutData.getTemca();
+                "\timage.png\t" + layoutData.getTemca() + '\t' + layoutData.getRotation();
         Assert.assertEquals("bad layout file format generated", expectedLayoutFormat, hackedFileFormat);
     }
 

@@ -367,6 +367,7 @@ public class TileSpec {
         String temca = null;
         Double stageX = null;
         Double stageY = null;
+        Double rotation = null;
         if (layout != null) {
             sectionId = layout.getSectionId();
             imageCol = layout.getImageCol();
@@ -375,6 +376,7 @@ public class TileSpec {
             temca = layout.getTemca();
             stageX = layout.getStageX();
             stageY = layout.getStageY();
+            rotation = layout.getRotation();
         }
 
         String rawPath = null;
@@ -384,10 +386,10 @@ public class TileSpec {
             rawPath = imageAndMask.getImageFilePath();
         }
 
-        // sectionId, tileId, 1.00, 0.00, stageX, 0.00, 1.00, stageY, imageCol, imageRow, camera, rawPath, temca
+        // sectionId, tileId, 1.0, 0.0, stageX, 0.0, 1.0, stageY, imageCol, imageRow, camera, rawPath, temca, rotation
         return String.valueOf(sectionId) + '\t' + tileId + '\t' +
-               "1.00\t0.00\t" + stageX + "\t0.00\t1.00\t" + stageY + '\t' +
-               imageCol + '\t' + imageRow + '\t' + camera + '\t' + rawPath + '\t' + temca;
+               "1.0\t0.0\t" + stageX + "\t0.0\t1.0\t" + stageY + '\t' +
+               imageCol + '\t' + imageRow + '\t' + camera + '\t' + rawPath + '\t' + temca + '\t' + rotation;
     }
 
     public String toJson() {
