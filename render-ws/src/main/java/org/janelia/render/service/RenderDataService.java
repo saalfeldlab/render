@@ -2,6 +2,7 @@ package org.janelia.render.service;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.StackMetaData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -216,13 +217,19 @@ public class RenderDataService {
             if (scale == null) {
                 scale = 1.0;
             }
-            parameters = new RenderParameters(null,
-                                              tileSpec.getMinX(),
-                                              tileSpec.getMinY(),
-                                              tileSpec.getWidth(),
-                                              tileSpec.getHeight(),
-                                              scale);
+
+            final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
+
+            final int margin = 6;
+            final Double x = getLayoutMinValue(tileSpec.getMinX(), margin);
+            final Double y = getLayoutMinValue(tileSpec.getMinY(), margin);
+            final Integer width = getLayoutSizeValue(stackMetaData.getLayoutWidth(), tileSpec.getWidth(), margin);
+            final Integer height = getLayoutSizeValue(stackMetaData.getLayoutHeight(), tileSpec.getHeight(), margin);
+
+            parameters = new RenderParameters(null, x, y, width, height, scale);
             parameters.addTileSpec(tileSpec);
+
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -371,6 +378,33 @@ public class RenderDataService {
                                                         final Double scale) {
 
         return renderDao.getParameters(stackId, x, y, z, width, height, scale);
+    }
+
+    private Double getLayoutMinValue(Double minValue,
+                                     int margin) {
+        Double layoutValue = null;
+        if (minValue != null) {
+            layoutValue = minValue - margin;
+        }
+        return layoutValue;
+    }
+
+    private Integer getLayoutSizeValue(Integer stackValue,
+                                       Integer tileValue,
+                                       int margin) {
+        Integer layoutValue = null;
+
+        if (stackValue != null) {
+            layoutValue = stackValue + margin;
+        } else if ((tileValue != null) && (tileValue >= 0)) {
+            layoutValue = tileValue + margin;
+        }
+
+        if ((layoutValue != null) && ((layoutValue % 2) != 0)) {
+            layoutValue = layoutValue + 1;
+        }
+
+        return layoutValue;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDataService.class);

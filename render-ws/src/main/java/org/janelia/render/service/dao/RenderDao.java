@@ -13,6 +13,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ListTransformSpec;
+import org.janelia.alignment.spec.StackMetaData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -41,6 +42,7 @@ import java.util.TreeSet;
  */
 public class RenderDao {
 
+    public static final String STACK_COLLECTION_NAME = "stack";
     public static final String TILE_COLLECTION_NAME = "tile";
     public static final String TRANSFORM_COLLECTION_NAME = "transform";
 
@@ -348,6 +350,31 @@ public class RenderDao {
         LOG.debug("getZValues: returning {} values for {}", list.size(), stackId);
 
         return list;
+    }
+
+    /**
+     * @return meta data for the specified stack.
+     *
+     * @throws IllegalArgumentException
+     *   if the stack cannot be found.
+     */
+    public StackMetaData getStackMetaData(StackId stackId)
+            throws IllegalArgumentException {
+
+        final DB db = getDatabase(stackId);
+
+        final DBCollection stackCollection = db.getCollection(STACK_COLLECTION_NAME);
+
+        StackMetaData stackMetaData;
+
+        DBObject document = stackCollection.findOne();
+        if (document == null) {
+            stackMetaData = new StackMetaData();
+        } else {
+            stackMetaData = StackMetaData.fromJson(document.toString());
+        }
+
+        return stackMetaData;
     }
 
     /**

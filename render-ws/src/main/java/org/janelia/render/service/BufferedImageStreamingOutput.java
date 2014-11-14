@@ -21,13 +21,16 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
 
     private BufferedImage targetImage;
     private String format;
+    private boolean convertToGray;
     private float quality;
 
     public BufferedImageStreamingOutput(BufferedImage targetImage,
                                         String format,
+                                        boolean convertToGray,
                                         float quality) {
         this.targetImage = targetImage;
         this.format = format;
+        this.convertToGray = convertToGray;
         this.quality = quality;
     }
 
@@ -36,7 +39,7 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
             throws IOException, WebApplicationException {
 
         final ImageOutputStream imageOutputStream = new MemoryCacheImageOutputStream(output);
-        Utils.writeImage(targetImage, format, false, quality, imageOutputStream);
+        Utils.writeImage(targetImage, format, convertToGray, quality, imageOutputStream);
     }
 
 }

@@ -361,8 +361,9 @@ public class TileSpec {
 
     public String toLayoutFileFormat() {
         Integer sectionId = null;
-        String imageCol = null;
-        String imageRow = null;
+        Integer karshTileId = null;
+        Integer imageCol = null;
+        Integer imageRow = null;
         String camera = null;
         String temca = null;
         Double stageX = null;
@@ -370,6 +371,7 @@ public class TileSpec {
         Double rotation = null;
         if (layout != null) {
             sectionId = layout.getSectionId();
+            karshTileId = layout.getKarshTileId();
             imageCol = layout.getImageCol();
             imageRow = layout.getImageRow();
             camera = layout.getCamera();
@@ -386,8 +388,8 @@ public class TileSpec {
             rawPath = imageAndMask.getImageFilePath();
         }
 
-        // sectionId, tileId, 1.0, 0.0, stageX, 0.0, 1.0, stageY, imageCol, imageRow, camera, rawPath, temca, rotation
-        return String.valueOf(sectionId) + '\t' + tileId + '\t' +
+        // sectionId, karshTileId, 1.0, 0.0, stageX, 0.0, 1.0, stageY, imageCol, imageRow, camera, rawPath, temca, rotation
+        return String.valueOf(sectionId) + '\t' + karshTileId + '\t' +
                "1.0\t0.0\t" + stageX + "\t0.0\t1.0\t" + stageY + '\t' +
                imageCol + '\t' + imageRow + '\t' + camera + '\t' + rawPath + '\t' + temca + '\t' + rotation;
     }

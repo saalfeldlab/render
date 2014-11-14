@@ -10,8 +10,8 @@ public class LayoutData {
     private Integer sectionId;
     private String temca;
     private String camera;
-    private String imageRow;
-    private String imageCol;
+    private Integer imageRow;
+    private Integer imageCol;
     private Double stageX;
     private Double stageY;
     private Double rotation;
@@ -19,8 +19,8 @@ public class LayoutData {
     public LayoutData(Integer sectionId,
                       String temca,
                       String camera,
-                      String imageRow,
-                      String imageCol,
+                      Integer imageRow,
+                      Integer imageCol,
                       Double stageX,
                       Double stageY,
                       Double rotation) {
@@ -46,11 +46,11 @@ public class LayoutData {
         return camera;
     }
 
-    public String getImageRow() {
+    public Integer getImageRow() {
         return imageRow;
     }
 
-    public String getImageCol() {
+    public Integer getImageCol() {
         return imageCol;
     }
 
@@ -65,4 +65,16 @@ public class LayoutData {
     public Double getRotation() {
         return rotation;
     }
+
+    /**
+     * @return 32-bit "unique enough" tile id suitable for Karsh pipeline
+     */
+    public Integer getKarshTileId() {
+        Integer karshTileId = null;
+        if ((sectionId != null) && (imageCol != null) && (imageRow != null)) {
+            karshTileId = (sectionId * 256 * 256) + (imageCol * 256) + imageRow;
+        }
+        return karshTileId;
+    }
+
 }

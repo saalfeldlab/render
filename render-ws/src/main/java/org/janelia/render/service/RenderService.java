@@ -3,7 +3,6 @@ package org.janelia.render.service;
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
-import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,21 +68,26 @@ public class RenderService {
         LOG.info("renderJpegImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}",
                  owner, project, stack, tileId, scale);
 
-        RenderParameters renderParameters = null;
-        try {
-            final TileSpec tileSpec = renderDataService.getTileSpec(owner, project, stack, tileId, true);
-            renderParameters = new RenderParameters(null,
-                                                    tileSpec.getMinX(),
-                                                    tileSpec.getMinY(),
-                                                    tileSpec.getWidth(),
-                                                    tileSpec.getHeight(),
-                                                    scale);
-            renderParameters.addTileSpec(tileSpec);
-        } catch (Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
+        final RenderParameters renderParameters =
+                renderDataService.getRenderParameters(owner, project, stack, tileId, scale);
         return renderJpegImage(renderParameters);
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/png-image")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response renderPngImageForTile(@PathParam("owner") String owner,
+                                          @PathParam("project") String project,
+                                          @PathParam("stack") String stack,
+                                          @PathParam("tileId") String tileId,
+                                          @PathParam("scale") Double scale) {
+
+        LOG.info("renderPngImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}",
+                 owner, project, stack, tileId, scale);
+
+        final RenderParameters renderParameters =
+                renderDataService.getRenderParameters(owner, project, stack, tileId, scale);
+        return renderPngImage(renderParameters);
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
@@ -148,7 +152,10 @@ public class RenderService {
         try {
             final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters);
             final BufferedImageStreamingOutput out =
-                    new BufferedImageStreamingOutput(targetImage, format, renderParameters.getQuality());
+                    new BufferedImageStreamingOutput(targetImage,
+                                                     format,
+                                                     renderParameters.isConvertToGray(),
+                                                     renderParameters.getQuality());
 
             final Response.ResponseBuilder responseBuilder = Response.ok(out, mimeType);
             response = responseBuilder.build();
