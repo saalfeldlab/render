@@ -482,8 +482,11 @@ public class RenderDao {
     /**
      * Writes the layout file data for the specified stack to the specified stream.
      *
-     * @param  stackId        stack identifier.
-     * @param  outputStream   stream to which layout file data is to be written.
+     * @param  stackId          stack identifier.
+     * @param  stackRequestUri  the base stack request URI for building tile render-parameter URIs.
+     * @param  minSectionId     the minimum layout sectionId to include (or null if no minimum).
+     * @param  maxSectionId     the maximum layout sectionId to include (or null if no maximum).
+     * @param  outputStream     stream to which layout file data is to be written.
      *
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
@@ -493,16 +496,35 @@ public class RenderDao {
      */
     public void writeLayoutFileData(StackId stackId,
                                     String stackRequestUri,
+                                    Integer minSectionId,
+                                    Integer maxSectionId,
                                     OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
-        LOG.debug("writeLayoutFileData: entry, stackId={}", stackId);
+        LOG.debug("writeLayoutFileData: entry, stackId={}, minSectionId={}, maxSectionId={}",
+                  stackId, minSectionId, maxSectionId);
 
         final DB db = getDatabase(stackId);
 
         final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
 
-        final DBObject tileQuery = new BasicDBObject();
+        BasicDBObject sectionFilter = null;
+        if (minSectionId != null) {
+            sectionFilter = new BasicDBObject(QueryOperators.GTE, minSectionId);
+            if (maxSectionId != null) {
+                sectionFilter = sectionFilter.append(QueryOperators.LTE, maxSectionId);
+            }
+        } else if (maxSectionId != null) {
+            sectionFilter = new BasicDBObject(QueryOperators.LTE, maxSectionId);
+        }
+
+        BasicDBObject tileQuery;
+        if (sectionFilter == null) {
+            tileQuery = new BasicDBObject();
+        } else {
+            tileQuery = new BasicDBObject("layout.sectionId", sectionFilter);
+        }
+
         final DBObject tileKeys =
                 new BasicDBObject("tileId", 1).append("minX", 1).append("minY", 1).append("layout", 1).append("mipmapLevels", 1);
 

@@ -72,19 +72,35 @@ public class RenderDataService {
                                   @PathParam("stack") String stack,
                                   @Context UriInfo uriInfo) {
 
-        LOG.info("getLayoutFile: entry, owner={}, project={}, stack={}",
-                 owner, project, stack);
+        return getLayoutFileForSectionIdRange(owner, project, stack, null, null, uriInfo);
+    }
+
+    @Path("project/{project}/stack/{stack}/sectionRange/{minSectionId},{maxSectionId}/layoutFile")
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response getLayoutFileForSectionIdRange(@PathParam("owner") final String owner,
+                                                   @PathParam("project") final String project,
+                                                   @PathParam("stack") final String stack,
+                                                   @PathParam("minSectionId") final Integer minSectionId,
+                                                   @PathParam("maxSectionId") final Integer maxSectionId,
+                                                   @Context UriInfo uriInfo) {
+
+        LOG.info("getLayoutFileForSectionIdRange: entry, owner={}, project={}, stack={}, minSectionId={}, maxSectionId={}",
+                 owner, project, stack, minSectionId, maxSectionId);
 
         Response response = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
 
-            final String stackRequestUri = uriInfo.getRequestUri().toString().replace("/layoutFile", "");
+            final String requestUri = uriInfo.getRequestUri().toString();
+            final String stackUri = "/stack/" + stack + "/";
+            final int stackEnd = requestUri.indexOf(stackUri) + stackUri.length() - 1;
+            final String stackRequestUri = requestUri.substring(0, stackEnd);
             final StreamingOutput responseOutput = new StreamingOutput() {
                 @Override
                 public void write(OutputStream output)
                         throws IOException, WebApplicationException {
-                    renderDao.writeLayoutFileData(stackId, stackRequestUri, output);
+                    renderDao.writeLayoutFileData(stackId, stackRequestUri, minSectionId, maxSectionId, output);
                 }
             };
             response = Response.ok(responseOutput).build();
