@@ -80,15 +80,7 @@ public class RenderDao {
 
         final double lowerRightX = x + width;
         final double lowerRightY = y + height;
-
-        // intersection logic stolen from java.awt.Rectangle#intersects (without overflow checks)
-        //   rx => minX, ry => minY, rw => maxX,        rh => maxY
-        //   tx => x,    ty => y,    tw => lowerRightX, th => lowerRightY
-        final DBObject tileQuery = new BasicDBObject("z", z).append(
-                                                     "minX", lte(lowerRightX)).append(
-                                                     "minY", lte(lowerRightY)).append(
-                                                     "maxX", gte(x)).append(
-                                                     "maxY", gte(y));
+        final DBObject tileQuery = getIntersectsBoxQuery(z, x, y, lowerRightX, lowerRightY);
 
         final RenderParameters renderParameters = new RenderParameters(null, x, y, width, height, scale);
         addResolvedTileSpecs(db, tileCollection, tileQuery, renderParameters);
@@ -99,6 +91,42 @@ public class RenderDao {
 //        }
 
         return renderParameters;
+    }
+
+    /**
+     * @return number of tiles within the specified bounding box.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     */
+    public int getTileCount(StackId stackId,
+                            Double x,
+                            Double y,
+                            Double z,
+                            Integer width,
+                            Integer height)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("x", x);
+        validateRequiredParameter("y", y);
+        validateRequiredParameter("z", z);
+        validateRequiredParameter("width", width);
+        validateRequiredParameter("height", height);
+
+        final DB db = getDatabase(stackId);
+
+        final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
+
+        final double lowerRightX = x + width;
+        final double lowerRightY = y + height;
+        final DBObject tileQuery = getIntersectsBoxQuery(z, x, y, lowerRightX, lowerRightY);
+
+        final int count = tileCollection.find(tileQuery).count();
+
+        LOG.debug("getTileCount: found {} tile spec(s) for {}.{}.find({})",
+                  count, db.getName(), tileCollection.getName(), tileQuery);
+
+        return count;
     }
 
     /**
@@ -182,11 +210,7 @@ public class RenderDao {
 
         final DBCollection tileCollection = db.getCollection(TILE_COLLECTION_NAME);
 
-        final DBObject tileQuery = new BasicDBObject("z", z).append(
-                "minX", lte(x)).append(
-                "minY", lte(y)).append(
-                "maxX", gte(x)).append(
-                "maxY", gte(y));
+        final DBObject tileQuery = getIntersectsBoxQuery(z, x, y, x, y);
 
         final RenderParameters renderParameters = new RenderParameters();
         addResolvedTileSpecs(db, tileCollection, tileQuery, renderParameters);
@@ -704,12 +728,27 @@ public class RenderDao {
         }
     }
 
-    private DBObject lte(double value) {
+    private DBObject lte(final double value) {
         return new BasicDBObject(QueryOperators.LTE, value);
     }
 
-    private DBObject gte(double value) {
+    private DBObject gte(final double value) {
         return new BasicDBObject(QueryOperators.GTE, value);
+    }
+
+    private BasicDBObject getIntersectsBoxQuery(final double z,
+                                                final double x,
+                                                final double y,
+                                                final double lowerRightX,
+                                                final double lowerRightY) {
+        // intersection logic stolen from java.awt.Rectangle#intersects (without overflow checks)
+        //   rx => minX, ry => minY, rw => maxX,        rh => maxY
+        //   tx => x,    ty => y,    tw => lowerRightX, th => lowerRightY
+        return new BasicDBObject("z", z).append(
+                "minX", lte(lowerRightX)).append(
+                "minY", lte(lowerRightY)).append(
+                "maxX", gte(x)).append(
+                "maxY", gte(y));
     }
 
     private void validateRequiredParameter(String context,

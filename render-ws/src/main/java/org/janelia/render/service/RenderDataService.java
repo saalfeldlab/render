@@ -513,6 +513,34 @@ public class RenderDataService {
     }
 
     /**
+     * @return number of tiles within the specified bounding box.
+     */
+    @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height}/tile-count")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Integer getTileCount(@PathParam("owner") String owner,
+                                @PathParam("project") String project,
+                                @PathParam("stack") String stack,
+                                @PathParam("x") Double x,
+                                @PathParam("y") Double y,
+                                @PathParam("z") Double z,
+                                @PathParam("width") Integer width,
+                                @PathParam("height") Integer height) {
+
+        LOG.info("getTileCount: entry, owner={}, project={}, stack={}, x={}, y={}, z={}, width={}, height={}",
+                 owner, project, stack, x, y, z, width, height);
+
+        int count = 0;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            count = renderDao.getTileCount(stackId, x, y, z, width, height);
+        } catch (Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+        return count;
+    }
+
+    /**
      * @return render parameters for specified bounding box with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */
