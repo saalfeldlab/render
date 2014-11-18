@@ -531,8 +531,11 @@ public class RenderDao {
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
         final DBCursor cursor = tileCollection.find(tileQuery, tileKeys);
+        final DBObject orderBy = new BasicDBObject("layout.sectionId", 1).append("minY", 1).append("minX", 1);
         try {
             final String baseUriString = '\t' + stackRequestUri + "/tile/";
+
+            cursor.sort(orderBy);
 
             DBObject document;
             TileSpec tileSpec;
@@ -558,8 +561,8 @@ public class RenderDao {
             cursor.close();
         }
 
-        LOG.debug("writeLayoutFileData: wrote data for {} tile spec(s) returned by {}.{}.find({},{}), elapsedSeconds={}",
-                  tileSpecCount, db.getName(), tileCollection.getName(), tileQuery, tileKeys, timer.getElapsedSeconds());
+        LOG.debug("writeLayoutFileData: wrote data for {} tile spec(s) returned by {}.{}.find({},{}).sort({}), elapsedSeconds={}",
+                  tileSpecCount, db.getName(), tileCollection.getName(), tileQuery, tileKeys, orderBy, timer.getElapsedSeconds());
     }
 
     private DB getDatabase(StackId stackId) {
