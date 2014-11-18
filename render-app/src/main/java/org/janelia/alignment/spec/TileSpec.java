@@ -308,12 +308,31 @@ public class TileSpec {
         return ((transforms != null) && (transforms.size() > 0));
     }
 
+    public int numberOfTransforms() {
+        return (transforms == null) ? 0 : transforms.size();
+    }
+
     public ListTransformSpec getTransforms() {
         return transforms;
     }
 
     public void addTransformSpecs(List<TransformSpec> transformSpecs) {
         transforms.addAllSpecs(transformSpecs);
+    }
+
+    public void setTransformSpec(int index,
+                                 TransformSpec transformSpec)
+            throws IllegalArgumentException {
+
+        if (index == transforms.size()) {
+            transforms.addSpec(transformSpec);
+        } else if ((index < transforms.size()) && (index >= 0)) {
+            transforms.setSpec(index, transformSpec);
+        } else {
+            throw new IllegalArgumentException("transform index (" + index +
+                                               ") must be between 0 and " +
+                                               transforms.size() + " for tile spec " + tileId);
+        }
     }
 
     public void flattenTransforms() {

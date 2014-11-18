@@ -144,6 +144,24 @@ public class RenderDao {
     }
 
     /**
+     * @return the specified tile spec with its transform references resolved.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing.
+     */
+    public TileSpec resolveTransformReferencesForTiles(StackId stackId,
+                                                       TileSpec tileSpec)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("tileSpec", tileSpec);
+
+        final DB db = getDatabase(stackId);
+        resolveTransformReferencesForTiles(db, Arrays.asList(tileSpec));
+
+        return tileSpec;
+    }
+
+    /**
      * @return a list of resolved tile specifications for all tiles that encompass the specified coordinates.
      *
      * @throws IllegalArgumentException

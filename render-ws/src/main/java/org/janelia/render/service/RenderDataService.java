@@ -269,6 +269,165 @@ public class RenderDataService {
 
         try {
             final StackId stackId = new StackId(owner, project, stack);
+
+            // resolve all transform references and re-derive bounding box before saving ...
+            tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
+            tileSpec.deriveBoundingBox(true);
+
+            renderDao.saveTileSpec(stackId, tileSpec);
+        } catch (Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
+
+        return responseBuilder.build();
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/transform/{transformIndex}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public TransformSpec getTransformSpecForTile(@PathParam("owner") String owner,
+                                                 @PathParam("project") String project,
+                                                 @PathParam("stack") String stack,
+                                                 @PathParam("tileId") String tileId,
+                                                 @PathParam("transformIndex") Integer transformIndex) {
+
+        LOG.info("getTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}",
+                 owner, project, stack, tileId, transformIndex);
+
+        TransformSpec transformSpec = null;
+        try {
+            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
+            transformSpec = tileSpec.getTransforms().getSpec(transformIndex);
+        } catch (Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return transformSpec;
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/transform/{transformIndex}")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response saveTransformSpecForTile(@PathParam("owner") String owner,
+                                             @PathParam("project") String project,
+                                             @PathParam("stack") String stack,
+                                             @PathParam("tileId") String tileId,
+                                             @PathParam("transformIndex") Integer transformIndex,
+                                             @Context UriInfo uriInfo,
+                                             TransformSpec transformSpec) {
+
+        LOG.info("saveTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}",
+                 owner, project, stack, tileId, transformIndex);
+
+        if (transformSpec == null) {
+            throw new IllegalServiceArgumentException("no transform spec provided");
+        }
+
+        if ((transformIndex == null) || (transformIndex < 0)) {
+            throw new IllegalServiceArgumentException("non-negative transformIndex must be provided");
+        }
+
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
+            tileSpec.setTransformSpec(transformIndex, transformSpec);
+
+            // Resolve all transform references and re-derive bounding box before saving.
+            // NOTE: resolution is different from flattening, so referential data remains intact
+            tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
+            tileSpec.deriveBoundingBox(true);
+
+            renderDao.saveTileSpec(stackId, tileSpec);
+        } catch (Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
+
+        return responseBuilder.build();
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/transform-count")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public int getTransformCountForTile(@PathParam("owner") String owner,
+                                        @PathParam("project") String project,
+                                        @PathParam("stack") String stack,
+                                        @PathParam("tileId") String tileId) {
+
+        LOG.info("getTransformCountForTile: entry, owner={}, project={}, stack={}, tileId={}",
+                 owner, project, stack, tileId);
+
+        int count = 0;
+        try {
+            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
+            count = tileSpec.numberOfTransforms();
+        } catch (Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return count;
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/last-transform")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public TransformSpec getLastTransformSpecForTile(@PathParam("owner") String owner,
+                                                     @PathParam("project") String project,
+                                                     @PathParam("stack") String stack,
+                                                     @PathParam("tileId") String tileId) {
+
+        LOG.info("getLastTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}",
+                 owner, project, stack, tileId);
+
+        TransformSpec transformSpec = null;
+        try {
+            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
+            final int lastTransformIndex = tileSpec.numberOfTransforms() - 1;
+            if (lastTransformIndex >= 0) {
+                transformSpec = tileSpec.getTransforms().getSpec(lastTransformIndex);
+            }
+        } catch (Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return transformSpec;
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/last-transform")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response saveLastTransformSpecForTile(@PathParam("owner") String owner,
+                                                 @PathParam("project") String project,
+                                                 @PathParam("stack") String stack,
+                                                 @PathParam("tileId") String tileId,
+                                                 @Context UriInfo uriInfo,
+                                                 TransformSpec transformSpec) {
+
+        LOG.info("saveLastTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}",
+                 owner, project, stack, tileId);
+
+        if (transformSpec == null) {
+            throw new IllegalServiceArgumentException("no transform spec provided");
+        }
+
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
+            if (tileSpec.hasTransforms()) {
+                final int lastTransformIndex = tileSpec.numberOfTransforms() - 1;
+                tileSpec.setTransformSpec(lastTransformIndex, transformSpec);
+            } else {
+                tileSpec.setTransformSpec(0, transformSpec);
+            }
+
+            // Resolve all transform references and re-derive bounding box before saving.
+            // NOTE: resolution is different from flattening, so referential data remains intact
+            tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
+            tileSpec.deriveBoundingBox(true);
+
             renderDao.saveTileSpec(stackId, tileSpec);
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -325,6 +484,9 @@ public class RenderDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             renderDao.saveTransformSpec(stackId, transformSpec);
+
+            // TODO: re-derive bounding boxes for all tiles that reference this transform
+
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }

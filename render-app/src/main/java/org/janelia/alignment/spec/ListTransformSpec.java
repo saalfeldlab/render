@@ -43,6 +43,11 @@ public class ListTransformSpec extends TransformSpec {
         specList.add(spec);
     }
 
+    public void setSpec(int index,
+                        TransformSpec spec) {
+        specList.set(index, spec);
+    }
+
     public void addAllSpecs(List<TransformSpec> specs) {
         this.specList.addAll(specs);
     }
