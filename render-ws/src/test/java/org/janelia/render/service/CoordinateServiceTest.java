@@ -26,17 +26,17 @@ public class CoordinateServiceTest {
     @BeforeClass
     public static void before() throws Exception {
         stackId = new StackId("flyTEM", "test", "elastic");
-        embeddedMongoDb = new EmbeddedMongoDb(stackId.getDatabaseName());
+        embeddedMongoDb = new EmbeddedMongoDb(RenderDao.RENDER_DB_NAME);
         final RenderDao dao = new RenderDao(embeddedMongoDb.getMongoClient());
         service = new CoordinateService(dao);
 
-        embeddedMongoDb.importCollection(RenderDao.TILE_COLLECTION_NAME,
+        embeddedMongoDb.importCollection(stackId.getTileCollectionName(),
                                          new File("src/test/resources/mongodb/elastic-3903.json"),
                                          true,
                                          false,
                                          true);
 
-        embeddedMongoDb.importCollection(RenderDao.TRANSFORM_COLLECTION_NAME,
+        embeddedMongoDb.importCollection(stackId.getTransformCollectionName(),
                                          new File("src/test/resources/mongodb/elastic-transform.json"),
                                          true,
                                          false,

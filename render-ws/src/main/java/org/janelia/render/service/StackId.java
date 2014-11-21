@@ -10,18 +10,26 @@ import java.util.regex.Pattern;
  */
 public class StackId implements Comparable<StackId> {
 
+    public static final String STACK_COLLECTION_SUFFIX = "stack";
+    public static final String TILE_COLLECTION_SUFFIX = "tile";
+    public static final String TRANSFORM_COLLECTION_SUFFIX = "transform";
+
     private String owner;
     private String project;
     private String stack;
+
+    private transient String scopePrefix;
 
     public StackId(String owner,
                    String project,
                    String stack)
             throws IllegalArgumentException {
 
-        validateValue("owner", VALID_OWNER_OR_PROJECT_NAME, owner);
-        validateValue("project", VALID_OWNER_OR_PROJECT_NAME, project);
-        validateValue("stack", VALID_STACK_NAME, stack);
+        validateValue("owner", VALID_NAME, owner);
+        validateValue("project", VALID_NAME, project);
+        validateValue("stack", VALID_NAME, stack);
+
+        setScopePrefix(owner, project, stack);
 
         this.owner = owner;
         this.project = project;
@@ -38,6 +46,13 @@ public class StackId implements Comparable<StackId> {
 
     public String getStack() {
         return stack;
+    }
+
+    public String getScopePrefix() {
+        if (scopePrefix == null) {
+            setScopePrefix(owner, project, stack);
+        }
+        return scopePrefix;
     }
 
     @Override
@@ -62,22 +77,36 @@ public class StackId implements Comparable<StackId> {
         return v;
     }
 
-    public String getDatabaseName() {
-        return owner + '-' + project + '-' + stack;
+    public String getStackCollectionName() {
+        return getCollectionName(STACK_COLLECTION_SUFFIX);
     }
 
-    public static StackId fromDatabaseName(String databaseName) {
+    public String getTileCollectionName() {
+        return getCollectionName(TILE_COLLECTION_SUFFIX);
+    }
+
+    public String getTransformCollectionName() {
+        return getCollectionName(TRANSFORM_COLLECTION_SUFFIX);
+    }
+
+    /**
+     * @return stack id derived from the specified collection name.
+     */
+    public static StackId fromCollectionName(String collectionName) {
         StackId stackId = null;
-        final int nameLength = databaseName.length();
-        final int stopOwner = databaseName.indexOf('-');
-        final int startProject = stopOwner + 1;
+        final int nameLength = collectionName.length();
+        final int stopOwner = collectionName.indexOf(FIELD_SEPARATOR);
+        final int startProject = stopOwner + FIELD_SEPARATOR.length();
         if ((startProject > 0) && (startProject < nameLength)) {
-            final int stopProject = databaseName.indexOf('-', startProject);
-            final int startStack = stopProject + 1;
+            final int stopProject = collectionName.indexOf(FIELD_SEPARATOR, startProject);
+            final int startStack = stopProject + FIELD_SEPARATOR.length();
             if ((startStack > startProject) && (startStack < nameLength)) {
-                stackId = new StackId(databaseName.substring(0, stopOwner),
-                                      databaseName.substring(startProject, stopProject),
-                                      databaseName.substring(startStack));
+                final int stopStack = collectionName.indexOf(FIELD_SEPARATOR, startStack);
+                if (stopStack < nameLength) {
+                    stackId = new StackId(collectionName.substring(0, stopOwner),
+                                          collectionName.substring(startProject, stopProject),
+                                          collectionName.substring(startStack, stopStack));
+                }
             }
 
         }
@@ -95,6 +124,32 @@ public class StackId implements Comparable<StackId> {
         }
     }
 
-    private static final Pattern VALID_OWNER_OR_PROJECT_NAME = Pattern.compile("[A-Za-z0-9]++");
-    private static final Pattern VALID_STACK_NAME = Pattern.compile("[A-Za-z0-9\\-]++");
+    private void setScopePrefix(String owner,
+                                String project,
+                                String stack) {
+
+        scopePrefix = owner + FIELD_SEPARATOR + project + FIELD_SEPARATOR + stack + FIELD_SEPARATOR;
+
+        if (scopePrefix.length() > MAX_SCOPE_PREFIX_LENGTH) {
+            throw new IllegalArgumentException("scope prefix '" + scopePrefix + "' must be less than " +
+                                               MAX_SCOPE_PREFIX_LENGTH + " characters therefore the length of " +
+                                               "the owner, project, and/or stack names needs to be reduced");
+        }
+    }
+
+    private String getCollectionName(final String suffix) {
+        return getScopePrefix() + suffix;
+    }
+
+    // use consecutive underscores to separate fields within a scoped name
+    private static final String FIELD_SEPARATOR = "__";
+
+    // valid names are alphanumeric with underscores but no consecutive underscores
+    private static final Pattern VALID_NAME = Pattern.compile("([A-Za-z0-9]+(_[A-Za-z0-9])?)++");
+
+    // From http://docs.mongodb.org/manual/reference/limits/
+    //   mongodb namespace limit is 123
+    //   subtract 6 characters for the database name: "render"
+    //   subtract 9 characters for longest collection type: "transform"
+    private static final int MAX_SCOPE_PREFIX_LENGTH = 123 - 6 - 9;
 }
