@@ -188,6 +188,7 @@ public class RenderService {
                       renderParameters.getRes(),
                       renderParameters.getScale(),
                       renderParameters.isAreaOffset(),
+                      1, // TODO: verify we always want to be single threaded for service requests
                       renderParameters.skipInterpolation());
 
         LOG.info("validateParametersAndRenderImage: exit");

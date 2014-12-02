@@ -87,6 +87,9 @@ public class RenderParameters {
     @Parameter(names = "--quality", description = "JPEG quality float [0, 1]", required = false)
     private float quality;
 
+    @Parameter( names = "--threads", description = "Number of threads to be used", required = false )
+    public int numberOfThreads;
+
     @Parameter(names = "--skip_interpolation", description = "enable sloppy but fast rendering by skipping interpolation", required = false)
     private boolean skipInterpolation;
 
@@ -129,6 +132,7 @@ public class RenderParameters {
         this.areaOffset = false;
         this.convertToGray = false;
         this.quality = DEFAULT_QUALITY;
+        this.numberOfThreads = DEFAULT_NUMBER_OF_THREADS;
         this.skipInterpolation = false;
         this.parametersUrl = null;
 
@@ -303,6 +307,10 @@ public class RenderParameters {
 
     public float getQuality() {
         return quality;
+    }
+
+    public int getNumberOfThreads() {
+        return numberOfThreads;
     }
 
     public boolean skipInterpolation() {
@@ -539,6 +547,7 @@ public class RenderParameters {
             scale = mergedValue(scale, baseParameters.scale, DEFAULT_SCALE);
             areaOffset = mergedValue(areaOffset, baseParameters.areaOffset, false);
             convertToGray = mergedValue(convertToGray, baseParameters.convertToGray, false);
+            numberOfThreads = mergedValue(numberOfThreads, baseParameters.numberOfThreads, DEFAULT_NUMBER_OF_THREADS);
             skipInterpolation = mergedValue(skipInterpolation, baseParameters.skipInterpolation, false);
 
             if (quality == DEFAULT_QUALITY) {
@@ -630,4 +639,5 @@ public class RenderParameters {
     private static final int DEFAULT_HEIGHT_AND_WIDTH = 256;
     private static final Double DEFAULT_SCALE = 1.0;
     private static final float DEFAULT_QUALITY = 0.85f;
+    private static final int DEFAULT_NUMBER_OF_THREADS = 1;
 }

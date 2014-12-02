@@ -95,13 +95,14 @@ public class Render {
                               final double triangleSize,
                               final double scale,
                               final boolean areaOffset,
+                              final int numberOfThreads,
                               final boolean skipInterpolation)
             throws IllegalArgumentException {
 
         final Graphics2D targetGraphics = targetImage.createGraphics();
 
-        LOG.debug("render: entry, processing {} tile specifications, availableProcessors={}",
-                  tileSpecs.size(), Runtime.getRuntime().availableProcessors());
+        LOG.debug("render: entry, processing {} tile specifications, numberOfThreads={}",
+                  tileSpecs.size(), numberOfThreads);
 
         long tileLoopStart = System.currentTimeMillis();
         int tileSpecIndex = 0;
@@ -239,7 +240,7 @@ public class Render {
                 mapping.map(source, target);
             } else {
                 mapType = " interpolated";
-                mapping.mapInterpolated(source, target);
+                mapping.mapInterpolated(source, target, numberOfThreads);
             }
 
             mapInterpolatedStop = System.currentTimeMillis();
@@ -287,42 +288,6 @@ public class Render {
         LOG.debug("render: exit, {} tiles processed in {} milliseconds",
                   tileSpecs.size(),
                   System.currentTimeMillis() - tileLoopStart);
-    }
-
-    public static void render(final List<TileSpec> tileSpecs,
-                              final BufferedImage targetImage,
-                              final double x,
-                              final double y,
-                              final double triangleSize,
-                              final boolean skipInterpolation)
-            throws IllegalArgumentException {
-        render(tileSpecs, targetImage, x, y, triangleSize, 1.0, false, skipInterpolation);
-    }
-
-    public static BufferedImage render(final List<TileSpec> tileSpecs,
-                                       final double x,
-                                       final double y,
-                                       final int width,
-                                       final int height,
-                                       final double triangleSize,
-                                       final double scale,
-                                       final boolean areaOffset,
-                                       final boolean skipInterpolation)
-            throws IllegalArgumentException {
-        final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        render(tileSpecs, image, x, y, triangleSize, scale, areaOffset, skipInterpolation);
-        return image;
-    }
-
-    public static BufferedImage render(final List<TileSpec> tileSpecs,
-                                       final double x,
-                                       final double y,
-                                       final int width,
-                                       final int height,
-                                       final double triangleSize,
-                                       final boolean skipInterpolation)
-            throws IllegalArgumentException {
-        return render(tileSpecs, x, y, width, height, triangleSize, 1.0, false, skipInterpolation);
     }
 
     public static TileSpec deriveBoundingBox(final TileSpec tileSpec,
@@ -385,6 +350,7 @@ public class Render {
                        params.getRes(),
                        params.getScale(),
                        params.isAreaOffset(),
+                       params.getNumberOfThreads(),
                        params.skipInterpolation());
 
                 saveStart = System.currentTimeMillis();
