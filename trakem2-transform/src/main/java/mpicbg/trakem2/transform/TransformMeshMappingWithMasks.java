@@ -22,6 +22,7 @@ import ij.process.ShortProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import mpicbg.models.AffineModel2D;
@@ -454,75 +455,108 @@ public class TransformMeshMappingWithMasks< T extends TransformMesh > extends mp
 	}
 	
 	
-	final public void map(
-			final ImageProcessorWithMasks source,
-			final ImageProcessorWithMasks target,
-			final int numThreads )
-	{
-		target.outside = new ByteProcessor( target.getWidth(), target.getHeight() );
-		
-		final List< AffineModel2D > l = new ArrayList< AffineModel2D >();
-		l.addAll( transform.getAV().keySet() );
-		final AtomicInteger i = new AtomicInteger( 0 );
-		final ArrayList< Thread > threads = new ArrayList< Thread >( numThreads );
-		for ( int k = 0; k < numThreads; ++k )
-		{
-			final Thread mtt = new MapTriangleThread( i, l, transform, source, target );
-			threads.add( mtt );
-			mtt.start();
-		}
-		for ( final Thread mtt : threads )
-		{
-			try
-			{
-				mtt.join();
-			}
-			catch ( final InterruptedException e ) {}
-		}
-	}
-	
-	final public void mapInterpolated(
-			final ImageProcessorWithMasks source,
-			final ImageProcessorWithMasks target,
-			final int numThreads )
-	{
-		target.outside = new ByteProcessor( target.getWidth(), target.getHeight() );
-		source.ip.setInterpolationMethod( ImageProcessor.BILINEAR );
-		if ( source.mask != null )
-			source.mask.setInterpolationMethod( ImageProcessor.BILINEAR );
-		
-		final List< AffineModel2D > l = new ArrayList< AffineModel2D >();
-		l.addAll( transform.getAV().keySet() );
-		final AtomicInteger i = new AtomicInteger( 0 );
-		final ArrayList< Thread > threads = new ArrayList< Thread >( numThreads );
-		for ( int k = 0; k < numThreads; ++k )
-		{
-			final Thread mtt = new MapTriangleInterpolatedThread( i, l, transform, source, target );
-			threads.add( mtt );
-			mtt.start();
-		}
-		for ( final Thread mtt : threads )
-		{
-			try
-			{
-				mtt.join();
-			}
-			catch ( final InterruptedException e ) {}
-		}
+    final public void map(final ImageProcessorWithMasks source,
+                          final ImageProcessorWithMasks target,
+                          final int numThreads ) {
+
+        target.outside = new ByteProcessor( target.getWidth(), target.getHeight() );
+
+        final Map<AffineModel2D, ArrayList<PointMatch>> av = transform.getAV();
+
+        if (numThreads > 1) {
+
+            final List<AffineModel2D> triangles = new ArrayList< AffineModel2D >(av.keySet());
+
+            final AtomicInteger i = new AtomicInteger(0);
+            final ArrayList<Thread> threads = new ArrayList<Thread>(numThreads);
+            for (int k = 0; k < numThreads; ++k) {
+                final Thread mtt = new MapTriangleThread(i, triangles, transform, source, target);
+                threads.add(mtt);
+                mtt.start();
+            }
+
+            for (final Thread mtt : threads) {
+                try {
+                    mtt.join();
+                } catch (final InterruptedException e) {
+                }
+            }
+
+        } else if (source.mask == null) {
+
+            for (AffineModel2D triangle : av.keySet()) {
+                mapTriangle(transform, triangle, source.ip, target.ip, target.outside);
+            }
+
+        } else {
+
+            for (AffineModel2D triangle : av.keySet()) {
+                mapTriangle(transform, triangle, source.ip, source.mask, target.ip, target.mask, target.outside);
+            }
+
+        }
+
+    }
+
+    final public void mapInterpolated(final ImageProcessorWithMasks source,
+                                      final ImageProcessorWithMasks target,
+                                      final int numThreads) {
+
+        target.outside = new ByteProcessor( target.getWidth(), target.getHeight() );
+        source.ip.setInterpolationMethod( ImageProcessor.BILINEAR );
+        if (source.mask != null) {
+            source.mask.setInterpolationMethod(ImageProcessor.BILINEAR);
+        }
+
+        final Map<AffineModel2D, ArrayList<PointMatch>> av = transform.getAV();
+
+        if (numThreads > 1) {
+
+            final List<AffineModel2D> triangles = new ArrayList< AffineModel2D >(av.keySet());
+
+            final AtomicInteger i = new AtomicInteger(0);
+            final ArrayList<Thread> threads = new ArrayList<Thread>(numThreads);
+            for (int k = 0; k < numThreads; ++k) {
+                final Thread mtt = new MapTriangleInterpolatedThread(i, triangles, transform, source, target);
+                threads.add(mtt);
+                mtt.start();
+            }
+
+            for (final Thread mtt : threads) {
+                try {
+                    mtt.join();
+                } catch (final InterruptedException e) {
+                }
+            }
+
+        } else if (source.mask == null) {
+
+            for (AffineModel2D triangle : av.keySet()) {
+                mapTriangleInterpolated(transform, triangle, source.ip, target.ip, target.outside);
+            }
+
+        } else {
+
+            for (AffineModel2D triangle : av.keySet()) {
+                mapTriangleInterpolated(transform, triangle, source.ip, source.mask, target.ip, target.mask, target.outside);
+            }
+
+        }
+
 	}
 	
 	final public void map(
 			final ImageProcessorWithMasks source,
 			final ImageProcessorWithMasks target )
 	{
-		map( source, target, Runtime.getRuntime().availableProcessors() );
+		map(source, target, 1);
 	}
 	
 	final public void mapInterpolated(
 			final ImageProcessorWithMasks source,
 			final ImageProcessorWithMasks target )
 	{
-		mapInterpolated( source, target, Runtime.getRuntime().availableProcessors() );
+		mapInterpolated(source, target, 1);
 	}
 	
 	
@@ -536,47 +570,39 @@ public class TransformMeshMappingWithMasks< T extends TransformMesh > extends mp
 	 * @param target
 	 * @param numThreads
 	 */
-	final public void map(
-			final ShortProcessor source,
-			final ByteProcessor alpha,
-			final ShortProcessor target,
-			final int numThreads )
-	{
-		final List< AffineModel2D > l = new ArrayList< AffineModel2D >();
-		l.addAll( transform.getAV().keySet() );
-		final AtomicInteger i = new AtomicInteger( 0 );
-		final ArrayList< Thread > threads = new ArrayList< Thread >( numThreads );
-		for ( int k = 0; k < numThreads; ++k )
-		{
-			final Thread mtt = new MapShortAlphaTriangleThread( i, l, transform, source, alpha, target );
-			threads.add( mtt );
-			mtt.start();
-		}
-		for ( final Thread mtt : threads )
-		{
-			try
-			{
-				mtt.join();
-			}
-			catch ( final InterruptedException e ) {}
-		}
-	}
-	
-	
-	/**
-	 * Render source into master using alpha composition.
-	 * Interpolation is specified by the interpolation methods
-	 * set in source and alpha.
-	 * 
-	 * @param source
-	 * @param alpha
-	 * @param target
-	 */
-	final public void map(
-			final ShortProcessor source,
-			final ByteProcessor alpha,
-			final ShortProcessor target )
-	{
-		map( source, alpha, target, Runtime.getRuntime().availableProcessors() );
-	}
+    final public void map(final ShortProcessor source,
+                          final ByteProcessor alpha,
+                          final ShortProcessor target,
+                          final int numThreads) {
+
+        final Map<AffineModel2D, ArrayList<PointMatch>> av = transform.getAV();
+
+        if (numThreads > 1) {
+
+            final List<AffineModel2D> triangles = new ArrayList< AffineModel2D >(av.keySet());
+
+            final AtomicInteger i = new AtomicInteger(0);
+            final ArrayList<Thread> threads = new ArrayList<Thread>(numThreads);
+            for (int k = 0; k < numThreads; ++k) {
+                final Thread mtt = new MapShortAlphaTriangleThread(i, triangles, transform, source, alpha, target);
+                threads.add(mtt);
+                mtt.start();
+            }
+
+            for (final Thread mtt : threads) {
+                try {
+                    mtt.join();
+                } catch (final InterruptedException e) {
+                }
+            }
+
+        } else {
+
+            for (AffineModel2D triangle : av.keySet()) {
+                mapShortAlphaTriangle(transform, triangle, source, alpha, target );
+            }
+
+        }
+
+    }
 }

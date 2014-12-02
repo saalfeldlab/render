@@ -237,7 +237,7 @@ public class Render {
             String mapType;
             if (skipInterpolation) {
                 mapType = "";
-                mapping.map(source, target);
+                mapping.map(source, target, numberOfThreads);
             } else {
                 mapType = " interpolated";
                 mapping.mapInterpolated(source, target, numberOfThreads);
