@@ -110,6 +110,10 @@ public class Render {
         long loadMipStop;
         long scaleMipStop;
         long loadMaskStop;
+        long ctListCreationStop;
+        long meshCreationStop;
+        long sourceCreationStop;
+        long targetCreationStop;
         long mapInterpolatedStop;
         long drawImageStop;
 
@@ -216,11 +220,15 @@ public class Render {
             ctlMipmap.add(Utils.createScaleLevelTransform(mipmapLevel));
             ctlMipmap.add(ctl);
 
+            ctListCreationStop = System.currentTimeMillis();
+
             // create mesh
             final CoordinateTransformMesh mesh = new CoordinateTransformMesh(ctlMipmap,
                                                                              (int) (width / triangleSize + 0.5),
                                                                              ipMipmap.getWidth(),
                                                                              ipMipmap.getHeight());
+
+            meshCreationStop = System.currentTimeMillis();
 
             final ImageProcessorWithMasks source = new ImageProcessorWithMasks(ipMipmap, bpMaskSource, null);
 
@@ -232,7 +240,12 @@ public class Render {
                 bpMaskTarget = null;
             }
 
+            sourceCreationStop = System.currentTimeMillis();
+
             final ImageProcessorWithMasks target = new ImageProcessorWithMasks(tp, bpMaskTarget, null);
+
+            targetCreationStop = System.currentTimeMillis();
+
             final TransformMeshMappingWithMasks<TransformMesh> mapping = new TransformMeshMappingWithMasks<TransformMesh>(mesh);
             String mapType;
             if (skipInterpolation) {
@@ -271,15 +284,19 @@ public class Render {
 
             drawImageStop = System.currentTimeMillis();
 
-            LOG.debug("render: tile {} took {} milliseconds to process (load mip:{}, scale mip ({} downsample levels):{}, load/scale mask:{}, map{}:{}, draw image:{})",
+            LOG.debug("render: tile {} took {} milliseconds to process (load mip:{}, scale mip ({} downsample levels):{}, load/scale mask:{}, ctList:{}, mesh:{}, source:{}, target:{}, map{}:{}, draw image:{})",
                       tileSpecIndex,
                       drawImageStop - tileSpecStart,
                       loadMipStop - tileSpecStart,
                       downSampleLevels,
                       scaleMipStop - loadMipStop,
                       loadMaskStop - scaleMipStop,
+                      ctListCreationStop - loadMaskStop,
+                      meshCreationStop - ctListCreationStop,
+                      sourceCreationStop - meshCreationStop,
+                      targetCreationStop - sourceCreationStop,
                       mapType,
-                      mapInterpolatedStop - loadMaskStop,
+                      mapInterpolatedStop - targetCreationStop,
                       drawImageStop - mapInterpolatedStop);
 
             tileSpecIndex++;
