@@ -378,7 +378,7 @@ public class RenderDao {
             list.add(new Double(zValue.toString()));
         }
 
-        LOG.debug("getZValues: returning {} values for {}", list.size(), stackId);
+        LOG.debug("getZValues: returning {} values for {}", list.size(), tileCollection.getFullName());
 
         return list;
     }
