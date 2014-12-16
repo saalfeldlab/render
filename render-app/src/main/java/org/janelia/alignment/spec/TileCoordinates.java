@@ -16,6 +16,7 @@ import java.util.List;
 public class TileCoordinates {
 
     private String tileId;
+    private Boolean visible;
     private float[] local;
     private float[] world;
     private String error;
@@ -24,6 +25,7 @@ public class TileCoordinates {
                            float[] local,
                            float[] world) {
         this.tileId = tileId;
+        this.visible = null;
         this.local = local;
         this.world = world;
         this.error = null;
@@ -31,6 +33,14 @@ public class TileCoordinates {
 
     public String getTileId() {
         return tileId;
+    }
+
+    public boolean isVisible() {
+        return ((visible != null) && visible);
+    }
+
+    public void setVisible(Boolean visible) {
+        this.visible = visible;
     }
 
     public float[] getLocal() {
@@ -60,7 +70,9 @@ public class TileCoordinates {
     }
 
     /**
-     * @param  tileSpecList  list of tiles that contain the specified point.
+     * @param  tileSpecList  list of tiles that contain the specified point
+     *                       (order of list is assumed to be the same order used for rendering).
+     *
      * @param  x             x coordinate.
      * @param  y             y coordinate.
      *
@@ -69,20 +81,21 @@ public class TileCoordinates {
      * @throws IllegalStateException
      *   if the specified point cannot be inverted for any of the specified tiles.
      */
-    public static TileCoordinates getLocalCoordinates(List<TileSpec> tileSpecList,
-                                                      float x,
-                                                      float y)
+    public static List<TileCoordinates> getLocalCoordinates(List<TileSpec> tileSpecList,
+                                                            float x,
+                                                            float y)
             throws IllegalStateException {
 
-        TileCoordinates tileCoordinates = null;
 
+        List<TileCoordinates> tileCoordinatesList = new ArrayList<TileCoordinates>();
         List<String> nonInvertibleTileIds = null;
         float[] local;
+        TileCoordinates tileCoordinates;
         for (TileSpec tileSpec : tileSpecList) {
             try {
                 local = tileSpec.getLocalCoordinates(x, y);
                 tileCoordinates = buildLocalInstance(tileSpec.getTileId(), local);
-                break;
+                tileCoordinatesList.add(tileCoordinates);
             } catch (NoninvertibleModelException e) {
                 if (nonInvertibleTileIds == null) {
                     nonInvertibleTileIds = new ArrayList<String>();
@@ -91,17 +104,24 @@ public class TileCoordinates {
             }
         }
 
-        if (tileCoordinates == null) {
+        final int numberOfInvertibleCoordinates = tileCoordinatesList.size();
+        if (numberOfInvertibleCoordinates == 0) {
             throw new IllegalStateException("world coordinate (" + x + ", " + y + ") found in tile id(s) " +
                                             nonInvertibleTileIds + " cannot be inverted");
+        } else {
+            // Tiles are rendered in same order as specified tileSpecList.
+            // Consequently for overlapping regions, the last tile will be the visible one
+            // since it is rendered after or "on top of" the previous tile(s).
+            final TileCoordinates lastTileCoordinates = tileCoordinatesList.get(numberOfInvertibleCoordinates - 1);
+            lastTileCoordinates.setVisible(true);
         }
 
         if (nonInvertibleTileIds != null) {
             LOG.info("getLocalCoordinates: skipped inverse transform of ({}, {}) for non-invertible tile id(s) {}, used tile id {} instead",
-                     x, y, nonInvertibleTileIds, tileCoordinates.getTileId());
+                     x, y, nonInvertibleTileIds, tileCoordinatesList.get(0).getTileId());
         }
 
-        return tileCoordinates;
+        return tileCoordinatesList;
     }
 
     public static TileCoordinates getWorldCoordinates(TileSpec tileSpec,

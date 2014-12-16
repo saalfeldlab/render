@@ -54,13 +54,19 @@ public class CoordinateServiceTest {
         final Double x = 9000.0;
         final Double y = 7000.0;
 
-        final TileCoordinates localCoordinates =
+        final List<TileCoordinates> localCoordinatesList =
                 service.getLocalCoordinates(stackId.getOwner(),
                                             stackId.getProject(),
                                             stackId.getStack(),
                                             x,
                                             y,
                                             Z);
+
+        Assert.assertEquals("invalid number of tiles found for (" + x + "," + y + ")",
+                            1, localCoordinatesList.size());
+
+        final TileCoordinates localCoordinates = localCoordinatesList.get(0);
+
         validateCoordinates("local",
                             localCoordinates,
                             ID_FOR_TILE_WITH_REAL_TRANSFORMS,
@@ -102,16 +108,21 @@ public class CoordinateServiceTest {
             worldCoordinateList.add(TileCoordinates.buildWorldInstance(null, point));
         }
 
-        final List<TileCoordinates> localCoordinatesList =
+        final List<List<TileCoordinates>> localCoordinatesListOfLists =
                 service.getLocalCoordinates(stackId.getOwner(),
                                             stackId.getProject(),
                                             stackId.getStack(),
                                             Z,
                                             worldCoordinateList);
 
-        Assert.assertNotNull("null local list retrieved", localCoordinatesList);
+        Assert.assertNotNull("null local list retrieved", localCoordinatesListOfLists);
         Assert.assertEquals("invalid local list size",
-                            worldCoordinateList.size(), localCoordinatesList.size());
+                            worldCoordinateList.size(), localCoordinatesListOfLists.size());
+
+        List<TileCoordinates> localCoordinatesList = new ArrayList<TileCoordinates>();
+        for (List<TileCoordinates> nestedList : localCoordinatesListOfLists) {
+            localCoordinatesList.addAll(nestedList);
+        }
 
         TileCoordinates tileCoordinates;
         for (int i = 0; i < localCoordinatesList.size(); i++) {
@@ -160,6 +171,33 @@ public class CoordinateServiceTest {
                                     Z);
             }
         }
+    }
+
+    @Test
+    public void testPointWithMultipleTiles() throws Exception {
+
+        // coordinate (8000, 5900) was chosen because it is invertible in both tiles 252 and 253
+        final List<TileCoordinates> localCoordinateList =
+                service.getLocalCoordinates(stackId.getOwner(),
+                                            stackId.getProject(),
+                                            stackId.getStack(),
+                                            8000.0, //
+                                            5900.0, //
+                                            Z);
+
+        Assert.assertNotNull("null local list retrieved", localCoordinateList);
+        Assert.assertEquals("invalid local list size",
+                            2, localCoordinateList.size());
+
+        TileCoordinates localCoordinates = localCoordinateList.get(0);
+        Assert.assertNotNull("null first coordinates", localCoordinates);
+        Assert.assertFalse("first coordinates should NOT be marked as visible",
+                          localCoordinates.isVisible());
+
+        localCoordinates = localCoordinateList.get(1);
+        Assert.assertNotNull("null second coordinates", localCoordinates);
+        Assert.assertTrue("second coordinates should be marked as visible",
+                           localCoordinates.isVisible());
     }
 
     private void validateCoordinates(String context,

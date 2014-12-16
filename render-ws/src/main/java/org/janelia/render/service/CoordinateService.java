@@ -15,6 +15,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -175,46 +176,47 @@ public class CoordinateService {
     @Path("project/{project}/stack/{stack}/z/{z}/world-to-local-coordinates/{x},{y}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public TileCoordinates getLocalCoordinates(@PathParam("owner") String owner,
-                                               @PathParam("project") String project,
-                                               @PathParam("stack") String stack,
-                                               @PathParam("x") Double worldX,
-                                               @PathParam("y") Double worldY,
-                                               @PathParam("z") Double z) {
+    public List<TileCoordinates> getLocalCoordinates(@PathParam("owner") String owner,
+                                                     @PathParam("project") String project,
+                                                     @PathParam("stack") String stack,
+                                                     @PathParam("x") Double worldX,
+                                                     @PathParam("y") Double worldY,
+                                                     @PathParam("z") Double z) {
 
         LOG.info("getLocalCoordinates: entry, owner={}, project={}, stack={}, worldX={}, worldY={}, z={}",
                  owner, project, stack, worldX, worldY, z);
 
-        TileCoordinates localCoordinates = null;
+        List<TileCoordinates> localCoordinatesList = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
             final List<TileSpec> tileSpecList = renderDao.getTileSpecs(stackId, worldX, worldY, z);
-            localCoordinates = TileCoordinates.getLocalCoordinates(tileSpecList,
-                                                                   worldX.floatValue(),
-                                                                   worldY.floatValue());
+            localCoordinatesList = TileCoordinates.getLocalCoordinates(tileSpecList,
+                                                                       worldX.floatValue(),
+                                                                       worldY.floatValue());
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
-        return localCoordinates;
+        return localCoordinatesList;
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/world-to-local-coordinates")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public List<TileCoordinates> getLocalCoordinates(@PathParam("owner") String owner,
-                                                     @PathParam("project") String project,
-                                                     @PathParam("stack") String stack,
-                                                     @PathParam("z") Double z,
-                                                     List<TileCoordinates> worldCoordinatesList) {
+    public List<List<TileCoordinates>> getLocalCoordinates(@PathParam("owner") String owner,
+                                                           @PathParam("project") String project,
+                                                           @PathParam("stack") String stack,
+                                                           @PathParam("z") Double z,
+                                                           List<TileCoordinates> worldCoordinatesList) {
 
         LOG.info("getLocalCoordinates: entry, owner={}, project={}, stack={}, z={}, worldCoordinatesList.size()={}",
                  owner, project, stack, z, worldCoordinatesList.size());
 
         final long startTime = System.currentTimeMillis();
         long lastStatusTime = startTime;
-        List<TileCoordinates> localCoordinatesList = new ArrayList<TileCoordinates>(worldCoordinatesList.size());
+        List<List<TileCoordinates>> localCoordinatesList =
+                new ArrayList<List<TileCoordinates>>(worldCoordinatesList.size());
         final StackId stackId = new StackId(owner, project, stack);
         List<TileSpec> tileSpecList;
         TileCoordinates coordinates;
@@ -250,7 +252,7 @@ public class CoordinateService {
                 }
                 coordinates.setError(t.getMessage());
 
-                localCoordinatesList.add(coordinates);
+                localCoordinatesList.add(Arrays.asList(coordinates));
             }
 
             if ((System.currentTimeMillis() - lastStatusTime) > COORDINATE_PROCESSING_LOG_INTERVAL) {
