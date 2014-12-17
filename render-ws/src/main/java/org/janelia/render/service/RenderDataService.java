@@ -1,14 +1,9 @@
 package org.janelia.render.service;
 
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.StackMetaData;
-import org.janelia.alignment.spec.TileBounds;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.render.service.dao.RenderDao;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.UnknownHostException;
+import java.util.List;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -23,10 +18,16 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.UnknownHostException;
-import java.util.List;
+
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.StackMetaData;
+import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.render.service.dao.RenderDao;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * APIs for accessing tile and transform data stored in the Render service database.
@@ -36,7 +37,7 @@ import java.util.List;
 @Path("/v1/owner/{owner}")
 public class RenderDataService {
 
-    private RenderDao renderDao;
+    private final RenderDao renderDao;
 
     @SuppressWarnings("UnusedDeclaration")
     public RenderDataService()
@@ -44,21 +45,21 @@ public class RenderDataService {
         this(RenderServiceUtil.buildDao());
     }
 
-    public RenderDataService(RenderDao renderDao) {
+    public RenderDataService(final RenderDao renderDao) {
         this.renderDao = renderDao;
     }
 
     @Path("stackIds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public List<StackId> getStackIds(@PathParam("owner") String owner) {
+    public List<StackId> getStackIds(@PathParam("owner") final String owner) {
 
         LOG.info("getStackIds: entry, owner={}", owner);
 
         List<StackId> list = null;
         try {
             list = renderDao.getStackIds(owner);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
         return list;
@@ -67,10 +68,10 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/layoutFile")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
-    public Response getLayoutFile(@PathParam("owner") String owner,
-                                  @PathParam("project") String project,
-                                  @PathParam("stack") String stack,
-                                  @Context UriInfo uriInfo) {
+    public Response getLayoutFile(@PathParam("owner") final String owner,
+                                  @PathParam("project") final String project,
+                                  @PathParam("stack") final String stack,
+                                  @Context final UriInfo uriInfo) {
 
         return getLayoutFileForSectionIdRange(owner, project, stack, null, null, uriInfo);
     }
@@ -83,7 +84,7 @@ public class RenderDataService {
                                                    @PathParam("stack") final String stack,
                                                    @PathParam("minSectionId") final Integer minSectionId,
                                                    @PathParam("maxSectionId") final Integer maxSectionId,
-                                                   @Context UriInfo uriInfo) {
+                                                   @Context final UriInfo uriInfo) {
 
         LOG.info("getLayoutFileForSectionIdRange: entry, owner={}, project={}, stack={}, minSectionId={}, maxSectionId={}",
                  owner, project, stack, minSectionId, maxSectionId);
@@ -98,13 +99,13 @@ public class RenderDataService {
             final String stackRequestUri = requestUri.substring(0, stackEnd);
             final StreamingOutput responseOutput = new StreamingOutput() {
                 @Override
-                public void write(OutputStream output)
+                public void write(final OutputStream output)
                         throws IOException, WebApplicationException {
                     renderDao.writeLayoutFileData(stackId, stackRequestUri, minSectionId, maxSectionId, output);
                 }
             };
             response = Response.ok(responseOutput).build();
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -114,9 +115,9 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/zValues")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public List<Double> getZValues(@PathParam("owner") String owner,
-                                   @PathParam("project") String project,
-                                   @PathParam("stack") String stack) {
+    public List<Double> getZValues(@PathParam("owner") final String owner,
+                                   @PathParam("project") final String project,
+                                   @PathParam("stack") final String stack) {
 
         LOG.info("getZValues: entry, owner={}, project={}, stack={}",
                  owner, project, stack);
@@ -125,7 +126,7 @@ public class RenderDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             list = renderDao.getZValues(stackId);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
         return list;
@@ -134,9 +135,9 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/bounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Bounds getStackBounds(@PathParam("owner") String owner,
-                                 @PathParam("project") String project,
-                                 @PathParam("stack") String stack) {
+    public Bounds getStackBounds(@PathParam("owner") final String owner,
+                                 @PathParam("project") final String project,
+                                 @PathParam("stack") final String stack) {
 
         LOG.info("getStackBounds: entry, owner={}, project={}, stack={}",
                  owner, project, stack);
@@ -145,7 +146,7 @@ public class RenderDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             bounds = renderDao.getStackBounds(stackId);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
         return bounds;
@@ -154,10 +155,10 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/z/{z}/bounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Bounds getLayerBounds(@PathParam("owner") String owner,
-                                 @PathParam("project") String project,
-                                 @PathParam("stack") String stack,
-                                 @PathParam("z") Double z) {
+    public Bounds getLayerBounds(@PathParam("owner") final String owner,
+                                 @PathParam("project") final String project,
+                                 @PathParam("stack") final String stack,
+                                 @PathParam("z") final Double z) {
 
         LOG.info("getLayerBounds: entry, owner={}, project={}, stack={}, z={}",
                  owner, project, stack, z);
@@ -166,7 +167,7 @@ public class RenderDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             bounds = renderDao.getLayerBounds(stackId, z);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
         return bounds;
@@ -175,10 +176,10 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/z/{z}/tileBounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public List<TileBounds> getTileBounds(@PathParam("owner") String owner,
-                                          @PathParam("project") String project,
-                                          @PathParam("stack") String stack,
-                                          @PathParam("z") Double z) {
+    public List<TileBounds> getTileBounds(@PathParam("owner") final String owner,
+                                          @PathParam("project") final String project,
+                                          @PathParam("stack") final String stack,
+                                          @PathParam("z") final Double z) {
 
         LOG.info("getTileBounds: entry, owner={}, project={}, stack={}, z={}",
                  owner, project, stack, z);
@@ -187,7 +188,7 @@ public class RenderDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             list = renderDao.getTileBounds(stackId, z);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
         return list;
@@ -196,10 +197,10 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public TileSpec getTileSpec(@PathParam("owner") String owner,
-                                @PathParam("project") String project,
-                                @PathParam("stack") String stack,
-                                @PathParam("tileId") String tileId) {
+    public TileSpec getTileSpec(@PathParam("owner") final String owner,
+                                @PathParam("project") final String project,
+                                @PathParam("stack") final String stack,
+                                @PathParam("tileId") final String tileId) {
 
         LOG.info("getTileSpec: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
@@ -207,7 +208,7 @@ public class RenderDataService {
         TileSpec tileSpec = null;
         try {
             tileSpec = getTileSpec(owner, project, stack, tileId, false);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -217,11 +218,12 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public RenderParameters getRenderParameters(@PathParam("owner") String owner,
-                                                @PathParam("project") String project,
-                                                @PathParam("stack") String stack,
-                                                @PathParam("tileId") String tileId,
-                                                @QueryParam("scale") Double scale) {
+    public RenderParameters getRenderParameters(@PathParam("owner") final String owner,
+                                                @PathParam("project") final String project,
+                                                @PathParam("stack") final String stack,
+                                                @PathParam("tileId") final String tileId,
+                                                @QueryParam("scale") Double scale,
+                                                @QueryParam("filter") final Boolean filter) {
 
         LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}",
                  owner, project, stack, tileId, scale);
@@ -244,20 +246,21 @@ public class RenderDataService {
             final Integer height = getLayoutSizeValue(stackMetaData.getLayoutHeight(), tileSpec.getHeight(), margin);
 
             parameters = new RenderParameters(null, x, y, width, height, scale);
+            parameters.setDoFilter(filter);
             parameters.addTileSpec(tileSpec);
 
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
         return parameters;
     }
 
-    public TileSpec getTileSpec(String owner,
-                                String project,
-                                String stack,
-                                String tileId,
-                                boolean resolveTransformReferences) {
+    public TileSpec getTileSpec(final String owner,
+                                final String project,
+                                final String stack,
+                                final String tileId,
+                                final boolean resolveTransformReferences) {
         final StackId stackId = new StackId(owner, project, stack);
         return renderDao.getTileSpec(stackId, tileId, resolveTransformReferences);
     }
@@ -265,11 +268,11 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveTileSpec(@PathParam("owner") String owner,
-                                 @PathParam("project") String project,
-                                 @PathParam("stack") String stack,
-                                 @PathParam("tileId") String tileId,
-                                 @Context UriInfo uriInfo,
+    public Response saveTileSpec(@PathParam("owner") final String owner,
+                                 @PathParam("project") final String project,
+                                 @PathParam("stack") final String stack,
+                                 @PathParam("tileId") final String tileId,
+                                 @Context final UriInfo uriInfo,
                                  TileSpec tileSpec) {
 
         LOG.info("saveTileSpec: entry, owner={}, project={}, stack={}, tileId={}",
@@ -291,7 +294,7 @@ public class RenderDataService {
             tileSpec.deriveBoundingBox(true);
 
             renderDao.saveTileSpec(stackId, tileSpec);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -303,11 +306,11 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/transform/{transformIndex}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public TransformSpec getTransformSpecForTile(@PathParam("owner") String owner,
-                                                 @PathParam("project") String project,
-                                                 @PathParam("stack") String stack,
-                                                 @PathParam("tileId") String tileId,
-                                                 @PathParam("transformIndex") Integer transformIndex) {
+    public TransformSpec getTransformSpecForTile(@PathParam("owner") final String owner,
+                                                 @PathParam("project") final String project,
+                                                 @PathParam("stack") final String stack,
+                                                 @PathParam("tileId") final String tileId,
+                                                 @PathParam("transformIndex") final Integer transformIndex) {
 
         LOG.info("getTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}",
                  owner, project, stack, tileId, transformIndex);
@@ -316,7 +319,7 @@ public class RenderDataService {
         try {
             final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
             transformSpec = tileSpec.getTransforms().getSpec(transformIndex);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -326,13 +329,13 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/transform/{transformIndex}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveTransformSpecForTile(@PathParam("owner") String owner,
-                                             @PathParam("project") String project,
-                                             @PathParam("stack") String stack,
-                                             @PathParam("tileId") String tileId,
-                                             @PathParam("transformIndex") Integer transformIndex,
-                                             @Context UriInfo uriInfo,
-                                             TransformSpec transformSpec) {
+    public Response saveTransformSpecForTile(@PathParam("owner") final String owner,
+                                             @PathParam("project") final String project,
+                                             @PathParam("stack") final String stack,
+                                             @PathParam("tileId") final String tileId,
+                                             @PathParam("transformIndex") final Integer transformIndex,
+                                             @Context final UriInfo uriInfo,
+                                             final TransformSpec transformSpec) {
 
         LOG.info("saveTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}",
                  owner, project, stack, tileId, transformIndex);
@@ -356,7 +359,7 @@ public class RenderDataService {
             tileSpec.deriveBoundingBox(true);
 
             renderDao.saveTileSpec(stackId, tileSpec);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -368,10 +371,10 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/transform-count")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public int getTransformCountForTile(@PathParam("owner") String owner,
-                                        @PathParam("project") String project,
-                                        @PathParam("stack") String stack,
-                                        @PathParam("tileId") String tileId) {
+    public int getTransformCountForTile(@PathParam("owner") final String owner,
+                                        @PathParam("project") final String project,
+                                        @PathParam("stack") final String stack,
+                                        @PathParam("tileId") final String tileId) {
 
         LOG.info("getTransformCountForTile: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
@@ -380,7 +383,7 @@ public class RenderDataService {
         try {
             final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
             count = tileSpec.numberOfTransforms();
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -390,10 +393,10 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/last-transform")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public TransformSpec getLastTransformSpecForTile(@PathParam("owner") String owner,
-                                                     @PathParam("project") String project,
-                                                     @PathParam("stack") String stack,
-                                                     @PathParam("tileId") String tileId) {
+    public TransformSpec getLastTransformSpecForTile(@PathParam("owner") final String owner,
+                                                     @PathParam("project") final String project,
+                                                     @PathParam("stack") final String stack,
+                                                     @PathParam("tileId") final String tileId) {
 
         LOG.info("getLastTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
@@ -405,7 +408,7 @@ public class RenderDataService {
             if (lastTransformIndex >= 0) {
                 transformSpec = tileSpec.getTransforms().getSpec(lastTransformIndex);
             }
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -415,12 +418,12 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/last-transform")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveLastTransformSpecForTile(@PathParam("owner") String owner,
-                                                 @PathParam("project") String project,
-                                                 @PathParam("stack") String stack,
-                                                 @PathParam("tileId") String tileId,
-                                                 @Context UriInfo uriInfo,
-                                                 TransformSpec transformSpec) {
+    public Response saveLastTransformSpecForTile(@PathParam("owner") final String owner,
+                                                 @PathParam("project") final String project,
+                                                 @PathParam("stack") final String stack,
+                                                 @PathParam("tileId") final String tileId,
+                                                 @Context final UriInfo uriInfo,
+                                                 final TransformSpec transformSpec) {
 
         LOG.info("saveLastTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}",
                  owner, project, stack, tileId);
@@ -445,7 +448,7 @@ public class RenderDataService {
             tileSpec.deriveBoundingBox(true);
 
             renderDao.saveTileSpec(stackId, tileSpec);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -457,10 +460,10 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/transform/{transformId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public TransformSpec getTransformSpec(@PathParam("owner") String owner,
-                                          @PathParam("project") String project,
-                                          @PathParam("stack") String stack,
-                                          @PathParam("transformId") String transformId) {
+    public TransformSpec getTransformSpec(@PathParam("owner") final String owner,
+                                          @PathParam("project") final String project,
+                                          @PathParam("stack") final String stack,
+                                          @PathParam("transformId") final String transformId) {
 
         LOG.info("getTransformSpec: entry, owner={}, project={}, stack={}, transformId={}",
                  owner, project, stack, transformId);
@@ -469,7 +472,7 @@ public class RenderDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             transformSpec = renderDao.getTransformSpec(stackId, transformId);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -479,12 +482,12 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/transform/{transformId}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveTransformSpec(@PathParam("owner") String owner,
-                                      @PathParam("project") String project,
-                                      @PathParam("stack") String stack,
-                                      @PathParam("transformId") String transformId,
-                                      @Context UriInfo uriInfo,
-                                      TransformSpec transformSpec) {
+    public Response saveTransformSpec(@PathParam("owner") final String owner,
+                                      @PathParam("project") final String project,
+                                      @PathParam("stack") final String stack,
+                                      @PathParam("transformId") final String transformId,
+                                      @Context final UriInfo uriInfo,
+                                      final TransformSpec transformSpec) {
 
         LOG.info("saveTransformSpec: entry, owner={}, project={}, stack={}, transformId={}",
                  owner, project, stack, transformId);
@@ -503,7 +506,7 @@ public class RenderDataService {
 
             // TODO: re-derive bounding boxes for all tiles that reference this transform
 
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -518,14 +521,14 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height}/tile-count")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Integer getTileCount(@PathParam("owner") String owner,
-                                @PathParam("project") String project,
-                                @PathParam("stack") String stack,
-                                @PathParam("x") Double x,
-                                @PathParam("y") Double y,
-                                @PathParam("z") Double z,
-                                @PathParam("width") Integer width,
-                                @PathParam("height") Integer height) {
+    public Integer getTileCount(@PathParam("owner") final String owner,
+                                @PathParam("project") final String project,
+                                @PathParam("stack") final String stack,
+                                @PathParam("x") final Double x,
+                                @PathParam("y") final Double y,
+                                @PathParam("z") final Double z,
+                                @PathParam("width") final Integer width,
+                                @PathParam("height") final Integer height) {
 
         LOG.info("getTileCount: entry, owner={}, project={}, stack={}, x={}, y={}, z={}, width={}, height={}",
                  owner, project, stack, x, y, z, width, height);
@@ -534,7 +537,7 @@ public class RenderDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             count = renderDao.getTileCount(stackId, x, y, z, width, height);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
         return count;
@@ -547,15 +550,15 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public RenderParameters getExternalRenderParameters(@PathParam("owner") String owner,
-                                                        @PathParam("project") String project,
-                                                        @PathParam("stack") String stack,
-                                                        @PathParam("x") Double x,
-                                                        @PathParam("y") Double y,
-                                                        @PathParam("z") Double z,
-                                                        @PathParam("width") Integer width,
-                                                        @PathParam("height") Integer height,
-                                                        @PathParam("scale") Double scale) {
+    public RenderParameters getExternalRenderParameters(@PathParam("owner") final String owner,
+                                                        @PathParam("project") final String project,
+                                                        @PathParam("stack") final String stack,
+                                                        @PathParam("x") final Double x,
+                                                        @PathParam("y") final Double y,
+                                                        @PathParam("z") final Double z,
+                                                        @PathParam("width") final Integer width,
+                                                        @PathParam("height") final Integer height,
+                                                        @PathParam("scale") final Double scale) {
 
         LOG.info("getExternalRenderParameters: entry, owner={}, project={}, stack={}, x={}, y={}, z={}, width={}, height={}, scale={}",
                  owner, project, stack, x, y, z, width, height, scale);
@@ -565,7 +568,7 @@ public class RenderDataService {
             final StackId stackId = new StackId(owner, project, stack);
             parameters = getInternalRenderParameters(stackId, x, y, z, width, height, scale);
             parameters.flattenTransforms();
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
         return parameters;
@@ -586,8 +589,8 @@ public class RenderDataService {
         return renderDao.getParameters(stackId, x, y, z, width, height, scale);
     }
 
-    private Double getLayoutMinValue(Double minValue,
-                                     int margin) {
+    private Double getLayoutMinValue(final Double minValue,
+                                     final int margin) {
         Double layoutValue = null;
         if (minValue != null) {
             layoutValue = minValue - margin;
@@ -595,9 +598,9 @@ public class RenderDataService {
         return layoutValue;
     }
 
-    private Integer getLayoutSizeValue(Integer stackValue,
-                                       Integer tileValue,
-                                       int margin) {
+    private Integer getLayoutSizeValue(final Integer stackValue,
+                                       final Integer tileValue,
+                                       final int margin) {
         Integer layoutValue = null;
 
         if (stackValue != null) {

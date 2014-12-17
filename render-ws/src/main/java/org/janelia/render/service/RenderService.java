@@ -1,10 +1,7 @@
 package org.janelia.render.service;
 
-import org.janelia.alignment.Render;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.Utils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.awt.image.BufferedImage;
+import java.net.UnknownHostException;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -12,10 +9,15 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.awt.image.BufferedImage;
-import java.net.UnknownHostException;
+
+import org.janelia.alignment.Render;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * APIs that use the {@link Render} tool to render images.
@@ -25,7 +27,7 @@ import java.net.UnknownHostException;
 @Path("/v1/owner/{owner}")
 public class RenderService {
 
-    private RenderDataService renderDataService;
+    private final RenderDataService renderDataService;
 
     @SuppressWarnings("UnusedDeclaration")
     public RenderService()
@@ -33,7 +35,7 @@ public class RenderService {
         this(new RenderDataService());
     }
 
-    public RenderService(RenderDataService renderDataService) {
+    public RenderService(final RenderDataService renderDataService) {
         this.renderDataService = renderDataService;
     }
 
@@ -41,7 +43,7 @@ public class RenderService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    public Response renderJpegImage(RenderParameters renderParameters) {
+    public Response renderJpegImage(final RenderParameters renderParameters) {
         LOG.info("renderJpegImage: entry, renderParameters={}", renderParameters);
         return renderImageStream(renderParameters, Utils.JPEG_FORMAT, IMAGE_JPEG_MIME_TYPE);
     }
@@ -51,7 +53,7 @@ public class RenderService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    public Response renderPngImage(RenderParameters renderParameters) {
+    public Response renderPngImage(final RenderParameters renderParameters) {
         LOG.info("renderPngImage: entry, renderParameters={}", renderParameters);
         return renderImageStream(renderParameters, Utils.PNG_FORMAT, IMAGE_PNG_MIME_TYPE);
     }
@@ -59,49 +61,52 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/jpeg-image")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response renderJpegImageForTile(@PathParam("owner") String owner,
-                                           @PathParam("project") String project,
-                                           @PathParam("stack") String stack,
-                                           @PathParam("tileId") String tileId,
-                                           @PathParam("scale") Double scale) {
+    public Response renderJpegImageForTile(@PathParam("owner") final String owner,
+                                           @PathParam("project") final String project,
+                                           @PathParam("stack") final String stack,
+                                           @PathParam("tileId") final String tileId,
+                                           @PathParam("scale") final Double scale,
+                                           @QueryParam("filter") final Boolean filter) {
 
-        LOG.info("renderJpegImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}",
-                 owner, project, stack, tileId, scale);
+        LOG.info("renderJpegImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
 
         final RenderParameters renderParameters =
-                renderDataService.getRenderParameters(owner, project, stack, tileId, scale);
+                renderDataService.getRenderParameters(owner, project, stack, tileId, scale, filter);
         return renderJpegImage(renderParameters);
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/png-image")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response renderPngImageForTile(@PathParam("owner") String owner,
-                                          @PathParam("project") String project,
-                                          @PathParam("stack") String stack,
-                                          @PathParam("tileId") String tileId,
-                                          @PathParam("scale") Double scale) {
+    public Response renderPngImageForTile(@PathParam("owner") final String owner,
+                                          @PathParam("project") final String project,
+                                          @PathParam("stack") final String stack,
+                                          @PathParam("tileId") final String tileId,
+                                          @PathParam("scale") final Double scale,
+                                          @QueryParam("filter") final Boolean filter) {
 
-        LOG.info("renderPngImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}",
-                 owner, project, stack, tileId, scale);
+        LOG.info("renderPngImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
 
         final RenderParameters renderParameters =
-                renderDataService.getRenderParameters(owner, project, stack, tileId, scale);
+                renderDataService.getRenderParameters(owner, project, stack, tileId, scale, filter);
         return renderPngImage(renderParameters);
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    public Response renderJpegImageForBox(@PathParam("owner") String owner,
-                                          @PathParam("project") String project,
-                                          @PathParam("stack") String stack,
-                                          @PathParam("x") Double x,
-                                          @PathParam("y") Double y,
-                                          @PathParam("z") Double z,
-                                          @PathParam("width") Integer width,
-                                          @PathParam("height") Integer height,
-                                          @PathParam("scale") Double scale) {
+    public Response renderJpegImageForBox(@PathParam("owner") final String owner,
+                                          @PathParam("project") final String project,
+                                          @PathParam("stack") final String stack,
+                                          @PathParam("x") final Double x,
+                                          @PathParam("y") final Double y,
+                                          @PathParam("z") final Double z,
+                                          @PathParam("width") final Integer width,
+                                          @PathParam("height") final Integer height,
+                                          @PathParam("scale") final Double scale,
+                                          @QueryParam("filter") final Boolean filter) {
 
         LOG.info("renderJpegImageForBox: entry");
         final StackId stackId = new StackId(owner, project, stack);
@@ -112,21 +117,24 @@ public class RenderService {
                                                                                                 width,
                                                                                                 height,
                                                                                                 scale);
+        renderParameters.setDoFilter(filter);
+
         return renderJpegImage(renderParameters);
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
-    public Response renderPngImageForBox(@PathParam("owner") String owner,
-                                         @PathParam("project") String project,
-                                         @PathParam("stack") String stack,
-                                         @PathParam("x") Double x,
-                                         @PathParam("y") Double y,
-                                         @PathParam("z") Double z,
-                                         @PathParam("width") Integer width,
-                                         @PathParam("height") Integer height,
-                                         @PathParam("scale") Double scale) {
+    public Response renderPngImageForBox(@PathParam("owner") final String owner,
+                                         @PathParam("project") final String project,
+                                         @PathParam("stack") final String stack,
+                                         @PathParam("x") final Double x,
+                                         @PathParam("y") final Double y,
+                                         @PathParam("z") final Double z,
+                                         @PathParam("width") final Integer width,
+                                         @PathParam("height") final Integer height,
+                                         @PathParam("scale") final Double scale,
+                                         @QueryParam("filter") final Boolean filter) {
 
         LOG.info("renderPngImageForBox: entry");
         final StackId stackId = new StackId(owner, project, stack);
@@ -137,12 +145,14 @@ public class RenderService {
                                                                                                 width,
                                                                                                 height,
                                                                                                 scale);
+        renderParameters.setDoFilter(filter);
+
         return renderPngImage(renderParameters);
     }
 
-    private Response renderImageStream(RenderParameters renderParameters,
-                                       String format,
-                                       String mimeType) {
+    private Response renderImageStream(final RenderParameters renderParameters,
+                                       final String format,
+                                       final String mimeType) {
 
         LOG.info("renderImageStream: entry, format={}, mimeType={}", format, mimeType);
 
@@ -160,7 +170,7 @@ public class RenderService {
             final Response.ResponseBuilder responseBuilder = Response.ok(out, mimeType);
             response = responseBuilder.build();
 
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -171,7 +181,7 @@ public class RenderService {
         return response;
     }
 
-    private BufferedImage validateParametersAndRenderImage(RenderParameters renderParameters)
+    private BufferedImage validateParametersAndRenderImage(final RenderParameters renderParameters)
             throws IllegalArgumentException, IllegalStateException {
 
         LOG.info("validateParametersAndRenderImage: entry, renderParameters={}", renderParameters);
@@ -189,7 +199,8 @@ public class RenderService {
                       renderParameters.getScale(),
                       renderParameters.isAreaOffset(),
                       1, // TODO: verify we always want to be single threaded for service requests
-                      renderParameters.skipInterpolation());
+                      renderParameters.skipInterpolation(),
+                      renderParameters.doFilter());
 
         LOG.info("validateParametersAndRenderImage: exit");
 

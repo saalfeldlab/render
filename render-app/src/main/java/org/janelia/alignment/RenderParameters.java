@@ -16,15 +16,6 @@
  */
 package org.janelia.alignment;
 
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.Parameters;
-import com.google.gson.reflect.TypeToken;
-import org.janelia.alignment.json.JsonUtils;
-import org.janelia.alignment.spec.TileSpec;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -39,6 +30,16 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.TileSpec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.Parameters;
+import com.google.gson.reflect.TypeToken;
 
 /**
  * Parameters for render operations.
@@ -94,16 +95,20 @@ public class RenderParameters {
     private boolean skipInterpolation;
 
     @Parameter(names = "--parameters_url", description = "URL to base JSON parameters file (to be applied to any unspecified or default parameters)", required = false)
-    private String parametersUrl;
+    private final String parametersUrl;
+
+    @Parameter(names = "--do_filter", description = "ad hoc filters to support alignment", required = false)
+    private boolean doFilter;
 
     /** List of tile specifications parsed from --tileSpecUrl or deserialized directly from json. */
     private List<TileSpec> tileSpecs;
+
 
     private transient JCommander jCommander;
     private transient URI outUri;
     private transient boolean initialized;
 
-    public RenderParameters() {
+	    public RenderParameters() {
         this(null,
              DEFAULT_X_AND_Y,
              DEFAULT_X_AND_Y,
@@ -112,12 +117,12 @@ public class RenderParameters {
              DEFAULT_SCALE);
     }
 
-    public RenderParameters(String tileSpecUrl,
-                            double x,
-                            double y,
-                            int width,
-                            int height,
-                            double scale) {
+    public RenderParameters(final String tileSpecUrl,
+                            final double x,
+                            final double y,
+                            final int width,
+                            final int height,
+                            final double scale) {
         this.tileSpecUrl = tileSpecUrl;
         this.x = x;
         this.y = y;
@@ -134,6 +139,7 @@ public class RenderParameters {
         this.quality = DEFAULT_QUALITY;
         this.numberOfThreads = DEFAULT_NUMBER_OF_THREADS;
         this.skipInterpolation = false;
+        this.doFilter = false;
         this.parametersUrl = null;
 
         this.tileSpecs = new ArrayList<TileSpec>();
@@ -151,12 +157,12 @@ public class RenderParameters {
      * @throws IllegalArgumentException
      *   if any invalid arguments are specified.
      */
-    public static RenderParameters parseCommandLineArgs(String[] args) throws IllegalArgumentException {
-        RenderParameters parameters = new RenderParameters();
+    public static RenderParameters parseCommandLineArgs(final String[] args) throws IllegalArgumentException {
+        final RenderParameters parameters = new RenderParameters();
         parameters.setCommander();
         try {
             parameters.jCommander.parse(args);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to parse command line arguments", t);
         }
 
@@ -174,11 +180,11 @@ public class RenderParameters {
      * @throws IllegalArgumentException
      *   if the json cannot be parsed.
      */
-    public static RenderParameters parseJson(String jsonText) throws IllegalArgumentException {
+    public static RenderParameters parseJson(final String jsonText) throws IllegalArgumentException {
         RenderParameters parameters;
         try {
             parameters = JsonUtils.GSON.fromJson(jsonText, RenderParameters.class);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to parse json text", t);
         }
         return parameters;
@@ -192,11 +198,11 @@ public class RenderParameters {
      * @throws IllegalArgumentException
      *   if the json cannot be parsed.
      */
-    public static RenderParameters parseJson(Reader jsonReader) throws IllegalArgumentException {
+    public static RenderParameters parseJson(final Reader jsonReader) throws IllegalArgumentException {
         RenderParameters parameters;
         try {
             parameters = JsonUtils.GSON.fromJson(jsonReader, RenderParameters.class);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to parse json reader stream", t);
         }
         return parameters;
@@ -210,7 +216,7 @@ public class RenderParameters {
      * @throws IllegalArgumentException
      *   if the json cannot be parsed.
      */
-    public static RenderParameters parseJson(File jsonFile) throws IllegalArgumentException {
+    public static RenderParameters parseJson(final File jsonFile) throws IllegalArgumentException {
 
         if (! jsonFile.exists()) {
             throw new IllegalArgumentException("render parameters json file " + jsonFile.getAbsolutePath() +
@@ -225,7 +231,7 @@ public class RenderParameters {
         FileReader parametersReader;
         try {
             parametersReader = new FileReader(jsonFile);
-        } catch (FileNotFoundException e) {
+        } catch (final FileNotFoundException e) {
             throw new IllegalArgumentException("render parameters json file " + jsonFile.getAbsolutePath() +
                                                " does not exist", e);
         }
@@ -236,7 +242,7 @@ public class RenderParameters {
         } finally {
             try {
                 parametersReader.close();
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 LOG.warn("failed to close reader for " + jsonFile.getAbsolutePath() + ", ignoring error", e);
             }
         }
@@ -270,7 +276,7 @@ public class RenderParameters {
         if ((outUri == null) && (out != null)) {
             try {
                 outUri = new URI(out);
-            } catch (URISyntaxException e) {
+            } catch (final URISyntaxException e) {
                 throw new IllegalArgumentException("failed to create uniform resource identifier for '" + out + "'", e);
             }
         }
@@ -333,12 +339,12 @@ public class RenderParameters {
         return tileSpecs;
     }
 
-    public void addTileSpec(TileSpec tileSpec) {
+    public void addTileSpec(final TileSpec tileSpec) {
         tileSpecs.add(tileSpec);
     }
 
     public void flattenTransforms() {
-        for (TileSpec spec : tileSpecs) {
+        for (final TileSpec spec : tileSpecs) {
             spec.flattenTransforms();
         }
     }
@@ -369,7 +375,7 @@ public class RenderParameters {
             throw new IllegalStateException("derived parameters have not been initialized");
         }
 
-        for (TileSpec tileSpec : tileSpecs) {
+        for (final TileSpec tileSpec : tileSpecs) {
             tileSpec.validate();
         }
     }
@@ -485,7 +491,7 @@ public class RenderParameters {
             final URL urlObject;
             try {
                 urlObject = uri.toURL();
-            } catch (Throwable t) {
+            } catch (final Throwable t) {
                 throw new IllegalArgumentException("failed to convert URI '" + uri +
                                                    "' built from tile specification URL parameter '" + tileSpecUrl + "'", t);
             }
@@ -494,7 +500,7 @@ public class RenderParameters {
             try {
                 try {
                     urlStream = urlObject.openStream();
-                } catch (Throwable t) {
+                } catch (final Throwable t) {
                     throw new IllegalArgumentException("failed to load tile specification from " + urlObject, t);
                 }
 
@@ -503,7 +509,7 @@ public class RenderParameters {
                 }.getType();
                 try {
                     tileSpecs = JsonUtils.GSON.fromJson(reader, collectionType);
-                } catch (Throwable t) {
+                } catch (final Throwable t) {
                     throw new IllegalArgumentException(
                             "failed to parse tile specification loaded from " + urlObject, t);
                 }
@@ -511,7 +517,7 @@ public class RenderParameters {
                 if (urlStream != null) {
                     try {
                         urlStream.close();
-                    } catch (IOException e) {
+                    } catch (final IOException e) {
                         LOG.warn("failed to close " + uri + ", ignoring error", e);
                     }
                 }
@@ -565,7 +571,7 @@ public class RenderParameters {
         final URL urlObject;
         try {
             urlObject = uri.toURL();
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to convert URI '" + uri + "'", t);
         }
 
@@ -574,7 +580,7 @@ public class RenderParameters {
         try {
             try {
                 urlStream = urlObject.openStream();
-            } catch (Throwable t) {
+            } catch (final Throwable t) {
                 throw new IllegalArgumentException("failed to load render parameters from " + urlObject, t);
             }
 
@@ -584,7 +590,7 @@ public class RenderParameters {
             if (urlStream != null) {
                 try {
                     urlStream.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     LOG.warn("failed to close " + uri + ", ignoring error", e);
                 }
             }
@@ -593,8 +599,8 @@ public class RenderParameters {
         return parameters;
     }
 
-    private String mergedValue(String currentValue,
-                               String baseValue) {
+    private String mergedValue(final String currentValue,
+                               final String baseValue) {
         String value = currentValue;
         if (currentValue == null) {
             value = baseValue;
@@ -602,9 +608,9 @@ public class RenderParameters {
         return value;
     }
 
-    private int mergedValue(int currentValue,
-                            int baseValue,
-                            int defaultValue) {
+    private int mergedValue(final int currentValue,
+                            final int baseValue,
+                            final int defaultValue) {
         int value = currentValue;
         if (currentValue == defaultValue) {
             value = baseValue;
@@ -612,9 +618,9 @@ public class RenderParameters {
         return value;
     }
 
-    private double mergedValue(double currentValue,
-                               double baseValue,
-                               double defaultValue) {
+    private double mergedValue(final double currentValue,
+                               final double baseValue,
+                               final double defaultValue) {
         double value = currentValue;
         if (currentValue == defaultValue) {
             value = baseValue;
@@ -622,9 +628,9 @@ public class RenderParameters {
         return value;
     }
 
-    private boolean mergedValue(boolean currentValue,
-                                boolean baseValue,
-                                boolean defaultValue) {
+    private boolean mergedValue(final boolean currentValue,
+                                final boolean baseValue,
+                                final boolean defaultValue) {
         boolean value = currentValue;
         if (currentValue == defaultValue) {
             value = baseValue;
@@ -640,4 +646,13 @@ public class RenderParameters {
     private static final Double DEFAULT_SCALE = 1.0;
     private static final float DEFAULT_QUALITY = 0.85f;
     private static final int DEFAULT_NUMBER_OF_THREADS = 1;
+
+	public boolean doFilter()
+	{
+		return doFilter;
+	}
+
+    public void setDoFilter(final Boolean filter) {
+        doFilter = filter != null && filter;
+    }
 }

@@ -35,6 +35,8 @@ import mpicbg.models.TransformMesh;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
+import org.janelia.alignment.filter.NormalizeLocalContrast;
+import org.janelia.alignment.filter.ValueToNoise;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,6 +87,11 @@ public class Render {
 
     private static final Logger LOG = LoggerFactory.getLogger(Render.class);
 
+    /* TODO this is an adhoc filter bank for temporary use in alignment */
+    final static private NormalizeLocalContrast nlcf = new NormalizeLocalContrast(500, 500, 3, true, true);
+    final static private ValueToNoise vtnf1 = new ValueToNoise(0, 64, 191);
+    final static private ValueToNoise vtnf2 = new ValueToNoise(255, 64, 191);
+
     private Render() {
     }
 
@@ -96,7 +103,8 @@ public class Render {
                               final double scale,
                               final boolean areaOffset,
                               final int numberOfThreads,
-                              final boolean skipInterpolation)
+                              final boolean skipInterpolation,
+                              final boolean doFilter)
             throws IllegalArgumentException {
 
         final Graphics2D targetGraphics = targetImage.createGraphics();
@@ -104,7 +112,7 @@ public class Render {
         LOG.debug("render: entry, processing {} tile specifications, numberOfThreads={}",
                   tileSpecs.size(), numberOfThreads);
 
-        long tileLoopStart = System.currentTimeMillis();
+        final long tileLoopStart = System.currentTimeMillis();
         int tileSpecIndex = 0;
         long tileSpecStart;
         long loadMipStop;
@@ -195,6 +203,14 @@ public class Render {
                 downSampleLevels = mipmapLevel;
                 LOG.debug("render: full down sample to level {}", mipmapLevel);
                 ipMipmap = Downsampler.downsampleImageProcessor(ip, downSampleLevels);
+            }
+
+            // filter
+            if (doFilter) {
+                final double mipmapScale = 1.0 / (1 << mipmapLevel);
+                vtnf1.process(ipMipmap, mipmapScale);
+                vtnf2.process(ipMipmap, mipmapScale);
+                nlcf.process(ipMipmap, mipmapScale);
             }
 
             // create a target
@@ -322,7 +338,7 @@ public class Render {
         return tileSpec;
     }
 
-    private static ImagePlus getImagePlusForMipmap(ImageAndMask imageAndMask) {
+    private static ImagePlus getImagePlusForMipmap(final ImageAndMask imageAndMask) {
         // load image TODO use Bioformats for strange formats
         final String imgUrl = imageAndMask.getImageUrl();
         final ImagePlus imp = Utils.openImagePlusUrl(imgUrl);
@@ -356,7 +372,7 @@ public class Render {
 
                 parseStop = System.currentTimeMillis();
 
-                BufferedImage targetImage = params.openTargetImage();
+                final BufferedImage targetImage = params.openTargetImage();
 
                 targetOpenStop = System.currentTimeMillis();
 
@@ -368,7 +384,8 @@ public class Render {
                        params.getScale(),
                        params.isAreaOffset(),
                        params.getNumberOfThreads(),
-                       params.skipInterpolation());
+                       params.skipInterpolation(),
+                       params.doFilter());
 
                 saveStart = System.currentTimeMillis();
 
@@ -391,7 +408,7 @@ public class Render {
                       saveStart - targetOpenStop,
                       saveStop - saveStart);
 
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             LOG.error("main: caught exception", t);
             System.exit(1);
         }
