@@ -5,26 +5,27 @@
   <name>Janelia Rendering Utilities</name>
   <groupId>org.janelia</groupId>
   <artifactId>render</artifactId>
-  <version>0.0.3-SNAPSHOT</version>
+  <version>0.0.4-SNAPSHOT</version>
 
     <packaging>pom</packaging>
 
     <modules>
-        <module>trakem2-transform</module>
         <module>render-app</module>
         <module>render-ws</module>
         <module>render-ws-java-client</module>
         <module>trakem2-scripts</module>
     </modules>
 
+    <repositories>
+        <!-- NB: for project parent -->
+        <repository>
+            <id>imagej.public</id>
+            <url>http://maven.imagej.net/content/groups/public</url>
+        </repository>
+    </repositories>
+
     <dependencyManagement>
         <dependencies>
-
-            <dependency>
-                <groupId>org.janelia</groupId>
-                <artifactId>trakem2-transform</artifactId>
-                <version>${project.version}</version>
-            </dependency>
 
             <dependency>
                 <groupId>org.janelia</groupId>

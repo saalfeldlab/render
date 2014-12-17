@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.janelia</groupId>
         <artifactId>render</artifactId>
-        <version>0.0.3-SNAPSHOT</version>
+        <version>0.0.4-SNAPSHOT</version>
     </parent>
 
     <name>Render Application</name>
@@ -53,8 +53,9 @@
     <dependencies>
 
         <dependency>
-            <groupId>org.janelia</groupId>
-            <artifactId>trakem2-transform</artifactId>
+            <groupId>mpicbg</groupId>
+            <artifactId>mpicbg_</artifactId>
+            <version>0.6.1</version>
         </dependency>
 
         <dependency>
@@ -77,6 +78,12 @@
             <groupId>com.beust</groupId>
             <artifactId>jcommander</artifactId>
             <version>1.35</version>
+        </dependency>
+
+        <dependency>
+            <groupId>sc.fiji</groupId>
+            <artifactId>mpicbg-trakem2</artifactId>
+            <version>1.0.2</version>
         </dependency>
 
     </dependencies>
