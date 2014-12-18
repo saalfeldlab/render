@@ -2,13 +2,7 @@ package org.janelia.alignment;
 
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
-import org.janelia.alignment.json.JsonUtils;
-import org.janelia.alignment.spec.TileSpec;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import javax.imageio.stream.ImageOutputStream;
-import javax.imageio.stream.MemoryCacheImageOutputStream;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,6 +20,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
+import javax.imageio.stream.ImageOutputStream;
+import javax.imageio.stream.MemoryCacheImageOutputStream;
+
+import mpicbg.trakem2.util.Downsampler;
+
+import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.TileSpec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility to generate mipmap files.
@@ -49,7 +53,7 @@ import java.util.zip.ZipFile;
  */
 public class MipmapGenerator {
 
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
 
         File outputFile = null;
         FileOutputStream outputStream = null;
@@ -68,7 +72,7 @@ public class MipmapGenerator {
 
                 params.validate();
 
-                MipmapGenerator mipmapGenerator = new MipmapGenerator(params.getRootDirectory(),
+                final MipmapGenerator mipmapGenerator = new MipmapGenerator(params.getRootDirectory(),
                                                                       params.getFormat(),
                                                                       params.getQuality(),
                                                                       params.consolidateMasks(),
@@ -81,7 +85,7 @@ public class MipmapGenerator {
                 outputFile = params.getOutputFile();
                 outputStream = new FileOutputStream(outputFile);
                 outputStream.write("[\n".getBytes());
-                for (TileSpec tileSpec : tileSpecs) {
+                for (final TileSpec tileSpec : tileSpecs) {
                     updatedTileSpec = mipmapGenerator.generateMissingMipmapFiles(tileSpec, mipmapLevel);
                     if (tileCount != 0) {
                         outputStream.write(",\n".getBytes());
@@ -99,13 +103,13 @@ public class MipmapGenerator {
             }
 
 
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             LOG.error("main: caught exception", t);
         } finally {
             if (outputStream != null) {
                 try {
                     outputStream.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     LOG.warn("main: failed to close " + outputFile + ", ignoring error", e);
                 }
 
@@ -113,11 +117,11 @@ public class MipmapGenerator {
         }
     }
 
-    private File rootDirectory;
-    private String format;
-    private float jpegQuality;
-    private boolean consolidateMasks;
-    private boolean forceBoxCalculation;
+    private final File rootDirectory;
+    private final String format;
+    private final float jpegQuality;
+    private final boolean consolidateMasks;
+    private final boolean forceBoxCalculation;
     private MessageDigest messageDigest;
     private Map<String, File> sourceDigestToMaskMipmapBaseFileMap;
 
@@ -130,11 +134,11 @@ public class MipmapGenerator {
      * @param  consolidateMasks  if true, consolidate equivalent zipped TrakEM2 mask files.
      * @param  forceBoxCalculation  if true, recalculate tile bounding box attributes even if they already exist.
      */
-    public MipmapGenerator(File rootDirectory,
-                           String format,
-                           float jpegQuality,
-                           boolean consolidateMasks,
-                           boolean forceBoxCalculation) {
+    public MipmapGenerator(final File rootDirectory,
+                           final String format,
+                           final float jpegQuality,
+                           final boolean consolidateMasks,
+                           final boolean forceBoxCalculation) {
         this.rootDirectory = rootDirectory;
         this.format = format;
         this.jpegQuality = jpegQuality;
@@ -144,7 +148,7 @@ public class MipmapGenerator {
         if (consolidateMasks) {
             try {
                 messageDigest = MessageDigest.getInstance("MD5");
-            } catch (NoSuchAlgorithmException e) {
+            } catch (final NoSuchAlgorithmException e) {
                 throw new IllegalStateException("failed to create MD5 message digest for TrakEM2 mask files", e);
             }
             this.sourceDigestToMaskMipmapBaseFileMap = new HashMap<String, File>();
@@ -169,7 +173,7 @@ public class MipmapGenerator {
      *   if mipmap files cannot be generated for any reason.
      */
     public TileSpec generateMissingMipmapFiles(TileSpec tileSpec,
-                                               int greatestMipmapLevel)
+                                               final int greatestMipmapLevel)
             throws IllegalArgumentException, IOException {
 
         ImageAndMask imageAndMask = tileSpec.getMipmap(0);
@@ -247,8 +251,8 @@ public class MipmapGenerator {
      * @throws IOException
      *   if missing directories cannot be created.
      */
-    protected File getMipmapBaseFile(String levelZeroSourceUrl,
-                                     boolean createMissingDirectories)
+    protected File getMipmapBaseFile(final String levelZeroSourceUrl,
+                                     final boolean createMissingDirectories)
             throws IllegalArgumentException, IOException {
         final File sourceFile = getFileForUrlString(levelZeroSourceUrl);
         final File sourceDirectory = sourceFile.getParentFile().getCanonicalFile();
@@ -264,19 +268,19 @@ public class MipmapGenerator {
         return new File(mipmapBaseDirectory, sourceFile.getName());
     }
 
-    private File getFileForUrlString(String url) {
+    private File getFileForUrlString(final String url) {
         final URI uri = Utils.convertPathOrUriStringToUri(url);
         return new File(uri);
     }
 
-    private File getMipmapFile(File mipmapBaseFile,
-                               int mipmapLevel) {
+    private File getMipmapFile(final File mipmapBaseFile,
+                               final int mipmapLevel) {
         return new File(mipmapBaseFile.getAbsolutePath() + "_level_" + mipmapLevel + "_mipmap." + format);
     }
 
-    private void generateMipmapFile(String sourceUrl,
-                                    File targetMipmapFile,
-                                    int mipmapLevelDelta)
+    private void generateMipmapFile(final String sourceUrl,
+                                    final File targetMipmapFile,
+                                    final int mipmapLevelDelta)
             throws IOException {
 
         if (! targetMipmapFile.exists()) {
@@ -288,7 +292,7 @@ public class MipmapGenerator {
                 if (outputStream != null) {
                     try {
                         outputStream.close();
-                    } catch (Throwable t) {
+                    } catch (final Throwable t) {
                         LOG.warn("failed to close " + targetMipmapFile.getAbsolutePath() + " (ignoring error)", t);
                     }
                 }
@@ -296,7 +300,7 @@ public class MipmapGenerator {
         }
     }
 
-    private String getDigest(File file)
+    private String getDigest(final File file)
             throws IOException {
 
         messageDigest.reset();
@@ -331,14 +335,14 @@ public class MipmapGenerator {
             if (inputStream != null) {
                 try {
                     inputStream.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     LOG.warn("failed to close " + file.getAbsolutePath() + ", ignoring error", e);
                 }
             }
             if (zipFile != null) {
                 try {
                     zipFile.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     LOG.warn("failed to close zip file " + file.getAbsolutePath() + ", ignoring error", e);
                 }
             }
@@ -347,7 +351,7 @@ public class MipmapGenerator {
         final byte[] digest = messageDigest.digest();
 
         // create string representation of digest that matches output generated by tools like md5sum
-        BigInteger bigInt = new BigInteger(1, digest);
+        final BigInteger bigInt = new BigInteger(1, digest);
         return bigInt.toString(16);
     }
 
@@ -371,11 +375,11 @@ public class MipmapGenerator {
      * @throws IOException
      *   if the down-sampled image cannot be written.
      */
-    public static void generateMipmap(String sourceUrl,
-                                      int mipmapLevelDelta,
-                                      String format,
-                                      Float jpegQuality,
-                                      OutputStream outputStream)
+    public static void generateMipmap(final String sourceUrl,
+                                      final int mipmapLevelDelta,
+                                      final String format,
+                                      final Float jpegQuality,
+                                      final OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
         final ImagePlus sourceImagePlus = Utils.openImagePlusUrl(sourceUrl);

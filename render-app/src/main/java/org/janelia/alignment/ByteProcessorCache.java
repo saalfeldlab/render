@@ -19,6 +19,8 @@ package org.janelia.alignment;
 import ij.ImagePlus;
 import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
+import mpicbg.trakem2.util.Downsampler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,8 +54,8 @@ public class ByteProcessorCache {
      *
      * @return a processor (possibly already cached) for the specified mask and down sampling factor.
      */
-    public ByteProcessor getProcessor(String urlString,
-                                      Integer downSampleLevels) {
+    public ByteProcessor getProcessor(final String urlString,
+                                      final Integer downSampleLevels) {
         if ((lastByteProcessor == null) ||
             (! urlString.equals(lastUrlString)) ||
             ((downSampleLevels == null) && (lastDownSampleLevels != null)) ||
@@ -66,8 +68,8 @@ public class ByteProcessorCache {
         return lastByteProcessor;
     }
 
-    private ByteProcessor buildByteProcessor(String urlString,
-                                             Integer downSampleLevels) {
+    private ByteProcessor buildByteProcessor(final String urlString,
+                                             final Integer downSampleLevels) {
         ByteProcessor byteProcessor = null;
         if (urlString != null) {
             final ImagePlus imagePlus = Utils.openImagePlusUrl(urlString);

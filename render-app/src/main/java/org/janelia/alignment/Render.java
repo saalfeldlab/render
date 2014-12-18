@@ -34,6 +34,7 @@ import mpicbg.models.CoordinateTransformMesh;
 import mpicbg.models.TransformMesh;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import mpicbg.trakem2.util.Downsampler;
 
 import org.janelia.alignment.filter.NormalizeLocalContrast;
 import org.janelia.alignment.filter.ValueToNoise;
