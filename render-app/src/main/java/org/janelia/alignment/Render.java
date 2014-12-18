@@ -36,6 +36,7 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import mpicbg.trakem2.util.Downsampler;
 
+import org.janelia.alignment.filter.CLAHE;
 import org.janelia.alignment.filter.NormalizeLocalContrast;
 import org.janelia.alignment.filter.ValueToNoise;
 import org.janelia.alignment.spec.TileSpec;
@@ -92,6 +93,7 @@ public class Render {
     final static private NormalizeLocalContrast nlcf = new NormalizeLocalContrast(500, 500, 3, true, true);
     final static private ValueToNoise vtnf1 = new ValueToNoise(0, 64, 191);
     final static private ValueToNoise vtnf2 = new ValueToNoise(255, 64, 191);
+    final static private CLAHE clahe = new CLAHE(true, 250, 256, 2.5f);
 
     private Render() {
     }
