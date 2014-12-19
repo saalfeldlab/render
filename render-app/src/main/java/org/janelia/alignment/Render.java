@@ -61,7 +61,7 @@ import org.slf4j.LoggerFactory;
  *      Path to the input image if any
  *       --out
  *      Path to the output image
- * *     --url
+ * *     --tile_spec_url
  *      URL to JSON tile spec
  *       --width
  *      Target image width
@@ -75,7 +75,7 @@ import org.slf4j.LoggerFactory;
  * </pre>
  * <p>E.g.:</p>
  * <pre>java -cp render.jar org.janelia.alignment.RenderTile \
- *   --url "file://absolute/path/to/tile-spec.json" \
+ *   --tile_spec_url "file://absolute/path/to/tile-spec.json" \
  *   --out "/absolute/path/to/output.png" \
  *   --x 16536
  *   --y 32
@@ -93,7 +93,7 @@ public class Render {
     final static private NormalizeLocalContrast nlcf = new NormalizeLocalContrast(500, 500, 3, true, true);
     final static private ValueToNoise vtnf1 = new ValueToNoise(0, 64, 191);
     final static private ValueToNoise vtnf2 = new ValueToNoise(255, 64, 191);
-    final static private CLAHE clahe = new CLAHE(true, 250, 256, 2.5f);
+    final static private CLAHE clahe = new CLAHE(true, 250, 256, 2);
 
     private Render() {
     }
