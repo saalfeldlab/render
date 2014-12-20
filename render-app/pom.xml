@@ -83,7 +83,7 @@
         <dependency>
             <groupId>sc.fiji</groupId>
             <artifactId>mpicbg-trakem2</artifactId>
-            <version>1.0.2</version>
+            <version>1.0.3</version>
         </dependency>
 
     </dependencies>
