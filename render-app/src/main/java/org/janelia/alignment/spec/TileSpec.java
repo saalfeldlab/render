@@ -335,6 +335,10 @@ public class TileSpec {
         }
     }
 
+    public void removeLastTransformSpec() {
+        transforms.removeLastSpec();
+    }
+
     public void flattenTransforms() {
         final ListTransformSpec flattenedList = new ListTransformSpec();
         transforms.flatten(flattenedList);

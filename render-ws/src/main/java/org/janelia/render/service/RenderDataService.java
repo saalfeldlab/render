@@ -2,8 +2,21 @@ package org.janelia.render.service;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.List;
+import mpicbg.trakem2.transform.MovingLeastSquaresTransform2;
+import org.janelia.alignment.MovingLeastSquaresBuilder;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.StackMetaData;
+import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.render.service.dao.RenderDao;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -17,17 +30,8 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
+import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
-
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.StackMetaData;
-import org.janelia.alignment.spec.TileBounds;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.render.service.dao.RenderDao;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * APIs for accessing tile and transform data stored in the Render service database.
@@ -192,6 +196,43 @@ public class RenderDataService {
             RenderServiceUtil.throwServiceException(t);
         }
         return list;
+    }
+
+    @Path("project/{project}/stack/{stack}/z/{z}/movingLeastSquaresTransformUsingMontage/{montageStack}/withAlpha/{alpha}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public TransformSpec getMovingLeastSquaresTransform(@PathParam("owner") String owner,
+                                                        @PathParam("project") String project,
+                                                        @PathParam("stack") String stack,
+                                                        @PathParam("z") Double z,
+                                                        @PathParam("montageStack") String montageStack,
+                                                        @PathParam("alpha") Double alpha) {
+
+        LOG.info("getMovingLeastSquaresTransform: entry, owner={}, project={}, stack={}, z={}, montageStack={}",
+                 owner, project, stack, z, montageStack);
+
+        TransformSpec transformSpec = null;
+        try {
+            final StackId alignStackId = new StackId(owner, project, stack);
+            final StackId montageStackId = new StackId(owner, project, montageStack);
+
+            final List<TileSpec> montageTiles = renderDao.getTileSpecs(montageStackId, z);
+            final List<TileSpec> alignTiles = renderDao.getTileSpecs(alignStackId, z);
+
+            final MovingLeastSquaresBuilder mlsBuilder = new MovingLeastSquaresBuilder(montageTiles, alignTiles);
+            final MovingLeastSquaresTransform2 transform = mlsBuilder.build(alpha);
+            final String separator = "__";
+            final String transformId = z + separator + alpha + separator + montageStack + separator + stack;
+
+            transformSpec = new LeafTransformSpec(transformId,
+                                                  null,
+                                                  transform.getClass().getName(),
+                                                  transform.toDataString());
+        } catch (Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return transformSpec;
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}")
@@ -453,6 +494,62 @@ public class RenderDataService {
         }
 
         final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
+
+        return responseBuilder.build();
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/derivedFrom/{derivedFromStack}")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response saveDerivedTile(@PathParam("owner") String owner,
+                                    @PathParam("project") String project,
+                                    @PathParam("stack") String stack,
+                                    @PathParam("tileId") String tileId,
+                                    @PathParam("derivedFromStack") String derivedFromStack,
+                                    @QueryParam("replaceLastTransform") Boolean replaceLastTransform,
+                                    @Context UriInfo uriInfo,
+                                    List<TransformSpec> transformSpecs) {
+
+        LOG.info("saveDerivedTile: entry, owner={}, project={}, stack={}, tileId={}, derivedFromStack={}, replaceLastTransform={}",
+                 owner, project, stack, tileId, derivedFromStack, replaceLastTransform);
+
+        if (transformSpecs == null) {
+            throw new IllegalServiceArgumentException("array of transform specs must be provided");
+        }
+
+        if (derivedFromStack == null) {
+            throw new IllegalServiceArgumentException("derived from stack must be provided");
+        }
+
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            final StackId derivedFromStackId = new StackId(owner, project, derivedFromStack);
+
+            TileSpec tileSpec = getTileSpec(owner, project, derivedFromStackId.getStack(), tileId, false);
+            if ((replaceLastTransform != null) && replaceLastTransform) {
+                tileSpec.removeLastTransformSpec();
+            }
+
+            tileSpec.addTransformSpecs(transformSpecs);
+
+            // Resolve all transform references and re-derive bounding box before saving.
+            // NOTE: resolution is different from flattening, so referential data remains intact
+            tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
+            tileSpec.deriveBoundingBox(true);
+
+            renderDao.saveTileSpec(stackId, tileSpec);
+        } catch (Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        final URI requestUri = uriInfo.getRequestUri();
+        final String requestPath = requestUri.getPath();
+        final int stop = requestPath.indexOf("/derivedFrom/");
+        final String tilePath = requestPath.substring(0, stop);
+        final UriBuilder uriBuilder = UriBuilder.fromUri(requestUri);
+        uriBuilder.replacePath(tilePath);
+        final URI tileUri = uriBuilder.build();
+        final Response.ResponseBuilder responseBuilder = Response.created(tileUri);
 
         return responseBuilder.build();
     }

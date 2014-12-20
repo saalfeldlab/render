@@ -48,6 +48,12 @@ public class ListTransformSpec extends TransformSpec {
         specList.set(index, spec);
     }
 
+    public void removeLastSpec() {
+        if (specList.size() > 0) {
+            specList.remove(specList.size() - 1);
+        }
+    }
+
     public void addAllSpecs(List<TransformSpec> specs) {
         this.specList.addAll(specs);
     }

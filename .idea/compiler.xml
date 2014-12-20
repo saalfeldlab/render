@@ -28,7 +28,6 @@
         <module name="render-ws" />
         <module name="render-ws-java-client" />
         <module name="trakem2-scripts" />
-        <module name="trakem2-transform" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>

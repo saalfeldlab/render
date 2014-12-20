@@ -7,7 +7,6 @@
       <module fileurl="file://$PROJECT_DIR$/render-ws/render-ws.iml" filepath="$PROJECT_DIR$/render-ws/render-ws.iml" />
       <module fileurl="file://$PROJECT_DIR$/render-ws-java-client/render-ws-java-client.iml" filepath="$PROJECT_DIR$/render-ws-java-client/render-ws-java-client.iml" />
       <module fileurl="file://$PROJECT_DIR$/trakem2-scripts/trakem2-scripts.iml" filepath="$PROJECT_DIR$/trakem2-scripts/trakem2-scripts.iml" />
-      <module fileurl="file://$PROJECT_DIR$/trakem2-transform/trakem2-transform.iml" filepath="$PROJECT_DIR$/trakem2-transform/trakem2-transform.iml" />
     </modules>
   </component>
 </project>

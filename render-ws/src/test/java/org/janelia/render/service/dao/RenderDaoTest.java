@@ -105,6 +105,13 @@ public class RenderDaoTest {
         Assert.assertEquals("invalid tileId retrieved", existingTileId, tileSpec.getTileId());
     }
 
+    @Test
+    public void testGetTileSpecs() throws Exception {
+        final List<TileSpec> list = dao.getTileSpecs(stackId, 3903.0);
+        Assert.assertNotNull("null tile spec list retrieved", list);
+        Assert.assertEquals("invalid number of tile specs retrieved", 12, list.size());
+    }
+
     @Test(expected = ObjectNotFoundException.class)
     public void testGetTileSpecWithBadId() throws Exception {
         dao.getTileSpec(stackId, "missingId", false);

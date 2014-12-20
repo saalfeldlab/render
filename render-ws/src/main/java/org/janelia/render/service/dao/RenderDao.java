@@ -214,6 +214,32 @@ public class RenderDao {
     }
 
     /**
+     * @return a list of resolved tile specifications for all tiles that have the specified z.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing, if the stack cannot be found, or
+     *   if no tile can be found that encompasses the coordinates.
+     */
+    public List<TileSpec> getTileSpecs(StackId stackId,
+                                       Double z)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("stackId", stackId);
+        validateRequiredParameter("z", z);
+
+        final DBObject tileQuery = new BasicDBObject("z", z);
+        final RenderParameters renderParameters = new RenderParameters();
+        addResolvedTileSpecs(stackId, tileQuery, renderParameters);
+
+        if (! renderParameters.hasTileSpecs()) {
+            throw new IllegalArgumentException("no tile specifications found in " + stackId +" for z=" + z);
+        }
+
+        return renderParameters.getTileSpecs();
+    }
+
+
+    /**
      * Saves the specified tile spec to the database.
      *
      * @param  stackId    stack identifier.
