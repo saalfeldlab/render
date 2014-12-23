@@ -26,12 +26,12 @@
 
     <dependencyManagement>
         <dependencies>
-
-            <dependency>
-                <groupId>org.janelia</groupId>
-                <artifactId>render-app</artifactId>
-                <version>${project.version}</version>
-            </dependency>
+        
+        <dependency>
+            <groupId>org.janelia</groupId>
+            <artifactId>render-app</artifactId>
+            <version>0.0.4-SNAPSHOT</version>
+        </dependency>
 
             <dependency>
                 <groupId>com.google.code.gson</groupId>
@@ -42,8 +42,21 @@
             <dependency>
                 <groupId>net.imagej</groupId>
                 <artifactId>ij</artifactId>
-                <version>${imagej1.version}</version>
+                <version>1.49m</version>
             </dependency>
+            
+            <dependency>
+                <groupId>mpicbg</groupId>
+                <artifactId>mpicbg</artifactId>
+                <version>0.6.1</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>mpicbg</groupId>
+                <artifactId>mpicbg_</artifactId>
+                <version>0.6.1</version>
+            </dependency>
+            
 
         </dependencies>
     </dependencyManagement>
@@ -79,9 +92,5 @@
             </plugins>
         </pluginManagement>
     </build>
-
-    <properties>
-        <imagej1.version>1.48s</imagej1.version>
-    </properties>
 
 </project>
