@@ -129,7 +129,7 @@ public class MovingLeastSquaresBuilder {
 
     private static float[] centerToWorld(final TileSpec tileSpec) {
         final float[] center = new float[] { (float) tileSpec.getWidth() / 2.0f, (float) tileSpec.getHeight() / 2.0f };
-        final CoordinateTransformList<CoordinateTransform> ctl = tileSpec.createTransformList();
+        final CoordinateTransformList<CoordinateTransform> ctl = tileSpec.getTransformList();
         ctl.applyInPlace(center);
         return center;
     }

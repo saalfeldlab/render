@@ -1,11 +1,12 @@
 package org.janelia.alignment.spec;
 
-import mpicbg.models.CoordinateTransform;
-import org.janelia.alignment.json.JsonUtils;
-
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import mpicbg.models.CoordinateTransform;
+
+import org.janelia.alignment.json.JsonUtils;
 
 /**
  * Abstract base for all transformation specifications.
@@ -22,9 +23,9 @@ public abstract class TransformSpec {
     public static final String TYPE_ELEMENT_NAME = "type";
     public static final String META_DATA_ELEMENT_NAME = "metaData";
 
-    private String id;
-    private String type;
-    private TransformSpecMetaData metaData;
+    private final String id;
+    private final String type;
+    private final TransformSpecMetaData metaData;
 
     private transient CoordinateTransform instance;
 

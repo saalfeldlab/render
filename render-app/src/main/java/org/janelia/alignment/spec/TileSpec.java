@@ -16,18 +16,19 @@
  */
 package org.janelia.alignment.spec;
 
+import java.awt.Rectangle;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.CoordinateTransformMesh;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.trakem2.transform.TransformMesh;
+
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.json.JsonUtils;
-
-import java.awt.*;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 /**
  * Specifies a set of mipmap level images and masks along with
@@ -48,7 +49,7 @@ public class TileSpec {
     private Double height;
     private Double minIntensity;
     private Double maxIntensity;
-    private TreeMap<Integer, ImageAndMask> mipmapLevels;
+    private final TreeMap<Integer, ImageAndMask> mipmapLevels;
     private ListTransformSpec transforms;
 
     public TileSpec() {
@@ -116,7 +117,7 @@ public class TileSpec {
             throw new IllegalStateException("width and height must be set to create transform mesh");
         }
 
-        final CoordinateTransformList<CoordinateTransform> ctList = createTransformList();
+        final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
         return new TransformMesh(ctList,
                                  getNumberOfTrianglesCoveringWidth(),
                                  width.floatValue(),
@@ -136,7 +137,7 @@ public class TileSpec {
             throw new IllegalStateException("width and height must be set to create transform mesh");
         }
 
-        final CoordinateTransformList<CoordinateTransform> ctList = createTransformList();
+        final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
         return new CoordinateTransformMesh(ctList,
                                            getNumberOfTrianglesCoveringWidth(),
                                            width.floatValue(),
@@ -172,7 +173,7 @@ public class TileSpec {
         float[] w = new float[] {x, y};
 
         if (hasTransforms()) {
-            final CoordinateTransformList<CoordinateTransform> ctl = createTransformList();
+            final CoordinateTransformList<CoordinateTransform> ctl = getTransformList();
             ctl.applyInPlace(w);
         }
 
@@ -369,7 +370,27 @@ public class TileSpec {
         transforms.validate();
     }
 
-    public CoordinateTransformList<CoordinateTransform> createTransformList()
+    /**
+     * Get the transforms of the {@link TileSpec} as a
+     * {@link CoordinateTransformList}.  If the transform of the
+     * {@link TileSpec} is a list, this instance will be returned.  Otherwise,
+     * a new instance containing a single simple transform, or no transform at
+     * all will be returned.
+     * 
+     * Note that modifying the returned list can change the transforms of the
+     * {@link TileSpec}, i.e. copy the list or add it to a new list if you want
+     * to add other transformations.
+     * 
+     * TODO Think more carefully if this is a good idea at all.  Having a safe
+     * to use list is probably what everybody wants from this method.  It is,
+     * however, used in other contexts, e.g. to simply apply the transforms,
+     * for which a more general function getTransform() would have served
+     * better and simpler.
+     * 
+     * @return
+     * @throws IllegalArgumentException
+     */
+    public CoordinateTransformList<CoordinateTransform> getTransformList()
             throws IllegalArgumentException {
 
         CoordinateTransformList<CoordinateTransform> ctl;

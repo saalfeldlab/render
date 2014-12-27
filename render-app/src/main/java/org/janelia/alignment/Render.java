@@ -136,7 +136,9 @@ public class Render {
             tileSpecStart = System.currentTimeMillis();
 
             // assemble coordinate transformations and add bounding box offset
-            final CoordinateTransformList<CoordinateTransform> ctl = ts.createTransformList();
+            final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList<CoordinateTransform>();
+            for (final CoordinateTransform t : ts.getTransformList().getList(null))
+                ctl.add(t);
             final AffineModel2D scaleAndOffset = new AffineModel2D();
             if (areaOffset) {
                 final double offset = (1 - scale) * 0.5;
