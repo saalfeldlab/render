@@ -1,19 +1,16 @@
 package org.janelia.alignment.trakem2;
 
-import mpicbg.trakem2.transform.AffineModel2D;
-import mpicbg.trakem2.transform.CoordinateTransform;
-import mpicbg.trakem2.transform.CoordinateTransformList;
-import mpicbg.trakem2.transform.TransformMesh;
-import org.janelia.alignment.ImageAndMask;
-import org.janelia.alignment.json.JsonUtils;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.LeafTransformSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
+import java.awt.Rectangle;
+import java.awt.geom.AffineTransform;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -25,17 +22,22 @@ import javax.xml.bind.annotation.XmlElementRefs;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
-import java.awt.*;
-import java.awt.geom.AffineTransform;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Pattern;
+
+import mpicbg.trakem2.transform.AffineModel2D;
+import mpicbg.trakem2.transform.CoordinateTransform;
+import mpicbg.trakem2.transform.CoordinateTransformList;
+import mpicbg.trakem2.transform.TransformMesh;
+
+import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
 
 /**
  * Utility to convert TrakEM2 XML project patch (tile) data into
@@ -149,6 +151,7 @@ public class Converter {
         // patch notification callback
         final T2Layer.Listener patchListener = new T2Layer.Listener() {
 
+            @Override
             public void handlePatch(String baseMaskPath,
                                     T2Layer layer,
                                     T2Patch patch,
@@ -188,6 +191,7 @@ public class Converter {
             private long layerPatchCount = 0;
             private long layerStartTime;
 
+            @Override
             public void beforeUnmarshal(Object target, Object parent) {
 
                 if (target instanceof T2Patch) {
@@ -213,6 +217,7 @@ public class Converter {
 
             }
 
+            @Override
             public void afterUnmarshal(Object target, Object parent) {
 
                 if (target instanceof T2Patch) {
@@ -286,9 +291,11 @@ public class Converter {
     private static class IctTransform implements Transformable {
         @XmlAttribute(name = "class") public String className;
         @XmlAttribute(name = "data")  public String data;
+        @Override
         public void addToList(List<TransformSpec> list) {
             list.add(new LeafTransformSpec(className, data));
         }
+        @Override
         public void addToCoordinateTransformList(CoordinateTransformList<CoordinateTransform> list)
                 throws Exception {
             final CoordinateTransform ct = (CoordinateTransform) Class.forName(className).newInstance();
@@ -310,11 +317,13 @@ public class Converter {
                                 @XmlElementRef(type = IctTransformList.class)
                         })
         public List<Transformable> ictList;
+        @Override
         public void addToList(List<TransformSpec> list) {
             for (Transformable t : ictList) {
                 t.addToList(list);
             }
         }
+        @Override
         public void addToCoordinateTransformList(CoordinateTransformList<CoordinateTransform> list)
                 throws Exception {
             for (Transformable t : ictList) {
@@ -386,7 +395,7 @@ public class Converter {
             tileSpec.putMipmap(0, new ImageAndMask(imageUrl, maskUrl));
             tileSpec.addTransformSpecs(transformList);
 
-            tileSpec.deriveBoundingBox(true);
+            tileSpec.deriveBoundingBox(TileSpec.DEFAULT_MESH_CELL_SIZE, true);
 
             return tileSpec;
         }
@@ -470,6 +479,7 @@ public class Converter {
                                      final String baseMaskPath,
                                      final boolean isFirstLayer) {
             patches = new ArrayList<T2Patch>() {
+                @Override
                 public boolean add(T2Patch patch) {
                     final boolean isFirstPatch = isFirstLayer && (numberOfPatches == 0);
                     l.handlePatch(baseMaskPath, T2Layer.this, patch, isFirstPatch);

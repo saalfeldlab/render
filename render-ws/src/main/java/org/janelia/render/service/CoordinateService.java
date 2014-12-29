@@ -1,10 +1,9 @@
 package org.janelia.render.service;
 
-import org.janelia.alignment.spec.TileCoordinates;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.render.service.dao.RenderDao;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -12,11 +11,14 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+
+import org.janelia.alignment.spec.TileCoordinates;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.render.service.dao.RenderDao;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * APIs for translating coordinates.
@@ -25,8 +27,8 @@ import java.util.List;
  */
 @Path("/v1/owner/{owner}")
 public class CoordinateService {
-
-    private RenderDao renderDao;
+    
+    private final RenderDao renderDao;
 
     @SuppressWarnings("UnusedDeclaration")
     public CoordinateService()
@@ -62,11 +64,12 @@ public class CoordinateService {
     @Produces(MediaType.APPLICATION_JSON)
     public float[] getLocalCoordinates(@PathParam("x") float x,
                                        @PathParam("y") float y,
+                                       @QueryParam("meshCellSize") final Double meshCellSize,
                                        TileSpec tileSpec) {
 
         float[] localCoordinates = null;
         try {
-            localCoordinates = tileSpec.getLocalCoordinates(x, y);
+            localCoordinates = tileSpec.getLocalCoordinates(x, y, meshCellSize == null ? TileSpec.DEFAULT_MESH_CELL_SIZE : meshCellSize );
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -181,18 +184,21 @@ public class CoordinateService {
                                                      @PathParam("stack") String stack,
                                                      @PathParam("x") Double worldX,
                                                      @PathParam("y") Double worldY,
-                                                     @PathParam("z") Double z) {
+                                                     @PathParam("z") Double z,
+                                                     @QueryParam("meshCellSize") final Double meshCellSize) {
 
-        LOG.info("getLocalCoordinates: entry, owner={}, project={}, stack={}, worldX={}, worldY={}, z={}",
-                 owner, project, stack, worldX, worldY, z);
+        LOG.info("getLocalCoordinates: entry, owner={}, project={}, stack={}, worldX={}, worldY={}, z={}, meshCellSize={}",
+                 owner, project, stack, worldX, worldY, z, meshCellSize);
 
         List<TileCoordinates> localCoordinatesList = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
             final List<TileSpec> tileSpecList = renderDao.getTileSpecs(stackId, worldX, worldY, z);
-            localCoordinatesList = TileCoordinates.getLocalCoordinates(tileSpecList,
-                                                                       worldX.floatValue(),
-                                                                       worldY.floatValue());
+            localCoordinatesList = TileCoordinates.getLocalCoordinates(
+                    tileSpecList,
+                    worldX.floatValue(),
+                    worldY.floatValue(),
+                    meshCellSize == null ? TileSpec.DEFAULT_MESH_CELL_SIZE : meshCellSize);
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -208,10 +214,11 @@ public class CoordinateService {
                                                            @PathParam("project") String project,
                                                            @PathParam("stack") String stack,
                                                            @PathParam("z") Double z,
+                                                           @QueryParam("meshCellSize") final Double meshCellSize,
                                                            List<TileCoordinates> worldCoordinatesList) {
 
-        LOG.info("getLocalCoordinates: entry, owner={}, project={}, stack={}, z={}, worldCoordinatesList.size()={}",
-                 owner, project, stack, z, worldCoordinatesList.size());
+        LOG.info("getLocalCoordinates: entry, owner={}, project={}, stack={}, z={}, meshCellSize={}, worldCoordinatesList.size()={}",
+                 owner, project, stack, z, meshCellSize, worldCoordinatesList.size());
 
         final long startTime = System.currentTimeMillis();
         long lastStatusTime = startTime;
@@ -239,7 +246,11 @@ public class CoordinateService {
                 }
 
                 tileSpecList = renderDao.getTileSpecs(stackId, (double) world[0], (double) world[1], z);
-                localCoordinatesList.add(TileCoordinates.getLocalCoordinates(tileSpecList, world[0], world[1]));
+                localCoordinatesList.add(TileCoordinates.getLocalCoordinates(
+                        tileSpecList,
+                        world[0],
+                        world[1],
+                        meshCellSize == null ? TileSpec.DEFAULT_MESH_CELL_SIZE : meshCellSize));
 
             } catch (Throwable t) {
 

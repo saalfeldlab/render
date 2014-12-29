@@ -38,6 +38,8 @@ import org.janelia.alignment.json.JsonUtils;
  */
 public class TileSpec {
 
+    final static public double DEFAULT_MESH_CELL_SIZE = 64;
+
     private String tileId;
     private LayoutData layout;
     private Double z;
@@ -51,7 +53,8 @@ public class TileSpec {
     private Double maxIntensity;
     private final TreeMap<Integer, ImageAndMask> mipmapLevels;
     private ListTransformSpec transforms;
-
+    private double meshCellSize = DEFAULT_MESH_CELL_SIZE; 
+    
     public TileSpec() {
         this.mipmapLevels = new TreeMap<Integer, ImageAndMask>();
         this.transforms = new ListTransformSpec();
@@ -88,20 +91,32 @@ public class TileSpec {
     public Double getMinY() {
         return minY;
     }
-
-    public boolean isBoundingBoxDefined() {
-        return ((minX != null) && (minY != null) && (maxX != null) && (maxY != null));
+    
+    public boolean isBoundingBoxDefined(final double meshCellSize) {
+        return 
+                (this.meshCellSize == meshCellSize) &&
+                (minX != null) &&
+                (minY != null) &&
+                (maxX != null) &&
+                (maxY != null);
     }
-
-    public void setBoundingBox(Rectangle box) {
+    
+    /**
+     * The bounding box is only valid for a given meshCellSize, i.e. setting it
+     * independently of the meshCellSize is potentially harmful.
+     * 
+     * @param box
+     */
+    public void setBoundingBox(Rectangle box, final double meshCellSize) {
         this.minX = box.getX();
         this.minY = box.getY();
         this.maxX = box.getMaxX();
         this.maxY = box.getMaxY();
+        this.meshCellSize = meshCellSize;
     }
 
-    public int getNumberOfTrianglesCoveringWidth() {
-        return (int) (width / TRANSFORM_MESH_TRIANGLE_SIZE + 0.5);
+    public int getNumberOfTrianglesCoveringWidth(final double meshCellSize) {
+        return (int) (width / meshCellSize + 0.5);
     }
 
     /**
@@ -110,7 +125,7 @@ public class TileSpec {
      * @throws IllegalStateException
      *   if width or height have not been defined for this tile.
      */
-    public TransformMesh getTransformMesh()
+    public TransformMesh getTransformMesh(final double meshCellSize)
             throws IllegalStateException {
 
         if (! hasWidthAndHeightDefined()) {
@@ -119,7 +134,7 @@ public class TileSpec {
 
         final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
         return new TransformMesh(ctList,
-                                 getNumberOfTrianglesCoveringWidth(),
+                                 getNumberOfTrianglesCoveringWidth(meshCellSize),
                                  width.floatValue(),
                                  height.floatValue());
     }
@@ -130,7 +145,7 @@ public class TileSpec {
      * @throws IllegalStateException
      *   if width or height have not been defined for this tile.
      */
-    public CoordinateTransformMesh getCoordinateTransformMesh()
+    public CoordinateTransformMesh getCoordinateTransformMesh(final double meshCellSize)
             throws IllegalStateException {
 
         if (! hasWidthAndHeightDefined()) {
@@ -139,7 +154,7 @@ public class TileSpec {
 
         final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
         return new CoordinateTransformMesh(ctList,
-                                           getNumberOfTrianglesCoveringWidth(),
+                                           getNumberOfTrianglesCoveringWidth(meshCellSize),
                                            width.floatValue(),
                                            height.floatValue());
     }
@@ -153,11 +168,11 @@ public class TileSpec {
      * @throws IllegalStateException
      *   if width or height have not been defined for this tile.
      */
-    public void deriveBoundingBox(boolean force)
+    public void deriveBoundingBox(final double meshCellSize, boolean force)
             throws IllegalStateException {
-        if (force || (! isBoundingBoxDefined())) {
-            final TransformMesh mesh = getTransformMesh();
-            setBoundingBox(mesh.getBoundingBox());
+        if (force || (!isBoundingBoxDefined(meshCellSize))) {
+            final TransformMesh mesh = getTransformMesh(meshCellSize);
+            setBoundingBox(mesh.getBoundingBox(), meshCellSize);
         }
     }
 
@@ -198,14 +213,13 @@ public class TileSpec {
      * @throws NoninvertibleModelException
      *   if this tile's transforms cannot be inverted for the specified point.
      */
-    public float[] getLocalCoordinates(float x,
-                                       float y)
+    public float[] getLocalCoordinates(float x, float y, final double meshCellSize)
             throws IllegalStateException, NoninvertibleModelException {
 
         float[] localCoordinates;
         float[] l = new float[] {x, y};
         if (hasTransforms()) {
-            final CoordinateTransformMesh mesh = getCoordinateTransformMesh();
+            final CoordinateTransformMesh mesh = getCoordinateTransformMesh(meshCellSize);
             mesh.applyInverseInPlace(l);
         }
 
@@ -445,6 +459,4 @@ public class TileSpec {
     public static TileSpec fromJson(String json) {
         return JsonUtils.GSON.fromJson(json, TileSpec.class);
     }
-
-    private static final int TRANSFORM_MESH_TRIANGLE_SIZE = 64;
 }
