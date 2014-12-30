@@ -455,6 +455,10 @@ public class RenderParameters {
         if (convertToGray) {
             sb.append("convertToGray=true, ");
         }
+        
+        if (doFilter) {
+            sb.append("filter=true, ");
+        }
 
         if (in != null) {
             sb.append("in='").append(in).append("', ");
@@ -560,6 +564,8 @@ public class RenderParameters {
                 quality = baseParameters.quality;
             }
 
+            doFilter = mergedValue(doFilter, baseParameters.doFilter, false);
+            
             tileSpecs.addAll(baseParameters.tileSpecs);
         }
     }
