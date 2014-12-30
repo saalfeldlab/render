@@ -42,7 +42,8 @@ import com.beust.jcommander.Parameters;
 import com.google.gson.reflect.TypeToken;
 
 /**
- * Parameters for render operations.
+ * Parameters for render operations.  Includes a collection of TileSpecs and
+ * thus represents a `snapshot of the world'.
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
