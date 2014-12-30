@@ -559,11 +559,7 @@ public class RenderParameters {
             convertToGray = mergedValue(convertToGray, baseParameters.convertToGray, false);
             numberOfThreads = mergedValue(numberOfThreads, baseParameters.numberOfThreads, DEFAULT_NUMBER_OF_THREADS);
             skipInterpolation = mergedValue(skipInterpolation, baseParameters.skipInterpolation, false);
-
-            if (quality == DEFAULT_QUALITY) {
-                quality = baseParameters.quality;
-            }
-
+            quality = mergedValue(quality, baseParameters.quality, DEFAULT_QUALITY);
             doFilter = mergedValue(doFilter, baseParameters.doFilter, false);
             
             tileSpecs.addAll(baseParameters.tileSpecs);
@@ -605,43 +601,12 @@ public class RenderParameters {
         return parameters;
     }
 
-    private String mergedValue(final String currentValue,
-                               final String baseValue) {
-        String value = currentValue;
-        if (currentValue == null) {
-            value = baseValue;
-        }
-        return value;
+    private <T> T mergedValue(final T currentValue, final T baseValue) {
+        return currentValue == null ? baseValue : currentValue;
     }
-
-    private int mergedValue(final int currentValue,
-                            final int baseValue,
-                            final int defaultValue) {
-        int value = currentValue;
-        if (currentValue == defaultValue) {
-            value = baseValue;
-        }
-        return value;
-    }
-
-    private double mergedValue(final double currentValue,
-                               final double baseValue,
-                               final double defaultValue) {
-        double value = currentValue;
-        if (currentValue == defaultValue) {
-            value = baseValue;
-        }
-        return value;
-    }
-
-    private boolean mergedValue(final boolean currentValue,
-                                final boolean baseValue,
-                                final boolean defaultValue) {
-        boolean value = currentValue;
-        if (currentValue == defaultValue) {
-            value = baseValue;
-        }
-        return value;
+    
+    private <T> T mergedValue(final T currentValue, final T baseValue, final T defaultValue) {
+        return currentValue == null || currentValue.equals(defaultValue) ? baseValue : currentValue;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParameters.class);
