@@ -22,6 +22,7 @@ import java.nio.file.Paths;
 import java.util.Map;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -85,7 +86,7 @@ public class TileSpecTest {
         Assert.assertEquals("bad stageY value", layoutData.getStageY(), parsedLayoutData.getStageY());
         Assert.assertEquals("bad rotation value", layoutData.getRotation(), parsedLayoutData.getRotation());
 
-        parsedSpec.setBoundingBox(new Rectangle(11, 12, 21, 22), TileSpec.DEFAULT_MESH_CELL_SIZE);
+        parsedSpec.setBoundingBox(new Rectangle(11, 12, 21, 22), RenderParameters.DEFAULT_MESH_CELL_SIZE);
         ImageAndMask imageAndMask = new ImageAndMask("src/test/resources/stitch-test/coll0075_row0021_cam1.png", null);
         parsedSpec.putMipmap(0, imageAndMask);
         final String layoutFileFormat = parsedSpec.toLayoutFileFormat();
@@ -117,7 +118,7 @@ public class TileSpecTest {
         final float[] localCoordinates = tileSpec.getLocalCoordinates(
                 worldCoordinates[0],
                 worldCoordinates[1],
-                TileSpec.DEFAULT_MESH_CELL_SIZE);
+                RenderParameters.DEFAULT_MESH_CELL_SIZE);
 
         Assert.assertNotNull("localCoordinates are null", localCoordinates);
         Assert.assertEquals("incorrect length for localCoordinates", 3, localCoordinates.length);
@@ -145,7 +146,7 @@ public class TileSpecTest {
         final float[] localCoordinates = tileSpec.getLocalCoordinates(
                 worldCoordinates[0],
                 worldCoordinates[1],
-                TileSpec.DEFAULT_MESH_CELL_SIZE);
+                RenderParameters.DEFAULT_MESH_CELL_SIZE);
 
         Assert.assertNotNull("localCoordinates are null", localCoordinates);
         Assert.assertEquals("incorrect length for localCoordinates", 3, localCoordinates.length);

@@ -223,7 +223,7 @@ public class MipmapGenerator {
             }
         }
 
-        tileSpec = Render.deriveBoundingBox(tileSpec, TileSpec.DEFAULT_MESH_CELL_SIZE, forceBoxCalculation);
+        tileSpec = Render.deriveBoundingBox(tileSpec, RenderParameters.DEFAULT_MESH_CELL_SIZE, forceBoxCalculation);
 
         return tileSpec;
     }

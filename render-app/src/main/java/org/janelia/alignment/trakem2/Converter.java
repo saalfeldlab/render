@@ -29,6 +29,7 @@ import mpicbg.trakem2.transform.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMesh;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
@@ -395,7 +396,7 @@ public class Converter {
             tileSpec.putMipmap(0, new ImageAndMask(imageUrl, maskUrl));
             tileSpec.addTransformSpecs(transformList);
 
-            tileSpec.deriveBoundingBox(TileSpec.DEFAULT_MESH_CELL_SIZE, true);
+            tileSpec.deriveBoundingBox(RenderParameters.DEFAULT_MESH_CELL_SIZE, true);
 
             return tileSpec;
         }

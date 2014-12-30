@@ -4,8 +4,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.TileCoordinates;
-import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
@@ -62,7 +62,7 @@ public class CoordinateServiceTest {
                                             x,
                                             y,
                                             Z,
-                                            TileSpec.DEFAULT_MESH_CELL_SIZE);
+                                            RenderParameters.DEFAULT_MESH_CELL_SIZE);
 
         Assert.assertEquals("invalid number of tiles found for (" + x + "," + y + ")",
                             1, localCoordinatesList.size());
@@ -115,7 +115,7 @@ public class CoordinateServiceTest {
                                             stackId.getProject(),
                                             stackId.getStack(),
                                             Z,
-                                            TileSpec.DEFAULT_MESH_CELL_SIZE,
+                                            RenderParameters.DEFAULT_MESH_CELL_SIZE,
                                             worldCoordinateList);
 
         Assert.assertNotNull("null local list retrieved", localCoordinatesListOfLists);
@@ -187,7 +187,7 @@ public class CoordinateServiceTest {
                                             8000.0, //
                                             5900.0, //
                                             Z,
-                                            TileSpec.DEFAULT_MESH_CELL_SIZE);
+                                            RenderParameters.DEFAULT_MESH_CELL_SIZE);
 
         Assert.assertNotNull("null local list retrieved", localCoordinateList);
         Assert.assertEquals("invalid local list size",

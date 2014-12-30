@@ -28,6 +28,7 @@ import mpicbg.models.NoninvertibleModelException;
 import mpicbg.trakem2.transform.TransformMesh;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 
 /**
@@ -37,8 +38,6 @@ import org.janelia.alignment.json.JsonUtils;
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
 public class TileSpec {
-
-    final static public double DEFAULT_MESH_CELL_SIZE = 64;
 
     private String tileId;
     private LayoutData layout;
@@ -53,7 +52,7 @@ public class TileSpec {
     private Double maxIntensity;
     private final TreeMap<Integer, ImageAndMask> mipmapLevels;
     private ListTransformSpec transforms;
-    private double meshCellSize = DEFAULT_MESH_CELL_SIZE; 
+    private double meshCellSize = RenderParameters.DEFAULT_MESH_CELL_SIZE; 
     
     public TileSpec() {
         this.mipmapLevels = new TreeMap<Integer, ImageAndMask>();

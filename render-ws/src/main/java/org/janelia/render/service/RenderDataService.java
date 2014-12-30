@@ -45,7 +45,6 @@ public class RenderDataService {
 
     private final RenderDao renderDao;
 
-    @SuppressWarnings("UnusedDeclaration")
     public RenderDataService()
             throws UnknownHostException {
         this(RenderServiceUtil.buildDao());
@@ -336,7 +335,7 @@ public class RenderDataService {
             // resolve all transform references and re-derive bounding box before saving ...
             tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
             tileSpec.deriveBoundingBox(
-                    meshCellSize == null ? TileSpec.DEFAULT_MESH_CELL_SIZE : meshCellSize,
+                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
                     true);
 
             renderDao.saveTileSpec(stackId, tileSpec);
@@ -404,7 +403,7 @@ public class RenderDataService {
             // NOTE: resolution is different from flattening, so referential data remains intact
             tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
             tileSpec.deriveBoundingBox(
-                    meshCellSize == null ? TileSpec.DEFAULT_MESH_CELL_SIZE : meshCellSize,
+                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
                     true);
 
             renderDao.saveTileSpec(stackId, tileSpec);
@@ -496,7 +495,7 @@ public class RenderDataService {
             // NOTE: resolution is different from flattening, so referential data remains intact
             tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
             tileSpec.deriveBoundingBox(
-                    meshCellSize == null ? TileSpec.DEFAULT_MESH_CELL_SIZE : meshCellSize,
+                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
                     true);
 
             renderDao.saveTileSpec(stackId, tileSpec);
@@ -548,7 +547,7 @@ public class RenderDataService {
             // NOTE: resolution is different from flattening, so referential data remains intact
             tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
             tileSpec.deriveBoundingBox(
-                    meshCellSize == null ? TileSpec.DEFAULT_MESH_CELL_SIZE : meshCellSize,
+                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
                     true);
 
             renderDao.saveTileSpec(stackId, tileSpec);

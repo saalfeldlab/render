@@ -14,6 +14,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.service.dao.RenderDao;
@@ -69,7 +70,7 @@ public class CoordinateService {
 
         float[] localCoordinates = null;
         try {
-            localCoordinates = tileSpec.getLocalCoordinates(x, y, meshCellSize == null ? TileSpec.DEFAULT_MESH_CELL_SIZE : meshCellSize );
+            localCoordinates = tileSpec.getLocalCoordinates(x, y, meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize );
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -198,7 +199,7 @@ public class CoordinateService {
                     tileSpecList,
                     worldX.floatValue(),
                     worldY.floatValue(),
-                    meshCellSize == null ? TileSpec.DEFAULT_MESH_CELL_SIZE : meshCellSize);
+                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize);
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -250,7 +251,7 @@ public class CoordinateService {
                         tileSpecList,
                         world[0],
                         world[1],
-                        meshCellSize == null ? TileSpec.DEFAULT_MESH_CELL_SIZE : meshCellSize));
+                        meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize));
 
             } catch (Throwable t) {
 

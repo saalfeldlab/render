@@ -611,7 +611,7 @@ public class RenderParameters {
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParameters.class);
 
-    private static final double DEFAULT_MESH_CELL_SIZE = 64;
+    public static final double DEFAULT_MESH_CELL_SIZE = 64;
     private static final double DEFAULT_X_AND_Y = 0;
     private static final int DEFAULT_HEIGHT_AND_WIDTH = 256;
     private static final Double DEFAULT_SCALE = 1.0;
