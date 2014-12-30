@@ -92,6 +92,14 @@ public class TileSpec {
         return minY;
     }
     
+    public Double getMaxX() {
+        return maxX;
+    }
+
+    public Double getMaxY() {
+        return maxY;
+    }
+    
     public boolean isBoundingBoxDefined(final double meshCellSize) {
         return 
                 (this.meshCellSize == meshCellSize) &&
