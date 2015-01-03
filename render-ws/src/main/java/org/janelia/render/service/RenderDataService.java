@@ -1,15 +1,7 @@
 package org.janelia.render.service;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.List;
-import mpicbg.trakem2.transform.MovingLeastSquaresTransform2;
-import org.janelia.alignment.MovingLeastSquaresBuilder;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.StackMetaData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
@@ -32,6 +24,11 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.util.List;
 
 /**
  * APIs for accessing tile and transform data stored in the Render service database.
@@ -196,43 +193,6 @@ public class RenderDataService {
             RenderServiceUtil.throwServiceException(t);
         }
         return list;
-    }
-
-    @Path("project/{project}/stack/{stack}/z/{z}/movingLeastSquaresTransformUsingMontage/{montageStack}/withAlpha/{alpha}")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public TransformSpec getMovingLeastSquaresTransform(@PathParam("owner") String owner,
-                                                        @PathParam("project") String project,
-                                                        @PathParam("stack") String stack,
-                                                        @PathParam("z") Double z,
-                                                        @PathParam("montageStack") String montageStack,
-                                                        @PathParam("alpha") Double alpha) {
-
-        LOG.info("getMovingLeastSquaresTransform: entry, owner={}, project={}, stack={}, z={}, montageStack={}",
-                 owner, project, stack, z, montageStack);
-
-        TransformSpec transformSpec = null;
-        try {
-            final StackId alignStackId = new StackId(owner, project, stack);
-            final StackId montageStackId = new StackId(owner, project, montageStack);
-
-            final List<TileSpec> montageTiles = renderDao.getTileSpecs(montageStackId, z);
-            final List<TileSpec> alignTiles = renderDao.getTileSpecs(alignStackId, z);
-
-            final MovingLeastSquaresBuilder mlsBuilder = new MovingLeastSquaresBuilder(montageTiles, alignTiles);
-            final MovingLeastSquaresTransform2 transform = mlsBuilder.build(alpha);
-            final String separator = "__";
-            final String transformId = z + separator + alpha + separator + montageStack + separator + stack;
-
-            transformSpec = new LeafTransformSpec(transformId,
-                                                  null,
-                                                  transform.getClass().getName(),
-                                                  transform.toDataString());
-        } catch (Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        return transformSpec;
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}")

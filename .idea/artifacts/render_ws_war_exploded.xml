@@ -16,7 +16,7 @@
           <element id="library" level="project" name="Maven: mpicbg:mpicbg:0.6.1" />
           <element id="library" level="project" name="Maven: com.google.code.gson:gson:2.2.4" />
           <element id="library" level="project" name="Maven: com.beust:jcommander:1.35" />
-          <element id="library" level="project" name="Maven: sc.fiji:mpicbg-trakem2:1.0.2" />
+          <element id="library" level="project" name="Maven: sc.fiji:mpicbg-trakem2:1.0.3" />
           <element id="library" level="project" name="Maven: org.jboss.resteasy:resteasy-jaxrs:2.3.7.Final" />
           <element id="library" level="project" name="Maven: org.jboss.resteasy:jaxrs-api:2.3.7.Final" />
           <element id="library" level="project" name="Maven: org.scannotation:scannotation:1.0.3" />

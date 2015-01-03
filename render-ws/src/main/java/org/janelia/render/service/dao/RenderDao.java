@@ -1,6 +1,8 @@
 package org.janelia.render.service.dao;
 
 import com.mongodb.BasicDBObject;
+import com.mongodb.BulkWriteOperation;
+import com.mongodb.BulkWriteResult;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -183,6 +185,47 @@ public class RenderDao {
         return tileSpec;
     }
 
+    public void resolveTransformReferencesForTiles(StackId stackId,
+                                                   List<TileSpec> tileSpecs)
+            throws IllegalStateException {
+
+        final Set<String> unresolvedIds = new HashSet<String>();
+        ListTransformSpec transforms;
+        for (TileSpec tileSpec : tileSpecs) {
+            transforms = tileSpec.getTransforms();
+            if (transforms != null) {
+                transforms.addUnresolvedIds(unresolvedIds);
+            }
+        }
+
+        final int unresolvedCount = unresolvedIds.size();
+        if (unresolvedCount > 0) {
+
+            final Map<String, TransformSpec> resolvedIdToSpecMap = new HashMap<String, TransformSpec>();
+
+            final DBCollection transformCollection = getTransformCollection(stackId);
+            getDataForTransformSpecReferences(transformCollection, unresolvedIds, resolvedIdToSpecMap, 1);
+
+            // resolve any references within the retrieved transform specs
+            for (TransformSpec transformSpec : resolvedIdToSpecMap.values()) {
+                transformSpec.resolveReferences(resolvedIdToSpecMap);
+            }
+
+            // apply fully resolved transform specs to tiles
+            for (TileSpec tileSpec : tileSpecs) {
+                transforms = tileSpec.getTransforms();
+                transforms.resolveReferences(resolvedIdToSpecMap);
+                if (! transforms.isFullyResolved()) {
+                    throw new IllegalStateException("tile spec " + tileSpec.getTileId() +
+                                                    " is not fully resolved after applying the following transform specs: " +
+                                                    resolvedIdToSpecMap.keySet());
+                }
+            }
+
+        }
+    }
+
+
     /**
      * @return a list of resolved tile specifications for all tiles that encompass the specified coordinates.
      *
@@ -281,6 +324,52 @@ public class RenderDao {
                   tileCollection.getFullName(), action, query, result.getUpsertedId());
 
         return tileSpec;
+    }
+
+    /**
+     * Saves the specified tile spec to the database.
+     *
+     * @param  stackId        stack identifier.
+     * @param  tileSpecList   list of tile specifications to be saved.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters or transform spec references are missing.
+     */
+    public void bulkSaveTileSpecs(StackId stackId,
+                                  List<TileSpec> tileSpecList)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("stackId", stackId);
+
+        final DBCollection tileCollection = getTileCollection(stackId);
+        final BulkWriteOperation bulkWriteOperation = tileCollection.initializeUnorderedBulkOperation();
+
+        BasicDBObject query = null;
+        DBObject tileSpecObject;
+        for (TileSpec tileSpec : tileSpecList) {
+            query = new BasicDBObject("tileId", tileSpec.getTileId());
+            tileSpecObject = (DBObject) JSON.parse(tileSpec.toJson());
+            bulkWriteOperation.find(query).upsert().replaceOne(tileSpecObject);
+        }
+
+        final BulkWriteResult result = bulkWriteOperation.execute();
+
+        StringBuilder bulkStats = new StringBuilder(128);
+        bulkStats.append("processed ").append(tileSpecList.size()).append(" tile specs with ");
+        if (result.isAcknowledged()) {
+            bulkStats.append(result.getInsertedCount()).append(" inserts, ");
+            bulkStats.append(result.getMatchedCount()).append(" matches, and ");
+            if (result.isModifiedCountAvailable()) {
+                bulkStats.append(result.getModifiedCount()).append(" modifications");
+            } else {
+                bulkStats.append("NO modifications");
+            }
+        } else {
+            bulkStats.append("result NOT acknowledged");
+        }
+
+        LOG.debug("bulkSaveTileSpecs: {} using {}.initializeUnorderedBulkOp()",
+                  bulkStats, tileCollection.getFullName(), query);
     }
 
     /**
@@ -696,46 +785,6 @@ public class RenderDao {
                   renderParameters.numberOfTileSpecs(), tileCollection.getFullName(), tileQuery, orderBy);
 
         resolveTransformReferencesForTiles(stackId, renderParameters.getTileSpecs());
-    }
-
-    private void resolveTransformReferencesForTiles(StackId stackId,
-                                                    List<TileSpec> tileSpecs)
-            throws IllegalStateException {
-
-        final Set<String> unresolvedIds = new HashSet<String>();
-        ListTransformSpec transforms;
-        for (TileSpec tileSpec : tileSpecs) {
-            transforms = tileSpec.getTransforms();
-            if (transforms != null) {
-                transforms.addUnresolvedIds(unresolvedIds);
-            }
-        }
-
-        final int unresolvedCount = unresolvedIds.size();
-        if (unresolvedCount > 0) {
-
-            final Map<String, TransformSpec> resolvedIdToSpecMap = new HashMap<String, TransformSpec>();
-
-            final DBCollection transformCollection = getTransformCollection(stackId);
-            getDataForTransformSpecReferences(transformCollection, unresolvedIds, resolvedIdToSpecMap, 1);
-
-            // resolve any references within the retrieved transform specs
-            for (TransformSpec transformSpec : resolvedIdToSpecMap.values()) {
-                transformSpec.resolveReferences(resolvedIdToSpecMap);
-            }
-
-            // apply fully resolved transform specs to tiles
-            for (TileSpec tileSpec : tileSpecs) {
-                transforms = tileSpec.getTransforms();
-                transforms.resolveReferences(resolvedIdToSpecMap);
-                if (! transforms.isFullyResolved()) {
-                    throw new IllegalStateException("tile spec " + tileSpec.getTileId() +
-                                                    " is not fully resolved after applying the following transform specs: " +
-                                                    resolvedIdToSpecMap.keySet());
-                }
-            }
-
-        }
     }
 
     private DBObject lte(final double value) {
