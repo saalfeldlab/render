@@ -41,21 +41,25 @@ public class ListTransformSpec extends TransformSpec {
 
     public void addSpec(TransformSpec spec) {
         specList.add(spec);
+        removeInstance();
     }
 
     public void setSpec(int index,
                         TransformSpec spec) {
         specList.set(index, spec);
+        removeInstance();
     }
 
     public void removeLastSpec() {
         if (specList.size() > 0) {
             specList.remove(specList.size() - 1);
+            removeInstance();
         }
     }
 
     public void addAllSpecs(List<TransformSpec> specs) {
         this.specList.addAll(specs);
+        removeInstance();
     }
 
     public int size() {
@@ -70,6 +74,7 @@ public class ListTransformSpec extends TransformSpec {
                 i.remove();
             }
         }
+        removeInstance();
     }
 
     @Override

@@ -139,4 +139,11 @@ public abstract class TransformSpec {
     protected abstract CoordinateTransform buildInstance()
             throws IllegalArgumentException;
 
+    /**
+     * Remove cached coordinate transform instance (to force future rebuild).
+     */
+    protected void removeInstance() {
+        instance = null;
+    }
+
 }
