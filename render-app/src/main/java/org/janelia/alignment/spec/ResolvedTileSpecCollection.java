@@ -1,5 +1,9 @@
 package org.janelia.alignment.spec;
 
+import org.janelia.alignment.util.ProcessTimer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -92,9 +96,20 @@ public class ResolvedTileSpecCollection {
         }
 
         final TransformSpec referenceTransformSpec = new ReferenceTransformSpec(transformId);
+
+        final ProcessTimer timer = new ProcessTimer();
+        int tileSpecCount = 0;
         for (String tileId : tileIdToSpecMap.keySet()) {
             addTransformSpecToTile(tileId, referenceTransformSpec, false);
+            tileSpecCount++;
+            if (timer.hasIntervalPassed()) {
+                LOG.debug("addReferenceTransformToAllTiles: added transform to {} out of {} tiles",
+                          tileSpecCount, tileIdToSpecMap.size());
+            }
         }
+
+        LOG.debug("addReferenceTransformToAllTiles: added transform to {} tiles, elapsedSeconds={}",
+                  tileSpecCount, timer.getElapsedSeconds());
     }
 
     public void verifyAllTileSpecsHaveZValue(double expectedZ) {
@@ -136,4 +151,6 @@ public class ResolvedTileSpecCollection {
             }
         }
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(ResolvedTileSpecCollection.class);
 }
