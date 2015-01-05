@@ -2,6 +2,7 @@ package org.janelia.render.service;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.StackMetaData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
@@ -193,6 +194,63 @@ public class RenderDataService {
             RenderServiceUtil.throwServiceException(t);
         }
         return list;
+    }
+
+    @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public ResolvedTileSpecCollection getResolvedTiles(@PathParam("owner") final String owner,
+                                                       @PathParam("project") final String project,
+                                                       @PathParam("stack") final String stack,
+                                                       @PathParam("z") final Double z) {
+
+        LOG.info("getResolvedTiles: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
+
+        ResolvedTileSpecCollection resolvedTiles = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            resolvedTiles = renderDao.getResolvedTiles(stackId, z);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+        return resolvedTiles;
+    }
+
+    @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response saveResolvedTiles(@PathParam("owner") final String owner,
+                                      @PathParam("project") final String project,
+                                      @PathParam("stack") final String stack,
+                                      @PathParam("z") final Double z,
+                                      @Context final UriInfo uriInfo,
+                                      ResolvedTileSpecCollection resolvedTiles) {
+
+        LOG.info("saveResolvedTiles: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
+
+        if (resolvedTiles == null) {
+            throw new IllegalServiceArgumentException("no resolved tiles provided");
+        }
+
+        if (z == null) {
+            throw new IllegalServiceArgumentException("no z value provided");
+        }
+
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            resolvedTiles.verifyAllTileSpecsHaveZValue(z);
+            renderDao.saveResolvedTiles(stackId, resolvedTiles);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
+
+        LOG.info("saveResolvedTiles: exit");
+
+        return responseBuilder.build();
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}")

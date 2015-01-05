@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,11 +58,11 @@ public class MovingLeastSquaresBuilder {
      * The {@link #build} method can then be used to derive a moving least squares transform instance
      * from the point matches.
      *
-     * @param  montageTiles  list of tiles from a montaged stack.
-     * @param  alignTiles    list of tiles from an aligned stack.
+     * @param  montageTiles  collection of tiles from a montage stack.
+     * @param  alignTiles    collection of tiles from an align stack.
      */
-    public MovingLeastSquaresBuilder(final List<TileSpec> montageTiles,
-                                     final List<TileSpec> alignTiles) {
+    public MovingLeastSquaresBuilder(final Collection<TileSpec> montageTiles,
+                                     final Collection<TileSpec> alignTiles) {
 
         LOG.info("ctor: entry, processing {} montageTiles and {} alignTiles",
                  montageTiles.size(), alignTiles.size());

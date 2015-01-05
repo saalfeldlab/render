@@ -3,7 +3,7 @@ package org.janelia.render.service;
 import mpicbg.trakem2.transform.MovingLeastSquaresTransform2;
 import org.janelia.alignment.MovingLeastSquaresBuilder;
 import org.janelia.alignment.spec.LeafTransformSpec;
-import org.janelia.alignment.spec.ReferenceTransformSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.service.dao.RenderDao;
@@ -23,7 +23,7 @@ import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.net.UnknownHostException;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -94,37 +94,22 @@ public class MovingLeastSquaresService {
             final StackId alignStackId = new StackId(owner, project, derivationData.getAlignStack());
             final StackId montageStackId = new StackId(owner, project, derivationData.getMontageStack());
 
-            final List<TileSpec> montageTiles = renderDao.getTileSpecs(montageStackId, z);
-            final List<TileSpec> alignTiles = renderDao.getTileSpecs(alignStackId, z);
+            final ResolvedTileSpecCollection montageTiles = renderDao.getResolvedTiles(montageStackId, z);
+            final ResolvedTileSpecCollection alignTiles = renderDao.getResolvedTiles(alignStackId, z);
 
-            final TransformSpec mlsTransformSpec = buildMovingLeastSquaresTransform(montageTiles,
-                                                                                    alignTiles,
+            final TransformSpec mlsTransformSpec = buildMovingLeastSquaresTransform(montageTiles.getTileSpecs(),
+                                                                                    alignTiles.getTileSpecs(),
                                                                                     derivationData.getAlpha(),
                                                                                     z);
 
-            renderDao.saveTransformSpec(mlsStackId, mlsTransformSpec);
-
-            final TransformSpec mlsReference = new ReferenceTransformSpec(mlsTransformSpec.getId());
-
-            final List<TransformSpec> mlsReferenceList = Arrays.asList(mlsReference);
-
             LOG.info("derived moving least squares transform for layer {}", z);
 
-            for (TileSpec tileSpec : montageTiles) {
-                tileSpec.addTransformSpecs(mlsReferenceList);
-            }
-
-            renderDao.resolveTransformReferencesForTiles(mlsStackId, montageTiles);
-
-            LOG.info("resolved all transform references for layer {}", z);
-
-            for (TileSpec tileSpec : montageTiles) {
-                tileSpec.deriveBoundingBox(true);
-            }
+            montageTiles.addTransformSpecToCollection(mlsTransformSpec);
+            montageTiles.addReferenceTransformToAllTiles(mlsTransformSpec.getId());
 
             LOG.info("derived bounding boxes for layer {}", z);
 
-            renderDao.bulkSaveTileSpecs(mlsStackId, montageTiles);
+            renderDao.saveResolvedTiles(mlsStackId, montageTiles);
 
         } catch (Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -145,8 +130,8 @@ public class MovingLeastSquaresService {
         return responseBuilder.build();
     }
 
-    private TransformSpec buildMovingLeastSquaresTransform(List<TileSpec> montageTiles,
-                                                           List<TileSpec> alignTiles,
+    private TransformSpec buildMovingLeastSquaresTransform(Collection<TileSpec> montageTiles,
+                                                           Collection<TileSpec> alignTiles,
                                                            Double alpha,
                                                            Double z)
             throws Exception {

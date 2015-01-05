@@ -15,6 +15,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ListTransformSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.StackMetaData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
@@ -29,6 +30,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -185,8 +187,8 @@ public class RenderDao {
         return tileSpec;
     }
 
-    public void resolveTransformReferencesForTiles(StackId stackId,
-                                                   List<TileSpec> tileSpecs)
+    public Map<String, TransformSpec> resolveTransformReferencesForTiles(StackId stackId,
+                                                                         List<TileSpec> tileSpecs)
             throws IllegalStateException {
 
         final Set<String> unresolvedIds = new HashSet<String>();
@@ -198,10 +200,10 @@ public class RenderDao {
             }
         }
 
+        final Map<String, TransformSpec> resolvedIdToSpecMap = new HashMap<String, TransformSpec>();
+
         final int unresolvedCount = unresolvedIds.size();
         if (unresolvedCount > 0) {
-
-            final Map<String, TransformSpec> resolvedIdToSpecMap = new HashMap<String, TransformSpec>();
 
             final DBCollection transformCollection = getTransformCollection(stackId);
             getDataForTransformSpecReferences(transformCollection, unresolvedIds, resolvedIdToSpecMap, 1);
@@ -223,6 +225,8 @@ public class RenderDao {
             }
 
         }
+
+        return resolvedIdToSpecMap;
     }
 
 
@@ -260,8 +264,8 @@ public class RenderDao {
      * @return a list of resolved tile specifications for all tiles that have the specified z.
      *
      * @throws IllegalArgumentException
-     *   if any required parameters are missing, if the stack cannot be found, or
-     *   if no tile can be found that encompasses the coordinates.
+     *   if any required parameters are missing or if the stack cannot be found, or
+     *   if no tile can be found for the specified z.
      */
     public List<TileSpec> getTileSpecs(StackId stackId,
                                        Double z)
@@ -281,6 +285,128 @@ public class RenderDao {
         return renderParameters.getTileSpecs();
     }
 
+    /**
+     * @return a resolved tile spec collection for all tiles that have the specified z.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or if the stack cannot be found, or
+     *   if no tile can be found for the specified z.
+     */
+    public ResolvedTileSpecCollection getResolvedTiles(StackId stackId,
+                                                       Double z)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("stackId", stackId);
+        validateRequiredParameter("z", z);
+
+        final DBObject tileQuery = new BasicDBObject("z", z);
+        final RenderParameters renderParameters = new RenderParameters();
+        final Map<String, TransformSpec> resolvedIdToSpecMap = addResolvedTileSpecs(stackId,
+                                                                                    tileQuery,
+                                                                                    renderParameters);
+
+        if (! renderParameters.hasTileSpecs()) {
+            throw new IllegalArgumentException("no tile specifications found in " + stackId +" for z=" + z);
+        }
+
+        return new ResolvedTileSpecCollection(resolvedIdToSpecMap.values(), renderParameters.getTileSpecs());
+    }
+
+    /**
+     * Saves the specified tile spec to the database.
+     *
+     * @param  stackId            stack identifier.
+     * @param  resolvedTileSpecs  collection of resolved tile specs (with referenced transforms).
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters or transform spec references are missing.
+     */
+    public void saveResolvedTiles(StackId stackId,
+                                  ResolvedTileSpecCollection resolvedTileSpecs)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("stackId", stackId);
+        validateRequiredParameter("resolvedTileSpecs", resolvedTileSpecs);
+
+        final Collection<TransformSpec> transformSpecs = resolvedTileSpecs.getTransformSpecs();
+        final Collection<TileSpec> tileSpecs = resolvedTileSpecs.getTileSpecs();
+
+        if (transformSpecs.size() > 0) {
+
+            final DBCollection transformCollection = getTransformCollection(stackId);
+
+            // TODO: remove transform index creation when stack creation process is finalized
+            ensureTransformIndexes(transformCollection);
+
+            final BulkWriteOperation bulk = transformCollection.initializeUnorderedBulkOperation();
+
+
+            BasicDBObject query = null;
+            DBObject transformSpecObject;
+            for (TransformSpec transformSpec : transformSpecs) {
+                query = new BasicDBObject("id", transformSpec.getId());
+                transformSpecObject = (DBObject) JSON.parse(transformSpec.toJson());
+                bulk.find(query).upsert().replaceOne(transformSpecObject);
+            }
+
+            final BulkWriteResult result = bulk.execute();
+
+            final StringBuilder bulkStats = new StringBuilder(128);
+            bulkStats.append("processed ").append(transformSpecs.size()).append(" transform specs with ");
+            if (result.isAcknowledged()) {
+                bulkStats.append(result.getInsertedCount()).append(" inserts, ");
+                bulkStats.append(result.getMatchedCount()).append(" matches, and ");
+                if (result.isModifiedCountAvailable()) {
+                    bulkStats.append(result.getModifiedCount()).append(" modifications");
+                } else {
+                    bulkStats.append("NO modifications");
+                }
+            } else {
+                bulkStats.append("result NOT acknowledged");
+            }
+
+            LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
+                      bulkStats, transformCollection.getFullName(), query);
+        }
+
+        if (tileSpecs.size() > 0) {
+
+            final DBCollection tileCollection = getTileCollection(stackId);
+
+            // TODO: remove tile index creation when stack creation process is finalized
+            ensureTileIndexes(tileCollection);
+
+            final BulkWriteOperation bulkTileOperation = tileCollection.initializeUnorderedBulkOperation();
+
+            BasicDBObject query = null;
+            DBObject tileSpecObject;
+            for (TileSpec tileSpec : tileSpecs) {
+                query = new BasicDBObject("tileId", tileSpec.getTileId());
+                tileSpecObject = (DBObject) JSON.parse(tileSpec.toJson());
+                bulkTileOperation.find(query).upsert().replaceOne(tileSpecObject);
+            }
+
+            final BulkWriteResult result = bulkTileOperation.execute();
+
+            StringBuilder bulkStats = new StringBuilder(128);
+            bulkStats.append("processed ").append(tileSpecs.size()).append(" tile specs with ");
+            if (result.isAcknowledged()) {
+                bulkStats.append(result.getInsertedCount()).append(" inserts, ");
+                bulkStats.append(result.getMatchedCount()).append(" matches, and ");
+                if (result.isModifiedCountAvailable()) {
+                    bulkStats.append(result.getModifiedCount()).append(" modifications");
+                } else {
+                    bulkStats.append("NO modifications");
+                }
+            } else {
+                bulkStats.append("result NOT acknowledged");
+            }
+
+            LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
+                      bulkStats, tileCollection.getFullName(), query);
+        }
+
+    }
 
     /**
      * Saves the specified tile spec to the database.
@@ -324,52 +450,6 @@ public class RenderDao {
                   tileCollection.getFullName(), action, query, result.getUpsertedId());
 
         return tileSpec;
-    }
-
-    /**
-     * Saves the specified tile spec to the database.
-     *
-     * @param  stackId        stack identifier.
-     * @param  tileSpecList   list of tile specifications to be saved.
-     *
-     * @throws IllegalArgumentException
-     *   if any required parameters or transform spec references are missing.
-     */
-    public void bulkSaveTileSpecs(StackId stackId,
-                                  List<TileSpec> tileSpecList)
-            throws IllegalArgumentException {
-
-        validateRequiredParameter("stackId", stackId);
-
-        final DBCollection tileCollection = getTileCollection(stackId);
-        final BulkWriteOperation bulkWriteOperation = tileCollection.initializeUnorderedBulkOperation();
-
-        BasicDBObject query = null;
-        DBObject tileSpecObject;
-        for (TileSpec tileSpec : tileSpecList) {
-            query = new BasicDBObject("tileId", tileSpec.getTileId());
-            tileSpecObject = (DBObject) JSON.parse(tileSpec.toJson());
-            bulkWriteOperation.find(query).upsert().replaceOne(tileSpecObject);
-        }
-
-        final BulkWriteResult result = bulkWriteOperation.execute();
-
-        StringBuilder bulkStats = new StringBuilder(128);
-        bulkStats.append("processed ").append(tileSpecList.size()).append(" tile specs with ");
-        if (result.isAcknowledged()) {
-            bulkStats.append(result.getInsertedCount()).append(" inserts, ");
-            bulkStats.append(result.getMatchedCount()).append(" matches, and ");
-            if (result.isModifiedCountAvailable()) {
-                bulkStats.append(result.getModifiedCount()).append(" modifications");
-            } else {
-                bulkStats.append("NO modifications");
-            }
-        } else {
-            bulkStats.append("result NOT acknowledged");
-        }
-
-        LOG.debug("bulkSaveTileSpecs: {} using {}.initializeUnorderedBulkOp()",
-                  bulkStats, tileCollection.getFullName(), query);
     }
 
     /**
@@ -761,9 +841,9 @@ public class RenderDao {
         }
     }
 
-    private void addResolvedTileSpecs(StackId stackId,
-                                      DBObject tileQuery,
-                                      RenderParameters renderParameters) {
+    private Map<String, TransformSpec> addResolvedTileSpecs(StackId stackId,
+                                                            DBObject tileQuery,
+                                                            RenderParameters renderParameters) {
         final DBCollection tileCollection = getTileCollection(stackId);
         final DBCursor cursor = tileCollection.find(tileQuery);
         // order tile specs by tileId to ensure consistent coordinate mapping
@@ -784,7 +864,7 @@ public class RenderDao {
         LOG.debug("addResolvedTileSpecs: found {} tile spec(s) for {}.find({}).sort({})",
                   renderParameters.numberOfTileSpecs(), tileCollection.getFullName(), tileQuery, orderBy);
 
-        resolveTransformReferencesForTiles(stackId, renderParameters.getTileSpecs());
+        return resolveTransformReferencesForTiles(stackId, renderParameters.getTileSpecs());
     }
 
     private DBObject lte(final double value) {
@@ -890,6 +970,20 @@ public class RenderDao {
         if (value == null) {
             throw new IllegalArgumentException(context + " value must be specified");
         }
+    }
+
+    private void ensureTransformIndexes(DBCollection transformCollection) {
+        transformCollection.createIndex(new BasicDBObject("id", 1), new BasicDBObject("unique", true));
+    }
+
+    private void ensureTileIndexes(DBCollection tileCollection) {
+        tileCollection.createIndex(new BasicDBObject("tileId", 1), new BasicDBObject("unique", true));
+        tileCollection.createIndex(new BasicDBObject("z", 1));
+        tileCollection.createIndex(new BasicDBObject("minX", 1));
+        tileCollection.createIndex(new BasicDBObject("minY", 1));
+        tileCollection.createIndex(new BasicDBObject("maxX", 1));
+        tileCollection.createIndex(new BasicDBObject("maxY", 1));
+        tileCollection.createIndex(new BasicDBObject("layout.sectionId", 1));
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDao.class);
