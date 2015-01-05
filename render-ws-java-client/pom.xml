@@ -40,13 +40,6 @@
                             <filters>
 
                                 <filter>
-                                    <artifact>mpicbg:mpicbg</artifact>
-                                    <includes>
-                                        <include>mpicbg/models/CoordinateTransform.class</include>
-                                    </includes>
-                                </filter>
-
-                                <filter>
                                     <artifact>${project.groupId}:${project.artifactId}</artifact>
                                     <excludes>
                                         <exclude>log4j.xml</exclude>
@@ -79,13 +72,6 @@
                             <outputFile>target/${project.artifactId}-${project.version}-matlab.jar</outputFile>
 
                             <filters>
-
-                                <filter>
-                                    <artifact>mpicbg:mpicbg</artifact>
-                                    <includes>
-                                        <include>mpicbg/models/CoordinateTransform.class</include>
-                                    </includes>
-                                </filter>
 
                                 <filter>
                                     <artifact>*:*</artifact>

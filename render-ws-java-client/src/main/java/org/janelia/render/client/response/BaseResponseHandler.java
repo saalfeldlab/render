@@ -1,4 +1,4 @@
-package org.janelia.render.client;
+package org.janelia.render.client.response;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.Header;
@@ -12,6 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Base class containing common response handling methods.
@@ -21,6 +24,10 @@ import java.io.IOException;
 public class BaseResponseHandler {
 
     public static final String TEXT_PLAIN_MIME_TYPE = ContentType.TEXT_PLAIN.getMimeType();
+    public static final String JSON_MIME_TYPE = ContentType.APPLICATION_JSON.getMimeType();
+
+    public static final Set<Integer> OK = new HashSet<Integer>(Arrays.asList(HttpStatus.SC_OK));
+    public static final Set<Integer> CREATED = new HashSet<Integer>(Arrays.asList(HttpStatus.SC_CREATED));
 
     private String requestContext;
 
@@ -29,6 +36,10 @@ public class BaseResponseHandler {
      */
     public BaseResponseHandler(String requestContext) {
         this.requestContext = requestContext;
+    }
+
+    public String getRequestContext() {
+        return requestContext;
     }
 
     /**
@@ -64,14 +75,15 @@ public class BaseResponseHandler {
      * @throws IOException
      *   if an invalid
      */
-    public HttpEntity getValidatedResponseEntity(HttpResponse response)
+    public HttpEntity getValidatedResponseEntity(HttpResponse response,
+                                                 Set<Integer> validStatusCodes)
             throws IOException {
 
         final StatusLine statusLine = response.getStatusLine();
         final int statusCode = statusLine.getStatusCode();
         final HttpEntity entity = response.getEntity();
 
-        if (statusCode != HttpStatus.SC_OK) {
+        if (! validStatusCodes.contains(statusCode)) {
             String responseBodyText = null;
             try {
                 responseBodyText = getResponseBodyText(entity);

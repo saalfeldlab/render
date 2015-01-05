@@ -1,4 +1,4 @@
-package org.janelia.render.client;
+package org.janelia.render.client.response;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
@@ -16,7 +16,8 @@ import java.io.InputStream;
  * @author Eric Trautman
  */
 public class FileResponseHandler
-        extends BaseResponseHandler implements ResponseHandler<File> {
+        extends BaseResponseHandler
+        implements ResponseHandler<File> {
 
     private File file;
 
@@ -34,7 +35,7 @@ public class FileResponseHandler
     public File handleResponse(HttpResponse response)
             throws IOException {
 
-        final HttpEntity entity = getValidatedResponseEntity(response);
+        final HttpEntity entity = getValidatedResponseEntity(response, OK);
 
         final InputStream in = entity.getContent();
         FileOutputStream out = null;
