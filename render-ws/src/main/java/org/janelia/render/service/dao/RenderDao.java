@@ -21,7 +21,7 @@ import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.service.ObjectNotFoundException;
-import org.janelia.render.service.ProcessTimer;
+import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.service.StackId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -351,22 +351,11 @@ public class RenderDao {
 
             final BulkWriteResult result = bulk.execute();
 
-            final StringBuilder bulkStats = new StringBuilder(128);
-            bulkStats.append("processed ").append(transformSpecs.size()).append(" transform specs with ");
-            if (result.isAcknowledged()) {
-                bulkStats.append(result.getInsertedCount()).append(" inserts, ");
-                bulkStats.append(result.getMatchedCount()).append(" matches, and ");
-                if (result.isModifiedCountAvailable()) {
-                    bulkStats.append(result.getModifiedCount()).append(" modifications");
-                } else {
-                    bulkStats.append("NO modifications");
-                }
-            } else {
-                bulkStats.append("result NOT acknowledged");
+            if (LOG.isDebugEnabled()) {
+                final String bulkResultMessage = getBulkResultMessage("transform specs", result, transformSpecs.size());
+                LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
+                          bulkResultMessage, transformCollection.getFullName(), query);
             }
-
-            LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
-                      bulkStats, transformCollection.getFullName(), query);
         }
 
         if (tileSpecs.size() > 0) {
@@ -388,22 +377,11 @@ public class RenderDao {
 
             final BulkWriteResult result = bulkTileOperation.execute();
 
-            StringBuilder bulkStats = new StringBuilder(128);
-            bulkStats.append("processed ").append(tileSpecs.size()).append(" tile specs with ");
-            if (result.isAcknowledged()) {
-                bulkStats.append(result.getInsertedCount()).append(" inserts, ");
-                bulkStats.append(result.getMatchedCount()).append(" matches, and ");
-                if (result.isModifiedCountAvailable()) {
-                    bulkStats.append(result.getModifiedCount()).append(" modifications");
-                } else {
-                    bulkStats.append("NO modifications");
-                }
-            } else {
-                bulkStats.append("result NOT acknowledged");
+            if (LOG.isDebugEnabled()) {
+                final String bulkResultMessage = getBulkResultMessage("tile specs", result, tileSpecs.size());
+                LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
+                          bulkResultMessage, tileCollection.getFullName(), query);
             }
-
-            LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
-                      bulkStats, tileCollection.getFullName(), query);
         }
 
     }
@@ -973,10 +951,13 @@ public class RenderDao {
     }
 
     private void ensureTransformIndexes(DBCollection transformCollection) {
+        LOG.debug("ensureTransformIndexes: entry, {}", transformCollection.getName());
         transformCollection.createIndex(new BasicDBObject("id", 1), new BasicDBObject("unique", true));
+        LOG.debug("ensureTransformIndexes: exit");
     }
 
     private void ensureTileIndexes(DBCollection tileCollection) {
+        LOG.debug("ensureTileIndexes: entry, {}", tileCollection.getName());
         tileCollection.createIndex(new BasicDBObject("tileId", 1), new BasicDBObject("unique", true));
         tileCollection.createIndex(new BasicDBObject("z", 1));
         tileCollection.createIndex(new BasicDBObject("minX", 1));
@@ -984,6 +965,27 @@ public class RenderDao {
         tileCollection.createIndex(new BasicDBObject("maxX", 1));
         tileCollection.createIndex(new BasicDBObject("maxY", 1));
         tileCollection.createIndex(new BasicDBObject("layout.sectionId", 1));
+        LOG.debug("ensureTileIndexes: exit");
+    }
+
+    private String getBulkResultMessage(String context,
+                                        BulkWriteResult result,
+                                        int objectCount) {
+
+        final StringBuilder message = new StringBuilder(128);
+
+        message.append("processed ").append(objectCount).append(" ").append(context);
+
+        if (result.isAcknowledged()) {
+            final int updates = result.getMatchedCount();
+            final int inserts = objectCount - updates;
+            message.append(" with ").append(inserts).append(" inserts and ");
+            message.append(updates).append(" updates");
+        } else {
+            message.append(" (result NOT acknowledged)");
+        }
+
+        return message.toString();
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDao.class);

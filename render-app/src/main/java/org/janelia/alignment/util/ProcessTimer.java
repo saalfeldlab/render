@@ -1,4 +1,4 @@
-package org.janelia.render.service;
+package org.janelia.alignment.util;
 
 /**
  * Utility to track process time intervals.
