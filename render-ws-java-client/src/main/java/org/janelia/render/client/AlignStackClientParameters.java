@@ -4,16 +4,13 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * Parameters for MLS stack generation.
+ * Parameters for Align stack generation.
  *
  * @author Eric Trautman
  */
 @Parameters
-public class MLSStackClientParameters {
+public class AlignStackClientParameters {
 
     @Parameter(names = "--help", description = "Display this note", help = true)
     private transient boolean help;
@@ -24,36 +21,28 @@ public class MLSStackClientParameters {
     @Parameter(names = "--project", description = "Project for all stacks", required = true)
     private String project;
 
+    @Parameter(names = "--acquireStack", description = "Acquire stack name", required = true)
+    private String acquireStack;
+
     @Parameter(names = "--alignStack", description = "Align stack name", required = true)
     private String alignStack;
-
-    @Parameter(names = "--montageStack", description = "Montage stack name", required = true)
-    private String montageStack;
-
-    @Parameter(names = "--mlsStack", description = "Moving least squares stack name", required = true)
-    private String mlsStack;
 
     @Parameter(names = "--baseDataUrl", description = "Base URL for data", required = true)
     private String baseDataUrl;
 
-    @Parameter(names = "--alpha", description = "Alpha value for MLS transform", required = false)
-    private Double alpha;
-
-    @Parameter(description = "Z values", required = true)
-    private List<String> zValues;
+    @Parameter(names = "--metFile", description = "MET file for layer", required = true)
+    private String metFile;
 
     private transient JCommander jCommander;
 
-    public MLSStackClientParameters() {
+    public AlignStackClientParameters() {
         this.help = false;
         this.owner = null;
         this.project = null;
         this.alignStack = null;
-        this.montageStack = null;
-        this.mlsStack = null;
+        this.acquireStack = null;
         this.baseDataUrl = null;
-        this.alpha = null;
-        this.zValues = new ArrayList<String>();
+        this.metFile = null;
 
         this.jCommander = null;
     }
@@ -66,8 +55,8 @@ public class MLSStackClientParameters {
      * @throws IllegalArgumentException
      *   if any invalid arguments are specified.
      */
-    public static MLSStackClientParameters parseCommandLineArgs(String[] args) throws IllegalArgumentException {
-        MLSStackClientParameters parameters = new MLSStackClientParameters();
+    public static AlignStackClientParameters parseCommandLineArgs(String[] args) throws IllegalArgumentException {
+        AlignStackClientParameters parameters = new AlignStackClientParameters();
         parameters.setCommander();
         try {
             parameters.jCommander.parse(args);
@@ -93,24 +82,16 @@ public class MLSStackClientParameters {
         return alignStack;
     }
 
-    public String getMontageStack() {
-        return montageStack;
-    }
-
-    public String getMlsStack() {
-        return mlsStack;
+    public String getAcquireStack() {
+        return acquireStack;
     }
 
     public String getBaseDataUrl() {
         return baseDataUrl;
     }
 
-    public Double getAlpha() {
-        return alpha;
-    }
-
-    public List<String> getzValues() {
-        return zValues;
+    public String getMetFile() {
+        return metFile;
     }
 
     /**
@@ -131,16 +112,15 @@ public class MLSStackClientParameters {
         return "{owner='" + owner + '\'' +
                ", project='" + project + '\'' +
                ", alignStack='" + alignStack + '\'' +
-               ", montageStack='" + montageStack + '\'' +
-               ", mlsStack='" + mlsStack + '\'' +
+               ", acquireStack='" + acquireStack + '\'' +
                ", baseDataUrl='" + baseDataUrl + '\'' +
-               ", alpha=" + alpha +
+               ", metFile=" + metFile +
                '}';
     }
 
     private void setCommander() {
         jCommander = new JCommander(this);
-        jCommander.setProgramName("java -cp current-ws-standalone.jar " + MLSStackClient.class.getName());
+        jCommander.setProgramName("java -cp current-ws-standalone.jar " + AlignStackClient.class.getName());
     }
 
 }

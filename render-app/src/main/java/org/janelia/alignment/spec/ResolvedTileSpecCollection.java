@@ -8,7 +8,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A collection of tile specifications that also includes all referenced transform specifications,
@@ -84,6 +86,11 @@ public class ResolvedTileSpecCollection {
         }
 
         tileSpec.addTransformSpecs(Arrays.asList(transformSpec));
+
+        // addition of new transform spec obsolesces the previously resolved coordinate transform instance,
+        // so we need to re-resolve the tile before re-deriving the bounding box
+        resolveTileSpec(tileSpec);
+
         tileSpec.deriveBoundingBox(true);
     }
 
@@ -103,13 +110,13 @@ public class ResolvedTileSpecCollection {
             addTransformSpecToTile(tileId, referenceTransformSpec, false);
             tileSpecCount++;
             if (timer.hasIntervalPassed()) {
-                LOG.debug("addReferenceTransformToAllTiles: added transform to {} out of {} tiles",
-                          tileSpecCount, tileIdToSpecMap.size());
+                LOG.info("addReferenceTransformToAllTiles: added transform to {} out of {} tiles",
+                         tileSpecCount, tileIdToSpecMap.size());
             }
         }
 
-        LOG.debug("addReferenceTransformToAllTiles: added transform to {} tiles, elapsedSeconds={}",
-                  tileSpecCount, timer.getElapsedSeconds());
+        LOG.info("addReferenceTransformToAllTiles: added transform to {} tiles, elapsedSeconds={}",
+                 tileSpecCount, timer.getElapsedSeconds());
     }
 
     public void verifyAllTileSpecsHaveZValue(double expectedZ) {
@@ -124,6 +131,34 @@ public class ResolvedTileSpecCollection {
                 }
             }
         }
+    }
+
+    public void filterSpecs(Set<String> tileIdsToKeep) {
+        final Iterator<Map.Entry<String, TileSpec>> i = tileIdToSpecMap.entrySet().iterator();
+        Map.Entry<String, TileSpec> entry;
+        while (i.hasNext()) {
+            entry = i.next();
+            if (! tileIdsToKeep.contains(entry.getKey())) {
+                i.remove();
+            }
+        }
+
+        // TODO: remove any unreferenced transforms
+    }
+
+    public int getTransformCount() {
+        return transformIdToSpecMap.size();
+    }
+
+    public int getTileCount() {
+        return tileIdToSpecMap.size();
+    }
+
+    @Override
+    public String toString() {
+        return "{transformCount=" + getTransformCount() +
+               ", tileCount=" + getTileCount() +
+               '}';
     }
 
     private String getBadTileZValueMessage(double expectedZ,
