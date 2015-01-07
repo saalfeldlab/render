@@ -62,6 +62,8 @@ import java.util.Map;
 public class ImageLoadPerformanceTest {
 
     private boolean enableTests;
+    private int numberOfTimesToRepeatEachTest;
+
     private int numberOfLevels = 4; // 0 to 3
     private String[] formats = { "jpg", "pgm", "png", "tif" };
 
@@ -71,6 +73,7 @@ public class ImageLoadPerformanceTest {
     @Before
     public void setup() throws Exception {
         enableTests = false; // set this to true to enable tests - normally, there is no need to run them
+        numberOfTimesToRepeatEachTest = 5;
         createLevelFormatToStatsMap();
         createAndOrderTests();
     }
@@ -94,12 +97,12 @@ public class ImageLoadPerformanceTest {
     }
 
     private void createLevelFormatToStatsMap() {
-        this.levelFormatToStatsMap = new ArrayList<Map<String, List<TestStats>>>();
+        levelFormatToStatsMap = new ArrayList<Map<String, List<TestStats>>>();
 
         Map<String, List<TestStats>> formatToStatsMap;
         for (int level = 0; level < numberOfLevels; level++) {
             formatToStatsMap = new HashMap<String, List<TestStats>>();
-            this.levelFormatToStatsMap.add(formatToStatsMap);
+            levelFormatToStatsMap.add(formatToStatsMap);
             for (String format : formats) {
                 formatToStatsMap.put(format, new ArrayList<TestStats>());
             }
@@ -114,25 +117,23 @@ public class ImageLoadPerformanceTest {
      *   repeat n times
      */
     private void createAndOrderTests() {
-        //
-        this.testStatsList = new ArrayList<TestStats>();
+
+        testStatsList = new ArrayList<TestStats>();
 
         final String baseImagePath = "src/test/resources/image-load-test/";
-        final int testsPerFormatLevel = 5;
 
         Map<String, List<TestStats>> formatToStatsMap;
         File file;
         TestStats testStats;
         List<TestStats> statsListForLevelAndFormat;
-        //noinspection ConstantConditions
-        for (int testNumber = 0; testNumber < testsPerFormatLevel; testNumber++) {
+        for (int testNumber = 0; testNumber < numberOfTimesToRepeatEachTest; testNumber++) {
             for (int level = 0; level < numberOfLevels; level++) {
-                formatToStatsMap = this.levelFormatToStatsMap.get(level);
+                formatToStatsMap = levelFormatToStatsMap.get(level);
                 for (String format : formats) {
                     file = new File(baseImagePath + format + "/level_" + level + '.' + format);
                     testStats = new TestStats(file, format, level, String.valueOf(testNumber));
 
-                    this.testStatsList.add(testStats);
+                    testStatsList.add(testStats);
 
                     statsListForLevelAndFormat = formatToStatsMap.get(format);
                     statsListForLevelAndFormat.add(testStats);
