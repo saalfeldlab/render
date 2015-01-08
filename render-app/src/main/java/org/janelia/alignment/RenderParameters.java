@@ -16,6 +16,7 @@
  */
 package org.janelia.alignment;
 
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -29,6 +30,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
@@ -57,54 +59,64 @@ public class RenderParameters {
     private String tileSpecUrl;
 
     @Parameter(names = "--res", description = " Mesh resolution, specified by the desired size of a mesh cell (triangle) in pixels", required = false)
-    private double meshCellSize;
+    public double meshCellSize;
 
     @Parameter(names = "--in", description = "Path to the input image if any", required = false)
-    private String in;
+    public String in;
 
     @Parameter(names = "--out", description = "Path to the output image", required = true)
-    private String out;
+    public String out;
 
     @Parameter(names = "--x", description = "Target image left coordinate", required = false)
-    private double x;
+    public double x;
 
     @Parameter(names = "--y", description = "Target image top coordinate", required = false)
-    private double y;
+    public double y;
 
     @Parameter(names = "--width", description = "Target image width", required = false)
-    private int width;
+    public int width;
 
     @Parameter(names = "--height", description = "Target image height", required = false)
-    private int height;
+    public int height;
 
     @Parameter(names = "--scale", description = "scale factor applied to the target image", required = false)
-    private double scale;
+    public double scale;
 
     @Parameter(names = "--area_offset", description = "add bounding box offset", required = false)
-    private boolean areaOffset;
+    public boolean areaOffset;
 
     @Parameter(names = "--gray", description = "convert output to gray scale image", required = false)
-    private boolean convertToGray;
+    public boolean convertToGray;
 
     @Parameter(names = "--quality", description = "JPEG quality float [0, 1]", required = false)
-    private float quality;
+    public float quality;
 
     @Parameter(names = "--threads", description = "Number of threads to be used", required = false )
     public int numberOfThreads;
 
     @Parameter(names = "--skip_interpolation", description = "enable sloppy but fast rendering by skipping interpolation", required = false)
-    private boolean skipInterpolation;
+    public boolean skipInterpolation;
 
     @Parameter(names = "--parameters_url", description = "URL to base JSON parameters file (to be applied to any unspecified or default parameters)", required = false)
     private final String parametersUrl;
 
     @Parameter(names = "--do_filter", description = "ad hoc filters to support alignment", required = false)
-    private boolean doFilter;
+    public boolean doFilter;
 
     /** List of tile specifications parsed from --tileSpecUrl or deserialized directly from json. */
     private List<TileSpec> tileSpecs;
-
-
+    
+    private Double minBoundsMinX = null;
+    private Double minBoundsMinY = null;
+    private Double minBoundsMaxX = null;
+    private Double minBoundsMaxY = null;
+    private double minBoundsMeshCellSize = DEFAULT_MESH_CELL_SIZE;
+    
+    public Double getMinBoundsMinX() { return minBoundsMinX; }
+    public Double getMinBoundsMinY() { return minBoundsMinY; }
+    public Double getMinBoundsMaxX() { return minBoundsMaxX; }
+    public Double getMinBoundsMaxY() { return minBoundsMaxY; }
+    
     private transient JCommander jCommander;
     private transient URI outUri;
     private transient boolean initialized;
@@ -342,6 +354,10 @@ public class RenderParameters {
 
     public void addTileSpec(final TileSpec tileSpec) {
         tileSpecs.add(tileSpec);
+    }
+    
+    public void addTileSpecs(final Collection<TileSpec> tileSpec) {
+        tileSpecs.addAll(tileSpec);
     }
 
     public void flattenTransforms() {
@@ -608,6 +624,43 @@ public class RenderParameters {
     private <T> T mergedValue(final T currentValue, final T baseValue, final T defaultValue) {
         return currentValue == null || currentValue.equals(defaultValue) ? baseValue : currentValue;
     }
+    
+    private boolean isMinBoundsDefined() {
+        return 
+                (minBoundsMeshCellSize == meshCellSize) &&
+                (minBoundsMinX != null) &&
+                (minBoundsMinY != null) &&
+                (minBoundsMaxX != null) &&
+                (minBoundsMaxY != null);
+    }
+    
+    public void deriveMinimalBoundingBox(final boolean force, final double... padding) throws IllegalStateException {
+        final double paddingTop, paddingRight, paddingBottom, paddingLeft;
+        if (padding.length > 3) {
+            paddingTop = padding[0];
+            paddingRight = padding[1];
+            paddingBottom = padding[2];
+            paddingLeft = padding[3];
+        } else if (padding.length > 1) {
+            paddingLeft = paddingRight = padding[0];
+            paddingTop = paddingBottom = padding[1];
+        } else if (padding.length > 0) {
+            paddingLeft = paddingRight = paddingTop = paddingBottom = padding[0];
+        } else {
+            paddingLeft = paddingRight = paddingTop = paddingBottom = 0;
+        }
+        
+        if (force || !isMinBoundsDefined()) {
+            final Rectangle2D.Double minBounds = TileSpec.deriveBoundingBox(tileSpecs, meshCellSize, force, null);
+            minBoundsMinX = minBounds.x - paddingLeft;
+            minBoundsMinY = minBounds.y - paddingTop;
+            minBoundsMaxX = minBounds.x + minBounds.width + paddingRight;
+            minBoundsMaxY = minBounds.y + minBounds.height + paddingBottom;
+            minBoundsMeshCellSize = meshCellSize;
+        }
+    }
+    
+    
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParameters.class);
 

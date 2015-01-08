@@ -17,6 +17,7 @@
 package org.janelia.alignment.spec;
 
 import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -181,6 +182,55 @@ public class TileSpec {
             final TransformMesh mesh = getTransformMesh(meshCellSize);
             setBoundingBox(mesh.getBoundingBox(), meshCellSize);
         }
+    }
+    
+    
+    /**
+     * Generate the bounding box of a collection of
+     * {@link TileSpec TileSpecs}.  The returned bounding box is the union
+     * rectangle of all tiles individual bounding boxes.
+     * 
+     * @param tileSpecs
+     * @param meshCellSize specifies the resolution to estimate the individual bounding boxes
+     * @param force force 
+     * @param preallocated
+     * @return
+     */
+    final static public Rectangle2D.Double deriveBoundingBox(
+            final Iterable<TileSpec> tileSpecs,
+            final double meshCellSize,
+            final boolean force,
+            final Rectangle2D.Double preallocated) throws IllegalStateException {
+        final double[] min = new double[] { Double.MAX_VALUE, Double.MAX_VALUE };
+        final double[] max = new double[] { -Double.MAX_VALUE, -Double.MAX_VALUE };
+        for (final TileSpec t : tileSpecs) {
+            t.deriveBoundingBox(meshCellSize, force);
+            final double tMinX = t.getMinX();
+            final double tMinY = t.getMinY();
+            final double tMaxX = t.getMaxX();
+            final double tMaxY = t.getMaxY();
+            if (min[0] > tMinX)
+                min[0] = tMinX;
+            if (min[1] > tMinY)
+                min[1] = tMinY;
+            if (max[0] < tMaxX)
+                max[0] = tMaxX;
+            if (max[1] < tMaxY)
+                max[1] = tMaxY;
+        }
+
+        final Rectangle2D.Double box;
+        if (preallocated == null)
+            box = new Rectangle2D.Double(
+                    min[0],
+                    min[1],
+                    max[0] - min[0],
+                    max[1] - min[1]);
+        else {
+            box = preallocated;
+            box.setRect(min[0], min[1], max[0] - min[0], max[1] - max[1]);
+        }
+        return box;
     }
 
     /**
