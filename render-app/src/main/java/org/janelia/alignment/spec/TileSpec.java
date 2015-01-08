@@ -28,6 +28,7 @@ import mpicbg.models.NoninvertibleModelException;
 import mpicbg.trakem2.transform.TransformMesh;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 
 /**
@@ -51,7 +52,8 @@ public class TileSpec {
     private Double maxIntensity;
     private final TreeMap<Integer, ImageAndMask> mipmapLevels;
     private ListTransformSpec transforms;
-
+    private double meshCellSize = RenderParameters.DEFAULT_MESH_CELL_SIZE; 
+    
     public TileSpec() {
         this.mipmapLevels = new TreeMap<Integer, ImageAndMask>();
         this.transforms = new ListTransformSpec();
@@ -88,20 +90,40 @@ public class TileSpec {
     public Double getMinY() {
         return minY;
     }
-
-    public boolean isBoundingBoxDefined() {
-        return ((minX != null) && (minY != null) && (maxX != null) && (maxY != null));
+    
+    public Double getMaxX() {
+        return maxX;
     }
 
-    public void setBoundingBox(final Rectangle box) {
+    public Double getMaxY() {
+        return maxY;
+    }
+    
+    public boolean isBoundingBoxDefined(final double meshCellSize) {
+        return 
+                (this.meshCellSize == meshCellSize) &&
+                (minX != null) &&
+                (minY != null) &&
+                (maxX != null) &&
+                (maxY != null);
+    }
+    
+    /**
+     * The bounding box is only valid for a given meshCellSize, i.e. setting it
+     * independently of the meshCellSize is potentially harmful.
+     * 
+     * @param box
+     */
+    public void setBoundingBox(Rectangle box, final double meshCellSize) {
         this.minX = box.getX();
         this.minY = box.getY();
         this.maxX = box.getMaxX();
         this.maxY = box.getMaxY();
+        this.meshCellSize = meshCellSize;
     }
 
-    public int getNumberOfTrianglesCoveringWidth() {
-        return (int) (width / TRANSFORM_MESH_TRIANGLE_SIZE + 0.5);
+    public int getNumberOfTrianglesCoveringWidth(final double meshCellSize) {
+        return (int) (width / meshCellSize + 0.5);
     }
 
     /**
@@ -110,16 +132,16 @@ public class TileSpec {
      * @throws IllegalStateException
      *   if width or height have not been defined for this tile.
      */
-    public TransformMesh getTransformMesh()
+    public TransformMesh getTransformMesh(final double meshCellSize)
             throws IllegalStateException {
 
         if (! hasWidthAndHeightDefined()) {
             throw new IllegalStateException("width and height must be set to create transform mesh");
         }
 
-        final CoordinateTransformList<CoordinateTransform> ctList = createTransformList();
+        final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
         return new TransformMesh(ctList,
-                                 getNumberOfTrianglesCoveringWidth(),
+                                 getNumberOfTrianglesCoveringWidth(meshCellSize),
                                  width.floatValue(),
                                  height.floatValue());
     }
@@ -130,16 +152,16 @@ public class TileSpec {
      * @throws IllegalStateException
      *   if width or height have not been defined for this tile.
      */
-    public CoordinateTransformMesh getCoordinateTransformMesh()
+    public CoordinateTransformMesh getCoordinateTransformMesh(final double meshCellSize)
             throws IllegalStateException {
 
         if (! hasWidthAndHeightDefined()) {
             throw new IllegalStateException("width and height must be set to create transform mesh");
         }
 
-        final CoordinateTransformList<CoordinateTransform> ctList = createTransformList();
+        final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
         return new CoordinateTransformMesh(ctList,
-                                           getNumberOfTrianglesCoveringWidth(),
+                                           getNumberOfTrianglesCoveringWidth(meshCellSize),
                                            width.floatValue(),
                                            height.floatValue());
     }
@@ -153,11 +175,11 @@ public class TileSpec {
      * @throws IllegalStateException
      *   if width or height have not been defined for this tile.
      */
-    public void deriveBoundingBox(final boolean force)
+    public void deriveBoundingBox(final double meshCellSize, final boolean force)
             throws IllegalStateException {
-        if (force || (! isBoundingBoxDefined())) {
-            final TransformMesh mesh = getTransformMesh();
-            setBoundingBox(mesh.getBoundingBox());
+        if (force || (!isBoundingBoxDefined(meshCellSize))) {
+            final TransformMesh mesh = getTransformMesh(meshCellSize);
+            setBoundingBox(mesh.getBoundingBox(), meshCellSize);
         }
     }
 
@@ -173,7 +195,7 @@ public class TileSpec {
         final float[] w = new float[] {x, y};
 
         if (hasTransforms()) {
-            final CoordinateTransformList<CoordinateTransform> ctl = createTransformList();
+            final CoordinateTransformList<CoordinateTransform> ctl = getTransformList();
             ctl.applyInPlace(w);
         }
 
@@ -198,14 +220,13 @@ public class TileSpec {
      * @throws NoninvertibleModelException
      *   if this tile's transforms cannot be inverted for the specified point.
      */
-    public float[] getLocalCoordinates(final float x,
-                                       final float y)
+    public float[] getLocalCoordinates(final float x, final float y, final double meshCellSize)
             throws IllegalStateException, NoninvertibleModelException {
 
         float[] localCoordinates;
         final float[] l = new float[] {x, y};
         if (hasTransforms()) {
-            final CoordinateTransformMesh mesh = getCoordinateTransformMesh();
+            final CoordinateTransformMesh mesh = getCoordinateTransformMesh(meshCellSize);
             mesh.applyInverseInPlace(l);
         }
 
@@ -370,7 +391,27 @@ public class TileSpec {
         transforms.validate();
     }
 
-    public CoordinateTransformList<CoordinateTransform> createTransformList()
+    /**
+     * Get the transforms of the {@link TileSpec} as a
+     * {@link CoordinateTransformList}.  If the transform of the
+     * {@link TileSpec} is a list, this instance will be returned.  Otherwise,
+     * a new instance containing a single simple transform, or no transform at
+     * all will be returned.
+     * 
+     * Note that modifying the returned list can change the transforms of the
+     * {@link TileSpec}, i.e. copy the list or add it to a new list if you want
+     * to add other transformations.
+     * 
+     * TODO Think more carefully if this is a good idea at all.  Having a safe
+     * to use list is probably what everybody wants from this method.  It is,
+     * however, used in other contexts, e.g. to simply apply the transforms,
+     * for which a more general function getTransform() would have served
+     * better and simpler.
+     * 
+     * @return
+     * @throws IllegalArgumentException
+     */
+    public CoordinateTransformList<CoordinateTransform> getTransformList()
             throws IllegalArgumentException {
 
         CoordinateTransformList<CoordinateTransform> ctl;
@@ -425,6 +466,4 @@ public class TileSpec {
     public static TileSpec fromJson(final String json) {
         return JsonUtils.GSON.fromJson(json, TileSpec.class);
     }
-
-    private static final int TRANSFORM_MESH_TRIANGLE_SIZE = 64;
 }

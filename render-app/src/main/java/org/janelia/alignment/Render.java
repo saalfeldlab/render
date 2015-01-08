@@ -102,7 +102,7 @@ public class Render {
                               final BufferedImage targetImage,
                               final double x,
                               final double y,
-                              final double triangleSize,
+                              final double meshCellSize,
                               final double scale,
                               final boolean areaOffset,
                               final int numberOfThreads,
@@ -136,7 +136,9 @@ public class Render {
             tileSpecStart = System.currentTimeMillis();
 
             // assemble coordinate transformations and add bounding box offset
-            final CoordinateTransformList<CoordinateTransform> ctl = ts.createTransformList();
+            final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList<CoordinateTransform>();
+            for (final CoordinateTransform t : ts.getTransformList().getList(null))
+                ctl.add(t);
             final AffineModel2D scaleAndOffset = new AffineModel2D();
             if (areaOffset) {
                 final double offset = (1 - scale) * 0.5;
@@ -173,7 +175,7 @@ public class Render {
             }
 
             // estimate average scale
-            final double s = Utils.sampleAverageScale(ctl, width, height, triangleSize);
+            final double s = Utils.sampleAverageScale(ctl, width, height, meshCellSize);
             int mipmapLevel = Utils.bestMipmapLevel(s);
 
             Integer downSampleLevels = null;
@@ -242,10 +244,11 @@ public class Render {
             ctListCreationStop = System.currentTimeMillis();
 
             // create mesh
-            final CoordinateTransformMesh mesh = new CoordinateTransformMesh(ctlMipmap,
-                                                                             (int) (width / triangleSize + 0.5),
-                                                                             ipMipmap.getWidth(),
-                                                                             ipMipmap.getHeight());
+            final CoordinateTransformMesh mesh = new CoordinateTransformMesh(
+                    ctlMipmap,
+                    (int) (width / meshCellSize + 0.5),
+                    ipMipmap.getWidth(),
+                    ipMipmap.getHeight());
 
             meshCreationStop = System.currentTimeMillis();
 
@@ -326,8 +329,10 @@ public class Render {
                   System.currentTimeMillis() - tileLoopStart);
     }
 
-    public static TileSpec deriveBoundingBox(final TileSpec tileSpec,
-                                             final boolean force) {
+    public static TileSpec deriveBoundingBox(
+            final TileSpec tileSpec,
+            final double meshCellSize,
+            final boolean force) {
 
         if (! tileSpec.hasWidthAndHeightDefined()) {
             final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
@@ -336,7 +341,7 @@ public class Render {
             tileSpec.setHeight((double) imp.getHeight());
         }
 
-        tileSpec.deriveBoundingBox(force);
+        tileSpec.deriveBoundingBox(meshCellSize, force);
 
         return tileSpec;
     }

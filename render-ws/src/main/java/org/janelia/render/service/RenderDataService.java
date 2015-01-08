@@ -5,18 +5,6 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.List;
-import mpicbg.trakem2.transform.MovingLeastSquaresTransform2;
-import org.janelia.alignment.MovingLeastSquaresBuilder;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.LeafTransformSpec;
-import org.janelia.alignment.spec.StackMetaData;
-import org.janelia.alignment.spec.TileBounds;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.render.service.dao.RenderDao;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -33,6 +21,20 @@ import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
+import mpicbg.trakem2.transform.MovingLeastSquaresTransform2;
+
+import org.janelia.alignment.MovingLeastSquaresBuilder;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.StackMetaData;
+import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.render.service.dao.RenderDao;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * APIs for accessing tile and transform data stored in the Render service database.
  *
@@ -43,7 +45,6 @@ public class RenderDataService {
 
     private final RenderDao renderDao;
 
-    @SuppressWarnings("UnusedDeclaration")
     public RenderDataService()
             throws UnknownHostException {
         this(RenderServiceUtil.buildDao());
@@ -314,10 +315,11 @@ public class RenderDataService {
                                  @PathParam("stack") final String stack,
                                  @PathParam("tileId") final String tileId,
                                  @Context final UriInfo uriInfo,
+                                 @QueryParam("meshCellSize") final Double meshCellSize,
                                  TileSpec tileSpec) {
 
-        LOG.info("saveTileSpec: entry, owner={}, project={}, stack={}, tileId={}",
-                 owner, project, stack, tileId);
+        LOG.info("saveTileSpec: entry, owner={}, project={}, stack={}, tileId={}, meshCellSize={}",
+                 owner, project, stack, tileId, meshCellSize);
 
         if (tileSpec == null) {
             throw new IllegalServiceArgumentException("no tile spec provided");
@@ -332,7 +334,9 @@ public class RenderDataService {
 
             // resolve all transform references and re-derive bounding box before saving ...
             tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
-            tileSpec.deriveBoundingBox(true);
+            tileSpec.deriveBoundingBox(
+                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
+                    true);
 
             renderDao.saveTileSpec(stackId, tileSpec);
         } catch (final Throwable t) {
@@ -376,10 +380,11 @@ public class RenderDataService {
                                              @PathParam("tileId") final String tileId,
                                              @PathParam("transformIndex") final Integer transformIndex,
                                              @Context final UriInfo uriInfo,
+                                             @QueryParam("meshCellSize") final Double meshCellSize,
                                              final TransformSpec transformSpec) {
 
-        LOG.info("saveTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}",
-                 owner, project, stack, tileId, transformIndex);
+        LOG.info("saveTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}, meshCellSize={}",
+                 owner, project, stack, tileId, transformIndex, meshCellSize);
 
         if (transformSpec == null) {
             throw new IllegalServiceArgumentException("no transform spec provided");
@@ -397,7 +402,9 @@ public class RenderDataService {
             // Resolve all transform references and re-derive bounding box before saving.
             // NOTE: resolution is different from flattening, so referential data remains intact
             tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
-            tileSpec.deriveBoundingBox(true);
+            tileSpec.deriveBoundingBox(
+                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
+                    true);
 
             renderDao.saveTileSpec(stackId, tileSpec);
         } catch (final Throwable t) {
@@ -464,10 +471,11 @@ public class RenderDataService {
                                                  @PathParam("stack") final String stack,
                                                  @PathParam("tileId") final String tileId,
                                                  @Context final UriInfo uriInfo,
+                                                 @QueryParam("meshCellSize") final Double meshCellSize,
                                                  final TransformSpec transformSpec) {
 
-        LOG.info("saveLastTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}",
-                 owner, project, stack, tileId);
+        LOG.info("saveLastTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}, meshCellSize={}",
+                 owner, project, stack, tileId, meshCellSize);
 
         if (transformSpec == null) {
             throw new IllegalServiceArgumentException("no transform spec provided");
@@ -486,7 +494,9 @@ public class RenderDataService {
             // Resolve all transform references and re-derive bounding box before saving.
             // NOTE: resolution is different from flattening, so referential data remains intact
             tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
-            tileSpec.deriveBoundingBox(true);
+            tileSpec.deriveBoundingBox(
+                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
+                    true);
 
             renderDao.saveTileSpec(stackId, tileSpec);
         } catch (final Throwable t) {
@@ -508,10 +518,11 @@ public class RenderDataService {
                                     @PathParam("derivedFromStack") String derivedFromStack,
                                     @QueryParam("replaceLastTransform") Boolean replaceLastTransform,
                                     @Context UriInfo uriInfo,
+                                    @QueryParam("meshCellSize") final Double meshCellSize,
                                     List<TransformSpec> transformSpecs) {
 
-        LOG.info("saveDerivedTile: entry, owner={}, project={}, stack={}, tileId={}, derivedFromStack={}, replaceLastTransform={}",
-                 owner, project, stack, tileId, derivedFromStack, replaceLastTransform);
+        LOG.info("saveDerivedTile: entry, owner={}, project={}, stack={}, tileId={}, derivedFromStack={}, replaceLastTransform={}, meshCellSize={}",
+                 owner, project, stack, tileId, derivedFromStack, replaceLastTransform, meshCellSize);
 
         if (transformSpecs == null) {
             throw new IllegalServiceArgumentException("array of transform specs must be provided");
@@ -535,7 +546,9 @@ public class RenderDataService {
             // Resolve all transform references and re-derive bounding box before saving.
             // NOTE: resolution is different from flattening, so referential data remains intact
             tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
-            tileSpec.deriveBoundingBox(true);
+            tileSpec.deriveBoundingBox(
+                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
+                    true);
 
             renderDao.saveTileSpec(stackId, tileSpec);
         } catch (Throwable t) {

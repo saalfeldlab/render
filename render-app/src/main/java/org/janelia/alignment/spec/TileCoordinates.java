@@ -1,12 +1,13 @@
 package org.janelia.alignment.spec;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import mpicbg.models.NoninvertibleModelException;
+
 import org.janelia.alignment.json.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Coordinate data associated with a tile.
@@ -15,10 +16,10 @@ import java.util.List;
  */
 public class TileCoordinates {
 
-    private String tileId;
+    private final String tileId;
     private Boolean visible;
-    private float[] local;
-    private float[] world;
+    private final float[] local;
+    private final float[] world;
     private String error;
 
     public TileCoordinates(String tileId,
@@ -81,9 +82,11 @@ public class TileCoordinates {
      * @throws IllegalStateException
      *   if the specified point cannot be inverted for any of the specified tiles.
      */
-    public static List<TileCoordinates> getLocalCoordinates(List<TileSpec> tileSpecList,
-                                                            float x,
-                                                            float y)
+    public static List<TileCoordinates> getLocalCoordinates(
+            List<TileSpec> tileSpecList,
+            final float x,
+            final float y,
+            final double meshCellSize)
             throws IllegalStateException {
 
 
@@ -93,7 +96,7 @@ public class TileCoordinates {
         TileCoordinates tileCoordinates;
         for (TileSpec tileSpec : tileSpecList) {
             try {
-                local = tileSpec.getLocalCoordinates(x, y);
+                local = tileSpec.getLocalCoordinates(x, y, meshCellSize);
                 tileCoordinates = buildLocalInstance(tileSpec.getTileId(), local);
                 tileCoordinatesList.add(tileCoordinates);
             } catch (NoninvertibleModelException e) {

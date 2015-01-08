@@ -172,8 +172,7 @@ public class MipmapGenerator {
      * @throws IOException
      *   if mipmap files cannot be generated for any reason.
      */
-    public TileSpec generateMissingMipmapFiles(TileSpec tileSpec,
-                                               final int greatestMipmapLevel)
+    public TileSpec generateMissingMipmapFiles(TileSpec tileSpec, final int greatestMipmapLevel)
             throws IllegalArgumentException, IOException {
 
         ImageAndMask imageAndMask = tileSpec.getMipmap(0);
@@ -224,7 +223,7 @@ public class MipmapGenerator {
             }
         }
 
-        tileSpec = Render.deriveBoundingBox(tileSpec, forceBoxCalculation);
+        tileSpec = Render.deriveBoundingBox(tileSpec, RenderParameters.DEFAULT_MESH_CELL_SIZE, forceBoxCalculation);
 
         return tileSpec;
     }

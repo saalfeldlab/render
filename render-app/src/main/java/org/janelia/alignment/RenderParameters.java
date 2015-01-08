@@ -42,7 +42,8 @@ import com.beust.jcommander.Parameters;
 import com.google.gson.reflect.TypeToken;
 
 /**
- * Parameters for render operations.
+ * Parameters for render operations.  Includes a collection of TileSpecs and
+ * thus represents a `snapshot of the world'.
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
@@ -55,8 +56,8 @@ public class RenderParameters {
     @Parameter(names = "--tile_spec_url", description = "URL to JSON tile spec", required = false)
     private String tileSpecUrl;
 
-    @Parameter( names = "--res", description = " Mesh resolution, specified by the desired size of a triangle in pixels", required = false)
-    private int res;
+    @Parameter(names = "--res", description = " Mesh resolution, specified by the desired size of a mesh cell (triangle) in pixels", required = false)
+    private double meshCellSize;
 
     @Parameter(names = "--in", description = "Path to the input image if any", required = false)
     private String in;
@@ -88,7 +89,7 @@ public class RenderParameters {
     @Parameter(names = "--quality", description = "JPEG quality float [0, 1]", required = false)
     private float quality;
 
-    @Parameter( names = "--threads", description = "Number of threads to be used", required = false )
+    @Parameter(names = "--threads", description = "Number of threads to be used", required = false )
     public int numberOfThreads;
 
     @Parameter(names = "--skip_interpolation", description = "enable sloppy but fast rendering by skipping interpolation", required = false)
@@ -131,7 +132,7 @@ public class RenderParameters {
         this.scale = scale;
 
         this.help = false;
-        this.res = DEFAULT_RESOLUTION;
+        this.meshCellSize = DEFAULT_MESH_CELL_SIZE;
         this.in = null;
         this.out = null;
         this.areaOffset = false;
@@ -264,8 +265,8 @@ public class RenderParameters {
         return help;
     }
 
-    public int getRes() {
-        return res;
+    public double getRes() {
+        return meshCellSize;
     }
 
     public String getOut() {
@@ -439,8 +440,8 @@ public class RenderParameters {
             sb.append("scale=").append(scale).append(", ");
         }
 
-        if (res != DEFAULT_RESOLUTION) {
-            sb.append("res=").append(res).append(", ");
+        if (meshCellSize != DEFAULT_MESH_CELL_SIZE) {
+            sb.append("res=").append(meshCellSize).append(", ");
         }
 
         if (quality != DEFAULT_QUALITY) {
@@ -453,6 +454,10 @@ public class RenderParameters {
 
         if (convertToGray) {
             sb.append("convertToGray=true, ");
+        }
+        
+        if (doFilter) {
+            sb.append("filter=true, ");
         }
 
         if (in != null) {
@@ -505,8 +510,7 @@ public class RenderParameters {
                 }
 
                 final Reader reader = new InputStreamReader(urlStream);
-                final Type collectionType = new TypeToken<List<TileSpec>>() {
-                }.getType();
+                final Type collectionType = new TypeToken<List<TileSpec>>() {}.getType();
                 try {
                     tileSpecs = JsonUtils.GSON.fromJson(reader, collectionType);
                 } catch (final Throwable t) {
@@ -543,9 +547,9 @@ public class RenderParameters {
             final RenderParameters baseParameters = loadParametersUrl();
 
             tileSpecUrl = mergedValue(tileSpecUrl, baseParameters.tileSpecUrl);
-            res = mergedValue(res, baseParameters.res, DEFAULT_RESOLUTION);
             in = mergedValue(in, baseParameters.in);
             out = mergedValue(out, baseParameters.out);
+            meshCellSize = mergedValue(meshCellSize, baseParameters.meshCellSize, DEFAULT_MESH_CELL_SIZE);
             x = mergedValue(x, baseParameters.x, DEFAULT_X_AND_Y);
             y = mergedValue(y, baseParameters.y, DEFAULT_X_AND_Y);
             width = mergedValue(width, baseParameters.width, DEFAULT_HEIGHT_AND_WIDTH);
@@ -555,11 +559,9 @@ public class RenderParameters {
             convertToGray = mergedValue(convertToGray, baseParameters.convertToGray, false);
             numberOfThreads = mergedValue(numberOfThreads, baseParameters.numberOfThreads, DEFAULT_NUMBER_OF_THREADS);
             skipInterpolation = mergedValue(skipInterpolation, baseParameters.skipInterpolation, false);
-
-            if (quality == DEFAULT_QUALITY) {
-                quality = baseParameters.quality;
-            }
-
+            quality = mergedValue(quality, baseParameters.quality, DEFAULT_QUALITY);
+            doFilter = mergedValue(doFilter, baseParameters.doFilter, false);
+            
             tileSpecs.addAll(baseParameters.tileSpecs);
         }
     }
@@ -599,49 +601,18 @@ public class RenderParameters {
         return parameters;
     }
 
-    private String mergedValue(final String currentValue,
-                               final String baseValue) {
-        String value = currentValue;
-        if (currentValue == null) {
-            value = baseValue;
-        }
-        return value;
+    private <T> T mergedValue(final T currentValue, final T baseValue) {
+        return currentValue == null ? baseValue : currentValue;
     }
-
-    private int mergedValue(final int currentValue,
-                            final int baseValue,
-                            final int defaultValue) {
-        int value = currentValue;
-        if (currentValue == defaultValue) {
-            value = baseValue;
-        }
-        return value;
-    }
-
-    private double mergedValue(final double currentValue,
-                               final double baseValue,
-                               final double defaultValue) {
-        double value = currentValue;
-        if (currentValue == defaultValue) {
-            value = baseValue;
-        }
-        return value;
-    }
-
-    private boolean mergedValue(final boolean currentValue,
-                                final boolean baseValue,
-                                final boolean defaultValue) {
-        boolean value = currentValue;
-        if (currentValue == defaultValue) {
-            value = baseValue;
-        }
-        return value;
+    
+    private <T> T mergedValue(final T currentValue, final T baseValue, final T defaultValue) {
+        return currentValue == null || currentValue.equals(defaultValue) ? baseValue : currentValue;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParameters.class);
 
-    private static final int DEFAULT_RESOLUTION = 64;
-    private static final int DEFAULT_X_AND_Y = 0;
+    public static final double DEFAULT_MESH_CELL_SIZE = 64;
+    private static final double DEFAULT_X_AND_Y = 0;
     private static final int DEFAULT_HEIGHT_AND_WIDTH = 256;
     private static final Double DEFAULT_SCALE = 1.0;
     private static final float DEFAULT_QUALITY = 0.85f;

@@ -1,5 +1,10 @@
 package org.janelia.render.service;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.test.EmbeddedMongoDb;
@@ -7,10 +12,6 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Tests the {@link org.janelia.render.service.CoordinateService} class.
@@ -60,7 +61,8 @@ public class CoordinateServiceTest {
                                             stackId.getStack(),
                                             x,
                                             y,
-                                            Z);
+                                            Z,
+                                            RenderParameters.DEFAULT_MESH_CELL_SIZE);
 
         Assert.assertEquals("invalid number of tiles found for (" + x + "," + y + ")",
                             1, localCoordinatesList.size());
@@ -113,6 +115,7 @@ public class CoordinateServiceTest {
                                             stackId.getProject(),
                                             stackId.getStack(),
                                             Z,
+                                            RenderParameters.DEFAULT_MESH_CELL_SIZE,
                                             worldCoordinateList);
 
         Assert.assertNotNull("null local list retrieved", localCoordinatesListOfLists);
@@ -183,7 +186,8 @@ public class CoordinateServiceTest {
                                             stackId.getStack(),
                                             8000.0, //
                                             5900.0, //
-                                            Z);
+                                            Z,
+                                            RenderParameters.DEFAULT_MESH_CELL_SIZE);
 
         Assert.assertNotNull("null local list retrieved", localCoordinateList);
         Assert.assertEquals("invalid local list size",
