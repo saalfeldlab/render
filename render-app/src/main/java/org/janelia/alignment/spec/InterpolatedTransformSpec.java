@@ -1,10 +1,10 @@
 package org.janelia.alignment.spec;
 
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.InterpolatedCoordinateTransform;
-
 import java.util.Map;
 import java.util.Set;
+
+import mpicbg.models.CoordinateTransform;
+import mpicbg.models.InterpolatedCoordinateTransform;
 
 /**
  * Specification for an {@link InterpolatedCoordinateTransform}.
@@ -24,15 +24,15 @@ public class InterpolatedTransformSpec
     public static final String B_ELEMENT_NAME = "b";
     public static final String LAMBDA_ELEMENT_NAME = "lambda";
 
-    private TransformSpec a;
-    private TransformSpec b;
-    private Float lambda;
+    private final TransformSpec a;
+    private final TransformSpec b;
+    private final Float lambda;
 
-    public InterpolatedTransformSpec(String id,
-                                     TransformSpecMetaData metaData,
-                                     TransformSpec a,
-                                     TransformSpec b,
-                                     Float lambda) {
+    public InterpolatedTransformSpec(final String id,
+                                     final TransformSpecMetaData metaData,
+                                     final TransformSpec a,
+                                     final TransformSpec b,
+                                     final Float lambda) {
         super(id, TYPE, metaData);
         this.a = a;
         this.b = b;
@@ -46,19 +46,19 @@ public class InterpolatedTransformSpec
     }
 
     @Override
-    public void addUnresolvedIds(Set<String> unresolvedIds) {
+    public void addUnresolvedIds(final Set<String> unresolvedIds) {
         a.addUnresolvedIds(unresolvedIds);
         b.addUnresolvedIds(unresolvedIds);
     }
 
     @Override
-    public void resolveReferences(Map<String, TransformSpec> idToSpecMap) {
+    public void resolveReferences(final Map<String, TransformSpec> idToSpecMap) {
         a.resolveReferences(idToSpecMap);
         b.resolveReferences(idToSpecMap);
     }
 
     @Override
-    public void flatten(ListTransformSpec flattenedList)
+    public void flatten(final ListTransformSpec flattenedList)
             throws IllegalStateException {
 
         flattenedList.addSpec(new InterpolatedTransformSpec(getId(),
@@ -76,15 +76,18 @@ public class InterpolatedTransformSpec
                                                                                              lambda);
     }
 
-    private TransformSpec getFlattenedComponentSpec(TransformSpec spec)
+    private TransformSpec getFlattenedComponentSpec(final TransformSpec spec)
             throws IllegalStateException {
 
         final ListTransformSpec flattenedList = new ListTransformSpec();
         spec.flatten(flattenedList);
-        TransformSpec flattenedSpec = flattenedList;
-        if (flattenedList.size() == 1) {
+
+        final TransformSpec flattenedSpec;
+        if (flattenedList.size() == 1)
             flattenedSpec = flattenedList.getSpec(0);
-        }
+        else
+            flattenedSpec = flattenedList;
+
         return flattenedSpec;
     }
 }

@@ -64,7 +64,7 @@ public class TileSpec {
         return tileId;
     }
 
-    public void setTileId(String tileId) {
+    public void setTileId(final String tileId) {
         this.tileId = tileId;
     }
 
@@ -72,7 +72,7 @@ public class TileSpec {
         return layout;
     }
 
-    public void setLayout(LayoutData layout) {
+    public void setLayout(final LayoutData layout) {
         this.layout = layout;
     }
 
@@ -80,7 +80,7 @@ public class TileSpec {
         return z;
     }
 
-    public void setZ(Double z) {
+    public void setZ(final Double z) {
         this.z = z;
     }
 
@@ -176,7 +176,7 @@ public class TileSpec {
      * @throws IllegalStateException
      *   if width or height have not been defined for this tile.
      */
-    public void deriveBoundingBox(final double meshCellSize, boolean force)
+    public void deriveBoundingBox(final double meshCellSize, final boolean force)
             throws IllegalStateException {
         if (force || (!isBoundingBoxDefined(meshCellSize))) {
             final TransformMesh mesh = getTransformMesh(meshCellSize);
@@ -239,10 +239,10 @@ public class TileSpec {
      *
      * @return world coordinates (x, y, z) for the specified local coordinates.
      */
-    public float[] getWorldCoordinates(float x,
-                                       float y) {
+    public float[] getWorldCoordinates(final float x,
+                                       final float y) {
         float[] worldCoordinates;
-        float[] w = new float[] {x, y};
+        final float[] w = new float[] {x, y};
 
         if (hasTransforms()) {
             final CoordinateTransformList<CoordinateTransform> ctl = getTransformList();
@@ -270,11 +270,11 @@ public class TileSpec {
      * @throws NoninvertibleModelException
      *   if this tile's transforms cannot be inverted for the specified point.
      */
-    public float[] getLocalCoordinates(float x, float y, final double meshCellSize)
+    public float[] getLocalCoordinates(final float x, final float y, final double meshCellSize)
             throws IllegalStateException, NoninvertibleModelException {
 
         float[] localCoordinates;
-        float[] l = new float[] {x, y};
+        final float[] l = new float[] {x, y};
         if (hasTransforms()) {
             final CoordinateTransformMesh mesh = getCoordinateTransformMesh(meshCellSize);
             mesh.applyInverseInPlace(l);
@@ -301,7 +301,7 @@ public class TileSpec {
         return value;
     }
 
-    public void setWidth(Double width) {
+    public void setWidth(final Double width) {
         this.width = width;
     }
 
@@ -313,11 +313,11 @@ public class TileSpec {
         return value;
     }
 
-    public void setHeight(Double height) {
+    public void setHeight(final Double height) {
         this.height = height;
     }
 
-    public void setMinIntensity(Double minIntensity) {
+    public void setMinIntensity(final Double minIntensity) {
         this.minIntensity = minIntensity;
     }
 
@@ -337,7 +337,7 @@ public class TileSpec {
         return value;
     }
 
-    public void setMaxIntensity(Double maxIntensity) {
+    public void setMaxIntensity(final Double maxIntensity) {
         this.maxIntensity = maxIntensity;
     }
 
@@ -346,7 +346,7 @@ public class TileSpec {
      *
      * @return true if this tile spec contains mipmap for the specified level; otherwise false.
      */
-    public boolean hasMipmap(Integer level) {
+    public boolean hasMipmap(final Integer level) {
         return mipmapLevels.containsKey(level);
     }
 
@@ -355,12 +355,12 @@ public class TileSpec {
      *
      * @return the mipmap for the specified level or null if none exists.
      */
-    public ImageAndMask getMipmap(Integer level) {
+    public ImageAndMask getMipmap(final Integer level) {
         return mipmapLevels.get(level);
     }
 
-    public void putMipmap(Integer level,
-                          ImageAndMask value) {
+    public void putMipmap(final Integer level,
+                          final ImageAndMask value) {
         this.mipmapLevels.put(level, value);
     }
 
@@ -368,7 +368,7 @@ public class TileSpec {
         return mipmapLevels.firstEntry();
     }
 
-    public Map.Entry<Integer, ImageAndMask> getFloorMipmapEntry(Integer mipmapLevel) {
+    public Map.Entry<Integer, ImageAndMask> getFloorMipmapEntry(final Integer mipmapLevel) {
         Map.Entry<Integer, ImageAndMask> floorEntry = mipmapLevels.floorEntry(mipmapLevel);
         if (floorEntry == null) {
             floorEntry = mipmapLevels.firstEntry();
@@ -388,12 +388,12 @@ public class TileSpec {
         return transforms;
     }
 
-    public void addTransformSpecs(List<TransformSpec> transformSpecs) {
+    public void addTransformSpecs(final List<TransformSpec> transformSpecs) {
         transforms.addAllSpecs(transformSpecs);
     }
 
-    public void setTransformSpec(int index,
-                                 TransformSpec transformSpec)
+    public void setTransformSpec(final int index,
+                                 final TransformSpec transformSpec)
             throws IllegalArgumentException {
 
         if (index == transforms.size()) {
@@ -427,7 +427,7 @@ public class TileSpec {
                                                "' does not contain any mipmapLevel elements");
         }
 
-        for (ImageAndMask imageAndMask : mipmapLevels.values()) {
+        for (final ImageAndMask imageAndMask : mipmapLevels.values()) {
             imageAndMask.validate();
         }
     }
@@ -513,7 +513,7 @@ public class TileSpec {
         return JsonUtils.GSON.toJson(this, TileSpec.class);
     }
 
-    public static TileSpec fromJson(String json) {
+    public static TileSpec fromJson(final String json) {
         return JsonUtils.GSON.fromJson(json, TileSpec.class);
     }
 }

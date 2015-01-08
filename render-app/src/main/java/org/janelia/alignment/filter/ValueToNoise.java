@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Random;
 
 public class ValueToNoise implements Filter {
-    final static private void processFloatNaN(final FloatProcessor ip,
+    final static public void processFloatNaN(final FloatProcessor ip,
             final double min, final double max) {
         final double scale = max - min;
         final Random rnd = new Random();
@@ -20,7 +20,7 @@ public class ValueToNoise implements Filter {
         }
     }
 
-    final static private void processFloat(final FloatProcessor ip,
+    final static public void processFloat(final FloatProcessor ip,
             final float value, final double min, final double max) {
         final double scale = max - min;
         final Random rnd = new Random();
@@ -32,7 +32,7 @@ public class ValueToNoise implements Filter {
         }
     }
 
-    final static private void processGray(final ImageProcessor ip,
+    final static public void processGray(final ImageProcessor ip,
             final int value, final int min, final int max) {
         final int scale = max - min + 1;
         final Random rnd = new Random();
@@ -44,7 +44,7 @@ public class ValueToNoise implements Filter {
         }
     }
 
-    final static private void processColor(final ColorProcessor ip,
+    final static public void processColor(final ColorProcessor ip,
             final int value, final int min, final int max) {
         final int scale = max - min + 1;
         final Random rnd = new Random();

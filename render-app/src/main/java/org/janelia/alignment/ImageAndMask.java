@@ -22,7 +22,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 
+ *
  *
  * @author Stephan Saalfeld <saalfeld@mpi-cbg.de>
  */
@@ -43,16 +43,16 @@ public class ImageAndMask {
         this.validatedMaskUrl = null;
     }
 
-    public ImageAndMask(String imageUrl,
-                        String maskUrl) {
+    public ImageAndMask(final String imageUrl,
+                        final String maskUrl) {
         this.imageUrl = imageUrl;
         this.maskUrl = maskUrl;
         this.validatedImageUrl = null;
         this.validatedMaskUrl = null;
     }
 
-    public ImageAndMask(File imageFile,
-                        File maskFile) {
+    public ImageAndMask(final File imageFile,
+                        final File maskFile) {
         if (imageFile != null) {
             this.imageUrl = imageFile.toURI().toString();
         }
@@ -119,7 +119,7 @@ public class ImageAndMask {
         }
     }
 
-    private URI getUri(String urlString) {
+    private URI getUri(final String urlString) {
         URI uri = null;
         if (urlString != null) {
             uri = Utils.convertPathOrUriStringToUri(urlString);
@@ -127,7 +127,7 @@ public class ImageAndMask {
         return uri;
     }
 
-    private String getUrlString(URI uri) {
+    private String getUrlString(final URI uri) {
         String urlString = null;
         if (uri != null) {
             urlString = uri.toString();
@@ -135,8 +135,8 @@ public class ImageAndMask {
         return urlString;
     }
 
-    private void validateFile(URI uri,
-                              String context)
+    private void validateFile(final URI uri,
+                              final String context)
             throws IllegalArgumentException {
 
         final String scheme = uri.getScheme();
@@ -144,7 +144,7 @@ public class ImageAndMask {
             final File file;
             try {
                 file = new File(uri);
-            } catch (Exception e) {
+            } catch (final Exception e) {
                 throw new IllegalArgumentException("failed to convert '" + uri + "' to a file reference", e);
             }
             if (! file.exists()) {
