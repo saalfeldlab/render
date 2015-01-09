@@ -316,6 +316,10 @@ public class RenderParameters {
         return scale;
     }
 
+    public void setScale(double scale) {
+        this.scale = scale;
+    }
+
     public boolean isAreaOffset() {
         return areaOffset;
     }

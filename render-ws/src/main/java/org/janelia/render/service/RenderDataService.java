@@ -1,10 +1,15 @@
 package org.janelia.render.service;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.List;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.StackMetaData;
+import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.render.service.dao.RenderDao;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -20,20 +25,11 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
-
-import mpicbg.trakem2.transform.MovingLeastSquaresTransform2;
-
-import org.janelia.alignment.MovingLeastSquaresBuilder;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.LeafTransformSpec;
-import org.janelia.alignment.spec.StackMetaData;
-import org.janelia.alignment.spec.TileBounds;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.render.service.dao.RenderDao;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.util.List;
 
 /**
  * APIs for accessing tile and transform data stored in the Render service database.
@@ -45,6 +41,7 @@ public class RenderDataService {
 
     private final RenderDao renderDao;
 
+    @SuppressWarnings("UnusedDeclaration")
     public RenderDataService()
             throws UnknownHostException {
         this(RenderServiceUtil.buildDao());

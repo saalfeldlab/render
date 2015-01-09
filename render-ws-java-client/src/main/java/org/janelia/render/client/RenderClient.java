@@ -6,6 +6,8 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.render.client.response.BufferedImageResponseHandler;
+import org.janelia.render.client.response.FileResponseHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

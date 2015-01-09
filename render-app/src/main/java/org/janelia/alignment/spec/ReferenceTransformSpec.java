@@ -87,7 +87,7 @@ public class ReferenceTransformSpec extends TransformSpec {
     protected CoordinateTransform buildInstance()
             throws IllegalArgumentException {
         if (resolvedInstance == null) {
-            throw new IllegalArgumentException("spec reference '" + getId() + " has not been resolved");
+            throw new IllegalArgumentException("spec reference to id '" + refId + "' has not been resolved");
         }
         return resolvedInstance.buildInstance();
     }

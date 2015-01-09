@@ -126,6 +126,6 @@ public class RenderClientParameters {
 
     private void setCommander() {
         jCommander = new JCommander(this);
-        jCommander.setProgramName("java -jar render-ws-client.jar");
+        jCommander.setProgramName("java -jar current-ws-standalone.jar");
     }
 }
