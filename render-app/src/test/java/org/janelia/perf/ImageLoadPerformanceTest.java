@@ -8,9 +8,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,8 +23,8 @@ import java.util.Map;
  * </p>
  *
  * <p>
- * All test files can be found under src/test/resources/image-load-test/.
- * All test images were created from col0060_row0140_cam0.tif using ImageMagick.
+ * All test files can be found under src/test/resources/perf-test/.
+ * All test images were created from level_0/col0060_row0140_cam0.tif using ImageMagick.
  * Details on the creation process can be found in the gen-mipmaps.sh script.
  * </p>
  *
@@ -34,27 +33,22 @@ import java.util.Map;
  * </p>
  *
  * <pre>
- *     level  format  file length    test  loadTime
- *     -----  ------  -----------    ----  --------
- *         0     tif      5535650     avg         7
- *         0     pgm      5529617     avg        26
- *         0     png      4703213     avg        45
- *         0     jpg      1668499     avg       167
+ * level  format  file length  test     elapsedTime
+ * -----  ------  -----------  -------  -----------
+ *     1     tif      1384170  avg(5)             4
+ *     1     pgm      1382417  avg(5)             7
+ *     1     png      1193849  avg(5)            24
+ *     1     jpg       482890  avg(5)            61
  *
- *         1     tif      1384130     avg         2
- *         1     png      1193849     avg        11
- *         1     pgm      1382417     avg        12
- *         1     jpg       484028     avg        61
+ *     2     tif       346290  avg(5)             1
+ *     2     pgm       345615  avg(5)             3
+ *     2     png       301993  avg(5)             7
+ *     2     jpg       156144  avg(5)            41
  *
- *         2     tif       346250     avg         1
- *         2     pgm       345615     avg         2
- *         2     png       301993     avg         3
- *         2     jpg       156221     avg        40
- *
- *         3     pgm        86415     avg         0
- *         3     tif        86778     avg         0
- *         3     png        74978     avg         1
- *         3     jpg        41650     avg        34
+ *     3     pgm        86415  avg(5)             1
+ *     3     tif        86818  avg(5)             1
+ *     3     png        74978  avg(5)             2
+ *     3     jpg        41649  avg(5)            34
  * </pre>
  *
  * @author Eric Trautman
@@ -64,158 +58,151 @@ public class ImageLoadPerformanceTest {
     private boolean enableTests;
     private int numberOfTimesToRepeatEachTest;
 
-    private int numberOfLevels = 4; // 0 to 3
     private String[] formats = { "jpg", "pgm", "png", "tif" };
 
-    private List<Map<String, List<TestStats>>> levelFormatToStatsMap;
-    private List<TestStats> testStatsList;
+    private PerformanceTestData.TestResults<TestData> testResults;
+    private List<TestData> testDataList;
+
+    public static void main(String[] args) {
+        ImageLoadPerformanceTest test = new ImageLoadPerformanceTest();
+        try {
+            test.setup();
+            test.enableTests = true;
+            test.runTests();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+    }
 
     @Before
     public void setup() throws Exception {
         enableTests = false; // set this to true to enable tests - normally, there is no need to run them
         numberOfTimesToRepeatEachTest = 5;
-        createLevelFormatToStatsMap();
         createAndOrderTests();
+
+        // the first usage of ImagePlus sometimes incurs a significant performance penalty,
+        // so open a different file for each format here before starting the tests
+        for (String format : formats) {
+            Utils.openImagePlus("src/test/resources/perf-test/image-plus-start/start." + format);
+        }
     }
 
     @Test
     public void runTests() throws Exception {
         if (enableTests) {
-            for (TestStats testStats : testStatsList) {
-                runTest(testStats);
+            for (TestData testData : testDataList) {
+                runTest(testData);
             }
-            calculateAndPrintAverageTimes();
+            testResults.collateAndPrintTimes(testDataList);
         }
     }
 
-    private void runTest(TestStats testStats) {
-        final long startTime = System.currentTimeMillis();
-        final ImagePlus imagePlus = Utils.openImagePlus(testStats.file.getAbsolutePath());
-        testStats.deriveLoadTime(startTime);
+    private void runTest(TestData testData) {
 
-        Assert.assertNotNull("null imagePlus object returned for " + testStats.getPath(), imagePlus);
+        // *** Start Clock ***
+        testData.setStartTime();
+
+        final ImagePlus imagePlus = Utils.openImagePlus(testData.file.getAbsolutePath());
+
+        // *** Stop Clock ***
+        testData.calculateElapsedTime();
+
+        // make sure image plus didn't quietly fail
+        Assert.assertNotNull("null imagePlus object returned for " + testData.file, imagePlus);
     }
 
-    private void createLevelFormatToStatsMap() {
-        levelFormatToStatsMap = new ArrayList<Map<String, List<TestStats>>>();
-
-        Map<String, List<TestStats>> formatToStatsMap;
-        for (int level = 0; level < numberOfLevels; level++) {
-            formatToStatsMap = new HashMap<String, List<TestStats>>();
-            levelFormatToStatsMap.add(formatToStatsMap);
-            for (String format : formats) {
-                formatToStatsMap.put(format, new ArrayList<TestStats>());
-            }
-        }
-    }
-
-    /**
-     * Tests are ordered as follows:
-     *
-     *   load each format at a given level,
-     *   move the next level,
-     *   repeat n times
-     */
     private void createAndOrderTests() {
 
-        testStatsList = new ArrayList<TestStats>();
+        testDataList = new ArrayList<TestData>();
 
-        final String baseImagePath = "src/test/resources/image-load-test/";
+        final String baseImagePath = "src/test/resources/perf-test/mipmaps/";
 
-        Map<String, List<TestStats>> formatToStatsMap;
         File file;
-        TestStats testStats;
-        List<TestStats> statsListForLevelAndFormat;
         for (int testNumber = 0; testNumber < numberOfTimesToRepeatEachTest; testNumber++) {
-            for (int level = 0; level < numberOfLevels; level++) {
-                formatToStatsMap = levelFormatToStatsMap.get(level);
+            for (int level = 1; level < 4; level++) {
                 for (String format : formats) {
-                    file = new File(baseImagePath + format + "/level_" + level + '.' + format);
-                    testStats = new TestStats(file, format, level, String.valueOf(testNumber));
-
-                    testStatsList.add(testStats);
-
-                    statsListForLevelAndFormat = formatToStatsMap.get(format);
-                    statsListForLevelAndFormat.add(testStats);
+                    final String fileName = "/col0060_row0140_cam0.tif_level_" + level + "_mipmap." + format;
+                    file = new File(baseImagePath + format + fileName);
+                    testDataList.add(new TestData(file, format, level, String.valueOf(testNumber)));
                 }
             }
         }
 
-    }
+        testResults = new PerformanceTestData.TestResults<TestData>() {
 
-    private void calculateAndPrintAverageTimes() {
+            @Override
+            public TestData getAverageInstance(TestData groupInstance,
+                                               long averageElapsedTime,
+                                               int numberOfTests) {
 
-        final List<TestStats> avgTestStatsList = new ArrayList<TestStats>();
-
-        TestStats avgStats = null;
-        for (int level = 0; level < levelFormatToStatsMap.size(); level++) {
-
-            for (List<TestStats> statsListForLevelAndFormat : levelFormatToStatsMap.get(level).values()) {
-
-                int sum = 0;
-
-                for (TestStats testStats : statsListForLevelAndFormat) {
-                    if (sum == 0) {
-                        avgStats = new TestStats(testStats.file, testStats.format, level, "avg");
-                    }
-                    sum += testStats.loadTime;
-                }
-
-                //noinspection ConstantConditions
-                avgStats.loadTime = sum / statsListForLevelAndFormat.size();
-
-                avgTestStatsList.add(avgStats);
+                TestData averageInstance = new TestData(groupInstance.file,
+                                                        groupInstance.format,
+                                                        groupInstance.level,
+                                                        "avg(" + numberOfTests + ")");
+                averageInstance.setElapsedTime(averageElapsedTime);
+                return averageInstance;
             }
 
-        }
-
-        Collections.sort(avgTestStatsList,
-                         new Comparator<TestStats>() {
-                             @Override
-                             public int compare(TestStats o1,
-                                                TestStats o2) {
-                                 int result = o1.level - o2.level;
-                                 if (result == 0) {
-                                     result = (int) (o1.loadTime - o2.loadTime);
-                                     if (result == 0) {
-                                         result = (int) (o1.file.length() - o2.file.length());
-                                         if (result == 0) {
-                                             result = o1.format.compareTo(o2.format);
-                                             if (result == 0) {
-                                                 result = o1.test.compareTo(o2.test);
-                                             }
-                                         }
-                                     }
-                                 }
-                                 return result;
-                             }
-                         });
-
-
-        System.out.println(STATS_HEADER);
-
-        int currentLevel = 0;
-        for (TestStats testStats : avgTestStatsList) {
-            if (testStats.level != currentLevel) {
-                currentLevel = testStats.level;
-                System.out.println();
+            @Override
+            public String getReportHeader(String reportName) {
+                final String headerFormat = "%5s  %6s  %11s  %-7s  %11s";
+                return String.format(headerFormat, "level", "format", "file length", "test   ", "elapsedTime") + "\n" +
+                       String.format(headerFormat, "-----", "------", "-----------", "-------", "-----------");
             }
-            System.out.println(testStats);
-        }
+
+            @Override
+            public String formatTestResult(TestData result) {
+                return String.format("%5d  %6s  %11d  %-7s  %11d",
+                                     result.level,
+                                     result.format,
+                                     result.file.length(),
+                                     result.test,
+                                     result.getElapsedTime());
+            }
+
+            @Override
+            public Map<String, Comparator<TestData>> getReportNameToComparatorMap() {
+                Map<String, Comparator<TestData>> map =
+                        new LinkedHashMap<String, Comparator<TestData>>();
+                map.put("Level::Threads Results", levelTimeComparator);
+                return map;
+            }
+
+            private final Comparator<TestData> levelTimeComparator =
+                    new Comparator<TestData>() {
+                        @Override
+                        public int compare(TestData o1,
+                                           TestData o2) {
+                            int result = o1.level - o2.level;
+                            if (result == 0) {
+                                result = (int) (o1.getElapsedTime() - o2.getElapsedTime());
+                                if (result == 0) {
+                                    result = (int) (o1.file.length() - o2.file.length());
+                                    if (result == 0) {
+                                        result = o1.format.compareTo(o2.format);
+                                        if (result == 0) {
+                                            result = o1.test.compareTo(o2.test);
+                                        }
+                                    }
+                                }
+                            }
+                            return result;
+                        }
+                    };
+        };
     }
 
-    private class TestStats {
+    public class TestData extends PerformanceTestData {
 
         private File file;
         private String format;
         private int level;
         private String test;
-        private long loadTime;
 
-        public TestStats(File file,
-                         String format,
-                         int level,
-                         String test) {
+        public TestData(File file,
+                        String format,
+                        int level,
+                        String test) {
             if (! file.exists()) {
                 throw new IllegalArgumentException(file.getAbsolutePath() + " not found");
             }
@@ -225,24 +212,16 @@ public class ImageLoadPerformanceTest {
             this.test = test;
         }
 
-        public String getPath() {
-            return file.getAbsolutePath();
-        }
-
-        public void deriveLoadTime(long startTime) {
-            this.loadTime = System.currentTimeMillis() - startTime;
+        @Override
+        public String getAverageGroup() {
+            return level + "::" + format;
         }
 
         @Override
-        public String toString() {
-            return String.format(STATS_FORMAT, level, format, file.length(), test, loadTime);
+        public String getReportGroup() {
+            return String.valueOf(level);
         }
 
     }
 
-    private static final String STATS_FORMAT = "%5d  %6s  %11d  %6s  %8d";
-    private static final String STATS_HEADER_FORMAT = STATS_FORMAT.replace('d','s');
-    private static final String STATS_HEADER =
-            String.format(STATS_HEADER_FORMAT, "level", "format", "file length", "test", "loadTime") + "\n" +
-            String.format(STATS_HEADER_FORMAT, "-----", "------", "-----------", "----", "--------");
 }
