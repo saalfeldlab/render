@@ -12,7 +12,7 @@
           </element>
           <element id="library" level="project" name="Maven: mpicbg:mpicbg_:0.6.1" />
           <element id="library" level="project" name="Maven: jama:jama:1.0.2" />
-          <element id="library" level="project" name="Maven: net.imagej:ij:1.48s" />
+          <element id="library" level="project" name="Maven: net.imagej:ij:1.49m" />
           <element id="library" level="project" name="Maven: mpicbg:mpicbg:0.6.1" />
           <element id="library" level="project" name="Maven: com.google.code.gson:gson:2.2.4" />
           <element id="library" level="project" name="Maven: com.beust:jcommander:1.35" />

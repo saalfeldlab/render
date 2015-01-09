@@ -1,5 +1,6 @@
 package org.janelia.alignment.spec;
 
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,7 +92,7 @@ public class ResolvedTileSpecCollection {
         // so we need to re-resolve the tile before re-deriving the bounding box
         resolveTileSpec(tileSpec);
 
-        tileSpec.deriveBoundingBox(true);
+        tileSpec.deriveBoundingBox(RenderParameters.DEFAULT_MESH_CELL_SIZE, true);
     }
 
     public void addReferenceTransformToAllTiles(String transformId)

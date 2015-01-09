@@ -196,41 +196,61 @@ public class RenderDataService {
         return list;
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/movingLeastSquaresTransformUsingMontage/{montageStack}/withAlpha/{alpha}")
+    @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public TransformSpec getMovingLeastSquaresTransform(@PathParam("owner") String owner,
-                                                        @PathParam("project") String project,
-                                                        @PathParam("stack") String stack,
-                                                        @PathParam("z") Double z,
-                                                        @PathParam("montageStack") String montageStack,
-                                                        @PathParam("alpha") Double alpha) {
+    public ResolvedTileSpecCollection getResolvedTiles(@PathParam("owner") final String owner,
+                                                       @PathParam("project") final String project,
+                                                       @PathParam("stack") final String stack,
+                                                       @PathParam("z") final Double z) {
 
-        LOG.info("getMovingLeastSquaresTransform: entry, owner={}, project={}, stack={}, z={}, montageStack={}",
-                 owner, project, stack, z, montageStack);
+        LOG.info("getResolvedTiles: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
 
-        TransformSpec transformSpec = null;
+        ResolvedTileSpecCollection resolvedTiles = null;
         try {
-            final StackId alignStackId = new StackId(owner, project, stack);
-            final StackId montageStackId = new StackId(owner, project, montageStack);
+            final StackId stackId = new StackId(owner, project, stack);
+            resolvedTiles = renderDao.getResolvedTiles(stackId, z);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+        return resolvedTiles;
+    }
 
-            final List<TileSpec> montageTiles = renderDao.getTileSpecs(montageStackId, z);
-            final List<TileSpec> alignTiles = renderDao.getTileSpecs(alignStackId, z);
+    @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response saveResolvedTiles(@PathParam("owner") final String owner,
+                                      @PathParam("project") final String project,
+                                      @PathParam("stack") final String stack,
+                                      @PathParam("z") final Double z,
+                                      @Context final UriInfo uriInfo,
+                                      ResolvedTileSpecCollection resolvedTiles) {
 
-            final MovingLeastSquaresBuilder mlsBuilder = new MovingLeastSquaresBuilder(montageTiles, alignTiles);
-            final MovingLeastSquaresTransform2 transform = mlsBuilder.build(alpha);
-            final String separator = "__";
-            final String transformId = z + separator + alpha + separator + montageStack + separator + stack;
+        LOG.info("saveResolvedTiles: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
 
-            transformSpec = new LeafTransformSpec(transformId,
-                                                  null,
-                                                  transform.getClass().getName(),
-                                                  transform.toDataString());
-        } catch (Throwable t) {
+        if (resolvedTiles == null) {
+            throw new IllegalServiceArgumentException("no resolved tiles provided");
+        }
+
+        if (z == null) {
+            throw new IllegalServiceArgumentException("no z value provided");
+        }
+
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            resolvedTiles.verifyAllTileSpecsHaveZValue(z);
+            renderDao.saveResolvedTiles(stackId, resolvedTiles);
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
-        return transformSpec;
+        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
+
+        LOG.info("saveResolvedTiles: exit");
+
+        return responseBuilder.build();
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}")
