@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.Serializable;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -50,7 +51,7 @@ import com.google.gson.reflect.TypeToken;
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
 @Parameters
-public class RenderParameters {
+public class RenderParameters implements Serializable {
 
     @Parameter(names = "--help", description = "Display this note", help = true)
     private transient boolean help;
@@ -105,18 +106,18 @@ public class RenderParameters {
 
     /** List of tile specifications parsed from --tileSpecUrl or deserialized directly from json. */
     private List<TileSpec> tileSpecs;
-    
+
     private Double minBoundsMinX = null;
     private Double minBoundsMinY = null;
     private Double minBoundsMaxX = null;
     private Double minBoundsMaxY = null;
     private double minBoundsMeshCellSize = DEFAULT_MESH_CELL_SIZE;
-    
+
     public Double getMinBoundsMinX() { return minBoundsMinX; }
     public Double getMinBoundsMinY() { return minBoundsMinY; }
     public Double getMinBoundsMaxX() { return minBoundsMaxX; }
     public Double getMinBoundsMaxY() { return minBoundsMaxY; }
-    
+
     private transient JCommander jCommander;
     private transient URI outUri;
     private transient boolean initialized;
@@ -359,7 +360,7 @@ public class RenderParameters {
     public void addTileSpec(final TileSpec tileSpec) {
         tileSpecs.add(tileSpec);
     }
-    
+
     public void addTileSpecs(final Collection<TileSpec> tileSpec) {
         tileSpecs.addAll(tileSpec);
     }
@@ -475,7 +476,7 @@ public class RenderParameters {
         if (convertToGray) {
             sb.append("convertToGray=true, ");
         }
-        
+
         if (doFilter) {
             sb.append("filter=true, ");
         }
@@ -581,7 +582,7 @@ public class RenderParameters {
             skipInterpolation = mergedValue(skipInterpolation, baseParameters.skipInterpolation, false);
             quality = mergedValue(quality, baseParameters.quality, DEFAULT_QUALITY);
             doFilter = mergedValue(doFilter, baseParameters.doFilter, false);
-            
+
             tileSpecs.addAll(baseParameters.tileSpecs);
         }
     }
@@ -624,20 +625,20 @@ public class RenderParameters {
     private <T> T mergedValue(final T currentValue, final T baseValue) {
         return currentValue == null ? baseValue : currentValue;
     }
-    
+
     private <T> T mergedValue(final T currentValue, final T baseValue, final T defaultValue) {
         return currentValue == null || currentValue.equals(defaultValue) ? baseValue : currentValue;
     }
-    
+
     private boolean isMinBoundsDefined() {
-        return 
+        return
                 (minBoundsMeshCellSize == meshCellSize) &&
                 (minBoundsMinX != null) &&
                 (minBoundsMinY != null) &&
                 (minBoundsMaxX != null) &&
                 (minBoundsMaxY != null);
     }
-    
+
     public void deriveMinimalBoundingBox(final boolean force, final double... padding) throws IllegalStateException {
         final double paddingTop, paddingRight, paddingBottom, paddingLeft;
         if (padding.length > 3) {
@@ -653,7 +654,7 @@ public class RenderParameters {
         } else {
             paddingLeft = paddingRight = paddingTop = paddingBottom = 0;
         }
-        
+
         if (force || !isMinBoundsDefined()) {
             final Rectangle2D.Double minBounds = TileSpec.deriveBoundingBox(tileSpecs, meshCellSize, force, null);
             minBoundsMinX = minBounds.x - paddingLeft;
@@ -663,8 +664,8 @@ public class RenderParameters {
             minBoundsMeshCellSize = meshCellSize;
         }
     }
-    
-    
+
+
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParameters.class);
 

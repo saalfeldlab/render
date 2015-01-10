@@ -17,6 +17,7 @@
 package org.janelia.alignment;
 
 import java.io.File;
+import java.io.Serializable;
 import java.net.URI;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,7 +27,7 @@ import java.util.regex.Pattern;
  *
  * @author Stephan Saalfeld <saalfeld@mpi-cbg.de>
  */
-public class ImageAndMask {
+public class ImageAndMask implements Serializable {
 
     private String imageUrl;
     private String maskUrl;

@@ -1,5 +1,7 @@
 package org.janelia.alignment.spec;
 
+import java.io.Serializable;
+
 /**
  * Any information about a {@link TransformSpec} that is NOT directly needed for rendering
  * (not directly needed for implementation of the transformation).
@@ -10,7 +12,7 @@ package org.janelia.alignment.spec;
  *
  * @author Eric Trautman
  */
-public class TransformSpecMetaData {
+public class TransformSpecMetaData implements Serializable {
 
     private String group;
 
@@ -21,7 +23,7 @@ public class TransformSpecMetaData {
         return group;
     }
 
-    public void setGroup(String group) {
+    public void setGroup(final String group) {
         this.group = group;
     }
 

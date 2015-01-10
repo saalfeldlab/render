@@ -1,29 +1,31 @@
 package org.janelia.alignment.spec;
 
+import java.io.Serializable;
+
 /**
  * Tile information from the layout file.
  *
  * @author Eric Trautman
  */
-public class LayoutData {
+public class LayoutData implements Serializable {
 
-    private Integer sectionId;
-    private String temca;
-    private String camera;
-    private Integer imageRow;
-    private Integer imageCol;
-    private Double stageX;
-    private Double stageY;
-    private Double rotation;
+    private final Integer sectionId;
+    private final String temca;
+    private final String camera;
+    private final Integer imageRow;
+    private final Integer imageCol;
+    private final Double stageX;
+    private final Double stageY;
+    private final Double rotation;
 
-    public LayoutData(Integer sectionId,
-                      String temca,
-                      String camera,
-                      Integer imageRow,
-                      Integer imageCol,
-                      Double stageX,
-                      Double stageY,
-                      Double rotation) {
+    public LayoutData(final Integer sectionId,
+                      final String temca,
+                      final String camera,
+                      final Integer imageRow,
+                      final Integer imageCol,
+                      final Double stageX,
+                      final Double stageY,
+                      final Double rotation) {
         this.sectionId = sectionId;
         this.temca = temca;
         this.camera = camera;

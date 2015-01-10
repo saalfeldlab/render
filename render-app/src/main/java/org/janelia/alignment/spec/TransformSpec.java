@@ -1,5 +1,6 @@
 package org.janelia.alignment.spec;
 
+import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -17,7 +18,7 @@ import org.janelia.alignment.json.JsonUtils;
  *
  * @author Eric Trautman
  */
-public abstract class TransformSpec {
+public abstract class TransformSpec implements Serializable {
 
     public static final String ID_ELEMENT_NAME = "id";
     public static final String TYPE_ELEMENT_NAME = "type";
@@ -29,9 +30,9 @@ public abstract class TransformSpec {
 
     private transient CoordinateTransform instance;
 
-    protected TransformSpec(String id,
-                            String type,
-                            TransformSpecMetaData metaData) {
+    protected TransformSpec(final String id,
+                            final String type,
+                            final TransformSpecMetaData metaData) {
         this.id = id;
         this.type = type;
         this.metaData = metaData;

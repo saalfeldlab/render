@@ -1,5 +1,7 @@
 package org.janelia.alignment.spec;
 
+import java.io.Serializable;
+
 import org.janelia.alignment.json.JsonUtils;
 
 /**
@@ -7,7 +9,7 @@ import org.janelia.alignment.json.JsonUtils;
  *
  * @author Eric Trautman
  */
-public class Bounds {
+public class Bounds implements Serializable {
 
     private Double minX;
     private Double minY;
@@ -17,10 +19,10 @@ public class Bounds {
     public Bounds() {
     }
 
-    public Bounds(Double minX,
-                  Double minY,
-                  Double maxX,
-                  Double maxY) {
+    public Bounds(final Double minX,
+                  final Double minY,
+                  final Double maxX,
+                  final Double maxY) {
         this.minX = minX;
         this.minY = minY;
         this.maxX = maxX;
@@ -47,7 +49,7 @@ public class Bounds {
         return ((minX != null) && (minY != null) && (maxX != null) && (maxY != null));
     }
 
-    public static Bounds fromJson(String json) {
+    public static Bounds fromJson(final String json) {
         return JsonUtils.GSON.fromJson(json, Bounds.class);
     }
 }

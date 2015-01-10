@@ -1,5 +1,6 @@
 package org.janelia.alignment.spec;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,7 +15,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class TileCoordinates {
+public class TileCoordinates implements Serializable {
 
     private final String tileId;
     private Boolean visible;
@@ -22,9 +23,9 @@ public class TileCoordinates {
     private final float[] world;
     private String error;
 
-    public TileCoordinates(String tileId,
-                           float[] local,
-                           float[] world) {
+    public TileCoordinates(final String tileId,
+                           final float[] local,
+                           final float[] world) {
         this.tileId = tileId;
         this.visible = null;
         this.local = local;
@@ -40,7 +41,7 @@ public class TileCoordinates {
         return ((visible != null) && visible);
     }
 
-    public void setVisible(Boolean visible) {
+    public void setVisible(final Boolean visible) {
         this.visible = visible;
     }
 
@@ -56,17 +57,17 @@ public class TileCoordinates {
         return (error != null);
     }
 
-    public void setError(String error) {
+    public void setError(final String error) {
         this.error = error;
     }
 
-    public static TileCoordinates buildLocalInstance(String tileId,
-                                                     float[] local) {
+    public static TileCoordinates buildLocalInstance(final String tileId,
+                                                     final float[] local) {
         return new TileCoordinates(tileId, local, null);
     }
 
-    public static TileCoordinates buildWorldInstance(String tileId,
-                                                     float[] world) {
+    public static TileCoordinates buildWorldInstance(final String tileId,
+                                                     final float[] world) {
         return new TileCoordinates(tileId, null, world);
     }
 
@@ -83,23 +84,23 @@ public class TileCoordinates {
      *   if the specified point cannot be inverted for any of the specified tiles.
      */
     public static List<TileCoordinates> getLocalCoordinates(
-            List<TileSpec> tileSpecList,
+            final List<TileSpec> tileSpecList,
             final float x,
             final float y,
             final double meshCellSize)
             throws IllegalStateException {
 
 
-        List<TileCoordinates> tileCoordinatesList = new ArrayList<TileCoordinates>();
+        final List<TileCoordinates> tileCoordinatesList = new ArrayList<TileCoordinates>();
         List<String> nonInvertibleTileIds = null;
         float[] local;
         TileCoordinates tileCoordinates;
-        for (TileSpec tileSpec : tileSpecList) {
+        for (final TileSpec tileSpec : tileSpecList) {
             try {
                 local = tileSpec.getLocalCoordinates(x, y, meshCellSize);
                 tileCoordinates = buildLocalInstance(tileSpec.getTileId(), local);
                 tileCoordinatesList.add(tileCoordinates);
-            } catch (NoninvertibleModelException e) {
+            } catch (final NoninvertibleModelException e) {
                 if (nonInvertibleTileIds == null) {
                     nonInvertibleTileIds = new ArrayList<String>();
                 }
@@ -127,14 +128,14 @@ public class TileCoordinates {
         return tileCoordinatesList;
     }
 
-    public static TileCoordinates getWorldCoordinates(TileSpec tileSpec,
-                                                      float x,
-                                                      float y) {
+    public static TileCoordinates getWorldCoordinates(final TileSpec tileSpec,
+                                                      final float x,
+                                                      final float y) {
         final float[] world = tileSpec.getWorldCoordinates(x, y);
         return buildWorldInstance(tileSpec.getTileId(), world);
     }
 
-    public static TileCoordinates fromJson(String json) {
+    public static TileCoordinates fromJson(final String json) {
         return JsonUtils.GSON.fromJson(json, TileCoordinates.class);
     }
 
