@@ -1,5 +1,6 @@
 {
-    "res": 64,
+    "meshCellSize": 64,
+    "minMeshCellSize": 16,
     "x": 1600.0,
     "y": 3200.0,
     "width": 1600,

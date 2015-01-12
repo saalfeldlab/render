@@ -388,7 +388,7 @@ public class Render {
                        targetImage,
                        params.getX(),
                        params.getY(),
-                       params.getRes(),
+                       params.getRes(params.getScale()),
                        params.getScale(),
                        params.isAreaOffset(),
                        params.getNumberOfThreads(),

@@ -1,11 +1,5 @@
 package org.janelia.perf;
 
-import org.janelia.alignment.Render;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.Utils;
-import org.junit.Before;
-import org.junit.Test;
-
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
@@ -13,6 +7,12 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.janelia.alignment.Render;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Utils;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * Tests the render times for different image formats, thread counts, and mipmap levels.
@@ -65,18 +65,18 @@ public class RenderPerformanceTest {
     private boolean enableTests;
     private int numberOfTimesToRepeatEachTest;
 
-    private String[] formats = { "jpg", "tif" };
+    private final String[] formats = { "jpg", "tif" };
 
     private PerformanceTestData.TestResults<TestData> testResults;
     private List<TestData> testDataList;
 
-    public static void main(String[] args) {
-        RenderPerformanceTest test = new RenderPerformanceTest();
+    public static void main(final String[] args) {
+        final RenderPerformanceTest test = new RenderPerformanceTest();
         try {
             test.setup();
             test.enableTests = true;
             test.runTests();
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             t.printStackTrace();
         }
     }
@@ -89,7 +89,7 @@ public class RenderPerformanceTest {
 
         // the first usage of ImagePlus sometimes incurs a significant performance penalty,
         // so open a different file for each format here before starting the tests
-        for (String format : formats) {
+        for (final String format : formats) {
             Utils.openImagePlus("src/test/resources/perf-test/image-plus-start/start." + format);
         }
 
@@ -106,14 +106,14 @@ public class RenderPerformanceTest {
     @Test
     public void runTests() throws Exception {
         if (enableTests) {
-            for (TestData testData : testDataList) {
+            for (final TestData testData : testDataList) {
                 runTest(testData);
             }
             testResults.collateAndPrintTimes(testDataList);
         }
     }
 
-    private void runTest(TestData testData) {
+    private void runTest(final TestData testData) {
 
         final RenderParameters params;
         final BufferedImage targetImage;
@@ -125,7 +125,7 @@ public class RenderPerformanceTest {
             params.initializeDerivedValues();
             params.validate();
             targetImage = params.openTargetImage();
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             throw new RuntimeException("failed to load render parameters from " + testData.renderParametersFile, t);
         }
 
@@ -136,7 +136,7 @@ public class RenderPerformanceTest {
                       targetImage,
                       params.getX(),
                       params.getY(),
-                      params.getRes(),
+                      params.getRes(params.getScale()),
                       params.getScale(),
                       params.isAreaOffset(),
                       testData.threads,
@@ -157,7 +157,7 @@ public class RenderPerformanceTest {
         File file;
         for (int testNumber = 0; testNumber < numberOfTimesToRepeatEachTest; testNumber++) {
             for (int level = 1; level < 4; level++) {
-                for (String format : formats) {
+                for (final String format : formats) {
                     final String fileName = "/render-1600-3200-1600-1600.json";
                     file = new File(baseImagePath + format + fileName);
                     for (int threadCount = 1; threadCount <= 4; threadCount = threadCount * 2) {
@@ -176,11 +176,11 @@ public class RenderPerformanceTest {
         testResults = new PerformanceTestData.TestResults<TestData>() {
 
             @Override
-            public TestData getAverageInstance(TestData groupInstance,
-                                               long averageElapsedTime,
-                                               int numberOfTests) {
+            public TestData getAverageInstance(final TestData groupInstance,
+                                               final long averageElapsedTime,
+                                               final int numberOfTests) {
 
-                TestData averageInstance = new TestData(groupInstance.renderParametersFile,
+                final TestData averageInstance = new TestData(groupInstance.renderParametersFile,
                                                         groupInstance.format,
                                                         groupInstance.level,
                                                         groupInstance.threads,
@@ -190,21 +190,21 @@ public class RenderPerformanceTest {
             }
 
             @Override
-            public String getReportHeader(String reportName) {
+            public String getReportHeader(final String reportName) {
                 final String headerFormat = "%5s  %6s  %7s  %-7s  %11s";
                 return String.format(headerFormat, "level", "format", "threads", "test   ", "elapsedTime") + "\n" +
                        String.format(headerFormat, "-----", "------", "-------", "-------", "-----------");
             }
 
             @Override
-            public String formatTestResult(TestData result) {
+            public String formatTestResult(final TestData result) {
                 return String.format("%5d  %6s  %7d  %-7s  %11d",
                                      result.level, result.format, result.threads, result.test, result.getElapsedTime());
             }
 
             @Override
             public Map<String, Comparator<TestData>> getReportNameToComparatorMap() {
-                Map<String, Comparator<TestData>> map =
+                final Map<String, Comparator<TestData>> map =
                         new LinkedHashMap<String, Comparator<TestData>>();
                 map.put("Level::Threads Results", levelThreadsComparator);
                 return map;
@@ -213,8 +213,8 @@ public class RenderPerformanceTest {
             private final Comparator<TestData> levelThreadsComparator =
                     new Comparator<TestData>() {
                         @Override
-                        public int compare(TestData o1,
-                                           TestData o2) {
+                        public int compare(final TestData o1,
+                                           final TestData o2) {
                             int result = o1.level - o2.level;
                             if (result == 0) {
                                 result = (int) (o1.getElapsedTime() - o2.getElapsedTime());
@@ -236,17 +236,17 @@ public class RenderPerformanceTest {
 
     public class TestData extends PerformanceTestData {
 
-        private File renderParametersFile;
-        private String format;
-        private int level;
-        private int threads;
-        private String test;
+        private final File renderParametersFile;
+        private final String format;
+        private final int level;
+        private final int threads;
+        private final String test;
 
-        public TestData(File renderParametersFile,
-                        String format,
-                        int level,
-                        int threads,
-                        String test) {
+        public TestData(final File renderParametersFile,
+                        final String format,
+                        final int level,
+                        final int threads,
+                        final String test) {
             if (! renderParametersFile.exists()) {
                 throw new IllegalArgumentException(renderParametersFile.getAbsolutePath() + " not found");
             }

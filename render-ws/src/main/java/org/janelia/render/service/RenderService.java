@@ -195,7 +195,7 @@ public class RenderService {
                       targetImage,
                       renderParameters.getX(),
                       renderParameters.getY(),
-                      renderParameters.getRes(),
+                      renderParameters.getRes(renderParameters.getScale()),
                       renderParameters.getScale(),
                       renderParameters.isAreaOffset(),
                       1, // TODO: verify we always want to be single threaded for service requests

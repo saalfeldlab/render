@@ -62,6 +62,9 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--res", description = " Mesh resolution, specified by the desired size of a mesh cell (triangle) in pixels", required = false)
     public double meshCellSize;
 
+    @Parameter(names = "--min_res", description = " Miinimal mesh resolution, specified by the desired size of a mesh cell (triangle) in pixels", required = false)
+    public double minMeshCellSize = 0;
+
     @Parameter(names = "--in", description = "Path to the input image if any", required = false)
     public String in;
 
@@ -282,6 +285,16 @@ public class RenderParameters implements Serializable {
         return meshCellSize;
     }
 
+    /**
+     * Return reasonable meshCellSize adjusted to an effective scale factor.
+     *
+     * @param effectiveScale
+     * @return
+     */
+    public double getRes(final double effectiveScale) {
+        return Math.max(meshCellSize, minMeshCellSize / effectiveScale);
+    }
+
     public String getOut() {
         return out;
     }
@@ -317,7 +330,7 @@ public class RenderParameters implements Serializable {
         return scale;
     }
 
-    public void setScale(double scale) {
+    public void setScale(final double scale) {
         this.scale = scale;
     }
 
