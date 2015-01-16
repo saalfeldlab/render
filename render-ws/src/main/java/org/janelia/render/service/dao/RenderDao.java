@@ -620,6 +620,12 @@ public class RenderDao {
         final DBObject tileQuery = new BasicDBObject("z", z);
 
         final Double minX = getBound(tileCollection, tileQuery, "minX", true);
+
+        if (minX == null) {
+            throw new IllegalArgumentException("stack " + stackId.getStack() +
+                                               " does not contain any tiles with a z value of " + z);
+        }
+
         final Double minY = getBound(tileCollection, tileQuery, "minY", true);
         final Double maxX = getBound(tileCollection, tileQuery, "maxX", false);
         final Double maxY = getBound(tileCollection, tileQuery, "maxY", false);
