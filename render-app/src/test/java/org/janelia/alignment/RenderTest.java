@@ -16,6 +16,7 @@
  */
 package org.janelia.alignment;
 
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -23,12 +24,15 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
+import com.google.common.cache.CacheStats;
 
 /**
  * Tests the {@link Render} class.
@@ -128,6 +132,64 @@ public class RenderTest {
         final String actualDigestString = getDigestString(outputFile);
 
         Assert.assertEquals("rendered file MD5 hash differs from expected result",
+                            expectedDigestString, actualDigestString);
+    }
+
+    @Test
+    public void testCaching() throws Exception {
+
+        final File expectedFile =
+                new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
+        final String expectedDigestString = getDigestString(expectedFile);
+
+        final String[] args = {
+                "--tile_spec_url", "src/test/resources/stitch-test/test_4_tiles_level_1.json",
+                "--out", outputFile.getAbsolutePath(),
+                "--width", "4576",
+                "--height", "4173",
+                "--scale", "0.05"
+        };
+
+        final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
+        ImageProcessorCache imageProcessorCache = new ImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS, true, false);
+
+        validateCacheRender("first run with cache",
+                            params, imageProcessorCache, 5, 3, expectedDigestString);
+        validateCacheRender("second run with cache",
+                            params, imageProcessorCache, 5, 11, expectedDigestString);
+        validateCacheRender("third run with NO cache",
+                            params, ImageProcessorCache.DISABLED_CACHE, 0, 0, expectedDigestString);
+    }
+
+    private void validateCacheRender(String context,
+                                     RenderParameters params,
+                                     ImageProcessorCache imageProcessorCache,
+                                     int expectedCacheSize,
+                                     int expectedHitCount,
+                                     String expectedDigestString)
+            throws Exception {
+
+        final BufferedImage targetImage = params.openTargetImage();
+
+        Render.render(params, targetImage, imageProcessorCache);
+
+        Assert.assertEquals(context + ": invalid number of items in cache",
+                            expectedCacheSize, imageProcessorCache.size());
+
+        final CacheStats stats = imageProcessorCache.getStats();
+
+        Assert.assertEquals(context + ": invalid number of cache hits",
+                            expectedHitCount, stats.hitCount());
+
+        Utils.saveImage(targetImage,
+                        outputFile.getAbsolutePath(),
+                        Utils.JPEG_FORMAT,
+                        params.isConvertToGray(),
+                        params.getQuality());
+
+        final String actualDigestString = getDigestString(outputFile);
+
+        Assert.assertEquals(context + ": stitched file MD5 hash differs from expected result",
                             expectedDigestString, actualDigestString);
     }
 

@@ -116,9 +116,16 @@ public class RenderParameters implements Serializable {
     private Double minBoundsMaxY = null;
     private double minBoundsMeshCellSize = DEFAULT_MESH_CELL_SIZE;
 
+    @SuppressWarnings("UnusedDeclaration")
     public Double getMinBoundsMinX() { return minBoundsMinX; }
+
+    @SuppressWarnings("UnusedDeclaration")
     public Double getMinBoundsMinY() { return minBoundsMinY; }
+
+    @SuppressWarnings("UnusedDeclaration")
     public Double getMinBoundsMaxX() { return minBoundsMaxX; }
+
+    @SuppressWarnings("UnusedDeclaration")
     public Double getMinBoundsMaxY() { return minBoundsMaxY; }
 
     private transient JCommander jCommander;
@@ -281,15 +288,15 @@ public class RenderParameters implements Serializable {
         return help;
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public double getRes() {
         return meshCellSize;
     }
 
     /**
-     * Return reasonable meshCellSize adjusted to an effective scale factor.
+     * @param  effectiveScale  adjustment factor.
      *
-     * @param effectiveScale
-     * @return
+     * @return reasonable meshCellSize adjusted to an effective scale factor.
      */
     public double getRes(final double effectiveScale) {
         return Math.max(meshCellSize, minMeshCellSize / effectiveScale);
@@ -350,6 +357,10 @@ public class RenderParameters implements Serializable {
         return numberOfThreads;
     }
 
+    public void setNumberOfThreads(int numberOfThreads) {
+        this.numberOfThreads = numberOfThreads;
+    }
+
     public boolean skipInterpolation() {
         return skipInterpolation;
     }
@@ -374,6 +385,7 @@ public class RenderParameters implements Serializable {
         tileSpecs.add(tileSpec);
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public void addTileSpecs(final Collection<TileSpec> tileSpec) {
         tileSpecs.addAll(tileSpec);
     }
@@ -652,6 +664,7 @@ public class RenderParameters implements Serializable {
                 (minBoundsMaxY != null);
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public void deriveMinimalBoundingBox(final boolean force, final double... padding) throws IllegalStateException {
         final double paddingTop, paddingRight, paddingBottom, paddingLeft;
         if (padding.length > 3) {

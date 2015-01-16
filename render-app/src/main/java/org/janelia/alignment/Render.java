@@ -16,7 +16,6 @@
  */
 package org.janelia.alignment;
 
-import ij.ImagePlus;
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
@@ -34,12 +33,11 @@ import mpicbg.models.CoordinateTransformMesh;
 import mpicbg.models.TransformMesh;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
-import mpicbg.trakem2.util.Downsampler;
 
-import org.janelia.alignment.filter.CLAHE;
 import org.janelia.alignment.filter.NormalizeLocalContrast;
 import org.janelia.alignment.filter.ValueToNoise;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,9 +91,26 @@ public class Render {
     final static private NormalizeLocalContrast nlcf = new NormalizeLocalContrast(500, 500, 3, true, true);
     final static private ValueToNoise vtnf1 = new ValueToNoise(0, 64, 191);
     final static private ValueToNoise vtnf2 = new ValueToNoise(255, 64, 191);
-    final static private CLAHE clahe = new CLAHE(true, 250, 256, 2);
+//    final static private CLAHE clahe = new CLAHE(true, 250, 256, 2);
 
     private Render() {
+    }
+
+    public static void render(final RenderParameters params,
+                              final BufferedImage targetImage,
+                              final ImageProcessorCache imageProcessorCache)
+            throws IllegalArgumentException {
+        render(params.getTileSpecs(),
+               targetImage,
+               params.getX(),
+               params.getY(),
+               params.getRes(params.getScale()),
+               params.getScale(),
+               params.isAreaOffset(),
+               params.getNumberOfThreads(),
+               params.skipInterpolation(),
+               params.doFilter(),
+               imageProcessorCache);
     }
 
     public static void render(final List<TileSpec> tileSpecs,
@@ -107,7 +122,8 @@ public class Render {
                               final boolean areaOffset,
                               final int numberOfThreads,
                               final boolean skipInterpolation,
-                              final boolean doFilter)
+                              final boolean doFilter,
+                              final ImageProcessorCache imageProcessorCache)
             throws IllegalArgumentException {
 
         final Graphics2D targetGraphics = targetImage.createGraphics();
@@ -119,7 +135,7 @@ public class Render {
         int tileSpecIndex = 0;
         long tileSpecStart;
         long loadMipStop;
-        long scaleMipStop;
+        long filterStop;
         long loadMaskStop;
         long ctListCreationStop;
         long meshCreationStop;
@@ -127,10 +143,6 @@ public class Render {
         long targetCreationStop;
         long mapInterpolatedStop;
         long drawImageStop;
-
-        final ByteProcessorCache byteProcessorCache = new ByteProcessorCache();
-        ByteProcessor bpMaskSource;
-        ByteProcessor bpMaskTarget;
 
         for (final TileSpec ts : tileSpecs) {
             tileSpecStart = System.currentTimeMillis();
@@ -161,54 +173,49 @@ public class Render {
 
             Map.Entry<Integer, ImageAndMask> mipmapEntry;
             ImageAndMask imageAndMask = null;
-            ImageProcessor ip = null;
+            ImageProcessor widthAndHeightProcessor = null;
             int width = ts.getWidth();
             int height = ts.getHeight();
             // figure width and height
             if ((width < 0) || (height < 0)) {
                 mipmapEntry = ts.getFirstMipmapEntry();
                 imageAndMask = mipmapEntry.getValue();
-                final ImagePlus imp = getImagePlusForMipmap(imageAndMask);
-                ip = imp.getProcessor();
-                width = imp.getWidth();
-                height = imp.getHeight();
+                widthAndHeightProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(), 0);
+                width = widthAndHeightProcessor.getWidth();
+                height = widthAndHeightProcessor.getHeight();
             }
 
             // estimate average scale
             final double s = Utils.sampleAverageScale(ctl, width, height, meshCellSize);
             int mipmapLevel = Utils.bestMipmapLevel(s);
 
-            Integer downSampleLevels = null;
+            int downSampleLevels = 0;
             final ImageProcessor ipMipmap;
-            if (ip == null) { // width and height were specified
+            if (widthAndHeightProcessor == null) { // width and height were explicitly specified as parameters
 
                 mipmapEntry = ts.getFloorMipmapEntry(mipmapLevel);
                 imageAndMask = mipmapEntry.getValue();
-                final ImagePlus imp = getImagePlusForMipmap(imageAndMask);
 
-                loadMipStop = System.currentTimeMillis();
-
-                ip = imp.getProcessor();
                 final int currentMipmapLevel = mipmapEntry.getKey();
-                if (currentMipmapLevel >= mipmapLevel) {
-                    mipmapLevel = currentMipmapLevel;
-                    ipMipmap = ip;
-                    LOG.debug("render: using existing mipmap level {}", mipmapLevel);
-                } else {
+                if (currentMipmapLevel < mipmapLevel) {
                     downSampleLevels = mipmapLevel - currentMipmapLevel;
-                    LOG.debug("render: need to down sample from mipmap level {} to {}", currentMipmapLevel, mipmapLevel);
-                    ipMipmap = Downsampler.downsampleImageProcessor(ip, downSampleLevels);
+                } else {
+                    mipmapLevel = currentMipmapLevel;
                 }
+
+                ipMipmap = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels);
+
+            } else if (mipmapLevel > 0) {
+
+                downSampleLevels = mipmapLevel;
+                ipMipmap = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels);
 
             } else {
 
-                loadMipStop = System.currentTimeMillis();
-
-                // create according mipmap level
-                downSampleLevels = mipmapLevel;
-                LOG.debug("render: full down sample to level {}", mipmapLevel);
-                ipMipmap = Downsampler.downsampleImageProcessor(ip, downSampleLevels);
+                ipMipmap = widthAndHeightProcessor;
             }
+
+            loadMipStop = System.currentTimeMillis();
 
             // filter
             if (doFilter) {
@@ -218,20 +225,21 @@ public class Render {
                 nlcf.process(ipMipmap, mipmapScale);
             }
 
+            filterStop = System.currentTimeMillis();
+
             // create a target
             final ImageProcessor tp = ipMipmap.createProcessor(targetImage.getWidth(), targetImage.getHeight());
 
-            scaleMipStop = System.currentTimeMillis();
-
             // open mask
-            bpMaskSource = null;
-            bpMaskTarget = null;
+            final ImageProcessor maskSourceProcessor;
+            ImageProcessor maskTargetProcessor;
             final String maskUrl = imageAndMask.getMaskUrl();
             if (maskUrl != null) {
-                bpMaskSource = byteProcessorCache.getProcessor(maskUrl, downSampleLevels);
-                if (bpMaskSource != null) {
-                    bpMaskTarget = new ByteProcessor(tp.getWidth(), tp.getHeight());
-                }
+                maskSourceProcessor = imageProcessorCache.get(maskUrl, downSampleLevels);
+                maskTargetProcessor = new ByteProcessor(tp.getWidth(), tp.getHeight());
+            } else {
+                maskSourceProcessor = null;
+                maskTargetProcessor = null;
             }
 
             loadMaskStop = System.currentTimeMillis();
@@ -252,19 +260,19 @@ public class Render {
 
             meshCreationStop = System.currentTimeMillis();
 
-            final ImageProcessorWithMasks source = new ImageProcessorWithMasks(ipMipmap, bpMaskSource, null);
+            final ImageProcessorWithMasks source = new ImageProcessorWithMasks(ipMipmap, maskSourceProcessor, null);
 
-            // if source.mask gets "quietly" removed (because of size), we need to also remove bpMaskSource
-            if ((bpMaskTarget != null) && (source.mask == null)) {
-                LOG.warn("render: removing mask because ipMipmap and bpMaskSource differ in size, ipMipmap: " +
-                         ipMipmap.getWidth() + "x" + ipMipmap.getHeight() + ", bpMaskSource: " +
-                         bpMaskSource.getWidth() + "x" + bpMaskSource.getHeight());
-                bpMaskTarget = null;
+            // if source.mask gets "quietly" removed (because of size), we need to also remove maskSourceProcessor
+            if ((maskTargetProcessor != null) && (source.mask == null)) {
+                LOG.warn("render: removing mask because ipMipmap and maskSourceProcessor differ in size, ipMipmap: " +
+                         ipMipmap.getWidth() + "x" + ipMipmap.getHeight() + ", maskSourceProcessor: " +
+                         maskSourceProcessor.getWidth() + "x" + maskSourceProcessor.getHeight());
+                maskTargetProcessor = null;
             }
 
             sourceCreationStop = System.currentTimeMillis();
 
-            final ImageProcessorWithMasks target = new ImageProcessorWithMasks(tp, bpMaskTarget, null);
+            final ImageProcessorWithMasks target = new ImageProcessorWithMasks(tp, maskTargetProcessor, null);
 
             targetCreationStop = System.currentTimeMillis();
 
@@ -288,8 +296,8 @@ public class Render {
             final byte[] alphaPixels;
 
             // set alpha channel
-            if (bpMaskTarget != null) {
-                alphaPixels = (byte[]) bpMaskTarget.getPixels();
+            if (maskTargetProcessor != null) {
+                alphaPixels = (byte[]) maskTargetProcessor.getPixels();
             } else {
                 alphaPixels = (byte[]) target.outside.getPixels();
             }
@@ -306,20 +314,21 @@ public class Render {
 
             drawImageStop = System.currentTimeMillis();
 
-            LOG.debug("render: tile {} took {} milliseconds to process (load mip:{}, scale mip ({} downsample levels):{}, load/scale mask:{}, ctList:{}, mesh:{}, source:{}, target:{}, map{}:{}, draw image:{})",
+            LOG.debug("render: tile {} took {} milliseconds to process (load mip:{}, downSampleLevels:{}, filter:{}, load mask:{}, ctList:{}, mesh:{}, source:{}, target:{}, map{}:{}, draw image:{}), cacheSize:{}",
                       tileSpecIndex,
                       drawImageStop - tileSpecStart,
                       loadMipStop - tileSpecStart,
                       downSampleLevels,
-                      scaleMipStop - loadMipStop,
-                      loadMaskStop - scaleMipStop,
+                      filterStop - loadMipStop,
+                      loadMaskStop - filterStop,
                       ctListCreationStop - loadMaskStop,
                       meshCreationStop - ctListCreationStop,
                       sourceCreationStop - meshCreationStop,
                       targetCreationStop - sourceCreationStop,
                       mapType,
                       mapInterpolatedStop - targetCreationStop,
-                      drawImageStop - mapInterpolatedStop);
+                      drawImageStop - mapInterpolatedStop,
+                      imageProcessorCache.size());
 
             tileSpecIndex++;
         }
@@ -336,24 +345,15 @@ public class Render {
 
         if (! tileSpec.hasWidthAndHeightDefined()) {
             final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
-            final ImagePlus imp = getImagePlusForMipmap(mipmapEntry.getValue());
-            tileSpec.setWidth((double) imp.getWidth());
-            tileSpec.setHeight((double) imp.getHeight());
+            final ImageAndMask imageAndMask = mipmapEntry.getValue();
+            final ImageProcessor imageProcessor = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(), 0);
+            tileSpec.setWidth((double) imageProcessor.getWidth());
+            tileSpec.setHeight((double) imageProcessor.getHeight());
         }
 
         tileSpec.deriveBoundingBox(meshCellSize, force);
 
         return tileSpec;
-    }
-
-    private static ImagePlus getImagePlusForMipmap(final ImageAndMask imageAndMask) {
-        // load image TODO use Bioformats for strange formats
-        final String imgUrl = imageAndMask.getImageUrl();
-        final ImagePlus imp = Utils.openImagePlusUrl(imgUrl);
-        if (imp == null) {
-            throw new IllegalArgumentException("failed to load image '" + imgUrl + "'");
-        }
-        return imp;
     }
 
     public static void main(final String[] args) {
@@ -384,16 +384,10 @@ public class Render {
 
                 targetOpenStop = System.currentTimeMillis();
 
-                render(params.getTileSpecs(),
+                final ImageProcessorCache imageProcessorCache = new ImageProcessorCache();
+                render(params,
                        targetImage,
-                       params.getX(),
-                       params.getY(),
-                       params.getRes(params.getScale()),
-                       params.getScale(),
-                       params.isAreaOffset(),
-                       params.getNumberOfThreads(),
-                       params.skipInterpolation(),
-                       params.doFilter());
+                       imageProcessorCache);
 
                 saveStart = System.currentTimeMillis();
 

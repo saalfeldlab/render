@@ -188,19 +188,13 @@ public class RenderService {
 
         renderParameters.initializeDerivedValues();
         renderParameters.validate();
+        renderParameters.setNumberOfThreads(1); // service requests should always be single threaded
 
         final BufferedImage targetImage = renderParameters.openTargetImage();
 
-        Render.render(renderParameters.getTileSpecs(),
+        Render.render(renderParameters,
                       targetImage,
-                      renderParameters.getX(),
-                      renderParameters.getY(),
-                      renderParameters.getRes(renderParameters.getScale()),
-                      renderParameters.getScale(),
-                      renderParameters.isAreaOffset(),
-                      1, // TODO: verify we always want to be single threaded for service requests
-                      renderParameters.skipInterpolation(),
-                      renderParameters.doFilter());
+                      SharedImageProcessorCache.getInstance());
 
         LOG.info("validateParametersAndRenderImage: exit");
 

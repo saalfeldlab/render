@@ -11,6 +11,7 @@ import java.util.Map;
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -141,7 +142,8 @@ public class RenderPerformanceTest {
                       params.isAreaOffset(),
                       testData.threads,
                       params.skipInterpolation(),
-                      params.doFilter());
+                      params.doFilter(),
+                      ImageProcessorCache.DISABLED_CACHE);
 
         // *** Stop Clock ***
         testData.calculateElapsedTime();
