@@ -333,6 +333,8 @@ public class Render {
             tileSpecIndex++;
         }
 
+        targetGraphics.dispose();
+
         LOG.debug("render: exit, {} tiles processed in {} milliseconds",
                   tileSpecs.size(),
                   System.currentTimeMillis() - tileLoopStart);

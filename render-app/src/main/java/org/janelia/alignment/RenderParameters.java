@@ -274,6 +274,41 @@ public class RenderParameters implements Serializable {
         return parameters;
     }
 
+    public static RenderParameters loadFromUrl(String url) throws IllegalArgumentException {
+
+        final URI uri = Utils.convertPathOrUriStringToUri(url);
+
+        final URL urlObject;
+        try {
+            urlObject = uri.toURL();
+        } catch (final Throwable t) {
+            throw new IllegalArgumentException("failed to convert URI '" + uri + "'", t);
+        }
+
+        RenderParameters parameters;
+        InputStream urlStream = null;
+        try {
+            try {
+                urlStream = urlObject.openStream();
+            } catch (final Throwable t) {
+                throw new IllegalArgumentException("failed to load render parameters from " + urlObject, t);
+            }
+
+            parameters = parseJson(new InputStreamReader(urlStream));
+
+        } finally {
+            if (urlStream != null) {
+                try {
+                    urlStream.close();
+                } catch (final IOException e) {
+                    LOG.warn("failed to close " + uri + ", ignoring error", e);
+                }
+            }
+        }
+
+        return parameters;
+    }
+
     /**
      * Initialize derived parameter values.
      */
@@ -590,7 +625,7 @@ public class RenderParameters implements Serializable {
     private void applyBaseParameters() throws IllegalArgumentException {
 
         if (parametersUrl != null) {
-            final RenderParameters baseParameters = loadParametersUrl();
+            final RenderParameters baseParameters = loadFromUrl(parametersUrl);
 
             tileSpecUrl = mergedValue(tileSpecUrl, baseParameters.tileSpecUrl);
             in = mergedValue(in, baseParameters.in);
@@ -610,41 +645,6 @@ public class RenderParameters implements Serializable {
 
             tileSpecs.addAll(baseParameters.tileSpecs);
         }
-    }
-
-    private RenderParameters loadParametersUrl() throws IllegalArgumentException {
-
-        final URI uri = Utils.convertPathOrUriStringToUri(parametersUrl);
-
-        final URL urlObject;
-        try {
-            urlObject = uri.toURL();
-        } catch (final Throwable t) {
-            throw new IllegalArgumentException("failed to convert URI '" + uri + "'", t);
-        }
-
-        RenderParameters parameters;
-        InputStream urlStream = null;
-        try {
-            try {
-                urlStream = urlObject.openStream();
-            } catch (final Throwable t) {
-                throw new IllegalArgumentException("failed to load render parameters from " + urlObject, t);
-            }
-
-            parameters = parseJson(new InputStreamReader(urlStream));
-
-        } finally {
-            if (urlStream != null) {
-                try {
-                    urlStream.close();
-                } catch (final IOException e) {
-                    LOG.warn("failed to close " + uri + ", ignoring error", e);
-                }
-            }
-        }
-
-        return parameters;
     }
 
     private <T> T mergedValue(final T currentValue, final T baseValue) {

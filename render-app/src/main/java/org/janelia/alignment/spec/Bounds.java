@@ -49,6 +49,15 @@ public class Bounds implements Serializable {
         return ((minX != null) && (minY != null) && (maxX != null) && (maxY != null));
     }
 
+    @Override
+    public String toString() {
+        return "{minX: " + minX +
+               ", minY: " + minY +
+               ", maxX: " + maxX +
+               ", maxY: " + maxY +
+               '}';
+    }
+
     public static Bounds fromJson(final String json) {
         return JsonUtils.GSON.fromJson(json, Bounds.class);
     }

@@ -50,7 +50,6 @@
 
                             <artifactSet>
                                 <excludes>
-                                    <exclude>net.imagej:*</exclude>
                                     <exclude>jama:*</exclude>
                                     <exclude>commons-codec:*</exclude>
                                 </excludes>

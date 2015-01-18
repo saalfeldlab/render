@@ -1,5 +1,7 @@
 package org.janelia.render.client;
 
+import com.google.gson.reflect.TypeToken;
+
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.ContentType;
@@ -7,7 +9,9 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.response.JsonResponseHandler;
 import org.janelia.render.client.response.ResourceCreatedResponseHandler;
@@ -15,8 +19,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
 
 /**
  * HTTP client "wrapper" for retrieving and storing render data via the render web service.
@@ -63,8 +69,41 @@ public class RenderDataClient {
         return httpClient.execute(httpGet, responseHandler);
     }
 
+    public Bounds getLayerBounds(String stack,
+                                 Double z)
+            throws URISyntaxException, IOException {
+
+        final URI uri = getLayerBoundsUri(stack, z);
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonResponseHandler<Bounds> responseHandler =
+                new JsonResponseHandler<Bounds>(requestContext,
+                                                Bounds.class);
+
+        LOG.info("getLayerBounds: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    public List<TileBounds> getTileBounds(String stack,
+                                          Double z)
+            throws URISyntaxException, IOException {
+
+        final URI uri = getTileBoundsUri(stack, z);
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final Type typeOfT = new TypeToken<List<TileBounds>>(){}.getType();
+        final JsonResponseHandler<List<TileBounds>> responseHandler =
+                new JsonResponseHandler<List<TileBounds>>(requestContext,
+                                                          typeOfT);
+
+        LOG.info("getTileBounds: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
     public ResolvedTileSpecCollection getResolvedTiles(String stack,
-                                                        Double z)
+                                                       Double z)
             throws URISyntaxException, IOException {
 
         final URI uri = getResolvedTilesUri(stack, z);
@@ -97,9 +136,28 @@ public class RenderDataClient {
         httpClient.execute(httpPut, responseHandler);
     }
 
-    private String getStackUrlString(String stack)
+    public String getStackUrlString(String stack)
             throws URISyntaxException {
         return baseDataUrl + "/owner/" + owner + "/project/" + project + "/stack/" + stack;
+    }
+
+    public String getZUrlString(String stack,
+                                 Double z)
+            throws URISyntaxException {
+        return getStackUrlString(stack) + "/z/" + z;
+    }
+
+    public String getRenderParametersUrlString(final String stack,
+                                               final double x,
+                                               final double y,
+                                               final double z,
+                                               final int width,
+                                               final int height,
+                                               final double scale)
+            throws URISyntaxException {
+        return getZUrlString(stack, z) + "/box/" +
+               x + ',' + y + ',' + width + ',' + height + ',' + scale +
+               "/render-parameters";
     }
 
     private URI getTileUri(String stack,
@@ -111,9 +169,20 @@ public class RenderDataClient {
     private URI getResolvedTilesUri(String stack,
                                     Double z)
             throws URISyntaxException {
-        return new URI(getStackUrlString(stack) + "/z/" + z + "/resolvedTiles");
+        return new URI(getZUrlString(stack, z) + "/resolvedTiles");
     }
 
+    private URI getLayerBoundsUri(String stack,
+                                  Double z)
+            throws URISyntaxException {
+        return new URI(getZUrlString(stack, z) + "/bounds");
+    }
+
+    private URI getTileBoundsUri(String stack,
+                                 Double z)
+            throws URISyntaxException {
+        return new URI(getZUrlString(stack, z) + "/tileBounds");
+    }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDataClient.class);
 }
