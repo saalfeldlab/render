@@ -135,6 +135,10 @@ public class BoxClientParameters {
         return overviewWidth;
     }
 
+    public boolean isOverviewNeeded() {
+        return ((overviewWidth != null) && (overviewWidth > 0));
+    }
+
     public List<Double> getzValues() {
         return zValues;
     }
@@ -166,7 +170,7 @@ public class BoxClientParameters {
 
     private void setCommander() {
         jCommander = new JCommander(this);
-        jCommander.setProgramName("java -cp current-ws-standalone.jar " + MLSStackClient.class.getName());
+        jCommander.setProgramName("java -cp current-ws-standalone.jar " + BoxClient.class.getName());
     }
 
 }

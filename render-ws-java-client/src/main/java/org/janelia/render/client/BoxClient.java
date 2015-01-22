@@ -1,13 +1,7 @@
 package org.janelia.render.client;
 
-import ij.ImagePlus;
-import ij.process.ImageProcessor;
-
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -16,11 +10,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import mpicbg.trakem2.util.Downsampler;
-
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.Utils;
+import org.janelia.alignment.mipmap.BoxMipmapGenerator;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
@@ -30,17 +22,16 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Java client for rendering uniform (but arbitrarily sized) boxes (derived tiles) to disk for one or more layers.
- * The box directory structure is organized as follows:
+ * A {@link Render} instance is first used to produce the full scale (level 0) boxes.
+ * {@link BoxMipmapGenerator} instances are then used to produce any requested down-sampled mipmaps.
+ *
+ * All generated images have the same dimensions and pixel count and are stored within a
+ * CATMAID LargeDataTileSource directory structure that looks like this:
  * <pre>
  *         [root directory]/[tile width]x[tile height]/[level]/[row]/[col].[format]
  * </pre>
  *
- * If requested, an overview box for each layer is also generated in
- * <pre>
- *         [root directory]/[tile width]x[tile height]/small/[layer].[format]
- * </pre>
- *
- * This structure can be used by the CATMAID LargeDataTileSource (see
+ * Details about the CATMAID LargeDataTileSource can be found at
  * <a href="https://github.com/acardona/CATMAID/blob/master/django/applications/catmaid/static/js/tilesource.js">
  *     https://github.com/acardona/CATMAID/blob/master/django/applications/catmaid/static/js/tilesource.js
  * </a>).
@@ -81,24 +72,28 @@ public class BoxClient {
     private final BoxClientParameters params;
 
     private final String stack;
+    private final String format;
     private final int boxWidth;
     private final int boxHeight;
-    private final File stackDirectory;
-    private final boolean createOverview;
+    private final File boxDirectory;
     private final RenderDataClient renderDataClient;
 
     public BoxClient(final BoxClientParameters params) {
 
         this.params = params;
         this.stack = params.getStack();
+        this.format = params.getFormat();
         this.boxWidth = params.getWidth();
         this.boxHeight = params.getHeight();
 
-        final Path stackPath = Paths.get(params.getRootDirectory(),
-                                         params.getProject(),
-                                         params.getStack()).toAbsolutePath();
+        final Path boxPath = Paths.get(params.getRootDirectory(),
+                                       params.getProject(),
+                                       params.getStack(),
+                                       this.boxWidth + "x" + this.boxHeight).toAbsolutePath();
 
-        this.stackDirectory = stackPath.toFile();
+        this.boxDirectory = boxPath.toFile();
+
+        final File stackDirectory = this.boxDirectory.getParentFile();
 
         if (! stackDirectory.exists()) {
             throw new IllegalArgumentException("missing stack directory " + stackDirectory);
@@ -108,18 +103,14 @@ public class BoxClient {
             throw new IllegalArgumentException("not allowed to write to stack directory " + stackDirectory);
         }
 
-        this.createOverview = ((params.getOverviewWidth() != null) &&
-                               (params.getOverviewWidth() > 0) &&
-                               (params.getMaxLevel() > 3)); // only create overview if small mipmaps are being created
-
         this.renderDataClient = new RenderDataClient(params.getBaseDataUrl(), params.getOwner(), params.getProject());
     }
 
     public void generateBoxesForZ(final Double z)
             throws Exception {
 
-        LOG.info("generateBoxesForZ: {}, entry, createOverview={}, stackDirectory={}, dataClient={}",
-                 z, createOverview, stackDirectory, renderDataClient);
+        LOG.info("generateBoxesForZ: {}, entry, boxDirectory={}, dataClient={}",
+                 z, boxDirectory, renderDataClient);
 
         final Bounds layerBounds = renderDataClient.getLayerBounds(stack, z);
         final BoxBounds boxBounds = new BoxBounds(z, layerBounds);
@@ -130,11 +121,18 @@ public class BoxClient {
 
         final ImageProcessorCache imageProcessorCache = new ImageProcessorCache();
 
-        OverviewImage overviewImage = null;
-
+        BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z.intValue(),
+                                                              format,
+                                                              boxWidth,
+                                                              boxHeight,
+                                                              boxDirectory,
+                                                              0,
+                                                              boxBounds.lastRow,
+                                                              boxBounds.lastColumn);
         RenderParameters renderParameters;
         String parametersUrl;
         BufferedImage levelZeroImage;
+        File levelZeroFile;
         int row = boxBounds.firstRow;
         int column;
         for (int y = boxBounds.firstY; y < layerBounds.getMaxY(); y += boxHeight) {
@@ -152,13 +150,15 @@ public class BoxClient {
 
                     Render.render(renderParameters, levelZeroImage, imageProcessorCache);
 
-                    saveImage(levelZeroImage, 0, boxBounds.z, row, column);
+                    levelZeroFile = BoxMipmapGenerator.saveImage(levelZeroImage,
+                                                                 format,
+                                                                 boxDirectory,
+                                                                 0,
+                                                                 boxBounds.z,
+                                                                 row,
+                                                                 column);
 
-                    overviewImage = saveMipmapsAndAddToOverview(boxBounds,
-                                                                levelZeroImage,
-                                                                row,
-                                                                column,
-                                                                overviewImage);
+                    boxMipmapGenerator.addSource(row, column, levelZeroFile);
 
                     progress.markProcessedTilesForRow(y, renderParameters);
 
@@ -175,74 +175,20 @@ public class BoxClient {
             row++;
         }
 
-        if (overviewImage != null) {
-            overviewImage.saveImage(params.getOverviewWidth());
-        }
-
-        LOG.info("generateBoxesForZ: {}, exit, cache stats: {}", z, imageProcessorCache.getStats());
-    }
-
-    private void saveImage(final BufferedImage image,
-                           final int level,
-                           final int z,
-                           final int row,
-                           final int col)
-            throws IOException {
-
-        final Path imageDirPath = Paths.get(stackDirectory.getAbsolutePath(),
-                                            boxWidth + "x" + boxHeight,
-                                            String.valueOf(level),
-                                            String.valueOf(z),
-                                            String.valueOf(row));
-
-        final File outputFile = new File(imageDirPath.toFile(),
-                                         col + "." + params.getFormat().toLowerCase());
-        final File parentDirectory = outputFile.getParentFile();
-        if (! parentDirectory.exists()) {
-            if (! parentDirectory.mkdirs()) {
-                throw new IOException("failed to create " + parentDirectory.getAbsolutePath());
+        File overviewFile = null;
+        for (int level = 0; level < params.getMaxLevel(); level++) {
+            boxMipmapGenerator = boxMipmapGenerator.generateNextLevel();
+            if (params.isOverviewNeeded() && (overviewFile == null)) {
+                overviewFile = boxMipmapGenerator.generateOverview(params.getOverviewWidth(), layerBounds);
             }
         }
 
-        Utils.saveImage(image, outputFile.getAbsolutePath(), params.getFormat(), true, 0.85f);
+        LOG.info("generateBoxesForZ: {}, exit", z);
     }
 
-    private OverviewImage saveMipmapsAndAddToOverview(final BoxBounds boxBounds,
-                                                      final BufferedImage levelZeroImage,
-                                                      final int row,
-                                                      final int column,
-                                                      OverviewImage overviewImage)
-            throws IOException {
-
-        final ImagePlus levelZeroImagePlus = new ImagePlus("", levelZeroImage);
-
-        ImageProcessor currentProcessor = levelZeroImagePlus.getProcessor();
-        ImageProcessor downSampledProcessor;
-        BufferedImage downSampledImage;
-
-        for (int level = 1; level < (params.getMaxLevel() + 1); level++) {
-
-            downSampledProcessor = Downsampler.downsampleImageProcessor(currentProcessor, 1);
-            downSampledImage = downSampledProcessor.getBufferedImage();
-            saveImage(downSampledImage, level, boxBounds.z, row, column);
-
-            if (createOverview && (level == params.getMaxLevel())) {
-
-                if (overviewImage == null) {
-                    overviewImage = new OverviewImage(downSampledImage.getWidth(),
-                                                      downSampledImage.getHeight(),
-                                                      boxBounds);
-                }
-
-                overviewImage.addTile(downSampledImage, column, row);
-            }
-
-            currentProcessor = downSampledProcessor;
-        }
-
-        return overviewImage;
-    }
-
+    /**
+     * Simple container for a layer's derived box bounds.
+     */
     private class BoxBounds {
 
         public final int z;
@@ -257,8 +203,8 @@ public class BoxClient {
         public final int lastRow;
         public final int lastY;
 
-        private BoxBounds(Double z,
-                          Bounds layerBounds) {
+        public BoxBounds(final Double z,
+                         final Bounds layerBounds) {
 
             this.z = z.intValue();
 
@@ -280,6 +226,9 @@ public class BoxClient {
         }
     }
 
+    /**
+     * Utility to support logging of progress during long running layer render process.
+     */
     private class Progress {
 
         private int numberOfLayerTiles;
@@ -329,67 +278,6 @@ public class BoxClient {
                 sb.append(", ETA is ").append(sdf.format(eta));
             }
             return sb.toString();
-        }
-    }
-
-    private class OverviewImage {
-
-        private BufferedImage image;
-        private Graphics2D graphics;
-        private int tileWidth;
-        private int tileHeight;
-        private File overviewFile;
-
-        public OverviewImage(final int tileWidth,
-                             final int tileHeight,
-                             final BoxBounds boxBounds) {
-
-            this.tileWidth = tileWidth;
-            this.tileHeight = tileHeight;
-
-            this.image = new BufferedImage((tileWidth * boxBounds.lastColumn),
-                                           (tileHeight * boxBounds.lastRow),
-                                           BufferedImage.TYPE_INT_ARGB);
-            this.graphics = image.createGraphics();
-
-            final Path imageDirPath = Paths.get(stackDirectory.getAbsolutePath(),
-                                                boxWidth + "x" + boxHeight,
-                                                "small");
-
-            this.overviewFile = new File(imageDirPath.toFile(),
-                                         boxBounds.z + "." + params.getFormat().toLowerCase()).getAbsoluteFile();
-
-            final File parentDirectory = this.overviewFile.getParentFile();
-            if (! parentDirectory.exists()) {
-                if (! parentDirectory.mkdirs()) {
-                    throw new IllegalArgumentException("failed to create " + parentDirectory.getAbsolutePath());
-                }
-            }
-
-            LOG.info("OverviewImage: tileWidth={}, tileHeight={}, imageWidth={}, imageHeight={}, file={}",
-                     tileWidth, tileHeight, image.getWidth(), image.getHeight(), overviewFile.getAbsolutePath());
-        }
-
-        public void addTile(final BufferedImage tileImage,
-                            final int column,
-                            final int row) {
-
-            graphics.drawImage(tileImage, (column * tileWidth), (row * tileHeight), null);
-        }
-
-        private void saveImage(final int scaledWidth)
-                throws IOException {
-
-            final int scaledHeight = (int) (((double) scaledWidth / image.getWidth()) * image.getHeight());
-
-            final BufferedImage scaledImage = new BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_ARGB);
-
-            final Graphics2D g2 = scaledImage.createGraphics();
-            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g2.drawImage(image, 0, 0, scaledWidth, scaledHeight, null);
-            g2.dispose();
-
-            Utils.saveImage(image, overviewFile.getAbsolutePath(), params.getFormat(), true, 0.85f);
         }
     }
 
