@@ -971,6 +971,10 @@ public class RenderDao {
         tileCollection.createIndex(new BasicDBObject("maxX", 1));
         tileCollection.createIndex(new BasicDBObject("maxY", 1));
         tileCollection.createIndex(new BasicDBObject("layout.sectionId", 1));
+
+        // compound index needed for layout file sorting
+        tileCollection.createIndex(new BasicDBObject("layout.sectionId", 1).append("minY", 1).append("minX", 1));
+
         LOG.debug("ensureTileIndexes: exit");
     }
 
