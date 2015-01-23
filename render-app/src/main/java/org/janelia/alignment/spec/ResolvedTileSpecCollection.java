@@ -44,6 +44,10 @@ public class ResolvedTileSpecCollection {
         }
     }
 
+    public TileSpec getTileSpec(String tileId) {
+        return tileIdToSpecMap.get(tileId);
+    }
+
     public Collection<TileSpec> getTileSpecs()
             throws IllegalStateException {
         resolveTileSpecs();
