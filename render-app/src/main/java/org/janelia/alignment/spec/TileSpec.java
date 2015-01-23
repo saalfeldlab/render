@@ -389,6 +389,10 @@ public class TileSpec implements Serializable {
         return transforms;
     }
 
+    public void setTransforms(ListTransformSpec transforms) {
+        this.transforms = transforms;
+    }
+
     public void addTransformSpecs(final List<TransformSpec> transformSpecs) {
         transforms.addAllSpecs(transformSpecs);
     }
