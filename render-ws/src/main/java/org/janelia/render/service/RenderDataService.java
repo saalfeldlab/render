@@ -75,21 +75,21 @@ public class RenderDataService {
                                   @PathParam("stack") final String stack,
                                   @Context final UriInfo uriInfo) {
 
-        return getLayoutFileForSectionIdRange(owner, project, stack, null, null, uriInfo);
+        return getLayoutFileForZRange(owner, project, stack, null, null, uriInfo);
     }
 
-    @Path("project/{project}/stack/{stack}/sectionRange/{minSectionId},{maxSectionId}/layoutFile")
+    @Path("project/{project}/stack/{stack}/zRange/{minZ},{maxZ}/layoutFile")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
-    public Response getLayoutFileForSectionIdRange(@PathParam("owner") final String owner,
-                                                   @PathParam("project") final String project,
-                                                   @PathParam("stack") final String stack,
-                                                   @PathParam("minSectionId") final Integer minSectionId,
-                                                   @PathParam("maxSectionId") final Integer maxSectionId,
-                                                   @Context final UriInfo uriInfo) {
+    public Response getLayoutFileForZRange(@PathParam("owner") final String owner,
+                                           @PathParam("project") final String project,
+                                           @PathParam("stack") final String stack,
+                                           @PathParam("minZ") final Integer minZ,
+                                           @PathParam("maxZ") final Integer maxZ,
+                                           @Context final UriInfo uriInfo) {
 
-        LOG.info("getLayoutFileForSectionIdRange: entry, owner={}, project={}, stack={}, minSectionId={}, maxSectionId={}",
-                 owner, project, stack, minSectionId, maxSectionId);
+        LOG.info("getLayoutFileForZRange: entry, owner={}, project={}, stack={}, minZ={}, maxZ={}",
+                 owner, project, stack, minZ, maxZ);
 
         Response response = null;
         try {
@@ -103,7 +103,7 @@ public class RenderDataService {
                 @Override
                 public void write(final OutputStream output)
                         throws IOException, WebApplicationException {
-                    renderDao.writeLayoutFileData(stackId, stackRequestUri, minSectionId, maxSectionId, output);
+                    renderDao.writeLayoutFileData(stackId, stackRequestUri, minZ, maxZ, output);
                 }
             };
             response = Response.ok(responseOutput).build();

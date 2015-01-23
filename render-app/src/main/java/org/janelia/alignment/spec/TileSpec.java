@@ -481,7 +481,6 @@ public class TileSpec implements Serializable {
 
     public String toLayoutFileFormat() {
         Integer sectionId = null;
-        Integer karshTileId = null;
         Integer imageCol = null;
         Integer imageRow = null;
         String camera = null;
@@ -491,7 +490,6 @@ public class TileSpec implements Serializable {
         Double rotation = null;
         if (layout != null) {
             sectionId = layout.getSectionId();
-            karshTileId = layout.getKarshTileId();
             imageCol = layout.getImageCol();
             imageRow = layout.getImageRow();
             camera = layout.getCamera();
@@ -508,10 +506,10 @@ public class TileSpec implements Serializable {
             rawPath = imageAndMask.getImageFilePath();
         }
 
-        // sectionId, karshTileId, 1.0, 0.0, stageX, 0.0, 1.0, stageY, imageCol, imageRow, camera, rawPath, temca, rotation
-        return String.valueOf(sectionId) + '\t' + karshTileId + '\t' +
+        // sectionId, 1.0, 0.0, stageX, 0.0, 1.0, stageY, imageCol, imageRow, camera, rawPath, temca, rotation, z
+        return String.valueOf(sectionId) + '\t' + tileId + '\t' +
                "1.0\t0.0\t" + stageX + "\t0.0\t1.0\t" + stageY + '\t' +
-               imageCol + '\t' + imageRow + '\t' + camera + '\t' + rawPath + '\t' + temca + '\t' + rotation;
+               imageCol + '\t' + imageRow + '\t' + camera + '\t' + rawPath + '\t' + temca + '\t' + rotation + '\t' + z;
     }
 
     public String toJson() {

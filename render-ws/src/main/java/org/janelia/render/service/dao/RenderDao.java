@@ -676,8 +676,8 @@ public class RenderDao {
      *
      * @param  stackId          stack identifier.
      * @param  stackRequestUri  the base stack request URI for building tile render-parameter URIs.
-     * @param  minSectionId     the minimum layout sectionId to include (or null if no minimum).
-     * @param  maxSectionId     the maximum layout sectionId to include (or null if no maximum).
+     * @param  minZ             the minimum z to include (or null if no minimum).
+     * @param  maxZ             the maximum z to include (or null if no maximum).
      * @param  outputStream     stream to which layout file data is to be written.
      *
      * @throws IllegalArgumentException
@@ -688,42 +688,42 @@ public class RenderDao {
      */
     public void writeLayoutFileData(StackId stackId,
                                     String stackRequestUri,
-                                    Integer minSectionId,
-                                    Integer maxSectionId,
+                                    Integer minZ,
+                                    Integer maxZ,
                                     OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
-        LOG.debug("writeLayoutFileData: entry, stackId={}, minSectionId={}, maxSectionId={}",
-                  stackId, minSectionId, maxSectionId);
+        LOG.debug("writeLayoutFileData: entry, stackId={}, minZ={}, maxZ={}",
+                  stackId, minZ, maxZ);
 
         validateRequiredParameter("stackId", stackId);
 
         final DBCollection tileCollection = getTileCollection(stackId);
 
-        BasicDBObject sectionFilter = null;
-        if (minSectionId != null) {
-            sectionFilter = new BasicDBObject(QueryOperators.GTE, minSectionId);
-            if (maxSectionId != null) {
-                sectionFilter = sectionFilter.append(QueryOperators.LTE, maxSectionId);
+        BasicDBObject zFilter = null;
+        if (minZ != null) {
+            zFilter = new BasicDBObject(QueryOperators.GTE, minZ);
+            if (maxZ != null) {
+                zFilter = zFilter.append(QueryOperators.LTE, maxZ);
             }
-        } else if (maxSectionId != null) {
-            sectionFilter = new BasicDBObject(QueryOperators.LTE, maxSectionId);
+        } else if (maxZ != null) {
+            zFilter = new BasicDBObject(QueryOperators.LTE, maxZ);
         }
 
         BasicDBObject tileQuery;
-        if (sectionFilter == null) {
+        if (zFilter == null) {
             tileQuery = new BasicDBObject();
         } else {
-            tileQuery = new BasicDBObject("layout.sectionId", sectionFilter);
+            tileQuery = new BasicDBObject("z", zFilter);
         }
 
         final DBObject tileKeys =
-                new BasicDBObject("tileId", 1).append("minX", 1).append("minY", 1).append("layout", 1).append("mipmapLevels", 1);
+                new BasicDBObject("tileId", 1).append("z", 1).append("minX", 1).append("minY", 1).append("layout", 1).append("mipmapLevels", 1);
 
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
         final DBCursor cursor = tileCollection.find(tileQuery, tileKeys);
-        final DBObject orderBy = new BasicDBObject("layout.sectionId", 1).append("minY", 1).append("minX", 1);
+        final DBObject orderBy = new BasicDBObject("z", 1).append("minY", 1).append("minX", 1);
         try {
             final String baseUriString = '\t' + stackRequestUri + "/tile/";
 
@@ -970,10 +970,9 @@ public class RenderDao {
         tileCollection.createIndex(new BasicDBObject("minY", 1));
         tileCollection.createIndex(new BasicDBObject("maxX", 1));
         tileCollection.createIndex(new BasicDBObject("maxY", 1));
-        tileCollection.createIndex(new BasicDBObject("layout.sectionId", 1));
 
         // compound index needed for layout file sorting
-        tileCollection.createIndex(new BasicDBObject("layout.sectionId", 1).append("minY", 1).append("minX", 1));
+        tileCollection.createIndex(new BasicDBObject("z", 1).append("minY", 1).append("minX", 1));
 
         LOG.debug("ensureTileIndexes: exit");
     }
