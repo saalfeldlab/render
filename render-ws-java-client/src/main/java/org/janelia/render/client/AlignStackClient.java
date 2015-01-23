@@ -2,6 +2,7 @@ package org.janelia.render.client;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -42,12 +43,7 @@ public class AlignStackClient {
 
                 LOG.info("main: entry, params={}", params);
 
-                final AlignStackClient client = new AlignStackClient(params.getOwner(),
-                                                                     params.getProject(),
-                                                                     params.getAcquireStack(),
-                                                                     params.getAlignStack(),
-                                                                     params.getBaseDataUrl(),
-                                                                     params.getMetFile());
+                final AlignStackClient client = new AlignStackClient(params);
 
                 client.generateStackData();
             }
@@ -57,6 +53,7 @@ public class AlignStackClient {
         }
     }
 
+    private final AlignStackClientParameters parameters;
     private final String acquireStack;
     private final String alignStack;
     private final String metFile;
@@ -67,21 +64,19 @@ public class AlignStackClient {
     private String metSection;
     private String lastTileId;
 
-    public AlignStackClient(final String owner,
-                            final String project,
-                            final String acquireStack,
-                            final String alignStack,
-                            final String baseDataUrl,
-                            final String metFile) {
+    public AlignStackClient(final AlignStackClientParameters parameters) {
 
-        this.alignStack = alignStack;
-        this.acquireStack = acquireStack;
-        this.metFile = metFile;
+        this.parameters = parameters;
+        this.alignStack = parameters.getAlignStack();
+        this.acquireStack = parameters.getAcquireStack();
+        this.metFile = parameters.getMetFile();
 
         final int capacityForLargeSection = (int) (5000 / 0.75);
         this.tileIdToAlignTransformMap = new HashMap<String, TransformSpec>(capacityForLargeSection);
 
-        this.renderDataClient = new RenderDataClient(baseDataUrl, owner, project);
+        this.renderDataClient = new RenderDataClient(parameters.getBaseDataUrl(),
+                                                     parameters.getOwner(),
+                                                     parameters.getProject());
 
         this.metSection = null;
         this.lastTileId = null;
@@ -111,8 +106,15 @@ public class AlignStackClient {
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
         TransformSpec alignTransform;
+        TileSpec tileSpec;
         for (String tileId : tileIdToAlignTransformMap.keySet()) {
             alignTransform = tileIdToAlignTransformMap.get(tileId);
+
+            if (parameters.isReplaceAll())  {
+                tileSpec = acquireTiles.getTileSpec(tileId);
+                tileSpec.setTransforms(new ListTransformSpec());
+            }
+
             acquireTiles.addTransformSpecToTile(tileId, alignTransform, true);
             tileSpecCount++;
             if (timer.hasIntervalPassed()) {
@@ -150,7 +152,7 @@ public class AlignStackClient {
 
         // MET data format:
         //
-        // section  tileId              ?  affineParameters (**NOTE: order 1-6 differs from renderer 1,2,4,5,3,6)
+        // section  tileId              ?  affineParameters (**NOTE: order 1-6 differs from renderer 1,4,2,5,3,6)
         // -------  ------------------  -  -------------------------------------------------------------------
         // 5100     140731162138009113  1  0.992264  0.226714  27606.648556  -0.085614  0.712238  38075.232380  9  113  0  /nobackup/flyTEM/data/whole_fly_1/141111-lens/140731162138_112x144/col0009/col0009_row0113_cam0.png  -999
 
@@ -184,7 +186,7 @@ public class AlignStackClient {
                                                        ".  First difference found at line " + lineNumber + ".");
                 }
                 tileId = w[1];
-                affineData = w[3] + ' ' + w[4] + ' ' + w[6] + ' ' + w[7] + ' ' + w[5] + ' ' + w[8];
+                affineData = w[3] + ' ' + w[6] + ' ' + w[4] + ' ' + w[7] + ' ' + w[5] + ' ' + w[8];
                 try {
                     affineModel.init(affineData);
                 } catch (Exception e) {

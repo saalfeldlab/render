@@ -33,6 +33,9 @@ public class AlignStackClientParameters {
     @Parameter(names = "--metFile", description = "MET file for layer", required = true)
     private String metFile;
 
+    @Parameter(names = "--replaceAll", description = "Replace all transforms with the align transform (default is to only replace the last transform)", required = false, arity = 0)
+    private boolean replaceAll;
+
     private transient JCommander jCommander;
 
     public AlignStackClientParameters() {
@@ -43,6 +46,7 @@ public class AlignStackClientParameters {
         this.acquireStack = null;
         this.baseDataUrl = null;
         this.metFile = null;
+        this.replaceAll = false;
 
         this.jCommander = null;
     }
@@ -94,6 +98,10 @@ public class AlignStackClientParameters {
         return metFile;
     }
 
+    public boolean isReplaceAll() {
+        return replaceAll;
+    }
+
     /**
      * Displays command usage information on the console (standard-out).
      */
@@ -115,6 +123,7 @@ public class AlignStackClientParameters {
                ", acquireStack='" + acquireStack + '\'' +
                ", baseDataUrl='" + baseDataUrl + '\'' +
                ", metFile=" + metFile +
+               ", replaceAll=" + replaceAll +
                '}';
     }
 
