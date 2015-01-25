@@ -9,7 +9,7 @@ import java.io.Serializable;
  */
 public class LayoutData implements Serializable {
 
-    private final Integer sectionId;
+    private final String sectionId;
     private final String temca;
     private final String camera;
     private final Integer imageRow;
@@ -18,7 +18,7 @@ public class LayoutData implements Serializable {
     private final Double stageY;
     private final Double rotation;
 
-    public LayoutData(final Integer sectionId,
+    public LayoutData(final String sectionId,
                       final String temca,
                       final String camera,
                       final Integer imageRow,
@@ -36,7 +36,7 @@ public class LayoutData implements Serializable {
         this.rotation = rotation;
     }
 
-    public Integer getSectionId() {
+    public String getSectionId() {
         return sectionId;
     }
 
@@ -67,16 +67,4 @@ public class LayoutData implements Serializable {
     public Double getRotation() {
         return rotation;
     }
-
-    /**
-     * @return 32-bit "unique enough" tile id suitable for Karsh pipeline
-     */
-    public Integer getKarshTileId() {
-        Integer karshTileId = null;
-        if ((sectionId != null) && (imageCol != null) && (imageRow != null)) {
-            karshTileId = (sectionId * 256 * 256) + (imageCol * 256) + imageRow;
-        }
-        return karshTileId;
-    }
-
 }

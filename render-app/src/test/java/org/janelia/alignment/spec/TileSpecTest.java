@@ -64,7 +64,7 @@ public class TileSpecTest {
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setTileId(EXPECTED_TILE_ID);
         tileSpec.setZ(1234.5);
-        final LayoutData layoutData = new LayoutData(12, "array-a", "camera-b", 4, 5, 6.0, 7.0, 8.0);
+        final LayoutData layoutData = new LayoutData("s12", "array-a", "camera-b", 4, 5, 6.0, 7.0, 8.0);
         tileSpec.setLayout(layoutData);
 
         final String json = JsonUtils.GSON.toJson(tileSpec);
@@ -94,7 +94,7 @@ public class TileSpecTest {
         final String hackedFileFormat = layoutFileFormat.replaceFirst("\t[^\t]+coll0075_row0021_cam1.png",
                                                                       "\timage.png");
         final String expectedLayoutFormat =
-                String.valueOf(layoutData.getSectionId()) + '\t' + tileSpec.getTileId() + "\t1.0\t0.0\t" +
+                layoutData.getSectionId() + '\t' + tileSpec.getTileId() + "\t1.0\t0.0\t" +
                 layoutData.getStageX() + "\t0.0\t1.0\t" + layoutData.getStageY() + '\t' +
                 layoutData.getImageCol() + '\t' + layoutData.getImageRow() + '\t' + layoutData.getCamera() +
                 "\timage.png\t" + layoutData.getTemca() + '\t' + layoutData.getRotation() + '\t' + tileSpec.getZ();
