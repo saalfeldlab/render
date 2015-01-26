@@ -73,20 +73,29 @@ public class MipmapGenerator {
                 params.validate();
 
                 final MipmapGenerator mipmapGenerator = new MipmapGenerator(params.getRootDirectory(),
-                                                                      params.getFormat(),
-                                                                      params.getQuality(),
-                                                                      params.consolidateMasks(),
-                                                                      params.forceBoxCalculation());
+                                                                            params.getFormat(),
+                                                                            params.getQuality(),
+                                                                            params.consolidateMasks());
 
                 final int mipmapLevel = params.getMipmapLevel();
+                final boolean forceBoxCalculation =  params.forceBoxCalculation();
                 final List<TileSpec> tileSpecs = params.getTileSpecs();
+
                 long timeOfLastProgressLog = System.currentTimeMillis();
                 TileSpec updatedTileSpec;
                 outputFile = params.getOutputFile();
                 outputStream = new FileOutputStream(outputFile);
                 outputStream.write("[\n".getBytes());
                 for (final TileSpec tileSpec : tileSpecs) {
-                    updatedTileSpec = mipmapGenerator.generateMissingMipmapFiles(tileSpec, mipmapLevel);
+
+                    if (mipmapLevel > 0) {
+                        mipmapGenerator.generateMissingMipmapFiles(tileSpec, mipmapLevel);
+                    }
+
+                    updatedTileSpec = Render.deriveBoundingBox(tileSpec,
+                                                               RenderParameters.DEFAULT_MESH_CELL_SIZE,
+                                                               forceBoxCalculation);
+
                     if (tileCount != 0) {
                         outputStream.write(",\n".getBytes());
                     }
@@ -121,7 +130,6 @@ public class MipmapGenerator {
     private final String format;
     private final float jpegQuality;
     private final boolean consolidateMasks;
-    private final boolean forceBoxCalculation;
     private MessageDigest messageDigest;
     private Map<String, File> sourceDigestToMaskMipmapBaseFileMap;
 
@@ -132,18 +140,15 @@ public class MipmapGenerator {
      * @param  format            the format for all generated mipmap files.
      * @param  jpegQuality       the jpg quality factor (0.0 to 1.0) which is only used when generating jpg mipmaps.
      * @param  consolidateMasks  if true, consolidate equivalent zipped TrakEM2 mask files.
-     * @param  forceBoxCalculation  if true, recalculate tile bounding box attributes even if they already exist.
      */
     public MipmapGenerator(final File rootDirectory,
                            final String format,
                            final float jpegQuality,
-                           final boolean consolidateMasks,
-                           final boolean forceBoxCalculation) {
+                           final boolean consolidateMasks) {
         this.rootDirectory = rootDirectory;
         this.format = format;
         this.jpegQuality = jpegQuality;
         this.consolidateMasks = consolidateMasks;
-        this.forceBoxCalculation = forceBoxCalculation;
 
         if (consolidateMasks) {
             try {
@@ -164,15 +169,13 @@ public class MipmapGenerator {
      *
      * @param  greatestMipmapLevel  the level scaling threshold.
      *
-     * @return the tile specification updated with all newly generated mipmap path information.
-     *
      * @throws IllegalArgumentException
      *   if a level zero image mipmap is missing from the tile specification.
      *
      * @throws IOException
      *   if mipmap files cannot be generated for any reason.
      */
-    public TileSpec generateMissingMipmapFiles(TileSpec tileSpec, final int greatestMipmapLevel)
+    public void generateMissingMipmapFiles(TileSpec tileSpec, final int greatestMipmapLevel)
             throws IllegalArgumentException, IOException {
 
         ImageAndMask imageAndMask = tileSpec.getMipmap(0);
@@ -222,10 +225,6 @@ public class MipmapGenerator {
                 imageAndMask = tileSpec.getMipmap(mipmapLevel);
             }
         }
-
-        tileSpec = Render.deriveBoundingBox(tileSpec, RenderParameters.DEFAULT_MESH_CELL_SIZE, forceBoxCalculation);
-
-        return tileSpec;
     }
 
     /**

@@ -44,7 +44,6 @@ public class MipmapGeneratorTest {
         final MipmapGenerator mipmapGenerator = new MipmapGenerator(baseMipmapDirectory,
                                                                     Utils.JPEG_FORMAT,
                                                                     0.85f,
-                                                                    false,
                                                                     false);
 
         final String sourcePath = "/groups/saalfeld/raw-data/stack-1/file1.tif";
@@ -69,8 +68,7 @@ public class MipmapGeneratorTest {
         final MipmapGenerator mipmapGenerator = new MipmapGenerator(baseMipmapDirectory,
                                                                     parameters.getFormat(),
                                                                     parameters.getQuality(),
-                                                                    true,
-                                                                    false);
+                                                                    true);
         ImageAndMask consolidatedLevel1imageAndMask = null;
         ImageAndMask consolidatedLevel2imageAndMask = null;
         TileSpec tileSpec;
@@ -82,7 +80,7 @@ public class MipmapGeneratorTest {
             Assert.assertFalse("original tile spec already has level 1 mipmap", tileSpec.hasMipmap(1));
             Assert.assertFalse("original tile spec already has level 2 mipmap", tileSpec.hasMipmap(2));
 
-            tileSpec = mipmapGenerator.generateMissingMipmapFiles(tileSpec, 2);
+            mipmapGenerator.generateMissingMipmapFiles(tileSpec, 2);
 
             Assert.assertTrue("updated tile spec lost level 0 mipmap", tileSpec.hasMipmap(0));
             Assert.assertTrue("updated tile spec is missing level 1 mipmap", tileSpec.hasMipmap(1));
