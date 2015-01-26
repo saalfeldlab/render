@@ -400,6 +400,10 @@ public class RenderParameters implements Serializable {
         return skipInterpolation;
     }
 
+    public void setSkipInterpolation(boolean skipInterpolation) {
+        this.skipInterpolation = skipInterpolation;
+    }
+
     public boolean hasTileSpecs() {
         return ((tileSpecs != null) && (tileSpecs.size() > 0));
     }

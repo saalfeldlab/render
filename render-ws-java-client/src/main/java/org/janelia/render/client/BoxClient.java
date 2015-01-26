@@ -17,6 +17,7 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.alignment.util.LabelImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,10 +87,15 @@ public class BoxClient {
         this.boxWidth = params.getWidth();
         this.boxHeight = params.getHeight();
 
+        String boxName = this.boxWidth + "x" + this.boxHeight;
+        if (params.isLabel()) {
+            boxName += "-label";
+        }
+
         final Path boxPath = Paths.get(params.getRootDirectory(),
                                        params.getProject(),
                                        params.getStack(),
-                                       this.boxWidth + "x" + this.boxHeight).toAbsolutePath();
+                                       boxName).toAbsolutePath();
 
         this.boxDirectory = boxPath.toFile();
 
@@ -115,11 +121,26 @@ public class BoxClient {
         final Bounds layerBounds = renderDataClient.getLayerBounds(stack, z);
         final BoxBounds boxBounds = new BoxBounds(z, layerBounds);
         final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, z);
-        final Progress progress = new Progress(tileBoundsList.size());
+        final int tileCount = tileBoundsList.size();
+        final Progress progress = new Progress(tileCount);
 
-        LOG.info("generateBoxesForZ: {}, layerBounds={}, boxBounds={}", z, layerBounds, boxBounds);
+        final TileBounds firstTileBounds = tileBoundsList.get(0);
+        final TileSpec firstTileSpec = renderDataClient.getTile(stack, firstTileBounds.getTileId());
 
-        final ImageProcessorCache imageProcessorCache = new ImageProcessorCache();
+        LOG.info("generateBoxesForZ: {}, layerBounds={}, boxBounds={}, tileCount={}",
+                 z, layerBounds, boxBounds, tileCount);
+
+        final ImageProcessorCache imageProcessorCache;
+        if (params.isLabel()) {
+            imageProcessorCache = new LabelImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
+                                                               true,
+                                                               false,
+                                                               firstTileSpec.getWidth(),
+                                                               firstTileSpec.getHeight(),
+                                                               tileCount);
+        } else {
+            imageProcessorCache = new ImageProcessorCache();
+        }
 
         BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z.intValue(),
                                                               format,
@@ -143,6 +164,7 @@ public class BoxClient {
 
                 parametersUrl = renderDataClient.getRenderParametersUrlString(stack, x, y, z, boxWidth, boxHeight, 1.0);
                 renderParameters = RenderParameters.loadFromUrl(parametersUrl);
+                renderParameters.setSkipInterpolation(params.isSkipInterpolation());
 
                 if (renderParameters.hasTileSpecs()) {
 

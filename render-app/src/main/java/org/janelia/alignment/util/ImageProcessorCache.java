@@ -104,7 +104,7 @@ public class ImageProcessorCache {
                             throws Exception {
                         ImageProcessor imageProcessor = null;
                         if (key != null) {
-                            imageProcessor = loadImageProcessor(key.getUri(), key.getDownSampleLevels());
+                            imageProcessor = loadImageProcessor(key.getUri(), key.getDownSampleLevels(), key.isMask());
                         }
                         return imageProcessor;
                     }
@@ -141,10 +141,11 @@ public class ImageProcessorCache {
      *   if the image cannot be loaded.
      */
     public ImageProcessor get(final String url,
-                              final int downSampleLevels)
+                              final int downSampleLevels,
+                              boolean isMask)
             throws IllegalArgumentException {
 
-        final CacheKey key = new CacheKey(url, downSampleLevels);
+        final CacheKey key = new CacheKey(url, downSampleLevels, isMask);
         final ImageProcessor imageProcessor;
         try {
             imageProcessor = cache.get(key);
@@ -181,6 +182,7 @@ public class ImageProcessorCache {
     /**
      * @param  url               url for the image.
      * @param  downSampleLevels  number of levels to further down sample the image.
+     * @param  isMask            indicates whether this image is a mask.
      *
      * @return a newly loaded (non-cached) image processor.
      *
@@ -188,9 +190,10 @@ public class ImageProcessorCache {
      *   if the image cannot be loaded.
      */
     public static ImageProcessor getNonCachedImage(final String url,
-                                                   final int downSampleLevels)
+                                                   final int downSampleLevels,
+                                                   final boolean isMask)
             throws IllegalArgumentException {
-        return DISABLED_CACHE.loadImageProcessor(url, downSampleLevels);
+        return DISABLED_CACHE.loadImageProcessor(url, downSampleLevels, isMask);
     }
 
     /**
@@ -198,14 +201,16 @@ public class ImageProcessorCache {
      *
      * @param  url               url for the image.
      * @param  downSampleLevels  number of levels to further down sample the image.
+     * @param  isMask            indicates whether this image is a mask.
      *
      * @return a newly loaded image processor to be cached.
      *
      * @throws IllegalArgumentException
      *   if the image cannot be loaded.
      */
-    private ImageProcessor loadImageProcessor(final String url,
-                                              final int downSampleLevels)
+    protected ImageProcessor loadImageProcessor(final String url,
+                                                final int downSampleLevels,
+                                                final boolean isMask)
             throws IllegalArgumentException {
 
         if (LOG.isDebugEnabled()) {
@@ -216,7 +221,7 @@ public class ImageProcessorCache {
 
         // if we need to down sample, see if source image is already cached before trying to load it
         if (downSampleLevels > 0) {
-            imageProcessor = cache.getIfPresent(new CacheKey(url, 0));
+            imageProcessor = cache.getIfPresent(new CacheKey(url, 0, isMask));
         }
 
         // load the image as needed
@@ -238,7 +243,7 @@ public class ImageProcessorCache {
                     LOG.debug("loadImageProcessor: caching level 0 for {}", url);
                 }
 
-                cache.put(new CacheKey(url, 0), imageProcessor);
+                cache.put(new CacheKey(url, 0, isMask), imageProcessor);
             }
 
         }
@@ -261,9 +266,11 @@ public class ImageProcessorCache {
 
         private final String url;
         private final int downSampleLevels;
+        private final boolean isMask;
 
-        public CacheKey(String url,
-                        int downSampleLevels) {
+        public CacheKey(final String url,
+                        final int downSampleLevels,
+                        final boolean isMask) {
 
             this.url = url;
 
@@ -272,6 +279,8 @@ public class ImageProcessorCache {
             } else {
                 this.downSampleLevels = downSampleLevels;
             }
+
+            this.isMask = isMask;
         }
 
         public String getUri() {
@@ -282,9 +291,13 @@ public class ImageProcessorCache {
             return downSampleLevels;
         }
 
+        public boolean isMask() {
+            return isMask;
+        }
+
         @Override
         public String toString() {
-            return "{url: '" + url + "', downSampleLevels: " + downSampleLevels + '}';
+            return "{url: '" + url + "', downSampleLevels: " + downSampleLevels + ", isMask: " + isMask + '}';
         }
 
         @Override

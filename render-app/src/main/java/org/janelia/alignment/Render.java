@@ -180,7 +180,7 @@ public class Render {
             if ((width < 0) || (height < 0)) {
                 mipmapEntry = ts.getFirstMipmapEntry();
                 imageAndMask = mipmapEntry.getValue();
-                widthAndHeightProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(), 0);
+                widthAndHeightProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(), 0, false);
                 width = widthAndHeightProcessor.getWidth();
                 height = widthAndHeightProcessor.getHeight();
             }
@@ -203,12 +203,12 @@ public class Render {
                     mipmapLevel = currentMipmapLevel;
                 }
 
-                ipMipmap = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels);
+                ipMipmap = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels, false);
 
             } else if (mipmapLevel > 0) {
 
                 downSampleLevels = mipmapLevel;
-                ipMipmap = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels);
+                ipMipmap = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels, false);
 
             } else {
 
@@ -235,7 +235,7 @@ public class Render {
             ImageProcessor maskTargetProcessor;
             final String maskUrl = imageAndMask.getMaskUrl();
             if (maskUrl != null) {
-                maskSourceProcessor = imageProcessorCache.get(maskUrl, downSampleLevels);
+                maskSourceProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true);
                 maskTargetProcessor = new ByteProcessor(tp.getWidth(), tp.getHeight());
             } else {
                 maskSourceProcessor = null;
@@ -348,7 +348,7 @@ public class Render {
         if (! tileSpec.hasWidthAndHeightDefined()) {
             final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
             final ImageAndMask imageAndMask = mipmapEntry.getValue();
-            final ImageProcessor imageProcessor = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(), 0);
+            final ImageProcessor imageProcessor = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(), 0, false);
             tileSpec.setWidth((double) imageProcessor.getWidth());
             tileSpec.setHeight((double) imageProcessor.getHeight());
         }

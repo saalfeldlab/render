@@ -50,6 +50,12 @@ public class BoxClientParameters {
     @Parameter(names = "--overviewWidth", description = "Width of layer overview image (omit or set to zero to disable overview generation)", required = false)
     private Integer overviewWidth;
 
+    @Parameter(names = "--skipInterpolation", description = "skip interpolation (e.g. for DMG data)", required = false, arity = 0)
+    public boolean skipInterpolation;
+
+    @Parameter(names = "--label", description = "Generate single color tile labels instead of actual tile images", required = false, arity = 0)
+    private boolean label;
+
     @Parameter(description = "Z values for layers to render", required = true)
     private List<Double> zValues;
 
@@ -67,6 +73,8 @@ public class BoxClientParameters {
         this.maxLevel = 0;
         this.format = Utils.PNG_FORMAT;
         this.overviewWidth = null;
+        this.skipInterpolation = false;
+        this.label = false;
         this.zValues = new ArrayList<Double>();
 
         this.jCommander = null;
@@ -133,6 +141,14 @@ public class BoxClientParameters {
 
     public Integer getOverviewWidth() {
         return overviewWidth;
+    }
+
+    public boolean isSkipInterpolation() {
+        return skipInterpolation;
+    }
+
+    public boolean isLabel() {
+        return label;
     }
 
     public boolean isOverviewNeeded() {
