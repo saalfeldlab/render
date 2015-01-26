@@ -298,7 +298,7 @@ public class RenderDataService {
             final StackId stackId = new StackId(owner, project, stack);
             final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
 
-            final int margin = 6;
+            final int margin = 0;
             final Double x = getLayoutMinValue(tileSpec.getMinX(), margin);
             final Double y = getLayoutMinValue(tileSpec.getMinY(), margin);
             final Integer width = getLayoutSizeValue(stackMetaData.getLayoutWidth(), tileSpec.getWidth(), margin);
