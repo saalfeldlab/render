@@ -958,21 +958,24 @@ public class RenderDao {
 
     private void ensureTransformIndexes(DBCollection transformCollection) {
         LOG.debug("ensureTransformIndexes: entry, {}", transformCollection.getName());
-        transformCollection.createIndex(new BasicDBObject("id", 1), new BasicDBObject("unique", true));
+        transformCollection.createIndex(new BasicDBObject("id", 1),
+                                        new BasicDBObject("unique", true).append("background", true));
         LOG.debug("ensureTransformIndexes: exit");
     }
 
     private void ensureTileIndexes(DBCollection tileCollection) {
         LOG.debug("ensureTileIndexes: entry, {}", tileCollection.getName());
-        tileCollection.createIndex(new BasicDBObject("tileId", 1), new BasicDBObject("unique", true));
-        tileCollection.createIndex(new BasicDBObject("z", 1));
-        tileCollection.createIndex(new BasicDBObject("minX", 1));
-        tileCollection.createIndex(new BasicDBObject("minY", 1));
-        tileCollection.createIndex(new BasicDBObject("maxX", 1));
-        tileCollection.createIndex(new BasicDBObject("maxY", 1));
+        final BasicDBObject background = new BasicDBObject("background", true);
+        tileCollection.createIndex(new BasicDBObject("tileId", 1),
+                                   new BasicDBObject("unique", true).append("background", true));
+        tileCollection.createIndex(new BasicDBObject("z", 1), background);
+        tileCollection.createIndex(new BasicDBObject("minX", 1), background);
+        tileCollection.createIndex(new BasicDBObject("minY", 1), background);
+        tileCollection.createIndex(new BasicDBObject("maxX", 1), background);
+        tileCollection.createIndex(new BasicDBObject("maxY", 1), background);
 
         // compound index needed for layout file sorting
-        tileCollection.createIndex(new BasicDBObject("z", 1).append("minY", 1).append("minX", 1));
+        tileCollection.createIndex(new BasicDBObject("z", 1).append("minY", 1).append("minX", 1), background);
 
         LOG.debug("ensureTileIndexes: exit");
     }
