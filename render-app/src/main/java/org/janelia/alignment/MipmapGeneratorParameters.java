@@ -284,8 +284,8 @@ public class MipmapGeneratorParameters {
             throw new IllegalArgumentException("write access denied for root mipmap directory " + rootDirectory.getAbsolutePath());
         }
 
-        if ((mipmapLevel < 1) || (mipmapLevel > 10)) {
-            throw new IllegalArgumentException("mipmap level (" + mipmapLevel + ") should be between 1 and 10");
+        if ((mipmapLevel < 0) || (mipmapLevel > 10)) {
+            throw new IllegalArgumentException("mipmap level (" + mipmapLevel + ") should be between 0 and 10");
         }
 
         if ((quality < 0.0) || (quality > 1.0)) {
