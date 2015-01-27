@@ -84,8 +84,8 @@ public class RenderDataService {
     public Response getLayoutFileForZRange(@PathParam("owner") final String owner,
                                            @PathParam("project") final String project,
                                            @PathParam("stack") final String stack,
-                                           @PathParam("minZ") final Integer minZ,
-                                           @PathParam("maxZ") final Integer maxZ,
+                                           @PathParam("minZ") final Double minZ,
+                                           @PathParam("maxZ") final Double maxZ,
                                            @Context final UriInfo uriInfo) {
 
         LOG.info("getLayoutFileForZRange: entry, owner={}, project={}, stack={}, minZ={}, maxZ={}",

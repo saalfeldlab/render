@@ -688,8 +688,8 @@ public class RenderDao {
      */
     public void writeLayoutFileData(StackId stackId,
                                     String stackRequestUri,
-                                    Integer minZ,
-                                    Integer maxZ,
+                                    Double minZ,
+                                    Double maxZ,
                                     OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
