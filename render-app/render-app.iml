@@ -23,6 +23,8 @@
     <orderEntry type="library" name="Maven: com.google.code.findbugs:jsr305:3.0.0" level="project" />
     <orderEntry type="library" name="Maven: com.beust:jcommander:1.35" level="project" />
     <orderEntry type="library" name="Maven: sc.fiji:mpicbg-trakem2:1.0.4-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="Maven: sc.fiji:trakem2_tps:1.0.0" level="project" />
+    <orderEntry type="library" name="Maven: jitk:jitk-tps:1.0.0" level="project" />
     <orderEntry type="library" name="Maven: ch.qos.logback:logback-classic:1.1.2" level="project" />
     <orderEntry type="library" name="Maven: ch.qos.logback:logback-core:1.1.2" level="project" />
     <orderEntry type="library" name="Maven: org.slf4j:slf4j-api:1.7.6" level="project" />
