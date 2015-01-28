@@ -107,6 +107,9 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--do_filter", description = "ad hoc filters to support alignment", required = false)
     public boolean doFilter;
 
+    @Parameter(names = "--background_color", description = "RGB int color for background (default is 0: black)", required = false)
+    private Integer backgroundRGBColor;
+
     /** List of tile specifications parsed from --tileSpecUrl or deserialized directly from json. */
     private List<TileSpec> tileSpecs;
 
@@ -164,6 +167,7 @@ public class RenderParameters implements Serializable {
         this.numberOfThreads = DEFAULT_NUMBER_OF_THREADS;
         this.skipInterpolation = false;
         this.doFilter = false;
+        this.backgroundRGBColor = null;
         this.parametersUrl = null;
 
         this.tileSpecs = new ArrayList<TileSpec>();
@@ -404,6 +408,14 @@ public class RenderParameters implements Serializable {
         this.skipInterpolation = skipInterpolation;
     }
 
+    public Integer getBackgroundRGBColor() {
+        return backgroundRGBColor;
+    }
+
+    public void setBackgroundRGBColor(Integer backgroundRGBColor) {
+        this.backgroundRGBColor = backgroundRGBColor;
+    }
+
     public boolean hasTileSpecs() {
         return ((tileSpecs != null) && (tileSpecs.size() > 0));
     }
@@ -545,6 +557,10 @@ public class RenderParameters implements Serializable {
             sb.append("filter=true, ");
         }
 
+        if (backgroundRGBColor != null) {
+            sb.append("backgroundRGBColor=").append(backgroundRGBColor).append(", ");
+        }
+
         if (in != null) {
             sb.append("in='").append(in).append("', ");
         }
@@ -646,6 +662,7 @@ public class RenderParameters implements Serializable {
             skipInterpolation = mergedValue(skipInterpolation, baseParameters.skipInterpolation, false);
             quality = mergedValue(quality, baseParameters.quality, DEFAULT_QUALITY);
             doFilter = mergedValue(doFilter, baseParameters.doFilter, false);
+            backgroundRGBColor = mergedValue(backgroundRGBColor, baseParameters.backgroundRGBColor);
 
             tileSpecs.addAll(baseParameters.tileSpecs);
         }

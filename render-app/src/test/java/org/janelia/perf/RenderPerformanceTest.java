@@ -143,7 +143,8 @@ public class RenderPerformanceTest {
                       testData.threads,
                       params.skipInterpolation(),
                       params.doFilter(),
-                      ImageProcessorCache.DISABLED_CACHE);
+                      ImageProcessorCache.DISABLED_CACHE,
+                      null);
 
         // *** Stop Clock ***
         testData.calculateElapsedTime();

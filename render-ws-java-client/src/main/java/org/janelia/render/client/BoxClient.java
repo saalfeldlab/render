@@ -1,5 +1,6 @@
 package org.janelia.render.client;
 
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
@@ -131,6 +132,7 @@ public class BoxClient {
                  z, layerBounds, boxBounds, tileCount);
 
         final ImageProcessorCache imageProcessorCache;
+        final Integer backgroundRGBColor;
         if (params.isLabel()) {
             imageProcessorCache = new LabelImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
                                                                true,
@@ -138,8 +140,10 @@ public class BoxClient {
                                                                firstTileSpec.getWidth(),
                                                                firstTileSpec.getHeight(),
                                                                tileCount);
+            backgroundRGBColor = Color.WHITE.getRGB();
         } else {
             imageProcessorCache = new ImageProcessorCache();
+            backgroundRGBColor = null;
         }
 
         BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z.intValue(),
@@ -165,6 +169,7 @@ public class BoxClient {
                 parametersUrl = renderDataClient.getRenderParametersUrlString(stack, x, y, z, boxWidth, boxHeight, 1.0);
                 renderParameters = RenderParameters.loadFromUrl(parametersUrl);
                 renderParameters.setSkipInterpolation(params.isSkipInterpolation());
+                renderParameters.setBackgroundRGBColor(backgroundRGBColor);
 
                 if (renderParameters.hasTileSpecs()) {
 

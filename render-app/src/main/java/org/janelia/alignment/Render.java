@@ -20,6 +20,7 @@ import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
 
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
@@ -110,7 +111,8 @@ public class Render {
                params.getNumberOfThreads(),
                params.skipInterpolation(),
                params.doFilter(),
-               imageProcessorCache);
+               imageProcessorCache,
+               params.getBackgroundRGBColor());
     }
 
     public static void render(final List<TileSpec> tileSpecs,
@@ -123,10 +125,16 @@ public class Render {
                               final int numberOfThreads,
                               final boolean skipInterpolation,
                               final boolean doFilter,
-                              final ImageProcessorCache imageProcessorCache)
+                              final ImageProcessorCache imageProcessorCache,
+                              final Integer backgroundRGBColor)
             throws IllegalArgumentException {
 
         final Graphics2D targetGraphics = targetImage.createGraphics();
+
+        if (backgroundRGBColor != null) {
+            targetGraphics.setBackground(new Color(backgroundRGBColor));
+            targetGraphics.clearRect(0, 0, targetImage.getWidth(), targetImage.getHeight());
+        }
 
         LOG.debug("render: entry, processing {} tile specifications, numberOfThreads={}",
                   tileSpecs.size(), numberOfThreads);
