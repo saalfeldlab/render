@@ -96,6 +96,16 @@
             <artifactId>mpicbg-trakem2</artifactId>
             <version>1.0.4-SNAPSHOT</version>
         </dependency>
+        
+        <dependency>
+            <groupId>sc.fiji</groupId>
+            <artifactId>trakem2_tps</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>jitk</groupId>
+            <artifactId>jitk-tps</artifactId>
+        </dependency>
 
     </dependencies>
 </project>
