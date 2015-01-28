@@ -51,10 +51,13 @@ public class BoxClientParameters {
     private Integer overviewWidth;
 
     @Parameter(names = "--skipInterpolation", description = "skip interpolation (e.g. for DMG data)", required = false, arity = 0)
-    public boolean skipInterpolation;
+    private boolean skipInterpolation;
 
     @Parameter(names = "--label", description = "Generate single color tile labels instead of actual tile images", required = false, arity = 0)
     private boolean label;
+
+    @Parameter(names = "--createEmptyBox", description = "create an empty box image  ", required = false, arity = 0)
+    private boolean createEmptyBox;
 
     @Parameter(description = "Z values for layers to render", required = true)
     private List<Double> zValues;
@@ -75,6 +78,7 @@ public class BoxClientParameters {
         this.overviewWidth = null;
         this.skipInterpolation = false;
         this.label = false;
+        this.createEmptyBox = false;
         this.zValues = new ArrayList<Double>();
 
         this.jCommander = null;
@@ -151,6 +155,10 @@ public class BoxClientParameters {
         return label;
     }
 
+    public boolean isCreateEmptyBox() {
+        return createEmptyBox;
+    }
+
     public boolean isOverviewNeeded() {
         return ((overviewWidth != null) && (overviewWidth > 0));
     }
@@ -181,6 +189,9 @@ public class BoxClientParameters {
                ", maxLevel: " + maxLevel +
                ", format: '" + format + '\'' +
                ", overviewWidth: '" + overviewWidth + '\'' +
+               ", skipInterpolation: " + skipInterpolation +
+               ", label: " + label +
+               ", createEmptyBox: " + createEmptyBox +
                '}';
     }
 

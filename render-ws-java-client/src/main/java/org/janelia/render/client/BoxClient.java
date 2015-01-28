@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
@@ -154,6 +155,17 @@ public class BoxClient {
                                                               0,
                                                               boxBounds.lastRow,
                                                               boxBounds.lastColumn);
+
+        if (params.isCreateEmptyBox()) {
+            final BufferedImage emptyImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
+            final Graphics2D targetGraphics = emptyImage.createGraphics();
+
+            if (backgroundRGBColor != null) {
+                targetGraphics.setBackground(new Color(backgroundRGBColor));
+                targetGraphics.clearRect(0, 0, boxWidth, boxHeight);
+            }
+        }
+
         RenderParameters renderParameters;
         String parametersUrl;
         BufferedImage levelZeroImage;
