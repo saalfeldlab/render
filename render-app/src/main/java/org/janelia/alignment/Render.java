@@ -348,6 +348,20 @@ public class Render {
                   System.currentTimeMillis() - tileLoopStart);
     }
 
+    public static void render(final List<TileSpec> tileSpecs,
+            final BufferedImage targetImage,
+            final double x,
+            final double y,
+            final double meshCellSize,
+            final double scale,
+            final boolean areaOffset,
+            final int numberOfThreads,
+            final boolean skipInterpolation,
+            final boolean doFilter)
+                    throws IllegalArgumentException {
+        render(tileSpecs, targetImage, x, y, meshCellSize, scale, areaOffset, numberOfThreads, skipInterpolation, doFilter, ImageProcessorCache.DISABLED_CACHE, 0);
+    }
+
     public static TileSpec deriveBoundingBox(
             final TileSpec tileSpec,
             final double meshCellSize,
