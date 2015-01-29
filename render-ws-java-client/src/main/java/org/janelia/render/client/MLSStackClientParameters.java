@@ -39,6 +39,9 @@ public class MLSStackClientParameters {
     @Parameter(names = "--alpha", description = "Alpha value for MLS transform", required = false)
     private Double alpha;
 
+    @Parameter(names = "--deriveTPS", description = "Derive thin plate spline transform from MLS transform", required = false, arity = 0)
+    private boolean deriveTPS;
+
     @Parameter(description = "Z values", required = true)
     private List<String> zValues;
 
@@ -53,6 +56,7 @@ public class MLSStackClientParameters {
         this.mlsStack = null;
         this.baseDataUrl = null;
         this.alpha = null;
+        this.deriveTPS = false;
         this.zValues = new ArrayList<String>();
 
         this.jCommander = null;
@@ -107,6 +111,10 @@ public class MLSStackClientParameters {
 
     public Double getAlpha() {
         return alpha;
+    }
+
+    public boolean isDeriveTPS() {
+        return deriveTPS;
     }
 
     public List<String> getzValues() {

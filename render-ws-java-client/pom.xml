@@ -51,7 +51,6 @@
                             <artifactSet>
                                 <excludes>
                                     <exclude>jama:*</exclude>
-                                    <exclude>commons-codec:*</exclude>
                                 </excludes>
                             </artifactSet>
 
