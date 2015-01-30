@@ -56,8 +56,8 @@ public class BoxClientParameters {
     @Parameter(names = "--label", description = "Generate single color tile labels instead of actual tile images", required = false, arity = 0)
     private boolean label;
 
-    @Parameter(names = "--createEmptyBox", description = "create an empty box image  ", required = false, arity = 0)
-    private boolean createEmptyBox;
+    @Parameter(names = "--createIGrid", description = "create an IGrid file", required = false, arity = 0)
+    private boolean createIGrid;
 
     @Parameter(description = "Z values for layers to render", required = true)
     private List<Double> zValues;
@@ -78,8 +78,8 @@ public class BoxClientParameters {
         this.overviewWidth = null;
         this.skipInterpolation = false;
         this.label = false;
-        this.createEmptyBox = false;
-        this.zValues = new ArrayList<Double>();
+        this.createIGrid = false;
+        this.zValues = new ArrayList<>();
 
         this.jCommander = null;
     }
@@ -155,8 +155,8 @@ public class BoxClientParameters {
         return label;
     }
 
-    public boolean isCreateEmptyBox() {
-        return createEmptyBox;
+    public boolean isCreateIGrid() {
+        return createIGrid;
     }
 
     public boolean isOverviewNeeded() {
@@ -191,7 +191,7 @@ public class BoxClientParameters {
                ", overviewWidth: '" + overviewWidth + '\'' +
                ", skipInterpolation: " + skipInterpolation +
                ", label: " + label +
-               ", createEmptyBox: " + createEmptyBox +
+               ", createIGrid: " + createIGrid +
                '}';
     }
 
