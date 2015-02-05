@@ -21,19 +21,25 @@ import java.util.Set;
  */
 public class ResolvedTileSpecCollection {
 
+    private String stackName;
+    private Double z;
     private Map<String, TransformSpec> transformIdToSpecMap;
     private Map<String, TileSpec> tileIdToSpecMap;
 
     @SuppressWarnings("UnusedDeclaration")
     public ResolvedTileSpecCollection() {
-        this(new ArrayList<TransformSpec>(), new ArrayList<TileSpec>());
+        this(null, null, new ArrayList<TransformSpec>(), new ArrayList<TileSpec>());
     }
 
-    public ResolvedTileSpecCollection(final Collection<TransformSpec> transformSpecs,
+    public ResolvedTileSpecCollection(final String stackName,
+                                      final Double z,
+                                      final Collection<TransformSpec> transformSpecs,
                                       final Collection<TileSpec> tileSpecs) {
 
-        this.transformIdToSpecMap = new HashMap<String, TransformSpec>(transformSpecs.size() * 2);
-        this.tileIdToSpecMap = new HashMap<String, TileSpec>(tileSpecs.size() * 2);
+        this.stackName = stackName;
+        this.z = z;
+        this.transformIdToSpecMap = new HashMap<>(transformSpecs.size() * 2);
+        this.tileIdToSpecMap = new HashMap<>(tileSpecs.size() * 2);
 
         for (TransformSpec transformSpec : transformSpecs) {
             addTransformSpecToCollection(transformSpec);
@@ -159,10 +165,26 @@ public class ResolvedTileSpecCollection {
         return tileIdToSpecMap.size();
     }
 
+    public boolean hasTileSpecs() {
+        return tileIdToSpecMap.size() > 0;
+    }
+
+    public TileSpec getOneTileSpec() {
+        TileSpec tileSpec = null;
+        //noinspection LoopStatementThatDoesntLoop
+        for (TileSpec ts : tileIdToSpecMap.values()) {
+            tileSpec = ts;
+            break;
+        }
+        return tileSpec;
+    }
+
     @Override
     public String toString() {
-        return "{transformCount=" + getTransformCount() +
-               ", tileCount=" + getTileCount() +
+        return "{stackName: '" + stackName +
+               "', z: " + z +
+               ", transformCount: " + getTransformCount() +
+               ", tileCount: " + getTileCount() +
                '}';
     }
 

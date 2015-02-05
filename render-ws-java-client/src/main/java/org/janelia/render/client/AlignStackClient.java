@@ -72,7 +72,7 @@ public class AlignStackClient {
         this.metFile = parameters.getMetFile();
 
         final int capacityForLargeSection = (int) (5000 / 0.75);
-        this.tileIdToAlignTransformMap = new HashMap<String, TransformSpec>(capacityForLargeSection);
+        this.tileIdToAlignTransformMap = new HashMap<>(capacityForLargeSection);
 
         this.renderDataClient = new RenderDataClient(parameters.getBaseDataUrl(),
                                                      parameters.getOwner(),
@@ -97,9 +97,18 @@ public class AlignStackClient {
 
         final ResolvedTileSpecCollection acquireTiles = renderDataClient.getResolvedTiles(acquireStack, z);
 
-        LOG.info("generateStackData: filtering {} tile spec collection {}", acquireStack, acquireTiles);
+        if (! acquireTiles.hasTileSpecs()) {
+            throw new IllegalArgumentException(acquireTiles + " does not have any tiles");
+        }
+
+        LOG.info("generateStackData: filtering tile spec collection {}", acquireTiles);
 
         acquireTiles.filterSpecs(tileIdToAlignTransformMap.keySet());
+
+        if (! acquireTiles.hasTileSpecs()) {
+            throw new IllegalArgumentException("after filtering out non-aligned tiles, " +
+                                               acquireTiles + " does not have any remaining tiles");
+        }
 
         LOG.info("generateStackData: after filter, collection is {}", acquireTiles);
 
@@ -111,7 +120,15 @@ public class AlignStackClient {
             alignTransform = tileIdToAlignTransformMap.get(tileId);
 
             if (parameters.isReplaceAll())  {
+
                 tileSpec = acquireTiles.getTileSpec(tileId);
+
+                if (tileSpec == null) {
+                    throw new IllegalArgumentException("tile spec with id '" + tileId +
+                                                       "' not found in " + acquireTiles +
+                                                       ", possible issue with z value");
+                }
+
                 tileSpec.setTransforms(new ListTransformSpec());
             }
 
