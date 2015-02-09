@@ -1,8 +1,8 @@
 package org.janelia.render.client;
 
 import java.io.File;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -54,8 +54,8 @@ public class IGridPathsTest {
         final File emptyFile = new File("empty.txt");
         file = iGridPaths.saveToFile(parentDirectory, z, emptyFile);
 
-        final List<String> iGridLines = Arrays.asList(
-                new String(Files.readAllBytes(file.toPath())).split("\n"));
+        final List<String> iGridLines = Files.readAllLines(file.toPath(),
+                                                           Charset.defaultCharset());
 
         final int expectedLineCount = numberOfRows * numberOfColumns + 2;
         Assert.assertEquals("invalid number of lines", expectedLineCount, iGridLines.size());
