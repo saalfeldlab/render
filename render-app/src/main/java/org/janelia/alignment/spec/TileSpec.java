@@ -57,7 +57,7 @@ public class TileSpec implements Serializable {
     private double meshCellSize = RenderParameters.DEFAULT_MESH_CELL_SIZE;
 
     public TileSpec() {
-        this.mipmapLevels = new TreeMap<Integer, ImageAndMask>();
+        this.mipmapLevels = new TreeMap<>();
         this.transforms = new ListTransformSpec();
     }
 
@@ -101,6 +101,10 @@ public class TileSpec implements Serializable {
         return maxY;
     }
 
+    public double getMeshCellSize() {
+        return meshCellSize;
+    }
+
     public boolean isBoundingBoxDefined(final double meshCellSize) {
         return
                 (this.meshCellSize == meshCellSize) &&
@@ -114,7 +118,7 @@ public class TileSpec implements Serializable {
      * The bounding box is only valid for a given meshCellSize, i.e. setting it
      * independently of the meshCellSize is potentially harmful.
      *
-     * @param box
+     * @param  box  coordinates that define the bounding box for this tile.
      */
     public void setBoundingBox(final Rectangle box, final double meshCellSize) {
         this.minX = box.getX();
@@ -187,17 +191,16 @@ public class TileSpec implements Serializable {
 
 
     /**
-     * Generate the bounding box of a collection of
-     * {@link TileSpec TileSpecs}.  The returned bounding box is the union
-     * rectangle of all tiles individual bounding boxes.
+     * @param  tileSpecs     collection of tile specs.
+     * @param  meshCellSize  specifies the resolution to estimate the individual bounding boxes.
+     * @param  force         if true, attributes will always be derived;
+     *                       otherwise attributes will only be derived if they do not already exist.
+     * @param  preallocated  optional pre-allocated bounding box instance to use for result.
      *
-     * @param tileSpecs
-     * @param meshCellSize specifies the resolution to estimate the individual bounding boxes
-     * @param force force
-     * @param preallocated
-     * @return
+     * @return the bounding box of a collection of {@link TileSpec}s.
+     *         The returned bounding box is the union rectangle of all tiles individual bounding boxes.
      */
-    final static public Rectangle2D.Double deriveBoundingBox(
+    public static Rectangle2D.Double deriveBoundingBox(
             final Iterable<TileSpec> tileSpecs,
             final double meshCellSize,
             final boolean force,
@@ -463,15 +466,17 @@ public class TileSpec implements Serializable {
      * for which a more general function getTransform() would have served
      * better and simpler.
      *
-     * @return
+     * @return transform list for this tile spec.
+     *
      * @throws IllegalArgumentException
+     *   if the list cannot be generated.
      */
     public CoordinateTransformList<CoordinateTransform> getTransformList()
             throws IllegalArgumentException {
 
         CoordinateTransformList<CoordinateTransform> ctl;
         if (transforms == null) {
-            ctl = new CoordinateTransformList< CoordinateTransform >();
+            ctl = new CoordinateTransformList<>();
         } else {
             ctl = transforms.getInstanceAsList();
         }
