@@ -37,17 +37,6 @@
                                 </transformer>
                             </transformers>
 
-                            <filters>
-
-                                <filter>
-                                    <artifact>${project.groupId}:${project.artifactId}</artifact>
-                                    <excludes>
-                                        <exclude>log4j.xml</exclude>
-                                    </excludes>
-                                </filter>
-
-                            </filters>
-
                             <artifactSet>
                                 <excludes>
                                     <exclude>jama:*</exclude>
