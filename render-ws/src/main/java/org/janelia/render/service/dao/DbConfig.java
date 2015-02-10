@@ -1,5 +1,6 @@
 package org.janelia.render.service.dao;
 
+import com.mongodb.MongoClientOptions;
 import com.mongodb.ServerAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +22,7 @@ public class DbConfig {
     private String userName;
     private String authenticationDatabase;
     private String password;
+    private int maxConnectionsPerHost;
 
     public DbConfig(String host,
                     Integer port,
@@ -32,6 +34,7 @@ public class DbConfig {
         this.userName = userName;
         this.authenticationDatabase = authenticationDatabase;
         this.password = password;
+        this.maxConnectionsPerHost = new MongoClientOptions.Builder().build().getConnectionsPerHost();
     }
 
     public String getHost() {
@@ -52,6 +55,10 @@ public class DbConfig {
 
     public char[] getPassword() {
         return password.toCharArray();
+    }
+
+    public int getMaxConnectionsPerHost() {
+        return maxConnectionsPerHost;
     }
 
     public static DbConfig fromFile(File file)
@@ -86,6 +93,16 @@ public class DbConfig {
             }
 
             dbConfig = new DbConfig(host, port, userName, userNameSource, password);
+
+            final String maxConnectionsPerHostStr = properties.getProperty("maxConnectionsPerHost");
+            if (maxConnectionsPerHostStr != null) {
+                try {
+                    dbConfig.maxConnectionsPerHost = Integer.parseInt(maxConnectionsPerHostStr);
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("invalid maxConnectionsPerHost value (" +
+                                                       maxConnectionsPerHostStr + ") specified in " + path, e);
+                }
+            }
 
         } catch (IllegalArgumentException e) {
             throw e;
