@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.test.EmbeddedMongoDb;
@@ -61,8 +60,7 @@ public class CoordinateServiceTest {
                                             stackId.getStack(),
                                             x,
                                             y,
-                                            Z,
-                                            RenderParameters.DEFAULT_MESH_CELL_SIZE);
+                                            Z);
 
         Assert.assertEquals("invalid number of tiles found for (" + x + "," + y + ")",
                             1, localCoordinatesList.size());
@@ -105,7 +103,7 @@ public class CoordinateServiceTest {
                 {9020.0f, 7020.0f}
         };
 
-        final List<TileCoordinates> worldCoordinateList = new ArrayList<TileCoordinates>();
+        final List<TileCoordinates> worldCoordinateList = new ArrayList<>();
         for (float[] point : points) {
             worldCoordinateList.add(TileCoordinates.buildWorldInstance(null, point));
         }
@@ -115,14 +113,13 @@ public class CoordinateServiceTest {
                                             stackId.getProject(),
                                             stackId.getStack(),
                                             Z,
-                                            RenderParameters.DEFAULT_MESH_CELL_SIZE,
                                             worldCoordinateList);
 
         Assert.assertNotNull("null local list retrieved", localCoordinatesListOfLists);
         Assert.assertEquals("invalid local list size",
                             worldCoordinateList.size(), localCoordinatesListOfLists.size());
 
-        List<TileCoordinates> localCoordinatesList = new ArrayList<TileCoordinates>();
+        List<TileCoordinates> localCoordinatesList = new ArrayList<>();
         for (List<TileCoordinates> nestedList : localCoordinatesListOfLists) {
             localCoordinatesList.addAll(nestedList);
         }
@@ -186,8 +183,7 @@ public class CoordinateServiceTest {
                                             stackId.getStack(),
                                             8000.0, //
                                             5900.0, //
-                                            Z,
-                                            RenderParameters.DEFAULT_MESH_CELL_SIZE);
+                                            Z);
 
         Assert.assertNotNull("null local list retrieved", localCoordinateList);
         Assert.assertEquals("invalid local list size",
