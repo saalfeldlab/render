@@ -18,6 +18,7 @@ import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.StackMetaData;
 import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.service.ObjectNotFoundException;
@@ -191,7 +192,7 @@ public class RenderDao {
                                                                          List<TileSpec> tileSpecs)
             throws IllegalStateException {
 
-        final Set<String> unresolvedIds = new HashSet<String>();
+        final Set<String> unresolvedIds = new HashSet<>();
         ListTransformSpec transforms;
         for (TileSpec tileSpec : tileSpecs) {
             transforms = tileSpec.getTransforms();
@@ -200,7 +201,7 @@ public class RenderDao {
             }
         }
 
-        final Map<String, TransformSpec> resolvedIdToSpecMap = new HashMap<String, TransformSpec>();
+        final Map<String, TransformSpec> resolvedIdToSpecMap = new HashMap<>();
 
         final int unresolvedCount = unresolvedIds.size();
         if (unresolvedCount > 0) {
@@ -260,6 +261,114 @@ public class RenderDao {
         return renderParameters.getTileSpecs();
     }
 
+    public void writeCoordinatesWithTileIds(StackId stackId,
+                                            Double z,
+                                            List<TileCoordinates> worldCoordinatesList,
+                                            OutputStream outputStream)
+            throws IllegalArgumentException, IOException {
+
+        LOG.debug("writeCoordinatesWithTileIds: entry, stackId={}, z={}, worldCoordinatesList.size()={}",
+                  stackId, z, worldCoordinatesList.size());
+
+        validateRequiredParameter("stackId", stackId);
+        validateRequiredParameter("z", z);
+
+        final DBCollection tileCollection = getTileCollection(stackId);
+        final DBObject tileKeys = new BasicDBObject("tileId", 1).append("_id", 0);
+
+        // order tile specs by tileId to ensure consistent coordinate mapping
+        final DBObject orderBy = new BasicDBObject("tileId", 1);
+
+        final ProcessTimer timer = new ProcessTimer();
+        final byte[] openBracket = "[".getBytes();
+        final byte[] comma = ",".getBytes();
+        final byte[] closeBracket = "]".getBytes();
+
+        int coordinateCount = 0;
+
+        float[] world;
+        DBObject tileQuery = null;
+        DBCursor cursor = null;
+        DBObject document;
+        Object tileId;
+        String coordinatesJson;
+        try {
+
+            outputStream.write(openBracket);
+
+            TileCoordinates worldCoordinates;
+            for (int i = 0; i < worldCoordinatesList.size(); i++) {
+
+                worldCoordinates = worldCoordinatesList.get(i);
+                world = worldCoordinates.getWorld();
+
+                if (world == null) {
+                    throw new IllegalArgumentException("world values are missing for element " + i);
+                } else if (world.length < 2) {
+                    throw new IllegalArgumentException("world values must include both x and y for element " + i);
+                }
+
+                tileQuery = getIntersectsBoxQuery(z, world[0], world[1], world[0], world[1]);
+                cursor = tileCollection.find(tileQuery, tileKeys);
+                cursor.sort(orderBy);
+
+                if (i > 0) {
+                    outputStream.write(comma);
+                }
+                outputStream.write(openBracket);
+
+                if (cursor.hasNext()) {
+
+                    document = cursor.next();
+                    tileId = document.get("tileId");
+                    if (tileId != null) {
+                        worldCoordinates.setTileId(tileId.toString());
+                    }
+                    coordinatesJson = worldCoordinates.toJson();
+                    outputStream.write(coordinatesJson.getBytes());
+
+                    while (cursor.hasNext()) {
+                        document = cursor.next();
+                        tileId = document.get("tileId");
+                        if (tileId != null) {
+                            worldCoordinates.setTileId(tileId.toString());
+                        }
+                        coordinatesJson = worldCoordinates.toJson();
+
+                        outputStream.write(comma);
+                        outputStream.write(coordinatesJson.getBytes());
+                    }
+
+                } else {
+
+                    coordinatesJson = worldCoordinates.toJson();
+                    outputStream.write(coordinatesJson.getBytes());
+
+                }
+
+                cursor.close();
+
+                outputStream.write(closeBracket);
+
+                coordinateCount++;
+
+                if (timer.hasIntervalPassed()) {
+                    LOG.debug("writeCoordinatesWithTileIds: data written for {} coordinates", coordinateCount);
+                }
+            }
+
+            outputStream.write(closeBracket);
+
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+
+        LOG.debug("writeCoordinatesWithTileIds: wrote data for {} coordinates returned by queries like {}.find({},{}).sort({}), elapsedSeconds={}",
+                  coordinateCount, tileCollection.getFullName(), tileQuery, tileKeys, orderBy, timer.getElapsedSeconds());
+    }
+
     /**
      * @return a list of resolved tile specifications for all tiles that have the specified z.
      *
@@ -309,7 +418,10 @@ public class RenderDao {
             throw new IllegalArgumentException("no tile specifications found in " + stackId +" for z=" + z);
         }
 
-        return new ResolvedTileSpecCollection(resolvedIdToSpecMap.values(), renderParameters.getTileSpecs());
+        return new ResolvedTileSpecCollection(stackId.getStack(),
+                                              z,
+                                              resolvedIdToSpecMap.values(),
+                                              renderParameters.getTileSpecs());
     }
 
     /**
@@ -519,7 +631,7 @@ public class RenderDao {
 
         validateRequiredParameter("owner", owner);
 
-        final List<StackId> list = new ArrayList<StackId>();
+        final List<StackId> list = new ArrayList<>();
         for (String name : renderDb.getCollectionNames()) {
             if (name.startsWith(owner) && name.endsWith(StackId.TILE_COLLECTION_SUFFIX)) {
                 list.add(StackId.fromCollectionName(name));
@@ -546,7 +658,7 @@ public class RenderDao {
 
         final DBCollection tileCollection = getTileCollection(stackId);
 
-        final List<Double> list = new ArrayList<Double>();
+        final List<Double> list = new ArrayList<>();
         for (Object zValue : tileCollection.distinct("z")) {
             list.add(new Double(zValue.toString()));
         }
@@ -652,17 +764,14 @@ public class RenderDao {
         final DBObject tileKeys =
                 new BasicDBObject("tileId", 1).append("minX", 1).append("minY", 1).append("maxX", 1).append("maxY", 1);
 
-        List<TileBounds> list = new ArrayList<TileBounds>();
+        List<TileBounds> list = new ArrayList<>();
 
-        final DBCursor cursor = tileCollection.find(tileQuery, tileKeys);
-        try {
+        try (DBCursor cursor = tileCollection.find(tileQuery, tileKeys)) {
             DBObject document;
             while (cursor.hasNext()) {
                 document = cursor.next();
                 list.add(TileBounds.fromJson(document.toString()));
             }
-        } finally {
-            cursor.close();
         }
 
         LOG.debug("getTileBounds: found {} tile spec(s) for {}.find({},{})",
@@ -722,9 +831,8 @@ public class RenderDao {
 
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
-        final DBCursor cursor = tileCollection.find(tileQuery, tileKeys);
         final DBObject orderBy = new BasicDBObject("z", 1).append("minY", 1).append("minX", 1);
-        try {
+        try (DBCursor cursor = tileCollection.find(tileQuery, tileKeys)) {
             final String baseUriString = '\t' + stackRequestUri + "/tile/";
 
             cursor.sort(orderBy);
@@ -749,8 +857,6 @@ public class RenderDao {
                 }
 
             }
-        } finally {
-            cursor.close();
         }
 
         LOG.debug("writeLayoutFileData: wrote data for {} tile spec(s) returned by {}.find({},{}).sort({}), elapsedSeconds={}",
@@ -760,7 +866,7 @@ public class RenderDao {
     private List<TransformSpec> getTransformSpecs(DBCollection transformCollection,
                                                   Set<String> specIds) {
         final int specCount = specIds.size();
-        final List<TransformSpec> transformSpecList = new ArrayList<TransformSpec>(specCount);
+        final List<TransformSpec> transformSpecList = new ArrayList<>(specCount);
         if (specCount > 0) {
 
             BasicDBObject transformQuery = new BasicDBObject();
@@ -768,8 +874,7 @@ public class RenderDao {
 
             LOG.debug("getTransformSpecs: {}.find({})", transformCollection.getFullName(), transformQuery);
 
-            final DBCursor cursor = transformCollection.find(transformQuery);
-            try {
+            try (DBCursor cursor = transformCollection.find(transformQuery)) {
                 DBObject document;
                 TransformSpec transformSpec;
                 while (cursor.hasNext()) {
@@ -777,8 +882,6 @@ public class RenderDao {
                     transformSpec = JsonUtils.GSON.fromJson(document.toString(), TransformSpec.class);
                     transformSpecList.add(transformSpec);
                 }
-            } finally {
-                cursor.close();
             }
 
         }
@@ -805,7 +908,7 @@ public class RenderDao {
             LOG.debug("resolveTransformSpecReferences: on pass {} retrieved {} transform specs",
                       callCount, transformSpecList.size());
 
-            final Set<String> newlyUnresolvedSpecIds = new HashSet<String>();
+            final Set<String> newlyUnresolvedSpecIds = new HashSet<>();
 
             for (TransformSpec spec : transformSpecList) {
                 resolvedIdToSpecMap.put(spec.getId(), spec);
@@ -885,11 +988,11 @@ public class RenderDao {
             final List<TransformSpec> transformSpecList = getTransformSpecs(transformCollection,
                                                                             unresolvedTransformSpecIds);
             if (transformSpecList.size() != unresolvedTransformSpecIds.size()) {
-                final Set<String> existingIds = new HashSet<String>(transformSpecList.size());
+                final Set<String> existingIds = new HashSet<>(transformSpecList.size());
                 for (TransformSpec existingTransformSpec : transformSpecList) {
                     existingIds.add(existingTransformSpec.getId());
                 }
-                final Set<String> missingIds = new TreeSet<String>();
+                final Set<String> missingIds = new TreeSet<>();
                 for (String id : unresolvedTransformSpecIds) {
                     if (! existingIds.contains(id)) {
                         missingIds.add(id);

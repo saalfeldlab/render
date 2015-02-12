@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TileCoordinates implements Serializable {
 
-    private final String tileId;
+    private String tileId;
     private Boolean visible;
     private final float[] local;
     private final float[] world;
@@ -35,6 +35,10 @@ public class TileCoordinates implements Serializable {
 
     public String getTileId() {
         return tileId;
+    }
+
+    public void setTileId(String tileId) {
+        this.tileId = tileId;
     }
 
     public boolean isVisible() {
@@ -59,6 +63,15 @@ public class TileCoordinates implements Serializable {
 
     public void setError(final String error) {
         this.error = error;
+    }
+
+    public String toJson() {
+        return JsonUtils.GSON.toJson(this);
+    }
+
+    @Override
+    public String toString() {
+        return toJson();
     }
 
     public static TileCoordinates buildLocalInstance(final String tileId,
@@ -86,23 +99,22 @@ public class TileCoordinates implements Serializable {
     public static List<TileCoordinates> getLocalCoordinates(
             final List<TileSpec> tileSpecList,
             final float x,
-            final float y,
-            final double meshCellSize)
+            final float y)
             throws IllegalStateException {
 
 
-        final List<TileCoordinates> tileCoordinatesList = new ArrayList<TileCoordinates>();
+        final List<TileCoordinates> tileCoordinatesList = new ArrayList<>();
         List<String> nonInvertibleTileIds = null;
         float[] local;
         TileCoordinates tileCoordinates;
         for (final TileSpec tileSpec : tileSpecList) {
             try {
-                local = tileSpec.getLocalCoordinates(x, y, meshCellSize);
+                local = tileSpec.getLocalCoordinates(x, y, tileSpec.getMeshCellSize());
                 tileCoordinates = buildLocalInstance(tileSpec.getTileId(), local);
                 tileCoordinatesList.add(tileCoordinates);
             } catch (final NoninvertibleModelException e) {
                 if (nonInvertibleTileIds == null) {
-                    nonInvertibleTileIds = new ArrayList<String>();
+                    nonInvertibleTileIds = new ArrayList<>();
                 }
                 nonInvertibleTileIds.add(tileSpec.getTileId());
             }
