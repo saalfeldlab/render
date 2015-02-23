@@ -1,20 +1,19 @@
 package org.janelia.render.client;
 
+import java.util.Collection;
+
+import jitk.spline.ThinPlateR2LogRSplineKernelTransform;
 import mpicbg.trakem2.transform.CoordinateTransform;
 import mpicbg.trakem2.transform.MovingLeastSquaresTransform2;
 import mpicbg.trakem2.transform.ThinPlateSplineTransform;
 
-import org.janelia.alignment.MovingLeastSquaresBuilder;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.warp.MovingLeastSquaresBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Collection;
-
-import jitk.spline.ThinPlateR2LogRSplineKernelTransform;
 
 /**
  * Java client for generating Moving Least Squares stack data.
@@ -26,7 +25,7 @@ public class MLSStackClient {
     /**
      * @param  args  see {@link MLSStackClientParameters} for command line argument details.
      */
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         try {
 
             final MLSStackClientParameters params = MLSStackClientParameters.parseCommandLineArgs(args);
@@ -41,7 +40,7 @@ public class MLSStackClient {
 
                 final MLSStackClient client = new MLSStackClient(params);
                 final Double alpha = params.getAlpha();
-                for (String z : params.getzValues()) {
+                for (final String z : params.getzValues()) {
                     client.generateStackDataForZ(new Double(z), alpha);
                 }
 
@@ -69,8 +68,8 @@ public class MLSStackClient {
         this.renderDataClient = new RenderDataClient(params.getBaseDataUrl(), params.getOwner(), params.getProject());
     }
 
-    public void generateStackDataForZ(Double z,
-                                      Double alpha)
+    public void generateStackDataForZ(final Double z,
+                                      final Double alpha)
             throws Exception {
 
         LOG.info("generateStackDataForZ: entry, z={}, alpha={}", z, alpha);
@@ -106,14 +105,14 @@ public class MLSStackClient {
                '}';
     }
 
-    private TransformSpec buildTransform(Collection<TileSpec> montageTiles,
-                                         Collection<TileSpec> alignTiles,
-                                         Double alpha,
-                                         Double z)
+    private TransformSpec buildTransform(final Collection<TileSpec> montageTiles,
+                                         final Collection<TileSpec> alignTiles,
+                                         final Double alpha,
+                                         final Double z)
             throws Exception {
 
-        final MovingLeastSquaresBuilder mlsBuilder = new MovingLeastSquaresBuilder(montageTiles, alignTiles);
-        final MovingLeastSquaresTransform2 mlsTransform = mlsBuilder.build(alpha);
+        final MovingLeastSquaresBuilder mlsBuilder = new MovingLeastSquaresBuilder(montageTiles, alignTiles, alpha);
+        final MovingLeastSquaresTransform2 mlsTransform = mlsBuilder.call();
 
         final String transformId;
         final CoordinateTransform transform;

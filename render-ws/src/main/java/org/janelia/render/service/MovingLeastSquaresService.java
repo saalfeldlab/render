@@ -1,14 +1,9 @@
 package org.janelia.render.service;
 
-import mpicbg.trakem2.transform.MovingLeastSquaresTransform2;
-import org.janelia.alignment.MovingLeastSquaresBuilder;
-import org.janelia.alignment.spec.LeafTransformSpec;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.render.service.dao.RenderDao;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.util.Collection;
+import java.util.List;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -21,10 +16,17 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.Collection;
-import java.util.List;
+
+import mpicbg.trakem2.transform.MovingLeastSquaresTransform2;
+
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.warp.MovingLeastSquaresBuilder;
+import org.janelia.render.service.dao.RenderDao;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * APIs for working with Moving Least Squares stacks.
@@ -49,12 +51,12 @@ public class MovingLeastSquaresService {
     @Path("project/{project}/stack/{alignStack}/z/{z}/movingLeastSquaresTransformUsingMontage/{montageStack}/withAlpha/{alpha}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public TransformSpec getMovingLeastSquaresTransform(@PathParam("owner") String owner,
-                                                        @PathParam("project") String project,
-                                                        @PathParam("alignStack") String alignStack,
-                                                        @PathParam("z") Double z,
-                                                        @PathParam("montageStack") String montageStack,
-                                                        @PathParam("alpha") Double alpha) {
+    public TransformSpec getMovingLeastSquaresTransform(@PathParam("owner") final String owner,
+                                                        @PathParam("project") final String project,
+                                                        @PathParam("alignStack") final String alignStack,
+                                                        @PathParam("z") final Double z,
+                                                        @PathParam("montageStack") final String montageStack,
+                                                        @PathParam("alpha") final Double alpha) {
 
         LOG.info("getMovingLeastSquaresTransform: entry, owner={}, project={}, alignStack={}, z={}, montageStack={}",
                  owner, project, alignStack, z, montageStack);
@@ -69,7 +71,7 @@ public class MovingLeastSquaresService {
 
             transformSpec = buildMovingLeastSquaresTransform(montageTiles, alignTiles, alpha, z);
 
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -79,12 +81,12 @@ public class MovingLeastSquaresService {
     @Path("project/{project}/stack/{stack}/z/{z}/movingLeastSquaresTiles")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveMovingLeastSquaresTilesForLayer(@PathParam("owner") String owner,
-                                                        @PathParam("project") String project,
-                                                        @PathParam("stack") String stack,
-                                                        @PathParam("z") Double z,
-                                                        @Context UriInfo uriInfo,
-                                                        MovingLeastSquaresDerivationData derivationData) {
+    public Response saveMovingLeastSquaresTilesForLayer(@PathParam("owner") final String owner,
+                                                        @PathParam("project") final String project,
+                                                        @PathParam("stack") final String stack,
+                                                        @PathParam("z") final Double z,
+                                                        @Context final UriInfo uriInfo,
+                                                        final MovingLeastSquaresDerivationData derivationData) {
 
         LOG.info("saveMovingLeastSquaresTilesForLayer: entry, owner={}, project={}, stack={}, z={}, derivationData={}",
                  owner, project, stack, z, derivationData);
@@ -111,7 +113,7 @@ public class MovingLeastSquaresService {
 
             renderDao.saveResolvedTiles(mlsStackId, montageTiles);
 
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
@@ -130,14 +132,14 @@ public class MovingLeastSquaresService {
         return responseBuilder.build();
     }
 
-    private TransformSpec buildMovingLeastSquaresTransform(Collection<TileSpec> montageTiles,
-                                                           Collection<TileSpec> alignTiles,
-                                                           Double alpha,
-                                                           Double z)
+    private TransformSpec buildMovingLeastSquaresTransform(final Collection<TileSpec> montageTiles,
+                                                           final Collection<TileSpec> alignTiles,
+                                                           final Double alpha,
+                                                           final Double z)
             throws Exception {
 
-        final MovingLeastSquaresBuilder mlsBuilder = new MovingLeastSquaresBuilder(montageTiles, alignTiles);
-        final MovingLeastSquaresTransform2 transform = mlsBuilder.build(alpha);
+        final MovingLeastSquaresBuilder mlsBuilder = new MovingLeastSquaresBuilder(montageTiles, alignTiles, alpha);
+        final MovingLeastSquaresTransform2 transform = mlsBuilder.call();
         final String transformId = z + "_MLS";
 
         return new LeafTransformSpec(transformId,
