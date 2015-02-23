@@ -29,7 +29,7 @@ import mpicbg.models.CoordinateTransform;
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
-public class AbstractCanvas<T extends CoordinateTransform> implements Canvas<T> {
+abstract public class AbstractCanvas<T extends CoordinateTransform> implements Canvas<T> {
 
     final protected double width;
     final protected double height;

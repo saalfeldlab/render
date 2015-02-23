@@ -34,14 +34,22 @@ import org.janelia.alignment.ImageAndMask;
  */
 public class Mipmaps extends AbstractCanvas<IdentityModel> {
 
-
-
-    private final TreeMap<Integer, ImageAndMask> mipmapLevels;
+    final protected TreeMap<Integer, ImageAndMask> mipmapLevels;
+    final protected transient TreeMap<Integer, ByteProcessor> maskLevels;
+    final protected transient TreeMap<Integer, BufferedImage> argbLevels;
+    final protected transient TreeMap<Integer, FloatProcessor> floatLevels;
+    
+    public Mipmaps() {
+        this.mipmapLevels = new TreeMap<Integer, ImageAndMask>();
+    }
 
     @Override
-    public void renderMask(final ByteProcessor bp, final double meshCellSize, final double minMeshCellSize, final int mipmapLevel) {
-        // TODO Auto-generated method stub
-
+    public void renderMask(
+            final ByteProcessor bp,
+            final double meshCellSize,
+            final double minMeshCellSize,
+            final int mipmapLevel) {
+        
     }
 
     @Override
