@@ -2,16 +2,15 @@ package org.janelia.render.client;
 
 import java.util.Collection;
 
-import jitk.spline.ThinPlateR2LogRSplineKernelTransform;
 import mpicbg.trakem2.transform.CoordinateTransform;
-import mpicbg.trakem2.transform.MovingLeastSquaresTransform2;
-import mpicbg.trakem2.transform.ThinPlateSplineTransform;
 
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.warp.AbstractWarpTransformBuilder;
 import org.janelia.alignment.warp.MovingLeastSquaresBuilder;
+import org.janelia.alignment.warp.ThinPlateSplineBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,32 +110,26 @@ public class MLSStackClient {
                                          final Double z)
             throws Exception {
 
-        final MovingLeastSquaresBuilder mlsBuilder = new MovingLeastSquaresBuilder(montageTiles, alignTiles, alpha);
-        final MovingLeastSquaresTransform2 mlsTransform = mlsBuilder.call();
-
+        final AbstractWarpTransformBuilder< ? extends CoordinateTransform > transformBuilder;
         final String transformId;
         final CoordinateTransform transform;
-
-        if (deriveTPS) {
-
-            LOG.info("buildTransform: deriving thin plate transform");
+        
+        if (deriveTPS) {        	
+            
+        	LOG.info("buildTransform: deriving thin plate transform");
 
             transformId = z + "_TPS";
-            final ThinPlateR2LogRSplineKernelTransform tpsKernelTransform =
-                    new ThinPlateR2LogRSplineKernelTransform(2,
-                                                             mlsTransform.getP(),
-                                                             mlsTransform.getQ());
-            tpsKernelTransform.solve();
-            transform = new ThinPlateSplineTransform(tpsKernelTransform);
+            transformBuilder = new ThinPlateSplineBuilder(montageTiles, alignTiles);
 
             LOG.info("buildTransform: completed thin plate transform derivation");
-
+            
         } else {
-
             transformId = z + "_MLS";
-            transform = mlsTransform;
-
+            transformBuilder = new MovingLeastSquaresBuilder(montageTiles, alignTiles, alpha);
         }
+        
+        transform = transformBuilder.call();
+
 
         return new LeafTransformSpec(transformId,
                                      null,
