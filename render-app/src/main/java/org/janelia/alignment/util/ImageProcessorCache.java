@@ -44,7 +44,6 @@ public class ImageProcessorCache {
     private final boolean cacheOriginalsForDownSampledImages;
 
     private final LoadingCache<CacheKey, ImageProcessor> cache;
-    private final Opener opener;
 
     /**
      * Constructs an instance with default parameters.
@@ -76,9 +75,6 @@ public class ImageProcessorCache {
         this.maximumNumberOfCachedPixels = maximumNumberOfCachedPixels;
         this.recordStats = recordStats;
         this.cacheOriginalsForDownSampledImages = cacheOriginalsForDownSampledImages;
-
-        this.opener = new Opener();
-        this.opener.setSilentMode(true);
 
         final Weigher<CacheKey, ImageProcessor> weigher =
                 new Weigher<CacheKey, ImageProcessor>() {
@@ -228,6 +224,10 @@ public class ImageProcessorCache {
         if (imageProcessor == null) {
 
             // TODO: use Bio Formats to load strange formats
+
+            // openers keep state about the file being opened, so we need to create a new opener for each load
+            final Opener opener = new Opener();
+            opener.setSilentMode(true);
 
             final ImagePlus imagePlus = opener.openURL(url);
             if (imagePlus == null) {
