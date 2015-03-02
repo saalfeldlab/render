@@ -1,5 +1,7 @@
 package org.janelia.render.client;
 
+import com.beust.jcommander.Parameter;
+
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -46,30 +48,66 @@ import org.slf4j.LoggerFactory;
  */
 public class BoxClient {
 
+    @SuppressWarnings("ALL")
+    private static class Parameters extends RenderDataClientParameters {
+
+        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+
+        @Parameter(names = "--stack", description = "Stack name", required = true)
+        private String stack;
+
+        @Parameter(names = "--rootDirectory", description = "Root directory for rendered tiles (e.g. /tier2/flyTEM/nobackup/rendered_boxes/fly_pilot/20141216_863_align)", required = true)
+        private String rootDirectory;
+
+        @Parameter(names = "--width", description = "Width of each box", required = true)
+        private Integer width;
+
+        @Parameter(names = "--height", description = "Height of each box", required = true)
+        private Integer height;
+
+        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to generate (default is 0)", required = false)
+        private Integer maxLevel;
+
+        @Parameter(names = "--format", description = "Format for rendered boxes (default is PNG)", required = false)
+        private String format;
+
+        @Parameter(names = "--overviewWidth", description = "Width of layer overview image (omit or set to zero to disable overview generation)", required = false)
+        private Integer overviewWidth;
+
+        @Parameter(names = "--skipInterpolation", description = "skip interpolation (e.g. for DMG data)", required = false, arity = 0)
+        private boolean skipInterpolation;
+
+        @Parameter(names = "--label", description = "Generate single color tile labels instead of actual tile images", required = false, arity = 0)
+        private boolean label;
+
+        @Parameter(names = "--createIGrid", description = "create an IGrid file", required = false, arity = 0)
+        private boolean createIGrid;
+
+        @Parameter(description = "Z values for layers to render", required = true)
+        private List<Double> zValues;
+
+        public boolean isOverviewNeeded() {
+            return ((overviewWidth != null) && (overviewWidth > 0));
+        }
+    }
+
     /**
-     * @param  args  see {@link BoxClientParameters} for command line argument details.
+     * @param  args  see {@link Parameters} for command line argument details.
      */
     public static void main(String[] args) {
         try {
 
-            final BoxClientParameters params = BoxClientParameters.parseCommandLineArgs(args);
+            final Parameters parameters = new Parameters();
+            parameters.parse(args);
 
-            if (params.displayHelp()) {
+            LOG.info("main: entry, parameters={}", parameters);
 
-                params.showUsage();
+            final BoxClient client = new BoxClient(parameters);
 
-            } else {
+            client.createEmptyImageFile();
 
-                LOG.info("main: entry, params={}", params);
-
-                final BoxClient client = new BoxClient(params);
-
-                client.createEmptyImageFile();
-
-                for (Double z : params.getzValues()) {
-                    client.generateBoxesForZ(z);
-                }
-
+            for (Double z : parameters.zValues) {
+                client.generateBoxesForZ(z);
             }
 
         } catch (final Throwable t) {
@@ -77,7 +115,7 @@ public class BoxClient {
         }
     }
 
-    private final BoxClientParameters params;
+    private final Parameters params;
 
     private final String stack;
     private final String format;
@@ -88,25 +126,25 @@ public class BoxClient {
     private final File emptyImageFile;
     private final RenderDataClient renderDataClient;
 
-    public BoxClient(final BoxClientParameters params) {
+    public BoxClient(final Parameters params) {
 
         this.params = params;
-        this.stack = params.getStack();
-        this.format = params.getFormat();
-        this.boxWidth = params.getWidth();
-        this.boxHeight = params.getHeight();
+        this.stack = params.stack;
+        this.format = params.format;
+        this.boxWidth = params.width;
+        this.boxHeight = params.height;
 
         String boxName = this.boxWidth + "x" + this.boxHeight;
-        if (params.isLabel()) {
+        if (params.label) {
             boxName += "-label";
             this.backgroundRGBColor = Color.WHITE.getRGB();
         } else {
             this.backgroundRGBColor = null;
         }
 
-        final Path boxPath = Paths.get(params.getRootDirectory(),
-                                       params.getProject(),
-                                       params.getStack(),
+        final Path boxPath = Paths.get(params.rootDirectory,
+                                       params.project,
+                                       params.stack,
                                        boxName).toAbsolutePath();
 
         this.boxDirectory = boxPath.toFile();
@@ -124,7 +162,7 @@ public class BoxClient {
         this.emptyImageFile = new File(boxDirectory.getAbsolutePath(),
                                        "empty." + format.toLowerCase());
 
-        this.renderDataClient = new RenderDataClient(params.getBaseDataUrl(), params.getOwner(), params.getProject());
+        this.renderDataClient = params.getClient();
     }
 
     public void createEmptyImageFile()
@@ -133,7 +171,7 @@ public class BoxClient {
         final BufferedImage emptyImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
         final Graphics2D targetGraphics = emptyImage.createGraphics();
 
-        if (params.isLabel()) {
+        if (params.label) {
             targetGraphics.setBackground(new Color(backgroundRGBColor));
             targetGraphics.clearRect(0, 0, boxWidth, boxHeight);
         }
@@ -159,7 +197,7 @@ public class BoxClient {
                  z, layerBounds, boxBounds, tileCount);
 
         final ImageProcessorCache imageProcessorCache;
-        if (params.isLabel()) {
+        if (params.label) {
             imageProcessorCache = new LabelImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
                                                                true,
                                                                false,
@@ -181,7 +219,7 @@ public class BoxClient {
 
 
         final IGridPaths iGridPaths;
-        if (params.isCreateIGrid()) {
+        if (params.createIGrid) {
             iGridPaths = new IGridPaths(boxBounds.lastRow, boxBounds.lastColumn);
         } else {
             iGridPaths = null;
@@ -201,10 +239,10 @@ public class BoxClient {
         }
 
         File overviewFile = null;
-        for (int level = 0; level < params.getMaxLevel(); level++) {
+        for (int level = 0; level < params.maxLevel; level++) {
             boxMipmapGenerator = boxMipmapGenerator.generateNextLevel();
             if (params.isOverviewNeeded() && (overviewFile == null)) {
-                overviewFile = boxMipmapGenerator.generateOverview(params.getOverviewWidth(), layerBounds);
+                overviewFile = boxMipmapGenerator.generateOverview(params.overviewWidth, layerBounds);
             }
         }
 
@@ -235,8 +273,11 @@ public class BoxClient {
             for (int x = boxBounds.firstX; x < layerBounds.getMaxX(); x += boxWidth) {
 
                 parametersUrl = renderDataClient.getRenderParametersUrlString(stack, x, y, z, boxWidth, boxHeight, 1.0);
+
+                LOG.debug("generateLevelZero: z={}, loading {}", z, parametersUrl);
+
                 renderParameters = RenderParameters.loadFromUrl(parametersUrl);
-                renderParameters.setSkipInterpolation(params.isSkipInterpolation());
+                renderParameters.setSkipInterpolation(params.skipInterpolation);
                 renderParameters.setBackgroundRGBColor(backgroundRGBColor);
 
                 if (renderParameters.hasTileSpecs()) {

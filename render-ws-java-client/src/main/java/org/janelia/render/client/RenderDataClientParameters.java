@@ -15,16 +15,16 @@ import org.janelia.alignment.json.JsonUtils;
 public class RenderDataClientParameters {
 
     @Parameter(names = "--help", description = "Display this note", help = true)
-    private transient boolean help;
+    protected transient boolean help;
 
     @Parameter(names = "--baseDataUrl", description = "Base URL for data", required = true)
-    private String baseDataUrl;
+    protected String baseDataUrl;
 
     @Parameter(names = "--owner", description = "Owner for all stacks", required = true)
-    private String owner;
+    protected String owner;
 
     @Parameter(names = "--project", description = "Project for all stacks", required = true)
-    private String project;
+    protected String project;
 
     private transient JCommander jCommander;
 
