@@ -1,5 +1,8 @@
 package org.janelia.alignment.mipmap;
 
+import ij.ImagePlus;
+import ij.process.ImageProcessor;
+
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -9,6 +12,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+
+import mpicbg.trakem2.util.Downsampler;
 
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
@@ -81,17 +86,17 @@ public class BoxMipmapGenerator {
         this.lastSourceColumn = lastSourceColumn;
 
         // make sure all column lists are the same length
-        this.rowFileLists = new ArrayList<List<File>>(this.lastSourceRow + 1);
+        this.rowFileLists = new ArrayList<>(this.lastSourceRow + 1);
         List<File> columnFiles;
         for (int row = 0; row <= this.lastSourceRow; row++) {
-            columnFiles = new ArrayList<File>(this.lastSourceColumn + 1);
+            columnFiles = new ArrayList<>(this.lastSourceColumn + 1);
             for (int column = 0; column <= this.lastSourceColumn; column++) {
                 columnFiles.add(null);
             }
             this.rowFileLists.add(columnFiles);
         }
 
-        emptyRow = new ArrayList<File>(this.lastSourceColumn + 1);
+        emptyRow = new ArrayList<>(this.lastSourceColumn + 1);
         for (int column = 0; column <= this.lastSourceColumn; column++) {
             emptyRow.add(null);
         }
@@ -116,7 +121,7 @@ public class BoxMipmapGenerator {
                           final File source) {
         List<File> rowFiles = rowFileLists.get(sourceRow);
         if (rowFiles == null) {
-            rowFiles = new ArrayList<File>();
+            rowFiles = new ArrayList<>();
             rowFileLists.add(sourceRow, rowFiles);
         }
         rowFiles.add(sourceColumn, source);
@@ -378,14 +383,12 @@ public class BoxMipmapGenerator {
                 drawImage(lowerLeft, 0, boxHeight, fourTileGraphics);
                 drawImage(lowerRight, boxWidth, boxHeight, fourTileGraphics);
 
-                final BufferedImage scaledImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
+                final ImagePlus fourTileImagePlus = new ImagePlus("", fourTileImage);
 
-                final Graphics2D scaledGraphics = scaledImage.createGraphics();
-                scaledGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                                                RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                scaledGraphics.drawImage(fourTileImage, 0, 0, boxWidth, boxHeight, null);
+                final ImageProcessor downSampledImageProcessor =
+                        Downsampler.downsampleImageProcessor(fourTileImagePlus.getProcessor());
 
-                scaledFile = saveImage(scaledImage,
+                scaledFile = saveImage(downSampledImageProcessor.getBufferedImage(),
                                        format,
                                        boxDirectory,
                                        scaledLevel,
@@ -394,7 +397,6 @@ public class BoxMipmapGenerator {
                                        scaledColumn);
 
                 fourTileGraphics.dispose();
-                scaledGraphics.dispose();
             } else {
                 scaledFile = null;
             }
