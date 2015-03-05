@@ -13,8 +13,10 @@ public class Bounds implements Serializable {
 
     private Double minX;
     private Double minY;
+    private Double minZ;
     private Double maxX;
     private Double maxY;
+    private Double maxZ;
 
     public Bounds() {
     }
@@ -45,6 +47,24 @@ public class Bounds implements Serializable {
         return maxY;
     }
 
+    @SuppressWarnings("UnusedDeclaration")
+    public Double getMaxZ() {
+        return maxZ;
+    }
+
+    public void setMinZ(final Double minZ) {
+        this.minZ = minZ;
+    }
+
+    @SuppressWarnings("UnusedDeclaration")
+    public Double getMinZ() {
+        return minZ;
+    }
+
+    public void setMaxZ(final Double maxZ) {
+        this.maxZ = maxZ;
+    }
+
     public boolean isBoundingBoxDefined() {
         return ((minX != null) && (minY != null) && (maxX != null) && (maxY != null));
     }
@@ -53,8 +73,10 @@ public class Bounds implements Serializable {
     public String toString() {
         return "{minX: " + minX +
                ", minY: " + minY +
+               ", minZ: " + minZ +
                ", maxX: " + maxX +
                ", maxY: " + maxY +
+               ", maxZ: " + maxZ +
                '}';
     }
 

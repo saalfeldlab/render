@@ -709,10 +709,16 @@ public class RenderDao {
 
         final Double minX = getBound(tileCollection, tileQuery, "minX", true);
         final Double minY = getBound(tileCollection, tileQuery, "minY", true);
+        final Double minZ = getBound(tileCollection, tileQuery, "z", true);
         final Double maxX = getBound(tileCollection, tileQuery, "maxX", false);
         final Double maxY = getBound(tileCollection, tileQuery, "maxY", false);
+        final Double maxZ = getBound(tileCollection, tileQuery, "z", false);
 
-        return new Bounds(minX, minY, maxX, maxY);
+        final Bounds bounds = new Bounds(minX, minY, maxX, maxY);
+        bounds.setMinZ(minZ);
+        bounds.setMaxZ(maxZ);
+
+        return bounds;
     }
 
     /**
