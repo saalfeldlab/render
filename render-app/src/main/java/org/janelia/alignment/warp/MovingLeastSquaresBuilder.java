@@ -13,28 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Adaptation of Stephan Saalfeld's TrakEM2 deform montages to multi-layer mosaic script
- * ( https://github.com/axtimwalde/fiji-scripts/blob/master/TrakEM2/deform_montages_to_multi_layer_mosaic.bsh )
- * for use in the Render ecosystem.
- *
- * Here are Stephan's original comments about the script:
- *
- * This script takes two related TrakEM2 projects on the same image data as
- * input. The first project has all patches montaged perfectly, the alignment
- * of layers relative to each other is irrelevant. The second project is the
- * result of a multi-layer-mosaic alignment and thus approximates a global
- * alignment of all patches through a rigid transformation per patch.
- *
- * The script warps all layers in the first project such that the center points
- * of all patches are transferred to where they are in the second project.
- * The warp is realized with an MLS transformation per layer with the center
- * points of all tiles being the control points. It is important to understand
- * that the warping has no effect on the smoothness of transitions between
- * patches within the montage.
- *
- * The result is a project with layer montages that are warped such that they
- * resemble the alignment result of the multi-layer-mosaic alignment of the
- * second project. This result is applied to the first project.
+ * {@link AbstractWarpTransformBuilder} implementation that realizes the warp (see {@link #call})
+ * with a Moving Least Squares transformation.
  *
  * @author Eric Trautman
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
@@ -48,7 +28,7 @@ public class MovingLeastSquaresBuilder extends AbstractWarpTransformBuilder<Movi
 
     /**
      * Derives center point matches between the two specified tile lists using tileId to correlate the tiles.
-     * The {@link #build} method can then be used to derive a moving least squares transform instance
+     * The {@link #call} method can then be used to derive a moving least squares transform instance
      * from the point matches.
      *
      * @param  montageTiles  collection of tiles from a montage stack.
@@ -58,7 +38,7 @@ public class MovingLeastSquaresBuilder extends AbstractWarpTransformBuilder<Movi
     public MovingLeastSquaresBuilder(final Collection<TileSpec> montageTiles,
                                      final Collection<TileSpec> alignTiles,
                                      final Double alpha) {
-        
+
         readTileSpecs(montageTiles, alignTiles);
         
         if (w.length == 1) {
@@ -69,7 +49,7 @@ public class MovingLeastSquaresBuilder extends AbstractWarpTransformBuilder<Movi
             modelClass = AffineModel2D.class;
         }
 
-        LOG.info("ctor: exit, derived {} point matches", w.length);
+        this.alpha = alpha;
     }
 
     /**
@@ -78,7 +58,7 @@ public class MovingLeastSquaresBuilder extends AbstractWarpTransformBuilder<Movi
     @Override
     public MovingLeastSquaresTransform2 call() throws Exception {
 
-        LOG.info("build: entry");
+        LOG.info("call: entry");
 
         final MovingLeastSquaresTransform2 transform = new MovingLeastSquaresTransform2();
 
@@ -88,7 +68,7 @@ public class MovingLeastSquaresBuilder extends AbstractWarpTransformBuilder<Movi
         transform.setModel(modelClass);
         transform.setMatches(p, q, w);
 
-        LOG.info("build: exit");
+        LOG.info("call: exit");
 
         return transform;
     }

@@ -28,6 +28,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="Maven: sc.fiji:trakem2_tps:1.0.1" level="project" />
     <orderEntry type="module" module-name="render-app" />
     <orderEntry type="library" name="Maven: mpicbg:mpicbg_:0.6.1" level="project" />
     <orderEntry type="library" name="Maven: jama:jama:1.0.2" level="project" />

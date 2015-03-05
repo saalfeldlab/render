@@ -10,24 +10,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * {@link AbstractWarpTransformBuilder} implementation that realizes the warp (see {@link #call})
+ * with a Thin Plate Spline transformation.
+ *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
 public class ThinPlateSplineBuilder extends AbstractWarpTransformBuilder<ThinPlateSplineTransform> {
 
     /**
      * Derives center point matches between the two specified tile lists using tileId to correlate the tiles.
-     * The {@link #build} method can then be used to derive a moving least squares transform instance
+     * The {@link #call} method can then be used to derive a thin plate spline transform instance
      * from the point matches.
      *
      * @param  montageTiles  collection of tiles from a montage stack.
      * @param  alignTiles    collection of tiles from an align stack.
      */
     public ThinPlateSplineBuilder(final Collection<TileSpec> montageTiles,
-                                     final Collection<TileSpec> alignTiles) {
+                                  final Collection<TileSpec> alignTiles) {
         
         readTileSpecs(montageTiles, alignTiles);
-
-        LOG.info("ctor: exit, derived {} point matches", w.length);
     }
 
     /**
@@ -36,7 +37,7 @@ public class ThinPlateSplineBuilder extends AbstractWarpTransformBuilder<ThinPla
     @Override
     public ThinPlateSplineTransform call() throws Exception {
 
-        LOG.info("build: entry");
+        LOG.info("call: entry");
 
         final ThinPlateR2LogRSplineKernelTransform tpsKernelTransform =
                 new ThinPlateR2LogRSplineKernelTransform(2, p, q);
@@ -45,7 +46,7 @@ public class ThinPlateSplineBuilder extends AbstractWarpTransformBuilder<ThinPla
         
         final ThinPlateSplineTransform t = new ThinPlateSplineTransform(tpsKernelTransform);
 
-        LOG.info("build: exit");
+        LOG.info("call: exit");
 
         return t;
     }
