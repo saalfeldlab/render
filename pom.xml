@@ -5,7 +5,7 @@
   <name>Janelia Rendering Utilities</name>
   <groupId>org.janelia</groupId>
   <artifactId>render</artifactId>
-  <version>0.0.4-SNAPSHOT</version>
+  <version>0.0.5-SNAPSHOT</version>
 
     <packaging>pom</packaging>
 
@@ -30,7 +30,7 @@
         <dependency>
             <groupId>org.janelia</groupId>
             <artifactId>render-app</artifactId>
-            <version>0.0.4-SNAPSHOT</version>
+            <version>0.0.5-SNAPSHOT</version>
         </dependency>
 
             <dependency>
