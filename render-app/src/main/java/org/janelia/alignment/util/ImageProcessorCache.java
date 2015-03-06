@@ -1,11 +1,5 @@
 package org.janelia.alignment.util;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.CacheStats;
-import com.google.common.cache.LoadingCache;
-import com.google.common.cache.Weigher;
-
 import ij.ImagePlus;
 import ij.io.Opener;
 import ij.process.ImageProcessor;
@@ -16,6 +10,12 @@ import mpicbg.trakem2.util.Downsampler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.CacheStats;
+import com.google.common.cache.LoadingCache;
+import com.google.common.cache.Weigher;
 
 /**
  * Cache of {@link ImageProcessor} instances for rendering.
@@ -35,7 +35,7 @@ public class ImageProcessorCache {
 
     /** Cache instance that doesn't cache anything but provides the same API for loading images. */
     public static final ImageProcessorCache DISABLED_CACHE = new ImageProcessorCache(0, false, false);
-    
+
     /** Default max number of pixels is 1GB (or 160 full resolution 2500x2500 pixel tiles). */
     public static final long DEFAULT_MAX_CACHED_PIXELS = 1000 * 1000000; // 1GB
 
@@ -84,8 +84,8 @@ public class ImageProcessorCache {
                 new Weigher<CacheKey, ImageProcessor>() {
 
                     @Override
-                    public int weigh(@Nullable CacheKey key,
-                                     @Nullable ImageProcessor value) {
+                    public int weigh(@Nullable final CacheKey key,
+                                     @Nullable final ImageProcessor value) {
                         final int weight;
                         if (value == null) {
                             weight = 0;
@@ -100,7 +100,7 @@ public class ImageProcessorCache {
                 new CacheLoader<CacheKey, ImageProcessor>() {
 
                     @Override
-                    public ImageProcessor load(@Nullable CacheKey key)
+                    public ImageProcessor load(@Nullable final CacheKey key)
                             throws Exception {
                         ImageProcessor imageProcessor = null;
                         if (key != null) {
@@ -132,27 +132,51 @@ public class ImageProcessorCache {
      * @param  downSampleLevels  number of levels to further down sample the image.
      *                           Negative values are considered the same as zero.
      *
-     * @return a duplicate instance of the cached image processor for the specified url string.
-     *         If the source processor is not already cached, it will be loaded into the cache.
-     *         The duplicate instance is returned because the processors are mutable and the cached
-     *         instance needs to remain unaltered for future use.
+     * @param  duplicate         return a duplicate instead of the actual instance
+     *
+     * @return If the source processor is not already cached, it will be loaded into the cache.
      *
      * @throws IllegalArgumentException
      *   if the image cannot be loaded.
      */
     public ImageProcessor get(final String url,
                               final int downSampleLevels,
-                              boolean isMask)
+                              final boolean isMask,
+                              final boolean duplicate)
             throws IllegalArgumentException {
 
         final CacheKey key = new CacheKey(url, downSampleLevels, isMask);
         final ImageProcessor imageProcessor;
         try {
             imageProcessor = cache.get(key);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to retrieve " + key + " from cache", t);
         }
-        return imageProcessor.duplicate();
+        return duplicate ? imageProcessor.duplicate() : imageProcessor;
+    }
+
+    /**
+     * @param  url               url for the image.
+     *
+     * @param  downSampleLevels  number of levels to further down sample the image.
+     *                           Negative values are considered the same as zero.
+     *
+     * @return a duplicate instance of the cached image processor for the specified url string.
+     *         If the source processor is not already cached, it will be loaded into the cache.
+     *         The duplicate instance is returned because the processors are mutable and the cached
+     *         instance needs to remain unaltered for future use.  If you are sure that you will
+     *         not modify hte content of the returned {@link ImageProcessor}, you can get the
+     *         instance itself by {@link #get(String, int, boolean, boolean)}.
+     *
+     * @throws IllegalArgumentException
+     *   if the image cannot be loaded.
+     */
+    public ImageProcessor get(final String url,
+                              final int downSampleLevels,
+                              final boolean isMask)
+            throws IllegalArgumentException {
+
+        return get(url, downSampleLevels, isMask, true);
     }
 
     /**
@@ -301,7 +325,7 @@ public class ImageProcessorCache {
         }
 
         @Override
-        public boolean equals(Object o) {
+        public boolean equals(final Object o) {
             boolean result = true;
             if (this != o) {
                 if (o instanceof CacheKey) {
