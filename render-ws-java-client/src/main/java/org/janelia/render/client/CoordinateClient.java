@@ -56,7 +56,7 @@ public class CoordinateClient {
         private String toJson;
 
         @Parameter(names = "--localToWorld", description = "Convert from local to world coordinates (default is to convert from world to local)", required = false, arity = 0)
-        private final boolean localToWorld = false;
+        private boolean localToWorld = false;
     }
 
     public static void main(final String[] args) {
