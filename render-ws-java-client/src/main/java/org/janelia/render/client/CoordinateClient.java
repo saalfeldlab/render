@@ -1,8 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.google.gson.reflect.TypeToken;
-
 import java.io.BufferedInputStream;
 import java.io.Closeable;
 import java.io.File;
@@ -31,6 +28,9 @@ import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.beust.jcommander.Parameter;
+import com.google.gson.reflect.TypeToken;
+
 /**
  * Java client for translating world coordinates between two stacks in the same project.
  *
@@ -56,10 +56,10 @@ public class CoordinateClient {
         private String toJson;
 
         @Parameter(names = "--localToWorld", description = "Convert from local to world coordinates (default is to convert from world to local)", required = false, arity = 0)
-        private boolean localToWorld = false;
+        private final boolean localToWorld = false;
     }
 
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         try {
             final Parameters parameters = new Parameters();
             parameters.parse(args);
@@ -104,9 +104,9 @@ public class CoordinateClient {
     private final Double z;
     private final RenderDataClient renderDataClient;
 
-    public CoordinateClient(String stack,
-                            Double z,
-                            RenderDataClient renderDataClient) {
+    public CoordinateClient(final String stack,
+                            final Double z,
+                            final RenderDataClient renderDataClient) {
         this.stack = stack;
         this.z = z;
         this.renderDataClient = renderDataClient;
@@ -155,7 +155,7 @@ public class CoordinateClient {
         List<TileSpec> tileSpecList;
         List<TileCoordinates> coordinatesList;
         TileCoordinates coordinates = null;
-        float[] world;
+        double[] world;
         int errorCount = 0;
         for (int i = 0; i < worldListOfLists.size(); i++) {
 
@@ -176,7 +176,7 @@ public class CoordinateClient {
                                                                          world[0],
                                                                          world[1]));
 
-            } catch (Throwable t) {
+            } catch (final Throwable t) {
 
                 LOG.warn("worldToLocal: caught exception for list item {}, adding original coordinates with error message to list", i, t);
 
@@ -203,7 +203,7 @@ public class CoordinateClient {
         return localListOfLists;
     }
 
-    public List<TileCoordinates> localToWorld(List<TileCoordinates> localCoordinatesList)
+    public List<TileCoordinates> localToWorld(final List<TileCoordinates> localCoordinatesList)
             throws IOException {
 
         LOG.info("localToWorld: localCoordinatesList.size()={}", localCoordinatesList.size());
@@ -212,11 +212,11 @@ public class CoordinateClient {
 
         final ProcessTimer timer = new ProcessTimer();
 
-        List<TileCoordinates> worldCoordinatesList = new ArrayList<>(localCoordinatesList.size());
+        final List<TileCoordinates> worldCoordinatesList = new ArrayList<>(localCoordinatesList.size());
         TileSpec tileSpec;
         TileCoordinates coordinates;
         String tileId;
-        float[] local;
+        double[] local;
         int errorCount = 0;
         for (int i = 0; i < localCoordinatesList.size(); i++) {
 
@@ -248,7 +248,7 @@ public class CoordinateClient {
 
                 worldCoordinatesList.add(TileCoordinates.getWorldCoordinates(tileSpec, local[0], local[1]));
 
-            } catch (Throwable t) {
+            } catch (final Throwable t) {
 
                 LOG.warn("localToWorld: caught exception for list item {}, adding original coordinates with error message to list", i, t);
 
@@ -275,8 +275,8 @@ public class CoordinateClient {
         return worldCoordinatesList;
     }
 
-    private List<TileSpec> getTileSpecsForCoordinates(List<TileCoordinates> coordinatesList,
-                                                      ResolvedTileSpecCollection tiles) {
+    private List<TileSpec> getTileSpecsForCoordinates(final List<TileCoordinates> coordinatesList,
+                                                      final ResolvedTileSpecCollection tiles) {
 
         if ((coordinatesList == null) || (coordinatesList.size() == 0)) {
             throw new IllegalArgumentException("coordinates are missing");
@@ -284,8 +284,8 @@ public class CoordinateClient {
 
         String tileId;
         TileSpec tileSpec;
-        List<TileSpec> tileSpecList = new ArrayList<>();
-        for (TileCoordinates coordinates : coordinatesList) {
+        final List<TileSpec> tileSpecList = new ArrayList<>();
+        for (final TileCoordinates coordinates : coordinatesList) {
             tileId = coordinates.getTileId();
             if (tileId != null) {
                 tileSpec = tiles.getTileSpec(tileId);
@@ -363,12 +363,12 @@ public class CoordinateClient {
         LOG.info("saveJsonFile: exit, wrote coordinate data to {}", toPath);
     }
 
-    private static void close(String context,
-                              Closeable closeable) {
+    private static void close(final String context,
+                              final Closeable closeable) {
         if (closeable != null) {
             try {
                 closeable.close();
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 LOG.warn("failed to close {}, ignoring error", context, e);
             }
         }

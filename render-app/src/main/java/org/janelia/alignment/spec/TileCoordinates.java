@@ -19,13 +19,13 @@ public class TileCoordinates implements Serializable {
 
     private String tileId;
     private Boolean visible;
-    private final float[] local;
-    private final float[] world;
+    private final double[] local;
+    private final double[] world;
     private String error;
 
     public TileCoordinates(final String tileId,
-                           final float[] local,
-                           final float[] world) {
+                           final double[] local,
+                           final double[] world) {
         this.tileId = tileId;
         this.visible = null;
         this.local = local;
@@ -37,7 +37,7 @@ public class TileCoordinates implements Serializable {
         return tileId;
     }
 
-    public void setTileId(String tileId) {
+    public void setTileId(final String tileId) {
         this.tileId = tileId;
     }
 
@@ -49,11 +49,11 @@ public class TileCoordinates implements Serializable {
         this.visible = visible;
     }
 
-    public float[] getLocal() {
+    public double[] getLocal() {
         return local;
     }
 
-    public float[] getWorld() {
+    public double[] getWorld() {
         return world;
     }
 
@@ -75,12 +75,12 @@ public class TileCoordinates implements Serializable {
     }
 
     public static TileCoordinates buildLocalInstance(final String tileId,
-                                                     final float[] local) {
+                                                     final double[] local) {
         return new TileCoordinates(tileId, local, null);
     }
 
     public static TileCoordinates buildWorldInstance(final String tileId,
-                                                     final float[] world) {
+                                                     final double[] world) {
         return new TileCoordinates(tileId, null, world);
     }
 
@@ -98,14 +98,14 @@ public class TileCoordinates implements Serializable {
      */
     public static List<TileCoordinates> getLocalCoordinates(
             final List<TileSpec> tileSpecList,
-            final float x,
-            final float y)
+            final double x,
+            final double y)
             throws IllegalStateException {
 
 
         final List<TileCoordinates> tileCoordinatesList = new ArrayList<>();
         List<String> nonInvertibleTileIds = null;
-        float[] local;
+        double[] local;
         TileCoordinates tileCoordinates;
         for (final TileSpec tileSpec : tileSpecList) {
             try {
@@ -141,9 +141,9 @@ public class TileCoordinates implements Serializable {
     }
 
     public static TileCoordinates getWorldCoordinates(final TileSpec tileSpec,
-                                                      final float x,
-                                                      final float y) {
-        final float[] world = tileSpec.getWorldCoordinates(x, y);
+                                                      final double x,
+                                                      final double y) {
+        final double[] world = tileSpec.getWorldCoordinates(x, y);
         return buildWorldInstance(tileSpec.getTileId(), world);
     }
 

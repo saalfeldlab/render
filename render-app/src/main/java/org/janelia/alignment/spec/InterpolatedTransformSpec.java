@@ -26,13 +26,13 @@ public class InterpolatedTransformSpec
 
     private final TransformSpec a;
     private final TransformSpec b;
-    private final Float lambda;
+    private final Double lambda;
 
     public InterpolatedTransformSpec(final String id,
                                      final TransformSpecMetaData metaData,
                                      final TransformSpec a,
                                      final TransformSpec b,
-                                     final Float lambda) {
+                                     final Double lambda) {
         super(id, TYPE, metaData);
         this.a = a;
         this.b = b;

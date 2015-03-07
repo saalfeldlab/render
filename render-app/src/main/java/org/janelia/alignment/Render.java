@@ -189,19 +189,19 @@ public class Render {
             final AffineModel2D scaleAndOffset = new AffineModel2D();
             if (areaOffset) {
                 final double offset = (1 - scale) * 0.5;
-                scaleAndOffset.set((float) scale,
+                scaleAndOffset.set(scale,
                                    0,
                                    0,
-                                   (float) scale,
-                                   -(float) (x * scale + offset),
-                                   -(float) (y * scale + offset));
+                                   scale,
+                                   -(x * scale + offset),
+                                   -(y * scale + offset));
             } else {
-                scaleAndOffset.set((float) scale,
+                scaleAndOffset.set(scale,
                                    0,
                                    0,
-                                   (float) scale,
-                                   -(float) (x * scale),
-                                   -(float) (y * scale));
+                                   scale,
+                                   -(x * scale),
+                                   -(y * scale));
             }
 
             ctl.add(scaleAndOffset);

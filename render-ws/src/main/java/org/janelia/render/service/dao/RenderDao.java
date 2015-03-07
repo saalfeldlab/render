@@ -1,32 +1,5 @@
 package org.janelia.render.service.dao;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.BulkWriteOperation;
-import com.mongodb.BulkWriteResult;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
-import com.mongodb.QueryOperators;
-import com.mongodb.WriteResult;
-import com.mongodb.util.JSON;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.json.JsonUtils;
-import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.ListTransformSpec;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.StackMetaData;
-import org.janelia.alignment.spec.TileBounds;
-import org.janelia.alignment.spec.TileCoordinates;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.render.service.ObjectNotFoundException;
-import org.janelia.alignment.util.ProcessTimer;
-import org.janelia.render.service.StackId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -40,6 +13,34 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ListTransformSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.StackMetaData;
+import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileCoordinates;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.util.ProcessTimer;
+import org.janelia.render.service.ObjectNotFoundException;
+import org.janelia.render.service.StackId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.mongodb.BasicDBObject;
+import com.mongodb.BulkWriteOperation;
+import com.mongodb.BulkWriteResult;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
+import com.mongodb.DBObject;
+import com.mongodb.MongoClient;
+import com.mongodb.QueryOperators;
+import com.mongodb.WriteResult;
+import com.mongodb.util.JSON;
+
 /**
  * Data access object for Render database.
  *
@@ -49,9 +50,9 @@ public class RenderDao {
 
     public static final String RENDER_DB_NAME = "render";
 
-    private DB renderDb;
+    private final DB renderDb;
 
-    public RenderDao(MongoClient client) {
+    public RenderDao(final MongoClient client) {
         renderDb = client.getDB(RENDER_DB_NAME);
     }
 
@@ -61,13 +62,13 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
-    public RenderParameters getParameters(StackId stackId,
-                                          Double x,
-                                          Double y,
-                                          Double z,
-                                          Integer width,
-                                          Integer height,
-                                          Double scale)
+    public RenderParameters getParameters(final StackId stackId,
+                                          final Double x,
+                                          final Double y,
+                                          final Double z,
+                                          final Integer width,
+                                          final Integer height,
+                                          final Double scale)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -99,12 +100,12 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
-    public int getTileCount(StackId stackId,
-                            Double x,
-                            Double y,
-                            Double z,
-                            Integer width,
-                            Integer height)
+    public int getTileCount(final StackId stackId,
+                            final Double x,
+                            final Double y,
+                            final Double z,
+                            final Integer width,
+                            final Integer height)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -137,9 +138,9 @@ public class RenderDao {
      * @throws ObjectNotFoundException
      *   if a spec with the specified z and tileId cannot be found.
      */
-    public TileSpec getTileSpec(StackId stackId,
-                                String tileId,
-                                boolean resolveTransformReferences)
+    public TileSpec getTileSpec(final StackId stackId,
+                                final String tileId,
+                                final boolean resolveTransformReferences)
             throws IllegalArgumentException,
                    ObjectNotFoundException {
 
@@ -176,8 +177,8 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters are missing.
      */
-    public TileSpec resolveTransformReferencesForTiles(StackId stackId,
-                                                       TileSpec tileSpec)
+    public TileSpec resolveTransformReferencesForTiles(final StackId stackId,
+                                                       final TileSpec tileSpec)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -188,13 +189,13 @@ public class RenderDao {
         return tileSpec;
     }
 
-    public Map<String, TransformSpec> resolveTransformReferencesForTiles(StackId stackId,
-                                                                         List<TileSpec> tileSpecs)
+    public Map<String, TransformSpec> resolveTransformReferencesForTiles(final StackId stackId,
+                                                                         final List<TileSpec> tileSpecs)
             throws IllegalStateException {
 
         final Set<String> unresolvedIds = new HashSet<>();
         ListTransformSpec transforms;
-        for (TileSpec tileSpec : tileSpecs) {
+        for (final TileSpec tileSpec : tileSpecs) {
             transforms = tileSpec.getTransforms();
             if (transforms != null) {
                 transforms.addUnresolvedIds(unresolvedIds);
@@ -210,12 +211,12 @@ public class RenderDao {
             getDataForTransformSpecReferences(transformCollection, unresolvedIds, resolvedIdToSpecMap, 1);
 
             // resolve any references within the retrieved transform specs
-            for (TransformSpec transformSpec : resolvedIdToSpecMap.values()) {
+            for (final TransformSpec transformSpec : resolvedIdToSpecMap.values()) {
                 transformSpec.resolveReferences(resolvedIdToSpecMap);
             }
 
             // apply fully resolved transform specs to tiles
-            for (TileSpec tileSpec : tileSpecs) {
+            for (final TileSpec tileSpec : tileSpecs) {
                 transforms = tileSpec.getTransforms();
                 transforms.resolveReferences(resolvedIdToSpecMap);
                 if (! transforms.isFullyResolved()) {
@@ -238,10 +239,10 @@ public class RenderDao {
      *   if any required parameters are missing, if the stack cannot be found, or
      *   if no tile can be found that encompasses the coordinates.
      */
-    public List<TileSpec> getTileSpecs(StackId stackId,
-                                       Double x,
-                                       Double y,
-                                       Double z)
+    public List<TileSpec> getTileSpecs(final StackId stackId,
+                                       final Double x,
+                                       final Double y,
+                                       final Double z)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -261,10 +262,10 @@ public class RenderDao {
         return renderParameters.getTileSpecs();
     }
 
-    public void writeCoordinatesWithTileIds(StackId stackId,
-                                            Double z,
-                                            List<TileCoordinates> worldCoordinatesList,
-                                            OutputStream outputStream)
+    public void writeCoordinatesWithTileIds(final StackId stackId,
+                                            final Double z,
+                                            final List<TileCoordinates> worldCoordinatesList,
+                                            final OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
         LOG.debug("writeCoordinatesWithTileIds: entry, stackId={}, z={}, worldCoordinatesList.size()={}",
@@ -286,7 +287,7 @@ public class RenderDao {
 
         int coordinateCount = 0;
 
-        float[] world;
+        double[] world;
         DBObject tileQuery = null;
         DBCursor cursor = null;
         DBObject document;
@@ -376,8 +377,8 @@ public class RenderDao {
      *   if any required parameters are missing or if the stack cannot be found, or
      *   if no tile can be found for the specified z.
      */
-    public List<TileSpec> getTileSpecs(StackId stackId,
-                                       Double z)
+    public List<TileSpec> getTileSpecs(final StackId stackId,
+                                       final Double z)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -401,8 +402,8 @@ public class RenderDao {
      *   if any required parameters are missing or if the stack cannot be found, or
      *   if no tile can be found for the specified z.
      */
-    public ResolvedTileSpecCollection getResolvedTiles(StackId stackId,
-                                                       Double z)
+    public ResolvedTileSpecCollection getResolvedTiles(final StackId stackId,
+                                                       final Double z)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -433,8 +434,8 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters or transform spec references are missing.
      */
-    public void saveResolvedTiles(StackId stackId,
-                                  ResolvedTileSpecCollection resolvedTileSpecs)
+    public void saveResolvedTiles(final StackId stackId,
+                                  final ResolvedTileSpecCollection resolvedTileSpecs)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -455,7 +456,7 @@ public class RenderDao {
 
             BasicDBObject query = null;
             DBObject transformSpecObject;
-            for (TransformSpec transformSpec : transformSpecs) {
+            for (final TransformSpec transformSpec : transformSpecs) {
                 query = new BasicDBObject("id", transformSpec.getId());
                 transformSpecObject = (DBObject) JSON.parse(transformSpec.toJson());
                 bulk.find(query).upsert().replaceOne(transformSpecObject);
@@ -481,7 +482,7 @@ public class RenderDao {
 
             BasicDBObject query = null;
             DBObject tileSpecObject;
-            for (TileSpec tileSpec : tileSpecs) {
+            for (final TileSpec tileSpec : tileSpecs) {
                 query = new BasicDBObject("tileId", tileSpec.getTileId());
                 tileSpecObject = (DBObject) JSON.parse(tileSpec.toJson());
                 bulkTileOperation.find(query).upsert().replaceOne(tileSpecObject);
@@ -509,8 +510,8 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters or transform spec references are missing.
      */
-    public TileSpec saveTileSpec(StackId stackId,
-                                 TileSpec tileSpec)
+    public TileSpec saveTileSpec(final StackId stackId,
+                                 final TileSpec tileSpec)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -551,8 +552,8 @@ public class RenderDao {
      * @throws ObjectNotFoundException
      *   if a spec with the specified transformId cannot be found.
      */
-    public TransformSpec getTransformSpec(StackId stackId,
-                                          String transformId)
+    public TransformSpec getTransformSpec(final StackId stackId,
+                                          final String transformId)
             throws IllegalArgumentException,
                    ObjectNotFoundException {
 
@@ -587,8 +588,8 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters or transform spec references are missing.
      */
-    public TransformSpec saveTransformSpec(StackId stackId,
-                                           TransformSpec transformSpec)
+    public TransformSpec saveTransformSpec(final StackId stackId,
+                                           final TransformSpec transformSpec)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -626,13 +627,13 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
-    public List<StackId> getStackIds(String owner)
+    public List<StackId> getStackIds(final String owner)
             throws IllegalArgumentException {
 
         validateRequiredParameter("owner", owner);
 
         final List<StackId> list = new ArrayList<>();
-        for (String name : renderDb.getCollectionNames()) {
+        for (final String name : renderDb.getCollectionNames()) {
             if (name.startsWith(owner) && name.endsWith(StackId.TILE_COLLECTION_SUFFIX)) {
                 list.add(StackId.fromCollectionName(name));
             }
@@ -651,7 +652,7 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
-    public List<Double> getZValues(StackId stackId)
+    public List<Double> getZValues(final StackId stackId)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -659,7 +660,7 @@ public class RenderDao {
         final DBCollection tileCollection = getTileCollection(stackId);
 
         final List<Double> list = new ArrayList<>();
-        for (Object zValue : tileCollection.distinct("z")) {
+        for (final Object zValue : tileCollection.distinct("z")) {
             list.add(new Double(zValue.toString()));
         }
 
@@ -674,7 +675,7 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if the stack cannot be found.
      */
-    public StackMetaData getStackMetaData(StackId stackId)
+    public StackMetaData getStackMetaData(final StackId stackId)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -683,7 +684,7 @@ public class RenderDao {
 
         StackMetaData stackMetaData;
 
-        DBObject document = stackCollection.findOne();
+        final DBObject document = stackCollection.findOne();
         if (document == null) {
             stackMetaData = new StackMetaData();
         } else {
@@ -699,7 +700,7 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if the stack cannot be found.
      */
-    public Bounds getStackBounds(StackId stackId)
+    public Bounds getStackBounds(final StackId stackId)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -727,8 +728,8 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
-    public Bounds getLayerBounds(StackId stackId,
-                                 Double z)
+    public Bounds getLayerBounds(final StackId stackId,
+                                 final Double z)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -757,8 +758,8 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
-    public List<TileBounds> getTileBounds(StackId stackId,
-                                          Double z)
+    public List<TileBounds> getTileBounds(final StackId stackId,
+                                          final Double z)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -770,7 +771,7 @@ public class RenderDao {
         final DBObject tileKeys =
                 new BasicDBObject("tileId", 1).append("minX", 1).append("minY", 1).append("maxX", 1).append("maxY", 1);
 
-        List<TileBounds> list = new ArrayList<>();
+        final List<TileBounds> list = new ArrayList<>();
 
         try (DBCursor cursor = tileCollection.find(tileQuery, tileKeys)) {
             DBObject document;
@@ -801,11 +802,11 @@ public class RenderDao {
      * @throws IOException
      *   if the data cannot be written for any reason.
      */
-    public void writeLayoutFileData(StackId stackId,
-                                    String stackRequestUri,
-                                    Double minZ,
-                                    Double maxZ,
-                                    OutputStream outputStream)
+    public void writeLayoutFileData(final StackId stackId,
+                                    final String stackRequestUri,
+                                    final Double minZ,
+                                    final Double maxZ,
+                                    final OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
         LOG.debug("writeLayoutFileData: entry, stackId={}, minZ={}, maxZ={}",
@@ -869,13 +870,13 @@ public class RenderDao {
                   tileSpecCount, tileCollection.getFullName(), tileQuery, tileKeys, orderBy, timer.getElapsedSeconds());
     }
 
-    private List<TransformSpec> getTransformSpecs(DBCollection transformCollection,
-                                                  Set<String> specIds) {
+    private List<TransformSpec> getTransformSpecs(final DBCollection transformCollection,
+                                                  final Set<String> specIds) {
         final int specCount = specIds.size();
         final List<TransformSpec> transformSpecList = new ArrayList<>(specCount);
         if (specCount > 0) {
 
-            BasicDBObject transformQuery = new BasicDBObject();
+            final BasicDBObject transformQuery = new BasicDBObject();
             transformQuery.put("id", new BasicDBObject(QueryOperators.IN, specIds));
 
             LOG.debug("getTransformSpecs: {}.find({})", transformCollection.getFullName(), transformQuery);
@@ -895,10 +896,10 @@ public class RenderDao {
         return transformSpecList;
     }
 
-    private void getDataForTransformSpecReferences(DBCollection transformCollection,
-                                                   Set<String> unresolvedSpecIds,
-                                                   Map<String, TransformSpec> resolvedIdToSpecMap,
-                                                   int callCount) {
+    private void getDataForTransformSpecReferences(final DBCollection transformCollection,
+                                                   final Set<String> unresolvedSpecIds,
+                                                   final Map<String, TransformSpec> resolvedIdToSpecMap,
+                                                   final int callCount) {
 
         if (callCount > 10) {
             throw new IllegalStateException(callCount + " passes have been made to resolve transform references, " +
@@ -916,9 +917,9 @@ public class RenderDao {
 
             final Set<String> newlyUnresolvedSpecIds = new HashSet<>();
 
-            for (TransformSpec spec : transformSpecList) {
+            for (final TransformSpec spec : transformSpecList) {
                 resolvedIdToSpecMap.put(spec.getId(), spec);
-                for (String id : spec.getUnresolvedIds()) {
+                for (final String id : spec.getUnresolvedIds()) {
                     if ((! resolvedIdToSpecMap.containsKey(id)) && (! unresolvedSpecIds.contains(id))) {
                         newlyUnresolvedSpecIds.add(id);
                     }
@@ -934,9 +935,9 @@ public class RenderDao {
         }
     }
 
-    private Map<String, TransformSpec> addResolvedTileSpecs(StackId stackId,
-                                                            DBObject tileQuery,
-                                                            RenderParameters renderParameters) {
+    private Map<String, TransformSpec> addResolvedTileSpecs(final StackId stackId,
+                                                            final DBObject tileQuery,
+                                                            final RenderParameters renderParameters) {
         final DBCollection tileCollection = getTileCollection(stackId);
         final DBCursor cursor = tileCollection.find(tileQuery);
         // order tile specs by tileId to ensure consistent coordinate mapping
@@ -983,9 +984,9 @@ public class RenderDao {
                 "maxY", gte(y));
     }
 
-    private void validateTransformReferences(String context,
-                                             StackId stackId,
-                                             TransformSpec transformSpec) {
+    private void validateTransformReferences(final String context,
+                                             final StackId stackId,
+                                             final TransformSpec transformSpec) {
 
         final Set<String> unresolvedTransformSpecIds = transformSpec.getUnresolvedIds();
 
@@ -995,11 +996,11 @@ public class RenderDao {
                                                                             unresolvedTransformSpecIds);
             if (transformSpecList.size() != unresolvedTransformSpecIds.size()) {
                 final Set<String> existingIds = new HashSet<>(transformSpecList.size());
-                for (TransformSpec existingTransformSpec : transformSpecList) {
+                for (final TransformSpec existingTransformSpec : transformSpecList) {
                     existingIds.add(existingTransformSpec.getId());
                 }
                 final Set<String> missingIds = new TreeSet<>();
-                for (String id : unresolvedTransformSpecIds) {
+                for (final String id : unresolvedTransformSpecIds) {
                     if (! existingIds.contains(id)) {
                         missingIds.add(id);
                     }
@@ -1011,10 +1012,10 @@ public class RenderDao {
         }
     }
 
-    private Double getBound(DBCollection tileCollection,
-                            DBObject tileQuery,
-                            String boundKey,
-                            boolean isMin) {
+    private Double getBound(final DBCollection tileCollection,
+                            final DBObject tileQuery,
+                            final String boundKey,
+                            final boolean isMin) {
 
         Double bound = null;
 
@@ -1044,20 +1045,20 @@ public class RenderDao {
         return bound;
     }
 
-    private DBCollection getStackCollection(StackId stackId) {
+    private DBCollection getStackCollection(final StackId stackId) {
         return renderDb.getCollection(stackId.getStackCollectionName());
     }
 
-    private DBCollection getTileCollection(StackId stackId) {
+    private DBCollection getTileCollection(final StackId stackId) {
         return renderDb.getCollection(stackId.getTileCollectionName());
     }
 
-    private DBCollection getTransformCollection(StackId stackId) {
+    private DBCollection getTransformCollection(final StackId stackId) {
         return renderDb.getCollection(stackId.getTransformCollectionName());
     }
 
-    private void validateRequiredParameter(String context,
-                                           Object value)
+    private void validateRequiredParameter(final String context,
+                                           final Object value)
             throws IllegalArgumentException {
 
         if (value == null) {
@@ -1065,14 +1066,14 @@ public class RenderDao {
         }
     }
 
-    private void ensureTransformIndexes(DBCollection transformCollection) {
+    private void ensureTransformIndexes(final DBCollection transformCollection) {
         LOG.debug("ensureTransformIndexes: entry, {}", transformCollection.getName());
         transformCollection.createIndex(new BasicDBObject("id", 1),
                                         new BasicDBObject("unique", true).append("background", true));
         LOG.debug("ensureTransformIndexes: exit");
     }
 
-    private void ensureTileIndexes(DBCollection tileCollection) {
+    private void ensureTileIndexes(final DBCollection tileCollection) {
         LOG.debug("ensureTileIndexes: entry, {}", tileCollection.getName());
         final BasicDBObject background = new BasicDBObject("background", true);
         tileCollection.createIndex(new BasicDBObject("tileId", 1),
@@ -1089,9 +1090,9 @@ public class RenderDao {
         LOG.debug("ensureTileIndexes: exit");
     }
 
-    private String getBulkResultMessage(String context,
-                                        BulkWriteResult result,
-                                        int objectCount) {
+    private String getBulkResultMessage(final String context,
+                                        final BulkWriteResult result,
+                                        final int objectCount) {
 
         final StringBuilder message = new StringBuilder(128);
 

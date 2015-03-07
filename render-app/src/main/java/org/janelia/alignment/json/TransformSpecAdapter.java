@@ -1,5 +1,16 @@
 package org.janelia.alignment.json;
 
+import java.lang.reflect.Type;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.janelia.alignment.spec.InterpolatedTransformSpec;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ListTransformSpec;
+import org.janelia.alignment.spec.ReferenceTransformSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.TransformSpecMetaData;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
@@ -8,16 +19,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
-import org.janelia.alignment.spec.InterpolatedTransformSpec;
-import org.janelia.alignment.spec.LeafTransformSpec;
-import org.janelia.alignment.spec.ListTransformSpec;
-import org.janelia.alignment.spec.ReferenceTransformSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.alignment.spec.TransformSpecMetaData;
-
-import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Handles polymorphic serialization and deserialization of {@link org.janelia.alignment.spec.TransformSpec} instances.
@@ -30,8 +31,8 @@ import java.util.Map;
 public class TransformSpecAdapter
         implements JsonSerializer<TransformSpec>, JsonDeserializer<TransformSpec>  {
 
-    private Gson gson;
-    private Map<String, TransformSpecSubClassAdapter> specTypeRegistry;
+    private final Gson gson;
+    private final Map<String, TransformSpecSubClassAdapter> specTypeRegistry;
 
     public TransformSpecAdapter() {
 
@@ -49,9 +50,9 @@ public class TransformSpecAdapter
     }
 
     @Override
-    public JsonElement serialize(TransformSpec src,
-                                 Type typeOfSrc,
-                                 JsonSerializationContext context)
+    public JsonElement serialize(final TransformSpec src,
+                                 final Type typeOfSrc,
+                                 final JsonSerializationContext context)
             throws IllegalArgumentException {
 
         final TransformSpecSubClassAdapter subClassAdapter = specTypeRegistry.get(src.getType());
@@ -64,9 +65,9 @@ public class TransformSpecAdapter
     }
 
     @Override
-    public TransformSpec deserialize(JsonElement json,
-                                     Type typeOfT,
-                                     JsonDeserializationContext context)
+    public TransformSpec deserialize(final JsonElement json,
+                                     final Type typeOfT,
+                                     final JsonDeserializationContext context)
             throws JsonParseException {
 
         final JsonObject specObject = json.getAsJsonObject();
@@ -80,8 +81,8 @@ public class TransformSpecAdapter
         return subClassAdapter.deserializeSpec(specObject);
     }
 
-    private String getStringValue(JsonObject specObject,
-                                  String elementName) {
+    private String getStringValue(final JsonObject specObject,
+                                  final String elementName) {
         String value = null;
         final JsonElement element = specObject.get(elementName);
         if (element != null) {
@@ -90,8 +91,8 @@ public class TransformSpecAdapter
         return value;
     }
 
-    private TransformSpecMetaData getMetaDataValue(JsonObject specObject,
-                                                   String elementName) {
+    private TransformSpecMetaData getMetaDataValue(final JsonObject specObject,
+                                                   final String elementName) {
         TransformSpecMetaData value = null;
         final JsonElement element = specObject.get(elementName);
         if (element != null) {
@@ -100,8 +101,8 @@ public class TransformSpecAdapter
         return value;
     }
 
-    private TransformSpec getTransformSpecValue(JsonObject specObject,
-                                                String elementName) {
+    private TransformSpec getTransformSpecValue(final JsonObject specObject,
+                                                final String elementName) {
         TransformSpec value = null;
         final JsonElement element = specObject.get(elementName);
         if (element != null) {
@@ -118,18 +119,18 @@ public class TransformSpecAdapter
      * and deserialization (good for leaf and reference instances) method implementations.
      */
     private class TransformSpecSubClassAdapter {
-        private Class<? extends TransformSpec> clazz;
+        private final Class<? extends TransformSpec> clazz;
 
-        public TransformSpecSubClassAdapter(Class<? extends TransformSpec> clazz) {
+        public TransformSpecSubClassAdapter(final Class<? extends TransformSpec> clazz) {
             this.clazz = clazz;
         }
 
-        public JsonElement serializeSpec(TransformSpec src,
-                                         JsonSerializationContext context) {
+        public JsonElement serializeSpec(final TransformSpec src,
+                                         final JsonSerializationContext context) {
             return context.serialize(src, clazz);
         }
 
-        public TransformSpec deserializeSpec(JsonObject specObject) {
+        public TransformSpec deserializeSpec(final JsonObject specObject) {
             return gson.fromJson(specObject, clazz);
         }
     }
@@ -147,13 +148,13 @@ public class TransformSpecAdapter
         }
 
         @Override
-        public InterpolatedTransformSpec deserializeSpec(JsonObject specObject) {
+        public InterpolatedTransformSpec deserializeSpec(final JsonObject specObject) {
             final String id = getStringValue(specObject, TransformSpec.ID_ELEMENT_NAME);
             final TransformSpecMetaData metaData = getMetaDataValue(specObject, TransformSpec.META_DATA_ELEMENT_NAME);
             final TransformSpec aSpec = getTransformSpecValue(specObject, InterpolatedTransformSpec.A_ELEMENT_NAME);
             final TransformSpec bSpec = getTransformSpecValue(specObject, InterpolatedTransformSpec.B_ELEMENT_NAME);
             final JsonElement lambdaElement = specObject.get(InterpolatedTransformSpec.LAMBDA_ELEMENT_NAME);
-            final Float lambda = lambdaElement.getAsFloat();
+            final Double lambda = lambdaElement.getAsDouble();
             return new InterpolatedTransformSpec(id, metaData, aSpec, bSpec, lambda);
         }
 
@@ -172,14 +173,14 @@ public class TransformSpecAdapter
         }
 
         @Override
-        public ListTransformSpec deserializeSpec(JsonObject specObject) {
+        public ListTransformSpec deserializeSpec(final JsonObject specObject) {
             final String id = getStringValue(specObject, TransformSpec.ID_ELEMENT_NAME);
             final TransformSpecMetaData metaData = getMetaDataValue(specObject, TransformSpec.META_DATA_ELEMENT_NAME);
             final JsonElement specListElement = specObject.get(ListTransformSpec.SPEC_LIST_ELEMENT_NAME);
 
             final ListTransformSpec listTransformSpec = new ListTransformSpec(id, metaData);
             TransformSpec elementSpec;
-            for (JsonElement listElement : specListElement.getAsJsonArray()) {
+            for (final JsonElement listElement : specListElement.getAsJsonArray()) {
                 elementSpec = deserialize(listElement, null, null);
                 listTransformSpec.addSpec(elementSpec);
             }

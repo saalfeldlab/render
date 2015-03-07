@@ -23,8 +23,24 @@ public class MovingLeastSquaresBuilder extends AbstractWarpTransformBuilder<Movi
 
     /** MLS transform model class (based upon number of point matches) */
     protected final Class<? extends AbstractAffineModel2D<?>> modelClass;
-    
+
     protected Double alpha;
+
+    final static private float[] toFloats(final double[] doubles) {
+        final float[] floats = new float[doubles.length];
+        for (int i = 0; i < doubles.length; ++i) {
+            floats[i] = (float)doubles[i];
+        }
+        return floats;
+    }
+
+    final static private float[][] toFloats(final double[][] doubles) {
+        final float[][] floats = new float[doubles.length][];
+        for (int i = 0; i < doubles.length; ++i)
+            floats[i] = toFloats(doubles[i]);
+
+        return floats;
+    }
 
     /**
      * Derives center point matches between the two specified tile lists using tileId to correlate the tiles.
@@ -40,7 +56,7 @@ public class MovingLeastSquaresBuilder extends AbstractWarpTransformBuilder<Movi
                                      final Double alpha) {
 
         readTileSpecs(montageTiles, alignTiles);
-        
+
         if (w.length == 1) {
             modelClass = TranslationModel2D.class;
         } else if (w.length == 2) {
@@ -63,10 +79,10 @@ public class MovingLeastSquaresBuilder extends AbstractWarpTransformBuilder<Movi
         final MovingLeastSquaresTransform2 transform = new MovingLeastSquaresTransform2();
 
         if (alpha != null) {
-            transform.setAlpha(alpha.floatValue());
+            transform.setAlpha(alpha.doubleValue());
         }
         transform.setModel(modelClass);
-        transform.setMatches(p, q, w);
+        transform.setMatches(toFloats(p), toFloats(q), toFloats(w));
 
         LOG.info("call: exit");
 

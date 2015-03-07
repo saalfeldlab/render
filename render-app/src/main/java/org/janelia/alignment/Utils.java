@@ -18,14 +18,13 @@ package org.janelia.alignment;
 
 import ij.ImagePlus;
 import ij.io.Opener;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.Point;
-import mpicbg.models.PointMatch;
-import mpicbg.models.SimilarityModel2D;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
@@ -33,12 +32,16 @@ import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.FileImageOutputStream;
 import javax.imageio.stream.ImageOutputStream;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Iterator;
+
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.CoordinateTransform;
+import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
+import mpicbg.models.SimilarityModel2D;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Stephan Saalfeld <saalfeld@janelia.hhmi.org>
@@ -137,7 +140,7 @@ public class Utils {
 
             try {
                 outputStream = new FileImageOutputStream(file);
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 throw new IllegalArgumentException("failed to create output stream for " + file.getAbsolutePath(), e);
             }
 
@@ -262,9 +265,9 @@ public class Utils {
                                             final int height,
                                             final double dx) {
         final ArrayList<PointMatch> samples = new ArrayList<PointMatch>();
-        for (float y = 0; y < height; y += dx) {
-            for (float x = 0; x < width; x += dx) {
-                final Point p = new Point(new float[]{x, y});
+        for (double y = 0; y < height; y += dx) {
+            for (double x = 0; x < width; x += dx) {
+                final Point p = new Point(new double[]{x, y});
                 p.apply(ct);
                 samples.add(new PointMatch(p, p));
             }
@@ -309,7 +312,7 @@ public class Utils {
     public static AffineModel2D createScaleLevelTransform(final int scaleLevel) {
         final AffineModel2D a = new AffineModel2D();
         final int scale = 1 << scaleLevel;
-        final float t = (scale - 1) * 0.5f;
+        final double t = (scale - 1) * 0.5;
         a.set(scale, 0, 0, scale, t, t);
         return a;
     }
@@ -321,12 +324,12 @@ public class Utils {
 //    public static AffineModel2D createScaleLevelTransform(final double scaleLevel) {
 //        final AffineModel2D a = new AffineModel2D();
 //        final double scale = Math.pow(2, scaleLevel);
-//        final float t = (float) ((scale - 1) * 0.5);
-//        a.set((float) scale, 0, 0, (float) scale, t, t);
+//        final double t = (scale - 1) * 0.5;
+//        a.set(scale, 0, 0, scale, t, t);
 //        return a;
 //    }
 
-    public static URI convertPathOrUriStringToUri(String pathOrUriString)
+    public static URI convertPathOrUriStringToUri(final String pathOrUriString)
             throws IllegalArgumentException {
         URI uri;
         if (pathOrUriString.indexOf(':') == -1) {
@@ -335,13 +338,13 @@ public class Utils {
             try {
                 file = file.getCanonicalFile();
                 uri = file.toURI();
-            } catch (Throwable t) {
+            } catch (final Throwable t) {
                 throw new IllegalArgumentException("failed to convert '" + pathOrUriString + "' to a URI", t);
             }
         } else {
             try {
                 uri = new URI(pathOrUriString);
-            } catch (Throwable t) {
+            } catch (final Throwable t) {
                 throw new IllegalArgumentException("failed to create URI for '" + pathOrUriString + "'", t);
             }
         }

@@ -148,8 +148,8 @@ public class TileSpec implements Serializable {
         final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
         return new TransformMesh(ctList,
                                  getNumberOfTrianglesCoveringWidth(meshCellSize),
-                                 width.floatValue(),
-                                 height.floatValue());
+                                 width.doubleValue(),
+                                 height.doubleValue());
     }
 
     /**
@@ -168,8 +168,8 @@ public class TileSpec implements Serializable {
         final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
         return new CoordinateTransformMesh(ctList,
                                            getNumberOfTrianglesCoveringWidth(meshCellSize),
-                                           width.floatValue(),
-                                           height.floatValue());
+                                           width.doubleValue(),
+                                           height.doubleValue());
     }
 
     /**
@@ -243,10 +243,9 @@ public class TileSpec implements Serializable {
      *
      * @return world coordinates (x, y, z) for the specified local coordinates.
      */
-    public float[] getWorldCoordinates(final float x,
-                                       final float y) {
-        float[] worldCoordinates;
-        final float[] w = new float[] {x, y};
+    public double[] getWorldCoordinates(final double x, final double y) {
+        double[] worldCoordinates;
+        final double[] w = new double[] {x, y};
 
         if (hasTransforms()) {
             final CoordinateTransformList<CoordinateTransform> ctl = getTransformList();
@@ -256,7 +255,7 @@ public class TileSpec implements Serializable {
         if (z == null) {
             worldCoordinates = w;
         } else {
-            worldCoordinates = new float[]{w[0], w[1], z.floatValue()};
+            worldCoordinates = new double[]{w[0], w[1], z.doubleValue()};
         }
 
         return worldCoordinates;
@@ -274,11 +273,11 @@ public class TileSpec implements Serializable {
      * @throws NoninvertibleModelException
      *   if this tile's transforms cannot be inverted for the specified point.
      */
-    public float[] getLocalCoordinates(final float x, final float y, final double meshCellSize)
+    public double[] getLocalCoordinates(final double x, final double y, final double meshCellSize)
             throws IllegalStateException, NoninvertibleModelException {
 
-        float[] localCoordinates;
-        final float[] l = new float[] {x, y};
+        double[] localCoordinates;
+        final double[] l = new double[] {x, y};
         if (hasTransforms()) {
             final CoordinateTransformMesh mesh = getCoordinateTransformMesh(meshCellSize);
             mesh.applyInverseInPlace(l);
@@ -287,7 +286,7 @@ public class TileSpec implements Serializable {
         if (z == null) {
             localCoordinates = l;
         } else {
-            localCoordinates = new float[]{l[0], l[1], z.floatValue()};
+            localCoordinates = new double[]{l[0], l[1], z.doubleValue()};
         }
 
         return localCoordinates;
@@ -392,7 +391,7 @@ public class TileSpec implements Serializable {
         return transforms;
     }
 
-    public void setTransforms(ListTransformSpec transforms) {
+    public void setTransforms(final ListTransformSpec transforms) {
         this.transforms = transforms;
     }
 

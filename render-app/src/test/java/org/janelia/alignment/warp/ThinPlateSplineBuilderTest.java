@@ -46,10 +46,10 @@ public class ThinPlateSplineBuilderTest {
 
         TileSpec montageTileSpec;
         TileSpec alignTileSpec;
-        float[] montageCenter;
-        float[] alignCenter;
+        double[] montageCenter;
+        double[] alignCenter;
 
-        final float acceptableCenterDelta = 0.001f;
+        final double acceptableCenterDelta = 0.001;
 
 
         final HashMap<String, TileSpec> alignTileSpecsLUT = new HashMap<String, TileSpec>();
@@ -96,10 +96,10 @@ public class ThinPlateSplineBuilderTest {
         return tileSpecs;
     }
 
-    private float[] getCenter(final TileSpec tileSpec) {
-        final float[] center = new float[] {
-                tileSpec.getWidth() / 2.0f,
-                tileSpec.getHeight() / 2.0f
+    private double[] getCenter(final TileSpec tileSpec) {
+        final double[] center = new double[] {
+                tileSpec.getWidth() * 0.5,
+                tileSpec.getHeight() * 0.5
         };
         tileSpec.getTransforms().getInstance().applyInPlace(center);
         return center;

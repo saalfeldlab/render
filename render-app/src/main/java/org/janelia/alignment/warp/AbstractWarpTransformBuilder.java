@@ -60,17 +60,17 @@ import org.slf4j.LoggerFactory;
  */
 abstract public class AbstractWarpTransformBuilder<T extends CoordinateTransform> implements Callable<T>
 {
-    protected float[][] p;
-    protected float[][] q;
-    protected float[] w;
-    
-    protected static float[] centerToWorld(final TileSpec tileSpec) {
-        final float[] center = new float[] { (float) tileSpec.getWidth() / 2.0f, (float) tileSpec.getHeight() / 2.0f };
+    protected double[][] p;
+    protected double[][] q;
+    protected double[] w;
+
+    protected static double[] centerToWorld(final TileSpec tileSpec) {
+        final double[] center = new double[] { tileSpec.getWidth() / 2.0, tileSpec.getHeight() / 2.0 };
         final CoordinateTransformList<CoordinateTransform> ctl = tileSpec.getTransformList();
         ctl.applyInPlace(center);
         return center;
     }
-    
+
     protected void readTileSpecs(
             final Collection<TileSpec> montageTiles,
             final Collection<TileSpec> alignTiles) {
@@ -110,15 +110,15 @@ abstract public class AbstractWarpTransformBuilder<T extends CoordinateTransform
             throw new IllegalArgumentException(
                     "montage and align tile lists do not contain common tile ids");
         }
-        
-        p = new float[2][numberOfPointMatches];
-        q = new float[2][numberOfPointMatches];
-        w = new float[numberOfPointMatches];
-        
+
+        p = new double[2][numberOfPointMatches];
+        q = new double[2][numberOfPointMatches];
+        w = new double[numberOfPointMatches];
+
         int i = 0;
         for (final PointMatch match : montageToAlignCenterPointMatches) {
-            final float[] pp = match.getP1().getL();
-            final float[] qq = match.getP2().getW();
+            final double[] pp = match.getP1().getL();
+            final double[] qq = match.getP2().getW();
 
             p[0][i] = pp[0];
             p[1][i] = pp[1];

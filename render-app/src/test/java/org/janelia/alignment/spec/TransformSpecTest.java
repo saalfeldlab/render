@@ -1,16 +1,17 @@
 package org.janelia.alignment.spec;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
 import mpicbg.trakem2.transform.AffineModel2D;
+
 import org.janelia.alignment.json.JsonUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Tests the {@link TransformSpec} class.
@@ -58,7 +59,7 @@ public class TransformSpecTest {
         list4.addSpec(leaf1);
         list4.addSpec(ref99);
 
-        final InterpolatedTransformSpec interpolated5 = new InterpolatedTransformSpec("5", null, ref1, list4, 2.3f);
+        final InterpolatedTransformSpec interpolated5 = new InterpolatedTransformSpec("5", null, ref1, list4, 2.3);
 
         listSpec = new ListTransformSpec("6", null);
         listSpec.addSpec(leaf3);
@@ -99,10 +100,10 @@ public class TransformSpecTest {
                         LeafTransformSpec.class.getName() + " instance");
         }
 
-        TransformSpecMetaData parsedMetaData = parsedLeafSpec.getMetaData();
+        final TransformSpecMetaData parsedMetaData = parsedLeafSpec.getMetaData();
         Assert.assertNotNull("null meta data returned", parsedMetaData);
 
-        TransformSpecMetaData lcMetaData = leaf3.getMetaData();
+        final TransformSpecMetaData lcMetaData = leaf3.getMetaData();
         Assert.assertEquals("invalid meta data group",
                             lcMetaData.getGroup(), parsedMetaData.getGroup());
 
@@ -116,7 +117,7 @@ public class TransformSpecTest {
 
         validateUnresolvedSize("before resolution", listSpec, 2);
 
-        Map<String, TransformSpec> idToSpecMap = new HashMap<String, TransformSpec>();
+        final Map<String, TransformSpec> idToSpecMap = new HashMap<String, TransformSpec>();
         idToSpecMap.put(ref1.getRefId(), leaf1);
         idToSpecMap.put(ref99.getRefId(), new ReferenceTransformSpec(leaf2.getId()));
 
@@ -157,13 +158,13 @@ public class TransformSpecTest {
     @Test
     public void testGetInstanceWithValidation() throws Exception {
         leaf1.validate();
-        mpicbg.models.CoordinateTransform coordinateTransform = leaf1.getInstance();
+        final mpicbg.models.CoordinateTransform coordinateTransform = leaf1.getInstance();
         Assert.assertNotNull("transform not created after validation", coordinateTransform);
     }
 
     @Test
     public void testGetInstanceWithoutValidation() throws Exception {
-        mpicbg.models.CoordinateTransform coordinateTransform = leaf1.getInstance();
+        final mpicbg.models.CoordinateTransform coordinateTransform = leaf1.getInstance();
         Assert.assertNotNull("transform not created prior to validation", coordinateTransform);
     }
 
@@ -179,9 +180,9 @@ public class TransformSpecTest {
         spec.validate();
     }
 
-    private void validateUnresolvedSize(String context,
-                                        TransformSpec spec,
-                                        int expectedSize) {
+    private void validateUnresolvedSize(final String context,
+                                        final TransformSpec spec,
+                                        final int expectedSize) {
         final Set<String> unresolvedIds = spec.getUnresolvedIds();
         Assert.assertEquals("invalid number of unresolved references " + context, expectedSize, unresolvedIds.size());
     }

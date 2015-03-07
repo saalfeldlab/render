@@ -1,7 +1,5 @@
 package org.janelia.render.service.dao;
 
-import com.google.gson.reflect.TypeToken;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.lang.reflect.Type;
@@ -31,6 +29,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.gson.reflect.TypeToken;
 
 /**
  * Tests the {@link RenderDao} class.
@@ -86,7 +86,7 @@ public class RenderDaoTest {
         try {
             final String json = parameters.toJson();
             Assert.assertNotNull("null json string produced for parameters", json);
-        } catch (Exception e) {
+        } catch (final Exception e) {
             LOG.error("failed to serialize json for " + parameters, e);
             Assert.fail("retrieved parameters cannot be re-serialized to json");
         }
@@ -97,7 +97,7 @@ public class RenderDaoTest {
         Assert.assertEquals("invalid number of tiles after init", 6, tileSpecs.size());
 
         ListTransformSpec transforms;
-        for (TileSpec tileSpec : tileSpecs) {
+        for (final TileSpec tileSpec : tileSpecs) {
             transforms = tileSpec.getTransforms();
             Assert.assertTrue("tileSpec " + tileSpec.getTileId() + " is not fully resolved",
                               transforms.isFullyResolved());
@@ -130,7 +130,7 @@ public class RenderDaoTest {
         final String temca = "0";
         final LayoutData layoutData = new LayoutData("s123", temca, null, null, null, null, null, null);
 
-        TileSpec tileSpec = new TileSpec();
+        final TileSpec tileSpec = new TileSpec();
         tileSpec.setTileId(tileId);
         tileSpec.setLayout(layoutData);
 
@@ -295,9 +295,9 @@ public class RenderDaoTest {
     public void testWriteCoordinatesWithTileIds() throws Exception {
         final Double z = 3903.0;
         final List<TileCoordinates> worldCoordinates = new ArrayList<>();
-        worldCoordinates.add(TileCoordinates.buildWorldInstance(null, new float[] {1900, 3000}));
-        worldCoordinates.add(TileCoordinates.buildWorldInstance(null, new float[] {3700, 3000}));
-        worldCoordinates.add(TileCoordinates.buildWorldInstance(null, new float[]{4500, 3000}));
+        worldCoordinates.add(TileCoordinates.buildWorldInstance(null, new double[] {1900, 3000}));
+        worldCoordinates.add(TileCoordinates.buildWorldInstance(null, new double[] {3700, 3000}));
+        worldCoordinates.add(TileCoordinates.buildWorldInstance(null, new double[]{4500, 3000}));
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 

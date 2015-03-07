@@ -11,6 +11,8 @@ import org.janelia.alignment.json.JsonUtils;
  */
 public class CanvasMatches implements Serializable {
 
+    private static final long serialVersionUID = 542757092635657160L;
+
     /** Z value for all source coordinates. */
     private final Double pz;
 
@@ -26,11 +28,11 @@ public class CanvasMatches implements Serializable {
     /** Weighted source-target point correspondences. */
     private final Matches matches;
 
-    public CanvasMatches(Double pz,
-                         String pId,
-                         Double qz,
-                         String qId,
-                         Matches matches) {
+    public CanvasMatches(final Double pz,
+                         final String pId,
+                         final Double qz,
+                         final String qId,
+                         final Matches matches) {
         this.pz = pz;
         this.pId = pId;
         this.qz = qz;
@@ -76,7 +78,7 @@ public class CanvasMatches implements Serializable {
         return sb.toString();
     }
 
-    public static CanvasMatches fromJson(String json) {
+    public static CanvasMatches fromJson(final String json) {
         return JsonUtils.GSON.fromJson(json, CanvasMatches.class);
     }
 

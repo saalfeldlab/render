@@ -18,6 +18,7 @@ package org.janelia.alignment.match;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 /**
@@ -26,8 +27,10 @@ import mpicbg.models.PointMatch;
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org> and John Bogovic
  */
-@SuppressWarnings("UnusedDeclaration")
 public class Matches implements Serializable {
+
+    private static final long serialVersionUID = 7877702099321390264L;
+
     private static boolean checkDimensions(
             final double[][] p,
             final double[][] q,
@@ -95,9 +98,9 @@ public class Matches implements Serializable {
     }
     public PointMatch createPointMatch(final int i) {
         return new PointMatch(
-                new Point(new float[]{(float)p[0][i], (float)p[1][i]}),
-                new Point(new float[]{(float)q[0][i], (float)q[1][i]}),
-                (float)w[i]);
+                new Point(new double[]{p[0][i], p[1][i]}),
+                new Point(new double[]{q[0][i], q[1][i]}),
+                w[i]);
     }
     public ArrayList<PointMatch> createPointMatches() {
         final ArrayList<PointMatch> matches = new ArrayList<>();
