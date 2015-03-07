@@ -66,22 +66,22 @@ public class BoxClient {
         private Integer height;
 
         @Parameter(names = "--maxLevel", description = "Maximum mipmap level to generate (default is 0)", required = false)
-        private Integer maxLevel;
+        private Integer maxLevel = 0;
 
         @Parameter(names = "--format", description = "Format for rendered boxes (default is PNG)", required = false)
-        private String format;
+        private String format = Utils.PNG_FORMAT;
 
         @Parameter(names = "--overviewWidth", description = "Width of layer overview image (omit or set to zero to disable overview generation)", required = false)
         private Integer overviewWidth;
 
         @Parameter(names = "--skipInterpolation", description = "skip interpolation (e.g. for DMG data)", required = false, arity = 0)
-        private boolean skipInterpolation;
+        private boolean skipInterpolation = false;
 
         @Parameter(names = "--label", description = "Generate single color tile labels instead of actual tile images", required = false, arity = 0)
-        private boolean label;
+        private boolean label = false;
 
         @Parameter(names = "--createIGrid", description = "create an IGrid file", required = false, arity = 0)
-        private boolean createIGrid;
+        private boolean createIGrid = false;
 
         @Parameter(description = "Z values for layers to render", required = true)
         private List<Double> zValues;
