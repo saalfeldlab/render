@@ -1,18 +1,16 @@
 package org.janelia.alignment.warp;
 
-import com.google.gson.reflect.TypeToken;
-
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 import mpicbg.trakem2.transform.ThinPlateSplineTransform;
 
-import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
@@ -21,6 +19,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.gson.reflect.TypeToken;
 
 /**
  * Tests the {@link ThinPlateSplineBuilder} class.
@@ -33,6 +33,8 @@ public class ThinPlateSplineBuilderTest {
     public void testPilotSection() throws Exception {
         final List<TileSpec> montageTiles = getTiles("20141216_863_montage.2119.json");
         final List<TileSpec> alignTiles = getTiles("20141216_863_align.2119.json");
+//        final List<TileSpec> montageTiles = getTiles("20150124_montage.5455.json");
+//        final List<TileSpec> alignTiles = getTiles("20150124_align.5455.json");
         final ThinPlateSplineBuilder builder = new ThinPlateSplineBuilder(montageTiles,
                                                                           alignTiles);
         final ThinPlateSplineTransform transform = builder.call();
@@ -42,50 +44,46 @@ public class ThinPlateSplineBuilderTest {
                                                             transform.getClass().getName(),
                                                             transform.toDataString());
 
-        double[] maxDelta = new double[] {-1, -1};
-        double deltaX;
-        double deltaY;
-        TileSpec tileX = new TileSpec();
-        TileSpec tileY = new TileSpec();
         TileSpec montageTileSpec;
-        double[] montageCenter;
-        double[] alignCenter;
+        TileSpec alignTileSpec;
+        float[] montageCenter;
+        float[] alignCenter;
 
-        // TODO: include all tiles once problem is fixed
-        for (int i = 0; i < 1; i++) {
-//        for (int i = 0; i < alignTiles.size(); i++) {
+        final float acceptableCenterDelta = 0.001f;
+
+
+        final HashMap<String, TileSpec> alignTileSpecsLUT = new HashMap<String, TileSpec>();
+        for (final TileSpec ts : alignTiles) {
+            alignTileSpecsLUT.put(ts.getTileId(), ts);
+        }
+
+        LOG.info("montage.size = {}; align.size = {}", montageTiles.size(), alignTiles.size());
+
+        int j = 0;
+        for (int i = 0; i < montageTiles.size(); i++) {
 
             montageTileSpec = montageTiles.get(i);
             montageTileSpec.addTransformSpecs(Arrays.asList(tpsSpec));
-            montageTileSpec.deriveBoundingBox(RenderParameters.DEFAULT_MESH_CELL_SIZE, true);
 
             montageCenter = getCenter(montageTileSpec);
-            alignCenter = getCenter(alignTiles.get(i));
 
-            deltaX = Math.abs(montageCenter[0] - alignCenter[0]);
-            if (deltaX > maxDelta[0]) {
-                maxDelta[0] = deltaX;
-                tileX = montageTileSpec;
-            }
+            alignTileSpec = alignTileSpecsLUT.get(montageTileSpec.getTileId());
 
-            deltaY = Math.abs(montageCenter[1] - alignCenter[1]);
-            if (deltaY > maxDelta[1]) {
-                maxDelta[1] = deltaY;
-                tileY = montageTileSpec;
-            }
+            if (alignTileSpec == null)
+                continue;
 
-            LOG.info("after processing tile {}, maxDelta={}", montageTileSpec.getTileId(), maxDelta);
+            ++j;
+
+            alignCenter = getCenter(alignTileSpec);
+
+            Assert.assertEquals(montageCenter[0], alignCenter[0], acceptableCenterDelta);
+            Assert.assertEquals(montageCenter[1], alignCenter[1], acceptableCenterDelta);
         }
 
-        final double acceptableCenterDelta = 200.0;
-        Assert.assertTrue("center x values differ too much for tile " + tileX.getTileId(),
-                          maxDelta[0] < acceptableCenterDelta);
-        Assert.assertTrue("center y values differ too much for tile " + tileY.getTileId(),
-                          maxDelta[1] < acceptableCenterDelta);
-
+        LOG.info("intersection.size = {}", j);
     }
 
-    private List<TileSpec> getTiles(String jsonFileName) throws IOException {
+    private List<TileSpec> getTiles(final String jsonFileName) throws IOException {
         final File jsonFile = new File("src/test/resources/warp-test/" + jsonFileName);
         final Type collectionType = new TypeToken<List<TileSpec>>() {}.getType();
         List<TileSpec> tileSpecs;
@@ -98,12 +96,13 @@ public class ThinPlateSplineBuilderTest {
         return tileSpecs;
     }
 
-    // TODO: find out best way to derive center
-    private double[] getCenter(TileSpec tileSpec) {
-        return new double[] {
-                tileSpec.getMaxX() - tileSpec.getMinX(),
-                tileSpec.getMaxY() - tileSpec.getMinY()
+    private float[] getCenter(final TileSpec tileSpec) {
+        final float[] center = new float[] {
+                tileSpec.getWidth() / 2.0f,
+                tileSpec.getHeight() / 2.0f
         };
+        tileSpec.getTransforms().getInstance().applyInPlace(center);
+        return center;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ThinPlateSplineBuilderTest.class);
