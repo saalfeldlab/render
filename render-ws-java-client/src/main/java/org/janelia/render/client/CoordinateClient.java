@@ -142,11 +142,15 @@ public class CoordinateClient {
 
     public List<List<TileCoordinates>> worldToLocal(final List<List<TileCoordinates>> worldListOfLists)
             throws IOException {
+        return worldToLocal(worldListOfLists, getResolvedTiles());
+    }
+
+    public List<List<TileCoordinates>> worldToLocal(final List<List<TileCoordinates>> worldListOfLists,
+                                                    final ResolvedTileSpecCollection tiles)
+            throws IOException {
 
         LOG.info("worldToLocal: entry, worldListOfLists.size()={}",
                  worldListOfLists.size());
-
-        final ResolvedTileSpecCollection tiles = renderDataClient.getResolvedTiles(stack, z);
 
         final ProcessTimer timer = new ProcessTimer();
 
@@ -205,10 +209,14 @@ public class CoordinateClient {
 
     public List<TileCoordinates> localToWorld(final List<TileCoordinates> localCoordinatesList)
             throws IOException {
+        return localToWorld(localCoordinatesList, getResolvedTiles());
+    }
+
+    public List<TileCoordinates> localToWorld(final List<TileCoordinates> localCoordinatesList,
+                                              final ResolvedTileSpecCollection tiles)
+            throws IOException {
 
         LOG.info("localToWorld: localCoordinatesList.size()={}", localCoordinatesList.size());
-
-        final ResolvedTileSpecCollection tiles = renderDataClient.getResolvedTiles(stack, z);
 
         final ProcessTimer timer = new ProcessTimer();
 
@@ -273,6 +281,13 @@ public class CoordinateClient {
                  worldCoordinatesList.size(), errorCount, timer.getElapsedSeconds());
 
         return worldCoordinatesList;
+    }
+
+    private ResolvedTileSpecCollection getResolvedTiles()
+            throws IOException {
+        final ResolvedTileSpecCollection tiles = renderDataClient.getResolvedTiles(stack, z);
+        tiles.resolveTileSpecs();
+        return tiles;
     }
 
     private List<TileSpec> getTileSpecsForCoordinates(final List<TileCoordinates> coordinatesList,

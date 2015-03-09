@@ -169,14 +169,11 @@ public class ResolvedTileSpecCollection {
         return tileIdToSpecMap.size() > 0;
     }
 
-    public TileSpec getOneTileSpec() {
-        TileSpec tileSpec = null;
-        //noinspection LoopStatementThatDoesntLoop
-        for (TileSpec ts : tileIdToSpecMap.values()) {
-            tileSpec = ts;
-            break;
+    public void resolveTileSpecs()
+            throws IllegalStateException {
+        for (TileSpec tileSpec : tileIdToSpecMap.values()) {
+            resolveTileSpec(tileSpec);
         }
-        return tileSpec;
     }
 
     @Override
@@ -192,13 +189,6 @@ public class ResolvedTileSpecCollection {
                                            TileSpec tileSpec) {
         return "all tiles must have a z value of " + expectedZ + " but tile " +
                tileSpec.getTileId() + " has a z value of " + tileSpec.getZ();
-    }
-
-    private void resolveTileSpecs()
-            throws IllegalStateException {
-        for (TileSpec tileSpec : tileIdToSpecMap.values()) {
-            resolveTileSpec(tileSpec);
-        }
     }
 
     private void resolveTileSpec(TileSpec tileSpec)
