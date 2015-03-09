@@ -12,10 +12,9 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="Maven: net.imagej:ij:1.49m" level="project" />
-    <orderEntry type="library" name="Maven: mpicbg:mpicbg:0.6.1" level="project" />
-    <orderEntry type="library" name="Maven: jama:jama:1.0.2" level="project" />
-    <orderEntry type="library" name="Maven: sc.fiji:TrakEM2_:1.0d" level="project" />
+    <orderEntry type="library" name="Maven: mpicbg:mpicbg:1.0.0" level="project" />
     <orderEntry type="library" name="Maven: gov.nist.math:jama:1.0.3" level="project" />
+    <orderEntry type="library" name="Maven: sc.fiji:TrakEM2_:1.0d" level="project" />
     <orderEntry type="library" name="Maven: org.jfree:jfreechart:1.0.14" level="project" />
     <orderEntry type="library" name="Maven: org.jfree:jcommon:1.0.17" level="project" />
     <orderEntry type="library" name="Maven: xml-apis:xml-apis:1.3.04" level="project" />
@@ -25,7 +24,7 @@
     <orderEntry type="library" name="Maven: postgresql:postgresql:8.2-507.jdbc3" level="project" />
     <orderEntry type="library" name="Maven: com.sun.media:jai-codec:1.1.3" level="project" />
     <orderEntry type="library" name="Maven: javax.media:jai-core:1.1.3" level="project" />
-    <orderEntry type="library" name="Maven: mpicbg:mpicbg_:0.6.1" level="project" />
+    <orderEntry type="library" name="Maven: mpicbg:mpicbg_:1.0.0" level="project" />
     <orderEntry type="library" name="Maven: sc.fiji:VectorString:1.0.2" level="project" />
     <orderEntry type="library" name="Maven: sc.fiji:Simple_Neurite_Tracer:2.0.3" level="project" />
     <orderEntry type="library" name="Maven: sc.fiji:3D_Viewer:3.0.1" level="project" />
@@ -144,7 +143,7 @@
     <orderEntry type="library" name="Maven: net.imglib2:imglib2-algorithm-fft:0.1.1" level="project" />
     <orderEntry type="library" name="Maven: sc.fiji:level_sets:1.0.1" level="project" />
     <orderEntry type="library" name="Maven: sc.fiji:bUnwarpJ_:2.6.1" level="project" />
-    <orderEntry type="library" name="Maven: sc.fiji:mpicbg-trakem2:1.0.3" level="project" />
+    <orderEntry type="library" name="Maven: sc.fiji:mpicbg-trakem2:1.2.1" level="project" />
     <orderEntry type="library" name="Maven: org.scijava:jython-shaded:2.5.3" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: junit:junit:4.5" level="project" />
   </component>
