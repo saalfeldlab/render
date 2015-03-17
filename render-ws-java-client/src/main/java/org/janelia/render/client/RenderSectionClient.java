@@ -31,17 +31,14 @@ public class RenderSectionClient {
         @Parameter(names = "--stack", description = "Stack name", required = true)
         private String stack;
 
-        @Parameter(names = "--rootDirectory", description = "Root directory for rendered layers (e.g. /tier2/flyTEM/nobackup/rendered_boxes/FAFB00/v5_montage)", required = true)
+        @Parameter(names = "--rootDirectory", description = "Root directory for rendered layers (e.g. /tier2/flyTEM/nobackup/rendered_boxes)", required = true)
         private String rootDirectory;
 
-        @Parameter(names = "--scale", description = "Scale for each rendered layer", required = true)
-        private Double scale;
+        @Parameter(names = "--scale", description = "Scale for each rendered layer (default is 0.02)", required = false)
+        private Double scale = 0.02;
 
         @Parameter(names = "--format", description = "Format for rendered boxes (default is PNG)", required = false)
         private String format = Utils.PNG_FORMAT;
-
-        @Parameter(names = "--skipInterpolation", description = "skip interpolation (e.g. for DMG data)", required = false, arity = 0)
-        private boolean skipInterpolation = false;
 
         @Parameter(description = "Z values for sections to render", required = true)
         private List<Double> zValues;
