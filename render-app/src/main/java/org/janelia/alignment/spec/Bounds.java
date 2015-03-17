@@ -69,6 +69,14 @@ public class Bounds implements Serializable {
         return ((minX != null) && (minY != null) && (maxX != null) && (maxY != null));
     }
 
+    public Double getDeltaX() {
+        return maxX - minX;
+    }
+
+    public Double getDeltaY() {
+        return maxY - minY;
+    }
+
     @Override
     public String toString() {
         return "{minX: " + minX +
