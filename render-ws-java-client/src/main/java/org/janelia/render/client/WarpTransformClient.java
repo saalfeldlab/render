@@ -1,6 +1,9 @@
 package org.janelia.render.client;
 
+import com.beust.jcommander.Parameter;
+
 import java.util.Collection;
+import java.util.List;
 
 import mpicbg.trakem2.transform.CoordinateTransform;
 
@@ -15,34 +18,46 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Java client for generating Moving Least Squares stack data.
+ * Java client for generating warp transform (TPS or MLS) stack data.
  *
  * @author Eric Trautman
  */
-public class MLSStackClient {
+public class WarpTransformClient {
 
-    /**
-     * @param  args  see {@link MLSStackClientParameters} for command line argument details.
-     */
+    @SuppressWarnings("ALL")
+    private static class Parameters extends RenderDataClientParameters {
+
+        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+
+        @Parameter(names = "--alignStack", description = "Align stack name", required = true)
+        private String alignStack;
+
+        @Parameter(names = "--montageStack", description = "Montage stack name", required = true)
+        private String montageStack;
+
+        @Parameter(names = "--mlsStack", description = "Target stack (tps or mls) name", required = true)
+        private String mlsStack;
+
+        @Parameter(names = "--alpha", description = "Alpha value for MLS transform", required = false)
+        private Double alpha;
+
+        @Parameter(names = "--deriveTPS", description = "Derive thin plate spline transform instead of MLS transform", required = false, arity = 0)
+        private boolean deriveTPS;
+
+        @Parameter(description = "Z values", required = true)
+        private List<String> zValues;
+    }
+
     public static void main(final String[] args) {
         try {
+            final Parameters parameters = new Parameters();
+            parameters.parse(args);
 
-            final MLSStackClientParameters params = MLSStackClientParameters.parseCommandLineArgs(args);
+            LOG.info("main: entry, parameters={}", parameters);
 
-            if (params.displayHelp()) {
-
-                params.showUsage();
-
-            } else {
-
-                LOG.info("main: entry, params={}", params);
-
-                final MLSStackClient client = new MLSStackClient(params);
-                final Double alpha = params.getAlpha();
-                for (final String z : params.getzValues()) {
-                    client.generateStackDataForZ(new Double(z), alpha);
-                }
-
+            final WarpTransformClient client = new WarpTransformClient(parameters);
+            for (final String z : parameters.zValues) {
+                client.generateStackDataForZ(new Double(z), parameters.alpha);
             }
 
         } catch (final Throwable t) {
@@ -50,21 +65,13 @@ public class MLSStackClient {
         }
     }
 
-    private final String alignStack;
-    private final String montageStack;
-    private final String mlsStack;
-    private final boolean deriveTPS;
+    private final Parameters parameters;
 
     private final RenderDataClient renderDataClient;
 
-    public MLSStackClient(final MLSStackClientParameters params) {
-
-        this.alignStack = params.getAlignStack();
-        this.montageStack = params.getMontageStack();
-        this.mlsStack = params.getMlsStack();
-        this.deriveTPS = params.isDeriveTPS();
-
-        this.renderDataClient = new RenderDataClient(params.getBaseDataUrl(), params.getOwner(), params.getProject());
+    public WarpTransformClient(final Parameters parameters) {
+        this.parameters = parameters;
+        this.renderDataClient = parameters.getClient();
     }
 
     public void generateStackDataForZ(final Double z,
@@ -73,8 +80,8 @@ public class MLSStackClient {
 
         LOG.info("generateStackDataForZ: entry, z={}, alpha={}", z, alpha);
 
-        final ResolvedTileSpecCollection montageTiles = renderDataClient.getResolvedTiles(montageStack, z);
-        final ResolvedTileSpecCollection alignTiles = renderDataClient.getResolvedTiles(alignStack, z);
+        final ResolvedTileSpecCollection montageTiles = renderDataClient.getResolvedTiles(parameters.montageStack, z);
+        final ResolvedTileSpecCollection alignTiles = renderDataClient.getResolvedTiles(parameters.alignStack, z);
 
         final TransformSpec mlsTransformSpec = buildTransform(montageTiles.getTileSpecs(),
                                                               alignTiles.getTileSpecs(),
@@ -88,20 +95,9 @@ public class MLSStackClient {
 
         LOG.info("generateStackDataForZ: added transform and derived bounding boxes for {}", z);
 
-        renderDataClient.saveResolvedTiles(montageTiles, mlsStack, z);
+        renderDataClient.saveResolvedTiles(montageTiles, parameters.mlsStack, z);
 
         LOG.info("generateStackDataForZ: exit, saved tiles and transforms for {}", z);
-    }
-
-    @Override
-    public String toString() {
-        return "MLSStackClient{" +
-               "renderDataClient=" + renderDataClient +
-               ", alignStack='" + alignStack + '\'' +
-               ", montageStack='" + montageStack + '\'' +
-               ", mlsStack='" + mlsStack + '\'' +
-               ", deriveTPS=" + deriveTPS +
-               '}';
     }
 
     private TransformSpec buildTransform(final Collection<TileSpec> montageTiles,
@@ -114,7 +110,7 @@ public class MLSStackClient {
         final String transformId;
         final CoordinateTransform transform;
         
-        if (deriveTPS) {        	
+        if (parameters.deriveTPS) {
             
         	LOG.info("buildTransform: deriving thin plate transform");
 
@@ -137,5 +133,5 @@ public class MLSStackClient {
                                      transform.toDataString());
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(MLSStackClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(WarpTransformClient.class);
 }
