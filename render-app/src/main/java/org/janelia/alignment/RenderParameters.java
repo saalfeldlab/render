@@ -105,7 +105,7 @@ public class RenderParameters implements Serializable {
     private final String parametersUrl;
 
     @Parameter(names = "--do_filter", description = "ad hoc filters to support alignment", required = false)
-    public boolean doFilter;
+    private boolean doFilter;
 
     @Parameter(names = "--background_color", description = "RGB int color for background (default is 0: black)", required = false)
     private Integer backgroundRGBColor;
@@ -170,7 +170,7 @@ public class RenderParameters implements Serializable {
         this.backgroundRGBColor = null;
         this.parametersUrl = null;
 
-        this.tileSpecs = new ArrayList<TileSpec>();
+        this.tileSpecs = new ArrayList<>();
 
         this.jCommander = null;
         this.outUri = null;
@@ -406,6 +406,14 @@ public class RenderParameters implements Serializable {
 
     public void setSkipInterpolation(boolean skipInterpolation) {
         this.skipInterpolation = skipInterpolation;
+    }
+
+    public boolean doFilter() {
+        return doFilter;
+    }
+
+    public void setDoFilter(boolean doFilter) {
+        this.doFilter = doFilter;
     }
 
     public Integer getBackgroundRGBColor() {
@@ -722,11 +730,6 @@ public class RenderParameters implements Serializable {
     private static final Double DEFAULT_SCALE = 1.0;
     private static final float DEFAULT_QUALITY = 0.85f;
     private static final int DEFAULT_NUMBER_OF_THREADS = 1;
-
-	public boolean doFilter()
-	{
-		return doFilter;
-	}
 
     public void setDoFilter(final Boolean filter) {
         doFilter = filter != null && filter;

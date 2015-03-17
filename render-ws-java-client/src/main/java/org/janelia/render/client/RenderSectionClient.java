@@ -40,6 +40,9 @@ public class RenderSectionClient {
         @Parameter(names = "--format", description = "Format for rendered boxes (default is PNG)", required = false)
         private String format = Utils.PNG_FORMAT;
 
+        @Parameter(names = "--do_filter", description = "use ad hoc filters to support alignment (default is true)", required = false, arity = 0)
+        private boolean doFilter = true;
+
         @Parameter(description = "Z values for sections to render", required = true)
         private List<Double> zValues;
     }
@@ -66,27 +69,27 @@ public class RenderSectionClient {
         }
     }
 
-    private final Parameters params;
+    private final Parameters clientParameters;
 
     private final File sectionDirectory;
     private final ImageProcessorCache imageProcessorCache;
     private final RenderDataClient renderDataClient;
 
-    public RenderSectionClient(final Parameters params) {
+    public RenderSectionClient(final Parameters clientParameters) {
 
-        this.params = params;
+        this.clientParameters = clientParameters;
 
-        final Path projectPath = Paths.get(params.rootDirectory,
-                                           params.project).toAbsolutePath();
+        final Path projectPath = Paths.get(clientParameters.rootDirectory,
+                                           clientParameters.project).toAbsolutePath();
 
         final File projectDirectory = projectPath.toFile();
         if (! projectDirectory.exists()) {
             throw new IllegalArgumentException("missing project directory " + projectDirectory);
         }
 
-        final String sectionsAtScaleName = "sections_at_" + params.scale;
+        final String sectionsAtScaleName = "sections_at_" + clientParameters.scale;
         final Path sectionPath = Paths.get(projectPath.toString(),
-                                           params.stack,
+                                           clientParameters.stack,
                                            sectionsAtScaleName).toAbsolutePath();
 
         this.sectionDirectory = sectionPath.toFile();
@@ -96,7 +99,7 @@ public class RenderSectionClient {
         final int maxCachedPixels = 50 * 1000000;
         this.imageProcessorCache = new ImageProcessorCache(maxCachedPixels, false, false);
 
-        this.renderDataClient = params.getClient();
+        this.renderDataClient = clientParameters.getClient();
     }
 
     public void generateImageForZ(final Double z)
@@ -105,19 +108,20 @@ public class RenderSectionClient {
         LOG.info("generateImageForZ: {}, entry, sectionDirectory={}, dataClient={}",
                  z, sectionDirectory, renderDataClient);
 
-        final Bounds layerBounds = renderDataClient.getLayerBounds(params.stack, z);
+        final Bounds layerBounds = renderDataClient.getLayerBounds(clientParameters.stack, z);
         final String parametersUrl =
-                renderDataClient.getRenderParametersUrlString(params.stack,
+                renderDataClient.getRenderParametersUrlString(clientParameters.stack,
                                                               layerBounds.getMinX(),
                                                               layerBounds.getMinY(),
                                                               z,
                                                               (int) (layerBounds.getDeltaX() + 0.5),
                                                               (int) (layerBounds.getDeltaY() + 0.5),
-                                                              params.scale);
+                                                              clientParameters.scale);
 
         LOG.debug("generateImageForZ: {}, loading {}", z, parametersUrl);
 
         final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
+        renderParameters.setDoFilter(clientParameters.doFilter);
 
         final File sectionFile = getSectionFile(z);
 
@@ -125,7 +129,7 @@ public class RenderSectionClient {
 
         Render.render(renderParameters, sectionImage, imageProcessorCache);
 
-        Utils.saveImage(sectionImage, sectionFile.getAbsolutePath(), params.format, false, 0.85f);
+        Utils.saveImage(sectionImage, sectionFile.getAbsolutePath(), clientParameters.format, false, 0.85f);
 
         LOG.info("generateBoxesForZ: {}, exit", z);
     }
@@ -135,11 +139,11 @@ public class RenderSectionClient {
         final File thousandsDir = new File(sectionDirectory, getNumericDirectoryName(thousands));
 
         final int hundreds = (z.intValue() % 1000) / 100;
-        final File hundredsDir = new File(thousandsDir, getNumericDirectoryName(hundreds));
+        final File hundredsDir = new File(thousandsDir, String.valueOf(hundreds));
 
         ensureWritableDirectory(hundredsDir);
 
-        return new File(hundredsDir, z + "." + params.format.toLowerCase());
+        return new File(hundredsDir, z + "." + clientParameters.format.toLowerCase());
     }
 
     private void ensureWritableDirectory(final File directory) {
