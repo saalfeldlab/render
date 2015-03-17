@@ -1,14 +1,6 @@
 package org.janelia.render.client;
 
-import mpicbg.trakem2.transform.AffineModel2D;
-import org.janelia.alignment.spec.LeafTransformSpec;
-import org.janelia.alignment.spec.ListTransformSpec;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.alignment.util.ProcessTimer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.beust.jcommander.Parameter;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,43 +12,59 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import mpicbg.trakem2.transform.AffineModel2D;
+
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ListTransformSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.util.ProcessTimer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
- * Java client for generating Align stack data.
+ * Java client for generating importing MET data from stitching and alignment processes into the render database.
  *
  * @author Eric Trautman
  */
-public class AlignStackClient {
+public class ImportMETClient {
 
-    /**
-     * @param  args  see {@link org.janelia.render.client.MLSStackClientParameters} for command line argument details.
-     */
-    public static void main(String[] args) {
+    @SuppressWarnings("ALL")
+    private static class Parameters extends RenderDataClientParameters {
+
+        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+
+        @Parameter(names = "--acquireStack", description = "Name of source (acquire) stack containing base tile specifications", required = true)
+        private String acquireStack;
+
+        @Parameter(names = "--alignStack", description = "Name of target (align, montage, etc.) stack that will contain imported transforms", required = true)
+        private String alignStack;
+
+        @Parameter(names = "--metFile", description = "MET file for section", required = true)
+        private String metFile;
+
+        @Parameter(names = "--replaceAll", description = "Replace all transforms with the MET transform (default is to only replace the last transform)", required = false, arity = 0)
+        private boolean replaceAll;
+    }
+
+    public static void main(final String[] args) {
         try {
+            final Parameters parameters = new Parameters();
+            parameters.parse(args);
 
-            final AlignStackClientParameters params = AlignStackClientParameters.parseCommandLineArgs(args);
+            LOG.info("main: entry, parameters={}", parameters);
 
-            if (params.displayHelp()) {
+            final ImportMETClient client = new ImportMETClient(parameters);
 
-                params.showUsage();
-
-            } else {
-
-                LOG.info("main: entry, params={}", params);
-
-                final AlignStackClient client = new AlignStackClient(params);
-
-                client.generateStackData();
-            }
+            client.generateStackData();
 
         } catch (final Throwable t) {
             LOG.error("main: caught exception", t);
         }
     }
 
-    private final AlignStackClientParameters parameters;
-    private final String acquireStack;
-    private final String alignStack;
-    private final String metFile;
+    private final Parameters parameters;
 
     private final Map<String, TransformSpec> tileIdToAlignTransformMap;
     private final RenderDataClient renderDataClient;
@@ -64,19 +72,14 @@ public class AlignStackClient {
     private String metSection;
     private String lastTileId;
 
-    public AlignStackClient(final AlignStackClientParameters parameters) {
+    public ImportMETClient(final Parameters parameters) {
 
         this.parameters = parameters;
-        this.alignStack = parameters.getAlignStack();
-        this.acquireStack = parameters.getAcquireStack();
-        this.metFile = parameters.getMetFile();
 
         final int capacityForLargeSection = (int) (5000 / 0.75);
         this.tileIdToAlignTransformMap = new HashMap<>(capacityForLargeSection);
 
-        this.renderDataClient = new RenderDataClient(parameters.getBaseDataUrl(),
-                                                     parameters.getOwner(),
-                                                     parameters.getProject());
+        this.renderDataClient = parameters.getClient();
 
         this.metSection = null;
         this.lastTileId = null;
@@ -90,12 +93,12 @@ public class AlignStackClient {
 
         loadMetData();
 
-        final TileSpec lastTileSpec = renderDataClient.getTile(acquireStack, lastTileId);
+        final TileSpec lastTileSpec = renderDataClient.getTile(parameters.acquireStack, lastTileId);
         final Double z = lastTileSpec.getZ();
 
         LOG.info("generateStackData: mapped section {} to z value {}", metSection, z);
 
-        final ResolvedTileSpecCollection acquireTiles = renderDataClient.getResolvedTiles(acquireStack, z);
+        final ResolvedTileSpecCollection acquireTiles = renderDataClient.getResolvedTiles(parameters.acquireStack, z);
 
         if (! acquireTiles.hasTileSpecs()) {
             throw new IllegalArgumentException(acquireTiles + " does not have any tiles");
@@ -119,7 +122,7 @@ public class AlignStackClient {
         for (String tileId : tileIdToAlignTransformMap.keySet()) {
             alignTransform = tileIdToAlignTransformMap.get(tileId);
 
-            if (parameters.isReplaceAll())  {
+            if (parameters.replaceAll)  {
 
                 tileSpec = acquireTiles.getTileSpec(tileId);
 
@@ -143,25 +146,15 @@ public class AlignStackClient {
         LOG.debug("generateStackData: updated transforms for {} tiles, elapsedSeconds={}",
                   tileSpecCount, timer.getElapsedSeconds());
 
-        renderDataClient.saveResolvedTiles(acquireTiles, alignStack, z);
+        renderDataClient.saveResolvedTiles(acquireTiles, parameters.alignStack, z);
 
         LOG.info("generateStackData: exit, saved tiles and transforms for {}", z);
-    }
-
-    @Override
-    public String toString() {
-        return "AlignStackClient{" +
-               "renderDataClient=" + renderDataClient +
-               ", acquireStack='" + acquireStack + '\'' +
-               ", alignStack='" + alignStack + '\'' +
-               ", metFile='" + metFile + '\'' +
-               '}';
     }
 
     private void loadMetData()
             throws IOException, IllegalArgumentException {
 
-        final Path path = FileSystems.getDefault().getPath(metFile).toAbsolutePath();
+        final Path path = FileSystems.getDefault().getPath(parameters.metFile).toAbsolutePath();
 
         LOG.info("loadMetData: entry, path={}", path);
 
@@ -234,7 +227,7 @@ public class AlignStackClient {
                  tileIdToAlignTransformMap.size(), lineNumber, metSection);
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(AlignStackClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ImportMETClient.class);
 
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
 }
