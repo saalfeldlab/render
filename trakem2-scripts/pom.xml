@@ -28,7 +28,7 @@
         <dependency>
             <groupId>sc.fiji</groupId>
             <artifactId>TrakEM2_</artifactId>
-            <version>1.0d</version>
+            <version>1.0f</version>
         </dependency>
 
     </dependencies>
