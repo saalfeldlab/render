@@ -64,7 +64,7 @@ public class BoxMipmapGeneratorTest {
         final double layerMaxY = ((lastRow + 1) * boxHeight) - 1;
         this.layerBounds = new Bounds(0.0, 0.0, layerMaxX, layerMaxY);
 
-        filesAndDirectoriesToDelete = new ArrayList<File>();
+        filesAndDirectoriesToDelete = new ArrayList<>();
     }
 
     @After
@@ -80,6 +80,7 @@ public class BoxMipmapGeneratorTest {
 
         BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z,
                                                                        Utils.PNG_FORMAT,
+                                                                       true,
                                                                        boxWidth,
                                                                        boxHeight,
                                                                        boxDirectory,
@@ -135,7 +136,7 @@ public class BoxMipmapGeneratorTest {
         final BoxMipmapGenerator nextLevelGenerator = boxMipmapGenerator.generateNextLevel();
         final int level = nextLevelGenerator.getSourceLevel();
 
-        final List<File> missingFiles = new ArrayList<File>();
+        final List<File> missingFiles = new ArrayList<>();
 
         for (int[] rowAndColumn : expectedRowAndColumnPairs) {
             final File file = new File(boxDirectory, level+"/"+z+"/"+rowAndColumn[0]+"/"+rowAndColumn[1]+".png");

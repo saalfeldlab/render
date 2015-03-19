@@ -46,6 +46,7 @@ public class BoxMipmapGenerator {
 
     private final int z;
     private final String format;
+    private final boolean convertToGray;
     private final int boxWidth;
     private final int boxHeight;
     private final File boxDirectory;
@@ -61,6 +62,7 @@ public class BoxMipmapGenerator {
      *
      * @param  z                 z value for the layer being processed.
      * @param  format            format of all generated image files.
+     * @param  convertToGray     indicates whether images should be converted to 8-bit gray scale.
      * @param  boxWidth          width for all generated image files.
      * @param  boxHeight         height for all generated image files.
      * @param  boxDirectory      parent directory for all generated image files.
@@ -70,6 +72,7 @@ public class BoxMipmapGenerator {
      */
     public BoxMipmapGenerator(final int z,
                               final String format,
+                              final boolean convertToGray,
                               final int boxWidth,
                               final int boxHeight,
                               final File boxDirectory,
@@ -78,6 +81,7 @@ public class BoxMipmapGenerator {
                               final int lastSourceColumn) {
         this.z = z;
         this.format = format;
+        this.convertToGray = convertToGray;
         this.boxWidth = boxWidth;
         this.boxHeight = boxHeight;
         this.boxDirectory = boxDirectory;
@@ -100,6 +104,10 @@ public class BoxMipmapGenerator {
         for (int column = 0; column <= this.lastSourceColumn; column++) {
             emptyRow.add(null);
         }
+    }
+
+    public boolean isConvertToGray() {
+        return convertToGray;
     }
 
     /**
@@ -144,6 +152,7 @@ public class BoxMipmapGenerator {
 
         final BoxMipmapGenerator nextLevelGenerator =  new BoxMipmapGenerator(z,
                                                                               format,
+                                                                              convertToGray,
                                                                               boxWidth,
                                                                               boxHeight,
                                                                               boxDirectory,
@@ -280,6 +289,7 @@ public class BoxMipmapGenerator {
      *
      * @param  image         image to save.
      * @param  format        format in which to save the image.
+     * @param  convertToGray indicates whether the image should be converted to 8-bit gray scale.
      * @param  boxDirectory  root directory for the image (e.g. /project/stack/width-x-height)
      * @param  level         scale level for the image.
      * @param  z             z value for layer containing the image.
@@ -293,6 +303,7 @@ public class BoxMipmapGenerator {
      */
     public static File saveImage(final BufferedImage image,
                                  final String format,
+                                 final boolean convertToGray,
                                  final File boxDirectory,
                                  final int level,
                                  final int z,
@@ -308,7 +319,7 @@ public class BoxMipmapGenerator {
         final File imageFile = setupImageFile(imageDirPath,
                                               column + "." + format.toLowerCase());
 
-        Utils.saveImage(image, imageFile.getAbsolutePath(), format, true, 0.85f);
+        Utils.saveImage(image, imageFile.getAbsolutePath(), format, convertToGray, 0.85f);
 
         return imageFile;
     }
@@ -390,6 +401,7 @@ public class BoxMipmapGenerator {
 
                 scaledFile = saveImage(downSampledImageProcessor.getBufferedImage(),
                                        format,
+                                       convertToGray,
                                        boxDirectory,
                                        scaledLevel,
                                        z,

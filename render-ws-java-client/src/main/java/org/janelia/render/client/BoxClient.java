@@ -197,6 +197,7 @@ public class BoxClient {
                  z, layerBounds, boxBounds, tileCount);
 
         final ImageProcessorCache imageProcessorCache;
+        final boolean convertToGray;
         if (params.label) {
             imageProcessorCache = new LabelImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
                                                                true,
@@ -204,12 +205,15 @@ public class BoxClient {
                                                                firstTileSpec.getWidth(),
                                                                firstTileSpec.getHeight(),
                                                                tileCount);
+            convertToGray = false;
         } else {
             imageProcessorCache = new ImageProcessorCache();
+            convertToGray = true;
         }
 
         BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z.intValue(),
                                                                        format,
+                                                                       convertToGray,
                                                                        boxWidth,
                                                                        boxHeight,
                                                                        boxDirectory,
@@ -288,6 +292,7 @@ public class BoxClient {
 
                     levelZeroFile = BoxMipmapGenerator.saveImage(levelZeroImage,
                                                                  format,
+                                                                 boxMipmapGenerator.isConvertToGray(),
                                                                  boxDirectory,
                                                                  0,
                                                                  boxBounds.z,
