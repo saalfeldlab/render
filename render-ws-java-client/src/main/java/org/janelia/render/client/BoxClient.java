@@ -171,12 +171,14 @@ public class BoxClient {
         final BufferedImage emptyImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
         final Graphics2D targetGraphics = emptyImage.createGraphics();
 
+        boolean convertToGray = true;
         if (params.label) {
             targetGraphics.setBackground(new Color(backgroundRGBColor));
             targetGraphics.clearRect(0, 0, boxWidth, boxHeight);
+            convertToGray = false;
         }
 
-        Utils.saveImage(emptyImage, emptyImageFile.getAbsolutePath(), format, true, 0.85f);
+        Utils.saveImage(emptyImage, emptyImageFile.getAbsolutePath(), format, convertToGray, 0.85f);
     }
 
     public void generateBoxesForZ(final Double z)
