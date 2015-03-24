@@ -10,8 +10,8 @@
           <element id="archive" name="render-app-0.1.0-SNAPSHOT.jar">
             <element id="module-output" name="render-app" />
           </element>
-          <element id="library" level="project" name="Maven: mpicbg:mpicbg_:1.0.0" />
-          <element id="library" level="project" name="Maven: mpicbg:mpicbg:1.0.0" />
+          <element id="library" level="project" name="Maven: mpicbg:mpicbg_:1.0.1" />
+          <element id="library" level="project" name="Maven: mpicbg:mpicbg:1.0.1" />
           <element id="library" level="project" name="Maven: net.imagej:ij:1.49m" />
           <element id="library" level="project" name="Maven: gov.nist.math:jama:1.0.3" />
           <element id="library" level="project" name="Maven: jama:jama:1.0.2" />
@@ -19,9 +19,9 @@
           <element id="library" level="project" name="Maven: com.google.guava:guava:18.0" />
           <element id="library" level="project" name="Maven: com.google.code.findbugs:jsr305:3.0.0" />
           <element id="library" level="project" name="Maven: com.beust:jcommander:1.35" />
-          <element id="library" level="project" name="Maven: sc.fiji:mpicbg-trakem2:1.2.1" />
-          <element id="library" level="project" name="Maven: sc.fiji:trakem2_tps:1.1.0" />
-          <element id="library" level="project" name="Maven: jitk:jitk-tps:1.1.0" />
+          <element id="library" level="project" name="Maven: sc.fiji:mpicbg-trakem2:1.2.2" />
+          <element id="library" level="project" name="Maven: sc.fiji:trakem2_tps:1.1.1" />
+          <element id="library" level="project" name="Maven: jitk:jitk-tps:1.1.1" />
           <element id="library" level="project" name="Maven: com.googlecode.efficient-java-matrix-library:ejml:0.24" />
           <element id="library" level="project" name="Maven: log4j:log4j:1.2.17" />
           <element id="library" level="project" name="Maven: net.sf.opencsv:opencsv:2.0" />
