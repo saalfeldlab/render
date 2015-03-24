@@ -62,6 +62,7 @@ public class WarpTransformClient {
 
         } catch (final Throwable t) {
             LOG.error("main: caught exception", t);
+            System.exit(1);
         }
     }
 

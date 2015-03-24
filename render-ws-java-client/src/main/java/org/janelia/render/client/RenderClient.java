@@ -51,6 +51,7 @@ public class RenderClient {
             }
         } catch (Throwable t) {
             LOG.error("main: caught exception", t);
+            System.exit(1);
         }
     }
 
@@ -77,7 +78,7 @@ public class RenderClient {
         final String projectUriString = trimmedBaseUriString + "/owner/" + owner;
         final URI jpegUri = createUri(projectUriString + "/jpeg-image");
         final URI pngUri = createUri(projectUriString + "/png-image");
-        final Map<String, URI> map = new LinkedHashMap<String, URI>();
+        final Map<String, URI> map = new LinkedHashMap<>();
         map.put(RenderClientParameters.JPEG_FORMAT.toLowerCase(), jpegUri);
         map.put(RenderClientParameters.PNG_FORMAT.toLowerCase(), pngUri);
         this.formatToRenderUriMap = map;
