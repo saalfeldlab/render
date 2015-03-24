@@ -1,5 +1,9 @@
 package org.janelia.alignment.mipmap;
 
+import ij.ImagePlus;
+import ij.process.ImageProcessor;
+import ij.process.ShortProcessor;
+
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -9,6 +13,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+
+import mpicbg.trakem2.util.Downsampler;
 
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
@@ -40,6 +46,7 @@ import org.slf4j.LoggerFactory;
 public class BoxMipmapGenerator {
 
     private final int z;
+    private final boolean isLabel;
     private final String format;
     private final int boxWidth;
     private final int boxHeight;
@@ -55,6 +62,7 @@ public class BoxMipmapGenerator {
      * Basic constructor.
      *
      * @param  z                 z value for the layer being processed.
+     * @param  isLabel           indicates that the images are labels and not standard images.
      * @param  format            format of all generated image files.
      * @param  boxWidth          width for all generated image files.
      * @param  boxHeight         height for all generated image files.
@@ -64,6 +72,7 @@ public class BoxMipmapGenerator {
      * @param  lastSourceColumn  number of column (0-based) containing bottom right tile in layer.
      */
     public BoxMipmapGenerator(final int z,
+                              final boolean isLabel,
                               final String format,
                               final int boxWidth,
                               final int boxHeight,
@@ -72,6 +81,7 @@ public class BoxMipmapGenerator {
                               final int lastSourceRow,
                               final int lastSourceColumn) {
         this.z = z;
+        this.isLabel = isLabel;
         this.format = format;
         this.boxWidth = boxWidth;
         this.boxHeight = boxHeight;
@@ -81,17 +91,17 @@ public class BoxMipmapGenerator {
         this.lastSourceColumn = lastSourceColumn;
 
         // make sure all column lists are the same length
-        this.rowFileLists = new ArrayList<List<File>>(this.lastSourceRow + 1);
+        this.rowFileLists = new ArrayList<>(this.lastSourceRow + 1);
         List<File> columnFiles;
         for (int row = 0; row <= this.lastSourceRow; row++) {
-            columnFiles = new ArrayList<File>(this.lastSourceColumn + 1);
+            columnFiles = new ArrayList<>(this.lastSourceColumn + 1);
             for (int column = 0; column <= this.lastSourceColumn; column++) {
                 columnFiles.add(null);
             }
             this.rowFileLists.add(columnFiles);
         }
 
-        emptyRow = new ArrayList<File>(this.lastSourceColumn + 1);
+        emptyRow = new ArrayList<>(this.lastSourceColumn + 1);
         for (int column = 0; column <= this.lastSourceColumn; column++) {
             emptyRow.add(null);
         }
@@ -116,7 +126,7 @@ public class BoxMipmapGenerator {
                           final File source) {
         List<File> rowFiles = rowFileLists.get(sourceRow);
         if (rowFiles == null) {
-            rowFiles = new ArrayList<File>();
+            rowFiles = new ArrayList<>();
             rowFileLists.add(sourceRow, rowFiles);
         }
         rowFiles.add(sourceColumn, source);
@@ -138,6 +148,7 @@ public class BoxMipmapGenerator {
         LOG.info("generateNextLevel: generating level {} mipmaps for z={}", scaledLevel, z);
 
         final BoxMipmapGenerator nextLevelGenerator =  new BoxMipmapGenerator(z,
+                                                                              isLabel,
                                                                               format,
                                                                               boxWidth,
                                                                               boxHeight,
@@ -234,7 +245,12 @@ public class BoxMipmapGenerator {
             overviewGraphics.drawImage(clippedSourceImage, 0, 0, overviewWidth, overviewHeight, null);
             overviewGraphics.dispose();
 
-            Utils.saveImage(overviewImage, overviewFile.getAbsolutePath(), format, true, 0.85f);
+            if (isLabel) {
+                final BufferedImage labelOverviewImage = BoxMipmapGenerator.convertArgbLabelTo16BitGray(overviewImage);
+                Utils.saveImage(labelOverviewImage, overviewFile.getAbsolutePath(), format, false, 0.85f);
+            } else {
+                Utils.saveImage(overviewImage, overviewFile.getAbsolutePath(), format, true, 0.85f);
+            }
 
         } else {
             LOG.info("generateOverview: skipping generation, z={}, sourceLevel={}, lastSourceRow={}, lastSourceColumn={}",
@@ -274,6 +290,7 @@ public class BoxMipmapGenerator {
      * Utility to save an image using the CATMAID directory structure.
      *
      * @param  image         image to save.
+     * @param  isLabel       indicates that the image is a label and not a standard image.
      * @param  format        format in which to save the image.
      * @param  boxDirectory  root directory for the image (e.g. /project/stack/width-x-height)
      * @param  level         scale level for the image.
@@ -287,6 +304,7 @@ public class BoxMipmapGenerator {
      *   if the image cannot be saved for any reason.
      */
     public static File saveImage(final BufferedImage image,
+                                 final boolean isLabel,
                                  final String format,
                                  final File boxDirectory,
                                  final int level,
@@ -303,9 +321,48 @@ public class BoxMipmapGenerator {
         final File imageFile = setupImageFile(imageDirPath,
                                               column + "." + format.toLowerCase());
 
-        Utils.saveImage(image, imageFile.getAbsolutePath(), format, true, 0.85f);
+        if (isLabel) {
+            final BufferedImage labelImage = convertArgbLabelTo16BitGray(image);
+            Utils.saveImage(labelImage, imageFile.getAbsolutePath(), format, false, 0.85f);
+        } else {
+            Utils.saveImage(image, imageFile.getAbsolutePath(), format, true, 0.85f);
+        }
 
         return imageFile;
+    }
+
+    /**
+     * Converts the specified ARGB label image to a 16-bit gray image.
+     * Only uses the two lowest order RGB bytes for each pixel (the green and blue values)
+     * to calculate the pixel's corresponding 16-bit gray value.
+     *
+     * @param  image  ARGB image to convert.
+     *
+     * @return a 16-bit gray image.
+     */
+    public static BufferedImage convertArgbLabelTo16BitGray(final BufferedImage image) {
+
+        final long startTime = System.currentTimeMillis();
+
+        final int width = image.getWidth();
+        final int height = image.getHeight();
+
+        int p = 0;
+        final short[] convertedPixels = new short[width * height];
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                convertedPixels[p] = (short) image.getRGB(x, y);
+                p++;
+            }
+        }
+
+        final ShortProcessor sp = new ShortProcessor(width, height);
+        sp.setPixels(convertedPixels);
+
+        final long elapsedTime = System.currentTimeMillis() - startTime;
+        LOG.debug("convertArgbLabelTo16BitGray: converted {} pixels in {} milliseconds", convertedPixels.length, elapsedTime);
+
+        return sp.get16BitBufferedImage();
     }
 
     /**
@@ -378,14 +435,13 @@ public class BoxMipmapGenerator {
                 drawImage(lowerLeft, 0, boxHeight, fourTileGraphics);
                 drawImage(lowerRight, boxWidth, boxHeight, fourTileGraphics);
 
-                final BufferedImage scaledImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
+                final ImagePlus fourTileImagePlus = new ImagePlus("", fourTileImage);
 
-                final Graphics2D scaledGraphics = scaledImage.createGraphics();
-                scaledGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                                                RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                scaledGraphics.drawImage(fourTileImage, 0, 0, boxWidth, boxHeight, null);
+                final ImageProcessor downSampledImageProcessor =
+                        Downsampler.downsampleImageProcessor(fourTileImagePlus.getProcessor());
 
-                scaledFile = saveImage(scaledImage,
+                scaledFile = saveImage(downSampledImageProcessor.getBufferedImage(),
+                                       isLabel,
                                        format,
                                        boxDirectory,
                                        scaledLevel,
@@ -394,7 +450,6 @@ public class BoxMipmapGenerator {
                                        scaledColumn);
 
                 fourTileGraphics.dispose();
-                scaledGraphics.dispose();
             } else {
                 scaledFile = null;
             }

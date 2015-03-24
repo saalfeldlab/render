@@ -1,13 +1,22 @@
 package org.janelia.render.service.dao;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
+
 import mpicbg.trakem2.transform.AffineModel2D;
+
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.TransformSpecMetaData;
@@ -21,9 +30,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
+import com.google.gson.reflect.TypeToken;
 
 /**
  * Tests the {@link RenderDao} class.
@@ -79,7 +86,7 @@ public class RenderDaoTest {
         try {
             final String json = parameters.toJson();
             Assert.assertNotNull("null json string produced for parameters", json);
-        } catch (Exception e) {
+        } catch (final Exception e) {
             LOG.error("failed to serialize json for " + parameters, e);
             Assert.fail("retrieved parameters cannot be re-serialized to json");
         }
@@ -90,7 +97,7 @@ public class RenderDaoTest {
         Assert.assertEquals("invalid number of tiles after init", 6, tileSpecs.size());
 
         ListTransformSpec transforms;
-        for (TileSpec tileSpec : tileSpecs) {
+        for (final TileSpec tileSpec : tileSpecs) {
             transforms = tileSpec.getTransforms();
             Assert.assertTrue("tileSpec " + tileSpec.getTileId() + " is not fully resolved",
                               transforms.isFullyResolved());
@@ -123,7 +130,7 @@ public class RenderDaoTest {
         final String temca = "0";
         final LayoutData layoutData = new LayoutData("s123", temca, null, null, null, null, null, null);
 
-        TileSpec tileSpec = new TileSpec();
+        final TileSpec tileSpec = new TileSpec();
         tileSpec.setTileId(tileId);
         tileSpec.setLayout(layoutData);
 
@@ -140,7 +147,7 @@ public class RenderDaoTest {
         final String changedTemca = "1";
         final LayoutData changedLayoutData = new LayoutData("s123", changedTemca, null, null, null, null, null, null);
         tileSpec.setLayout(changedLayoutData);
-        final List<TransformSpec> list = new ArrayList<TransformSpec>();
+        final List<TransformSpec> list = new ArrayList<>();
         list.add(new ReferenceTransformSpec("1"));
         tileSpec.addTransformSpecs(list);
 
@@ -160,7 +167,7 @@ public class RenderDaoTest {
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setZ(12.3);
         tileSpec.setTileId("bad-ref-tile");
-        final List<TransformSpec> list = new ArrayList<TransformSpec>();
+        final List<TransformSpec> list = new ArrayList<>();
         list.add(new ReferenceTransformSpec("missing-id"));
         tileSpec.addTransformSpecs(list);
 
@@ -282,6 +289,53 @@ public class RenderDaoTest {
         Assert.assertNotNull("null bounds for first tile", firstTileBounds);
         Assert.assertEquals("incorrect id for first tile", "134", firstTileBounds.getTileId());
         Assert.assertTrue("bound box not defined for first tile", firstTileBounds.isBoundingBoxDefined());
+    }
+
+    @Test
+    public void testWriteCoordinatesWithTileIds() throws Exception {
+        final Double z = 3903.0;
+        final List<TileCoordinates> worldCoordinates = new ArrayList<>();
+        worldCoordinates.add(TileCoordinates.buildWorldInstance(null, new double[] {1900, 3000}));
+        worldCoordinates.add(TileCoordinates.buildWorldInstance(null, new double[] {3700, 3000}));
+        worldCoordinates.add(TileCoordinates.buildWorldInstance(null, new double[]{4500, 3000}));
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        dao.writeCoordinatesWithTileIds(stackId, z, worldCoordinates, outputStream);
+
+        final String json = outputStream.toString();
+        final Type typeOfT = new TypeToken<List<List<TileCoordinates>>>(){}.getType();
+        final List<List<TileCoordinates>> worldCoordinatesWithTileIds = JsonUtils.GSON.fromJson(json, typeOfT);
+
+        Assert.assertEquals("invalid number of lists returned",
+                            worldCoordinates.size(), worldCoordinatesWithTileIds.size());
+
+        // first coordinate
+        List<TileCoordinates> tileCoordinatesList = worldCoordinatesWithTileIds.get(0);
+
+        Assert.assertEquals("invalid number of tiles found for first coordinate",
+                            1, tileCoordinatesList.size());
+
+        TileCoordinates tileCoordinates = tileCoordinatesList.get(0);
+
+        Assert.assertEquals("invalid tileId for first coordinate",
+                            "134", tileCoordinates.getTileId());
+
+        // second coordinate
+        tileCoordinatesList = worldCoordinatesWithTileIds.get(1);
+
+        Assert.assertEquals("invalid number of tiles found for second coordinate",
+                            2, tileCoordinatesList.size());
+
+        tileCoordinates = tileCoordinatesList.get(0);
+
+        Assert.assertEquals("invalid tileId for second coordinate, first tile",
+                            "134", tileCoordinates.getTileId());
+
+        tileCoordinates = tileCoordinatesList.get(1);
+
+        Assert.assertEquals("invalid tileId for second coordinate, second tile",
+                            "171", tileCoordinates.getTileId());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDaoTest.class);

@@ -1,24 +1,31 @@
 <component name="ArtifactManager">
   <artifact type="exploded-war" name="render-ws:war exploded">
-    <output-path>$PROJECT_DIR$/render-ws/target/render-ws-0.0.4-SNAPSHOT</output-path>
+    <output-path>$PROJECT_DIR$/render-ws/target/render-ws-0.1.0-SNAPSHOT</output-path>
     <root id="root">
       <element id="directory" name="WEB-INF">
         <element id="directory" name="classes">
           <element id="module-output" name="render-ws" />
         </element>
         <element id="directory" name="lib">
-          <element id="archive" name="render-app-0.0.4-SNAPSHOT.jar">
+          <element id="archive" name="render-app-0.1.0-SNAPSHOT.jar">
             <element id="module-output" name="render-app" />
           </element>
-          <element id="library" level="project" name="Maven: mpicbg:mpicbg_:0.6.1" />
-          <element id="library" level="project" name="Maven: jama:jama:1.0.2" />
+          <element id="library" level="project" name="Maven: mpicbg:mpicbg_:1.0.1" />
+          <element id="library" level="project" name="Maven: mpicbg:mpicbg:1.0.1" />
           <element id="library" level="project" name="Maven: net.imagej:ij:1.49m" />
-          <element id="library" level="project" name="Maven: mpicbg:mpicbg:0.6.1" />
+          <element id="library" level="project" name="Maven: gov.nist.math:jama:1.0.3" />
+          <element id="library" level="project" name="Maven: jama:jama:1.0.2" />
           <element id="library" level="project" name="Maven: com.google.code.gson:gson:2.2.4" />
           <element id="library" level="project" name="Maven: com.google.guava:guava:18.0" />
           <element id="library" level="project" name="Maven: com.google.code.findbugs:jsr305:3.0.0" />
           <element id="library" level="project" name="Maven: com.beust:jcommander:1.35" />
-          <element id="library" level="project" name="Maven: sc.fiji:mpicbg-trakem2:1.0.4-SNAPSHOT" />
+          <element id="library" level="project" name="Maven: sc.fiji:mpicbg-trakem2:1.2.2" />
+          <element id="library" level="project" name="Maven: sc.fiji:trakem2_tps:1.1.1" />
+          <element id="library" level="project" name="Maven: jitk:jitk-tps:1.1.1" />
+          <element id="library" level="project" name="Maven: com.googlecode.efficient-java-matrix-library:ejml:0.24" />
+          <element id="library" level="project" name="Maven: log4j:log4j:1.2.17" />
+          <element id="library" level="project" name="Maven: net.sf.opencsv:opencsv:2.0" />
+          <element id="library" level="project" name="Maven: commons-codec:commons-codec:1.8" />
           <element id="library" level="project" name="Maven: org.jboss.resteasy:resteasy-jaxrs:2.3.7.Final" />
           <element id="library" level="project" name="Maven: org.jboss.resteasy:jaxrs-api:2.3.7.Final" />
           <element id="library" level="project" name="Maven: org.scannotation:scannotation:1.0.3" />

@@ -101,6 +101,7 @@ public class Render {
                               final BufferedImage targetImage,
                               final ImageProcessorCache imageProcessorCache)
             throws IllegalArgumentException {
+
         render(params.getTileSpecs(),
                targetImage,
                params.getX(),
@@ -113,6 +114,32 @@ public class Render {
                params.doFilter(),
                imageProcessorCache,
                params.getBackgroundRGBColor());
+    }
+
+    public static void render(final List<TileSpec> tileSpecs,
+                              final BufferedImage targetImage,
+                              final double x,
+                              final double y,
+                              final double meshCellSize,
+                              final double scale,
+                              final boolean areaOffset,
+                              final int numberOfThreads,
+                              final boolean skipInterpolation,
+                              final boolean doFilter)
+            throws IllegalArgumentException {
+
+        render(tileSpecs,
+               targetImage,
+               x,
+               y,
+               meshCellSize,
+               scale,
+               areaOffset,
+               numberOfThreads,
+               skipInterpolation,
+               doFilter,
+               ImageProcessorCache.DISABLED_CACHE,
+               null);
     }
 
     public static void render(final List<TileSpec> tileSpecs,
@@ -162,19 +189,19 @@ public class Render {
             final AffineModel2D scaleAndOffset = new AffineModel2D();
             if (areaOffset) {
                 final double offset = (1 - scale) * 0.5;
-                scaleAndOffset.set((float) scale,
+                scaleAndOffset.set(scale,
                                    0,
                                    0,
-                                   (float) scale,
-                                   -(float) (x * scale + offset),
-                                   -(float) (y * scale + offset));
+                                   scale,
+                                   -(x * scale + offset),
+                                   -(y * scale + offset));
             } else {
-                scaleAndOffset.set((float) scale,
+                scaleAndOffset.set(scale,
                                    0,
                                    0,
-                                   (float) scale,
-                                   -(float) (x * scale),
-                                   -(float) (y * scale));
+                                   scale,
+                                   -(x * scale),
+                                   -(y * scale));
             }
 
             ctl.add(scaleAndOffset);
@@ -346,20 +373,6 @@ public class Render {
         LOG.debug("render: exit, {} tiles processed in {} milliseconds",
                   tileSpecs.size(),
                   System.currentTimeMillis() - tileLoopStart);
-    }
-
-    public static void render(final List<TileSpec> tileSpecs,
-            final BufferedImage targetImage,
-            final double x,
-            final double y,
-            final double meshCellSize,
-            final double scale,
-            final boolean areaOffset,
-            final int numberOfThreads,
-            final boolean skipInterpolation,
-            final boolean doFilter)
-                    throws IllegalArgumentException {
-        render(tileSpecs, targetImage, x, y, meshCellSize, scale, areaOffset, numberOfThreads, skipInterpolation, doFilter, ImageProcessorCache.DISABLED_CACHE, 0);
     }
 
     public static TileSpec deriveBoundingBox(

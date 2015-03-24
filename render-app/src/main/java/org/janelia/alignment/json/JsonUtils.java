@@ -2,6 +2,13 @@ package org.janelia.alignment.json;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+
+import java.io.Reader;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.janelia.alignment.spec.TransformSpec;
 
 /**
@@ -19,5 +26,27 @@ public class JsonUtils {
             registerTypeAdapter(TransformSpec.class, TRANSFORM_SPEC_ADAPTER).
             setPrettyPrinting().
             create();
+
+    /**
+     * Helper for de-serializing JSON arrays.
+     *
+     * @param <T>
+     */
+    public static class ArrayHelper<T> {
+
+        private final Type type;
+
+        public ArrayHelper() {
+            this.type = new TypeToken<ArrayList<T>>(){}.getType();
+        }
+
+        public List<T> fromJson(final String json) {
+            return GSON.fromJson(json, type);
+        }
+
+        public List<T> fromJson(final Reader json) {
+            return GSON.fromJson(json, type);
+        }
+    }
 
 }

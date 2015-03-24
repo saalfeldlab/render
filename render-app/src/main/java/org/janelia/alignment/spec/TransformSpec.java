@@ -1,7 +1,9 @@
 package org.janelia.alignment.spec;
 
+import java.io.Reader;
 import java.io.Serializable;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -62,7 +64,7 @@ public abstract class TransformSpec implements Serializable {
             throws IllegalArgumentException {
         if (instance == null) {
             if (! isFullyResolved()) {
-                final Set<String> unresolvedIdList = new HashSet<String>();
+                final Set<String> unresolvedIdList = new HashSet<>();
                 addUnresolvedIds(unresolvedIdList);
                 throw new IllegalArgumentException("spec '" + id +
                                                    "' has the following unresolved references: " + unresolvedIdList);
@@ -105,7 +107,7 @@ public abstract class TransformSpec implements Serializable {
      * @return the set of unresolved spec references within this spec.
      */
     public Set<String> getUnresolvedIds() {
-        final Set<String> unresolvedIds = new HashSet<String>();
+        final Set<String> unresolvedIds = new HashSet<>();
         addUnresolvedIds(unresolvedIds);
         return unresolvedIds;
     }
@@ -132,6 +134,14 @@ public abstract class TransformSpec implements Serializable {
         return JsonUtils.GSON.toJson(this);
     }
 
+    public static List<TransformSpec> fromJsonArray(String json) {
+        return ARRAY_HELPER.fromJson(json);
+    }
+
+    public static List<TransformSpec> fromJsonArray(Reader json) {
+        return ARRAY_HELPER.fromJson(json);
+    }
+
     /**
      * @return the coordinate transform instance built from this spec.
      *
@@ -147,5 +157,7 @@ public abstract class TransformSpec implements Serializable {
     protected void removeInstance() {
         instance = null;
     }
+
+    private static final JsonUtils.ArrayHelper<TransformSpec> ARRAY_HELPER = new JsonUtils.ArrayHelper<>();
 
 }

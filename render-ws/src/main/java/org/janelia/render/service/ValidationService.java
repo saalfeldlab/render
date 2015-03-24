@@ -1,12 +1,8 @@
 package org.janelia.render.service;
 
-import com.google.gson.reflect.TypeToken;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.json.JsonUtils;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.PUT;
@@ -15,11 +11,13 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * APIs for validating JSON representations of the Render model objects.
@@ -81,8 +79,7 @@ public class ValidationService {
         final String context = "array of " + TileSpec.class.getName() + " instances";
         Response response;
         try {
-            final Type listType = new TypeToken<ArrayList<TileSpec>>(){}.getType();
-            final List<TileSpec> list = JsonUtils.GSON.fromJson(json, listType);
+            final List<TileSpec> list = TileSpec.fromJsonArray(json);
             for (TileSpec spec : list) {
                 spec.validateMipmaps();
             }
@@ -123,9 +120,8 @@ public class ValidationService {
         final String context = "array of " + TransformSpec.class.getName() + " instances";
         Response response;
         try {
-            final Type listType = new TypeToken<ArrayList<TransformSpec>>(){}.getType();
-            final List<TransformSpec> list = JsonUtils.GSON.fromJson(json, listType);
-            final Map<String, TransformSpec> map = new HashMap<String, TransformSpec>((int) (list.size() * 1.5));
+            final List<TransformSpec> list = TransformSpec.fromJsonArray(json);
+            final Map<String, TransformSpec> map = new HashMap<>((int) (list.size() * 1.5));
             for (TransformSpec spec : list) {
                 if (spec.hasId()) {
                     map.put(spec.getId(), spec);

@@ -7,7 +7,7 @@
     <parent>
         <artifactId>render</artifactId>
         <groupId>org.janelia</groupId>
-        <version>0.0.4-SNAPSHOT</version>
+        <version>0.1.0-SNAPSHOT</version>
     </parent>
 
     <name>TrakEM2 Scripts</name>
@@ -28,7 +28,7 @@
         <dependency>
             <groupId>sc.fiji</groupId>
             <artifactId>TrakEM2_</artifactId>
-            <version>1.0d</version>
+            <version>1.0f</version>
         </dependency>
 
     </dependencies>

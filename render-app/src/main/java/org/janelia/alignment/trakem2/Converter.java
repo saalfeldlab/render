@@ -48,7 +48,7 @@ import org.xml.sax.XMLReader;
  */
 public class Converter {
 
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
 
         boolean validateConvertedTileSpecs = false;
         if (args.length > 2) {
@@ -85,10 +85,10 @@ public class Converter {
      *                                     (only set this to true if conversion process has access
      *                                     to image and mask filesystem).
      */
-    public static void xmlToJson(File trakEM2XmlFile,
-                                 String projectPath,
-                                 File jsonFile,
-                                 boolean validateConvertedTileSpecs) {
+    public static void xmlToJson(final File trakEM2XmlFile,
+                                 final String projectPath,
+                                 final File jsonFile,
+                                 final boolean validateConvertedTileSpecs) {
         FileInputStream trakEm2XmlStream = null;
         FileOutputStream jsonStream = null;
         try {
@@ -97,20 +97,20 @@ public class Converter {
             LOG.info("xmlToJson: reading TrakEM2 XML from " + trakEM2XmlFile.getAbsolutePath());
             Converter.xmlToJson(trakEm2XmlStream, projectPath, jsonStream, validateConvertedTileSpecs);
             LOG.info("xmlToJson: wrote JSON to " + jsonFile.getAbsolutePath());
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             LOG.error("failed to convert " + trakEM2XmlFile.getAbsolutePath(), t);
         } finally {
             if (trakEm2XmlStream != null) {
                 try {
                     trakEm2XmlStream.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     e.printStackTrace();
                 }
             }
             if (jsonStream != null) {
                 try {
                     jsonStream.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     e.printStackTrace();
                 }
             }
@@ -153,10 +153,10 @@ public class Converter {
         final T2Layer.Listener patchListener = new T2Layer.Listener() {
 
             @Override
-            public void handlePatch(String baseMaskPath,
-                                    T2Layer layer,
-                                    T2Patch patch,
-                                    boolean isFirstPatch) {
+            public void handlePatch(final String baseMaskPath,
+                                    final T2Layer layer,
+                                    final T2Patch patch,
+                                    final boolean isFirstPatch) {
 
                 final StringBuilder json = new StringBuilder(16 * 1024);
                 if (! isFirstPatch) {
@@ -172,7 +172,7 @@ public class Converter {
 
                 try {
                     jsonStream.write(json.toString().getBytes());
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     throw new RuntimeException("failed to write to JSON stream", e);
                 }
             }
@@ -193,7 +193,7 @@ public class Converter {
             private long layerStartTime;
 
             @Override
-            public void beforeUnmarshal(Object target, Object parent) {
+            public void beforeUnmarshal(final Object target, final Object parent) {
 
                 if (target instanceof T2Patch) {
 
@@ -219,7 +219,7 @@ public class Converter {
             }
 
             @Override
-            public void afterUnmarshal(Object target, Object parent) {
+            public void afterUnmarshal(final Object target, final Object parent) {
 
                 if (target instanceof T2Patch) {
 
@@ -250,10 +250,10 @@ public class Converter {
                 }
             }
 
-            private void logStats(String elementName,
-                                  long startTime,
-                                  long patchCount,
-                                  boolean isTotalStats) {
+            private void logStats(final String elementName,
+                                  final long startTime,
+                                  final long patchCount,
+                                  final boolean isTotalStats) {
                 final long elapsedTime = System.currentTimeMillis() - startTime;
                 final long patchesPerSecond = (long) (patchCount / (elapsedTime / 1000.0));
                 final StringBuilder sb = new StringBuilder(128);
@@ -293,11 +293,11 @@ public class Converter {
         @XmlAttribute(name = "class") public String className;
         @XmlAttribute(name = "data")  public String data;
         @Override
-        public void addToList(List<TransformSpec> list) {
+        public void addToList(final List<TransformSpec> list) {
             list.add(new LeafTransformSpec(className, data));
         }
         @Override
-        public void addToCoordinateTransformList(CoordinateTransformList<CoordinateTransform> list)
+        public void addToCoordinateTransformList(final CoordinateTransformList<CoordinateTransform> list)
                 throws Exception {
             final CoordinateTransform ct = (CoordinateTransform) Class.forName(className).newInstance();
             ct.init(data);
@@ -319,15 +319,15 @@ public class Converter {
                         })
         public List<Transformable> ictList;
         @Override
-        public void addToList(List<TransformSpec> list) {
-            for (Transformable t : ictList) {
+        public void addToList(final List<TransformSpec> list) {
+            for (final Transformable t : ictList) {
                 t.addToList(list);
             }
         }
         @Override
-        public void addToCoordinateTransformList(CoordinateTransformList<CoordinateTransform> list)
+        public void addToCoordinateTransformList(final CoordinateTransformList<CoordinateTransform> list)
                 throws Exception {
-            for (Transformable t : ictList) {
+            for (final Transformable t : ictList) {
                 t.addToCoordinateTransformList(list);
             }
         }
@@ -350,9 +350,9 @@ public class Converter {
 
         // projectPath  = '/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/'
         // baseMaskPath = '/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/'
-        public TileSpec getTileSpec(String projectPath,
-                                    String baseMaskPath,
-                                    double z) {
+        public TileSpec getTileSpec(final String projectPath,
+                                    final String baseMaskPath,
+                                    final double z) {
 
             String imageUrl;
             // TODO: make sure we don't need to check for Windows paths
@@ -367,7 +367,7 @@ public class Converter {
                 maskUrl = "file:" + baseMaskPath + createIdPath(alphaMaskId, oid, ".zip");
             }
 
-            List<TransformSpec> transformList = new ArrayList<TransformSpec>();
+            final List<TransformSpec> transformList = new ArrayList<TransformSpec>();
 
             if (transforms != null) {
                 // add all nested ict transforms
@@ -413,15 +413,15 @@ public class Converter {
                 if (transforms != null) {
                     Rectangle box;
                     try {
-                        CoordinateTransformList<CoordinateTransform> ctList =
+                        final CoordinateTransformList<CoordinateTransform> ctList =
                                 new CoordinateTransformList<CoordinateTransform>();
                         transforms.addToCoordinateTransformList(ctList);
                         final TransformMesh mesh = new TransformMesh(ctList,
                                                                      meshResolution,
-                                                                     oWidth.floatValue(),
-                                                                     oHeight.floatValue());
+                                                                     oWidth.doubleValue(),
+                                                                     oHeight.doubleValue());
                         box = mesh.getBoundingBox();
-                    } catch (Exception e) {
+                    } catch (final Exception e) {
                         throw new RuntimeException("failed to build ct list for patch " + oid, e);
                     }
                     fullCoordinateTransform.translate(-box.x, -box.y);
@@ -481,7 +481,7 @@ public class Converter {
                                      final boolean isFirstLayer) {
             patches = new ArrayList<T2Patch>() {
                 @Override
-                public boolean add(T2Patch patch) {
+                public boolean add(final T2Patch patch) {
                     final boolean isFirstPatch = isFirstLayer && (numberOfPatches == 0);
                     l.handlePatch(baseMaskPath, T2Layer.this, patch, isFirstPatch);
                     numberOfPatches++;
@@ -518,7 +518,7 @@ public class Converter {
         @XmlAttribute(name = "unuid") public String unuid;
         // ignore project mesh_resolution attribute because it gets explicitly set for each patch
 
-        public String getBaseMaskPath(File baseProjectDirectory) {
+        public String getBaseMaskPath(final File baseProjectDirectory) {
             final File projectUnuidDirectory = new File(baseProjectDirectory, "trakem2." + unuid);
             final File baseMaskDirectory = new File(projectUnuidDirectory, "trakem2.masks");
             return baseMaskDirectory.getAbsolutePath().replace('\\','/') + '/';

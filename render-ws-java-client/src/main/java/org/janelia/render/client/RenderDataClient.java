@@ -12,6 +12,7 @@ import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.response.JsonResponseHandler;
 import org.janelia.render.client.response.ResourceCreatedResponseHandler;
@@ -56,13 +57,13 @@ public class RenderDataClient {
 
     public TileSpec getTile(String stack,
                             String tileId)
-            throws URISyntaxException, IOException {
+            throws IllegalArgumentException, IOException {
 
         final URI uri = getTileUri(stack, tileId);
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final JsonResponseHandler<TileSpec> responseHandler = new JsonResponseHandler<TileSpec>(requestContext,
-                                                                                                TileSpec.class);
+        final JsonResponseHandler<TileSpec> responseHandler =
+                new JsonResponseHandler<>(requestContext, TileSpec.class);
 
         LOG.info("getResolvedTiles: submitting {}", requestContext);
 
@@ -71,14 +72,13 @@ public class RenderDataClient {
 
     public Bounds getLayerBounds(String stack,
                                  Double z)
-            throws URISyntaxException, IOException {
+            throws IllegalArgumentException, IOException {
 
         final URI uri = getLayerBoundsUri(stack, z);
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final JsonResponseHandler<Bounds> responseHandler =
-                new JsonResponseHandler<Bounds>(requestContext,
-                                                Bounds.class);
+                new JsonResponseHandler<>(requestContext, Bounds.class);
 
         LOG.info("getLayerBounds: submitting {}", requestContext);
 
@@ -87,15 +87,14 @@ public class RenderDataClient {
 
     public List<TileBounds> getTileBounds(String stack,
                                           Double z)
-            throws URISyntaxException, IOException {
+            throws IllegalArgumentException, IOException {
 
         final URI uri = getTileBoundsUri(stack, z);
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final Type typeOfT = new TypeToken<List<TileBounds>>(){}.getType();
         final JsonResponseHandler<List<TileBounds>> responseHandler =
-                new JsonResponseHandler<List<TileBounds>>(requestContext,
-                                                          typeOfT);
+                new JsonResponseHandler<>(requestContext, typeOfT);
 
         LOG.info("getTileBounds: submitting {}", requestContext);
 
@@ -104,14 +103,13 @@ public class RenderDataClient {
 
     public ResolvedTileSpecCollection getResolvedTiles(String stack,
                                                        Double z)
-            throws URISyntaxException, IOException {
+            throws IllegalArgumentException, IOException {
 
         final URI uri = getResolvedTilesUri(stack, z);
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final JsonResponseHandler<ResolvedTileSpecCollection> responseHandler =
-                new JsonResponseHandler<ResolvedTileSpecCollection>(requestContext,
-                                                                    ResolvedTileSpecCollection.class);
+                new JsonResponseHandler<>(requestContext, ResolvedTileSpecCollection.class);
 
         LOG.info("getResolvedTiles: submitting {}", requestContext);
 
@@ -119,9 +117,10 @@ public class RenderDataClient {
     }
 
     public void saveResolvedTiles(ResolvedTileSpecCollection resolvedTiles,
-                                   String stack,
-                                   Double z)
-            throws URISyntaxException, IOException {
+                                  String stack,
+                                  Double z)
+            throws IllegalArgumentException, IOException {
+
         final String json = JsonUtils.GSON.toJson(resolvedTiles);
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
         final URI uri = getResolvedTilesUri(stack, z);
@@ -136,14 +135,34 @@ public class RenderDataClient {
         httpClient.execute(httpPut, responseHandler);
     }
 
-    public String getStackUrlString(String stack)
-            throws URISyntaxException {
+    public List<List<TileCoordinates>> getTileIdsForCoordinates(List<TileCoordinates> worldCoordinates,
+                                                                String stack,
+                                                                Double z)
+            throws IOException {
+
+        final String worldCoordinatesJson = JsonUtils.GSON.toJson(worldCoordinates);
+        final StringEntity stringEntity = new StringEntity(worldCoordinatesJson, ContentType.APPLICATION_JSON);
+        final URI uri = getTileIdsForCoordinatesUri(stack, z);
+        final String requestContext = "PUT " + uri;
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        final Type typeOfT = new TypeToken<List<List<TileCoordinates>>>(){}.getType();
+        final JsonResponseHandler<List<List<TileCoordinates>>> responseHandler =
+                new JsonResponseHandler<>(requestContext, typeOfT);
+
+        LOG.info("getTileIdsForCoordinates: submitting {}", requestContext);
+
+        return httpClient.execute(httpPut, responseHandler);
+    }
+
+    public String getStackUrlString(final String stack) {
         return baseDataUrl + "/owner/" + owner + "/project/" + project + "/stack/" + stack;
     }
 
-    public String getZUrlString(String stack,
-                                 Double z)
-            throws URISyntaxException {
+    public String getZUrlString(final String stack,
+                                final Double z) {
         return getStackUrlString(stack) + "/z/" + z;
     }
 
@@ -153,35 +172,45 @@ public class RenderDataClient {
                                                final double z,
                                                final int width,
                                                final int height,
-                                               final double scale)
-            throws URISyntaxException {
+                                               final double scale) {
         return getZUrlString(stack, z) + "/box/" +
                x + ',' + y + ',' + width + ',' + height + ',' + scale +
                "/render-parameters";
     }
 
-    private URI getTileUri(String stack,
-                           String tileId)
-            throws URISyntaxException {
-        return new URI(getStackUrlString(stack) + "/tile/" + tileId);
+    private URI getTileUri(final String stack,
+                           final String tileId) {
+        return getUri(getStackUrlString(stack) + "/tile/" + tileId);
     }
 
     private URI getResolvedTilesUri(String stack,
-                                    Double z)
-            throws URISyntaxException {
-        return new URI(getZUrlString(stack, z) + "/resolvedTiles");
+                                    Double z) {
+        return getUri(getZUrlString(stack, z) + "/resolvedTiles");
     }
 
     private URI getLayerBoundsUri(String stack,
-                                  Double z)
-            throws URISyntaxException {
-        return new URI(getZUrlString(stack, z) + "/bounds");
+                                  Double z) {
+        return getUri(getZUrlString(stack, z) + "/bounds");
     }
 
     private URI getTileBoundsUri(String stack,
-                                 Double z)
-            throws URISyntaxException {
-        return new URI(getZUrlString(stack, z) + "/tileBounds");
+                                 Double z) {
+        return getUri(getZUrlString(stack, z) + "/tileBounds");
+    }
+
+    private URI getTileIdsForCoordinatesUri(String stack,
+                                            Double z) {
+        return getUri(getZUrlString(stack, z) + "/tileIdsForCoordinates");
+    }
+
+    private URI getUri(String forString) throws IllegalArgumentException {
+        final URI uri;
+        try {
+            uri = new URI(forString);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("failed to create URI for '" + forString + "'", e);
+        }
+        return uri;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDataClient.class);

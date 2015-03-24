@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.test.EmbeddedMongoDb;
@@ -61,8 +60,7 @@ public class CoordinateServiceTest {
                                             stackId.getStack(),
                                             x,
                                             y,
-                                            Z,
-                                            RenderParameters.DEFAULT_MESH_CELL_SIZE);
+                                            Z);
 
         Assert.assertEquals("invalid number of tiles found for (" + x + "," + y + ")",
                             1, localCoordinatesList.size());
@@ -77,7 +75,7 @@ public class CoordinateServiceTest {
                             null,
                             Z);
 
-        final float[] local = localCoordinates.getLocal();
+        final double[] local = localCoordinates.getLocal();
         final TileCoordinates worldCoordinates =
                 service.getWorldCoordinates(stackId.getOwner(),
                                             stackId.getProject(),
@@ -98,15 +96,15 @@ public class CoordinateServiceTest {
     public void testMultiplePointCoordinateMethods() throws Exception {
 
         final int errorPointIndex = 2;
-        final float[][] points = new float[][]{
-                {9000.0f, 7000.0f},
-                {9010.0f, 7010.0f},
-                {109010.0f, 107010.0f},
-                {9020.0f, 7020.0f}
+        final double[][] points = new double[][]{
+                {9000.0, 7000.0},
+                {9010.0, 7010.0},
+                {109010.0, 107010.0},
+                {9020.0, 7020.0}
         };
 
-        final List<TileCoordinates> worldCoordinateList = new ArrayList<TileCoordinates>();
-        for (float[] point : points) {
+        final List<TileCoordinates> worldCoordinateList = new ArrayList<>();
+        for (final double[] point : points) {
             worldCoordinateList.add(TileCoordinates.buildWorldInstance(null, point));
         }
 
@@ -115,15 +113,14 @@ public class CoordinateServiceTest {
                                             stackId.getProject(),
                                             stackId.getStack(),
                                             Z,
-                                            RenderParameters.DEFAULT_MESH_CELL_SIZE,
                                             worldCoordinateList);
 
         Assert.assertNotNull("null local list retrieved", localCoordinatesListOfLists);
         Assert.assertEquals("invalid local list size",
                             worldCoordinateList.size(), localCoordinatesListOfLists.size());
 
-        List<TileCoordinates> localCoordinatesList = new ArrayList<TileCoordinates>();
-        for (List<TileCoordinates> nestedList : localCoordinatesListOfLists) {
+        final List<TileCoordinates> localCoordinatesList = new ArrayList<>();
+        for (final List<TileCoordinates> nestedList : localCoordinatesListOfLists) {
             localCoordinatesList.addAll(nestedList);
         }
 
@@ -186,8 +183,7 @@ public class CoordinateServiceTest {
                                             stackId.getStack(),
                                             8000.0, //
                                             5900.0, //
-                                            Z,
-                                            RenderParameters.DEFAULT_MESH_CELL_SIZE);
+                                            Z);
 
         Assert.assertNotNull("null local list retrieved", localCoordinateList);
         Assert.assertEquals("invalid local list size",
@@ -204,18 +200,18 @@ public class CoordinateServiceTest {
                            localCoordinates.isVisible());
     }
 
-    private void validateCoordinates(String context,
-                                     TileCoordinates coordinates,
-                                     String expectedTileId,
-                                     boolean isLocal,
-                                     Double expectedX,
-                                     Double expectedY,
-                                     Double expectedZ) {
+    private void validateCoordinates(final String context,
+                                     final TileCoordinates coordinates,
+                                     final String expectedTileId,
+                                     final boolean isLocal,
+                                     final Double expectedX,
+                                     final Double expectedY,
+                                     final Double expectedZ) {
 
         Assert.assertNotNull(context + " coordinates are null", coordinates);
         Assert.assertEquals(context + " tileId is invalid", expectedTileId, coordinates.getTileId());
 
-        float[] values;
+        double[] values;
         String valueContext;
         if (isLocal) {
             valueContext = context + " local values";

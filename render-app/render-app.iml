@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module org.jetbrains.idea.maven.project.MavenProjectsManager.isMavenModule="true" type="JAVA_MODULE" version="4">
-  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_6" inherit-compiler-output="false">
+  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_7" inherit-compiler-output="false">
     <output url="file://$MODULE_DIR$/target/classes" />
     <output-test url="file://$MODULE_DIR$/target/test-classes" />
     <content url="file://$MODULE_DIR$">
@@ -14,15 +14,22 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Maven: mpicbg:mpicbg_:0.6.1" level="project" />
-    <orderEntry type="library" name="Maven: jama:jama:1.0.2" level="project" />
+    <orderEntry type="library" name="Maven: mpicbg:mpicbg_:1.0.1" level="project" />
+    <orderEntry type="library" name="Maven: mpicbg:mpicbg:1.0.1" level="project" />
     <orderEntry type="library" name="Maven: net.imagej:ij:1.49m" level="project" />
-    <orderEntry type="library" name="Maven: mpicbg:mpicbg:0.6.1" level="project" />
+    <orderEntry type="library" name="Maven: gov.nist.math:jama:1.0.3" level="project" />
+    <orderEntry type="library" name="Maven: jama:jama:1.0.2" level="project" />
     <orderEntry type="library" name="Maven: com.google.code.gson:gson:2.2.4" level="project" />
     <orderEntry type="library" name="Maven: com.google.guava:guava:18.0" level="project" />
     <orderEntry type="library" name="Maven: com.google.code.findbugs:jsr305:3.0.0" level="project" />
     <orderEntry type="library" name="Maven: com.beust:jcommander:1.35" level="project" />
-    <orderEntry type="library" name="Maven: sc.fiji:mpicbg-trakem2:1.0.4-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="Maven: sc.fiji:mpicbg-trakem2:1.2.2" level="project" />
+    <orderEntry type="library" name="Maven: sc.fiji:trakem2_tps:1.1.1" level="project" />
+    <orderEntry type="library" name="Maven: jitk:jitk-tps:1.1.1" level="project" />
+    <orderEntry type="library" name="Maven: com.googlecode.efficient-java-matrix-library:ejml:0.24" level="project" />
+    <orderEntry type="library" name="Maven: log4j:log4j:1.2.17" level="project" />
+    <orderEntry type="library" name="Maven: net.sf.opencsv:opencsv:2.0" level="project" />
+    <orderEntry type="library" name="Maven: commons-codec:commons-codec:1.8" level="project" />
     <orderEntry type="library" name="Maven: ch.qos.logback:logback-classic:1.1.2" level="project" />
     <orderEntry type="library" name="Maven: ch.qos.logback:logback-core:1.1.2" level="project" />
     <orderEntry type="library" name="Maven: org.slf4j:slf4j-api:1.7.6" level="project" />

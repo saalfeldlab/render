@@ -1,12 +1,16 @@
 package org.janelia.render.service.dao;
 
 import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
 import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
 
 import java.io.File;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class maintains the single MongoClient instance that is shared for all service requests.
@@ -43,7 +47,13 @@ public class SharedMongoClient {
         final MongoCredential credential = MongoCredential.createMongoCRCredential(dbConfig.getUserName(),
                                                                                    dbConfig.getAuthenticationDatabase(),
                                                                                    dbConfig.getPassword());
-        client = new MongoClient(serverAddress, Arrays.asList(credential));
+        final MongoClientOptions options = new MongoClientOptions.Builder()
+                .connectionsPerHost(dbConfig.getMaxConnectionsPerHost())
+                .build();
+
+        LOG.info("creating client for {} with {}", serverAddress, options);
+
+        client = new MongoClient(serverAddress, Arrays.asList(credential), options);
     }
 
     private static synchronized void setSharedMongoClient()
@@ -54,4 +64,6 @@ public class SharedMongoClient {
             sharedMongoClient = new SharedMongoClient(dbConfig);
         }
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(DbConfig.class);
 }

@@ -16,12 +16,17 @@
  */
 package org.janelia.alignment.mipmap;
 
+import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.janelia.alignment.Render;
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.util.LabelImageProcessorCache;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -64,7 +69,7 @@ public class BoxMipmapGeneratorTest {
         final double layerMaxY = ((lastRow + 1) * boxHeight) - 1;
         this.layerBounds = new Bounds(0.0, 0.0, layerMaxX, layerMaxY);
 
-        filesAndDirectoriesToDelete = new ArrayList<File>();
+        filesAndDirectoriesToDelete = new ArrayList<>();
     }
 
     @After
@@ -79,6 +84,7 @@ public class BoxMipmapGeneratorTest {
 
 
         BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z,
+                                                                       false,
                                                                        Utils.PNG_FORMAT,
                                                                        boxWidth,
                                                                        boxHeight,
@@ -129,13 +135,56 @@ public class BoxMipmapGeneratorTest {
         filesAndDirectoriesToDelete.add(overviewFile.getParentFile());
     }
 
+    @Test
+    public void testSaveLabelImage() throws Exception {
+
+        final int level = 9;
+        final int row = 0;
+        final int column = 0;
+
+        final int tileWidth = 2650;
+        final int tileHeight = 2650;
+        final String[] args = {
+                "--tile_spec_url", "src/test/resources/stitch-test/test_4_tiles_level_1.json",
+                "--out", "test-label.png", // not used but required
+                "--width", "4576",
+                "--height", "4173",
+                "--scale", "0.05"
+        };
+
+        final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
+        params.setBackgroundRGBColor(Color.WHITE.getRGB());
+        final BufferedImage argbLabelImage = params.openTargetImage();
+        final LabelImageProcessorCache cache =
+                new LabelImageProcessorCache(1000000, false, false, tileWidth, tileHeight, 10);
+
+        Render.render(params, argbLabelImage, cache);
+
+        final File outputFile = BoxMipmapGenerator.saveImage(argbLabelImage,
+                                                             true,
+                                                             Utils.PNG_FORMAT,
+                                                             boxDirectory,
+                                                             level,
+                                                             z,
+                                                             row,
+                                                             column);
+
+        filesAndDirectoriesToDelete.add(outputFile);
+        filesAndDirectoriesToDelete.add(outputFile.getParentFile()); // row
+        filesAndDirectoriesToDelete.add(outputFile.getParentFile().getParentFile()); // z
+        filesAndDirectoriesToDelete.add(outputFile.getParentFile().getParentFile().getParentFile()); // level
+
+        Assert.assertTrue("missing label image " + outputFile.getAbsolutePath(), outputFile.exists());
+
+    }
+
     private BoxMipmapGenerator validateNextLevel(BoxMipmapGenerator boxMipmapGenerator,
                                               int[][] expectedRowAndColumnPairs) throws Exception {
 
         final BoxMipmapGenerator nextLevelGenerator = boxMipmapGenerator.generateNextLevel();
         final int level = nextLevelGenerator.getSourceLevel();
 
-        final List<File> missingFiles = new ArrayList<File>();
+        final List<File> missingFiles = new ArrayList<>();
 
         for (int[] rowAndColumn : expectedRowAndColumnPairs) {
             final File file = new File(boxDirectory, level+"/"+z+"/"+rowAndColumn[0]+"/"+rowAndColumn[1]+".png");

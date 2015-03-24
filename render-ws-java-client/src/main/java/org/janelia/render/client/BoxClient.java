@@ -1,8 +1,13 @@
 package org.janelia.render.client;
 
+import com.beust.jcommander.Parameter;
+
 import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -13,6 +18,7 @@ import java.util.Set;
 
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Utils;
 import org.janelia.alignment.mipmap.BoxMipmapGenerator;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileBounds;
@@ -42,60 +48,104 @@ import org.slf4j.LoggerFactory;
  */
 public class BoxClient {
 
+    @SuppressWarnings("ALL")
+    private static class Parameters extends RenderDataClientParameters {
+
+        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+
+        @Parameter(names = "--stack", description = "Stack name", required = true)
+        private String stack;
+
+        @Parameter(names = "--rootDirectory", description = "Root directory for rendered tiles (e.g. /tier2/flyTEM/nobackup/rendered_boxes/fly_pilot/20141216_863_align)", required = true)
+        private String rootDirectory;
+
+        @Parameter(names = "--width", description = "Width of each box", required = true)
+        private Integer width;
+
+        @Parameter(names = "--height", description = "Height of each box", required = true)
+        private Integer height;
+
+        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to generate (default is 0)", required = false)
+        private Integer maxLevel = 0;
+
+        @Parameter(names = "--format", description = "Format for rendered boxes (default is PNG)", required = false)
+        private String format = Utils.PNG_FORMAT;
+
+        @Parameter(names = "--overviewWidth", description = "Width of layer overview image (omit or set to zero to disable overview generation)", required = false)
+        private Integer overviewWidth;
+
+        @Parameter(names = "--skipInterpolation", description = "skip interpolation (e.g. for DMG data)", required = false, arity = 0)
+        private boolean skipInterpolation = false;
+
+        @Parameter(names = "--label", description = "Generate single color tile labels instead of actual tile images", required = false, arity = 0)
+        private boolean label = false;
+
+        @Parameter(names = "--createIGrid", description = "create an IGrid file", required = false, arity = 0)
+        private boolean createIGrid = false;
+
+        @Parameter(description = "Z values for layers to render", required = true)
+        private List<Double> zValues;
+
+        public boolean isOverviewNeeded() {
+            return ((overviewWidth != null) && (overviewWidth > 0));
+        }
+    }
+
     /**
-     * @param  args  see {@link BoxClientParameters} for command line argument details.
+     * @param  args  see {@link Parameters} for command line argument details.
      */
     public static void main(String[] args) {
         try {
 
-            final BoxClientParameters params = BoxClientParameters.parseCommandLineArgs(args);
+            final Parameters parameters = new Parameters();
+            parameters.parse(args);
 
-            if (params.displayHelp()) {
+            LOG.info("main: entry, parameters={}", parameters);
 
-                params.showUsage();
+            final BoxClient client = new BoxClient(parameters);
 
-            } else {
+            client.createEmptyImageFile();
 
-                LOG.info("main: entry, params={}", params);
-
-                final BoxClient client = new BoxClient(params);
-
-                for (Double z : params.getzValues()) {
-                    client.generateBoxesForZ(z);
-                }
-
+            for (Double z : parameters.zValues) {
+                client.generateBoxesForZ(z);
             }
 
         } catch (final Throwable t) {
             LOG.error("main: caught exception", t);
+            System.exit(1);
         }
     }
 
-    private final BoxClientParameters params;
+    private final Parameters params;
 
     private final String stack;
     private final String format;
     private final int boxWidth;
     private final int boxHeight;
     private final File boxDirectory;
+    private final Integer backgroundRGBColor;
+    private final File emptyImageFile;
     private final RenderDataClient renderDataClient;
 
-    public BoxClient(final BoxClientParameters params) {
+    public BoxClient(final Parameters params) {
 
         this.params = params;
-        this.stack = params.getStack();
-        this.format = params.getFormat();
-        this.boxWidth = params.getWidth();
-        this.boxHeight = params.getHeight();
+        this.stack = params.stack;
+        this.format = params.format;
+        this.boxWidth = params.width;
+        this.boxHeight = params.height;
 
         String boxName = this.boxWidth + "x" + this.boxHeight;
-        if (params.isLabel()) {
+        if (params.label) {
             boxName += "-label";
+            this.backgroundRGBColor = Color.WHITE.getRGB();
+        } else {
+            this.backgroundRGBColor = null;
         }
 
-        final Path boxPath = Paths.get(params.getRootDirectory(),
-                                       params.getProject(),
-                                       params.getStack(),
+        final Path boxPath = Paths.get(params.rootDirectory,
+                                       params.project,
+                                       params.stack,
                                        boxName).toAbsolutePath();
 
         this.boxDirectory = boxPath.toFile();
@@ -110,7 +160,48 @@ public class BoxClient {
             throw new IllegalArgumentException("not allowed to write to stack directory " + stackDirectory);
         }
 
-        this.renderDataClient = new RenderDataClient(params.getBaseDataUrl(), params.getOwner(), params.getProject());
+        this.emptyImageFile = new File(boxDirectory.getAbsolutePath(),
+                                       "empty." + format.toLowerCase());
+
+        this.renderDataClient = params.getClient();
+    }
+
+    public void createEmptyImageFile()
+            throws IOException {
+
+        if (emptyImageFile.exists()) {
+
+            LOG.debug("skipping creation of {} because it already exists", emptyImageFile.getAbsolutePath());
+
+        } else {
+
+            final BufferedImage emptyImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
+
+            if (params.label) {
+
+                final Graphics2D targetGraphics = emptyImage.createGraphics();
+                targetGraphics.setBackground(new Color(backgroundRGBColor));
+                targetGraphics.clearRect(0, 0, boxWidth, boxHeight);
+                targetGraphics.dispose();
+
+                final BufferedImage emptyLabelImage = BoxMipmapGenerator.convertArgbLabelTo16BitGray(emptyImage);
+                if (emptyImageFile.exists()) {
+                    LOG.debug("skipping save of {} because it already exists", emptyImageFile.getAbsolutePath());
+                } else {
+                    Utils.saveImage(emptyLabelImage, emptyImageFile.getAbsolutePath(), format, false, 0.85f);
+                }
+
+            } else {
+
+                if (emptyImageFile.exists()) {
+                    LOG.debug("skipping save of {} because it already exists", emptyImageFile.getAbsolutePath());
+                } else {
+                    Utils.saveImage(emptyImage, emptyImageFile.getAbsolutePath(), format, true, 0.85f);
+                }
+
+            }
+        }
+
     }
 
     public void generateBoxesForZ(final Double z)
@@ -123,7 +214,6 @@ public class BoxClient {
         final BoxBounds boxBounds = new BoxBounds(z, layerBounds);
         final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, z);
         final int tileCount = tileBoundsList.size();
-        final Progress progress = new Progress(tileCount);
 
         final TileBounds firstTileBounds = tileBoundsList.get(0);
         final TileSpec firstTileSpec = renderDataClient.getTile(stack, firstTileBounds.getTileId());
@@ -132,28 +222,70 @@ public class BoxClient {
                  z, layerBounds, boxBounds, tileCount);
 
         final ImageProcessorCache imageProcessorCache;
-        final Integer backgroundRGBColor;
-        if (params.isLabel()) {
+        if (params.label) {
             imageProcessorCache = new LabelImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
                                                                true,
                                                                false,
                                                                firstTileSpec.getWidth(),
                                                                firstTileSpec.getHeight(),
                                                                tileCount);
-            backgroundRGBColor = Color.WHITE.getRGB();
         } else {
             imageProcessorCache = new ImageProcessorCache();
-            backgroundRGBColor = null;
         }
 
         BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z.intValue(),
-                                                              format,
-                                                              boxWidth,
-                                                              boxHeight,
-                                                              boxDirectory,
-                                                              0,
-                                                              boxBounds.lastRow,
-                                                              boxBounds.lastColumn);
+                                                                       params.label,
+                                                                       format,
+                                                                       boxWidth,
+                                                                       boxHeight,
+                                                                       boxDirectory,
+                                                                       0,
+                                                                       boxBounds.lastRow,
+                                                                       boxBounds.lastColumn);
+
+
+        final IGridPaths iGridPaths;
+        if (params.createIGrid) {
+            iGridPaths = new IGridPaths(boxBounds.lastRow, boxBounds.lastColumn);
+        } else {
+            iGridPaths = null;
+        }
+
+        generateLevelZero(z,
+                          layerBounds,
+                          boxBounds,
+                          tileCount,
+                          imageProcessorCache,
+                          boxMipmapGenerator,
+                          iGridPaths);
+
+        if (iGridPaths != null) {
+            final Path iGridDirectory = Paths.get(boxDirectory.getAbsolutePath(), "0", "iGrid");
+            iGridPaths.saveToFile(iGridDirectory.toFile(), z, emptyImageFile);
+        }
+
+        File overviewFile = null;
+        for (int level = 0; level < params.maxLevel; level++) {
+            boxMipmapGenerator = boxMipmapGenerator.generateNextLevel();
+            if (params.isOverviewNeeded() && (overviewFile == null)) {
+                overviewFile = boxMipmapGenerator.generateOverview(params.overviewWidth, layerBounds);
+            }
+        }
+
+        LOG.info("generateBoxesForZ: {}, exit", z);
+    }
+
+    private void generateLevelZero(final Double z,
+                                   final Bounds layerBounds,
+                                   final BoxBounds boxBounds,
+                                   final int tileCount,
+                                   final ImageProcessorCache imageProcessorCache,
+                                   final BoxMipmapGenerator boxMipmapGenerator,
+                                   final IGridPaths iGridPaths)
+            throws URISyntaxException, IOException {
+
+        final Progress progress = new Progress(tileCount);
+
         RenderParameters renderParameters;
         String parametersUrl;
         BufferedImage levelZeroImage;
@@ -167,8 +299,11 @@ public class BoxClient {
             for (int x = boxBounds.firstX; x < layerBounds.getMaxX(); x += boxWidth) {
 
                 parametersUrl = renderDataClient.getRenderParametersUrlString(stack, x, y, z, boxWidth, boxHeight, 1.0);
+
+                LOG.debug("generateLevelZero: z={}, loading {}", z, parametersUrl);
+
                 renderParameters = RenderParameters.loadFromUrl(parametersUrl);
-                renderParameters.setSkipInterpolation(params.isSkipInterpolation());
+                renderParameters.setSkipInterpolation(params.skipInterpolation);
                 renderParameters.setBackgroundRGBColor(backgroundRGBColor);
 
                 if (renderParameters.hasTileSpecs()) {
@@ -178,6 +313,7 @@ public class BoxClient {
                     Render.render(renderParameters, levelZeroImage, imageProcessorCache);
 
                     levelZeroFile = BoxMipmapGenerator.saveImage(levelZeroImage,
+                                                                 params.label,
                                                                  format,
                                                                  boxDirectory,
                                                                  0,
@@ -187,30 +323,24 @@ public class BoxClient {
 
                     boxMipmapGenerator.addSource(row, column, levelZeroFile);
 
+                    if (iGridPaths != null) {
+                        iGridPaths.addImage(levelZeroFile, row, column);
+                    }
+
                     progress.markProcessedTilesForRow(y, renderParameters);
 
                 } else {
-                    LOG.info("generateBoxesForZ: {}, skipping empty box for row {}, column {})", z, row, column);
+                    LOG.info("generateLevelZero: z={}, skipping empty box for row {}, column {})", z, row, column);
                 }
 
                 column++;
             }
 
-            LOG.info("generateBoxesForZ: {}, completed row {} of {}, {}, {}",
+            LOG.info("generateLevelZero: z={}, completed row {} of {}, {}, {}",
                      z, row, boxBounds.lastRow, progress, imageProcessorCache.getStats());
 
             row++;
         }
-
-        File overviewFile = null;
-        for (int level = 0; level < params.getMaxLevel(); level++) {
-            boxMipmapGenerator = boxMipmapGenerator.generateNextLevel();
-            if (params.isOverviewNeeded() && (overviewFile == null)) {
-                overviewFile = boxMipmapGenerator.generateOverview(params.getOverviewWidth(), layerBounds);
-            }
-        }
-
-        LOG.info("generateBoxesForZ: {}, exit", z);
     }
 
     /**
@@ -240,10 +370,10 @@ public class BoxClient {
             this.firstRow = (int) (layerBounds.getMinY() / boxHeight);
             this.firstY = firstRow * boxHeight;
 
-            this.lastColumn = (int) (layerBounds.getMaxX() / boxWidth);
-            this.lastX = (lastColumn + 1) * boxWidth - 1;
-            this.lastRow = (int) (layerBounds.getMaxY() / boxHeight);
-            this.lastY = (lastRow + 1) * boxHeight - 1;
+            this.lastColumn = (int) (layerBounds.getMaxX() / boxWidth) + 1;
+            this.lastX = lastColumn * boxWidth - 1;
+            this.lastRow = (int) (layerBounds.getMaxY() / boxHeight) + 1;
+            this.lastY = lastRow * boxHeight - 1;
         }
 
         @Override
@@ -267,7 +397,7 @@ public class BoxClient {
 
         public Progress(final int numberOfLayerTiles) {
             this.numberOfLayerTiles = numberOfLayerTiles;
-            this.processedTileIds = new HashSet<String>(numberOfLayerTiles * 2);
+            this.processedTileIds = new HashSet<>(numberOfLayerTiles * 2);
             this.startTime = System.currentTimeMillis();
             this.sdf = new SimpleDateFormat("HH:mm:ss");
             this.currentRowY = -1;

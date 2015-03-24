@@ -18,6 +18,7 @@ package org.janelia.alignment.spec;
 
 import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
+import java.io.Reader;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +58,7 @@ public class TileSpec implements Serializable {
     private double meshCellSize = RenderParameters.DEFAULT_MESH_CELL_SIZE;
 
     public TileSpec() {
-        this.mipmapLevels = new TreeMap<Integer, ImageAndMask>();
+        this.mipmapLevels = new TreeMap<>();
         this.transforms = new ListTransformSpec();
     }
 
@@ -101,6 +102,10 @@ public class TileSpec implements Serializable {
         return maxY;
     }
 
+    public double getMeshCellSize() {
+        return meshCellSize;
+    }
+
     public boolean isBoundingBoxDefined(final double meshCellSize) {
         return
                 (this.meshCellSize == meshCellSize) &&
@@ -114,7 +119,7 @@ public class TileSpec implements Serializable {
      * The bounding box is only valid for a given meshCellSize, i.e. setting it
      * independently of the meshCellSize is potentially harmful.
      *
-     * @param box
+     * @param  box  coordinates that define the bounding box for this tile.
      */
     public void setBoundingBox(final Rectangle box, final double meshCellSize) {
         this.minX = box.getX();
@@ -144,8 +149,8 @@ public class TileSpec implements Serializable {
         final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
         return new TransformMesh(ctList,
                                  getNumberOfTrianglesCoveringWidth(meshCellSize),
-                                 width.floatValue(),
-                                 height.floatValue());
+                                 width,
+                                 height);
     }
 
     /**
@@ -164,8 +169,8 @@ public class TileSpec implements Serializable {
         final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
         return new CoordinateTransformMesh(ctList,
                                            getNumberOfTrianglesCoveringWidth(meshCellSize),
-                                           width.floatValue(),
-                                           height.floatValue());
+                                           width,
+                                           height);
     }
 
     /**
@@ -187,17 +192,16 @@ public class TileSpec implements Serializable {
 
 
     /**
-     * Generate the bounding box of a collection of
-     * {@link TileSpec TileSpecs}.  The returned bounding box is the union
-     * rectangle of all tiles individual bounding boxes.
+     * @param  tileSpecs     collection of tile specs.
+     * @param  meshCellSize  specifies the resolution to estimate the individual bounding boxes.
+     * @param  force         if true, attributes will always be derived;
+     *                       otherwise attributes will only be derived if they do not already exist.
+     * @param  preallocated  optional pre-allocated bounding box instance to use for result.
      *
-     * @param tileSpecs
-     * @param meshCellSize specifies the resolution to estimate the individual bounding boxes
-     * @param force force
-     * @param preallocated
-     * @return
+     * @return the bounding box of a collection of {@link TileSpec}s.
+     *         The returned bounding box is the union rectangle of all tiles individual bounding boxes.
      */
-    final static public Rectangle2D.Double deriveBoundingBox(
+    public static Rectangle2D.Double deriveBoundingBox(
             final Iterable<TileSpec> tileSpecs,
             final double meshCellSize,
             final boolean force,
@@ -240,10 +244,9 @@ public class TileSpec implements Serializable {
      *
      * @return world coordinates (x, y, z) for the specified local coordinates.
      */
-    public float[] getWorldCoordinates(final float x,
-                                       final float y) {
-        float[] worldCoordinates;
-        final float[] w = new float[] {x, y};
+    public double[] getWorldCoordinates(final double x, final double y) {
+        double[] worldCoordinates;
+        final double[] w = new double[] {x, y};
 
         if (hasTransforms()) {
             final CoordinateTransformList<CoordinateTransform> ctl = getTransformList();
@@ -253,7 +256,7 @@ public class TileSpec implements Serializable {
         if (z == null) {
             worldCoordinates = w;
         } else {
-            worldCoordinates = new float[]{w[0], w[1], z.floatValue()};
+            worldCoordinates = new double[]{w[0], w[1], z};
         }
 
         return worldCoordinates;
@@ -271,11 +274,11 @@ public class TileSpec implements Serializable {
      * @throws NoninvertibleModelException
      *   if this tile's transforms cannot be inverted for the specified point.
      */
-    public float[] getLocalCoordinates(final float x, final float y, final double meshCellSize)
+    public double[] getLocalCoordinates(final double x, final double y, final double meshCellSize)
             throws IllegalStateException, NoninvertibleModelException {
 
-        float[] localCoordinates;
-        final float[] l = new float[] {x, y};
+        double[] localCoordinates;
+        final double[] l = new double[] {x, y};
         if (hasTransforms()) {
             final CoordinateTransformMesh mesh = getCoordinateTransformMesh(meshCellSize);
             mesh.applyInverseInPlace(l);
@@ -284,7 +287,7 @@ public class TileSpec implements Serializable {
         if (z == null) {
             localCoordinates = l;
         } else {
-            localCoordinates = new float[]{l[0], l[1], z.floatValue()};
+            localCoordinates = new double[]{l[0], l[1], z};
         }
 
         return localCoordinates;
@@ -389,7 +392,7 @@ public class TileSpec implements Serializable {
         return transforms;
     }
 
-    public void setTransforms(ListTransformSpec transforms) {
+    public void setTransforms(final ListTransformSpec transforms) {
         this.transforms = transforms;
     }
 
@@ -463,15 +466,17 @@ public class TileSpec implements Serializable {
      * for which a more general function getTransform() would have served
      * better and simpler.
      *
-     * @return
+     * @return transform list for this tile spec.
+     *
      * @throws IllegalArgumentException
+     *   if the list cannot be generated.
      */
     public CoordinateTransformList<CoordinateTransform> getTransformList()
             throws IllegalArgumentException {
 
         CoordinateTransformList<CoordinateTransform> ctl;
         if (transforms == null) {
-            ctl = new CoordinateTransformList< CoordinateTransform >();
+            ctl = new CoordinateTransformList<>();
         } else {
             ctl = transforms.getInstanceAsList();
         }
@@ -519,4 +524,14 @@ public class TileSpec implements Serializable {
     public static TileSpec fromJson(final String json) {
         return JsonUtils.GSON.fromJson(json, TileSpec.class);
     }
+
+    public static List<TileSpec> fromJsonArray(String json) {
+        return ARRAY_HELPER.fromJson(json);
+    }
+
+    public static List<TileSpec> fromJsonArray(Reader json) {
+        return ARRAY_HELPER.fromJson(json);
+    }
+
+    private static final JsonUtils.ArrayHelper<TileSpec> ARRAY_HELPER = new JsonUtils.ArrayHelper<>();
 }
