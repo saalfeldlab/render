@@ -18,6 +18,7 @@ package org.janelia.alignment.spec;
 
 import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
+import java.io.Reader;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -148,8 +149,8 @@ public class TileSpec implements Serializable {
         final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
         return new TransformMesh(ctList,
                                  getNumberOfTrianglesCoveringWidth(meshCellSize),
-                                 width.doubleValue(),
-                                 height.doubleValue());
+                                 width,
+                                 height);
     }
 
     /**
@@ -168,8 +169,8 @@ public class TileSpec implements Serializable {
         final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
         return new CoordinateTransformMesh(ctList,
                                            getNumberOfTrianglesCoveringWidth(meshCellSize),
-                                           width.doubleValue(),
-                                           height.doubleValue());
+                                           width,
+                                           height);
     }
 
     /**
@@ -255,7 +256,7 @@ public class TileSpec implements Serializable {
         if (z == null) {
             worldCoordinates = w;
         } else {
-            worldCoordinates = new double[]{w[0], w[1], z.doubleValue()};
+            worldCoordinates = new double[]{w[0], w[1], z};
         }
 
         return worldCoordinates;
@@ -286,7 +287,7 @@ public class TileSpec implements Serializable {
         if (z == null) {
             localCoordinates = l;
         } else {
-            localCoordinates = new double[]{l[0], l[1], z.doubleValue()};
+            localCoordinates = new double[]{l[0], l[1], z};
         }
 
         return localCoordinates;
@@ -523,4 +524,14 @@ public class TileSpec implements Serializable {
     public static TileSpec fromJson(final String json) {
         return JsonUtils.GSON.fromJson(json, TileSpec.class);
     }
+
+    public static List<TileSpec> fromJsonArray(String json) {
+        return ARRAY_HELPER.fromJson(json);
+    }
+
+    public static List<TileSpec> fromJsonArray(Reader json) {
+        return ARRAY_HELPER.fromJson(json);
+    }
+
+    private static final JsonUtils.ArrayHelper<TileSpec> ARRAY_HELPER = new JsonUtils.ArrayHelper<>();
 }

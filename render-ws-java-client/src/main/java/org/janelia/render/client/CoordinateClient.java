@@ -1,15 +1,11 @@
 package org.janelia.render.client;
 
-import java.io.BufferedInputStream;
-import java.io.Closeable;
+import com.beust.jcommander.Parameter;
+import com.google.gson.reflect.TypeToken;
+
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.file.Path;
@@ -17,8 +13,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -27,9 +21,6 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.beust.jcommander.Parameter;
-import com.google.gson.reflect.TypeToken;
 
 /**
  * Java client for translating world coordinates between two stacks in the same project.
@@ -329,21 +320,9 @@ public class CoordinateClient {
 
         final Path fromPath = Paths.get(path).toAbsolutePath();
 
-        InputStreamReader reader = null;
-        try {
-            final InputStream inputStream;
-            if (path.endsWith(".gz")) {
-                inputStream = new GZIPInputStream(new FileInputStream(path));
-            } else {
-                inputStream = new BufferedInputStream(new FileInputStream(path), 65536);
-            }
-
-            reader = new InputStreamReader(inputStream);
-
+        try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(fromPath.toString())) {
             final Type typeOfT = new TypeToken<List<TileCoordinates>>(){}.getType();
             parsedFromJson = JsonUtils.GSON.fromJson(reader, typeOfT);
-        } finally {
-            close(fromPath.toString(), reader);
         }
 
         LOG.info("loadCoordinatesFromJsonFile: parsed {} coordinates from {}", parsedFromJson.size(), fromPath);
@@ -359,35 +338,11 @@ public class CoordinateClient {
 
         LOG.info("saveJsonFile: entry");
 
-        Writer writer = null;
-        try {
-            final OutputStream outputStream;
-            if (path.endsWith(".gz")) {
-                outputStream = new GZIPOutputStream(new FileOutputStream(path));
-            } else {
-                outputStream = new FileOutputStream(path);
-            }
-
-            writer = new OutputStreamWriter(outputStream);
-
+        try (final Writer writer = FileUtil.DEFAULT_INSTANCE.getExtensionBasedWriter(toPath.toString())) {
             JsonUtils.GSON.toJson(coordinateData, writer);
-
-        } finally {
-            close(toPath.toString(), writer);
         }
 
         LOG.info("saveJsonFile: exit, wrote coordinate data to {}", toPath);
-    }
-
-    private static void close(final String context,
-                              final Closeable closeable) {
-        if (closeable != null) {
-            try {
-                closeable.close();
-            } catch (final IOException e) {
-                LOG.warn("failed to close {}, ignoring error", context, e);
-            }
-        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CoordinateClient.class);
