@@ -22,7 +22,7 @@ import org.junit.Test;
 public class CoordinateClientTest {
 
     @Test
-    public void testWorldToLocal() throws Exception {
+    public void testRoundTripMapping() throws Exception {
         final String stackName = "test-stack";
         final Double z = 9.9;
         final CoordinateClient client = new CoordinateClient(stackName, z, null);
@@ -70,6 +70,20 @@ public class CoordinateClientTest {
 
         Assert.assertEquals("invalid local y coordinate returned",
                             worldCoord.getWorld()[1], localCoord.getLocal()[1], acceptableDelta);
+
+        final List<TileCoordinates> roundTripWorldList = client.localToWorld(localListOfLists, tiles);
+
+        Assert.assertEquals("incorrect number of round trip world coordinates", 1, roundTripWorldList.size());
+
+        final TileCoordinates roundTripWorldCoord = roundTripWorldList.get(0);
+        Assert.assertEquals("incorrect round trip tile id", worldCoord.getTileId(), roundTripWorldCoord.getTileId());
+
+        final double[] expectedArray = worldCoord.getWorld();
+        final double[] actualArray = roundTripWorldCoord.getWorld();
+        Assert.assertEquals("incorrect round trip world array length", expectedArray.length + 1, actualArray.length);
+        for (int i = 0; i < expectedArray.length; i++) {
+            Assert.assertEquals("incorrect round trip value for item " + i, expectedArray[i], actualArray[i], 0.01);
+        }
     }
 
 }

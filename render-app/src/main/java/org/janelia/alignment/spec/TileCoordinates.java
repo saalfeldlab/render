@@ -1,6 +1,10 @@
 package org.janelia.alignment.spec;
 
+import com.google.gson.reflect.TypeToken;
+
+import java.io.Reader;
 import java.io.Serializable;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -151,5 +155,17 @@ public class TileCoordinates implements Serializable {
         return JsonUtils.GSON.fromJson(json, TileCoordinates.class);
     }
 
+    public static List<TileCoordinates> fromJsonArray(Reader json) {
+        return ARRAY_HELPER.fromJson(json);
+    }
+
+    public static List<List<TileCoordinates>> fromJsonArrayOfArrays(Reader json) {
+        // note: can't use generic helper for nested arrays because TileCoordinate type gets lost
+        final Type type = new TypeToken<List<List<TileCoordinates>>>(){}.getType();
+        return JsonUtils.GSON.fromJson(json, type);
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(TileCoordinates.class);
+
+    private static final JsonUtils.ArrayHelper<TileCoordinates> ARRAY_HELPER = new JsonUtils.ArrayHelper<>();
 }
