@@ -19,6 +19,7 @@ package org.janelia.alignment;
 import ij.ImagePlus;
 import ij.io.Opener;
 
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -83,7 +84,9 @@ public class Utils {
                     convertedImage = new BufferedImage(image.getWidth(),
                                                        image.getHeight(),
                                                        BufferedImage.TYPE_BYTE_GRAY);
-                    convertedImage.createGraphics().drawImage(image, 0, 0, null);
+                    final Graphics2D g2d = convertedImage.createGraphics();
+                    g2d.drawImage(image, 0, 0, null);
+                    g2d.dispose();
                 }
 
                 if (format.equalsIgnoreCase(JPEG_FORMAT)) {
@@ -99,7 +102,9 @@ public class Utils {
                         convertedImage = new BufferedImage(image.getWidth(),
                                                            image.getHeight(),
                                                            BufferedImage.TYPE_INT_RGB);
-                        convertedImage.createGraphics().drawImage(image, 0, 0, null);
+                        final Graphics2D g2d = convertedImage.createGraphics();
+                        g2d.drawImage(image, 0, 0, null);
+                        g2d.dispose();
                     }
 
                     writer.write(null, new IIOImage(convertedImage, null, null), param);
@@ -264,7 +269,7 @@ public class Utils {
                                             final int width,
                                             final int height,
                                             final double dx) {
-        final ArrayList<PointMatch> samples = new ArrayList<PointMatch>();
+        final ArrayList<PointMatch> samples = new ArrayList<>();
         for (double y = 0; y < height; y += dx) {
             for (double x = 0; x < width; x += dx) {
                 final Point p = new Point(new double[]{x, y});

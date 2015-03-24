@@ -74,8 +74,8 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         this.height = height;
 
         this.labelIndex = -1;
-        initColors(maxLabels);
-        this.urlToColor = new HashMap<String, Color>((int) (maxLabels * 1.4));
+        this.colors = buildColorList(maxLabels);
+        this.urlToColor = new HashMap<>((int) (maxLabels * 1.4));
     }
 
     /**
@@ -137,43 +137,43 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         return labelIndex;
     }
 
-    private void initColors(int maxLabels) {
+    public static List<Color> buildColorList(final int maxLabels) {
 
         if (maxLabels == 0) {
             throw new IllegalArgumentException("max labels must be greater than zero");
         }
 
-        final double cubeRoot = Math.cbrt(maxLabels);
+        final double squareRoot = Math.sqrt(maxLabels);
         final int maxValue = 255;
-        if (cubeRoot > maxValue) {
+        if (squareRoot > maxValue) {
             throw new IllegalArgumentException("color model cannot support " + maxLabels + " distinct labels");
         }
 
-        int step = (int) (maxValue / cubeRoot);
+        int step = (int) (maxValue / squareRoot);
         if (step > 1) {
             step = step - 1;
         }
 
-        this.colors = new ArrayList<Color>(maxLabels);
+        final List<Color> colorList = new ArrayList<>(maxLabels);
 
-        for (int red = 0; red < maxValue; red += step) {
-            for (int green = 0; green < maxValue; green += step) {
-                for (int blue = 0; blue < maxValue; blue += step) {
-                    if ((red != green) || (red != blue)) { // skip rgb values that look like black background
-                        this.colors.add(new Color(red, green, blue));
-                    }
-                    if (this.colors.size() == maxLabels)  {
-                        break;
-                    }
+        // only use low order (green and blue) bytes for RGB colors so that no data is lost during 16-bit gray conversion
+        for (int green = 0; ((green < maxValue) && (colorList.size() < maxLabels)); green += step) {
+            for (int blue = 0; ((blue < maxValue) && (colorList.size() < maxLabels)); blue += step) {
+
+                if (green != blue) { // skip values that look like black background
+                    colorList.add(new Color(0, green, blue));
                 }
+
             }
         }
 
-        if (this.colors.size() < maxLabels) {
+        if (colorList.size() < maxLabels) {
             throw new IllegalStateException("failed to create " + maxLabels + " distinct label colors");
         }
 
-        Collections.shuffle(this.colors);
+        Collections.shuffle(colorList);
+
+        return colorList;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(LabelImageProcessorCache.class);

@@ -168,17 +168,39 @@ public class BoxClient {
     public void createEmptyImageFile()
             throws IOException {
 
-        final BufferedImage emptyImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
-        final Graphics2D targetGraphics = emptyImage.createGraphics();
+        if (emptyImageFile.exists()) {
 
-        boolean convertToGray = true;
-        if (params.label) {
-            targetGraphics.setBackground(new Color(backgroundRGBColor));
-            targetGraphics.clearRect(0, 0, boxWidth, boxHeight);
-            convertToGray = false;
+            LOG.debug("skipping creation of {} because it already exists", emptyImageFile.getAbsolutePath());
+
+        } else {
+
+            final BufferedImage emptyImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
+
+            if (params.label) {
+
+                final Graphics2D targetGraphics = emptyImage.createGraphics();
+                targetGraphics.setBackground(new Color(backgroundRGBColor));
+                targetGraphics.clearRect(0, 0, boxWidth, boxHeight);
+                targetGraphics.dispose();
+
+                final BufferedImage emptyLabelImage = BoxMipmapGenerator.convertArgbLabelTo16BitGray(emptyImage);
+                if (emptyImageFile.exists()) {
+                    LOG.debug("skipping save of {} because it already exists", emptyImageFile.getAbsolutePath());
+                } else {
+                    Utils.saveImage(emptyLabelImage, emptyImageFile.getAbsolutePath(), format, false, 0.85f);
+                }
+
+            } else {
+
+                if (emptyImageFile.exists()) {
+                    LOG.debug("skipping save of {} because it already exists", emptyImageFile.getAbsolutePath());
+                } else {
+                    Utils.saveImage(emptyImage, emptyImageFile.getAbsolutePath(), format, true, 0.85f);
+                }
+
+            }
         }
 
-        Utils.saveImage(emptyImage, emptyImageFile.getAbsolutePath(), format, convertToGray, 0.85f);
     }
 
     public void generateBoxesForZ(final Double z)
@@ -199,7 +221,6 @@ public class BoxClient {
                  z, layerBounds, boxBounds, tileCount);
 
         final ImageProcessorCache imageProcessorCache;
-        final boolean convertToGray;
         if (params.label) {
             imageProcessorCache = new LabelImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
                                                                true,
@@ -207,15 +228,13 @@ public class BoxClient {
                                                                firstTileSpec.getWidth(),
                                                                firstTileSpec.getHeight(),
                                                                tileCount);
-            convertToGray = false;
         } else {
             imageProcessorCache = new ImageProcessorCache();
-            convertToGray = true;
         }
 
         BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z.intValue(),
+                                                                       params.label,
                                                                        format,
-                                                                       convertToGray,
                                                                        boxWidth,
                                                                        boxHeight,
                                                                        boxDirectory,
@@ -293,8 +312,8 @@ public class BoxClient {
                     Render.render(renderParameters, levelZeroImage, imageProcessorCache);
 
                     levelZeroFile = BoxMipmapGenerator.saveImage(levelZeroImage,
+                                                                 params.label,
                                                                  format,
-                                                                 boxMipmapGenerator.isConvertToGray(),
                                                                  boxDirectory,
                                                                  0,
                                                                  boxBounds.z,
