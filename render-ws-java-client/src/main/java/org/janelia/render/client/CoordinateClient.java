@@ -1,13 +1,11 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
-import com.google.gson.reflect.TypeToken;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
-import java.lang.reflect.Type;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -76,12 +74,15 @@ public class CoordinateClient {
 
             final Object coordinatesToSave;
             if (parameters.localToWorld) {
-                coordinatesToSave =
-                        client.localToWorld(loadCoordinatesFromJsonFile(parameters.fromJson));
+                final List<List<TileCoordinates>> loadedLocalCoordinates =
+                        loadJsonArrayOfArraysOfCoordinates(parameters.fromJson);
+                coordinatesToSave = client.localToWorld(loadedLocalCoordinates);
             } else {
-                coordinatesToSave =
-                        client.worldToLocal(client.getWorldCoordinatesWithTileIds(
-                                loadCoordinatesFromJsonFile(parameters.fromJson)));
+                final List<TileCoordinates> loadedWorldCoordinates =
+                        loadJsonArrayOfCoordinates(parameters.fromJson);
+                final List<List<TileCoordinates>> worldCoordinatesWithTileIds =
+                        client.getWorldCoordinatesWithTileIds(loadedWorldCoordinates);
+                coordinatesToSave = client.worldToLocal(worldCoordinatesWithTileIds);
             }
 
             saveJsonFile(parameters.toJson, coordinatesToSave);
@@ -199,28 +200,29 @@ public class CoordinateClient {
         return localListOfLists;
     }
 
-    public List<TileCoordinates> localToWorld(final List<TileCoordinates> localCoordinatesList)
+    public List<TileCoordinates> localToWorld(final List<List<TileCoordinates>> localCoordinatesList)
             throws IOException {
         return localToWorld(localCoordinatesList, getResolvedTiles());
     }
 
-    public List<TileCoordinates> localToWorld(final List<TileCoordinates> localCoordinatesList,
+    public List<TileCoordinates> localToWorld(final List<List<TileCoordinates>> localCoordinatesListOfLists,
                                               final ResolvedTileSpecCollection tiles)
             throws IOException {
 
-        LOG.info("localToWorld: localCoordinatesList.size()={}", localCoordinatesList.size());
+        LOG.info("localToWorld: localCoordinatesList.size()={}", localCoordinatesListOfLists.size());
 
         final ProcessTimer timer = new ProcessTimer();
 
-        final List<TileCoordinates> worldCoordinatesList = new ArrayList<>(localCoordinatesList.size());
+        final List<TileCoordinates> worldCoordinatesList = new ArrayList<>(localCoordinatesListOfLists.size());
         TileSpec tileSpec;
         TileCoordinates coordinates;
         String tileId;
         double[] local;
         int errorCount = 0;
-        for (int i = 0; i < localCoordinatesList.size(); i++) {
+        for (int i = 0; i < localCoordinatesListOfLists.size(); i++) {
 
-            coordinates = localCoordinatesList.get(i);
+            coordinates = getVisibleCoordinates(localCoordinatesListOfLists.get(i));
+
             try {
 
                 if (coordinates == null) {
@@ -264,7 +266,7 @@ public class CoordinateClient {
 
             if (timer.hasIntervalPassed()) {
                 LOG.info("localToWorld: transformed {} out of {} points",
-                         worldCoordinatesList.size(), localCoordinatesList.size());
+                         worldCoordinatesList.size(), localCoordinatesListOfLists.size());
             }
 
         }
@@ -273,6 +275,24 @@ public class CoordinateClient {
                  worldCoordinatesList.size(), errorCount, timer.getElapsedSeconds());
 
         return worldCoordinatesList;
+    }
+
+    /**
+     * @return the first visible coordinates in the specified list or
+     *         simply the first coordinates if none are marked as visible.
+     */
+    private TileCoordinates getVisibleCoordinates(List<TileCoordinates> mappedCoordinatesList) {
+        TileCoordinates tileCoordinates = null;
+        if (mappedCoordinatesList.size() > 0) {
+            tileCoordinates = mappedCoordinatesList.get(0);
+            for (TileCoordinates mappedCoordinates : mappedCoordinatesList) {
+                if (mappedCoordinates.isVisible()) {
+                    tileCoordinates = mappedCoordinates;
+                    break;
+                }
+            }
+        }
+        return tileCoordinates;
     }
 
     private ResolvedTileSpecCollection getResolvedTiles()
@@ -311,21 +331,38 @@ public class CoordinateClient {
     }
 
 
-    private static List<TileCoordinates> loadCoordinatesFromJsonFile(final String path)
+    private static List<TileCoordinates> loadJsonArrayOfCoordinates(final String path)
             throws IOException {
 
         List<TileCoordinates> parsedFromJson;
 
-        LOG.info("loadCoordinatesFromJsonFile: entry");
+        LOG.info("loadJsonArrayOfCoordinates: entry");
 
         final Path fromPath = Paths.get(path).toAbsolutePath();
 
         try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(fromPath.toString())) {
-            final Type typeOfT = new TypeToken<List<TileCoordinates>>(){}.getType();
-            parsedFromJson = JsonUtils.GSON.fromJson(reader, typeOfT);
+            parsedFromJson = TileCoordinates.fromJsonArray(reader);
         }
 
-        LOG.info("loadCoordinatesFromJsonFile: parsed {} coordinates from {}", parsedFromJson.size(), fromPath);
+        LOG.info("loadJsonArrayOfCoordinates: parsed {} coordinates from {}", parsedFromJson.size(), fromPath);
+
+        return parsedFromJson;
+    }
+
+    public static List<List<TileCoordinates>> loadJsonArrayOfArraysOfCoordinates(final String path)
+            throws IOException {
+
+        List<List<TileCoordinates>> parsedFromJson;
+
+        LOG.info("loadJsonArrayOfArraysOfCoordinates: entry");
+
+        final Path fromPath = Paths.get(path).toAbsolutePath();
+
+        try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(fromPath.toString())) {
+            parsedFromJson = TileCoordinates.fromJsonArrayOfArrays(reader);
+        }
+
+        LOG.info("loadJsonArrayOfArraysOfCoordinates: parsed {} coordinates from {}", parsedFromJson.size(), fromPath);
 
         return parsedFromJson;
     }
