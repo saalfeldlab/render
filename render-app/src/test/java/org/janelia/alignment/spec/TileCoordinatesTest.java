@@ -28,7 +28,7 @@ public class TileCoordinatesTest {
             listOfLists.add(list);
         }
 
-        final String json = JsonUtils.GSON.toJson(listOfLists);
+        String json = JsonUtils.GSON.toJson(listOfLists);
 
         final List<List<TileCoordinates>> parsedListOfLists =
                 TileCoordinates.fromJsonArrayOfArrays(new StringReader(json));
@@ -38,6 +38,21 @@ public class TileCoordinatesTest {
         for (int i = 0; i < parsedListOfLists.size(); i++) {
             List<TileCoordinates> parsedList = parsedListOfLists.get(i);
             Assert.assertTrue("parsed list " + i + " is empty", parsedList.size() > 0);
+            Object parsedObject = parsedList.get(0);
+            //noinspection ConstantConditions
+            Assert.assertTrue("parsed list " + i + " has item with type " + parsedObject.getClass(),
+                              parsedObject instanceof TileCoordinates);
+
+        }
+
+        final List<TileCoordinates> list = listOfLists.get(0);
+
+        json = JsonUtils.GSON.toJson(list);
+
+        final List<TileCoordinates> parsedList = TileCoordinates.fromJsonArray(new StringReader(json));
+        Assert.assertEquals("invalid number of coordinates parsed", list.size(), parsedList.size());
+
+        for (int i = 0; i < parsedList.size(); i++) {
             Object parsedObject = parsedList.get(0);
             //noinspection ConstantConditions
             Assert.assertTrue("parsed list " + i + " has item with type " + parsedObject.getClass(),

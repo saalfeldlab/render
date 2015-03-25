@@ -156,16 +156,15 @@ public class TileCoordinates implements Serializable {
     }
 
     public static List<TileCoordinates> fromJsonArray(Reader json) {
-        return ARRAY_HELPER.fromJson(json);
+        return JsonUtils.GSON.fromJson(json, LIST_TYPE);
     }
 
     public static List<List<TileCoordinates>> fromJsonArrayOfArrays(Reader json) {
-        // note: can't use generic helper for nested arrays because TileCoordinate type gets lost
-        final Type type = new TypeToken<List<List<TileCoordinates>>>(){}.getType();
-        return JsonUtils.GSON.fromJson(json, type);
+        return JsonUtils.GSON.fromJson(json, LIST_OF_LISTS_TYPE);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TileCoordinates.class);
 
-    private static final JsonUtils.ArrayHelper<TileCoordinates> ARRAY_HELPER = new JsonUtils.ArrayHelper<>();
+    private static final Type LIST_TYPE = new TypeToken<List<TileCoordinates>>(){}.getType();
+    private static final Type LIST_OF_LISTS_TYPE = new TypeToken<List<List<TileCoordinates>>>(){}.getType();
 }

@@ -16,10 +16,13 @@
  */
 package org.janelia.alignment.spec;
 
+import com.google.gson.reflect.TypeToken;
+
 import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
 import java.io.Reader;
 import java.io.Serializable;
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -526,12 +529,12 @@ public class TileSpec implements Serializable {
     }
 
     public static List<TileSpec> fromJsonArray(String json) {
-        return ARRAY_HELPER.fromJson(json);
+        return JsonUtils.GSON.fromJson(json, LIST_TYPE);
     }
 
     public static List<TileSpec> fromJsonArray(Reader json) {
-        return ARRAY_HELPER.fromJson(json);
+        return JsonUtils.GSON.fromJson(json, LIST_TYPE);
     }
 
-    private static final JsonUtils.ArrayHelper<TileSpec> ARRAY_HELPER = new JsonUtils.ArrayHelper<>();
+    private static final Type LIST_TYPE = new TypeToken<List<TileSpec>>(){}.getType();
 }

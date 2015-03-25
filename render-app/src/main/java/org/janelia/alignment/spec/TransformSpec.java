@@ -1,7 +1,10 @@
 package org.janelia.alignment.spec;
 
+import com.google.gson.reflect.TypeToken;
+
 import java.io.Reader;
 import java.io.Serializable;
+import java.lang.reflect.Type;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -135,11 +138,11 @@ public abstract class TransformSpec implements Serializable {
     }
 
     public static List<TransformSpec> fromJsonArray(String json) {
-        return ARRAY_HELPER.fromJson(json);
+        return JsonUtils.GSON.fromJson(json, LIST_TYPE);
     }
 
     public static List<TransformSpec> fromJsonArray(Reader json) {
-        return ARRAY_HELPER.fromJson(json);
+        return JsonUtils.GSON.fromJson(json, LIST_TYPE);
     }
 
     /**
@@ -158,6 +161,6 @@ public abstract class TransformSpec implements Serializable {
         instance = null;
     }
 
-    private static final JsonUtils.ArrayHelper<TransformSpec> ARRAY_HELPER = new JsonUtils.ArrayHelper<>();
+    private static final Type LIST_TYPE = new TypeToken<List<TransformSpec>>(){}.getType();
 
 }
