@@ -4,6 +4,8 @@ import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.service.dao.RenderDao;
+import org.janelia.render.service.model.MovingLeastSquaresDerivationData;
+import org.janelia.render.service.model.StackId;
 import org.janelia.test.EmbeddedMongoDb;
 import org.jboss.resteasy.specimpl.UriInfoImpl;
 import org.junit.AfterClass;

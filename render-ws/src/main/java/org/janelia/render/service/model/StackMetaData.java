@@ -1,4 +1,4 @@
-package org.janelia.alignment.spec;
+package org.janelia.render.service.model;
 
 import java.io.Serializable;
 

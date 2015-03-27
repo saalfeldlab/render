@@ -24,6 +24,8 @@ import javax.ws.rs.core.UriInfo;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.render.service.dao.MatchDao;
 import org.janelia.render.service.dao.SharedMongoClient;
+import org.janelia.render.service.model.IllegalServiceArgumentException;
+import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,4 +1,4 @@
-package org.janelia.render.service;
+package org.janelia.render.service.model;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;

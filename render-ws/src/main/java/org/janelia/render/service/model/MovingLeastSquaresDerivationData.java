@@ -1,4 +1,4 @@
-package org.janelia.render.service;
+package org.janelia.render.service.model;
 
 /**
  * Identifies align and montage stacks to use in derivation of moving least squares stack.

@@ -1,8 +1,10 @@
-package org.janelia.render.service;
+package org.janelia.render.service.util;
 
 import com.mongodb.MongoClient;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.dao.SharedMongoClient;
+import org.janelia.render.service.model.IllegalServiceArgumentException;
+import org.janelia.render.service.model.ServiceException;
 
 import java.net.UnknownHostException;
 

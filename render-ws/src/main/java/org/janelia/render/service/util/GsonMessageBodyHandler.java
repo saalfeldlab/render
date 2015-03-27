@@ -1,4 +1,4 @@
-package org.janelia.render.service;
+package org.janelia.render.service.util;
 
 import com.google.gson.Gson;
 import org.janelia.alignment.json.JsonUtils;
@@ -64,8 +64,7 @@ public final class GsonMessageBodyHandler
                            MultivaluedMap<String, String> httpHeaders,
                            InputStream entityStream)
             throws IOException, WebApplicationException {
-        InputStreamReader streamReader = new InputStreamReader(entityStream, UTF_8);
-        try {
+        try (final InputStreamReader streamReader = new InputStreamReader(entityStream, UTF_8)) {
             Type jsonType;
             if (type.equals(genericType)) {
                 jsonType = type;
@@ -73,8 +72,6 @@ public final class GsonMessageBodyHandler
                 jsonType = genericType;
             }
             return getGson().fromJson(streamReader, jsonType);
-        } finally {
-            streamReader.close();
         }
     }
 
@@ -103,11 +100,8 @@ public final class GsonMessageBodyHandler
                         MediaType mediaType,
                         MultivaluedMap<String, Object> httpHeaders,
                         OutputStream entityStream)
-            throws
-            IOException,
-            WebApplicationException {
-        OutputStreamWriter writer = new OutputStreamWriter(entityStream, UTF_8);
-        try {
+            throws IOException, WebApplicationException {
+        try (final OutputStreamWriter writer = new OutputStreamWriter(entityStream, UTF_8)) {
             Type jsonType;
             if (type.equals(genericType)) {
                 jsonType = type;
@@ -115,8 +109,6 @@ public final class GsonMessageBodyHandler
                 jsonType = genericType;
             }
             getGson().toJson(object, jsonType, writer);
-        } finally {
-            writer.close();
         }
     }
 }

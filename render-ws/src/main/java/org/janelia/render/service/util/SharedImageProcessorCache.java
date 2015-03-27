@@ -1,4 +1,4 @@
-package org.janelia.render.service;
+package org.janelia.render.service.util;
 
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;

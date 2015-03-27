@@ -23,6 +23,8 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.service.dao.RenderDao;
+import org.janelia.render.service.model.StackId;
+import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,7 +134,7 @@ public class CoordinateService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             final TileSpec tileSpec = renderDao.getTileSpec(stackId, tileId, true);
-            worldCoordinates = TileCoordinates.getWorldCoordinates(tileSpec, localX.doubleValue(), localY.doubleValue());
+            worldCoordinates = TileCoordinates.getWorldCoordinates(tileSpec, localX, localY);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -232,8 +234,8 @@ public class CoordinateService {
             final StackId stackId = new StackId(owner, project, stack);
             final List<TileSpec> tileSpecList = renderDao.getTileSpecs(stackId, worldX, worldY, z);
             localCoordinatesList = TileCoordinates.getLocalCoordinates(tileSpecList,
-                                                                       worldX.doubleValue(),
-                                                                       worldY.doubleValue());
+                                                                       worldX,
+                                                                       worldY);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -278,7 +280,7 @@ public class CoordinateService {
                     throw new IllegalArgumentException("world values must include both x and y");
                 }
 
-                tileSpecList = renderDao.getTileSpecs(stackId, (double) world[0], (double) world[1], z);
+                tileSpecList = renderDao.getTileSpecs(stackId, world[0], world[1], z);
                 localCoordinatesList.add(TileCoordinates.getLocalCoordinates(tileSpecList,
                                                                              world[0],
                                                                              world[1]));

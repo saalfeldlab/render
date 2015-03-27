@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.render.service.dao.RenderDao;
+import org.janelia.render.service.model.StackId;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -81,8 +82,8 @@ public class CoordinateServiceTest {
                                             stackId.getProject(),
                                             stackId.getStack(),
                                             ID_FOR_TILE_WITH_REAL_TRANSFORMS,
-                                            (double) local[0],
-                                            (double) local[1]);
+                                            local[0],
+                                            local[1]);
         validateCoordinates("world",
                             worldCoordinates,
                             ID_FOR_TILE_WITH_REAL_TRANSFORMS,
@@ -166,8 +167,8 @@ public class CoordinateServiceTest {
                                     tileCoordinates,
                                     ID_FOR_TILE_WITH_REAL_TRANSFORMS,
                                     false,
-                                    (double) points[i][0],
-                                    (double) points[i][1],
+                                    points[i][0],
+                                    points[i][1],
                                     Z);
             }
         }
