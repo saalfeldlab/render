@@ -14,7 +14,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package org.janelia.alignment.canvas;
+package org.janelia.alignment.oldcanvas;
 
 import ij.process.Blitter;
 import ij.process.ByteProcessor;
@@ -38,7 +38,7 @@ import org.janelia.alignment.util.ImageProcessorCache;
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
-public class Mipmaps extends AbstractCanvas<IdentityModel> {
+public class MipmapsCanvas extends AbstractCanvas<IdentityModel> {
 
     final static protected IdentityModel t = new IdentityModel();
 
@@ -50,7 +50,7 @@ public class Mipmaps extends AbstractCanvas<IdentityModel> {
     final transient protected ImageProcessorCache cache;
     final protected TreeMap<Integer, ImageAndMask> mipmapLevelUrls;
 
-    public Mipmaps(
+    public MipmapsCanvas(
             final double width,
             final double height,
             final TreeMap<Integer, ImageAndMask> mipmapLevelUrls,
@@ -60,7 +60,7 @@ public class Mipmaps extends AbstractCanvas<IdentityModel> {
         this.cache = cache;
     }
 
-    public Mipmaps(
+    public MipmapsCanvas(
             final double width,
             final double height,
             final int[] levels,

@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 /**
  *
  *
- * @author Stephan Saalfeld <saalfeld@mpi-cbg.de>
+ * @author Stephan Saalfeld <saalfelsd@janelia.hhmi.org>
  */
 public class ImageAndMask implements Serializable {
 
