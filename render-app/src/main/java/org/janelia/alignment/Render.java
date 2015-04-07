@@ -252,6 +252,11 @@ public class Render {
 
             loadMipStop = System.currentTimeMillis();
 
+            if (ipMipmap.getWidth() == 0 || ipMipmap.getHeight() == 0) {
+                LOG.debug("Skipping zero pixel size mipmap {}", imageAndMask.getImageUrl());
+                continue;
+            }
+
             // filter
             if (doFilter) {
                 final double mipmapScale = 1.0 / (1 << mipmapLevel);
