@@ -267,7 +267,8 @@ public class BoxClient {
         }
 
         final Path overviewDirPath = Paths.get(boxDirectory.getAbsolutePath(), "small");
-        final File overviewFile = new File(overviewDirPath.toFile(), z + "." + format.toLowerCase()).getAbsoluteFile();
+        final String overviewFileName = z.intValue() + "." + format.toLowerCase();
+        final File overviewFile = new File(overviewDirPath.toFile(), overviewFileName).getAbsoluteFile();
         boolean isOverviewGenerated = (! params.forceGeneration) && overviewFile.exists();
 
         for (int level = 0; level < params.maxLevel; level++) {
