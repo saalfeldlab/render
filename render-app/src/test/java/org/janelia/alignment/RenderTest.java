@@ -161,6 +161,24 @@ public class RenderTest {
                             params, ImageProcessorCache.DISABLED_CACHE, 0, 0, expectedDigestString);
     }
 
+    @Test
+    public void testSuperDownSample() throws Exception {
+
+        final String[] args = {
+                "--tile_spec_url", "src/test/resources/mipmap-test/mask_mipmap_test.json",
+                "--out", outputFile.getAbsolutePath(),
+                "--width", "10000",
+                "--height", "10000",
+                "--scale", "0.0001"
+        };
+
+        Render.main(args);
+
+        Assert.assertTrue("rendered file " + outputFile.getAbsolutePath() + " not created",
+                          outputFile.exists());
+
+    }
+
     private void validateCacheRender(String context,
                                      RenderParameters params,
                                      ImageProcessorCache imageProcessorCache,
