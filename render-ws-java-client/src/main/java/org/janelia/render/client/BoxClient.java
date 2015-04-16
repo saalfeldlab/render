@@ -83,6 +83,9 @@ public class BoxClient {
         @Parameter(names = "--createIGrid", description = "create an IGrid file", required = false, arity = 0)
         private boolean createIGrid = false;
 
+        @Parameter(names = "--forceGeneration", description = "Regenerate boxes even if they already exist", required = false, arity = 0)
+        private boolean forceGeneration = false;
+
         @Parameter(description = "Z values for layers to render", required = true)
         private List<Double> zValues;
 
@@ -241,9 +244,8 @@ public class BoxClient {
                                                                        boxDirectory,
                                                                        0,
                                                                        boxBounds.lastRow,
-                                                                       boxBounds.lastColumn);
-
-
+                                                                       boxBounds.lastColumn,
+                                                                       params.forceGeneration);
         final IGridPaths iGridPaths;
         if (params.createIGrid) {
             iGridPaths = new IGridPaths(boxBounds.lastRow, boxBounds.lastColumn);
@@ -264,11 +266,16 @@ public class BoxClient {
             iGridPaths.saveToFile(iGridDirectory.toFile(), z, emptyImageFile);
         }
 
-        File overviewFile = null;
+        final Path overviewDirPath = Paths.get(boxDirectory.getAbsolutePath(), "small");
+        final File overviewFile = new File(overviewDirPath.toFile(), z + "." + format.toLowerCase()).getAbsoluteFile();
+        boolean isOverviewGenerated = (! params.forceGeneration) && overviewFile.exists();
+
         for (int level = 0; level < params.maxLevel; level++) {
             boxMipmapGenerator = boxMipmapGenerator.generateNextLevel();
-            if (params.isOverviewNeeded() && (overviewFile == null)) {
-                overviewFile = boxMipmapGenerator.generateOverview(params.overviewWidth, layerBounds);
+            if (params.isOverviewNeeded() && (! isOverviewGenerated)) {
+                isOverviewGenerated = boxMipmapGenerator.generateOverview(params.overviewWidth,
+                                                                          layerBounds,
+                                                                          overviewFile);
             }
         }
 
@@ -308,18 +315,25 @@ public class BoxClient {
 
                 if (renderParameters.hasTileSpecs()) {
 
-                    levelZeroImage = renderParameters.openTargetImage();
+                    levelZeroFile = BoxMipmapGenerator.getImageFile(format,
+                                                                    boxDirectory,
+                                                                    0,
+                                                                    boxBounds.z,
+                                                                    row,
+                                                                    column);
 
-                    Render.render(renderParameters, levelZeroImage, imageProcessorCache);
+                    if (params.forceGeneration || (! levelZeroFile.exists())) {
+                        levelZeroImage = renderParameters.openTargetImage();
 
-                    levelZeroFile = BoxMipmapGenerator.saveImage(levelZeroImage,
-                                                                 params.label,
-                                                                 format,
-                                                                 boxDirectory,
-                                                                 0,
-                                                                 boxBounds.z,
-                                                                 row,
-                                                                 column);
+                        Render.render(renderParameters, levelZeroImage, imageProcessorCache);
+
+                        BoxMipmapGenerator.saveImage(levelZeroImage,
+                                                     levelZeroFile,
+                                                     params.label,
+                                                     format);
+                    } else {
+                        LOG.debug("{} already generated", levelZeroFile.getAbsolutePath());
+                    }
 
                     boxMipmapGenerator.addSource(row, column, levelZeroFile);
 

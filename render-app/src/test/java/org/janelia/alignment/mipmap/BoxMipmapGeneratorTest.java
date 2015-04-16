@@ -19,6 +19,8 @@ package org.janelia.alignment.mipmap;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -82,7 +84,6 @@ public class BoxMipmapGeneratorTest {
     @Test
     public void testMipmapGenerator() throws Exception {
 
-
         BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z,
                                                                        false,
                                                                        Utils.PNG_FORMAT,
@@ -91,7 +92,8 @@ public class BoxMipmapGeneratorTest {
                                                                        boxDirectory,
                                                                        0,
                                                                        lastRow,
-                                                                       lastColumn);
+                                                                       lastColumn,
+                                                                       false);
 
         // Level 0:
         //
@@ -120,9 +122,15 @@ public class BoxMipmapGeneratorTest {
 
         boxMipmapGenerator = validateNextLevel(boxMipmapGenerator, new int[][] {{0,0}});
 
-        final File overviewFile = boxMipmapGenerator.generateOverview(overviewWidth, layerBounds);
+        final Path overviewDirPath = Paths.get(boxDirectory.getAbsolutePath(), "small");
+        final File overviewFile = new File(overviewDirPath.toFile(), z + ".png").getAbsoluteFile();
+        final boolean isOverviewGenerated = boxMipmapGenerator.generateOverview(overviewWidth,
+                                                                                layerBounds,
+                                                                                overviewFile);
 
         filesAndDirectoriesToDelete.add(overviewFile);
+
+        Assert.assertTrue("overview generated flag should be true", isOverviewGenerated);
 
         Assert.assertNotNull("overview " + overviewFile +
                              " should have been generated for level " + boxMipmapGenerator.getSourceLevel(),
@@ -160,14 +168,17 @@ public class BoxMipmapGeneratorTest {
 
         Render.render(params, argbLabelImage, cache);
 
-        final File outputFile = BoxMipmapGenerator.saveImage(argbLabelImage,
-                                                             true,
-                                                             Utils.PNG_FORMAT,
-                                                             boxDirectory,
-                                                             level,
-                                                             z,
-                                                             row,
-                                                             column);
+        final File outputFile = BoxMipmapGenerator.getImageFile(Utils.PNG_FORMAT,
+                                                               boxDirectory,
+                                                               level,
+                                                               z,
+                                                               row,
+                                                               column);
+
+        BoxMipmapGenerator.saveImage(argbLabelImage,
+                                     outputFile,
+                                     true,
+                                     Utils.PNG_FORMAT);
 
         filesAndDirectoriesToDelete.add(outputFile);
         filesAndDirectoriesToDelete.add(outputFile.getParentFile()); // row
@@ -179,7 +190,7 @@ public class BoxMipmapGeneratorTest {
     }
 
     private BoxMipmapGenerator validateNextLevel(BoxMipmapGenerator boxMipmapGenerator,
-                                              int[][] expectedRowAndColumnPairs) throws Exception {
+                                                 int[][] expectedRowAndColumnPairs) throws Exception {
 
         final BoxMipmapGenerator nextLevelGenerator = boxMipmapGenerator.generateNextLevel();
         final int level = nextLevelGenerator.getSourceLevel();
@@ -201,14 +212,17 @@ public class BoxMipmapGeneratorTest {
         Assert.assertTrue("The following files were not generated for level " + level + ": " + missingFiles,
                           missingFiles.isEmpty());
 
-        final File overviewFile = boxMipmapGenerator.generateOverview(overviewWidth, layerBounds);
-
+        final Path overviewDirPath = Paths.get(boxDirectory.getAbsolutePath(), "small");
+        final File overviewFile = new File(overviewDirPath.toFile(), z + ".png").getAbsoluteFile();
+        final boolean isOverviewGenerated = boxMipmapGenerator.generateOverview(overviewWidth,
+                                                                                layerBounds,
+                                                                                overviewFile);
         filesAndDirectoriesToDelete.add(overviewFile);
+        filesAndDirectoriesToDelete.add(overviewFile.getParentFile());
 
-        if (overviewFile != null) {
-            filesAndDirectoriesToDelete.add(overviewFile.getParentFile());
-            Assert.fail("overview " + overviewFile + " should NOT have been generated for level " + level);
-        }
+        Assert.assertFalse("overview generated flag should be false for level " + level, isOverviewGenerated);
+        Assert.assertFalse("overview " + overviewFile + " should NOT have been generated for level " + level,
+                           overviewFile.exists());
 
         return nextLevelGenerator;
     }
