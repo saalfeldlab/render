@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import mpicbg.trakem2.transform.AffineModel2D;
+import mpicbg.trakem2.transform.CoordinateTransform;
+import mpicbg.trakem2.transform.PolynomialTransform2D;
 
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
@@ -43,6 +45,9 @@ public class ImportMETClient {
 
         @Parameter(names = "--metFile", description = "MET file for section", required = true)
         private String metFile;
+
+        @Parameter(names = "--formatVersion", description = "MET format version ('v1', v2', ...), default is 'v1'", required = false)
+        private String formatVersion = "v1";
 
         @Parameter(names = "--replaceAll", description = "Replace all transforms with the MET transform (default is to only replace the last transform)", required = false, arity = 0)
         private boolean replaceAll;
@@ -88,11 +93,13 @@ public class ImportMETClient {
 
     public void generateStackData() throws Exception {
 
-        final int alignTileCount = tileIdToAlignTransformMap.size();
+        LOG.info("generateStackData: entry");
 
-        LOG.info("generateStackData: entry, alignTileCount={}", alignTileCount);
-
-        loadMetData();
+        if ("v2".equalsIgnoreCase(parameters.formatVersion)) {
+            loadMetV2Data();
+        } else {
+            loadMetV1Data();
+        }
 
         final TileSpec lastTileSpec = renderDataClient.getTile(parameters.acquireStack, lastTileId);
         final Double z = lastTileSpec.getZ();
@@ -116,6 +123,7 @@ public class ImportMETClient {
 
         LOG.info("generateStackData: after filter, collection is {}", acquireTiles);
 
+        final int transformTileCount = tileIdToAlignTransformMap.size();
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
         TransformSpec alignTransform;
@@ -140,49 +148,48 @@ public class ImportMETClient {
             tileSpecCount++;
             if (timer.hasIntervalPassed()) {
                 LOG.info("generateStackData: updated transforms for {} out of {} tiles",
-                         tileSpecCount, alignTileCount);
+                         tileSpecCount, transformTileCount);
             }
         }
 
-        LOG.debug("generateStackData: updated transforms for {} tiles, elapsedSeconds={}",
-                  tileSpecCount, timer.getElapsedSeconds());
+        final int removedTiles = tileSpecCount - acquireTiles.getTileCount();
+
+        LOG.debug("generateStackData: updated transforms for {} tiles, removed {} bad tiles, elapsedSeconds={}",
+                  tileSpecCount, removedTiles, timer.getElapsedSeconds());
 
         renderDataClient.saveResolvedTiles(acquireTiles, parameters.alignStack, z);
 
         LOG.info("generateStackData: exit, saved tiles and transforms for {}", z);
     }
 
-    private void loadMetData()
+    private void loadMetData(final int[] parameterIndexes,
+                             final int lastParameterIndex,
+                             final CoordinateTransform transformModel)
             throws IOException, IllegalArgumentException {
 
         final Path path = FileSystems.getDefault().getPath(parameters.metFile).toAbsolutePath();
+        final String modelClassName = transformModel.getClass().getName();
 
-        LOG.info("loadMetData: entry, path={}", path);
+        LOG.info("loadMetData: entry, formatVersion={}, modelClassName={}, path={}",
+                 parameters.formatVersion, modelClassName, path);
 
         final BufferedReader reader = Files.newBufferedReader(path, Charset.defaultCharset());
 
-        // MET data format:
-        //
-        // section  tileId              ?  affineParameters (**NOTE: order 1-6 differs from renderer 1,4,2,5,3,6)
-        // -------  ------------------  -  -------------------------------------------------------------------
-        // 5100     140731162138009113  1  0.992264  0.226714  27606.648556  -0.085614  0.712238  38075.232380  9  113  0  /nobackup/flyTEM/data/whole_fly_1/141111-lens/140731162138_112x144/col0009/col0009_row0113_cam0.png  -999
-
-        final int lastAffineParameter = 9;
         int lineNumber = 0;
-        final AffineModel2D affineModel = new AffineModel2D();
 
         String line;
         String[] w;
         String section;
         String tileId = null;
-        String affineData;
+        StringBuilder modelData = new StringBuilder(128);
+        String modelDataString;
         while ((line = reader.readLine()) != null) {
 
             lineNumber++;
 
             w = WHITESPACE_PATTERN.split(line);
 
-            if (w.length < lastAffineParameter) {
+            if (w.length < lastParameterIndex) {
 
                 LOG.warn("loadMetData: skipping line {} because it only contains {} words", lineNumber, w.length);
 
@@ -196,14 +203,24 @@ public class ImportMETClient {
                                                        ") included in MET file " + path +
                                                        ".  First difference found at line " + lineNumber + ".");
                 }
+
                 tileId = w[1];
-                affineData = w[3] + ' ' + w[6] + ' ' + w[4] + ' ' + w[7] + ' ' + w[5] + ' ' + w[8];
+
+                modelData.setLength(0);
+                for (int i = 0; i < parameterIndexes.length; i++) {
+                    if (i > 0) {
+                        modelData.append(' ');
+                    }
+                    modelData.append(w[parameterIndexes[i]]);
+                }
+                modelDataString = modelData.toString();
+
                 try {
-                    affineModel.init(affineData);
+                    transformModel.init(modelDataString);
                 } catch (Exception e) {
-                    throw new IllegalArgumentException("Failed to parse affine data from line " + lineNumber +
+                    throw new IllegalArgumentException("Failed to parse transform data from line " + lineNumber +
                                                        " of MET file " + path + ".  Invalid data string is '" +
-                                                       affineData + "'.", e);
+                                                       modelDataString + "'.", e);
                 }
 
                 if (tileIdToAlignTransformMap.containsKey(tileId)) {
@@ -212,8 +229,7 @@ public class ImportMETClient {
                                                        lineNumber + ".");
                 }
 
-                tileIdToAlignTransformMap.put(tileId,
-                                              new LeafTransformSpec(AffineModel2D.class.getName(), affineData));
+                tileIdToAlignTransformMap.put(tileId, new LeafTransformSpec(modelClassName, modelDataString));
             }
 
         }
@@ -226,6 +242,34 @@ public class ImportMETClient {
 
         LOG.info("loadMetData: exit, loaded {} tiles from {} lines for section {}",
                  tileIdToAlignTransformMap.size(), lineNumber, metSection);
+    }
+
+    private void loadMetV1Data()
+            throws IOException, IllegalArgumentException {
+
+        // MET v1 data format:
+        //
+        // section  tileId              ?  affineParameters (**NOTE: order 1-6 differs from renderer 1,4,2,5,3,6)
+        // -------  ------------------  -  -------------------------------------------------------------------
+        // 5100     140731162138009113  1  0.992264  0.226714  27606.648556  -0.085614  0.712238  38075.232380  9  113  0  /nobackup/flyTEM/data/whole_fly_1/141111-lens/140731162138_112x144/col0009/col0009_row0113_cam0.png  -999
+
+        final int[] parameterIndexes = {3, 6, 4, 7, 5, 8};
+        final int lastAffineParameter = 9;
+        loadMetData(parameterIndexes, lastAffineParameter, new AffineModel2D());
+    }
+
+    private void loadMetV2Data()
+            throws IOException, IllegalArgumentException {
+
+        // MET v2 data format:
+        //
+        // section  tileId                  ?  polyParameters (12 values, same order as Saalfeld)                                                                                                                                                                                           ?   ?
+        // -------  ------------------      -  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  -   --  -   --------------------------------------------------------------------------------------------------- -
+        // 11	150226163251007079.3461.0	1	144835.943662000005	-0.960117997218	-0.069830998961	0.000000475771	0.000000631026	-0.000005306870	7651.469166999998	0.117266994598	-0.962169002963	-0.000000225265	-0.000003457168	0.000009180979	7	79	3	/nobackup/flyTEM/data/whole_fly_1/141111-lens/150226163251_120x172/col0007/col0007_row0079_cam3.png	7
+
+        final int[] parameterIndexes = {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+        final int lastAffineParameter = 15;
+        loadMetData(parameterIndexes, lastAffineParameter, new PolynomialTransform2D());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ImportMETClient.class);
