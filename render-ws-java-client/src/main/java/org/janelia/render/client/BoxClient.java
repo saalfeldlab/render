@@ -306,24 +306,24 @@ public class BoxClient {
 
             for (int x = boxBounds.firstX; x < layerBounds.getMaxX(); x += boxWidth) {
 
-                parametersUrl = renderDataClient.getRenderParametersUrlString(stack, x, y, z, boxWidth, boxHeight, 1.0);
+                levelZeroFile = BoxMipmapGenerator.getImageFile(format,
+                                                                boxDirectory,
+                                                                0,
+                                                                boxBounds.z,
+                                                                row,
+                                                                column);
 
-                LOG.debug("generateLevelZero: z={}, loading {}", z, parametersUrl);
+                if (params.forceGeneration || (! levelZeroFile.exists())) {
+                    parametersUrl = renderDataClient.getRenderParametersUrlString(stack, x, y, z, boxWidth, boxHeight, 1.0);
 
-                renderParameters = RenderParameters.loadFromUrl(parametersUrl);
-                renderParameters.setSkipInterpolation(params.skipInterpolation);
-                renderParameters.setBackgroundRGBColor(backgroundRGBColor);
+                    LOG.info("generateLevelZero: z={}, loading {}", z, parametersUrl);
 
-                if (renderParameters.hasTileSpecs()) {
+                    renderParameters = RenderParameters.loadFromUrl(parametersUrl);
+                    renderParameters.setSkipInterpolation(params.skipInterpolation);
+                    renderParameters.setBackgroundRGBColor(backgroundRGBColor);
 
-                    levelZeroFile = BoxMipmapGenerator.getImageFile(format,
-                                                                    boxDirectory,
-                                                                    0,
-                                                                    boxBounds.z,
-                                                                    row,
-                                                                    column);
+                    if (renderParameters.hasTileSpecs()) {
 
-                    if (params.forceGeneration || (! levelZeroFile.exists())) {
                         levelZeroImage = renderParameters.openTargetImage();
 
                         Render.render(renderParameters, levelZeroImage, imageProcessorCache);
@@ -333,7 +333,7 @@ public class BoxClient {
                                                      params.label,
                                                      format);
                     } else {
-                        LOG.debug("{} already generated", levelZeroFile.getAbsolutePath());
+                        LOG.info("generateLevelZero: z={}, skipping empty box for row {}, column {})", z, row, column);
                     }
 
                     boxMipmapGenerator.addSource(row, column, levelZeroFile);
@@ -345,7 +345,7 @@ public class BoxClient {
                     progress.markProcessedTilesForRow(y, renderParameters);
 
                 } else {
-                    LOG.info("generateLevelZero: z={}, skipping empty box for row {}, column {})", z, row, column);
+                    LOG.info("{} already generated", levelZeroFile.getAbsolutePath());
                 }
 
                 column++;
