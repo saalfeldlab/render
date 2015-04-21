@@ -271,6 +271,10 @@ public class BoxClient {
         final File overviewFile = new File(overviewDirPath.toFile(), overviewFileName).getAbsoluteFile();
         boolean isOverviewGenerated = (! params.forceGeneration) && overviewFile.exists();
 
+        if (isOverviewGenerated) {
+            LOG.info("generateBoxesForZ: {}, overview {} already generated", z, overviewFile.getAbsolutePath());
+        }
+
         for (int level = 0; level < params.maxLevel; level++) {
             boxMipmapGenerator = boxMipmapGenerator.generateNextLevel();
             if (params.isOverviewNeeded() && (! isOverviewGenerated)) {
@@ -332,9 +336,22 @@ public class BoxClient {
                                                      levelZeroFile,
                                                      params.label,
                                                      format);
+
+                        boxMipmapGenerator.addSource(row, column, levelZeroFile);
+
+                        if (iGridPaths != null) {
+                            iGridPaths.addImage(levelZeroFile, row, column);
+                        }
+
                     } else {
                         LOG.info("generateLevelZero: z={}, skipping empty box for row {}, column {})", z, row, column);
                     }
+
+                } else {
+
+                    LOG.info("{} already generated", levelZeroFile.getAbsolutePath());
+
+                    renderParameters = null;
 
                     boxMipmapGenerator.addSource(row, column, levelZeroFile);
 
@@ -342,11 +359,9 @@ public class BoxClient {
                         iGridPaths.addImage(levelZeroFile, row, column);
                     }
 
-                    progress.markProcessedTilesForRow(y, renderParameters);
-
-                } else {
-                    LOG.info("{} already generated", levelZeroFile.getAbsolutePath());
                 }
+
+                progress.markProcessedTilesForRow(y, renderParameters);
 
                 column++;
             }
@@ -427,12 +442,14 @@ public class BoxClient {
                 currentRowPartialTileSum = 0;
             }
 
-            for (TileSpec tileSpec : renderParameters.getTileSpecs()) {
-                // only add tiles that are completely above the row's max Y value
-                if (tileSpec.getMaxY() <= rowMaxY) {
-                    processedTileIds.add(tileSpec.getTileId());
-                } else {
-                    currentRowPartialTileSum += (rowMaxY - tileSpec.getMinY()) / (double) tileSpec.getHeight();
+            if (renderParameters != null) {
+                for (TileSpec tileSpec : renderParameters.getTileSpecs()) {
+                    // only add tiles that are completely above the row's max Y value
+                    if (tileSpec.getMaxY() <= rowMaxY) {
+                        processedTileIds.add(tileSpec.getTileId());
+                    } else {
+                        currentRowPartialTileSum += (rowMaxY - tileSpec.getMinY()) / (double) tileSpec.getHeight();
+                    }
                 }
             }
         }
