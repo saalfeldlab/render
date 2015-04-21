@@ -103,6 +103,8 @@ public class ResolvedTileSpecCollection {
         resolveTileSpec(tileSpec);
 
         tileSpec.deriveBoundingBox(RenderParameters.DEFAULT_MESH_CELL_SIZE, true);
+
+        removeTileIfInvalid(tileSpec);
     }
 
     public void addReferenceTransformToAllTiles(String transformId)
@@ -202,6 +204,44 @@ public class ResolvedTileSpecCollection {
                                                 transforms.getUnresolvedIds());
             }
         }
+    }
+
+    private void removeTileIfInvalid(TileSpec tileSpec) {
+
+        String errorMessage = null;
+
+        // TODO: confirm bounding box constraints (or parameter-ize them)
+        final double minCoordinate = -400;
+        final double maxCoordinate = 300000;
+        final double minSize = 500;
+        final double maxSize = 5000;
+
+        if (tileSpec.getMinX() < minCoordinate) {
+            errorMessage = "invalid minX of " + tileSpec.getMinX();
+        } else if (tileSpec.getMinY() < minCoordinate) {
+            errorMessage = "invalid minY of " + tileSpec.getMinY();
+        } else if (tileSpec.getMaxX() > maxCoordinate) {
+            errorMessage = "invalid maxX of " + tileSpec.getMaxX();
+        } else if (tileSpec.getMaxY() > maxCoordinate) {
+            errorMessage = "invalid maxY of " + tileSpec.getMaxY();
+        } else {
+            final double width = tileSpec.getMaxX() - tileSpec.getMinX();
+            final double height = tileSpec.getMaxY() - tileSpec.getMinY();
+            if ((width < minSize) || (width > maxSize)) {
+                errorMessage = "invalid width of " + width;
+            } else if ((height < minSize) || (height > maxSize)) {
+                errorMessage = "invalid height of " + height;
+            }
+        }
+
+        if (errorMessage != null) {
+            LOG.error(errorMessage + " derived for tileId '" + tileSpec.getTileId() +
+                      "', bounds are [" + tileSpec.getMinX() + ", " + tileSpec.getMinY() + ", " + tileSpec.getMaxX() +
+                      ", " + tileSpec.getMaxY() + "] with transforms " +
+                      tileSpec.getTransforms().toJson().replace('\n', ' '));
+            tileIdToSpecMap.remove(tileSpec.getTileId());
+        }
+
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ResolvedTileSpecCollection.class);
