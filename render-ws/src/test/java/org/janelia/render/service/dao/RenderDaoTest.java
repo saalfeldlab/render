@@ -21,7 +21,7 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.TransformSpecMetaData;
 import org.janelia.render.service.model.ObjectNotFoundException;
-import org.janelia.render.service.model.StackId;
+import org.janelia.render.service.model.stack.StackId;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
 import org.junit.Assert;

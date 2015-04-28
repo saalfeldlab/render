@@ -1,5 +1,6 @@
-package org.janelia.render.service.model;
+package org.janelia.render.service.model.stack;
 
+import java.io.Serializable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -8,7 +9,7 @@ import java.util.regex.Pattern;
  *
  * @author Eric Trautman
  */
-public class StackId implements Comparable<StackId> {
+public class StackId implements Comparable<StackId>, Serializable {
 
     public static final String STACK_COLLECTION_SUFFIX = "stack";
     public static final String TILE_COLLECTION_SUFFIX = "tile";

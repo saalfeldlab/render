@@ -5,7 +5,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.service.dao.RenderDao;
-import org.janelia.render.service.model.StackId;
+import org.janelia.render.service.model.stack.StackId;
 import org.janelia.test.EmbeddedMongoDb;
 import org.jboss.resteasy.specimpl.UriInfoImpl;
 import org.junit.AfterClass;

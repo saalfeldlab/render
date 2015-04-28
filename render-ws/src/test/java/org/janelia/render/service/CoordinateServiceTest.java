@@ -6,7 +6,7 @@ import java.util.List;
 
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.render.service.dao.RenderDao;
-import org.janelia.render.service.model.StackId;
+import org.janelia.render.service.model.stack.StackId;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
 import org.junit.Assert;
