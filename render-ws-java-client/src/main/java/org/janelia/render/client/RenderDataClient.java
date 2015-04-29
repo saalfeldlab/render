@@ -9,6 +9,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
@@ -135,6 +136,23 @@ public class RenderDataClient {
         httpClient.execute(httpPut, responseHandler);
     }
 
+    public void saveMatches(List<CanvasMatches> canvasMatches)
+            throws IllegalArgumentException, IOException {
+
+        final String json = JsonUtils.GSON.toJson(canvasMatches);
+        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+        final URI uri = getMatchesUri();
+        final String requestContext = "PUT " + uri;
+        final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        LOG.info("saveMatches: submitting {} for {} matches", requestContext, canvasMatches.size());
+
+        httpClient.execute(httpPut, responseHandler);
+    }
+
     public List<List<TileCoordinates>> getTileIdsForCoordinates(List<TileCoordinates> worldCoordinates,
                                                                 String stack,
                                                                 Double z)
@@ -201,6 +219,10 @@ public class RenderDataClient {
     private URI getTileIdsForCoordinatesUri(String stack,
                                             Double z) {
         return getUri(getZUrlString(stack, z) + "/tileIdsForCoordinates");
+    }
+
+    public URI getMatchesUri() {
+        return getUri(baseDataUrl + "/owner/" + owner + "/matchCollection/" + project + "/matches");
     }
 
     private URI getUri(String forString) throws IllegalArgumentException {

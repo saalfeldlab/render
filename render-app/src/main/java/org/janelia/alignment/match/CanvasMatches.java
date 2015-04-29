@@ -1,6 +1,11 @@
 package org.janelia.alignment.match;
 
+import com.google.gson.reflect.TypeToken;
+
+import java.io.Reader;
 import java.io.Serializable;
+import java.lang.reflect.Type;
+import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
 
@@ -82,4 +87,9 @@ public class CanvasMatches implements Serializable {
         return JsonUtils.GSON.fromJson(json, CanvasMatches.class);
     }
 
+    public static List<CanvasMatches> fromJsonArray(Reader json) {
+        return JsonUtils.GSON.fromJson(json, LIST_TYPE);
+    }
+
+    private static final Type LIST_TYPE = new TypeToken<List<CanvasMatches>>(){}.getType();
 }
