@@ -1,18 +1,10 @@
 package org.janelia.render.service;
 
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.render.service.model.stack.StackMetaData;
-import org.janelia.alignment.spec.TileBounds;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.render.service.dao.RenderDao;
-import org.janelia.render.service.model.IllegalServiceArgumentException;
-import org.janelia.render.service.model.stack.StackId;
-import org.janelia.render.service.util.RenderServiceUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.util.List;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -28,11 +20,20 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.List;
+
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.render.service.dao.RenderDao;
+import org.janelia.render.service.model.IllegalServiceArgumentException;
+import org.janelia.render.service.model.stack.StackId;
+import org.janelia.render.service.model.stack.StackMetaData;
+import org.janelia.render.service.util.RenderServiceUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * APIs for accessing tile and transform data stored in the Render service database.
@@ -228,7 +229,7 @@ public class RenderDataService {
                                       @PathParam("stack") final String stack,
                                       @PathParam("z") final Double z,
                                       @Context final UriInfo uriInfo,
-                                      ResolvedTileSpecCollection resolvedTiles) {
+                                      final ResolvedTileSpecCollection resolvedTiles) {
 
         LOG.info("saveResolvedTiles: entry, owner={}, project={}, stack={}, z={}",
                  owner, project, stack, z);
@@ -285,10 +286,11 @@ public class RenderDataService {
                                                 @PathParam("stack") final String stack,
                                                 @PathParam("tileId") final String tileId,
                                                 @QueryParam("scale") Double scale,
-                                                @QueryParam("filter") final Boolean filter) {
+                                                @QueryParam("filter") final Boolean filter,
+                                                @QueryParam("binaryMask") final Boolean binaryMask) {
 
-        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}",
-                 owner, project, stack, tileId, scale);
+        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}",
+                 owner, project, stack, tileId, scale, filter, binaryMask);
 
         RenderParameters parameters = null;
         try {
@@ -309,6 +311,7 @@ public class RenderDataService {
 
             parameters = new RenderParameters(null, x, y, width, height, scale);
             parameters.setDoFilter(filter);
+            parameters.setBinaryMask(binaryMask);
             parameters.addTileSpec(tileSpec);
 
         } catch (final Throwable t) {
@@ -531,15 +534,15 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/derivedFrom/{derivedFromStack}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveDerivedTile(@PathParam("owner") String owner,
-                                    @PathParam("project") String project,
-                                    @PathParam("stack") String stack,
-                                    @PathParam("tileId") String tileId,
-                                    @PathParam("derivedFromStack") String derivedFromStack,
-                                    @QueryParam("replaceLastTransform") Boolean replaceLastTransform,
-                                    @Context UriInfo uriInfo,
+    public Response saveDerivedTile(@PathParam("owner") final String owner,
+                                    @PathParam("project") final String project,
+                                    @PathParam("stack") final String stack,
+                                    @PathParam("tileId") final String tileId,
+                                    @PathParam("derivedFromStack") final String derivedFromStack,
+                                    @QueryParam("replaceLastTransform") final Boolean replaceLastTransform,
+                                    @Context final UriInfo uriInfo,
                                     @QueryParam("meshCellSize") final Double meshCellSize,
-                                    List<TransformSpec> transformSpecs) {
+                                    final List<TransformSpec> transformSpecs) {
 
         LOG.info("saveDerivedTile: entry, owner={}, project={}, stack={}, tileId={}, derivedFromStack={}, replaceLastTransform={}, meshCellSize={}",
                  owner, project, stack, tileId, derivedFromStack, replaceLastTransform, meshCellSize);
@@ -571,7 +574,7 @@ public class RenderDataService {
                     true);
 
             renderDao.saveTileSpec(stackId, tileSpec);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 

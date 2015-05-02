@@ -112,6 +112,7 @@ public class Render {
                params.getNumberOfThreads(),
                params.skipInterpolation(),
                params.doFilter(),
+               params.binaryMask(),
                imageProcessorCache,
                params.getBackgroundRGBColor());
     }
@@ -152,6 +153,36 @@ public class Render {
                               final int numberOfThreads,
                               final boolean skipInterpolation,
                               final boolean doFilter,
+                              final ImageProcessorCache imageProcessorCache,
+                              final Integer backgroundRGBColor)
+            throws IllegalArgumentException {
+
+        render(tileSpecs,
+               targetImage,
+               x,
+               y,
+               meshCellSize,
+               scale,
+               areaOffset,
+               numberOfThreads,
+               skipInterpolation,
+               doFilter,
+               false,
+               imageProcessorCache,
+               backgroundRGBColor);
+    }
+
+    public static void render(final List<TileSpec> tileSpecs,
+                              final BufferedImage targetImage,
+                              final double x,
+                              final double y,
+                              final double meshCellSize,
+                              final double scale,
+                              final boolean areaOffset,
+                              final int numberOfThreads,
+                              final boolean skipInterpolation,
+                              final boolean doFilter,
+                              final boolean binaryMask,
                               final ImageProcessorCache imageProcessorCache,
                               final Integer backgroundRGBColor)
             throws IllegalArgumentException {
@@ -342,8 +373,17 @@ public class Render {
                 alphaPixels = (byte[]) target.outside.getPixels();
             }
 
-            for (int i = 0; i < cpPixels.length; ++i) {
-                cpPixels[i] &= 0x00ffffff | (alphaPixels[i] << 24);
+            if (binaryMask) {
+                for (int i = 0; i < cpPixels.length; ++i) {
+                    if (alphaPixels[i] == -1)
+                        cpPixels[i] &= 0xffffffff;
+                    else
+                        cpPixels[i] &= 0x00ffffff;
+                }
+            } else {
+                for (int i = 0; i < cpPixels.length; ++i) {
+                    cpPixels[i] &= 0x00ffffff | (alphaPixels[i] << 24);
+                }
             }
 
             final BufferedImage image = new BufferedImage(cp.getWidth(), cp.getHeight(), BufferedImage.TYPE_INT_ARGB);

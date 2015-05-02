@@ -16,14 +16,6 @@
  */
 package org.janelia.alignment;
 
-import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
@@ -31,6 +23,14 @@ import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
+import org.janelia.alignment.util.ImageProcessorCache;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.cache.CacheStats;
 
@@ -151,7 +151,7 @@ public class RenderTest {
         };
 
         final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
-        ImageProcessorCache imageProcessorCache = new ImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS, true, false);
+        final ImageProcessorCache imageProcessorCache = new ImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS, true, false);
 
         validateCacheRender("first run with cache",
                             params, imageProcessorCache, 5, 3, expectedDigestString);
@@ -179,12 +179,12 @@ public class RenderTest {
 
     }
 
-    private void validateCacheRender(String context,
-                                     RenderParameters params,
-                                     ImageProcessorCache imageProcessorCache,
-                                     int expectedCacheSize,
-                                     int expectedHitCount,
-                                     String expectedDigestString)
+    private void validateCacheRender(final String context,
+                                     final RenderParameters params,
+                                     final ImageProcessorCache imageProcessorCache,
+                                     final int expectedCacheSize,
+                                     final int expectedHitCount,
+                                     final String expectedDigestString)
             throws Exception {
 
         final BufferedImage targetImage = params.openTargetImage();
@@ -211,10 +211,10 @@ public class RenderTest {
                             expectedDigestString, actualDigestString);
     }
 
-    private String getDigestString(File file) throws Exception {
+    private String getDigestString(final File file) throws Exception {
         final MessageDigest messageDigest = MessageDigest.getInstance("MD5");
-        FileInputStream fileInputStream = new FileInputStream(file);
-        DigestInputStream digestInputStream = new DigestInputStream(fileInputStream, messageDigest);
+        final FileInputStream fileInputStream = new FileInputStream(file);
+        final DigestInputStream digestInputStream = new DigestInputStream(fileInputStream, messageDigest);
 
         final byte[] buffer = new byte[8192];
         for (int bytesRead = 1; bytesRead > 0;) {
@@ -222,15 +222,15 @@ public class RenderTest {
         }
 
         final byte[] digestValue = messageDigest.digest();
-        StringBuilder sb = new StringBuilder(digestValue.length);
-        for (byte b : digestValue) {
+        final StringBuilder sb = new StringBuilder(digestValue.length);
+        for (final byte b : digestValue) {
             sb.append(b);
         }
 
         return sb.toString();
     }
 
-    private void deleteTestFile(File file) {
+    private void deleteTestFile(final File file) {
         if ((file != null) && file.exists()) {
             if (file.delete()) {
                 LOG.info("deleteTestFile: deleted " + file.getAbsolutePath());
