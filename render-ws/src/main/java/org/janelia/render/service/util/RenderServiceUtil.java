@@ -1,14 +1,15 @@
 package org.janelia.render.service.util;
 
 import com.mongodb.MongoClient;
+
+import java.net.UnknownHostException;
+
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.dao.SharedMongoClient;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.UnknownHostException;
 
 /**
  * Shared utility methods for all Render services.

@@ -24,10 +24,10 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.TransformSpecMetaData;
 import org.janelia.render.service.model.ObjectNotFoundException;
-import org.janelia.render.service.model.stack.StackId;
-import org.janelia.render.service.model.stack.StackMetaData;
-import org.janelia.render.service.model.stack.StackStats;
-import org.janelia.render.service.model.stack.StackVersion;
+import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackStats;
+import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -36,7 +36,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.render.service.model.stack.StackMetaData.StackState.LOADING;
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
 
 /**
  * Tests the {@link RenderDao} class.

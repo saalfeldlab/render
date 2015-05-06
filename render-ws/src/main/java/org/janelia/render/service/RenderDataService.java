@@ -27,15 +27,15 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
-import org.janelia.render.service.model.stack.StackId;
-import org.janelia.render.service.model.stack.StackMetaData;
 import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.render.service.model.stack.StackMetaData.StackState.LOADING;
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
 
 /**
  * APIs for accessing tile and transform data stored in the Render service database.

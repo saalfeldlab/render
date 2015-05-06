@@ -18,18 +18,18 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackStats;
+import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ObjectNotFoundException;
-import org.janelia.render.service.model.stack.StackId;
-import org.janelia.render.service.model.stack.StackMetaData;
-import org.janelia.render.service.model.stack.StackStats;
-import org.janelia.render.service.model.stack.StackVersion;
 import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.render.service.model.stack.StackMetaData.StackState;
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
 
 /**
  * APIs for accessing stack meta data stored in the Render service database.

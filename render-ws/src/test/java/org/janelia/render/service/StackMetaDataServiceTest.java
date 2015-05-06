@@ -9,14 +9,14 @@ import javax.ws.rs.core.PathSegment;
 import javax.ws.rs.core.UriInfo;
 
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackStats;
+import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.dao.RenderDaoTest;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ObjectNotFoundException;
-import org.janelia.render.service.model.stack.StackId;
-import org.janelia.render.service.model.stack.StackMetaData;
-import org.janelia.render.service.model.stack.StackStats;
-import org.janelia.render.service.model.stack.StackVersion;
 import org.janelia.test.EmbeddedMongoDb;
 import org.jboss.resteasy.specimpl.UriInfoImpl;
 import org.junit.AfterClass;
@@ -24,8 +24,8 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import static org.janelia.render.service.model.stack.StackMetaData.StackState.COMPLETE;
-import static org.janelia.render.service.model.stack.StackMetaData.StackState.LOADING;
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState.COMPLETE;
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
 
 /**
  * Tests the {@link StackMetaDataService} class.

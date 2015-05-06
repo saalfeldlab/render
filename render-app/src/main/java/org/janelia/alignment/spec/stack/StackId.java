@@ -1,4 +1,4 @@
-package org.janelia.render.service.model.stack;
+package org.janelia.alignment.spec.stack;
 
 import java.io.Serializable;
 import java.util.regex.Matcher;

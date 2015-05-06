@@ -1,14 +1,15 @@
 package org.janelia.render.service.util;
 
-import org.janelia.alignment.Utils;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.OutputStream;
 
 import javax.imageio.stream.ImageOutputStream;
 import javax.imageio.stream.MemoryCacheImageOutputStream;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.OutputStream;
+
+import org.janelia.alignment.Utils;
 
 /**
  * Wrapper for {@link java.awt.image.BufferedImage} instances that need to be

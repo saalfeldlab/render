@@ -36,11 +36,11 @@ import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.service.model.ObjectNotFoundException;
-import org.janelia.render.service.model.stack.StackId;
-import org.janelia.render.service.model.stack.StackMetaData;
-import org.janelia.render.service.model.stack.StackStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

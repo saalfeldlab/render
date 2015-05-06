@@ -1,13 +1,11 @@
-package org.janelia.render.service.model.stack;
+package org.janelia.alignment.spec.stack;
 
 import java.io.Serializable;
 import java.util.Date;
 
 import org.janelia.alignment.json.JsonUtils;
 
-import static org.janelia.render.service.model.stack.StackMetaData.StackState.COMPLETE;
-import static org.janelia.render.service.model.stack.StackMetaData.StackState.LOADING;
-import static org.janelia.render.service.model.stack.StackMetaData.StackState.OFFLINE;
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState.*;
 
 /**
  * Meta data about a stack.
