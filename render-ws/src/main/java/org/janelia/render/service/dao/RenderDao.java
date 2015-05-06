@@ -726,8 +726,8 @@ public class RenderDao {
             ensureCoreTileIndex(getTileCollection(stackId));
         }
 
-        LOG.debug("saveStackMetaData: {}.{},({}), upsertedId is {}",
-                  stackMetaDataCollection.getFullName(), action, query, result.getUpsertedId());
+        LOG.debug("saveStackMetaData: {}.{}({})",
+                  stackMetaDataCollection.getFullName(), action, query);
     }
 
     public StackMetaData ensureIndexesAndDeriveStats(final StackMetaData stackMetaData) {
@@ -745,7 +745,6 @@ public class RenderDao {
         ensureCoreTransformIndex(transformCollection);
         ensureCoreTileIndex(tileCollection);
 
-        // TODO: verify these background index creation operations block the current thread
         ensureSupplementaryTileIndexes(tileCollection);
 
         final List<Double> zValues = getZValues(stackId);
@@ -764,7 +763,8 @@ public class RenderDao {
         LOG.debug("ensureIndexesAndDeriveStats: tileCount for {} is {}", stackId, tileCount);
 
         final long transformCount = transformCollection.count();
-        LOG.debug("ensureIndexesAndDeriveStats: transformCount for {} is {}", stackId, transformCount);
+        LOG.debug("ensureIndexesAndDeriveStats: transformCount for {} is {}, deriving aggregate stats ...",
+                  stackId, transformCount);
 
         // db.<stack_prefix>__tile.aggregate(
         //     [
@@ -874,6 +874,8 @@ public class RenderDao {
 
         LOG.debug("ensureIndexesAndDeriveStats: completed stat derivation for {}, stats={}", stackId, stats);
 
+        stackMetaData.setState(StackMetaData.StackState.COMPLETE);
+
         final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
         final BasicDBObject query = getStackIdQuery(stackId);
         final DBObject stackMetaDataObject = (DBObject) JSON.parse(stackMetaData.toJson());
@@ -886,8 +888,8 @@ public class RenderDao {
             action = "insert";
         }
 
-        LOG.debug("ensureIndexesAndDeriveStats: {}.{},({}), upsertedId is {}",
-                  stackMetaDataCollection.getFullName(), action, query, result.getUpsertedId());
+        LOG.debug("ensureIndexesAndDeriveStats: {}.{}({})",
+                  stackMetaDataCollection.getFullName(), action, query);
 
         return stackMetaData;
     }

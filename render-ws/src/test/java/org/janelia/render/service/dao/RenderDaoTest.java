@@ -135,44 +135,6 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testRemoveStack() throws Exception {
-
-        final StackId removableStackId = new StackId("flyTEM", "fly863", "test");
-
-        embeddedMongoDb.importCollection(removableStackId.getTileCollectionName(),
-                                         new File("src/test/resources/mongodb/fly863_align__tile.json"),
-                                         true,
-                                         false,
-                                         true);
-
-        embeddedMongoDb.importCollection(removableStackId.getTransformCollectionName(),
-                                         new File("src/test/resources/mongodb/fly863_acquire__transform.json"),
-                                         true,
-                                         false,
-                                         true);
-
-        final StackMetaData stackMetaBeforeRemove = dao.getStackMetaData(removableStackId);
-        Assert.assertNotNull("meta data for " + removableStackId + " missing before removal", stackMetaBeforeRemove);
-
-        final List<Double> zValuesBeforeRemove = dao.getZValues(removableStackId);
-        Assert.assertNotNull("zValues null for " + removableStackId + " before removal",
-                             zValuesBeforeRemove);
-        Assert.assertTrue("zValues missing for " + removableStackId + " before removal",
-                          zValuesBeforeRemove.size() > 0);
-
-        dao.removeStack(removableStackId);
-        final StackMetaData stackMetaAfterRemove = dao.getStackMetaData(removableStackId);
-
-        Assert.assertNull("meta data for " + removableStackId + " returned after removal", stackMetaAfterRemove);
-
-        final List<Double> zValuesAfterRemove = dao.getZValues(removableStackId);
-        Assert.assertNotNull("zValues null for " + removableStackId + " after removal",
-                             zValuesAfterRemove);
-        Assert.assertEquals("zValues exist for " + removableStackId + " after removal",
-                            0, zValuesAfterRemove.size());
-    }
-
-    @Test
     public void testGetParameters() throws Exception {
 
         final Double x = 1000.0;
@@ -444,23 +406,23 @@ public class RenderDaoTest {
 
         final StackVersion actualVersion = actualMetaData.getCurrentVersion();
         Assert.assertNotNull("null version for " + context, actualVersion);
-        Assert.assertEquals("invalid create date" + context,
+        Assert.assertEquals("invalid createTimestamp" + context,
                             expectedVersion.getCreateTimestamp(), actualVersion.getCreateTimestamp());
-        Assert.assertEquals("invalid version notes" + context,
+        Assert.assertEquals("invalid versionNotes" + context,
                             expectedVersion.getVersionNotes(), actualVersion.getVersionNotes());
-        Assert.assertEquals("invalid project iteration" + context,
-                            expectedVersion.getProjectIteration(), actualVersion.getProjectIteration());
-        Assert.assertEquals("invalid project step" + context,
-                            expectedVersion.getProjectStep(), actualVersion.getProjectStep());
-        Assert.assertEquals("invalid resolution x" + context,
+        Assert.assertEquals("invalid cycleNumber" + context,
+                            expectedVersion.getCycleNumber(), actualVersion.getCycleNumber());
+        Assert.assertEquals("invalid cycleStepNumber" + context,
+                            expectedVersion.getCycleStepNumber(), actualVersion.getCycleStepNumber());
+        Assert.assertEquals("invalid stackResolutionX" + context,
                             expectedVersion.getStackResolutionX(), actualVersion.getStackResolutionX());
-        Assert.assertEquals("invalid resolution y" + context,
+        Assert.assertEquals("invalid stackResolutionY" + context,
                             expectedVersion.getStackResolutionY(), actualVersion.getStackResolutionY());
-        Assert.assertEquals("invalid resolution z" + context,
+        Assert.assertEquals("invalid stackResolutionZ" + context,
                             expectedVersion.getStackResolutionZ(), actualVersion.getStackResolutionZ());
-        Assert.assertEquals("invalid archive root path" + context,
+        Assert.assertEquals("invalid snapshotRootPath" + context,
                             expectedVersion.getSnapshotRootPath(), actualVersion.getSnapshotRootPath());
-        Assert.assertEquals("invalid mipmap meta data" + context,
+        Assert.assertEquals("invalid mipmapMetaData" + context,
                             expectedVersion.getMipmapMetaData(), actualVersion.getMipmapMetaData());
     }
 

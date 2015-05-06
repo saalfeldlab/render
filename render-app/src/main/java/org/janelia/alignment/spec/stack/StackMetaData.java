@@ -129,6 +129,11 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         return this.stackId.compareTo(that.stackId);
     }
 
+    @Override
+    public String toString() {
+        return toJson();
+    }
+
     public String toJson() {
         return JsonUtils.GSON.toJson(this, StackMetaData.class);
     }

@@ -2,7 +2,9 @@ package org.janelia.render.client;
 
 import com.google.gson.reflect.TypeToken;
 
+import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
@@ -15,6 +17,8 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.client.response.JsonResponseHandler;
 import org.janelia.render.client.response.ResourceCreatedResponseHandler;
 import org.slf4j.Logger;
@@ -25,6 +29,8 @@ import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
 
 /**
  * HTTP client "wrapper" for retrieving and storing render data via the render web service.
@@ -54,6 +60,67 @@ public class RenderDataClient {
                ", owner='" + owner + '\'' +
                ", project='" + project + '\'' +
                '}';
+    }
+
+    public StackMetaData getStackMetaData(String stack)
+            throws IllegalArgumentException, IOException {
+
+        final URI uri = getStackUri(stack);
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonResponseHandler<StackMetaData> responseHandler =
+                new JsonResponseHandler<>(requestContext, StackMetaData.class);
+
+        LOG.info("getStackMetaData: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    public void saveStackVersion(String stack,
+                                 StackVersion stackVersion)
+            throws IllegalArgumentException, IOException {
+
+        final String json = JsonUtils.GSON.toJson(stackVersion);
+        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+        final URI uri = getStackUri(stack);
+        final String requestContext = "PUT " + uri;
+        final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
+
+        final HttpPost httpPost = new HttpPost(uri);
+        httpPost.setEntity(stringEntity);
+
+        LOG.info("saveStackVersion: submitting {}", requestContext);
+
+        httpClient.execute(httpPost, responseHandler);
+    }
+
+    public void setStackState(String stack,
+                              StackState stackState)
+            throws IllegalArgumentException, IOException {
+
+        final URI uri = getStackStateUri(stack, stackState);
+        final String requestContext = "PUT " + uri;
+        final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+
+        LOG.info("setStackState: submitting {}", requestContext);
+
+        httpClient.execute(httpPut, responseHandler);
+    }
+
+    public void deleteStack(String stack)
+            throws IllegalArgumentException, IOException {
+
+        final URI uri = getStackUri(stack);
+        final String requestContext = "DELETE " + uri;
+        final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
+
+        final HttpDelete httpDelete = new HttpDelete(uri);
+
+        LOG.info("deleteStack: submitting {}", requestContext);
+
+        httpClient.execute(httpDelete, responseHandler);
     }
 
     public TileSpec getTile(String stack,
@@ -194,6 +261,15 @@ public class RenderDataClient {
         return getZUrlString(stack, z) + "/box/" +
                x + ',' + y + ',' + width + ',' + height + ',' + scale +
                "/render-parameters";
+    }
+
+    private URI getStackUri(final String stack) {
+        return getUri(getStackUrlString(stack));
+    }
+
+    private URI getStackStateUri(final String stack,
+                                 final StackState stackState) {
+        return getUri(getStackUrlString(stack) + "/state/" + stackState);
     }
 
     private URI getTileUri(final String stack,

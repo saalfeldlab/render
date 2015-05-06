@@ -191,7 +191,6 @@ public class StackMetaDataService {
 
     @Path("project/{project}/stack/{stack}/state/{state}")
     @PUT
-    @Consumes(MediaType.APPLICATION_JSON)
     public Response setStackState(@PathParam("owner") final String owner,
                                   @PathParam("project") final String project,
                                   @PathParam("stack") final String stack,
@@ -210,10 +209,10 @@ public class StackMetaDataService {
 
             if (StackState.COMPLETE.equals(state)) {
                 renderDao.ensureIndexesAndDeriveStats(stackMetaData);
+            } else {
+                stackMetaData.setState(state);
+                renderDao.saveStackMetaData(stackMetaData);
             }
-
-            stackMetaData.setState(state);
-            renderDao.saveStackMetaData(stackMetaData);
 
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);

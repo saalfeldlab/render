@@ -3,6 +3,8 @@ package org.janelia.alignment.spec.stack;
 import java.io.Serializable;
 import java.util.Date;
 
+import org.janelia.alignment.json.JsonUtils;
+
 /**
  * Details about a specific version of stack.
  *
@@ -14,8 +16,8 @@ public class StackVersion
     private final Date createTimestamp;
     private final String versionNotes;
 
-    private final Integer projectIteration;
-    private final Integer projectStep;
+    private final Integer cycleNumber;
+    private final Integer cycleStepNumber;
 
     private final Double stackResolutionX;
     private final Double stackResolutionY;
@@ -26,8 +28,8 @@ public class StackVersion
 
     public StackVersion(Date createTimestamp,
                         String versionNotes,
-                        Integer projectIteration,
-                        Integer projectStep,
+                        Integer cycleNumber,
+                        Integer cycleStepNumber,
                         Double stackResolutionX,
                         Double stackResolutionY,
                         Double stackResolutionZ,
@@ -35,8 +37,8 @@ public class StackVersion
                         MipmapMetaData mipmapMetaData) {
         this.createTimestamp = createTimestamp;
         this.versionNotes = versionNotes;
-        this.projectIteration = projectIteration;
-        this.projectStep = projectStep;
+        this.cycleNumber = cycleNumber;
+        this.cycleStepNumber = cycleStepNumber;
         this.stackResolutionX = stackResolutionX;
         this.stackResolutionY = stackResolutionY;
         this.stackResolutionZ = stackResolutionZ;
@@ -52,12 +54,12 @@ public class StackVersion
         return versionNotes;
     }
 
-    public Integer getProjectIteration() {
-        return projectIteration;
+    public Integer getCycleNumber() {
+        return cycleNumber;
     }
 
-    public Integer getProjectStep() {
-        return projectStep;
+    public Integer getCycleStepNumber() {
+        return cycleStepNumber;
     }
 
     public Double getStackResolutionX() {
@@ -86,16 +88,10 @@ public class StackVersion
 
     @Override
     public String toString() {
-        return "StackVersion{" +
-               "createTimestamp=" + createTimestamp +
-               ", versionNotes='" + versionNotes + '\'' +
-               ", projectIteration=" + projectIteration +
-               ", projectStep=" + projectStep +
-               ", stackResolutionX=" + stackResolutionX +
-               ", stackResolutionY=" + stackResolutionY +
-               ", stackResolutionZ=" + stackResolutionZ +
-               ", snapshotRootPath='" + snapshotRootPath + '\'' +
-               ", mipmapMetaData=" + mipmapMetaData +
-               '}';
+        return toJson();
+    }
+
+    public String toJson() {
+        return JsonUtils.GSON.toJson(this, StackVersion.class);
     }
 }
