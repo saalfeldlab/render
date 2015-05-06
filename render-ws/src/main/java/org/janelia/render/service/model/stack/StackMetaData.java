@@ -2,88 +2,137 @@ package org.janelia.render.service.model.stack;
 
 import java.io.Serializable;
 import java.util.Date;
-import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
 
+import static org.janelia.render.service.model.stack.StackMetaData.StackState.COMPLETE;
+import static org.janelia.render.service.model.stack.StackMetaData.StackState.LOADING;
+import static org.janelia.render.service.model.stack.StackMetaData.StackState.OFFLINE;
+
 /**
- * Meta data about a stack and all of its versions.
+ * Meta data about a stack.
  *
  * @author Eric Trautman
  */
-public class StackMetaData implements Serializable {
+public class StackMetaData implements Comparable<StackMetaData>, Serializable {
 
     public enum StackState { LOADING, COMPLETE, OFFLINE }
 
     private final StackId stackId;
-    private final StackContext stackContext;
-    private final StackState state;
-    private final Date lastModifiedDate;
-    private final StackVersion currentVersion;
-    private final List<StackVersion> historicalVersions;
 
-    public StackMetaData() {
-        this(null, null, null, null, null, null);
-    }
+    private StackState state;
+    private Date lastModifiedTimestamp;
+    private Integer currentVersionNumber;
+    private StackVersion currentVersion;
+    private StackStats stats;
 
     public StackMetaData(StackId stackId,
-                         StackContext stackContext,
-                         StackState state,
-                         Date lastModifiedDate,
-                         StackVersion currentVersion,
-                         List<StackVersion> historicalVersions) {
+                         StackVersion currentVersion) {
         this.stackId = stackId;
-        this.stackContext = stackContext;
-        this.state = state;
-        this.lastModifiedDate = lastModifiedDate;
+        this.state = LOADING;
+        this.lastModifiedTimestamp = new Date();
+        this.currentVersionNumber = 0;
         this.currentVersion = currentVersion;
-        this.historicalVersions = historicalVersions;
+        this.stats = null;
     }
 
     public StackId getStackId() {
         return stackId;
     }
 
-    public StackContext getStackContext() {
-        return stackContext;
-    }
-
     public StackState getState() {
         return state;
     }
 
-    public Date getLastModifiedDate() {
-        return lastModifiedDate;
+    public boolean isLoading() {
+        return LOADING.equals(state);
+    }
+
+    public Date getLastModifiedTimestamp() {
+        return lastModifiedTimestamp;
+    }
+
+    public Integer getCurrentVersionNumber() {
+        return currentVersionNumber;
     }
 
     public StackVersion getCurrentVersion() {
         return currentVersion;
     }
 
+    public StackStats getStats() {
+        return stats;
+    }
+
     public Integer getLayoutWidth() {
         Integer layoutWidth = null;
-        if (currentVersion != null) {
-            final StackStats stats = currentVersion.getStats();
-            if (stats != null) {
-                layoutWidth = stats.getMaxTileWidth();
-            }
+        if (stats != null) {
+            layoutWidth = stats.getMaxTileWidth();
         }
         return layoutWidth;
     }
 
     public Integer getLayoutHeight() {
         Integer layoutHeight = null;
-        if (currentVersion != null) {
-            final StackStats stats = currentVersion.getStats();
-            if (stats != null) {
-                layoutHeight = stats.getMaxTileHeight();
-            }
+        if (stats != null) {
+            layoutHeight = stats.getMaxTileHeight();
         }
         return layoutHeight;
     }
 
-    public List<StackVersion> getHistoricalVersions() {
-        return historicalVersions;
+    public StackMetaData getNextVersion(StackVersion newVersion) {
+        StackMetaData metaData = new StackMetaData(stackId, newVersion);
+        metaData.currentVersionNumber = currentVersionNumber + 1;
+        return metaData;
+    }
+
+    public void setState(StackState state) throws IllegalArgumentException {
+
+        if (state == null) {
+            throw new IllegalArgumentException("null state specified");
+        }
+
+        if (! this.state.equals(state)) {
+
+            if (COMPLETE.equals(state)) {
+                if (this.stats == null) {
+                    throw new IllegalArgumentException("stack can not be complete without stats");
+                }
+            } else if (LOADING.equals(state)) {
+                this.stats = null;
+                this.currentVersionNumber++;
+            }
+
+            this.state = state;
+            this.lastModifiedTimestamp = new Date();
+
+        }
+
+    }
+
+    public void setStats(StackStats stats) throws IllegalArgumentException {
+
+        if (OFFLINE.equals(state)) {
+            throw new IllegalArgumentException("cannot set stats for OFFLINE stack");
+        }
+
+        this.stats = stats;
+
+        if (stats == null) {
+            setState(StackState.LOADING);
+        } else {
+            setState(StackState.COMPLETE);
+        }
+    }
+
+    @SuppressWarnings("NullableProblems")
+    @Override
+    public int compareTo(StackMetaData that) {
+        return this.stackId.compareTo(that.stackId);
+    }
+
+    public String toJson() {
+        return JsonUtils.GSON.toJson(this, StackMetaData.class);
     }
 
     public static StackMetaData fromJson(final String json) {

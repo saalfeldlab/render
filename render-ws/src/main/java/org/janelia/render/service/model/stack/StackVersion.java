@@ -11,41 +11,91 @@ import java.util.Date;
 public class StackVersion
         implements Serializable {
 
-    private final Integer version;
-    private final Date createDate;
-    private final Date indexDate;
-    private final String notes;
-    private final StackStats stats;
+    private final Date createTimestamp;
+    private final String versionNotes;
 
-    public StackVersion(Integer version,
-                        Date createDate,
-                        Date indexDate,
-                        String notes,
-                        StackStats stats) {
-        this.version = version;
-        this.createDate = createDate;
-        this.indexDate = indexDate;
-        this.notes = notes;
-        this.stats = stats;
+    private final Integer projectIteration;
+    private final Integer projectStep;
+
+    private final Double stackResolutionX;
+    private final Double stackResolutionY;
+    private final Double stackResolutionZ;
+
+    private final String snapshotRootPath;
+    private final MipmapMetaData mipmapMetaData;
+
+    public StackVersion(Date createTimestamp,
+                        String versionNotes,
+                        Integer projectIteration,
+                        Integer projectStep,
+                        Double stackResolutionX,
+                        Double stackResolutionY,
+                        Double stackResolutionZ,
+                        String snapshotRootPath,
+                        MipmapMetaData mipmapMetaData) {
+        this.createTimestamp = createTimestamp;
+        this.versionNotes = versionNotes;
+        this.projectIteration = projectIteration;
+        this.projectStep = projectStep;
+        this.stackResolutionX = stackResolutionX;
+        this.stackResolutionY = stackResolutionY;
+        this.stackResolutionZ = stackResolutionZ;
+        this.snapshotRootPath = snapshotRootPath;
+        this.mipmapMetaData = mipmapMetaData;
     }
 
-    public Integer getVersion() {
-        return version;
+    public Date getCreateTimestamp() {
+        return createTimestamp;
     }
 
-    public Date getCreateDate() {
-        return createDate;
+    public String getVersionNotes() {
+        return versionNotes;
     }
 
-    public Date getIndexDate() {
-        return indexDate;
+    public Integer getProjectIteration() {
+        return projectIteration;
     }
 
-    public String getNotes() {
-        return notes;
+    public Integer getProjectStep() {
+        return projectStep;
     }
 
-    public StackStats getStats() {
-        return stats;
+    public Double getStackResolutionX() {
+        return stackResolutionX;
+    }
+
+    public Double getStackResolutionY() {
+        return stackResolutionY;
+    }
+
+    public Double getStackResolutionZ() {
+        return stackResolutionZ;
+    }
+
+    public String getSnapshotRootPath() {
+        return snapshotRootPath;
+    }
+
+    public boolean isSnapshotNeeded() {
+        return snapshotRootPath != null;
+    }
+
+    public MipmapMetaData getMipmapMetaData() {
+        return mipmapMetaData;
+    }
+
+    @Override
+    public String toString() {
+        return "StackVersion{" +
+               "createTimestamp=" + createTimestamp +
+               ", versionNotes='" + versionNotes + '\'' +
+               ", projectIteration=" + projectIteration +
+               ", projectStep=" + projectStep +
+               ", stackResolutionX=" + stackResolutionX +
+               ", stackResolutionY=" + stackResolutionY +
+               ", stackResolutionZ=" + stackResolutionZ +
+               ", snapshotRootPath='" + snapshotRootPath + '\'' +
+               ", mipmapMetaData=" + mipmapMetaData +
+               '}';
     }
 }

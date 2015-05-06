@@ -1,9 +1,12 @@
 package org.janelia.render.service.dao;
 
+import com.google.gson.reflect.TypeToken;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import mpicbg.trakem2.transform.AffineModel2D;
@@ -22,6 +25,9 @@ import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.TransformSpecMetaData;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.render.service.model.stack.StackId;
+import org.janelia.render.service.model.stack.StackMetaData;
+import org.janelia.render.service.model.stack.StackStats;
+import org.janelia.render.service.model.stack.StackVersion;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -30,7 +36,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.reflect.TypeToken;
+import static org.janelia.render.service.model.stack.StackMetaData.StackState.LOADING;
 
 /**
  * Tests the {@link RenderDao} class.
@@ -49,6 +55,12 @@ public class RenderDaoTest {
         embeddedMongoDb = new EmbeddedMongoDb(RenderDao.RENDER_DB_NAME);
         dao = new RenderDao(embeddedMongoDb.getMongoClient());
 
+        embeddedMongoDb.importCollection(RenderDao.STACK_META_DATA_COLLECTION_NAME,
+                                         new File("src/test/resources/mongodb/admin__stack_meta_data.json"),
+                                         true,
+                                         false,
+                                         true);
+
         embeddedMongoDb.importCollection(stackId.getTileCollectionName(),
                                          new File("src/test/resources/mongodb/elastic-3903.json"),
                                          true,
@@ -65,6 +77,99 @@ public class RenderDaoTest {
     @AfterClass
     public static void after() throws Exception {
         embeddedMongoDb.stop();
+    }
+
+    @Test
+    public void testGetStackMetaDataListForOwner() throws Exception {
+        final List<StackMetaData> list = dao.getStackMetaDataListForOwner(stackId.getOwner());
+
+        Assert.assertNotNull("null list retrieved", list);
+        Assert.assertEquals("invalid number of stacks found", 2, list.size());
+    }
+
+    @Test
+    public void testGetStackMetaData() throws Exception {
+
+        final Integer expectedLayoutWidth = 2600;
+        final Integer expectedLayoutHeight = 2200;
+
+        final StackMetaData stackMetaData = dao.getStackMetaData(stackId);
+
+        Assert.assertNotNull("null stack meta data retrieved", stackMetaData);
+        Assert.assertEquals("invalid layout width", expectedLayoutWidth, stackMetaData.getLayoutWidth());
+        Assert.assertEquals("invalid layout height", expectedLayoutHeight, stackMetaData.getLayoutHeight());
+    }
+
+    @Test
+    public void testSaveStackMetaDataAndDeriveStats() throws Exception {
+
+        final StackVersion secondTry = new StackVersion(new Date(),
+                                                        "second try",
+                                                        5,
+                                                        3,
+                                                        4.2,
+                                                        4.2,
+                                                        35.2,
+                                                        null,
+                                                        null);
+
+        final StackMetaData stackMetaDataBeforeSave = dao.getStackMetaData(stackId);
+        final StackMetaData updatedStackMetaData = stackMetaDataBeforeSave.getNextVersion(secondTry);
+        dao.saveStackMetaData(updatedStackMetaData);
+
+        final StackMetaData stackMetaDataAfterSave = dao.getStackMetaData(stackId);
+        validateStackMetaData(" after save", LOADING, 3, secondTry, stackMetaDataAfterSave);
+
+        dao.ensureIndexesAndDeriveStats(stackMetaDataAfterSave);
+
+        final StackMetaData stackMetaDataAfterStats = dao.getStackMetaData(stackId);
+
+        final StackStats stats = stackMetaDataAfterStats.getStats();
+        Assert.assertNotNull("null stats returned after derivation", stats);
+
+        final Bounds expectedBounds = new Bounds(1094.0, 1769.0, 3903.0, 9917.0, 8301.0, 3903.0);
+
+        Assert.assertEquals("invalid bounds", expectedBounds.toJson(), stats.getStackBounds().toJson());
+        Assert.assertEquals("invalid tile count", new Long(12), stats.getTileCount());
+
+    }
+
+    @Test
+    public void testRemoveStack() throws Exception {
+
+        final StackId removableStackId = new StackId("flyTEM", "fly863", "test");
+
+        embeddedMongoDb.importCollection(removableStackId.getTileCollectionName(),
+                                         new File("src/test/resources/mongodb/fly863_align__tile.json"),
+                                         true,
+                                         false,
+                                         true);
+
+        embeddedMongoDb.importCollection(removableStackId.getTransformCollectionName(),
+                                         new File("src/test/resources/mongodb/fly863_acquire__transform.json"),
+                                         true,
+                                         false,
+                                         true);
+
+        final StackMetaData stackMetaBeforeRemove = dao.getStackMetaData(removableStackId);
+        Assert.assertNotNull("meta data for " + removableStackId + " missing before removal", stackMetaBeforeRemove);
+
+        final List<Double> zValuesBeforeRemove = dao.getZValues(removableStackId);
+        Assert.assertNotNull("zValues null for " + removableStackId + " before removal",
+                             zValuesBeforeRemove);
+        Assert.assertTrue("zValues missing for " + removableStackId + " before removal",
+                          zValuesBeforeRemove.size() > 0);
+
+        dao.removeStack(removableStackId);
+        final StackMetaData stackMetaAfterRemove = dao.getStackMetaData(removableStackId);
+
+        Assert.assertNull("meta data for " + removableStackId + " returned after removal", stackMetaAfterRemove);
+
+        final List<Double> zValuesAfterRemove = dao.getZValues(removableStackId);
+        Assert.assertNotNull("zValues null for " + removableStackId + " after removal",
+                             zValuesAfterRemove);
+        Assert.assertEquals("zValues exist for " + removableStackId + " after removal",
+                            0, zValuesAfterRemove.size());
     }
 
     @Test
@@ -234,14 +339,6 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testGetStackIds() throws Exception {
-        final List<StackId> list = dao.getStackIds(stackId.getOwner());
-
-        Assert.assertNotNull("null list retrieved", list);
-        Assert.assertEquals("invalid number of stack ids found", 1, list.size());
-    }
-
-    @Test
     public void testGetZValues() throws Exception {
         final List<Double> list = dao.getZValues(stackId);
 
@@ -250,7 +347,7 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testGetLayerAndStackBounds() throws Exception {
+    public void testGetLayerBounds() throws Exception {
         final Double expectedMinX = 1094.0;
         final Double expectedMinY = 1769.0;
         final Double expectedMaxX = 9917.0;
@@ -263,17 +360,10 @@ public class RenderDaoTest {
         Assert.assertNotNull("null layer bounds retrieved", bounds);
         Assert.assertEquals("invalid layer minX", expectedMinX, bounds.getMinX(), BOUNDS_DELTA);
         Assert.assertEquals("invalid layer minY", expectedMinY, bounds.getMinY(), BOUNDS_DELTA);
+        Assert.assertEquals("invalid layer minZ", z, bounds.getMinZ(), BOUNDS_DELTA);
         Assert.assertEquals("invalid layer maxX", expectedMaxX, bounds.getMaxX(), BOUNDS_DELTA);
         Assert.assertEquals("invalid layer maxY", expectedMaxY, bounds.getMaxY(), BOUNDS_DELTA);
-
-        bounds = dao.getStackBounds(stackId);
-
-        Assert.assertNotNull("null stack bounds retrieved", bounds);
-        // TODO: find out why embedded mongo returns null min value for these queries
-//        Assert.assertEquals("invalid stack minX", expectedMinX, bounds.getMinX(), BOUNDS_DELTA);
-//        Assert.assertEquals("invalid stack minY", expectedMinY, bounds.getMinY(), BOUNDS_DELTA);
-        Assert.assertEquals("invalid stack maxX", expectedMaxX, bounds.getMaxX(), BOUNDS_DELTA);
-        Assert.assertEquals("invalid stack maxY", expectedMaxY, bounds.getMaxY(), BOUNDS_DELTA);
+        Assert.assertEquals("invalid layer maxZ", z, bounds.getMaxZ(), BOUNDS_DELTA);
     }
 
     @Test
@@ -287,7 +377,7 @@ public class RenderDaoTest {
         final TileBounds firstTileBounds = list.get(0);
 
         Assert.assertNotNull("null bounds for first tile", firstTileBounds);
-        Assert.assertEquals("incorrect id for first tile", "134", firstTileBounds.getTileId());
+        Assert.assertEquals("incorrect id for first tile", "252", firstTileBounds.getTileId());
         Assert.assertTrue("bound box not defined for first tile", firstTileBounds.isBoundingBoxDefined());
     }
 
@@ -336,6 +426,42 @@ public class RenderDaoTest {
 
         Assert.assertEquals("invalid tileId for second coordinate, second tile",
                             "171", tileCoordinates.getTileId());
+    }
+
+    public static void validateStackMetaData(String context,
+                                             StackMetaData.StackState expectedState,
+                                             Integer expectedVersionNumber,
+                                             StackVersion expectedVersion,
+                                             StackMetaData actualMetaData) {
+
+        Assert.assertNotNull("null meta data retrieved" + context, actualMetaData);
+        Assert.assertEquals("invalid state" + context,
+                            expectedState, actualMetaData.getState());
+        Assert.assertNotNull("null modified date" + context,
+                             actualMetaData.getLastModifiedTimestamp());
+        Assert.assertEquals("invalid version number" + context,
+                            expectedVersionNumber, actualMetaData.getCurrentVersionNumber());
+
+        final StackVersion actualVersion = actualMetaData.getCurrentVersion();
+        Assert.assertNotNull("null version for " + context, actualVersion);
+        Assert.assertEquals("invalid create date" + context,
+                            expectedVersion.getCreateTimestamp(), actualVersion.getCreateTimestamp());
+        Assert.assertEquals("invalid version notes" + context,
+                            expectedVersion.getVersionNotes(), actualVersion.getVersionNotes());
+        Assert.assertEquals("invalid project iteration" + context,
+                            expectedVersion.getProjectIteration(), actualVersion.getProjectIteration());
+        Assert.assertEquals("invalid project step" + context,
+                            expectedVersion.getProjectStep(), actualVersion.getProjectStep());
+        Assert.assertEquals("invalid resolution x" + context,
+                            expectedVersion.getStackResolutionX(), actualVersion.getStackResolutionX());
+        Assert.assertEquals("invalid resolution y" + context,
+                            expectedVersion.getStackResolutionY(), actualVersion.getStackResolutionY());
+        Assert.assertEquals("invalid resolution z" + context,
+                            expectedVersion.getStackResolutionZ(), actualVersion.getStackResolutionZ());
+        Assert.assertEquals("invalid archive root path" + context,
+                            expectedVersion.getSnapshotRootPath(), actualVersion.getSnapshotRootPath());
+        Assert.assertEquals("invalid mipmap meta data" + context,
+                            expectedVersion.getMipmapMetaData(), actualVersion.getMipmapMetaData());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDaoTest.class);

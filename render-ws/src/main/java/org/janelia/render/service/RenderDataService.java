@@ -1,18 +1,10 @@
 package org.janelia.render.service;
 
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.render.service.model.stack.StackMetaData;
-import org.janelia.alignment.spec.TileBounds;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.render.service.dao.RenderDao;
-import org.janelia.render.service.model.IllegalServiceArgumentException;
-import org.janelia.render.service.model.stack.StackId;
-import org.janelia.render.service.util.RenderServiceUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.util.List;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -28,11 +20,22 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.List;
+
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.render.service.dao.RenderDao;
+import org.janelia.render.service.model.IllegalServiceArgumentException;
+import org.janelia.render.service.model.stack.StackId;
+import org.janelia.render.service.model.stack.StackMetaData;
+import org.janelia.render.service.util.RenderServiceUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import static org.janelia.render.service.model.stack.StackMetaData.StackState.LOADING;
 
 /**
  * APIs for accessing tile and transform data stored in the Render service database.
@@ -43,6 +46,7 @@ import java.util.List;
 public class RenderDataService {
 
     private final RenderDao renderDao;
+    private final StackMetaDataService stackMetaDataService;
 
     @SuppressWarnings("UnusedDeclaration")
     public RenderDataService()
@@ -52,22 +56,7 @@ public class RenderDataService {
 
     public RenderDataService(final RenderDao renderDao) {
         this.renderDao = renderDao;
-    }
-
-    @Path("stackIds")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public List<StackId> getStackIds(@PathParam("owner") final String owner) {
-
-        LOG.info("getStackIds: entry, owner={}", owner);
-
-        List<StackId> list = null;
-        try {
-            list = renderDao.getStackIds(owner);
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-        return list;
+        this.stackMetaDataService = new StackMetaDataService(renderDao);
     }
 
     @Path("project/{project}/stack/{stack}/layoutFile")
@@ -137,26 +126,6 @@ public class RenderDataService {
         return list;
     }
 
-    @Path("project/{project}/stack/{stack}/bounds")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public Bounds getStackBounds(@PathParam("owner") final String owner,
-                                 @PathParam("project") final String project,
-                                 @PathParam("stack") final String stack) {
-
-        LOG.info("getStackBounds: entry, owner={}, project={}, stack={}",
-                 owner, project, stack);
-
-        Bounds bounds = null;
-        try {
-            final StackId stackId = new StackId(owner, project, stack);
-            bounds = renderDao.getStackBounds(stackId);
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-        return bounds;
-    }
-
     @Path("project/{project}/stack/{stack}/z/{z}/bounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -220,38 +189,56 @@ public class RenderDataService {
         return resolvedTiles;
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
+    @Path("project/{project}/stack/{stack}/resolvedTiles")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     public Response saveResolvedTiles(@PathParam("owner") final String owner,
                                       @PathParam("project") final String project,
                                       @PathParam("stack") final String stack,
-                                      @PathParam("z") final Double z,
                                       @Context final UriInfo uriInfo,
                                       ResolvedTileSpecCollection resolvedTiles) {
+        return saveResolvedTilesForZ(owner, project, stack, null, uriInfo, resolvedTiles);
+    }
 
-        LOG.info("saveResolvedTiles: entry, owner={}, project={}, stack={}, z={}",
+    @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response saveResolvedTilesForZ(@PathParam("owner") final String owner,
+                                          @PathParam("project") final String project,
+                                          @PathParam("stack") final String stack,
+                                          @PathParam("z") final Double z,
+                                          @Context final UriInfo uriInfo,
+                                          ResolvedTileSpecCollection resolvedTiles) {
+
+        LOG.info("saveResolvedTilesForZ: entry, owner={}, project={}, stack={}, z={}",
                  owner, project, stack, z);
 
-        if (resolvedTiles == null) {
-            throw new IllegalServiceArgumentException("no resolved tiles provided");
-        }
-
-        if (z == null) {
-            throw new IllegalServiceArgumentException("no z value provided");
-        }
-
         try {
-            final StackId stackId = new StackId(owner, project, stack);
-            resolvedTiles.verifyAllTileSpecsHaveZValue(z);
-            renderDao.saveResolvedTiles(stackId, resolvedTiles);
+            if (resolvedTiles == null) {
+                throw new IllegalServiceArgumentException("no resolved tiles provided");
+            }
+
+            if (z != null) {
+                resolvedTiles.verifyAllTileSpecsHaveZValue(z);
+            }
+
+            final StackMetaData stackMetaData = stackMetaDataService.getStackMetaData(owner, project, stack);
+
+            if (! stackMetaData.isLoading()) {
+                throw new IllegalStateException("Resolved tiles can only be saved to stacks in the " +
+                                                LOADING + " state, but this stack's state is " +
+                                                stackMetaData.getState() + ".");
+            }
+
+            renderDao.saveResolvedTiles(stackMetaData.getStackId(), resolvedTiles);
+
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
         final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
 
-        LOG.info("saveResolvedTiles: exit");
+        LOG.info("saveResolvedTilesForZ: exit");
 
         return responseBuilder.build();
     }
@@ -298,14 +285,16 @@ public class RenderDataService {
                 scale = 1.0;
             }
 
-            final StackId stackId = new StackId(owner, project, stack);
-            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
+            final StackMetaData stackMetaData = stackMetaDataService.getStackMetaData(owner, project, stack);
+
+            final Integer stackLayoutWidth = stackMetaData.getLayoutWidth();
+            final Integer stackLayoutHeight = stackMetaData.getLayoutHeight();
 
             final int margin = 0;
             final Double x = getLayoutMinValue(tileSpec.getMinX(), margin);
             final Double y = getLayoutMinValue(tileSpec.getMinY(), margin);
-            final Integer width = getLayoutSizeValue(stackMetaData.getLayoutWidth(), tileSpec.getWidth(), margin);
-            final Integer height = getLayoutSizeValue(stackMetaData.getLayoutHeight(), tileSpec.getHeight(), margin);
+            final Integer width = getLayoutSizeValue(stackLayoutWidth, tileSpec.getWidth(), margin);
+            final Integer height = getLayoutSizeValue(stackLayoutHeight, tileSpec.getHeight(), margin);
 
             parameters = new RenderParameters(null, x, y, width, height, scale);
             parameters.setDoFilter(filter);

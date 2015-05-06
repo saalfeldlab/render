@@ -25,10 +25,21 @@ public class Bounds implements Serializable {
                   final Double minY,
                   final Double maxX,
                   final Double maxY) {
+        this(minX, minY, null, maxX, maxY, null);
+    }
+
+    public Bounds(Double minX,
+                  Double minY,
+                  Double minZ,
+                  Double maxX,
+                  Double maxY,
+                  Double maxZ) {
         this.minX = minX;
         this.minY = minY;
+        this.minZ = minZ;
         this.maxX = maxX;
         this.maxY = maxY;
+        this.maxZ = maxZ;
     }
 
     public Double getMinX() {
@@ -47,22 +58,12 @@ public class Bounds implements Serializable {
         return maxY;
     }
 
-    @SuppressWarnings("UnusedDeclaration")
     public Double getMaxZ() {
         return maxZ;
     }
 
-    public void setMinZ(final Double minZ) {
-        this.minZ = minZ;
-    }
-
-    @SuppressWarnings("UnusedDeclaration")
     public Double getMinZ() {
         return minZ;
-    }
-
-    public void setMaxZ(final Double maxZ) {
-        this.maxZ = maxZ;
     }
 
     public boolean isBoundingBoxDefined() {
@@ -79,13 +80,11 @@ public class Bounds implements Serializable {
 
     @Override
     public String toString() {
-        return "{minX: " + minX +
-               ", minY: " + minY +
-               ", minZ: " + minZ +
-               ", maxX: " + maxX +
-               ", maxY: " + maxY +
-               ", maxZ: " + maxZ +
-               '}';
+        return toJson();
+    }
+
+    public String toJson() {
+        return JsonUtils.GSON.toJson(this);
     }
 
     public static Bounds fromJson(final String json) {
