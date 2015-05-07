@@ -13,43 +13,56 @@ import org.janelia.alignment.json.JsonUtils;
 public class CollectionSnapshot
         implements Serializable {
 
+    private final String owner;
     private final String databaseName;
     private final String collectionName;
     private final Integer version;
     private final String rootPath;
-    private final Date collectionCreateDate;
+    private final Date collectionCreateTimestamp;
     private final String versionNotes;
     private final Long estimatedBytes;
     private final Date snapshotDate;
     private final String fullPath;
     private final Long actualBytes;
 
-    public CollectionSnapshot(String databaseName,
+    public CollectionSnapshot(String owner,
+                              String databaseName,
                               String collectionName,
                               Integer version,
                               String rootPath,
-                              Date collectionCreateDate,
+                              Date collectionCreateTimestamp,
                               String versionNotes,
                               Long estimatedBytes) throws IllegalArgumentException {
-        this(databaseName, collectionName, version, rootPath, collectionCreateDate, versionNotes, estimatedBytes,
-             null, null, null);
+        this(owner,
+             databaseName,
+             collectionName,
+             version,
+             rootPath,
+             collectionCreateTimestamp,
+             versionNotes,
+             estimatedBytes,
+             null,
+             null,
+             null);
     }
 
-    public CollectionSnapshot(String databaseName,
+    public CollectionSnapshot(String owner,
+                              String databaseName,
                               String collectionName,
                               Integer version,
                               String rootPath,
-                              Date collectionCreateDate,
+                              Date collectionCreateTimestamp,
                               String versionNotes,
                               Long estimatedBytes,
                               Date snapshotDate,
                               String fullPath,
                               Long actualBytes) throws IllegalArgumentException {
+        this.owner = owner;
         this.databaseName = databaseName;
         this.collectionName = collectionName;
         this.version = version;
         this.rootPath = rootPath;
-        this.collectionCreateDate = collectionCreateDate;
+        this.collectionCreateTimestamp = collectionCreateTimestamp;
         this.versionNotes = versionNotes;
         this.estimatedBytes = estimatedBytes;
         this.snapshotDate = snapshotDate;
@@ -62,11 +75,12 @@ public class CollectionSnapshot
     public CollectionSnapshot getSnapshotWithPersistenceData(Date snapshotDate,
                                                              String fullPath,
                                                              Long actualBytes) {
-        return new CollectionSnapshot(this.databaseName,
+        return new CollectionSnapshot(this.owner,
+                                      this.databaseName,
                                       this.collectionName,
                                       this.version,
                                       this.rootPath,
-                                      this.collectionCreateDate,
+                                      this.collectionCreateTimestamp,
                                       this.versionNotes,
                                       this.estimatedBytes,
                                       snapshotDate,
@@ -75,6 +89,9 @@ public class CollectionSnapshot
     }
 
     public void validate() throws IllegalArgumentException {
+        if (owner == null) {
+            throw new IllegalArgumentException("snapshot must include an owner");
+        }
         if (databaseName == null) {
             throw new IllegalArgumentException("snapshot must include a databaseName");
         }
@@ -87,6 +104,10 @@ public class CollectionSnapshot
         if (rootPath == null) {
             throw new IllegalArgumentException("snapshot must include a rootPath");
         }
+    }
+
+    public String getOwner() {
+        return owner;
     }
 
     public String getDatabaseName() {
@@ -105,8 +126,8 @@ public class CollectionSnapshot
         return rootPath;
     }
 
-    public Date getCollectionCreateDate() {
-        return collectionCreateDate;
+    public Date getCollectionCreateTimestamp() {
+        return collectionCreateTimestamp;
     }
 
     public String getVersionNotes() {

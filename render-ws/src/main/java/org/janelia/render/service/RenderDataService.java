@@ -46,17 +46,15 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
 public class RenderDataService {
 
     private final RenderDao renderDao;
-    private final StackMetaDataService stackMetaDataService;
 
     @SuppressWarnings("UnusedDeclaration")
     public RenderDataService()
             throws UnknownHostException {
-        this(RenderServiceUtil.buildDao());
+        this(RenderDao.build());
     }
 
     public RenderDataService(final RenderDao renderDao) {
         this.renderDao = renderDao;
-        this.stackMetaDataService = new StackMetaDataService(renderDao);
     }
 
     @Path("project/{project}/stack/{stack}/layoutFile")
@@ -222,7 +220,12 @@ public class RenderDataService {
                 resolvedTiles.verifyAllTileSpecsHaveZValue(z);
             }
 
-            final StackMetaData stackMetaData = stackMetaDataService.getStackMetaData(owner, project, stack);
+            final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
+
+            if (stackMetaData == null) {
+                throw StackMetaDataService.getStackNotFoundException(owner, project, stack);
+            }
 
             if (! stackMetaData.isLoading()) {
                 throw new IllegalStateException("Resolved tiles can only be saved to stacks in the " +
@@ -230,7 +233,7 @@ public class RenderDataService {
                                                 stackMetaData.getState() + ".");
             }
 
-            renderDao.saveResolvedTiles(stackMetaData.getStackId(), resolvedTiles);
+            renderDao.saveResolvedTiles(stackId, resolvedTiles);
 
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -285,7 +288,12 @@ public class RenderDataService {
                 scale = 1.0;
             }
 
-            final StackMetaData stackMetaData = stackMetaDataService.getStackMetaData(owner, project, stack);
+            final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
+
+            if (stackMetaData == null) {
+                throw StackMetaDataService.getStackNotFoundException(owner, project, stack);
+            }
 
             final Integer stackLayoutWidth = stackMetaData.getLayoutWidth();
             final Integer stackLayoutHeight = stackMetaData.getLayoutHeight();

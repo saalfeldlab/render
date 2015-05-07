@@ -41,7 +41,7 @@ public class CoordinateService {
     @SuppressWarnings("UnusedDeclaration")
     public CoordinateService()
             throws UnknownHostException {
-        this(RenderServiceUtil.buildDao());
+        this(RenderDao.build());
     }
 
     public CoordinateService(final RenderDao renderDao) {

@@ -22,7 +22,9 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.render.service.dao.AdminDao;
 import org.janelia.render.service.dao.RenderDao;
+import org.janelia.render.service.model.CollectionSnapshot;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.render.service.util.RenderServiceUtil;
@@ -40,15 +42,19 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
 public class StackMetaDataService {
 
     private final RenderDao renderDao;
+    private final AdminDao adminDao;
 
     @SuppressWarnings("UnusedDeclaration")
     public StackMetaDataService()
             throws UnknownHostException {
-        this(RenderServiceUtil.buildDao());
+        this(RenderDao.build(), AdminDao.build());
     }
 
-    public StackMetaDataService(final RenderDao renderDao) {
+    public StackMetaDataService(final RenderDao renderDao,
+                                final AdminDao adminDao)
+            throws UnknownHostException {
         this.renderDao = renderDao;
+        this.adminDao = adminDao;
     }
 
     @Path("stackIds")
@@ -138,11 +144,6 @@ public class StackMetaDataService {
 
             LOG.info("saveStackVersion: saved version number {}", stackMetaData.getCurrentVersionNumber());
 
-            if (stackVersion.isSnapshotNeeded()) {
-                // TODO: register snapshot
-                LOG.info("saveStackVersion: snapshot registration TBD");
-            }
-
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -174,8 +175,7 @@ public class StackMetaDataService {
 
                 final StackVersion currentVersion = stackMetaData.getCurrentVersion();
                 if (currentVersion.isSnapshotNeeded()) {
-                    // TODO: un-register snapshot if one was not already created
-                    LOG.info("deleteStack: un-register snapshot TBD");
+                    unRegisterSnapshots(stackMetaData);
                 }
 
                 renderDao.removeStack(stackId);
@@ -201,14 +201,21 @@ public class StackMetaDataService {
                  owner, project, stack, state);
 
         try {
-            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
 
             if (stackMetaData == null) {
                 throw getStackNotFoundException(owner, project, stack);
             }
 
             if (StackState.COMPLETE.equals(state)) {
-                renderDao.ensureIndexesAndDeriveStats(stackMetaData);
+
+                stackMetaData = renderDao.ensureIndexesAndDeriveStats(stackMetaData);
+
+                final StackVersion stackVersion = stackMetaData.getCurrentVersion();
+                if (stackVersion.isSnapshotNeeded()) {
+                    registerSnapshots(stackMetaData);
+                }
+
             } else {
                 stackMetaData.setState(state);
                 renderDao.saveStackMetaData(stackMetaData);
@@ -263,11 +270,69 @@ public class StackMetaDataService {
         return bounds;
     }
 
-    private ObjectNotFoundException getStackNotFoundException(final String owner,
-                                                              final String project,
-                                                              final String stack) {
+    public static ObjectNotFoundException getStackNotFoundException(final String owner,
+                                                                    final String project,
+                                                                    final String stack) {
         return new ObjectNotFoundException("stack with owner '" + owner + "', project '" + project +
                                             "', and name '" + stack + "' does not exist");
+    }
+
+    private void registerSnapshots(final StackMetaData stackMetaData) {
+
+        final StackId stackId = stackMetaData.getStackId();
+
+        LOG.debug("registerSnapshots: entry, {}", stackId);
+
+        final StackStats stats = stackMetaData.getStats();
+        final StackVersion stackVersion = stackMetaData.getCurrentVersion();
+
+        final long v5AlignTPSBytesPerTile = 7033973184L / 6978148;
+        final long estimatedTileBytes = stats.getTileCount() * v5AlignTPSBytesPerTile;
+
+        final CollectionSnapshot tileSnapshot = new CollectionSnapshot(stackId.getOwner(),
+                                                                       RenderDao.RENDER_DB_NAME,
+                                                                       stackId.getTileCollectionName(),
+                                                                       stackMetaData.getCurrentVersionNumber(),
+                                                                       stackVersion.getSnapshotRootPath(),
+                                                                       stackVersion.getCreateTimestamp(),
+                                                                       stackVersion.getVersionNotes(),
+                                                                       estimatedTileBytes);
+        adminDao.saveSnapshot(tileSnapshot);
+
+        final long v5AlignTPSBytesPerTransform = 445194400L / 2454;
+        final long estimatedTransformBytes = stats.getTransformCount() * v5AlignTPSBytesPerTransform;
+
+        final CollectionSnapshot transformSnapshot = new CollectionSnapshot(stackId.getOwner(),
+                                                                            RenderDao.RENDER_DB_NAME,
+                                                                            stackId.getTransformCollectionName(),
+                                                                            stackMetaData.getCurrentVersionNumber(),
+                                                                            stackVersion.getSnapshotRootPath(),
+                                                                            stackVersion.getCreateTimestamp(),
+                                                                            stackVersion.getVersionNotes(),
+                                                                            estimatedTransformBytes);
+        adminDao.saveSnapshot(transformSnapshot);
+
+        LOG.debug("registerSnapshots: exit, {}", stackId);
+    }
+
+    private void unRegisterSnapshots(final StackMetaData stackMetaData) {
+
+        final StackId stackId = stackMetaData.getStackId();
+
+        LOG.debug("unRegisterSnapshots: entry, {}", stackId);
+
+        List<CollectionSnapshot> unPersistedSnapshotList = adminDao.getSnapshots(stackId.getOwner(),
+                                                                                 RenderDao.RENDER_DB_NAME,
+                                                                                 null,
+                                                                                 true);
+        for (CollectionSnapshot snapshot : unPersistedSnapshotList) {
+            adminDao.removeSnapshot(snapshot.getOwner(),
+                                    snapshot.getDatabaseName(),
+                                    snapshot.getCollectionName(),
+                                    snapshot.getVersion());
+        }
+
+        LOG.debug("unRegisterSnapshots: exit, {}", stackId);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(StackMetaDataService.class);

@@ -15,7 +15,8 @@
             "projectStep": 1,
             "stackResolutionX": 4.0,
             "stackResolutionY": 4.0,
-            "stackResolutionZ": 35.0
+            "stackResolutionZ": 35.0,
+            "snapshotRootPath": "/snapshot/root"
         },
         "stats": {
             "maxTileWidth" : 2600,

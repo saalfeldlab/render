@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.janelia.render.service.model.CollectionSnapshot;
+import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -34,12 +35,13 @@ public class AdminDaoTest {
     @Test
     public void testSnapshotMethods() throws Exception {
 
-        List<CollectionSnapshot> list = dao.getSnapshots(null, null, false);
+        List<CollectionSnapshot> list = dao.getSnapshots(null, null, null, false);
 
         validateList("before first save with no criteria",
                      0, list);
 
-        final CollectionSnapshot snapshot1 = new CollectionSnapshot("db1",
+        final CollectionSnapshot snapshot1 = new CollectionSnapshot("testOwner",
+                                                                    "db1",
                                                                     "c1",
                                                                     0,
                                                                     "/snapshot/root",
@@ -47,14 +49,20 @@ public class AdminDaoTest {
                                                                     "test 1",
                                                                     111L);
 
-        list = dao.getSnapshots(snapshot1.getDatabaseName(), snapshot1.getCollectionName(), false);
+        list = dao.getSnapshots(snapshot1.getOwner(),
+                                snapshot1.getDatabaseName(),
+                                snapshot1.getCollectionName(),
+                                false);
 
         validateList("before first save with snapshot1 database and collection criteria",
                      0, list);
 
         dao.saveSnapshot(snapshot1);
 
-        list = dao.getSnapshots(snapshot1.getDatabaseName(), snapshot1.getCollectionName(), false);
+        list = dao.getSnapshots(snapshot1.getOwner(),
+                                snapshot1.getDatabaseName(),
+                                snapshot1.getCollectionName(),
+                                false);
 
         validateList("after first save with snapshot1 database and collection criteria",
                      1, list);
@@ -68,7 +76,8 @@ public class AdminDaoTest {
 
         dao.saveSnapshot(snapshot1WithPersistence);
 
-        final CollectionSnapshot snapshot2 = new CollectionSnapshot(snapshot1.getDatabaseName(),
+        final CollectionSnapshot snapshot2 = new CollectionSnapshot(snapshot1.getOwner(),
+                                                                    snapshot1.getDatabaseName(),
                                                                     snapshot1.getCollectionName(),
                                                                     2,
                                                                     snapshot1.getRootPath(),
@@ -77,7 +86,8 @@ public class AdminDaoTest {
                                                                     333L);
         dao.saveSnapshot(snapshot2);
 
-        final CollectionSnapshot snapshot3 = new CollectionSnapshot(snapshot1.getDatabaseName(),
+        final CollectionSnapshot snapshot3 = new CollectionSnapshot(snapshot1.getOwner(),
+                                                                    snapshot1.getDatabaseName(),
                                                                     "c2",
                                                                     0,
                                                                     snapshot1.getRootPath(),
@@ -86,7 +96,8 @@ public class AdminDaoTest {
                                                                     444L);
         dao.saveSnapshot(snapshot3);
 
-        final CollectionSnapshot snapshot4 = new CollectionSnapshot("d3",
+        final CollectionSnapshot snapshot4 = new CollectionSnapshot("testOwner2",
+                                                                    "d3",
                                                                     "c3",
                                                                     0,
                                                                     snapshot1.getRootPath(),
@@ -95,36 +106,62 @@ public class AdminDaoTest {
                                                                     444L);
         dao.saveSnapshot(snapshot4);
 
-        list = dao.getSnapshots(null, null, false);
+        list = dao.getSnapshots(null, null, null, false);
         validateList("after second saves with no criteria",
                      4, list);
 
-        list = dao.getSnapshots(snapshot1.getDatabaseName(), null, false);
+        list = dao.getSnapshots(snapshot4.getOwner(), null, null, false);
+        validateList("after second saves with snapshot4 owner criteria",
+                     1, list);
+
+        list = dao.getSnapshots(null, snapshot1.getDatabaseName(), null, false);
         validateList("after second saves with snapshot1 database criteria",
                      3, list);
 
-        list = dao.getSnapshots(snapshot3.getDatabaseName(), snapshot3.getCollectionName(), false);
+        list = dao.getSnapshots(null, snapshot3.getDatabaseName(), snapshot3.getCollectionName(), false);
         validateList("after second saves with snapshot3 database and collection criteria",
                      1, list);
 
-        list = dao.getSnapshots(snapshot1.getDatabaseName(), snapshot1.getCollectionName(), true);
+        list = dao.getSnapshots(null, snapshot1.getDatabaseName(), snapshot1.getCollectionName(), true);
         validateList("after second saves with snapshot1 database, collection, and filter criteria",
                      1, list);
         validateSnapshot("after second saves",
                          snapshot2, list.get(0));
 
+        final CollectionSnapshot retrievedSnapshot = dao.getSnapshot(snapshot1.getOwner(),
+                                                                     snapshot1.getDatabaseName(),
+                                                                     snapshot1.getCollectionName(),
+                                                                     snapshot1.getVersion());
+        validateSnapshot("after retrieving snapshot1 (with persistence data)",
+                         snapshot1WithPersistence, retrievedSnapshot);
+
+        dao.removeSnapshot(snapshot1.getOwner(),
+                           snapshot1.getDatabaseName(),
+                           snapshot1.getCollectionName(),
+                           snapshot1.getVersion());
+
+        try {
+            dao.getSnapshot(snapshot1.getOwner(),
+                            snapshot1.getDatabaseName(),
+                            snapshot1.getCollectionName(),
+                            snapshot1.getVersion());
+            Assert.fail("snapshot data should have been removed for " + snapshot1);
+        } catch (ObjectNotFoundException e) {
+            Assert.assertTrue(true); // test passed
+        }
+
     }
 
-    private void validateList(String context,
-                              int expectedSize,
-                              List<CollectionSnapshot> list) {
+    public static void validateList(String context,
+                                    int expectedSize,
+                                    List<CollectionSnapshot> list) {
         Assert.assertNotNull("null list returned " + context, list);
         Assert.assertEquals("invalid list size " + context, expectedSize, list.size());
     }
 
-    private void validateSnapshot(String context,
-                                  CollectionSnapshot expected,
-                                  CollectionSnapshot actual) {
+    public static void validateSnapshot(String context,
+                                        CollectionSnapshot expected,
+                                        CollectionSnapshot actual) {
         Assert.assertNotNull("null snapshot " + context, actual);
         Assert.assertEquals("invalid databaseName " + context,
                             expected.getDatabaseName(), actual.getDatabaseName());
@@ -134,8 +171,8 @@ public class AdminDaoTest {
                             expected.getVersion(), actual.getVersion());
         Assert.assertEquals("invalid rootPath " + context,
                             expected.getRootPath(), actual.getRootPath());
-        Assert.assertEquals("invalid collectionCreateDate " + context,
-                            expected.getCollectionCreateDate(), actual.getCollectionCreateDate());
+        Assert.assertEquals("invalid collectionCreateTimestamp " + context,
+                            expected.getCollectionCreateTimestamp(), actual.getCollectionCreateTimestamp());
         Assert.assertEquals("invalid versionNotes " + context,
                             expected.getVersionNotes(), actual.getVersionNotes());
         Assert.assertEquals("invalid estimatedBytes " + context,

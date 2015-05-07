@@ -16,6 +16,7 @@ import com.mongodb.util.JSON;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -53,6 +54,12 @@ public class RenderDao {
 
     public static final String RENDER_DB_NAME = "render";
     public static final String STACK_META_DATA_COLLECTION_NAME = "admin__stack_meta_data";
+
+    public static RenderDao build()
+            throws UnknownHostException {
+        final MongoClient mongoClient = SharedMongoClient.getInstance();
+        return new RenderDao(mongoClient);
+    }
 
     private final DB renderDb;
 

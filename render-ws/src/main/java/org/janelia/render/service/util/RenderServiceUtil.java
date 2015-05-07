@@ -1,11 +1,5 @@
 package org.janelia.render.service.util;
 
-import com.mongodb.MongoClient;
-
-import java.net.UnknownHostException;
-
-import org.janelia.render.service.dao.RenderDao;
-import org.janelia.render.service.dao.SharedMongoClient;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ServiceException;
 import org.slf4j.Logger;
@@ -17,12 +11,6 @@ import org.slf4j.LoggerFactory;
  * @author Eric Trautman
  */
 public class RenderServiceUtil {
-
-    public static RenderDao buildDao()
-            throws UnknownHostException {
-        final MongoClient mongoClient = SharedMongoClient.getInstance();
-        return new RenderDao(mongoClient);
-    }
 
     public static void throwServiceException(Throwable t)
             throws ServiceException {

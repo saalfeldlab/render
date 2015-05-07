@@ -13,14 +13,17 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.render.service.dao.AdminDao;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.dao.RenderDaoTest;
+import org.janelia.render.service.model.CollectionSnapshot;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.test.EmbeddedMongoDb;
 import org.jboss.resteasy.specimpl.UriInfoImpl;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -39,6 +42,7 @@ public class StackMetaDataServiceTest {
 
     private static EmbeddedMongoDb embeddedMongoDb;
     private static StackMetaDataService service;
+    private static AdminDao adminDao;
 
     @BeforeClass
     public static void before() throws Exception {
@@ -46,9 +50,13 @@ public class StackMetaDataServiceTest {
         completeStackId = new StackId("flyTEM", "test", "elastic");
 
         embeddedMongoDb = new EmbeddedMongoDb(RenderDao.RENDER_DB_NAME);
-        final RenderDao dao = new RenderDao(embeddedMongoDb.getMongoClient());
-        service = new StackMetaDataService(dao);
+        final RenderDao renderDao = new RenderDao(embeddedMongoDb.getMongoClient());
+        adminDao = new AdminDao(embeddedMongoDb.getMongoClient());
+        service = new StackMetaDataService(renderDao, adminDao);
+    }
 
+    @Before
+    public void setUp() throws Exception {
         embeddedMongoDb.importCollection(RenderDao.STACK_META_DATA_COLLECTION_NAME,
                                          new File("src/test/resources/mongodb/admin__stack_meta_data.json"),
                                          true,
@@ -220,6 +228,40 @@ public class StackMetaDataServiceTest {
         Assert.assertNotNull("stack bounds not returned after storing stats", stackBounds2);
         Assert.assertEquals("invalid min Y returned after storing stats",
                             stackBounds.getMinY(), stackBounds2.getMinY(), 0.01);
+
+        final CollectionSnapshot snapshotBeforeDelete =
+                adminDao.getSnapshot(completeStackId.getOwner(),
+                                     RenderDao.RENDER_DB_NAME,
+                                     completeStackId.getTileCollectionName(),
+                                     stackMetaData2.getCurrentVersionNumber());
+
+        Assert.assertNotNull("snapshot not saved", snapshotBeforeDelete);
+        Assert.assertEquals("snapshot has invalid create timestamp",
+                            stackMetaData2.getCurrentVersion().getCreateTimestamp(),
+                            snapshotBeforeDelete.getCollectionCreateTimestamp());
+
+        service.deleteStack(completeStackId.getOwner(),
+                            completeStackId.getProject(),
+                            completeStackId.getStack());
+
+        try {
+            service.getStackMetaData(completeStackId.getOwner(),
+                                     completeStackId.getProject(),
+                                     completeStackId.getStack());
+            Assert.fail("after delete, meta data should not exist for " + completeStackId);
+        } catch (ObjectNotFoundException e) {
+            Assert.assertTrue(true); // test passed
+        }
+
+        try {
+            adminDao.getSnapshot(completeStackId.getOwner(),
+                                 RenderDao.RENDER_DB_NAME,
+                                 completeStackId.getTileCollectionName(),
+                                 stackMetaData2.getCurrentVersionNumber());
+            Assert.fail("after delete, snapshot data should not exist for " + completeStackId);
+        } catch (ObjectNotFoundException e) {
+            Assert.assertTrue(true); // test passed
+        }
 
     }
 

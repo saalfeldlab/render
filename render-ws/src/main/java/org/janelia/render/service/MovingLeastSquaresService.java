@@ -44,7 +44,7 @@ public class MovingLeastSquaresService {
     @SuppressWarnings("UnusedDeclaration")
     public MovingLeastSquaresService()
             throws UnknownHostException {
-        this(RenderServiceUtil.buildDao());
+        this(RenderDao.build());
     }
 
     public MovingLeastSquaresService(final RenderDao renderDao) {
