@@ -184,24 +184,6 @@ public class RenderDao {
         return tileSpec;
     }
 
-    /**
-     * @return the specified tile spec with its transform references resolved.
-     *
-     * @throws IllegalArgumentException
-     *   if any required parameters are missing.
-     */
-    public TileSpec resolveTransformReferencesForTiles(final StackId stackId,
-                                                       final TileSpec tileSpec)
-            throws IllegalArgumentException {
-
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("tileSpec", tileSpec);
-
-        resolveTransformReferencesForTiles(stackId, Arrays.asList(tileSpec));
-
-        return tileSpec;
-    }
-
     public Map<String, TransformSpec> resolveTransformReferencesForTiles(final StackId stackId,
                                                                          final List<TileSpec> tileSpecs)
             throws IllegalStateException {
@@ -480,6 +462,8 @@ public class RenderDao {
                 LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
                           bulkResultMessage, transformCollection.getFullName(), query);
             }
+
+            // TODO: re-derive bounding boxes for all tiles (outside this collection) that reference modified transforms
         }
 
         if (tileSpecs.size() > 0) {

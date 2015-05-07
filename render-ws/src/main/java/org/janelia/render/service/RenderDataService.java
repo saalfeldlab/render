@@ -322,47 +322,6 @@ public class RenderDataService {
         return renderDao.getTileSpec(stackId, tileId, resolveTransformReferences);
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}")
-    @PUT
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveTileSpec(@PathParam("owner") final String owner,
-                                 @PathParam("project") final String project,
-                                 @PathParam("stack") final String stack,
-                                 @PathParam("tileId") final String tileId,
-                                 @Context final UriInfo uriInfo,
-                                 @QueryParam("meshCellSize") final Double meshCellSize,
-                                 TileSpec tileSpec) {
-
-        LOG.info("saveTileSpec: entry, owner={}, project={}, stack={}, tileId={}, meshCellSize={}",
-                 owner, project, stack, tileId, meshCellSize);
-
-        if (tileSpec == null) {
-            throw new IllegalServiceArgumentException("no tile spec provided");
-        } else if (! tileId.equals(tileSpec.getTileId())) {
-            throw new IllegalServiceArgumentException("request tileId value (" + tileId +
-                                                      ") does not match tile spec tileId value (" +
-                                                      tileSpec.getTileId() + ")");
-        }
-
-        try {
-            final StackId stackId = new StackId(owner, project, stack);
-
-            // resolve all transform references and re-derive bounding box before saving ...
-            tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
-            tileSpec.deriveBoundingBox(
-                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
-                    true);
-
-            renderDao.saveTileSpec(stackId, tileSpec);
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
-
-        return responseBuilder.build();
-    }
-
     @Path("project/{project}/stack/{stack}/transform/{transformId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -383,42 +342,6 @@ public class RenderDataService {
         }
 
         return transformSpec;
-    }
-
-    @Path("project/{project}/stack/{stack}/transform/{transformId}")
-    @PUT
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveTransformSpec(@PathParam("owner") final String owner,
-                                      @PathParam("project") final String project,
-                                      @PathParam("stack") final String stack,
-                                      @PathParam("transformId") final String transformId,
-                                      @Context final UriInfo uriInfo,
-                                      final TransformSpec transformSpec) {
-
-        LOG.info("saveTransformSpec: entry, owner={}, project={}, stack={}, transformId={}",
-                 owner, project, stack, transformId);
-
-        if (transformSpec == null) {
-            throw new IllegalServiceArgumentException("no transform spec provided");
-        } else if (! transformId.equals(transformSpec.getId())) {
-            throw new IllegalServiceArgumentException("request transformId value (" + transformId +
-                                                      ") does not match transform spec id value (" +
-                                                      transformSpec.getId() + ")");
-        }
-
-        try {
-            final StackId stackId = new StackId(owner, project, stack);
-            renderDao.saveTransformSpec(stackId, transformSpec);
-
-            // TODO: re-derive bounding boxes for all tiles that reference this transform
-
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
-
-        return responseBuilder.build();
     }
 
     /**
