@@ -19,7 +19,7 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
  */
 public class StackClient {
 
-    public enum Action { CREATE, SET_STATE, DELETE }
+    public enum Action { CREATE, CLONE, SET_STATE, DELETE }
 
     @SuppressWarnings("ALL")
     private static class Parameters extends RenderDataClientParameters {
@@ -29,7 +29,7 @@ public class StackClient {
         @Parameter(names = "--stack", description = "Stack name", required = true)
         private String stack;
 
-        @Parameter(names = "--action", description = "CREATE, SET_STATE, or DELETE", required = true)
+        @Parameter(names = "--action", description = "CREATE, CLONE, SET_STATE, or DELETE", required = true)
         private Action action;
 
         @Parameter(names = "--stackState", description = "LOADING, COMPLETE, or OFFLINE", required = false)
@@ -56,6 +56,9 @@ public class StackClient {
         @Parameter(names = "--snapshotRootPath", description = "Root path for snapshot (only specify if offline snapshot should be stored)", required = false)
         private String snapshotRootPath;
 
+        @Parameter(names = "--cloneResultStack", description = "Name of stack created by clone operation", required = false)
+        private String cloneResultStack;
+
     }
 
     /**
@@ -73,6 +76,8 @@ public class StackClient {
 
             if (Action.CREATE.equals(parameters.action)) {
                 client.createStackVersion();
+            } else if (Action.CLONE.equals(parameters.action)) {
+                client.cloneStackVersion();
             } else if (Action.SET_STATE.equals(parameters.action)) {
                 client.setStackState();
             } else if (Action.DELETE.equals(parameters.action)) {
@@ -119,6 +124,28 @@ public class StackClient {
         logMetaData("createStackVersion: after save");
     }
 
+    public void cloneStackVersion()
+            throws Exception {
+
+        if (params.cloneResultStack == null) {
+            throw new IllegalArgumentException("missing --cloneResultStack value");
+        }
+
+        final StackVersion stackVersion = new StackVersion(new Date(),
+                                                           params.versionNotes,
+                                                           params.cycleNumber,
+                                                           params.cycleStepNumber,
+                                                           params.stackResoutionX,
+                                                           params.stackResoutionY,
+                                                           params.stackResoutionZ,
+                                                           params.snapshotRootPath,
+                                                           null);
+
+        renderDataClient.cloneStackVersion(stack, params.cloneResultStack, stackVersion);
+
+        logMetaData("cloneStackVersion: after clone", params.cloneResultStack);
+    }
+
     public void setStackState()
             throws Exception {
 
@@ -140,8 +167,13 @@ public class StackClient {
     }
 
     private void logMetaData(String context) {
+        logMetaData(context, stack);
+    }
+
+    private void logMetaData(String context,
+                             String stackName) {
         try {
-            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stack);
+            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stackName);
             LOG.info("{}, stackMetaData={}", context, stackMetaData);
         } catch (IOException e) {
             LOG.info("{}, no meta data returned", context);

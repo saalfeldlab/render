@@ -2,6 +2,12 @@ package org.janelia.render.client;
 
 import com.google.gson.reflect.TypeToken;
 
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -21,14 +27,9 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.client.response.JsonResponseHandler;
 import org.janelia.render.client.response.ResourceCreatedResponseHandler;
+import org.janelia.render.client.response.TextResponseHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.lang.reflect.Type;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.List;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
 
@@ -83,7 +84,7 @@ public class RenderDataClient {
         final String json = JsonUtils.GSON.toJson(stackVersion);
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
         final URI uri = getStackUri(stack);
-        final String requestContext = "PUT " + uri;
+        final String requestContext = "POST " + uri;
         final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
 
         final HttpPost httpPost = new HttpPost(uri);
@@ -92,6 +93,25 @@ public class RenderDataClient {
         LOG.info("saveStackVersion: submitting {}", requestContext);
 
         httpClient.execute(httpPost, responseHandler);
+    }
+
+    public void cloneStackVersion(String fromStack,
+                                  String toStack,
+                                  StackVersion toStackVersion)
+            throws IllegalArgumentException, IOException {
+
+        final String json = JsonUtils.GSON.toJson(toStackVersion);
+        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+        final URI uri = getStackCloneUri(fromStack, toStack);
+        final String requestContext = "PUT " + uri;
+        final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        LOG.info("cloneStackVersion: submitting {}", requestContext);
+
+        httpClient.execute(httpPut, responseHandler);
     }
 
     public void setStackState(String stack,
@@ -114,7 +134,7 @@ public class RenderDataClient {
 
         final URI uri = getStackUri(stack);
         final String requestContext = "DELETE " + uri;
-        final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
 
         final HttpDelete httpDelete = new HttpDelete(uri);
 
@@ -265,6 +285,11 @@ public class RenderDataClient {
 
     private URI getStackUri(final String stack) {
         return getUri(getStackUrlString(stack));
+    }
+
+    private URI getStackCloneUri(final String fromStack,
+                                 final String toStack) {
+        return getUri(getStackUrlString(fromStack) + "/cloneTo/" + toStack);
     }
 
     private URI getStackStateUri(final String stack,
