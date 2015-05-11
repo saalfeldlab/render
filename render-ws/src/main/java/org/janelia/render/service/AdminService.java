@@ -22,7 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * APIs for accessing point match data stored in the Match service database.
+ * APIs for accessing snapshot data stored in the Admin database.
  *
  * @author Eric Trautman
  */

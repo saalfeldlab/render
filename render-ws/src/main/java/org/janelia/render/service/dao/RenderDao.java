@@ -736,12 +736,12 @@ public class RenderDao {
         final List<Double> zValues = getZValues(stackId);
         final long sectionCount = zValues.size();
 
-        long unMergedSectionCount = 0;
+        long nonIntegralSectionCount = 0;
         double truncatedZ;
         for (Double z : zValues) {
             truncatedZ = (double) z.intValue();
             if (z > truncatedZ) {
-                unMergedSectionCount++;
+                nonIntegralSectionCount++;
             }
         }
 
@@ -843,7 +843,7 @@ public class RenderDao {
 
             stats = new StackStats(stackBounds,
                                    sectionCount,
-                                   unMergedSectionCount,
+                                   nonIntegralSectionCount,
                                    tileCount,
                                    transformCount,
                                    minTileWidth.intValue(),

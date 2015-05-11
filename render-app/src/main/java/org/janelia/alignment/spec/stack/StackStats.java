@@ -15,7 +15,7 @@ public class StackStats
 
     private final Bounds stackBounds;
     private final Long sectionCount;
-    private final Long unMergedSectionCount;
+    private final Long nonIntegralSectionCount;
     private final Long tileCount;
     private final Long transformCount;
     private final Integer minTileWidth;
@@ -25,7 +25,7 @@ public class StackStats
 
     public StackStats(Bounds stackBounds,
                       Long sectionCount,
-                      Long unMergedSectionCount,
+                      Long nonIntegralSectionCount,
                       Long tileCount,
                       Long transformCount,
                       Integer minTileWidth,
@@ -34,7 +34,7 @@ public class StackStats
                       Integer maxTileHeight) {
         this.stackBounds = stackBounds;
         this.sectionCount = sectionCount;
-        this.unMergedSectionCount = unMergedSectionCount;
+        this.nonIntegralSectionCount = nonIntegralSectionCount;
         this.tileCount = tileCount;
         this.transformCount = transformCount;
         this.minTileWidth = minTileWidth;
@@ -51,8 +51,8 @@ public class StackStats
         return sectionCount;
     }
 
-    public Long getUnMergedSectionCount() {
-        return unMergedSectionCount;
+    public Long getNonIntegralSectionCount() {
+        return nonIntegralSectionCount;
     }
 
     public Long getTileCount() {
