@@ -886,16 +886,18 @@ public class RenderDao {
         validateRequiredParameter("stackId", stackId);
 
         final DBCollection tileCollection = getTileCollection(stackId);
-        final WriteResult tileRemoveResult = tileCollection.remove(new BasicDBObject());
+        final long tileCount = tileCollection.getCount();
+        tileCollection.drop();
 
-        LOG.debug("removeStack: {}.remove(\\{}) deleted {} document(s)",
-                  tileCollection.getFullName(), tileRemoveResult.getN());
+        LOG.debug("removeStack: {}.drop() deleted {} document(s)",
+                  tileCollection.getFullName(), tileCount);
 
         final DBCollection transformCollection = getTransformCollection(stackId);
-        final WriteResult transformRemoveResult = transformCollection.remove(new BasicDBObject());
+        final long transformCount = transformCollection.getCount();
+        transformCollection.drop();
 
-        LOG.debug("removeStack: {}.remove(\\{}) deleted {} document(s)",
-                  transformCollection.getFullName(), transformRemoveResult.getN());
+        LOG.debug("removeStack: {}.drop() deleted {} document(s)",
+                  transformCollection.getFullName(), transformCount);
 
         final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
         final BasicDBObject stackIdQuery = getStackIdQuery(stackId);
