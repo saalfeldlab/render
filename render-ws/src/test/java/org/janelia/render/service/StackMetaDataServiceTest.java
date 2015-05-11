@@ -2,6 +2,7 @@ package org.janelia.render.service;
 
 import java.io.File;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -84,12 +85,6 @@ public class StackMetaDataServiceTest {
     @Test
     public void testStackMetaDataAPIs() throws Exception {
 
-        final UriInfo uriInfo = new UriInfoImpl(new URI("http://test/stack"),
-                                                new URI("http://test"),
-                                                "/stack",
-                                                "",
-                                                new ArrayList<PathSegment>());
-
         try {
             service.getStackMetaData(loadingStackId.getOwner(),
                                      loadingStackId.getProject(),
@@ -112,7 +107,7 @@ public class StackMetaDataServiceTest {
         service.saveStackVersion(loadingStackId.getOwner(),
                                  loadingStackId.getProject(),
                                  loadingStackId.getStack(),
-                                 uriInfo,
+                                 getUriInfo(),
                                  stackVersion0);
 
         final StackMetaData stackMetaData0 = service.getStackMetaData(loadingStackId.getOwner(),
@@ -134,7 +129,7 @@ public class StackMetaDataServiceTest {
         service.saveStackVersion(loadingStackId.getOwner(),
                                  loadingStackId.getProject(),
                                  loadingStackId.getStack(),
-                                 uriInfo,
+                                 getUriInfo(),
                                  stackVersion1);
 
         final StackMetaData stackMetaData1 = service.getStackMetaData(loadingStackId.getOwner(),
@@ -169,12 +164,6 @@ public class StackMetaDataServiceTest {
     @Test
     public void testSetStackState() throws Exception {
 
-        final UriInfo uriInfo = new UriInfoImpl(new URI("http://test/stack"),
-                                                new URI("http://test"),
-                                                "/stack",
-                                                "",
-                                                new ArrayList<PathSegment>());
-
         final StackMetaData stackMetaData1 = service.getStackMetaData(completeStackId.getOwner(),
                                                                       completeStackId.getProject(),
                                                                       completeStackId.getStack());
@@ -193,7 +182,7 @@ public class StackMetaDataServiceTest {
                               completeStackId.getProject(),
                               completeStackId.getStack(),
                               COMPLETE,
-                              uriInfo);
+                              getUriInfo());
 
         final StackMetaData stackMetaData2 = service.getStackMetaData(completeStackId.getOwner(),
                                                                       completeStackId.getProject(),
@@ -263,6 +252,54 @@ public class StackMetaDataServiceTest {
             Assert.assertTrue(true); // test passed
         }
 
+    }
+
+    @Test
+    public void testCloneStackVersion() throws Exception {
+
+        final StackId clonedStackId = new StackId(completeStackId.getOwner(),
+                                                  completeStackId.getProject(),
+                                                  "clonedStack");
+        try {
+            service.getStackMetaData(clonedStackId.getOwner(),
+                                     clonedStackId.getProject(),
+                                     clonedStackId.getStack());
+            Assert.fail("before clone, meta data should not exist for " + clonedStackId);
+        } catch (ObjectNotFoundException e) {
+            Assert.assertTrue(true); // test passed
+        }
+
+        final StackVersion clonedStackVersion = new StackVersion(new Date(),
+                                                                 "cloned",
+                                                                 1,
+                                                                 2,
+                                                                 3.1,
+                                                                 4.1,
+                                                                 5.1,
+                                                                 null,
+                                                                 null);
+
+        service.cloneStackVersion(completeStackId.getOwner(),
+                                  completeStackId.getProject(),
+                                  completeStackId.getStack(),
+                                  clonedStackId.getStack(),
+                                  getUriInfo(),
+                                  clonedStackVersion);
+
+        final StackMetaData clonedStackMetaData = service.getStackMetaData(clonedStackId.getOwner(),
+                                                                           clonedStackId.getProject(),
+                                                                           clonedStackId.getStack());
+
+        RenderDaoTest.validateStackMetaData(" for cloned stack", LOADING, 0, clonedStackVersion, clonedStackMetaData);
+    }
+
+    private static UriInfo getUriInfo()
+            throws URISyntaxException {
+        return new UriInfoImpl(new URI("http://test/stack"),
+                               new URI("http://test"),
+                               "/stack",
+                               "",
+                               new ArrayList<PathSegment>());
     }
 
 }

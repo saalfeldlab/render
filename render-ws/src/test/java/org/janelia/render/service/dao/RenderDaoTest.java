@@ -105,6 +105,40 @@ public class RenderDaoTest {
     }
 
     @Test
+    public void testCloneStack() throws Exception {
+
+        final StackId toStackId = new StackId(stackId.getOwner(), stackId.getProject(), "clonedStack");
+
+        StackMetaData toStackMetaData = dao.getStackMetaData(toStackId);
+        Assert.assertNull("stack should not exist before clone", toStackMetaData);
+
+        List<Double> zValues = dao.getZValues(toStackId);
+        Assert.assertEquals("no z values should exist before clone", 0, zValues.size());
+
+        StackMetaData fromStackMetaData = dao.getStackMetaData(stackId);
+        fromStackMetaData = dao.ensureIndexesAndDeriveStats(fromStackMetaData);
+
+        dao.cloneStack(stackId, toStackId);
+
+        zValues = dao.getZValues(toStackId);
+        Assert.assertEquals("invalid number of z values after clone", 1, zValues.size());
+
+        toStackMetaData = new StackMetaData(toStackId, fromStackMetaData.getCurrentVersion());
+        toStackMetaData = dao.ensureIndexesAndDeriveStats(toStackMetaData);
+
+        final StackStats fromStats = fromStackMetaData.getStats();
+        Assert.assertNotNull("null fromStats", fromStats);
+
+        final StackStats toStats = toStackMetaData.getStats();
+        Assert.assertNotNull("null toStats", toStats);
+
+        Assert.assertEquals("cloned tile count does not match",
+                            fromStats.getTileCount(), toStats.getTileCount());
+        Assert.assertEquals("cloned transform count does not match",
+                            fromStats.getTransformCount(), toStats.getTransformCount());
+    }
+
+    @Test
     public void testSaveStackMetaDataAndDeriveStats() throws Exception {
 
         final StackVersion secondTry = new StackVersion(new Date(),

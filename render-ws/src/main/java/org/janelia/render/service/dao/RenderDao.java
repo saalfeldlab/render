@@ -97,11 +97,6 @@ public class RenderDao {
         final RenderParameters renderParameters = new RenderParameters(null, x, y, width, height, scale);
         addResolvedTileSpecs(stackId, tileQuery, renderParameters);
 
-        // TODO: is returning black image okay or do we want to throw an exception?
-//        if (! renderParameters.hasTileSpecs()) {
-//            throw new IllegalArgumentException("no tile specifications found");
-//        }
-
         return renderParameters;
     }
 
@@ -978,6 +973,22 @@ public class RenderDao {
         return list;
     }
 
+    public void cloneStack(final StackId fromStackId,
+                           final StackId toStackId)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("fromStackId", fromStackId);
+        validateRequiredParameter("toStackId", toStackId);
+
+        final DBCollection fromTransformCollection = getTransformCollection(fromStackId);
+        final DBCollection toTransformCollection = getTransformCollection(toStackId);
+        cloneCollection(fromTransformCollection, toTransformCollection);
+
+        final DBCollection fromTileCollection = getTileCollection(fromStackId);
+        final DBCollection toTileCollection = getTileCollection(toStackId);
+        cloneCollection(fromTileCollection, toTileCollection);
+    }
+
     /**
      * Writes the layout file data for the specified stack to the specified stream.
      *
@@ -1264,6 +1275,33 @@ public class RenderDao {
                   bound, RENDER_DB_NAME, tileCollection.getName(), query, tileKeys, orderBy);
 
         return bound;
+    }
+
+    private void cloneCollection(final DBCollection fromCollection,
+                                 final DBCollection toCollection)
+            throws IllegalArgumentException {
+
+        LOG.debug("cloneCollection: entry, copying {} documents in {} to {}",
+                  fromCollection.count(), fromCollection.getFullName(), toCollection.getFullName());
+
+        final ProcessTimer timer = new ProcessTimer(15000);
+
+        long count = 0;
+        final DBObject query = new BasicDBObject();
+        try (DBCursor cursor = fromCollection.find(query)) {
+            DBObject document;
+            while (cursor.hasNext()) {
+                document = cursor.next();
+                toCollection.insert(document);
+                count++;
+                if (timer.hasIntervalPassed()) {
+                    LOG.debug("cloneCollection: inserted {} documents", count);
+                }
+            }
+        }
+
+        LOG.debug("cloneCollection: inserted {} documents from {}.find(\\{}) to {}",
+                  count, fromCollection.getFullName(), toCollection.getFullName());
     }
 
     private DBCollection getStackMetaDataCollection() {

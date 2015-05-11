@@ -103,15 +103,57 @@ public class StackMetaDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             stackMetaData = renderDao.getStackMetaData(stackId);
+            if (stackMetaData == null) {
+                throw getStackNotFoundException(owner, project, stack);
+            }
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
-        if (stackMetaData == null) {
-            RenderServiceUtil.throwServiceException(getStackNotFoundException(owner, project, stack));
+        return stackMetaData;
+    }
+
+    @Path("project/{project}/stack/{fromStack}/cloneTo/{toStack}")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response cloneStackVersion(@PathParam("owner") final String owner,
+                                      @PathParam("project") final String project,
+                                      @PathParam("fromStack") final String fromStack,
+                                      @PathParam("toStack") final String toStack,
+                                      @Context final UriInfo uriInfo,
+                                      final StackVersion stackVersion) {
+
+        LOG.info("cloneStackVersion: entry, owner={}, project={}, fromStack={}, toStack={}, stackVersion={}",
+                 owner, project, fromStack, toStack, stackVersion);
+
+        try {
+            if (stackVersion == null) {
+                throw new IllegalArgumentException("no stack version provided");
+            }
+
+            final StackMetaData fromStackMetaData = getStackMetaData(owner, project, fromStack);
+            final StackId toStackId = new StackId(owner, project, toStack);
+
+            StackMetaData toStackMetaData = renderDao.getStackMetaData(toStackId);
+
+            if (toStackMetaData == null) {
+                toStackMetaData = new StackMetaData(toStackId, stackVersion);
+            } else {
+                throw new IllegalArgumentException("stack " + toStackId + " already exists");
+            }
+
+            renderDao.cloneStack(fromStackMetaData.getStackId(), toStackId);
+            renderDao.saveStackMetaData(toStackMetaData);
+
+            LOG.info("cloneStackVersion: created {} from {}", toStackId, fromStackMetaData.getStackId());
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
         }
 
-        return stackMetaData;
+        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
+
+        return responseBuilder.build();
     }
 
     @Path("project/{project}/stack/{stack}")
