@@ -646,9 +646,14 @@ public class RenderDao {
         List<StackMetaData> list = new ArrayList<>();
 
         final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
-        final BasicDBObject query = new BasicDBObject().append("stackId.owner", owner);
+        final BasicDBObject query = new BasicDBObject("stackId.owner", owner);
+        final BasicDBObject sortCriteria = new BasicDBObject(
+                "stackId.project", 1).append(
+                "currentVersion.cycleNumber", 1).append(
+                "currentVersion.cycleStepNumber", 1).append(
+                "stackId.name", 1);
 
-        try (DBCursor cursor = stackMetaDataCollection.find(query)) {
+        try (DBCursor cursor = stackMetaDataCollection.find(query).sort(sortCriteria)) {
             DBObject document;
             while (cursor.hasNext()) {
                 document = cursor.next();
@@ -656,10 +661,8 @@ public class RenderDao {
             }
         }
 
-        Collections.sort(list);
-
-        LOG.debug("getStackMetaDataListForOwner: returning {} values for {}.find({})",
-                  list.size(), stackMetaDataCollection.getFullName(), query);
+        LOG.debug("getStackMetaDataListForOwner: returning {} values for {}.find({}).sort({})",
+                  list.size(), stackMetaDataCollection.getFullName(), query, sortCriteria);
 
         return list;
     }
