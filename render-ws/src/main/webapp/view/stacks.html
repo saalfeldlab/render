@@ -13,8 +13,6 @@
 
         function loadJSON(path, success, error) {
 
-            setLayerMessage("Loading " + path);
-
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) {
@@ -130,18 +128,18 @@
             stackMetaData = data;
 
             // TODO: make owner selection dynamic once appropriate APIs exist
-            var distinctProjects = {};
+            var distinctProjectsMap = {};
             for (var index = 0; index < stackMetaData.length; index++) {
-                distinctProjects[stackMetaData[index].stackId.project] = 1;
+                distinctProjectsMap[stackMetaData[index].stackId.project] = 1;
             }
 
-            var distinctProjectCount = Object.keys(distinctProjects).length;
+            var distinctProjects = Object.keys(distinctProjectsMap);
 
-            $('#stackCount').text('(1 owner, ' + distinctProjectCount + ' projects, ' + stackMetaData.length + ' stacks)');
+            $('#stackCount').text('(1 owner, ' + distinctProjects.length + ' projects, ' + stackMetaData.length + ' stacks)');
 
             var projectSelect = $('#project');
-            for (var project in distinctProjects) {
-                projectSelect.append($('<option>', { value : project }).text(project));
+            for (index = 0; index < distinctProjects.length; index++) {
+                projectSelect.append($('<option>', { value : distinctProjects[index] }).text(distinctProjects[index]));
             }
 
             projectSelect.change(function() {
