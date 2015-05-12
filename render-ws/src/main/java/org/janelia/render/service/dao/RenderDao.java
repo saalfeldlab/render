@@ -1288,18 +1288,36 @@ public class RenderDao {
 
         final ProcessTimer timer = new ProcessTimer(15000);
 
+        // We use bulk inserts to improve performance, but we still need to chunk
+        // the bulk operations to avoid memory issues with large collections.
+        // This 10,000 document chunk size is arbitrary but seems to be sufficient.
+        final int maxDocumentsPerBulkInsert = 10000;
+
         long count = 0;
         final DBObject query = new BasicDBObject();
+        BulkWriteOperation bulk = toCollection.initializeUnorderedBulkOperation();
+
         try (DBCursor cursor = fromCollection.find(query)) {
+
             DBObject document;
             while (cursor.hasNext()) {
                 document = cursor.next();
-                toCollection.insert(document);
                 count++;
-                if (timer.hasIntervalPassed()) {
-                    LOG.debug("cloneCollection: inserted {} documents", count);
+                if (count % maxDocumentsPerBulkInsert == 0) {
+                    bulk.execute();
+                    bulk = toCollection.initializeUnorderedBulkOperation();
+                    if (timer.hasIntervalPassed()) {
+                        LOG.debug("cloneCollection: inserted {} documents", count);
+                    }
+                } else {
+                    bulk.insert(document);
                 }
             }
+
+            if (count % maxDocumentsPerBulkInsert > 0) {
+                bulk.execute();
+            }
+
         }
 
         LOG.debug("cloneCollection: inserted {} documents from {}.find(\\{}) to {}",
