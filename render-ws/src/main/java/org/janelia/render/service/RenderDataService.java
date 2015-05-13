@@ -273,10 +273,11 @@ public class RenderDataService {
                                                 @PathParam("stack") final String stack,
                                                 @PathParam("tileId") final String tileId,
                                                 @QueryParam("scale") Double scale,
-                                                @QueryParam("filter") final Boolean filter) {
+                                                @QueryParam("filter") final Boolean filter,
+                                                @QueryParam("binaryMask") final Boolean binaryMask) {
 
-        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}",
-                 owner, project, stack, tileId, scale);
+        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}",
+                 owner, project, stack, tileId, scale, filter, binaryMask);
 
         RenderParameters parameters = null;
         try {
@@ -304,6 +305,7 @@ public class RenderDataService {
 
             parameters = new RenderParameters(null, x, y, width, height, scale);
             parameters.setDoFilter(filter);
+            parameters.setBinaryMask(binaryMask);
             parameters.addTileSpec(tileSpec);
 
         } catch (final Throwable t) {
