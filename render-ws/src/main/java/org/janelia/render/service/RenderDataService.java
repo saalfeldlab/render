@@ -2,7 +2,6 @@ package org.janelia.render.service;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.List;
 
@@ -18,7 +17,6 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
-import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
 import org.janelia.alignment.RenderParameters;
@@ -27,13 +25,15 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
-import org.janelia.render.service.model.stack.StackId;
-import org.janelia.render.service.model.stack.StackMetaData;
 import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
 
 /**
  * APIs for accessing tile and transform data stored in the Render service database.
@@ -48,27 +48,11 @@ public class RenderDataService {
     @SuppressWarnings("UnusedDeclaration")
     public RenderDataService()
             throws UnknownHostException {
-        this(RenderServiceUtil.buildDao());
+        this(RenderDao.build());
     }
 
     public RenderDataService(final RenderDao renderDao) {
         this.renderDao = renderDao;
-    }
-
-    @Path("stackIds")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public List<StackId> getStackIds(@PathParam("owner") final String owner) {
-
-        LOG.info("getStackIds: entry, owner={}", owner);
-
-        List<StackId> list = null;
-        try {
-            list = renderDao.getStackIds(owner);
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-        return list;
     }
 
     @Path("project/{project}/stack/{stack}/layoutFile")
@@ -138,26 +122,6 @@ public class RenderDataService {
         return list;
     }
 
-    @Path("project/{project}/stack/{stack}/bounds")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public Bounds getStackBounds(@PathParam("owner") final String owner,
-                                 @PathParam("project") final String project,
-                                 @PathParam("stack") final String stack) {
-
-        LOG.info("getStackBounds: entry, owner={}, project={}, stack={}",
-                 owner, project, stack);
-
-        Bounds bounds = null;
-        try {
-            final StackId stackId = new StackId(owner, project, stack);
-            bounds = renderDao.getStackBounds(stackId);
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-        return bounds;
-    }
-
     @Path("project/{project}/stack/{stack}/z/{z}/bounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -221,38 +185,61 @@ public class RenderDataService {
         return resolvedTiles;
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
+    @Path("project/{project}/stack/{stack}/resolvedTiles")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     public Response saveResolvedTiles(@PathParam("owner") final String owner,
                                       @PathParam("project") final String project,
                                       @PathParam("stack") final String stack,
-                                      @PathParam("z") final Double z,
                                       @Context final UriInfo uriInfo,
-                                      final ResolvedTileSpecCollection resolvedTiles) {
+                                      ResolvedTileSpecCollection resolvedTiles) {
+        return saveResolvedTilesForZ(owner, project, stack, null, uriInfo, resolvedTiles);
+    }
 
-        LOG.info("saveResolvedTiles: entry, owner={}, project={}, stack={}, z={}",
+    @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response saveResolvedTilesForZ(@PathParam("owner") final String owner,
+                                          @PathParam("project") final String project,
+                                          @PathParam("stack") final String stack,
+                                          @PathParam("z") final Double z,
+                                          @Context final UriInfo uriInfo,
+                                          ResolvedTileSpecCollection resolvedTiles) {
+
+        LOG.info("saveResolvedTilesForZ: entry, owner={}, project={}, stack={}, z={}",
                  owner, project, stack, z);
 
-        if (resolvedTiles == null) {
-            throw new IllegalServiceArgumentException("no resolved tiles provided");
-        }
-
-        if (z == null) {
-            throw new IllegalServiceArgumentException("no z value provided");
-        }
-
         try {
+            if (resolvedTiles == null) {
+                throw new IllegalServiceArgumentException("no resolved tiles provided");
+            }
+
+            if (z != null) {
+                resolvedTiles.verifyAllTileSpecsHaveZValue(z);
+            }
+
             final StackId stackId = new StackId(owner, project, stack);
-            resolvedTiles.verifyAllTileSpecsHaveZValue(z);
+            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
+
+            if (stackMetaData == null) {
+                throw StackMetaDataService.getStackNotFoundException(owner, project, stack);
+            }
+
+            if (! stackMetaData.isLoading()) {
+                throw new IllegalStateException("Resolved tiles can only be saved to stacks in the " +
+                                                LOADING + " state, but this stack's state is " +
+                                                stackMetaData.getState() + ".");
+            }
+
             renderDao.saveResolvedTiles(stackId, resolvedTiles);
+
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
         final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
 
-        LOG.info("saveResolvedTiles: exit");
+        LOG.info("saveResolvedTilesForZ: exit");
 
         return responseBuilder.build();
     }
@@ -286,11 +273,10 @@ public class RenderDataService {
                                                 @PathParam("stack") final String stack,
                                                 @PathParam("tileId") final String tileId,
                                                 @QueryParam("scale") Double scale,
-                                                @QueryParam("filter") final Boolean filter,
-                                                @QueryParam("binaryMask") final Boolean binaryMask) {
+                                                @QueryParam("filter") final Boolean filter) {
 
-        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}",
-                 owner, project, stack, tileId, scale, filter, binaryMask);
+        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}",
+                 owner, project, stack, tileId, scale);
 
         RenderParameters parameters = null;
         try {
@@ -303,15 +289,21 @@ public class RenderDataService {
             final StackId stackId = new StackId(owner, project, stack);
             final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
 
+            if (stackMetaData == null) {
+                throw StackMetaDataService.getStackNotFoundException(owner, project, stack);
+            }
+
+            final Integer stackLayoutWidth = stackMetaData.getLayoutWidth();
+            final Integer stackLayoutHeight = stackMetaData.getLayoutHeight();
+
             final int margin = 0;
             final Double x = getLayoutMinValue(tileSpec.getMinX(), margin);
             final Double y = getLayoutMinValue(tileSpec.getMinY(), margin);
-            final Integer width = getLayoutSizeValue(stackMetaData.getLayoutWidth(), tileSpec.getWidth(), margin);
-            final Integer height = getLayoutSizeValue(stackMetaData.getLayoutHeight(), tileSpec.getHeight(), margin);
+            final Integer width = getLayoutSizeValue(stackLayoutWidth, tileSpec.getWidth(), margin);
+            final Integer height = getLayoutSizeValue(stackLayoutHeight, tileSpec.getHeight(), margin);
 
             parameters = new RenderParameters(null, x, y, width, height, scale);
             parameters.setDoFilter(filter);
-            parameters.setBinaryMask(binaryMask);
             parameters.addTileSpec(tileSpec);
 
         } catch (final Throwable t) {
@@ -328,266 +320,6 @@ public class RenderDataService {
                                 final boolean resolveTransformReferences) {
         final StackId stackId = new StackId(owner, project, stack);
         return renderDao.getTileSpec(stackId, tileId, resolveTransformReferences);
-    }
-
-    @Path("project/{project}/stack/{stack}/tile/{tileId}")
-    @PUT
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveTileSpec(@PathParam("owner") final String owner,
-                                 @PathParam("project") final String project,
-                                 @PathParam("stack") final String stack,
-                                 @PathParam("tileId") final String tileId,
-                                 @Context final UriInfo uriInfo,
-                                 @QueryParam("meshCellSize") final Double meshCellSize,
-                                 TileSpec tileSpec) {
-
-        LOG.info("saveTileSpec: entry, owner={}, project={}, stack={}, tileId={}, meshCellSize={}",
-                 owner, project, stack, tileId, meshCellSize);
-
-        if (tileSpec == null) {
-            throw new IllegalServiceArgumentException("no tile spec provided");
-        } else if (! tileId.equals(tileSpec.getTileId())) {
-            throw new IllegalServiceArgumentException("request tileId value (" + tileId +
-                                                      ") does not match tile spec tileId value (" +
-                                                      tileSpec.getTileId() + ")");
-        }
-
-        try {
-            final StackId stackId = new StackId(owner, project, stack);
-
-            // resolve all transform references and re-derive bounding box before saving ...
-            tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
-            tileSpec.deriveBoundingBox(
-                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
-                    true);
-
-            renderDao.saveTileSpec(stackId, tileSpec);
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
-
-        return responseBuilder.build();
-    }
-
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/transform/{transformIndex}")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public TransformSpec getTransformSpecForTile(@PathParam("owner") final String owner,
-                                                 @PathParam("project") final String project,
-                                                 @PathParam("stack") final String stack,
-                                                 @PathParam("tileId") final String tileId,
-                                                 @PathParam("transformIndex") final Integer transformIndex) {
-
-        LOG.info("getTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}",
-                 owner, project, stack, tileId, transformIndex);
-
-        TransformSpec transformSpec = null;
-        try {
-            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
-            transformSpec = tileSpec.getTransforms().getSpec(transformIndex);
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        return transformSpec;
-    }
-
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/transform/{transformIndex}")
-    @PUT
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveTransformSpecForTile(@PathParam("owner") final String owner,
-                                             @PathParam("project") final String project,
-                                             @PathParam("stack") final String stack,
-                                             @PathParam("tileId") final String tileId,
-                                             @PathParam("transformIndex") final Integer transformIndex,
-                                             @Context final UriInfo uriInfo,
-                                             @QueryParam("meshCellSize") final Double meshCellSize,
-                                             final TransformSpec transformSpec) {
-
-        LOG.info("saveTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}, meshCellSize={}",
-                 owner, project, stack, tileId, transformIndex, meshCellSize);
-
-        if (transformSpec == null) {
-            throw new IllegalServiceArgumentException("no transform spec provided");
-        }
-
-        if ((transformIndex == null) || (transformIndex < 0)) {
-            throw new IllegalServiceArgumentException("non-negative transformIndex must be provided");
-        }
-
-        try {
-            final StackId stackId = new StackId(owner, project, stack);
-            TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
-            tileSpec.setTransformSpec(transformIndex, transformSpec);
-
-            // Resolve all transform references and re-derive bounding box before saving.
-            // NOTE: resolution is different from flattening, so referential data remains intact
-            tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
-            tileSpec.deriveBoundingBox(
-                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
-                    true);
-
-            renderDao.saveTileSpec(stackId, tileSpec);
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
-
-        return responseBuilder.build();
-    }
-
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/transform-count")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public int getTransformCountForTile(@PathParam("owner") final String owner,
-                                        @PathParam("project") final String project,
-                                        @PathParam("stack") final String stack,
-                                        @PathParam("tileId") final String tileId) {
-
-        LOG.info("getTransformCountForTile: entry, owner={}, project={}, stack={}, tileId={}",
-                 owner, project, stack, tileId);
-
-        int count = 0;
-        try {
-            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
-            count = tileSpec.numberOfTransforms();
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        return count;
-    }
-
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/last-transform")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public TransformSpec getLastTransformSpecForTile(@PathParam("owner") final String owner,
-                                                     @PathParam("project") final String project,
-                                                     @PathParam("stack") final String stack,
-                                                     @PathParam("tileId") final String tileId) {
-
-        LOG.info("getLastTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}",
-                 owner, project, stack, tileId);
-
-        TransformSpec transformSpec = null;
-        try {
-            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
-            final int lastTransformIndex = tileSpec.numberOfTransforms() - 1;
-            if (lastTransformIndex >= 0) {
-                transformSpec = tileSpec.getTransforms().getSpec(lastTransformIndex);
-            }
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        return transformSpec;
-    }
-
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/last-transform")
-    @PUT
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveLastTransformSpecForTile(@PathParam("owner") final String owner,
-                                                 @PathParam("project") final String project,
-                                                 @PathParam("stack") final String stack,
-                                                 @PathParam("tileId") final String tileId,
-                                                 @Context final UriInfo uriInfo,
-                                                 @QueryParam("meshCellSize") final Double meshCellSize,
-                                                 final TransformSpec transformSpec) {
-
-        LOG.info("saveLastTransformSpecForTile: entry, owner={}, project={}, stack={}, tileId={}, transformIndex={}, meshCellSize={}",
-                 owner, project, stack, tileId, meshCellSize);
-
-        if (transformSpec == null) {
-            throw new IllegalServiceArgumentException("no transform spec provided");
-        }
-
-        try {
-            final StackId stackId = new StackId(owner, project, stack);
-            TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
-            if (tileSpec.hasTransforms()) {
-                final int lastTransformIndex = tileSpec.numberOfTransforms() - 1;
-                tileSpec.setTransformSpec(lastTransformIndex, transformSpec);
-            } else {
-                tileSpec.setTransformSpec(0, transformSpec);
-            }
-
-            // Resolve all transform references and re-derive bounding box before saving.
-            // NOTE: resolution is different from flattening, so referential data remains intact
-            tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
-            tileSpec.deriveBoundingBox(
-                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
-                    true);
-
-            renderDao.saveTileSpec(stackId, tileSpec);
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
-
-        return responseBuilder.build();
-    }
-
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/derivedFrom/{derivedFromStack}")
-    @PUT
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveDerivedTile(@PathParam("owner") final String owner,
-                                    @PathParam("project") final String project,
-                                    @PathParam("stack") final String stack,
-                                    @PathParam("tileId") final String tileId,
-                                    @PathParam("derivedFromStack") final String derivedFromStack,
-                                    @QueryParam("replaceLastTransform") final Boolean replaceLastTransform,
-                                    @Context final UriInfo uriInfo,
-                                    @QueryParam("meshCellSize") final Double meshCellSize,
-                                    final List<TransformSpec> transformSpecs) {
-
-        LOG.info("saveDerivedTile: entry, owner={}, project={}, stack={}, tileId={}, derivedFromStack={}, replaceLastTransform={}, meshCellSize={}",
-                 owner, project, stack, tileId, derivedFromStack, replaceLastTransform, meshCellSize);
-
-        if (transformSpecs == null) {
-            throw new IllegalServiceArgumentException("array of transform specs must be provided");
-        }
-
-        if (derivedFromStack == null) {
-            throw new IllegalServiceArgumentException("derived from stack must be provided");
-        }
-
-        try {
-            final StackId stackId = new StackId(owner, project, stack);
-            final StackId derivedFromStackId = new StackId(owner, project, derivedFromStack);
-
-            TileSpec tileSpec = getTileSpec(owner, project, derivedFromStackId.getStack(), tileId, false);
-            if ((replaceLastTransform != null) && replaceLastTransform) {
-                tileSpec.removeLastTransformSpec();
-            }
-
-            tileSpec.addTransformSpecs(transformSpecs);
-
-            // Resolve all transform references and re-derive bounding box before saving.
-            // NOTE: resolution is different from flattening, so referential data remains intact
-            tileSpec = renderDao.resolveTransformReferencesForTiles(stackId, tileSpec);
-            tileSpec.deriveBoundingBox(
-                    meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize,
-                    true);
-
-            renderDao.saveTileSpec(stackId, tileSpec);
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        final URI requestUri = uriInfo.getRequestUri();
-        final String requestPath = requestUri.getPath();
-        final int stop = requestPath.indexOf("/derivedFrom/");
-        final String tilePath = requestPath.substring(0, stop);
-        final UriBuilder uriBuilder = UriBuilder.fromUri(requestUri);
-        uriBuilder.replacePath(tilePath);
-        final URI tileUri = uriBuilder.build();
-        final Response.ResponseBuilder responseBuilder = Response.created(tileUri);
-
-        return responseBuilder.build();
     }
 
     @Path("project/{project}/stack/{stack}/transform/{transformId}")
@@ -610,42 +342,6 @@ public class RenderDataService {
         }
 
         return transformSpec;
-    }
-
-    @Path("project/{project}/stack/{stack}/transform/{transformId}")
-    @PUT
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveTransformSpec(@PathParam("owner") final String owner,
-                                      @PathParam("project") final String project,
-                                      @PathParam("stack") final String stack,
-                                      @PathParam("transformId") final String transformId,
-                                      @Context final UriInfo uriInfo,
-                                      final TransformSpec transformSpec) {
-
-        LOG.info("saveTransformSpec: entry, owner={}, project={}, stack={}, transformId={}",
-                 owner, project, stack, transformId);
-
-        if (transformSpec == null) {
-            throw new IllegalServiceArgumentException("no transform spec provided");
-        } else if (! transformId.equals(transformSpec.getId())) {
-            throw new IllegalServiceArgumentException("request transformId value (" + transformId +
-                                                      ") does not match transform spec id value (" +
-                                                      transformSpec.getId() + ")");
-        }
-
-        try {
-            final StackId stackId = new StackId(owner, project, stack);
-            renderDao.saveTransformSpec(stackId, transformSpec);
-
-            // TODO: re-derive bounding boxes for all tiles that reference this transform
-
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
-
-        return responseBuilder.build();
     }
 
     /**

@@ -1,13 +1,13 @@
 <component name="ArtifactManager">
   <artifact type="exploded-war" name="render-ws:war exploded">
-    <output-path>$PROJECT_DIR$/render-ws/target/render-ws-0.1.0-SNAPSHOT</output-path>
+    <output-path>$PROJECT_DIR$/render-ws/target/render-ws-0.2.0-SNAPSHOT</output-path>
     <root id="root">
       <element id="directory" name="WEB-INF">
         <element id="directory" name="classes">
           <element id="module-output" name="render-ws" />
         </element>
         <element id="directory" name="lib">
-          <element id="archive" name="render-app-0.1.0-SNAPSHOT.jar">
+          <element id="archive" name="render-app-0.2.0-SNAPSHOT.jar">
             <element id="module-output" name="render-app" />
           </element>
           <element id="library" level="project" name="Maven: mpicbg:mpicbg_:1.0.1" />

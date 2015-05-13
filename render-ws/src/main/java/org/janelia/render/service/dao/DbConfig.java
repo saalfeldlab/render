@@ -2,13 +2,14 @@ package org.janelia.render.service.dao;
 
 import com.mongodb.MongoClientOptions;
 import com.mongodb.ServerAddress;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Database connection configuration properties.

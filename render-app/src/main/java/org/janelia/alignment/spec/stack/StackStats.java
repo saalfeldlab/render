@@ -1,7 +1,8 @@
-package org.janelia.render.service.model.stack;
+package org.janelia.alignment.spec.stack;
 
 import java.io.Serializable;
 
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 
 /**
@@ -14,6 +15,7 @@ public class StackStats
 
     private final Bounds stackBounds;
     private final Long sectionCount;
+    private final Long nonIntegralSectionCount;
     private final Long tileCount;
     private final Long transformCount;
     private final Integer minTileWidth;
@@ -23,6 +25,7 @@ public class StackStats
 
     public StackStats(Bounds stackBounds,
                       Long sectionCount,
+                      Long nonIntegralSectionCount,
                       Long tileCount,
                       Long transformCount,
                       Integer minTileWidth,
@@ -31,6 +34,7 @@ public class StackStats
                       Integer maxTileHeight) {
         this.stackBounds = stackBounds;
         this.sectionCount = sectionCount;
+        this.nonIntegralSectionCount = nonIntegralSectionCount;
         this.tileCount = tileCount;
         this.transformCount = transformCount;
         this.minTileWidth = minTileWidth;
@@ -45,6 +49,10 @@ public class StackStats
 
     public Long getSectionCount() {
         return sectionCount;
+    }
+
+    public Long getNonIntegralSectionCount() {
+        return nonIntegralSectionCount;
     }
 
     public Long getTileCount() {
@@ -70,4 +78,14 @@ public class StackStats
     public Integer getMaxTileHeight() {
         return maxTileHeight;
     }
+
+    @Override
+    public String toString() {
+        return toJson();
+    }
+
+    public String toJson() {
+        return JsonUtils.GSON.toJson(this);
+    }
+
 }
