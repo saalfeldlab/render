@@ -408,24 +408,24 @@ public class RenderParameters implements Serializable {
         return skipInterpolation;
     }
 
-    public void setSkipInterpolation(final boolean skipInterpolation) {
-        this.skipInterpolation = skipInterpolation;
+    public void setSkipInterpolation(final Boolean skipInterpolation) {
+        this.skipInterpolation = (skipInterpolation != null) && skipInterpolation;
     }
 
     public boolean binaryMask() {
         return binaryMask;
     }
 
-    public void setBinaryMask(final boolean binaryMask) {
-        this.binaryMask = binaryMask;
+    public void setBinaryMask(final Boolean binaryMask) {
+        this.binaryMask = (binaryMask != null) && binaryMask;
     }
 
     public boolean doFilter() {
         return doFilter;
     }
 
-    public void setDoFilter(final boolean doFilter) {
-        this.doFilter = doFilter;
+    public void setDoFilter(final Boolean filter) {
+        doFilter = (filter != null) && filter;
     }
 
     public Integer getBackgroundRGBColor() {
@@ -747,7 +747,4 @@ public class RenderParameters implements Serializable {
     private static final float DEFAULT_QUALITY = 0.85f;
     private static final int DEFAULT_NUMBER_OF_THREADS = 1;
 
-    public void setDoFilter(final Boolean filter) {
-        doFilter = filter != null && filter;
-    }
 }
