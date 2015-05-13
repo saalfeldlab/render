@@ -101,6 +101,9 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--skip_interpolation", description = "enable sloppy but fast rendering by skipping interpolation", required = false)
     public boolean skipInterpolation;
 
+    @Parameter(names = "--binary_mask", description = "render only 100% opaque pixels", required = false)
+    public boolean binaryMask;
+
     @Parameter(names = "--parameters_url", description = "URL to base JSON parameters file (to be applied to any unspecified or default parameters)", required = false)
     private final String parametersUrl;
 
@@ -166,6 +169,7 @@ public class RenderParameters implements Serializable {
         this.quality = DEFAULT_QUALITY;
         this.numberOfThreads = DEFAULT_NUMBER_OF_THREADS;
         this.skipInterpolation = false;
+        this.binaryMask = false;
         this.doFilter = false;
         this.backgroundRGBColor = null;
         this.parametersUrl = null;
@@ -278,7 +282,7 @@ public class RenderParameters implements Serializable {
         return parameters;
     }
 
-    public static RenderParameters loadFromUrl(String url) throws IllegalArgumentException {
+    public static RenderParameters loadFromUrl(final String url) throws IllegalArgumentException {
 
         final URI uri = Utils.convertPathOrUriStringToUri(url);
 
@@ -396,7 +400,7 @@ public class RenderParameters implements Serializable {
         return numberOfThreads;
     }
 
-    public void setNumberOfThreads(int numberOfThreads) {
+    public void setNumberOfThreads(final int numberOfThreads) {
         this.numberOfThreads = numberOfThreads;
     }
 
@@ -404,15 +408,23 @@ public class RenderParameters implements Serializable {
         return skipInterpolation;
     }
 
-    public void setSkipInterpolation(boolean skipInterpolation) {
+    public void setSkipInterpolation(final boolean skipInterpolation) {
         this.skipInterpolation = skipInterpolation;
+    }
+
+    public boolean binaryMask() {
+        return binaryMask;
+    }
+
+    public void setBinaryMask(final boolean binaryMask) {
+        this.binaryMask = binaryMask;
     }
 
     public boolean doFilter() {
         return doFilter;
     }
 
-    public void setDoFilter(boolean doFilter) {
+    public void setDoFilter(final boolean doFilter) {
         this.doFilter = doFilter;
     }
 
@@ -420,7 +432,7 @@ public class RenderParameters implements Serializable {
         return backgroundRGBColor;
     }
 
-    public void setBackgroundRGBColor(Integer backgroundRGBColor) {
+    public void setBackgroundRGBColor(final Integer backgroundRGBColor) {
         this.backgroundRGBColor = backgroundRGBColor;
     }
 
@@ -565,6 +577,10 @@ public class RenderParameters implements Serializable {
             sb.append("filter=true, ");
         }
 
+        if (binaryMask) {
+            sb.append("binaryMask=true, ");
+        }
+
         if (backgroundRGBColor != null) {
             sb.append("backgroundRGBColor=").append(backgroundRGBColor).append(", ");
         }
@@ -668,6 +684,7 @@ public class RenderParameters implements Serializable {
             convertToGray = mergedValue(convertToGray, baseParameters.convertToGray, false);
             numberOfThreads = mergedValue(numberOfThreads, baseParameters.numberOfThreads, DEFAULT_NUMBER_OF_THREADS);
             skipInterpolation = mergedValue(skipInterpolation, baseParameters.skipInterpolation, false);
+            binaryMask = mergedValue(binaryMask, baseParameters.binaryMask, false);
             quality = mergedValue(quality, baseParameters.quality, DEFAULT_QUALITY);
             doFilter = mergedValue(doFilter, baseParameters.doFilter, false);
             backgroundRGBColor = mergedValue(backgroundRGBColor, baseParameters.backgroundRGBColor);
@@ -719,7 +736,6 @@ public class RenderParameters implements Serializable {
             minBoundsMeshCellSize = meshCellSize;
         }
     }
-
 
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderParameters.class);

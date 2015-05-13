@@ -70,13 +70,14 @@ public class RenderService {
                                            @PathParam("stack") final String stack,
                                            @PathParam("tileId") final String tileId,
                                            @PathParam("scale") final Double scale,
-                                           @QueryParam("filter") final Boolean filter) {
+                                           @QueryParam("filter") final Boolean filter,
+                                           @QueryParam("binaryMask") final Boolean binaryMask) {
 
-        LOG.info("renderJpegImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
-                 owner, project, stack, tileId, scale, filter);
+        LOG.info("renderJpegImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}",
+                 owner, project, stack, tileId, scale, filter, binaryMask);
 
         final RenderParameters renderParameters =
-                renderDataService.getRenderParameters(owner, project, stack, tileId, scale, filter);
+                renderDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, binaryMask);
         return renderJpegImage(renderParameters, false);
     }
 
@@ -88,13 +89,14 @@ public class RenderService {
                                           @PathParam("stack") final String stack,
                                           @PathParam("tileId") final String tileId,
                                           @PathParam("scale") final Double scale,
-                                          @QueryParam("filter") final Boolean filter) {
+                                          @QueryParam("filter") final Boolean filter,
+                                          @QueryParam("binaryMask") final Boolean binaryMask) {
 
-        LOG.info("renderPngImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
-                 owner, project, stack, tileId, scale, filter);
+        LOG.info("renderPngImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}",
+                 owner, project, stack, tileId, scale, filter, binaryMask);
 
         final RenderParameters renderParameters =
-                renderDataService.getRenderParameters(owner, project, stack, tileId, scale, filter);
+                renderDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, binaryMask);
         return renderPngImage(renderParameters, false);
     }
 
@@ -110,7 +112,8 @@ public class RenderService {
                                           @PathParam("width") final Integer width,
                                           @PathParam("height") final Integer height,
                                           @PathParam("scale") final Double scale,
-                                          @QueryParam("filter") final Boolean filter) {
+                                          @QueryParam("filter") final Boolean filter,
+                                          @QueryParam("binaryMask") final Boolean binaryMask) {
 
         LOG.info("renderJpegImageForBox: entry");
         final StackId stackId = new StackId(owner, project, stack);
@@ -122,6 +125,7 @@ public class RenderService {
                                                                                                 height,
                                                                                                 scale);
         renderParameters.setDoFilter(filter);
+        renderParameters.setBinaryMask(binaryMask);
 
         return renderJpegImage(renderParameters, true);
     }
@@ -138,7 +142,8 @@ public class RenderService {
                                          @PathParam("width") final Integer width,
                                          @PathParam("height") final Integer height,
                                          @PathParam("scale") final Double scale,
-                                         @QueryParam("filter") final Boolean filter) {
+                                         @QueryParam("filter") final Boolean filter,
+                                         @QueryParam("binaryMask") final Boolean binaryMask) {
 
         LOG.info("renderPngImageForBox: entry");
         final StackId stackId = new StackId(owner, project, stack);
@@ -150,6 +155,7 @@ public class RenderService {
                                                                                                 height,
                                                                                                 scale);
         renderParameters.setDoFilter(filter);
+        renderParameters.setBinaryMask(binaryMask);
 
         return renderPngImage(renderParameters, true);
     }
