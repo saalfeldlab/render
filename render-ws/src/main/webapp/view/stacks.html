@@ -88,8 +88,10 @@
             }
 
             var baseStackUrl = baseUrl + 'project/' + stackInfo.stackId.project +
-                               '/stack/' + stackInfo.stackId.stack + '/zValues';
-            var linksHtml = '<a target="_blank" href="' + baseStackUrl + '">Z Values</a>';
+                               '/stack/' + stackInfo.stackId.stack;
+            var linksHtml = '<a target="_blank" href="' + baseStackUrl + '">Metadata</a> ' +
+                            '<a target="_blank" href="' + baseStackUrl + '/bounds">Bounds</a> ' +
+                            '<a target="_blank" href="' + baseStackUrl + '/zValues">Z Values</a>';
 
             if (stackInfo.state == 'OFFLINE') {
                 linksHtml = '';
