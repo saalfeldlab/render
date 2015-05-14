@@ -11,6 +11,7 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.QueryOperators;
+import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 
@@ -980,7 +981,7 @@ public class RenderDao {
 
     public void cloneStack(final StackId fromStackId,
                            final StackId toStackId)
-            throws IllegalArgumentException {
+            throws IllegalArgumentException, IllegalStateException {
 
         validateRequiredParameter("fromStackId", fromStackId);
         validateRequiredParameter("toStackId", toStackId);
@@ -1284,10 +1285,15 @@ public class RenderDao {
 
     private void cloneCollection(final DBCollection fromCollection,
                                  final DBCollection toCollection)
-            throws IllegalArgumentException {
+            throws IllegalStateException {
+
+        final long fromCount = fromCollection.count();
+        long toCount;
+        final String fromFullName = fromCollection.getFullName();
+        final String toFullName = toCollection.getFullName();
 
         LOG.debug("cloneCollection: entry, copying {} documents in {} to {}",
-                  fromCollection.count(), fromCollection.getFullName(), toCollection.getFullName());
+                  fromCount, fromFullName, toFullName);
 
         final ProcessTimer timer = new ProcessTimer(15000);
 
@@ -1298,33 +1304,53 @@ public class RenderDao {
 
         long count = 0;
         final DBObject query = new BasicDBObject();
-        BulkWriteOperation bulk = toCollection.initializeUnorderedBulkOperation();
+        BulkWriteOperation bulk = toCollection.initializeOrderedBulkOperation();
 
         try (DBCursor cursor = fromCollection.find(query)) {
 
+            BulkWriteResult result;
+            long insertedCount;
             DBObject document;
             while (cursor.hasNext()) {
                 document = cursor.next();
+                bulk.insert(document);
                 count++;
                 if (count % maxDocumentsPerBulkInsert == 0) {
-                    bulk.execute();
-                    bulk = toCollection.initializeUnorderedBulkOperation();
+                    result = bulk.execute(WriteConcern.ACKNOWLEDGED);
+                    insertedCount = result.getInsertedCount();
+                    if (insertedCount != maxDocumentsPerBulkInsert) {
+                        throw new IllegalStateException("only inserted " + insertedCount + " out of " +
+                                                        maxDocumentsPerBulkInsert +
+                                                        " documents for batch ending with document " + count);
+                    }
+                    bulk = toCollection.initializeOrderedBulkOperation();
                     if (timer.hasIntervalPassed()) {
                         LOG.debug("cloneCollection: inserted {} documents", count);
                     }
-                } else {
-                    bulk.insert(document);
                 }
             }
 
             if (count % maxDocumentsPerBulkInsert > 0) {
-                bulk.execute();
+                result = bulk.execute(WriteConcern.ACKNOWLEDGED);
+                insertedCount = result.getInsertedCount();
+                final long expectedCount = count % maxDocumentsPerBulkInsert;
+                if (insertedCount != expectedCount) {
+                    throw new IllegalStateException("only inserted " + insertedCount + " out of " +
+                                                    expectedCount +
+                                                    " documents for last batch ending with document " + count);
+                }
+            }
+
+            toCount = toCollection.count();
+
+            if (toCount != fromCount) {
+                throw new IllegalStateException("only inserted " + toCount + " out of " + fromCount + " documents");
             }
 
         }
 
         LOG.debug("cloneCollection: inserted {} documents from {}.find(\\{}) to {}",
-                  count, fromCollection.getFullName(), toCollection.getFullName());
+                  toCount, fromFullName, toFullName);
     }
 
     private DBCollection getStackMetaDataCollection() {
