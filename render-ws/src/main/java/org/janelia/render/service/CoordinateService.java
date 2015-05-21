@@ -19,7 +19,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 
-import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
@@ -109,7 +108,7 @@ public class CoordinateService {
 
         double[] localCoordinates = null;
         try {
-            localCoordinates = tileSpec.getLocalCoordinates(x, y, meshCellSize == null ? RenderParameters.DEFAULT_MESH_CELL_SIZE : meshCellSize );
+            localCoordinates = tileSpec.getLocalCoordinates(x, y, meshCellSize == null ? tileSpec.getMeshCellSize() : meshCellSize );
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }

@@ -1,10 +1,5 @@
 package org.janelia.alignment.spec;
 
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.util.ProcessTimer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -12,6 +7,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+
+import org.janelia.alignment.util.ProcessTimer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A collection of tile specifications that also includes all referenced transform specifications,
@@ -102,7 +101,7 @@ public class ResolvedTileSpecCollection {
         // so we need to re-resolve the tile before re-deriving the bounding box
         resolveTileSpec(tileSpec);
 
-        tileSpec.deriveBoundingBox(RenderParameters.DEFAULT_MESH_CELL_SIZE, true);
+        tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
 
         removeTileIfInvalid(tileSpec);
     }
