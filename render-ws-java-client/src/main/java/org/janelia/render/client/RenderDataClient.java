@@ -304,7 +304,13 @@ public class RenderDataClient {
 
     private URI getResolvedTilesUri(String stack,
                                     Double z) {
-        return getUri(getZUrlString(stack, z) + "/resolvedTiles");
+        String baseUrlString;
+        if (z == null) {
+            baseUrlString = getStackUrlString(stack);
+        } else {
+            baseUrlString = getZUrlString(stack, z);
+        }
+        return getUri(baseUrlString + "/resolvedTiles");
     }
 
     private URI getLayerBoundsUri(String stack,

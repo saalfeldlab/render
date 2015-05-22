@@ -40,7 +40,6 @@ public class CoordinateClientTest {
         final TileCoordinates worldCoord = TileCoordinates.buildWorldInstance("tile-1", new double[] {1.0, 2.0});
         List<List<TileCoordinates>> worldListOfLists = Arrays.asList(Arrays.asList(worldCoord));
         ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(stackName,
-                                                                          z,
                                                                           Arrays.asList(transform1),
                                                                           Arrays.asList(tile1));
 

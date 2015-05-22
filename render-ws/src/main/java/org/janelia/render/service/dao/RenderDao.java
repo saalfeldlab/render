@@ -414,7 +414,6 @@ public class RenderDao {
         }
 
         return new ResolvedTileSpecCollection(stackId.getStack(),
-                                              z,
                                               resolvedIdToSpecMap.values(),
                                               renderParameters.getTileSpecs());
     }
