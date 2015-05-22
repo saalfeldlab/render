@@ -22,15 +22,15 @@
         },
         "stackResolutionX": {
             "id": "stackResolutionX",
-            "type": "integer"
+            "type": "number"
         },
         "stackResolutionY": {
             "id": "stackResolutionY",
-            "type": "integer"
+            "type": "number"
         },
         "stackResolutionZ": {
             "id": "stackResolutionZ",
-            "type": "integer"
+            "type": "number"
         },
         "snapshotRootPath": {
             "id": "snapshotRootPath",
