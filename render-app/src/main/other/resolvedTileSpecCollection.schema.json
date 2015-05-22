@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Stack Version",
+    "description": "version specific attributes of a stack",
+    "properties": {
+        "stackName": {
+            "id": "stackName",
+            "type": "string"
+        },
+        "transformIdToSpecMap": {
+            "type": "object",
+            "patternProperties": {
+                ".*": {
+                    "$ref": "transformSpec.schema.json"
+                }
+            }
+        },
+        "tileIdToSpecMap": {
+            "type": "object",
+            "patternProperties": {
+                ".*": {
+                    "$ref": "tileSpec.schema.json"
+                }
+            }
+        }
+    },
+    "required": [
+        "tileIdToSpecMap"
+    ]
+}
