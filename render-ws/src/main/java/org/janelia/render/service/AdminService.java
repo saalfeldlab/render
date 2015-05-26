@@ -4,6 +4,7 @@ import java.net.UnknownHostException;
 import java.util.List;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -127,6 +128,30 @@ public class AdminService {
         LOG.info("saveSnapshot: exit");
 
         return responseBuilder.build();
+    }
+
+    @Path("owner/{owner}/database/{databaseName}/collection/{collectionName}/version/{version}/snapshot")
+    @DELETE
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteSnapshot(@PathParam("owner") final String owner,
+                                   @PathParam("databaseName") final String databaseName,
+                                   @PathParam("collectionName") final String collectionName,
+                                   @PathParam("version") final Integer version) {
+
+        LOG.info("deleteSnapshot: entry, owner={}, databaseName={}, collectionName={}, version={}",
+                 owner, databaseName, collectionName, version);
+
+        Response response = null;
+        try {
+
+            adminDao.removeSnapshot(owner, databaseName, collectionName, version);
+            response = Response.ok().build();
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return response;
     }
 
     private void validateConsistency(final String context,

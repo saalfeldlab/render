@@ -217,7 +217,7 @@ public class StackMetaDataService {
 
                 final StackVersion currentVersion = stackMetaData.getCurrentVersion();
                 if (currentVersion.isSnapshotNeeded()) {
-                    unRegisterSnapshots(stackMetaData);
+                    removeUnsavedSnapshots(stackMetaData);
                 }
 
                 renderDao.removeStack(stackId, true);
@@ -408,24 +408,34 @@ public class StackMetaDataService {
         LOG.debug("registerSnapshots: exit, {}", stackId);
     }
 
-    private void unRegisterSnapshots(final StackMetaData stackMetaData) {
+    private void removeUnsavedSnapshots(final StackMetaData stackMetaData) {
 
         final StackId stackId = stackMetaData.getStackId();
+        final Integer versionNumber = stackMetaData.getCurrentVersionNumber();
+        final String owner = stackId.getOwner();
 
-        LOG.debug("unRegisterSnapshots: entry, {}", stackId);
+        LOG.debug("unRegisterSnapshots: entry, stackId={}, versionNumber={}", stackId, versionNumber);
 
-        List<CollectionSnapshot> unPersistedSnapshotList = adminDao.getSnapshots(stackId.getOwner(),
-                                                                                 RenderDao.RENDER_DB_NAME,
-                                                                                 null,
-                                                                                 true);
-        for (CollectionSnapshot snapshot : unPersistedSnapshotList) {
-            adminDao.removeSnapshot(snapshot.getOwner(),
-                                    snapshot.getDatabaseName(),
-                                    snapshot.getCollectionName(),
-                                    snapshot.getVersion());
-        }
+        removeUnsavedSnapshot(owner, stackId.getTileCollectionName(), versionNumber);
+        removeUnsavedSnapshot(owner, stackId.getTransformCollectionName(), versionNumber);
 
         LOG.debug("unRegisterSnapshots: exit, {}", stackId);
+    }
+
+    private void removeUnsavedSnapshot(String owner,
+                                    String collectionName,
+                                    Integer versionNumber) {
+
+        final CollectionSnapshot snapshot = adminDao.getSnapshot(owner,
+                                                                 RenderDao.RENDER_DB_NAME,
+                                                                 collectionName,
+                                                                 versionNumber);
+        if ((snapshot != null) && (! snapshot.isSaved())) {
+            adminDao.removeSnapshot(owner,
+                                    RenderDao.RENDER_DB_NAME,
+                                    collectionName,
+                                    versionNumber);
+        }
     }
 
     private boolean hasSavedSnapshots(final StackMetaData stackMetaData) {
