@@ -35,7 +35,7 @@ public class ImportJsonClient {
         @Parameter(names = "--transformFile", description = "file containing shared JSON transform specs (.json, .gz, or .zip)", required = false)
         private String transformFile;
 
-        @Parameter(description = "list of tile spec files, each file (.json, .gz, or .zip) should contain specs for one section", required = true)
+        @Parameter(description = "list of tile spec files (.json, .gz, or .zip)", required = true)
         private List<String> tileFiles;
     }
 
