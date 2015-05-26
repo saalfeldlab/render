@@ -17,6 +17,7 @@ import javax.ws.rs.core.UriInfo;
 
 import org.janelia.render.service.dao.AdminDao;
 import org.janelia.render.service.model.CollectionSnapshot;
+import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +75,17 @@ public class AdminService {
 
         CollectionSnapshot snapshot = null;
         try {
+
             snapshot = adminDao.getSnapshot(owner, databaseName, collectionName, version);
+
+            if (snapshot == null) {
+                throw new ObjectNotFoundException("snapshot with owner '" + owner +
+                                                  "', databaseName '" + databaseName +
+                                                  "', collectionName '" + collectionName +
+                                                  "', and version '" + version +
+                                                  " ' does not exist");
+            }
+
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }

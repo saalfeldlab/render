@@ -96,13 +96,10 @@ public class AdminDao {
     }
 
     /**
-     * @return the specified snapshot.
+     * @return the specified snapshot or null if it does not exist.
      *
      * @throws IllegalArgumentException
      *   if any required parameters are missing.
-     *
-     * @throws ObjectNotFoundException
-     *   if a matching snapshot cannot be found.
      */
     public CollectionSnapshot getSnapshot(final String owner,
                                           final String databaseName,
@@ -125,15 +122,12 @@ public class AdminDao {
 
         final DBObject document = snapshotCollection.findOne(query);
 
-        if (document == null) {
-            throw new ObjectNotFoundException("snapshot with owner '" + owner +
-                                              "', databaseName '" + databaseName +
-                                              "', collectionName '" + collectionName +
-                                              "', and version '" + version +
-                                              " ' does not exist");
+        CollectionSnapshot snapshot = null;
+        if (document != null) {
+            snapshot = CollectionSnapshot.fromJson(document.toString());
         }
 
-        return CollectionSnapshot.fromJson(document.toString());
+        return snapshot;
     }
 
      /**

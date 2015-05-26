@@ -30,6 +30,7 @@ import org.junit.Test;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.COMPLETE;
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState.OFFLINE;
 
 /**
  * Tests the {@link StackMetaDataService} class.
@@ -229,6 +230,19 @@ public class StackMetaDataServiceTest {
                             stackMetaData2.getCurrentVersion().getCreateTimestamp(),
                             snapshotBeforeDelete.getCollectionCreateTimestamp());
 
+
+        try {
+            service.setStackState(completeStackId.getOwner(),
+                                  completeStackId.getProject(),
+                                  completeStackId.getStack(),
+                                  OFFLINE,
+                                  getUriInfo());
+            Assert.fail("stack without snapshot should not be allowed to transition to OFFLINE state");
+        } catch (IllegalServiceArgumentException e) {
+            e.printStackTrace();
+        }
+
+
         service.deleteStack(completeStackId.getOwner(),
                             completeStackId.getProject(),
                             completeStackId.getStack());
@@ -242,15 +256,11 @@ public class StackMetaDataServiceTest {
             Assert.assertTrue(true); // test passed
         }
 
-        try {
-            adminDao.getSnapshot(completeStackId.getOwner(),
-                                 RenderDao.RENDER_DB_NAME,
-                                 completeStackId.getTileCollectionName(),
-                                 stackMetaData2.getCurrentVersionNumber());
-            Assert.fail("after delete, snapshot data should not exist for " + completeStackId);
-        } catch (ObjectNotFoundException e) {
-            Assert.assertTrue(true); // test passed
-        }
+        final CollectionSnapshot snapshot = adminDao.getSnapshot(completeStackId.getOwner(),
+                                                                 RenderDao.RENDER_DB_NAME,
+                                                                 completeStackId.getTileCollectionName(),
+                                                                 stackMetaData2.getCurrentVersionNumber());
+        Assert.assertNull("after delete, snapshot data should not exist for " + completeStackId, snapshot);
 
     }
 

@@ -142,6 +142,10 @@ public class CollectionSnapshot
         return snapshotDate;
     }
 
+    public boolean isSaved() {
+        return (snapshotDate != null);
+    }
+
     public String getFullPath() {
         return fullPath;
     }

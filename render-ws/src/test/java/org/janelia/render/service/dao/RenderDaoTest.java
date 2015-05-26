@@ -184,7 +184,7 @@ public class RenderDaoTest {
         Assert.assertTrue("zValues missing for " + stackId + " before removal",
                           zValuesBeforeRemove.size() > 0);
 
-        dao.removeStack(stackId);
+        dao.removeStack(stackId, true);
         final StackMetaData stackMetaAfterRemove = dao.getStackMetaData(stackId);
 
         Assert.assertNull("meta data for " + stackId + " returned after removal", stackMetaAfterRemove);

@@ -4,7 +4,6 @@ import java.util.Date;
 import java.util.List;
 
 import org.janelia.render.service.model.CollectionSnapshot;
-import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -128,10 +127,10 @@ public class AdminDaoTest {
         validateSnapshot("after second saves",
                          snapshot2, list.get(0));
 
-        final CollectionSnapshot retrievedSnapshot = dao.getSnapshot(snapshot1.getOwner(),
-                                                                     snapshot1.getDatabaseName(),
-                                                                     snapshot1.getCollectionName(),
-                                                                     snapshot1.getVersion());
+        CollectionSnapshot retrievedSnapshot = dao.getSnapshot(snapshot1.getOwner(),
+                                                               snapshot1.getDatabaseName(),
+                                                               snapshot1.getCollectionName(),
+                                                               snapshot1.getVersion());
         validateSnapshot("after retrieving snapshot1 (with persistence data)",
                          snapshot1WithPersistence, retrievedSnapshot);
 
@@ -140,15 +139,11 @@ public class AdminDaoTest {
                            snapshot1.getCollectionName(),
                            snapshot1.getVersion());
 
-        try {
-            dao.getSnapshot(snapshot1.getOwner(),
-                            snapshot1.getDatabaseName(),
-                            snapshot1.getCollectionName(),
-                            snapshot1.getVersion());
-            Assert.fail("snapshot data should have been removed for " + snapshot1);
-        } catch (ObjectNotFoundException e) {
-            Assert.assertTrue(true); // test passed
-        }
+        retrievedSnapshot = dao.getSnapshot(snapshot1.getOwner(),
+                                            snapshot1.getDatabaseName(),
+                                            snapshot1.getCollectionName(),
+                                            snapshot1.getVersion());
+        Assert.assertNull("snapshot data should have been removed for " + snapshot1, retrievedSnapshot);
 
     }
 

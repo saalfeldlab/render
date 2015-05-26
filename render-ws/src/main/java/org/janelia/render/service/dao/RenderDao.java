@@ -883,7 +883,8 @@ public class RenderDao {
         return stackMetaData;
     }
 
-    public void removeStack(final StackId stackId)
+    public void removeStack(final StackId stackId,
+                            final boolean includeMetaData)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -902,12 +903,14 @@ public class RenderDao {
         LOG.debug("removeStack: {}.drop() deleted {} document(s)",
                   transformCollection.getFullName(), transformCount);
 
-        final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
-        final BasicDBObject stackIdQuery = getStackIdQuery(stackId);
-        final WriteResult stackMetaDataRemoveResult = stackMetaDataCollection.remove(stackIdQuery);
+        if (includeMetaData) {
+            final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
+            final BasicDBObject stackIdQuery = getStackIdQuery(stackId);
+            final WriteResult stackMetaDataRemoveResult = stackMetaDataCollection.remove(stackIdQuery);
 
-        LOG.debug("removeStack: {}.remove({}) deleted {} document(s)",
-                  stackMetaDataCollection.getFullName(), stackIdQuery, stackMetaDataRemoveResult.getN());
+            LOG.debug("removeStack: {}.remove({}) deleted {} document(s)",
+                      stackMetaDataCollection.getFullName(), stackIdQuery, stackMetaDataRemoveResult.getN());
+        }
     }
 
     /**

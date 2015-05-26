@@ -220,7 +220,7 @@ public class StackMetaDataService {
                     unRegisterSnapshots(stackMetaData);
                 }
 
-                renderDao.removeStack(stackId);
+                renderDao.removeStack(stackId, true);
             }
 
             response = Response.ok().build();
@@ -257,6 +257,28 @@ public class StackMetaDataService {
                 if (stackVersion.isSnapshotNeeded()) {
                     registerSnapshots(stackMetaData);
                 }
+
+            } else if (StackState.OFFLINE.equals(state)) {
+
+                if (! StackState.COMPLETE.equals(stackMetaData.getState())) {
+                    throw new IllegalArgumentException("stack state is currently " + stackMetaData.getState() +
+                                                       " but must be COMPLETE before transitioning to OFFLINE");
+                }
+
+                final StackVersion currentVersion = stackMetaData.getCurrentVersion();
+                if (! currentVersion.isSnapshotNeeded()) {
+                    throw new IllegalArgumentException(
+                            "stack does not require a snapshot so it cannot be transitioned OFFLINE");
+                }
+
+                if (! hasSavedSnapshots(stackMetaData)) {
+                    throw new IllegalArgumentException(
+                            "stack snapshot has not yet been saved so it cannot be transitioned OFFLINE");
+                }
+
+                stackMetaData.setState(state);
+                renderDao.saveStackMetaData(stackMetaData);
+                renderDao.removeStack(stackMetaData.getStackId(), false);
 
             } else {
                 stackMetaData.setState(state);
@@ -375,6 +397,34 @@ public class StackMetaDataService {
         }
 
         LOG.debug("unRegisterSnapshots: exit, {}", stackId);
+    }
+
+    private boolean hasSavedSnapshots(final StackMetaData stackMetaData) {
+
+        final StackId stackId = stackMetaData.getStackId();
+        final Integer versionNumber = stackMetaData.getCurrentVersionNumber();
+
+        LOG.debug("hasSavedSnapshots: entry, stackId={}, versionNumber={}", stackId, versionNumber);
+
+        final CollectionSnapshot tileSnapshot = adminDao.getSnapshot(stackId.getOwner(),
+                                                                     RenderDao.RENDER_DB_NAME,
+                                                                     stackId.getTileCollectionName(),
+                                                                     versionNumber);
+
+        boolean hasSavedSnapshots = false;
+
+        if ((tileSnapshot != null) && tileSnapshot.isSaved()) {
+
+            final CollectionSnapshot transformSnapshot = adminDao.getSnapshot(stackId.getOwner(),
+                                                                              RenderDao.RENDER_DB_NAME,
+                                                                              stackId.getTransformCollectionName(),
+                                                                              versionNumber);
+
+            hasSavedSnapshots = transformSnapshot == null || transformSnapshot.isSaved();
+
+        }
+
+        return hasSavedSnapshots;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(StackMetaDataService.class);
