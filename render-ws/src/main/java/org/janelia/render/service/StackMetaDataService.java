@@ -17,6 +17,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
+import org.bson.types.ObjectId;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -57,6 +58,14 @@ public class StackMetaDataService {
             throws UnknownHostException {
         this.renderDao = renderDao;
         this.adminDao = adminDao;
+    }
+
+    @Path("likelyUniqueId")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public String getUniqueId() {
+        final ObjectId objectId = new ObjectId();
+        return objectId.toString();
     }
 
     @Path("stackIds")
