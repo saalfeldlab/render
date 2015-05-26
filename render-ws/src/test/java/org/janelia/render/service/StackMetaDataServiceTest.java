@@ -321,24 +321,39 @@ public class StackMetaDataServiceTest {
             Assert.assertTrue(true); // test passed
         }
 
-        service.setStackState(completeStackId.getOwner(),
-                              completeStackId.getProject(),
-                              completeStackId.getStack(),
-                              LOADING,
-                              getUriInfo());
+        final StackId clonedStackId = new StackId(completeStackId.getOwner(),
+                                                  completeStackId.getProject(),
+                                                  "clonedStack2");
 
-        List<TileSpec> specList = renderDao.getTileSpecs(completeStackId, z);
+        final StackVersion clonedStackVersion = new StackVersion(new Date(),
+                                                                 "cloned2",
+                                                                 1,
+                                                                 2,
+                                                                 3.1,
+                                                                 4.1,
+                                                                 5.1,
+                                                                 null,
+                                                                 null);
+
+        service.cloneStackVersion(completeStackId.getOwner(),
+                                  completeStackId.getProject(),
+                                  completeStackId.getStack(),
+                                  clonedStackId.getStack(),
+                                  getUriInfo(),
+                                  clonedStackVersion);
+
+        List<TileSpec> specList = renderDao.getTileSpecs(clonedStackId, z);
         Assert.assertTrue("before removal, no tile specs exist for z " + z,
                           specList.size() > 0);
 
 
-        service.deleteStackSection(completeStackId.getOwner(),
-                                   completeStackId.getProject(),
-                                   completeStackId.getStack(),
+        service.deleteStackSection(clonedStackId.getOwner(),
+                                   clonedStackId.getProject(),
+                                   clonedStackId.getStack(),
                                    z);
 
         try {
-            specList = renderDao.getTileSpecs(completeStackId, z);
+            specList = renderDao.getTileSpecs(clonedStackId, z);
             Assert.assertEquals("after removal, invalid number of tile specs exist for z " + z,
                                 0, specList.size());
         } catch (IllegalArgumentException e) {

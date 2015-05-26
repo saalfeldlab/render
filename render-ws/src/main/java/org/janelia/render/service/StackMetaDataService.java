@@ -32,6 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState.COMPLETE;
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState.OFFLINE;
 
 /**
  * APIs for accessing stack meta data stored in the Render service database.
@@ -278,7 +280,7 @@ public class StackMetaDataService {
                 throw getStackNotFoundException(owner, project, stack);
             }
 
-            if (StackState.COMPLETE.equals(state)) {
+            if (COMPLETE.equals(state)) {
 
                 stackMetaData = renderDao.ensureIndexesAndDeriveStats(stackMetaData);
 
@@ -287,29 +289,39 @@ public class StackMetaDataService {
                     registerSnapshots(stackMetaData);
                 }
 
-            } else if (StackState.OFFLINE.equals(state)) {
+            } else if (OFFLINE.equals(state)) {
 
-                if (! StackState.COMPLETE.equals(stackMetaData.getState())) {
-                    throw new IllegalArgumentException("stack state is currently " + stackMetaData.getState() +
-                                                       " but must be COMPLETE before transitioning to OFFLINE");
+                if (! COMPLETE.equals(stackMetaData.getState())) {
+                    throw new IllegalArgumentException("The stack state is currently " + stackMetaData.getState() +
+                                                       " but must be COMPLETE before transitioning to OFFLINE.");
                 }
 
                 final StackVersion currentVersion = stackMetaData.getCurrentVersion();
                 if (! currentVersion.isSnapshotNeeded()) {
                     throw new IllegalArgumentException(
-                            "stack does not require a snapshot so it cannot be transitioned OFFLINE");
+                            "The stack does not require a snapshot so it cannot be transitioned OFFLINE.");
                 }
 
                 if (! hasSavedSnapshots(stackMetaData)) {
                     throw new IllegalArgumentException(
-                            "stack snapshot has not yet been saved so it cannot be transitioned OFFLINE");
+                            "The stack snapshot has not yet been saved so it cannot be transitioned OFFLINE.");
                 }
 
                 stackMetaData.setState(state);
                 renderDao.saveStackMetaData(stackMetaData);
                 renderDao.removeStack(stackMetaData.getStackId(), false);
 
-            } else {
+            } else { // LOADING
+
+                if (COMPLETE.equals(stackMetaData.getState())) {
+                    final StackVersion currentVersion = stackMetaData.getCurrentVersion();
+                    if (currentVersion.isSnapshotNeeded() && (! hasSavedSnapshots(stackMetaData))) {
+                        throw new IllegalArgumentException(
+                                "The stack snapshot has not yet been saved so it cannot be transitioned " +
+                                "back to LOADING.");
+                    }
+                }
+
                 stackMetaData.setState(state);
                 renderDao.saveStackMetaData(stackMetaData);
             }
