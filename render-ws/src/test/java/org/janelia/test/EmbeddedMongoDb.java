@@ -2,6 +2,10 @@ package org.janelia.test;
 
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
+
+import java.io.File;
+import java.io.IOException;
+
 import de.flapdoodle.embed.mongo.MongoImportExecutable;
 import de.flapdoodle.embed.mongo.MongoImportStarter;
 import de.flapdoodle.embed.mongo.MongodExecutable;
@@ -11,13 +15,9 @@ import de.flapdoodle.embed.mongo.config.IMongoImportConfig;
 import de.flapdoodle.embed.mongo.config.MongoImportConfigBuilder;
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
-import de.flapdoodle.embed.mongo.config.Storage;
 import de.flapdoodle.embed.mongo.distribution.IFeatureAwareVersion;
 import de.flapdoodle.embed.mongo.distribution.Version;
 import de.flapdoodle.embed.process.runtime.Network;
-
-import java.io.File;
-import java.io.IOException;
 
 /**
  * Manages an embedded mongo database for use in testing.
@@ -42,13 +42,10 @@ public class EmbeddedMongoDb {
         this.version = Version.Main.V2_6;
         this.port = 12345;
 
-        final Storage replication = new Storage("src/test/resources/mongodb/data", null, 0);
-
         // see MongodForTestsFactory for example verbose startup options
         this.mongodExecutable = STARTER.prepare(new MongodConfigBuilder()
                                                         .version(version)
                                                         .net(new Net(port, Network.localhostIsIPv6()))
-                                                        .replication(replication)
                                                         .build());
         this.mongodProcess = mongodExecutable.start();
 
