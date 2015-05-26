@@ -197,6 +197,30 @@ public class RenderDaoTest {
     }
 
     @Test
+    public void testRemoveSection() throws Exception {
+
+        final TileSpec tileSpec = new TileSpec();
+        tileSpec.setTileId("testTileId");
+        tileSpec.setZ(999.0);
+
+        dao.saveTileSpec(stackId, tileSpec);
+
+        final List<Double> zValuesBeforeRemove = dao.getZValues(stackId);
+        Assert.assertNotNull("zValues null for " + stackId + " before removal",
+                             zValuesBeforeRemove);
+        Assert.assertEquals("incorrect number of zValues for " + stackId + " before removal",
+                            2, zValuesBeforeRemove.size());
+
+        dao.removeSection(stackId, tileSpec.getZ());
+
+        final List<Double> zValuesAfterRemove = dao.getZValues(stackId);
+        Assert.assertNotNull("zValues null for " + stackId + " after removal",
+                             zValuesAfterRemove);
+        Assert.assertEquals("zValues exist for " + stackId + " after removal",
+                            1, zValuesAfterRemove.size());
+    }
+
+    @Test
     public void testGetParameters() throws Exception {
 
         final Double x = 1000.0;

@@ -231,6 +231,35 @@ public class StackMetaDataService {
         return response;
     }
 
+    @Path("project/{project}/stack/{stack}/z/{z}")
+    @DELETE
+    public Response deleteStackSection(@PathParam("owner") final String owner,
+                                       @PathParam("project") final String project,
+                                       @PathParam("stack") final String stack,
+                                       @PathParam("z") final Double z) {
+
+        LOG.info("deleteStackSection: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
+
+        Response response = null;
+        try {
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+
+            if (! stackMetaData.isLoading()) {
+                throw new IllegalArgumentException("stack state is " + stackMetaData.getState() +
+                                                   " but must be LOADING to delete data");
+            }
+
+            renderDao.removeSection(stackMetaData.getStackId(), z);
+
+            response = Response.ok().build();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return response;
+    }
+
     @Path("project/{project}/stack/{stack}/state/{state}")
     @PUT
     public Response setStackState(@PathParam("owner") final String owner,

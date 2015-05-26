@@ -59,6 +59,9 @@ public class StackClient {
         @Parameter(names = "--cloneResultStack", description = "Name of stack created by clone operation", required = false)
         private String cloneResultStack;
 
+        @Parameter(names = "--deleteZ", description = "Z value for section to be removed", required = false)
+        private Double deleteZ;
+
     }
 
     /**
@@ -163,7 +166,7 @@ public class StackClient {
     public void deleteStack()
             throws Exception {
         logMetaData("deleteStack: before removal");
-        renderDataClient.deleteStack(stack);
+        renderDataClient.deleteStack(stack, params.deleteZ);
     }
 
     private void logMetaData(String context) {

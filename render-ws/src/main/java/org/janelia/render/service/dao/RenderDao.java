@@ -913,6 +913,21 @@ public class RenderDao {
         }
     }
 
+    public void removeSection(final StackId stackId,
+                              final Double z)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("stackId", stackId);
+        validateRequiredParameter("z", z);
+
+        final DBCollection tileCollection = getTileCollection(stackId);
+        final BasicDBObject tileQuery = new BasicDBObject("z", z);
+        final WriteResult removeResult = tileCollection.remove(tileQuery);
+
+        LOG.debug("removeSection: {}.remove({}) deleted {} document(s)",
+                  tileCollection.getFullName(), tileQuery, removeResult.getN());
+    }
+
     /**
      * @return coordinate bounds for all tiles in the specified stack layer.
      *

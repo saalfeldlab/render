@@ -5,11 +5,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import javax.ws.rs.core.PathSegment;
 import javax.ws.rs.core.UriInfo;
 
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
@@ -44,6 +46,7 @@ public class StackMetaDataServiceTest {
 
     private static EmbeddedMongoDb embeddedMongoDb;
     private static StackMetaDataService service;
+    private static RenderDao renderDao;
     private static AdminDao adminDao;
 
     @BeforeClass
@@ -52,7 +55,7 @@ public class StackMetaDataServiceTest {
         completeStackId = new StackId("flyTEM", "test", "elastic");
 
         embeddedMongoDb = new EmbeddedMongoDb(RenderDao.RENDER_DB_NAME);
-        final RenderDao renderDao = new RenderDao(embeddedMongoDb.getMongoClient());
+        renderDao = new RenderDao(embeddedMongoDb.getMongoClient());
         adminDao = new AdminDao(embeddedMongoDb.getMongoClient());
         service = new StackMetaDataService(renderDao, adminDao);
     }
@@ -301,6 +304,47 @@ public class StackMetaDataServiceTest {
                                                                            clonedStackId.getStack());
 
         RenderDaoTest.validateStackMetaData(" for cloned stack", LOADING, 0, clonedStackVersion, clonedStackMetaData);
+    }
+
+    @Test
+    public void testDeleteStackSection() throws Exception {
+
+        final Double z = 3903.0;
+
+        try {
+            service.deleteStackSection(completeStackId.getOwner(),
+                                       completeStackId.getProject(),
+                                       completeStackId.getStack(),
+                                       z);
+            Assert.fail("section should not be deleted for stack in COMPLETE state");
+        } catch (IllegalServiceArgumentException e) {
+            Assert.assertTrue(true); // test passed
+        }
+
+        service.setStackState(completeStackId.getOwner(),
+                              completeStackId.getProject(),
+                              completeStackId.getStack(),
+                              LOADING,
+                              getUriInfo());
+
+        List<TileSpec> specList = renderDao.getTileSpecs(completeStackId, z);
+        Assert.assertTrue("before removal, no tile specs exist for z " + z,
+                          specList.size() > 0);
+
+
+        service.deleteStackSection(completeStackId.getOwner(),
+                                   completeStackId.getProject(),
+                                   completeStackId.getStack(),
+                                   z);
+
+        try {
+            specList = renderDao.getTileSpecs(completeStackId, z);
+            Assert.assertEquals("after removal, invalid number of tile specs exist for z " + z,
+                                0, specList.size());
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(true); // test passed - no tile specs exist
+        }
+
     }
 
     private static UriInfo getUriInfo()

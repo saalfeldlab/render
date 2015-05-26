@@ -129,10 +129,16 @@ public class RenderDataClient {
         httpClient.execute(httpPut, responseHandler);
     }
 
-    public void deleteStack(String stack)
+    public void deleteStack(String stack,
+                            Double z)
             throws IllegalArgumentException, IOException {
 
-        final URI uri = getStackUri(stack);
+        final URI uri;
+        if (z == null) {
+            uri = getStackUri(stack);
+        } else {
+            uri = getUri(getZUrlString(stack, z));
+        }
         final String requestContext = "DELETE " + uri;
         final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
 
