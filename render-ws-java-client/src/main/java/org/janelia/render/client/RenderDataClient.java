@@ -77,6 +77,22 @@ public class RenderDataClient {
         return httpClient.execute(httpGet, responseHandler);
     }
 
+    @SuppressWarnings("UnusedDeclaration")
+    public List<Double> getStackZValues(String stack)
+            throws IllegalArgumentException, IOException {
+
+        final URI uri = getUri(getStackUrlString(stack) + "/zValues");
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final Type typeOfT = new TypeToken<List<Double>>(){}.getType();
+        final JsonResponseHandler<List<Double>> responseHandler =
+                new JsonResponseHandler<>(requestContext, typeOfT);
+
+        LOG.info("getStackZValues: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
     public void saveStackVersion(String stack,
                                  StackVersion stackVersion)
             throws IllegalArgumentException, IOException {
