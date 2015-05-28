@@ -72,23 +72,14 @@ public class ImportMETClient {
 
     private final Parameters parameters;
 
-    private final Map<String, TransformSpec> tileIdToAlignTransformMap;
     private final RenderDataClient renderDataClient;
 
-    private String metSection;
-    private String lastTileId;
+    private Map<String, SectionData> metSectionToDataMap;
 
     public ImportMETClient(final Parameters parameters) {
-
         this.parameters = parameters;
-
-        final int capacityForLargeSection = (int) (5000 / 0.75);
-        this.tileIdToAlignTransformMap = new HashMap<>(capacityForLargeSection);
-
         this.renderDataClient = parameters.getClient();
-
-        this.metSection = null;
-        this.lastTileId = null;
+        this.metSectionToDataMap = new HashMap<>();
     }
 
     public void generateStackData() throws Exception {
@@ -101,65 +92,16 @@ public class ImportMETClient {
             loadMetV1Data();
         }
 
-        final TileSpec lastTileSpec = renderDataClient.getTile(parameters.acquireStack, lastTileId);
-        final Double z = lastTileSpec.getZ();
-
-        LOG.info("generateStackData: mapped section {} to z value {}", metSection, z);
-
-        final ResolvedTileSpecCollection acquireTiles = renderDataClient.getResolvedTiles(parameters.acquireStack, z);
-
-        if (! acquireTiles.hasTileSpecs()) {
-            throw new IllegalArgumentException(acquireTiles + " does not have any tiles");
+        for (SectionData sectionData : metSectionToDataMap.values()) {
+            sectionData.updateTiles();
         }
 
-        LOG.info("generateStackData: filtering tile spec collection {}", acquireTiles);
-
-        acquireTiles.filterSpecs(tileIdToAlignTransformMap.keySet());
-
-        if (! acquireTiles.hasTileSpecs()) {
-            throw new IllegalArgumentException("after filtering out non-aligned tiles, " +
-                                               acquireTiles + " does not have any remaining tiles");
+        // only save updated data if all updates completed successfully
+        for (SectionData sectionData : metSectionToDataMap.values()) {
+            sectionData.saveTiles();
         }
 
-        LOG.info("generateStackData: after filter, collection is {}", acquireTiles);
-
-        final int transformTileCount = tileIdToAlignTransformMap.size();
-        final ProcessTimer timer = new ProcessTimer();
-        int tileSpecCount = 0;
-        TransformSpec alignTransform;
-        TileSpec tileSpec;
-        for (String tileId : tileIdToAlignTransformMap.keySet()) {
-            alignTransform = tileIdToAlignTransformMap.get(tileId);
-
-            if (parameters.replaceAll)  {
-
-                tileSpec = acquireTiles.getTileSpec(tileId);
-
-                if (tileSpec == null) {
-                    throw new IllegalArgumentException("tile spec with id '" + tileId +
-                                                       "' not found in " + acquireTiles +
-                                                       ", possible issue with z value");
-                }
-
-                tileSpec.setTransforms(new ListTransformSpec());
-            }
-
-            acquireTiles.addTransformSpecToTile(tileId, alignTransform, true);
-            tileSpecCount++;
-            if (timer.hasIntervalPassed()) {
-                LOG.info("generateStackData: updated transforms for {} out of {} tiles",
-                         tileSpecCount, transformTileCount);
-            }
-        }
-
-        final int removedTiles = tileSpecCount - acquireTiles.getTileCount();
-
-        LOG.debug("generateStackData: updated transforms for {} tiles, removed {} bad tiles, elapsedSeconds={}",
-                  tileSpecCount, removedTiles, timer.getElapsedSeconds());
-
-        renderDataClient.saveResolvedTiles(acquireTiles, parameters.alignStack, z);
-
-        LOG.info("generateStackData: exit, saved tiles and transforms for {}", z);
+        LOG.info("generateStackData: exit, saved tiles and transforms for z value(s) {}", metSectionToDataMap.keySet());
     }
 
     private void loadMetData(final int[] parameterIndexes,
@@ -180,7 +122,8 @@ public class ImportMETClient {
         String line;
         String[] w;
         String section;
-        String tileId = null;
+        String tileId;
+        SectionData sectionData;
         StringBuilder modelData = new StringBuilder(128);
         String modelDataString;
         while ((line = reader.readLine()) != null) {
@@ -196,15 +139,17 @@ public class ImportMETClient {
             } else {
 
                 section = w[0];
-                if (metSection == null) {
-                    metSection = section;
-                } else if (! metSection.equals(section)) {
-                    throw new IllegalArgumentException("Differing sections (" + metSection + " and " + section +
-                                                       ") included in MET file " + path +
-                                                       ".  First difference found at line " + lineNumber + ".");
-                }
-
                 tileId = w[1];
+
+                sectionData = metSectionToDataMap.get(section);
+
+                if (sectionData == null) {
+                    final TileSpec acquireTileSpec = renderDataClient.getTile(parameters.acquireStack, tileId);
+                    final Double z = acquireTileSpec.getZ();
+                    LOG.info("loadMetData: mapped section {} to z value {}", section, z);
+                    sectionData = new SectionData(path, z);
+                    metSectionToDataMap.put(section, sectionData);
+                }
 
                 modelData.setLength(0);
                 for (int i = 0; i < parameterIndexes.length; i++) {
@@ -223,25 +168,17 @@ public class ImportMETClient {
                                                        modelDataString + "'.", e);
                 }
 
-                if (tileIdToAlignTransformMap.containsKey(tileId)) {
-                    throw new IllegalArgumentException("Tile ID " + tileId + " is listed more than once in MET file " +
-                                                       path + ".  The second reference was found at line " +
-                                                       lineNumber + ".");
-                }
-
-                tileIdToAlignTransformMap.put(tileId, new LeafTransformSpec(modelClassName, modelDataString));
+                sectionData.addTileId(tileId, lineNumber, modelClassName, modelDataString);
             }
 
         }
 
-        if (tileIdToAlignTransformMap.size() == 0) {
+        if (metSectionToDataMap.size() == 0) {
             throw new IllegalArgumentException("No tile information found in MET file " + path + ".");
         }
 
-        lastTileId = tileId;
-
-        LOG.info("loadMetData: exit, loaded {} tiles from {} lines for section {}",
-                 tileIdToAlignTransformMap.size(), lineNumber, metSection);
+        LOG.info("loadMetData: exit, loaded {} lines for z value(s) {}",
+                 lineNumber, metSectionToDataMap.keySet());
     }
 
     private void loadMetV1Data()
@@ -270,6 +207,104 @@ public class ImportMETClient {
         final int[] parameterIndexes = {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
         final int lastAffineParameter = 15;
         loadMetData(parameterIndexes, lastAffineParameter, new PolynomialTransform2D());
+    }
+
+    private class SectionData {
+
+        private Path path;
+        private Double z;
+        private Map<String, TransformSpec> tileIdToAlignTransformMap;
+        private ResolvedTileSpecCollection updatedTiles;
+
+        private SectionData(Path path,
+                            Double z) {
+            this.path = path;
+            this.z = z;
+            final int capacityForLargeSection = (int) (5000 / 0.75);
+            this.tileIdToAlignTransformMap = new HashMap<>(capacityForLargeSection);
+            this.updatedTiles = null;
+        }
+
+        public void addTileId(String tileId,
+                              int lineNumber,
+                              String modelClassName,
+                              String modelDataString) {
+
+            if (tileIdToAlignTransformMap.containsKey(tileId)) {
+                throw new IllegalArgumentException("Tile ID " + tileId + " is listed more than once in MET file " +
+                                                   path + ".  The second reference was found at line " +
+                                                   lineNumber + ".");
+            }
+
+            tileIdToAlignTransformMap.put(tileId, new LeafTransformSpec(modelClassName, modelDataString));
+
+        }
+
+        public void updateTiles() throws Exception {
+
+            LOG.info("updateTiles: entry, z={}", z);
+
+            updatedTiles = renderDataClient.getResolvedTiles(parameters.acquireStack, z);
+
+            if (!updatedTiles.hasTileSpecs()) {
+                throw new IllegalArgumentException(updatedTiles + " does not have any tiles");
+            }
+
+            LOG.info("updateTiles: filtering tile spec collection {}", updatedTiles);
+
+            updatedTiles.filterSpecs(tileIdToAlignTransformMap.keySet());
+
+            if (!updatedTiles.hasTileSpecs()) {
+                throw new IllegalArgumentException("after filtering out non-aligned tiles, " +
+                                                   updatedTiles + " does not have any remaining tiles");
+            }
+
+            LOG.info("updateTiles: after filter, collection is {}", updatedTiles);
+
+            final int transformTileCount = tileIdToAlignTransformMap.size();
+            final ProcessTimer timer = new ProcessTimer();
+            int tileSpecCount = 0;
+            TransformSpec alignTransform;
+            TileSpec tileSpec;
+            for (String tileId : tileIdToAlignTransformMap.keySet()) {
+                alignTransform = tileIdToAlignTransformMap.get(tileId);
+
+                if (parameters.replaceAll) {
+
+                    tileSpec = updatedTiles.getTileSpec(tileId);
+
+                    if (tileSpec == null) {
+                        throw new IllegalArgumentException("tile spec with id '" + tileId +
+                                                           "' not found in " + updatedTiles +
+                                                           ", possible issue with z value");
+                    }
+
+                    tileSpec.setTransforms(new ListTransformSpec());
+                }
+
+                updatedTiles.addTransformSpecToTile(tileId, alignTransform, true);
+                tileSpecCount++;
+                if (timer.hasIntervalPassed()) {
+                    LOG.info("updateTiles: updated transforms for {} out of {} tiles",
+                             tileSpecCount, transformTileCount);
+                }
+            }
+
+            final int removedTiles = tileSpecCount - updatedTiles.getTileCount();
+
+            LOG.debug("updateTiles: updated transforms for {} tiles, removed {} bad tiles, elapsedSeconds={}",
+                      tileSpecCount, removedTiles, timer.getElapsedSeconds());
+        }
+
+        public void saveTiles() throws Exception {
+
+            LOG.info("saveTiles: entry, z={}", z);
+
+            renderDataClient.saveResolvedTiles(updatedTiles, parameters.alignStack, z);
+
+            LOG.info("saveTiles: exit, saved tiles and transforms for {}", z);
+        }
+
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ImportMETClient.class);

@@ -177,7 +177,7 @@ public class ResolvedTileSpecCollection {
     @Override
     public String toString() {
         return "{stackName: '" + stackName +
-               ", transformCount: " + getTransformCount() +
+               "', transformCount: " + getTransformCount() +
                ", tileCount: " + getTileCount() +
                '}';
     }
