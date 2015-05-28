@@ -4,6 +4,7 @@ import com.beust.jcommander.Parameter;
 
 import java.io.IOException;
 import java.util.Date;
+import java.util.List;
 
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
@@ -59,8 +60,8 @@ public class StackClient {
         @Parameter(names = "--cloneResultStack", description = "Name of stack created by clone operation", required = false)
         private String cloneResultStack;
 
-        @Parameter(names = "--deleteZ", description = "Z value for section to be removed", required = false)
-        private Double deleteZ;
+        @Parameter(names = "--deleteZ", description = "Z values for sections to be removed", required = false, variableArity = true)
+        private List<String> deleteZList;
 
     }
 
@@ -165,8 +166,18 @@ public class StackClient {
 
     public void deleteStack()
             throws Exception {
+
         logMetaData("deleteStack: before removal");
-        renderDataClient.deleteStack(stack, params.deleteZ);
+
+        if (params.deleteZList == null) {
+            renderDataClient.deleteStack(stack, null);
+        } else {
+            Double z;
+            for (String zString : params.deleteZList) {
+                z = new Double(zString);
+                renderDataClient.deleteStack(stack, z);
+            }
+        }
     }
 
     private void logMetaData(String context) {
