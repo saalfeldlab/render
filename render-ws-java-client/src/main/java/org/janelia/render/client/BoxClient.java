@@ -77,6 +77,9 @@ public class BoxClient {
         @Parameter(names = "--skipInterpolation", description = "skip interpolation (e.g. for DMG data)", required = false, arity = 0)
         private boolean skipInterpolation = false;
 
+        @Parameter(names = "--binaryMask", description = "use binary mask (e.g. for DMG data)", required = false, arity = 0)
+        private boolean binaryMask = false;
+
         @Parameter(names = "--label", description = "Generate single color tile labels instead of actual tile images", required = false, arity = 0)
         private boolean label = false;
 
@@ -324,6 +327,7 @@ public class BoxClient {
 
                     renderParameters = RenderParameters.loadFromUrl(parametersUrl);
                     renderParameters.setSkipInterpolation(params.skipInterpolation);
+                    renderParameters.setBinaryMask(params.binaryMask);
                     renderParameters.setBackgroundRGBColor(backgroundRGBColor);
 
                     if (renderParameters.hasTileSpecs()) {

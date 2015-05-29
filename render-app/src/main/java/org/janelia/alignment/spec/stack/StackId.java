@@ -1,4 +1,4 @@
-package org.janelia.render.service.model.stack;
+package org.janelia.alignment.spec.stack;
 
 import java.io.Serializable;
 import java.util.regex.Matcher;
@@ -11,7 +11,6 @@ import java.util.regex.Pattern;
  */
 public class StackId implements Comparable<StackId>, Serializable {
 
-    public static final String STACK_COLLECTION_SUFFIX = "stack";
     public static final String TILE_COLLECTION_SUFFIX = "tile";
     public static final String TRANSFORM_COLLECTION_SUFFIX = "transform";
 
@@ -78,40 +77,12 @@ public class StackId implements Comparable<StackId>, Serializable {
         return v;
     }
 
-    public String getStackCollectionName() {
-        return getCollectionName(STACK_COLLECTION_SUFFIX);
-    }
-
     public String getTileCollectionName() {
         return getCollectionName(TILE_COLLECTION_SUFFIX);
     }
 
     public String getTransformCollectionName() {
         return getCollectionName(TRANSFORM_COLLECTION_SUFFIX);
-    }
-
-    /**
-     * @return stack id derived from the specified collection name.
-     */
-    public static StackId fromCollectionName(String collectionName) {
-        StackId stackId = null;
-        final int nameLength = collectionName.length();
-        final int stopOwner = collectionName.indexOf(FIELD_SEPARATOR);
-        final int startProject = stopOwner + FIELD_SEPARATOR.length();
-        if ((startProject > 0) && (startProject < nameLength)) {
-            final int stopProject = collectionName.indexOf(FIELD_SEPARATOR, startProject);
-            final int startStack = stopProject + FIELD_SEPARATOR.length();
-            if ((startStack > startProject) && (startStack < nameLength)) {
-                final int stopStack = collectionName.indexOf(FIELD_SEPARATOR, startStack);
-                if (stopStack < nameLength) {
-                    stackId = new StackId(collectionName.substring(0, stopOwner),
-                                          collectionName.substring(startProject, stopProject),
-                                          collectionName.substring(startStack, stopStack));
-                }
-            }
-
-        }
-        return stackId;
     }
 
     private void validateValue(String context,

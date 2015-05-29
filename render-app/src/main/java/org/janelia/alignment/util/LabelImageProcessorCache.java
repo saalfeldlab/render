@@ -12,6 +12,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import mpicbg.trakem2.util.Downsampler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,7 +99,7 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
                                                 final boolean isMask)
             throws IllegalArgumentException {
 
-        final ImageProcessor imageProcessor;
+        ImageProcessor imageProcessor;
 
         if (isMask) {
             imageProcessor = super.loadImageProcessor(url, downSampleLevels, true);
@@ -117,6 +119,15 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
             }
 
             imageProcessor = loadLabelProcessor(labelColor);
+
+            // down sample the image as needed
+            if (downSampleLevels > 0) {
+                // NOTE: The down sample methods return a safe copy and leave the source imageProcessor unmodified,
+                //       so we don't need to duplicate a cached source instance before down sampling.
+                imageProcessor = Downsampler.downsampleImageProcessor(imageProcessor,
+                                                                      downSampleLevels);
+            }
+
         }
 
         return imageProcessor;

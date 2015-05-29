@@ -29,7 +29,6 @@ import mpicbg.trakem2.transform.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMesh;
 
 import org.janelia.alignment.ImageAndMask;
-import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
@@ -367,7 +366,7 @@ public class Converter {
                 maskUrl = "file:" + baseMaskPath + createIdPath(alphaMaskId, oid, ".zip");
             }
 
-            final List<TransformSpec> transformList = new ArrayList<TransformSpec>();
+            final List<TransformSpec> transformList = new ArrayList<>();
 
             if (transforms != null) {
                 // add all nested ict transforms
@@ -396,7 +395,7 @@ public class Converter {
             tileSpec.putMipmap(0, new ImageAndMask(imageUrl, maskUrl));
             tileSpec.addTransformSpecs(transformList);
 
-            tileSpec.deriveBoundingBox(RenderParameters.DEFAULT_MESH_CELL_SIZE, true);
+            tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
 
             return tileSpec;
         }
@@ -413,13 +412,12 @@ public class Converter {
                 if (transforms != null) {
                     Rectangle box;
                     try {
-                        final CoordinateTransformList<CoordinateTransform> ctList =
-                                new CoordinateTransformList<CoordinateTransform>();
+                        final CoordinateTransformList<CoordinateTransform> ctList = new CoordinateTransformList<>();
                         transforms.addToCoordinateTransformList(ctList);
                         final TransformMesh mesh = new TransformMesh(ctList,
                                                                      meshResolution,
-                                                                     oWidth.doubleValue(),
-                                                                     oHeight.doubleValue());
+                                                                     oWidth,
+                                                                     oHeight);
                         box = mesh.getBoundingBox();
                     } catch (final Exception e) {
                         throw new RuntimeException("failed to build ct list for patch " + oid, e);

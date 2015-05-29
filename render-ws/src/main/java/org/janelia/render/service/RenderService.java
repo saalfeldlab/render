@@ -18,7 +18,7 @@ import org.janelia.alignment.BoundingBoxRenderer;
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
-import org.janelia.render.service.model.stack.StackId;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.service.util.BufferedImageStreamingOutput;
 import org.janelia.render.service.util.RenderServiceUtil;
 import org.janelia.render.service.util.SharedImageProcessorCache;

@@ -93,7 +93,7 @@ public class MipmapGenerator {
                     }
 
                     updatedTileSpec = Render.deriveBoundingBox(tileSpec,
-                                                               RenderParameters.DEFAULT_MESH_CELL_SIZE,
+                                                               tileSpec.getMeshCellSize(),
                                                                forceBoxCalculation);
 
                     if (tileCount != 0) {
@@ -156,7 +156,7 @@ public class MipmapGenerator {
             } catch (final NoSuchAlgorithmException e) {
                 throw new IllegalStateException("failed to create MD5 message digest for TrakEM2 mask files", e);
             }
-            this.sourceDigestToMaskMipmapBaseFileMap = new HashMap<String, File>();
+            this.sourceDigestToMaskMipmapBaseFileMap = new HashMap<>();
         }
     }
 

@@ -1,10 +1,5 @@
 package org.janelia.alignment.spec;
 
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.util.ProcessTimer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -12,6 +7,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+
+import org.janelia.alignment.util.ProcessTimer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A collection of tile specifications that also includes all referenced transform specifications,
@@ -22,22 +21,19 @@ import java.util.Set;
 public class ResolvedTileSpecCollection {
 
     private String stackName;
-    private Double z;
     private Map<String, TransformSpec> transformIdToSpecMap;
     private Map<String, TileSpec> tileIdToSpecMap;
 
     @SuppressWarnings("UnusedDeclaration")
     public ResolvedTileSpecCollection() {
-        this(null, null, new ArrayList<TransformSpec>(), new ArrayList<TileSpec>());
+        this(null, new ArrayList<TransformSpec>(), new ArrayList<TileSpec>());
     }
 
     public ResolvedTileSpecCollection(final String stackName,
-                                      final Double z,
                                       final Collection<TransformSpec> transformSpecs,
                                       final Collection<TileSpec> tileSpecs) {
 
         this.stackName = stackName;
-        this.z = z;
         this.transformIdToSpecMap = new HashMap<>(transformSpecs.size() * 2);
         this.tileIdToSpecMap = new HashMap<>(tileSpecs.size() * 2);
 
@@ -102,7 +98,7 @@ public class ResolvedTileSpecCollection {
         // so we need to re-resolve the tile before re-deriving the bounding box
         resolveTileSpec(tileSpec);
 
-        tileSpec.deriveBoundingBox(RenderParameters.DEFAULT_MESH_CELL_SIZE, true);
+        tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
 
         removeTileIfInvalid(tileSpec);
     }
@@ -181,7 +177,6 @@ public class ResolvedTileSpecCollection {
     @Override
     public String toString() {
         return "{stackName: '" + stackName +
-               "', z: " + z +
                ", transformCount: " + getTransformCount() +
                ", tileCount: " + getTileCount() +
                '}';

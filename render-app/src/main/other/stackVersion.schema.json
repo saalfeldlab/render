@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Stack Version",
+    "description": "version specific attributes of a stack",
+    "type": "object",
+    "properties": {
+        "createTimestamp": {
+            "id": "createTimestamp",
+            "type": "string"
+        },
+        "versionNotes": {
+            "id": "versionNotes",
+            "type": "string"
+        },
+        "projectIteration": {
+            "id": "projectIteration",
+            "type": "integer"
+        },
+        "projectStep": {
+            "id": "projectStep",
+            "type": "integer"
+        },
+        "stackResolutionX": {
+            "id": "stackResolutionX",
+            "type": "number"
+        },
+        "stackResolutionY": {
+            "id": "stackResolutionY",
+            "type": "number"
+        },
+        "stackResolutionZ": {
+            "id": "stackResolutionZ",
+            "type": "number"
+        },
+        "snapshotRootPath": {
+            "id": "snapshotRootPath",
+            "type": "string"
+        }
+    },
+    "required": [
+    ]
+}

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="utf-8">
+    <title>Stack Data Sets</title>
+
+    <link rel="stylesheet" href="../css/render.css">
+
+    <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
+
+    <script type="text/javascript">
+
+        function loadJSON(path, success, error) {
+
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        if (success) {
+                            success(JSON.parse(xhr.responseText));
+                        }
+                    } else if (error) {
+                        error(xhr);
+                    }
+                }
+            };
+
+            var nonCachedPath = path + "?t=" + new Date().getTime();
+            xhr.open("GET", nonCachedPath, true);
+            xhr.send();
+        }
+
+        function getSelectedValue(id) {
+            var select = document.getElementById(id);
+            return select.options[select.selectedIndex].value;
+        }
+
+        function getDefinedValue(obj) {
+            var definedValue;
+            if (typeof obj === 'undefined') {
+                definedValue = "";
+            } else {
+                definedValue = obj;
+            }
+            return definedValue;
+        }
+
+        function numberWithCommas(x) {
+            var parts = x.toString().split(".");
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            return parts.join(".");
+        }
+
+        function addStackInfo(stackInfo) {
+
+            var values = [];
+            var version = stackInfo.currentVersion;
+            if (typeof version === 'undefined') {
+                values.push('');
+                values.push('');
+            } else {
+                values.push(getDefinedValue(version.cycleNumber));
+                values.push(getDefinedValue(version.cycleStepNumber));
+            }
+
+            var stats = stackInfo.stats;
+            if (typeof stats === 'undefined') {
+                values.push('');
+                values.push('');
+                values.push('');
+                values.push('');
+                values.push('');
+                values.push('');
+            } else {
+                var bounds = stats.stackBounds;
+                if (typeof bounds === 'undefined') {
+                    values.push('');
+                    values.push('');
+                } else {
+                    values.push(getDefinedValue(bounds.minZ));
+                    values.push(getDefinedValue(bounds.maxZ));
+                }
+                values.push(numberWithCommas(getDefinedValue(stats.sectionCount)));
+                values.push(numberWithCommas(getDefinedValue(stats.nonIntegralSectionCount)));
+                values.push(numberWithCommas(getDefinedValue(stats.tileCount)));
+                values.push(numberWithCommas(getDefinedValue(stats.transformCount)));
+            }
+
+            var baseStackUrl = baseUrl + 'project/' + stackInfo.stackId.project +
+                               '/stack/' + stackInfo.stackId.stack;
+            var linksHtml = '<a target="_blank" href="' + baseStackUrl + '">Metadata</a> ' +
+                            '<a target="_blank" href="' + baseStackUrl + '/bounds">Bounds</a> ' +
+                            '<a target="_blank" href="' + baseStackUrl + '/zValues">Z Values</a>';
+
+            if (stackInfo.state == 'OFFLINE') {
+                linksHtml = '';
+            }
+
+            var infoHtml = '<tr class="' + stackInfo.state + '">\n' +
+                           '  <td class="number">' + values[0] + '</td>\n' +
+                           '  <td class="number">' + values[1] + '</td>\n' +
+                           '  <td>' + stackInfo.stackId.stack + '</td>\n' +
+                           '  <td>' + stackInfo.state + '</td>\n' +
+                           '  <td class="number">' + values[2] + '</td>\n' +
+                           '  <td class="number">' + values[3] + '</td>\n' +
+                           '  <td class="number">' + values[4] + '</td>\n' +
+                           '  <td class="number">' + values[5] + '</td>\n' +
+                           '  <td class="number">' + values[6] + '</td>\n' +
+                           '  <td class="number">' + values[7] + '</td>\n' +
+                           '  <td>' + linksHtml + '</td>\n' +
+                           '</tr>\n';
+
+            $('#stackInfo').find('tr:last').after(infoHtml);
+        }
+
+        function updateStackInfoForProject(projectName) {
+
+            $('#stackInfo').find("tr:gt(0)").remove();
+
+            for (var index = 0; index < stackMetaData.length; index++) {
+                if (stackMetaData[index].stackId.project == projectName) {
+                    addStackInfo(stackMetaData[index]);
+                }
+            }
+        }
+
+        function updateStackMetaData(data) {
+
+            stackMetaData = data;
+
+            // TODO: make owner selection dynamic once appropriate APIs exist
+            var distinctProjectsMap = {};
+            for (var index = 0; index < stackMetaData.length; index++) {
+                distinctProjectsMap[stackMetaData[index].stackId.project] = 1;
+            }
+
+            var distinctProjects = Object.keys(distinctProjectsMap);
+
+            $('#stackCount').text('(1 owner, ' + distinctProjects.length + ' projects, ' + stackMetaData.length + ' stacks)');
+
+            var projectSelect = $('#project');
+            for (index = 0; index < distinctProjects.length; index++) {
+                projectSelect.append($('<option>', { value : distinctProjects[index] }).text(distinctProjects[index]));
+            }
+
+            projectSelect.change(function() {
+                updateStackInfoForProject(getSelectedValue("project"));
+            });
+
+            projectSelect.trigger("change");
+        }
+
+        var baseUrl;
+        var stackMetaData;
+
+        function initPage() {
+            // http://renderer.int.janelia.org:8080/render-ws/view/layer-tiles.html
+            var href = window.location.href;
+            var stopIndex = href.indexOf("/view/stacks.html");
+            baseUrl = href.substring(0, stopIndex) + "/v1/owner/flyTEM/";
+            var stacksUrl = baseUrl + "stacks";
+            loadJSON(stacksUrl,
+                     function(data) { updateStackMetaData(data); },
+                     function(xhr) { console.error(xhr); });
+        }
+
+    </script>
+
+</head>
+
+<body>
+
+<script>
+    $(document).ready(initPage());
+</script>
+
+<div class="m20">
+    <h3>Stack Data Sets <span id="stackCount"></span></h3>
+    <form onsubmit="return false">
+
+        <label for="owner">Owner:</label>
+        <select id="owner" name="owner">
+            <option value="flyTEM">flyTEM</option>
+        </select>
+
+        <br/>
+        <br/>
+
+        <label for="project">Project:</label>
+        <select id="project" name="project">
+        </select>
+
+    </form>
+</div>
+
+<div class="m20">
+    <table id="stackInfo">
+        <tr>
+            <th>Cycle</th>
+            <th>Step</th>
+            <th>Name</th>
+            <th>State</th>
+            <th>First Section</th>
+            <th>Last Section</th>
+            <th>Section Count</th>
+            <th>Non-Integral Section Count</th>
+            <th>Tile Count</th>
+            <th>Shared Transform Count</th>
+            <th>Links</th>
+        </tr>
+    </table>
+</div>
+
+</body>
+</html>

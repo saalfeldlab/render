@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Resolved Tile Spec Collection",
+    "description": "collection of tile specs with all referenced shared transform specs",
+    "properties": {
+        "stackName": {
+            "id": "stackName",
+            "type": "string"
+        },
+        "transformIdToSpecMap": {
+            "type": "object",
+            "patternProperties": {
+                ".*": {
+                    "$ref": "transformSpec.schema.json"
+                }
+            }
+        },
+        "tileIdToSpecMap": {
+            "type": "object",
+            "patternProperties": {
+                ".*": {
+                    "$ref": "tileSpec.schema.json"
+                }
+            }
+        }
+    },
+    "required": [
+        "tileIdToSpecMap"
+    ]
+}

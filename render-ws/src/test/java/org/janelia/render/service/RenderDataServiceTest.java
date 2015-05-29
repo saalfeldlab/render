@@ -1,26 +1,27 @@
 package org.janelia.render.service;
 
+import java.io.File;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+
+import javax.ws.rs.core.PathSegment;
+import javax.ws.rs.core.UriInfo;
+
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.service.dao.RenderDao;
-import org.janelia.render.service.model.stack.StackId;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.test.EmbeddedMongoDb;
 import org.jboss.resteasy.specimpl.UriInfoImpl;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import javax.ws.rs.core.PathSegment;
-import javax.ws.rs.core.UriInfo;
-import java.io.File;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
 
 /**
  * Tests the {@link RenderDataService} class.
@@ -31,15 +32,20 @@ public class RenderDataServiceTest {
 
     private static StackId alignStackId;
     private static EmbeddedMongoDb embeddedMongoDb;
-    private static RenderDao dao;
     private static RenderDataService service;
 
     @BeforeClass
     public static void before() throws Exception {
         alignStackId = new StackId("flyTEM", "fly863", "align");
         embeddedMongoDb = new EmbeddedMongoDb(RenderDao.RENDER_DB_NAME);
-        dao = new RenderDao(embeddedMongoDb.getMongoClient());
+        final RenderDao dao = new RenderDao(embeddedMongoDb.getMongoClient());
         service = new RenderDataService(dao);
+
+        embeddedMongoDb.importCollection(RenderDao.STACK_META_DATA_COLLECTION_NAME,
+                                         new File("src/test/resources/mongodb/admin__stack_meta_data.json"),
+                                         true,
+                                         false,
+                                         true);
 
         embeddedMongoDb.importCollection(alignStackId.getTileCollectionName(),
                                          new File("src/test/resources/mongodb/fly863_align__tile.json"),
@@ -61,6 +67,25 @@ public class RenderDataServiceTest {
     }
 
     @Test
+    public void testGetExternalRenderParameters() throws Exception {
+
+        final RenderParameters renderParameters =
+                service.getExternalRenderParameters(alignStackId.getOwner(),
+                                                    alignStackId.getProject(),
+                                                    alignStackId.getStack(),
+                                                    100000.0,
+                                                    17000.0,
+                                                    2337.0,
+                                                    200,
+                                                    200,
+                                                    1.0);
+
+        Assert.assertNotNull("null parameters returned", renderParameters);
+    }
+
+
+
+    @Test
     public void testGetAndSaveResolvedTiles() throws Exception {
 
         final ResolvedTileSpecCollection resolvedTiles = service.getResolvedTiles(alignStackId.getOwner(),
@@ -69,7 +94,6 @@ public class RenderDataServiceTest {
                                                                                   Z);
 
         validateResolvedTiles("before save", resolvedTiles, 1, 1);
-        validateStackIdCount("before save", alignStackId.getOwner(), 1);
 
         final LeafTransformSpec leafTransformSpecA = new LeafTransformSpec("test_transform_a",
                                                                           null,
@@ -86,14 +110,12 @@ public class RenderDataServiceTest {
                                                 "",
                                                 new ArrayList<PathSegment>());
 
-        service.saveResolvedTiles(testStackId.getOwner(),
-                                  testStackId.getProject(),
-                                  testStackId.getStack(),
-                                  Z,
-                                  uriInfo,
-                                  resolvedTiles);
-
-        validateStackIdCount("after save", testStackId.getOwner(), 2);
+        service.saveResolvedTilesForZ(testStackId.getOwner(),
+                                      testStackId.getProject(),
+                                      testStackId.getStack(),
+                                      Z,
+                                      uriInfo,
+                                      resolvedTiles);
 
         final ResolvedTileSpecCollection resolvedTestTiles = service.getResolvedTiles(testStackId.getOwner(),
                                                                                       testStackId.getProject(),
@@ -113,14 +135,12 @@ public class RenderDataServiceTest {
 
         resolvedTestTiles.addTileSpecToCollection(tileSpecB);
 
-        service.saveResolvedTiles(testStackId.getOwner(),
-                                  testStackId.getProject(),
-                                  testStackId.getStack(),
-                                  Z,
-                                  uriInfo,
-                                  resolvedTestTiles);
-
-        validateStackIdCount("after second save", testStackId.getOwner(), 2);
+        service.saveResolvedTilesForZ(testStackId.getOwner(),
+                                      testStackId.getProject(),
+                                      testStackId.getStack(),
+                                      Z,
+                                      uriInfo,
+                                      resolvedTestTiles);
 
         final ResolvedTileSpecCollection resolvedTest2Tiles = service.getResolvedTiles(testStackId.getOwner(),
                                                                                        testStackId.getProject(),
@@ -148,16 +168,6 @@ public class RenderDataServiceTest {
                              transformSpecs);
         Assert.assertEquals(context + ", invalid number of transform specs",
                             expectedNumberOfTransformSpecs, transformSpecs.size());
-    }
-
-    private void validateStackIdCount(String context,
-                                      String owner,
-                                      int expectedNumberOfStackIds) {
-        final List<StackId> stackIds = dao.getStackIds(owner);
-        Assert.assertNotNull(context + ", stack ids are null",
-                             stackIds);
-        Assert.assertEquals(context + ", invalid number of stack ids",
-                            expectedNumberOfStackIds, stackIds.size());
     }
 
     private static final Double Z = 2337.0;

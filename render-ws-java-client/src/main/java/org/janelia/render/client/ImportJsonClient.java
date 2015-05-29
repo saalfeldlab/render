@@ -35,7 +35,7 @@ public class ImportJsonClient {
         @Parameter(names = "--transformFile", description = "file containing shared JSON transform specs (.json, .gz, or .zip)", required = false)
         private String transformFile;
 
-        @Parameter(description = "list of tile spec files, each file (.json, .gz, or .zip) should contain specs for one section", required = true)
+        @Parameter(description = "list of tile spec files (.json, .gz, or .zip)", required = true)
         private List<String> tileFiles;
     }
 
@@ -81,10 +81,8 @@ public class ImportJsonClient {
             final ProcessTimer timer = new ProcessTimer();
             int tileSpecCount = 0;
 
-            final TileSpec firstTileSpec = tileSpecs.get(0);
             final ResolvedTileSpecCollection resolvedTiles =
                     new ResolvedTileSpecCollection(parameters.stack,
-                                                   firstTileSpec.getZ(),
                                                    transformSpecs,
                                                    tileSpecs);
 
@@ -106,7 +104,7 @@ public class ImportJsonClient {
             LOG.info("importStackData: derived bounding box for {} tiles, elapsedSeconds={}",
                       tileSpecCount, timer.getElapsedSeconds());
 
-            renderDataClient.saveResolvedTiles(resolvedTiles, parameters.stack, firstTileSpec.getZ());
+            renderDataClient.saveResolvedTiles(resolvedTiles, parameters.stack, null);
         }
 
         LOG.info("importStackData: exit, saved tiles and transforms from {}", tileFile);
@@ -148,19 +146,6 @@ public class ImportJsonClient {
 
         try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(path.toString())) {
             list = TileSpec.fromJsonArray(reader);
-        }
-
-        if (list.size() > 0) {
-            final TileSpec firstTileSpec = list.get(0);
-            final Double z = firstTileSpec.getZ();
-            for (TileSpec tileSpec : list) {
-                if (! z.equals(tileSpec.getZ())) {
-                    throw new IllegalArgumentException("inconsistent z values for tile specs loaded from " + path +
-                                                       ", tile " + firstTileSpec.getTileId() + " has a z of " + z +
-                                                       " but tile " + tileSpec.getTileId() + " has a z of " +
-                                                       tileSpec.getZ());
-                }
-            }
         }
 
         LOG.info("loadTileData: exit, loaded {} tile specs", list.size());
