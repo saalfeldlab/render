@@ -404,6 +404,7 @@ public class StackMetaDataService {
         final long estimatedTileBytes = stats.getTileCount() * v5AlignTPSBytesPerTile;
 
         final CollectionSnapshot tileSnapshot = new CollectionSnapshot(stackId.getOwner(),
+                                                                       stackId.getProject(),
                                                                        RenderDao.RENDER_DB_NAME,
                                                                        stackId.getTileCollectionName(),
                                                                        stackMetaData.getCurrentVersionNumber(),
@@ -417,6 +418,7 @@ public class StackMetaDataService {
         final long estimatedTransformBytes = stats.getTransformCount() * v5AlignTPSBytesPerTransform;
 
         final CollectionSnapshot transformSnapshot = new CollectionSnapshot(stackId.getOwner(),
+                                                                            stackId.getProject(),
                                                                             RenderDao.RENDER_DB_NAME,
                                                                             stackId.getTransformCollectionName(),
                                                                             stackMetaData.getCurrentVersionNumber(),

@@ -47,6 +47,7 @@ public class AdminServiceTest {
     public void testSnapshotAPIs() throws Exception {
 
         final CollectionSnapshot snapshot1 = new CollectionSnapshot("testOwner",
+                                                                    "testProject",
                                                                     "db1",
                                                                     "c1",
                                                                     0,

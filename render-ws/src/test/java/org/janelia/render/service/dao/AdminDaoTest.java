@@ -40,6 +40,7 @@ public class AdminDaoTest {
                      0, list);
 
         final CollectionSnapshot snapshot1 = new CollectionSnapshot("testOwner",
+                                                                    "testProject",
                                                                     "db1",
                                                                     "c1",
                                                                     0,
@@ -76,6 +77,7 @@ public class AdminDaoTest {
         dao.saveSnapshot(snapshot1WithPersistence);
 
         final CollectionSnapshot snapshot2 = new CollectionSnapshot(snapshot1.getOwner(),
+                                                                    snapshot1.getProject(),
                                                                     snapshot1.getDatabaseName(),
                                                                     snapshot1.getCollectionName(),
                                                                     2,
@@ -86,6 +88,7 @@ public class AdminDaoTest {
         dao.saveSnapshot(snapshot2);
 
         final CollectionSnapshot snapshot3 = new CollectionSnapshot(snapshot1.getOwner(),
+                                                                    snapshot1.getProject(),
                                                                     snapshot1.getDatabaseName(),
                                                                     "c2",
                                                                     0,
@@ -96,6 +99,7 @@ public class AdminDaoTest {
         dao.saveSnapshot(snapshot3);
 
         final CollectionSnapshot snapshot4 = new CollectionSnapshot("testOwner2",
+                                                                    "testProject",
                                                                     "d3",
                                                                     "c3",
                                                                     0,

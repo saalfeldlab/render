@@ -14,6 +14,7 @@ public class CollectionSnapshot
         implements Serializable {
 
     private final String owner;
+    private final String project;
     private final String databaseName;
     private final String collectionName;
     private final Integer version;
@@ -26,6 +27,7 @@ public class CollectionSnapshot
     private final Long actualBytes;
 
     public CollectionSnapshot(String owner,
+                              String project,
                               String databaseName,
                               String collectionName,
                               Integer version,
@@ -34,6 +36,7 @@ public class CollectionSnapshot
                               String versionNotes,
                               Long estimatedBytes) throws IllegalArgumentException {
         this(owner,
+             project,
              databaseName,
              collectionName,
              version,
@@ -47,6 +50,7 @@ public class CollectionSnapshot
     }
 
     public CollectionSnapshot(String owner,
+                              String project,
                               String databaseName,
                               String collectionName,
                               Integer version,
@@ -58,6 +62,7 @@ public class CollectionSnapshot
                               String fullPath,
                               Long actualBytes) throws IllegalArgumentException {
         this.owner = owner;
+        this.project = project;
         this.databaseName = databaseName;
         this.collectionName = collectionName;
         this.version = version;
@@ -76,6 +81,7 @@ public class CollectionSnapshot
                                                              String fullPath,
                                                              Long actualBytes) {
         return new CollectionSnapshot(this.owner,
+                                      this.project,
                                       this.databaseName,
                                       this.collectionName,
                                       this.version,
@@ -108,6 +114,10 @@ public class CollectionSnapshot
 
     public String getOwner() {
         return owner;
+    }
+
+    public String getProject() {
+        return project;
     }
 
     public String getDatabaseName() {
