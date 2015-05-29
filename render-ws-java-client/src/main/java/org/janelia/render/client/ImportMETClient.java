@@ -101,7 +101,7 @@ public class ImportMETClient {
             sectionData.saveTiles();
         }
 
-        LOG.info("generateStackData: exit, saved tiles and transforms for z value(s) {}", metSectionToDataMap.keySet());
+        LOG.info("generateStackData: exit, saved tiles and transforms for {}", metSectionToDataMap.values());
     }
 
     private void loadMetData(final int[] parameterIndexes,
@@ -177,8 +177,8 @@ public class ImportMETClient {
             throw new IllegalArgumentException("No tile information found in MET file " + path + ".");
         }
 
-        LOG.info("loadMetData: exit, loaded {} lines for z value(s) {}",
-                 lineNumber, metSectionToDataMap.keySet());
+        LOG.info("loadMetData: exit, loaded {} lines for {}",
+                 lineNumber, metSectionToDataMap.values());
     }
 
     private void loadMetV1Data()
@@ -223,6 +223,17 @@ public class ImportMETClient {
             final int capacityForLargeSection = (int) (5000 / 0.75);
             this.tileIdToAlignTransformMap = new HashMap<>(capacityForLargeSection);
             this.updatedTiles = null;
+        }
+
+        public int getUpdatedTileCount() {
+            return updatedTiles == null ? 0 : updatedTiles.getTileCount();
+        }
+
+        @Override
+        public String toString() {
+            return "{z: " + z +
+                   ", updatedTileCount: " + getUpdatedTileCount() +
+                   '}';
         }
 
         public void addTileId(String tileId,
