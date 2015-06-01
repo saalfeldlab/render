@@ -13,6 +13,7 @@ import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
@@ -38,6 +39,7 @@ import org.slf4j.LoggerFactory;
 public class RenderDaoReadOnlyTest {
 
     private static StackId stackId;
+    private static String groupId = "A";
     private static EmbeddedMongoDb embeddedMongoDb;
     private static RenderDao dao;
 
@@ -102,7 +104,7 @@ public class RenderDaoReadOnlyTest {
         final Integer height = 2000;
         final Double scale = 0.5;
 
-        final RenderParameters parameters = dao.getParameters(stackId, x, y, z, width, height, scale);
+        RenderParameters parameters = dao.getParameters(stackId, null, x, y, z, width, height, scale);
 
         Assert.assertNotNull("null parameters retrieved", parameters);
         Assert.assertEquals("invalid width parsed", width.intValue(), parameters.getWidth());
@@ -117,7 +119,7 @@ public class RenderDaoReadOnlyTest {
         }
 
         parameters.initializeDerivedValues();
-        final List<TileSpec> tileSpecs = parameters.getTileSpecs();
+        List<TileSpec> tileSpecs = parameters.getTileSpecs();
         Assert.assertNotNull("null tile specs value after init", tileSpecs);
         Assert.assertEquals("invalid number of tiles after init", 6, tileSpecs.size());
 
@@ -127,6 +129,19 @@ public class RenderDaoReadOnlyTest {
             Assert.assertTrue("tileSpec " + tileSpec.getTileId() + " is not fully resolved",
                               transforms.isFullyResolved());
         }
+
+        parameters = dao.getParameters(stackId, groupId, x, y, z, width, height, scale);
+
+        Assert.assertNotNull("null parameters retrieved for group", parameters);
+        tileSpecs = parameters.getTileSpecs();
+        Assert.assertNotNull("null tile specs returned for group", tileSpecs);
+        Assert.assertEquals("invalid number of tiles for group", 2, tileSpecs.size());
+
+        for (final TileSpec tileSpec : tileSpecs) {
+            Assert.assertEquals("tileSpec " + tileSpec.getTileId() + " has invalid groupId",
+                                groupId, tileSpec.getGroupId());
+        }
+
     }
 
     @Test
@@ -269,6 +284,26 @@ public class RenderDaoReadOnlyTest {
 
         Assert.assertEquals("invalid tileId for second coordinate, second tile",
                             "171", tileCoordinates.getTileId());
+    }
+
+    @Test
+    public void testGetResolvedTiles() throws Exception {
+        final Double z = 3903.0;
+
+        ResolvedTileSpecCollection resolvedTiles = dao.getResolvedTiles(stackId, z);
+        Assert.assertNotNull("null collection retrieved for z query", resolvedTiles);
+        Assert.assertEquals("invalid number of tiles found for z query", 12, resolvedTiles.getTileCount());
+
+        resolvedTiles = dao.getResolvedTiles(stackId, null, null, groupId, null, null, null, null);
+        Assert.assertNotNull("null collection retrieved for groupId query", resolvedTiles);
+        Assert.assertEquals("invalid number of tiles found for groupId query", 3, resolvedTiles.getTileCount());
+
+
+        resolvedTiles = dao.getResolvedTiles(stackId, null, null, groupId, 1300.0, null, null, null);
+        Assert.assertNotNull("null collection retrieved for groupId with minX query", resolvedTiles);
+        Assert.assertEquals("invalid number of tiles found for groupId with minX query", 1, resolvedTiles.getTileCount());
+
+
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDaoReadOnlyTest.class);

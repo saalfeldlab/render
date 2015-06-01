@@ -47,6 +47,7 @@ public class TileSpec implements Serializable {
 
     private String tileId;
     private LayoutData layout;
+    private String groupId;
     private Double z;
     private Double minX;
     private Double minY;
@@ -79,6 +80,15 @@ public class TileSpec implements Serializable {
 
     public void setLayout(final LayoutData layout) {
         this.layout = layout;
+    }
+
+    public String getGroupId() {
+        return groupId;
+    }
+
+    @SuppressWarnings("UnusedDeclaration")
+    public void setGroupId(String groupId) {
+        this.groupId = groupId;
     }
 
     public Double getZ() {
@@ -387,10 +397,6 @@ public class TileSpec implements Serializable {
         return ((transforms != null) && (transforms.size() > 0));
     }
 
-    public int numberOfTransforms() {
-        return (transforms == null) ? 0 : transforms.size();
-    }
-
     public ListTransformSpec getTransforms() {
         return transforms;
     }
@@ -401,21 +407,6 @@ public class TileSpec implements Serializable {
 
     public void addTransformSpecs(final List<TransformSpec> transformSpecs) {
         transforms.addAllSpecs(transformSpecs);
-    }
-
-    public void setTransformSpec(final int index,
-                                 final TransformSpec transformSpec)
-            throws IllegalArgumentException {
-
-        if (index == transforms.size()) {
-            transforms.addSpec(transformSpec);
-        } else if ((index < transforms.size()) && (index >= 0)) {
-            transforms.setSpec(index, transformSpec);
-        } else {
-            throw new IllegalArgumentException("transform index (" + index +
-                                               ") must be between 0 and " +
-                                               transforms.size() + " for tile spec " + tileId);
-        }
     }
 
     public void removeLastTransformSpec() {

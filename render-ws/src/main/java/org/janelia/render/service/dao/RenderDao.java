@@ -69,12 +69,13 @@ public class RenderDao {
     }
 
     /**
-     * @return a render parameters object for the specified stack.
+     * @return a render parameters object for all tiles that match the specified criteria.
      *
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
     public RenderParameters getParameters(final StackId stackId,
+                                          final String groupId,
                                           final Double x,
                                           final Double y,
                                           final Double z,
@@ -93,7 +94,10 @@ public class RenderDao {
 
         final double lowerRightX = x + width;
         final double lowerRightY = y + height;
-        final DBObject tileQuery = getIntersectsBoxQuery(z, x, y, lowerRightX, lowerRightY);
+        final BasicDBObject tileQuery = getIntersectsBoxQuery(z, x, y, lowerRightX, lowerRightY);
+        if (groupId != null) {
+            tileQuery.append("groupId", groupId);
+        }
 
         final RenderParameters renderParameters = new RenderParameters(null, x, y, width, height, scale);
         addResolvedTileSpecs(stackId, tileQuery, renderParameters);
@@ -411,6 +415,40 @@ public class RenderDao {
 
         if (! renderParameters.hasTileSpecs()) {
             throw new IllegalArgumentException("no tile specifications found in " + stackId +" for z=" + z);
+        }
+
+        return new ResolvedTileSpecCollection(stackId.getStack(),
+                                              resolvedIdToSpecMap.values(),
+                                              renderParameters.getTileSpecs());
+    }
+
+    /**
+     * @return a resolved tile spec collection for all tiles that match the specified criteria.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or if the stack cannot be found, or
+     *   if no tile can be found for the specified criteria.
+     */
+    public ResolvedTileSpecCollection getResolvedTiles(final StackId stackId,
+                                                       final Double minZ,
+                                                       final Double maxZ,
+                                                       final String groupId,
+                                                       final Double minX,
+                                                       final Double maxX,
+                                                       final Double minY,
+                                                       final Double maxY)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("stackId", stackId);
+
+        final BasicDBObject query = getGroupQuery(minZ, maxZ, groupId, minX, maxX, minY, maxY);
+        final RenderParameters renderParameters = new RenderParameters();
+        final Map<String, TransformSpec> resolvedIdToSpecMap = addResolvedTileSpecs(stackId,
+                                                                                    query,
+                                                                                    renderParameters);
+
+        if (! renderParameters.hasTileSpecs()) {
+            throw new IllegalArgumentException("no tile specifications found in " + stackId +" for " + query);
         }
 
         return new ResolvedTileSpecCollection(stackId.getStack(),
@@ -1178,10 +1216,15 @@ public class RenderDao {
         try {
             DBObject document;
             TileSpec tileSpec;
+            int count = 0;
             while (cursor.hasNext()) {
+                if (count > 50000) {
+                    throw new IllegalArgumentException("query too broad, over " + count + " tiles match " + tileQuery);
+                }
                 document = cursor.next();
                 tileSpec = TileSpec.fromJson(document.toString());
                 renderParameters.addTileSpec(tileSpec);
+                count++;
             }
         } finally {
             cursor.close();
@@ -1221,6 +1264,48 @@ public class RenderDao {
                 "stackId.owner", stackId.getOwner()).append(
                 "stackId.project", stackId.getProject()).append(
                 "stackId.stack", stackId.getStack());
+    }
+
+    private BasicDBObject getGroupQuery(final Double minZ,
+                                        final Double maxZ,
+                                        final String groupId,
+                                        final Double minX,
+                                        final Double maxX,
+                                        final Double minY,
+                                        final Double maxY)
+            throws IllegalArgumentException {
+
+        final BasicDBObject groupQuery = new BasicDBObject();
+
+        if ((minZ != null) && minZ.equals(maxZ)) {
+            groupQuery.append("z", minZ);
+        } else {
+            if (minZ != null) {
+                groupQuery.append("z", new BasicDBObject(QueryOperators.GTE, minZ));
+            }
+            if (maxZ != null) {
+                groupQuery.append("z", new BasicDBObject(QueryOperators.LTE, maxZ));
+            }
+        }
+
+        if (groupId != null) {
+            groupQuery.append("groupId", groupId);
+        }
+
+        if (minX != null) {
+            groupQuery.append("minX", new BasicDBObject(QueryOperators.GTE, minX));
+        }
+        if (maxX != null) {
+            groupQuery.append("maxX", new BasicDBObject(QueryOperators.LTE, maxX));
+        }
+        if (minY != null) {
+            groupQuery.append("minY", new BasicDBObject(QueryOperators.GTE, minY));
+        }
+        if (maxY != null) {
+            groupQuery.append("maxY", new BasicDBObject(QueryOperators.LTE, maxY));
+        }
+
+        return groupQuery;
     }
 
     private BasicDBList buildBasicDBList(String[] values) {
@@ -1419,6 +1504,12 @@ public class RenderDao {
         ensureIndex(tileCollection,
                     new BasicDBObject("z", 1).append(
                             "minY", 1).append("minX", 1).append("maxY", 1).append("maxX", 1).append("tileId", 1),
+                    BACKGROUND_OPTION);
+
+        // compound index used for group queries
+        ensureIndex(tileCollection,
+                    new BasicDBObject("z", 1).append(
+                            "groupId", 1).append("minY", 1).append("minX", 1).append("maxY", 1).append("maxX", 1),
                     BACKGROUND_OPTION);
 
         LOG.debug("ensureSupplementaryTileIndexes: exit");

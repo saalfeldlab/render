@@ -116,17 +116,9 @@ public class RenderService {
                                           @QueryParam("binaryMask") final Boolean binaryMask) {
 
         LOG.info("renderJpegImageForBox: entry");
-        final StackId stackId = new StackId(owner, project, stack);
-        final RenderParameters renderParameters = renderDataService.getInternalRenderParameters(stackId,
-                                                                                                x,
-                                                                                                y,
-                                                                                                z,
-                                                                                                width,
-                                                                                                height,
-                                                                                                scale);
-        renderParameters.setDoFilter(filter);
-        renderParameters.setBinaryMask(binaryMask);
-
+        final RenderParameters renderParameters =
+                getRenderParametersForGroupBox(owner, project, stack, null,
+                                               x, y, z, width, height, scale, filter, binaryMask);
         return renderJpegImage(renderParameters, true);
     }
 
@@ -146,8 +138,74 @@ public class RenderService {
                                          @QueryParam("binaryMask") final Boolean binaryMask) {
 
         LOG.info("renderPngImageForBox: entry");
+        final RenderParameters renderParameters =
+                getRenderParametersForGroupBox(owner, project, stack, null,
+                                               x, y, z, width, height, scale, filter, binaryMask);
+        return renderPngImage(renderParameters, true);
+    }
+
+    @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
+    @GET
+    @Produces(IMAGE_JPEG_MIME_TYPE)
+    public Response renderJpegImageForGroupBox(@PathParam("owner") final String owner,
+                                          @PathParam("project") final String project,
+                                          @PathParam("stack") final String stack,
+                                          @PathParam("groupId") final String groupId,
+                                          @PathParam("x") final Double x,
+                                          @PathParam("y") final Double y,
+                                          @PathParam("z") final Double z,
+                                          @PathParam("width") final Integer width,
+                                          @PathParam("height") final Integer height,
+                                          @PathParam("scale") final Double scale,
+                                          @QueryParam("filter") final Boolean filter,
+                                          @QueryParam("binaryMask") final Boolean binaryMask) {
+
+        LOG.info("renderJpegImageForGroupBox: entry");
+        final RenderParameters renderParameters =
+                getRenderParametersForGroupBox(owner, project, stack, groupId,
+                                               x, y, z, width, height, scale, filter, binaryMask);
+        return renderJpegImage(renderParameters, true);
+    }
+
+    @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
+    @GET
+    @Produces(IMAGE_PNG_MIME_TYPE)
+    public Response renderPngImageForGroupBox(@PathParam("owner") final String owner,
+                                         @PathParam("project") final String project,
+                                         @PathParam("stack") final String stack,
+                                         @PathParam("groupId") final String groupId,
+                                         @PathParam("x") final Double x,
+                                         @PathParam("y") final Double y,
+                                         @PathParam("z") final Double z,
+                                         @PathParam("width") final Integer width,
+                                         @PathParam("height") final Integer height,
+                                         @PathParam("scale") final Double scale,
+                                         @QueryParam("filter") final Boolean filter,
+                                         @QueryParam("binaryMask") final Boolean binaryMask) {
+
+        LOG.info("renderPngImageForGroupBox: entry");
+        final RenderParameters renderParameters =
+                getRenderParametersForGroupBox(owner, project, stack, groupId,
+                                               x, y, z, width, height, scale, filter, binaryMask);
+        return renderPngImage(renderParameters, true);
+    }
+
+    private RenderParameters getRenderParametersForGroupBox(final String owner,
+                                                            final String project,
+                                                            final String stack,
+                                                            final String groupId,
+                                                            final Double x,
+                                                            final Double y,
+                                                            final Double z,
+                                                            final Integer width,
+                                                            final Integer height,
+                                                            final Double scale,
+                                                            final Boolean filter,
+                                                            final Boolean binaryMask) {
+
         final StackId stackId = new StackId(owner, project, stack);
         final RenderParameters renderParameters = renderDataService.getInternalRenderParameters(stackId,
+                                                                                                groupId,
                                                                                                 x,
                                                                                                 y,
                                                                                                 z,
@@ -157,7 +215,7 @@ public class RenderService {
         renderParameters.setDoFilter(filter);
         renderParameters.setBinaryMask(binaryMask);
 
-        return renderPngImage(renderParameters, true);
+        return renderParameters;
     }
 
     private Response renderJpegImage(final RenderParameters renderParameters,

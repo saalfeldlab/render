@@ -186,6 +186,33 @@ public class RenderDataService {
     }
 
     @Path("project/{project}/stack/{stack}/resolvedTiles")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public ResolvedTileSpecCollection getResolvedTiles(@PathParam("owner") final String owner,
+                                                       @PathParam("project") final String project,
+                                                       @PathParam("stack") final String stack,
+                                                       @QueryParam("minZ") final Double minZ,
+                                                       @QueryParam("maxZ") final Double maxZ,
+                                                       @QueryParam("groupId") final String groupId,
+                                                       @QueryParam("minX") final Double minX,
+                                                       @QueryParam("maxX") final Double maxX,
+                                                       @QueryParam("minY") final Double minY,
+                                                       @QueryParam("maxY") final Double maxY) {
+
+        LOG.info("getResolvedTiles: entry, owner={}, project={}, stack={}, minZ={}, maxZ={}, groupId={}, minX={}, maxX={}, minY={}, maxY={}",
+                 owner, project, stack, minZ, maxZ, groupId, minX, maxX, minY, maxY);
+
+        ResolvedTileSpecCollection resolvedTiles = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            resolvedTiles = renderDao.getResolvedTiles(stackId, minZ, maxZ, groupId, minX, maxX, minY, maxY);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+        return resolvedTiles;
+    }
+
+    @Path("project/{project}/stack/{stack}/resolvedTiles")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     public Response saveResolvedTiles(@PathParam("owner") final String owner,
@@ -391,13 +418,34 @@ public class RenderDataService {
                                                         @PathParam("height") final Integer height,
                                                         @PathParam("scale") final Double scale) {
 
-        LOG.info("getExternalRenderParameters: entry, owner={}, project={}, stack={}, x={}, y={}, z={}, width={}, height={}, scale={}",
-                 owner, project, stack, x, y, z, width, height, scale);
+        return getExternalRenderParameters(owner, project, stack, null, x, y, z, width, height, scale);
+    }
+
+    /**
+     * @return render parameters for specified bounding box with flattened (and therefore resolved)
+     *         transform specs suitable for external use.
+     */
+    @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public RenderParameters getExternalRenderParameters(@PathParam("owner") final String owner,
+                                                        @PathParam("project") final String project,
+                                                        @PathParam("stack") final String stack,
+                                                        @PathParam("groupId") final String groupId,
+                                                        @PathParam("x") final Double x,
+                                                        @PathParam("y") final Double y,
+                                                        @PathParam("z") final Double z,
+                                                        @PathParam("width") final Integer width,
+                                                        @PathParam("height") final Integer height,
+                                                        @PathParam("scale") final Double scale) {
+
+        LOG.info("getExternalRenderParameters: entry, owner={}, project={}, stack={}, groupId={}, x={}, y={}, z={}, width={}, height={}, scale={}",
+                 owner, project, stack, groupId, x, y, z, width, height, scale);
 
         RenderParameters parameters = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            parameters = getInternalRenderParameters(stackId, x, y, z, width, height, scale);
+            parameters = getInternalRenderParameters(stackId, groupId, x, y, z, width, height, scale);
             parameters.flattenTransforms();
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -410,6 +458,7 @@ public class RenderDataService {
      *         transform specs suitable for internal use.
      */
     public RenderParameters getInternalRenderParameters(final StackId stackId,
+                                                        final String groupId,
                                                         final Double x,
                                                         final Double y,
                                                         final Double z,
@@ -417,7 +466,7 @@ public class RenderDataService {
                                                         final Integer height,
                                                         final Double scale) {
 
-        return renderDao.getParameters(stackId, x, y, z, width, height, scale);
+        return renderDao.getParameters(stackId, groupId, x, y, z, width, height, scale);
     }
 
     private Double getLayoutMinValue(final Double minValue,
