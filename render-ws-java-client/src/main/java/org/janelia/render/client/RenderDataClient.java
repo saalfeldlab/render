@@ -38,14 +38,22 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
  *
  * @author Eric Trautman
  */
+@SuppressWarnings("UnusedDeclaration")
 public class RenderDataClient {
 
     private final String baseDataUrl;
     private final String owner;
     private final String project;
 
-    private CloseableHttpClient httpClient;
+    private final CloseableHttpClient httpClient;
 
+    /**
+     * Creates a new client for the specified owner and project.
+     *
+     * @param  baseDataUrl  the base URL string for all requests (e.g. 'http://tem-services:8080/render-ws/v1')
+     * @param  owner        the owner name for all requests.
+     * @param  project      the project name for all requests.
+     */
     public RenderDataClient(final String baseDataUrl,
                             final String owner,
                             final String project) {
@@ -63,8 +71,36 @@ public class RenderDataClient {
                '}';
     }
 
-    public StackMetaData getStackMetaData(String stack)
-            throws IllegalArgumentException, IOException {
+    /**
+     * @return a "likely" unique identifier from the server.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public String getLikelyUniqueId()
+            throws IOException {
+
+        final URI uri = getUri(getOwnerUrlString() + "/likelyUniqueId");
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonResponseHandler<String> responseHandler =
+                new JsonResponseHandler<>(requestContext, String.class);
+
+        LOG.info("getLikelyUniqueId: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
+     * @param  stack  name of stack.
+     *
+     * @return meta data for the specified stack.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public StackMetaData getStackMetaData(final String stack)
+            throws IOException {
 
         final URI uri = getStackUri(stack);
         final HttpGet httpGet = new HttpGet(uri);
@@ -77,9 +113,16 @@ public class RenderDataClient {
         return httpClient.execute(httpGet, responseHandler);
     }
 
-    @SuppressWarnings("UnusedDeclaration")
-    public List<Double> getStackZValues(String stack)
-            throws IllegalArgumentException, IOException {
+    /**
+     * @param  stack  name of stack.
+     *
+     * @return z values for the specified stack.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<Double> getStackZValues(final String stack)
+            throws IOException {
 
         final URI uri = getUri(getStackUrlString(stack) + "/zValues");
         final HttpGet httpGet = new HttpGet(uri);
@@ -93,9 +136,18 @@ public class RenderDataClient {
         return httpClient.execute(httpGet, responseHandler);
     }
 
-    public void saveStackVersion(String stack,
-                                 StackVersion stackVersion)
-            throws IllegalArgumentException, IOException {
+    /**
+     * Saves the specified version data.
+     *
+     * @param  stack         name of stack.
+     * @param  stackVersion  version data to save.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void saveStackVersion(final String stack,
+                                 final StackVersion stackVersion)
+            throws IOException {
 
         final String json = JsonUtils.GSON.toJson(stackVersion);
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
@@ -111,14 +163,24 @@ public class RenderDataClient {
         httpClient.execute(httpPost, responseHandler);
     }
 
-    public void cloneStackVersion(String fromStack,
-                                  String toStack,
-                                  StackVersion toStackVersion)
-            throws IllegalArgumentException, IOException {
+    /**
+     * Clones the specified stack.
+     *
+     * @param  fromStack       source stack to clone.
+     * @param  toStack         new stack to hold cloned data.
+     * @param  toStackVersion  version data for the new stack.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void cloneStackVersion(final String fromStack,
+                                  final String toStack,
+                                  final StackVersion toStackVersion)
+            throws IOException {
 
         final String json = JsonUtils.GSON.toJson(toStackVersion);
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
-        final URI uri = getStackCloneUri(fromStack, toStack);
+        final URI uri = getUri(getStackUrlString(fromStack) + "/cloneTo/" + toStack);
         final String requestContext = "PUT " + uri;
         final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
 
@@ -130,11 +192,20 @@ public class RenderDataClient {
         httpClient.execute(httpPut, responseHandler);
     }
 
-    public void setStackState(String stack,
-                              StackState stackState)
-            throws IllegalArgumentException, IOException {
+    /**
+     * Changes the state of the specified stack.
+     *
+     * @param  stack       stack to change.
+     * @param  stackState  new state for stack.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void setStackState(final String stack,
+                              final StackState stackState)
+            throws IOException {
 
-        final URI uri = getStackStateUri(stack, stackState);
+        final URI uri = getUri(getStackUrlString(stack) + "/state/" + stackState);
         final String requestContext = "PUT " + uri;
         final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
 
@@ -145,9 +216,18 @@ public class RenderDataClient {
         httpClient.execute(httpPut, responseHandler);
     }
 
-    public void deleteStack(String stack,
-                            Double z)
-            throws IllegalArgumentException, IOException {
+    /**
+     * Deletes the specified stack or a section of the specified stack.
+     *
+     * @param  stack  stack to delete.
+     * @param  z      z value for layer to delete (or null to delete all layers).
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void deleteStack(final String stack,
+                            final Double z)
+            throws IOException {
 
         final URI uri;
         if (z == null) {
@@ -165,11 +245,20 @@ public class RenderDataClient {
         httpClient.execute(httpDelete, responseHandler);
     }
 
-    public TileSpec getTile(String stack,
-                            String tileId)
-            throws IllegalArgumentException, IOException {
+    /**
+     * @param  stack   stack containing tile.
+     * @param  tileId  identifies tile.
+     *
+     * @return the tile spec for the specified tile.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public TileSpec getTile(final String stack,
+                            final String tileId)
+            throws IOException {
 
-        final URI uri = getTileUri(stack, tileId);
+        final URI uri = getUri(getStackUrlString(stack) + "/tile/" + tileId);
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final JsonResponseHandler<TileSpec> responseHandler =
@@ -180,11 +269,20 @@ public class RenderDataClient {
         return httpClient.execute(httpGet, responseHandler);
     }
 
-    public Bounds getLayerBounds(String stack,
-                                 Double z)
-            throws IllegalArgumentException, IOException {
+    /**
+     * @param  stack  name of stack.
+     * @param  z      z value for layer.
+     *
+     * @return bounds for the specified layer.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public Bounds getLayerBounds(final String stack,
+                                 final Double z)
+            throws IOException {
 
-        final URI uri = getLayerBoundsUri(stack, z);
+        final URI uri = getUri(getZUrlString(stack, z) + "/bounds");
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final JsonResponseHandler<Bounds> responseHandler =
@@ -195,11 +293,20 @@ public class RenderDataClient {
         return httpClient.execute(httpGet, responseHandler);
     }
 
-    public List<TileBounds> getTileBounds(String stack,
-                                          Double z)
-            throws IllegalArgumentException, IOException {
+    /**
+     * @param  stack  name of stack.
+     * @param  z      z value for layer.
+     *
+     * @return list of tile bounds for the specified layer.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<TileBounds> getTileBounds(final String stack,
+                                          final Double z)
+            throws IOException {
 
-        final URI uri = getTileBoundsUri(stack, z);
+        final URI uri = getUri(getZUrlString(stack, z) + "/tileBounds");
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final Type typeOfT = new TypeToken<List<TileBounds>>(){}.getType();
@@ -211,9 +318,18 @@ public class RenderDataClient {
         return httpClient.execute(httpGet, responseHandler);
     }
 
-    public ResolvedTileSpecCollection getResolvedTiles(String stack,
-                                                       Double z)
-            throws IllegalArgumentException, IOException {
+    /**
+     * @param  stack  name of stack.
+     * @param  z      z value for layer.
+     *
+     * @return the set of resolved tiles and transforms for the specified layer.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public ResolvedTileSpecCollection getResolvedTiles(final String stack,
+                                                       final Double z)
+            throws IOException {
 
         final URI uri = getResolvedTilesUri(stack, z);
         final HttpGet httpGet = new HttpGet(uri);
@@ -226,10 +342,20 @@ public class RenderDataClient {
         return httpClient.execute(httpGet, responseHandler);
     }
 
-    public void saveResolvedTiles(ResolvedTileSpecCollection resolvedTiles,
-                                  String stack,
-                                  Double z)
-            throws IllegalArgumentException, IOException {
+    /**
+     * Saves the specified collection.
+     *
+     * @param  resolvedTiles  collection of tile and transform specs to save.
+     * @param  stack          name of stack.
+     * @param  z              optional z value for all tiles; specify null if tiles have differing z values.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void saveResolvedTiles(final ResolvedTileSpecCollection resolvedTiles,
+                                  final String stack,
+                                  final Double z)
+            throws IOException {
 
         final String json = JsonUtils.GSON.toJson(resolvedTiles);
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
@@ -245,12 +371,20 @@ public class RenderDataClient {
         httpClient.execute(httpPut, responseHandler);
     }
 
-    public void saveMatches(List<CanvasMatches> canvasMatches)
-            throws IllegalArgumentException, IOException {
+    /**
+     * Saves the specified matches.
+     *
+     * @param  canvasMatches  matches to save.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void saveMatches(final List<CanvasMatches> canvasMatches)
+            throws IOException {
 
         final String json = JsonUtils.GSON.toJson(canvasMatches);
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
-        final URI uri = getMatchesUri();
+        final URI uri = getUri(getOwnerUrlString() + "/matchCollection/" + project + "/matches");
         final String requestContext = "PUT " + uri;
         final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
 
@@ -262,14 +396,37 @@ public class RenderDataClient {
         httpClient.execute(httpPut, responseHandler);
     }
 
-    public List<List<TileCoordinates>> getTileIdsForCoordinates(List<TileCoordinates> worldCoordinates,
-                                                                String stack,
-                                                                Double z)
+    /**
+     * Sends the specified world coordinates to the server to be mapped to tiles.
+     * Because tiles overlap, each coordinate can potentially be mapped to multiple tiles.
+     * The result is a list of coordinate lists for all mapped tiles.
+     *
+     * For example,
+     * <pre>
+     *     Given:                 Result could be:
+     *     [                      [
+     *       { world: [1,2] },        [ { tileId: A, world: [1,2] }, { tileId: B, world: [1,2] } ],
+     *       { world: [3,4] }         [ { tileId: C, world: [3,4] } ]
+     *     ]                      ]
+     * </pre>
+     *
+     * @param  worldCoordinates  world coordinates to be mapped to tiles.
+     * @param  stack             name of stack.
+     * @param  z                 z value for layer.
+     *
+     * @return list of coordinate lists.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<List<TileCoordinates>> getTileIdsForCoordinates(final List<TileCoordinates> worldCoordinates,
+                                                                final String stack,
+                                                                final Double z)
             throws IOException {
 
         final String worldCoordinatesJson = JsonUtils.GSON.toJson(worldCoordinates);
         final StringEntity stringEntity = new StringEntity(worldCoordinatesJson, ContentType.APPLICATION_JSON);
-        final URI uri = getTileIdsForCoordinatesUri(stack, z);
+        final URI uri = getUri(getZUrlString(stack, z) + "/tileIdsForCoordinates");
         final String requestContext = "PUT " + uri;
 
         final HttpPut httpPut = new HttpPut(uri);
@@ -284,15 +441,17 @@ public class RenderDataClient {
         return httpClient.execute(httpPut, responseHandler);
     }
 
-    public String getStackUrlString(final String stack) {
-        return baseDataUrl + "/owner/" + owner + "/project/" + project + "/stack/" + stack;
-    }
-
-    public String getZUrlString(final String stack,
-                                final Double z) {
-        return getStackUrlString(stack) + "/z/" + z;
-    }
-
+    /**
+     * @param  stack   name of stack.
+     * @param  x       x value for box.
+     * @param  y       y value for box.
+     * @param  z       z value for box.
+     * @param  width   width of box.
+     * @param  height  height of box.
+     * @param  scale   scale of target image.
+     *
+     * @return a render parameters URL string composed from the specified values.
+     */
     public String getRenderParametersUrlString(final String stack,
                                                final double x,
                                                final double y,
@@ -305,28 +464,28 @@ public class RenderDataClient {
                "/render-parameters";
     }
 
-    private URI getStackUri(final String stack) {
+    private String getOwnerUrlString() {
+        return baseDataUrl + "/owner/" + owner;
+    }
+
+    private String getStackUrlString(final String stack) {
+        return getOwnerUrlString() + "/project/" + project + "/stack/" + stack;
+    }
+
+    private String getZUrlString(final String stack,
+                                 final Double z) {
+        return getStackUrlString(stack) + "/z/" + z;
+    }
+
+    private URI getStackUri(final String stack)
+            throws IOException {
         return getUri(getStackUrlString(stack));
     }
 
-    private URI getStackCloneUri(final String fromStack,
-                                 final String toStack) {
-        return getUri(getStackUrlString(fromStack) + "/cloneTo/" + toStack);
-    }
-
-    private URI getStackStateUri(final String stack,
-                                 final StackState stackState) {
-        return getUri(getStackUrlString(stack) + "/state/" + stackState);
-    }
-
-    private URI getTileUri(final String stack,
-                           final String tileId) {
-        return getUri(getStackUrlString(stack) + "/tile/" + tileId);
-    }
-
-    private URI getResolvedTilesUri(String stack,
-                                    Double z) {
-        String baseUrlString;
+    private URI getResolvedTilesUri(final String stack,
+                                    final Double z)
+            throws IOException {
+        final String baseUrlString;
         if (z == null) {
             baseUrlString = getStackUrlString(stack);
         } else {
@@ -335,31 +494,13 @@ public class RenderDataClient {
         return getUri(baseUrlString + "/resolvedTiles");
     }
 
-    private URI getLayerBoundsUri(String stack,
-                                  Double z) {
-        return getUri(getZUrlString(stack, z) + "/bounds");
-    }
-
-    private URI getTileBoundsUri(String stack,
-                                 Double z) {
-        return getUri(getZUrlString(stack, z) + "/tileBounds");
-    }
-
-    private URI getTileIdsForCoordinatesUri(String stack,
-                                            Double z) {
-        return getUri(getZUrlString(stack, z) + "/tileIdsForCoordinates");
-    }
-
-    public URI getMatchesUri() {
-        return getUri(baseDataUrl + "/owner/" + owner + "/matchCollection/" + project + "/matches");
-    }
-
-    private URI getUri(String forString) throws IllegalArgumentException {
+    private URI getUri(final String forString)
+            throws IOException {
         final URI uri;
         try {
             uri = new URI(forString);
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("failed to create URI for '" + forString + "'", e);
+        } catch (final URISyntaxException e) {
+            throw new IOException("failed to create URI for '" + forString + "'", e);
         }
         return uri;
     }
