@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory;
 public class RenderDaoReadOnlyTest {
 
     private static StackId stackId;
-    private static String groupId = "A";
     private static EmbeddedMongoDb embeddedMongoDb;
     private static RenderDao dao;
 
@@ -213,7 +212,7 @@ public class RenderDaoReadOnlyTest {
 
         final Double z = 3903.0;
 
-        Bounds bounds = dao.getLayerBounds(stackId, z);
+        final Bounds bounds = dao.getLayerBounds(stackId, z);
 
         Assert.assertNotNull("null layer bounds retrieved", bounds);
         Assert.assertEquals("invalid layer minX", expectedMinX, bounds.getMinX(), BOUNDS_DELTA);
@@ -299,7 +298,7 @@ public class RenderDaoReadOnlyTest {
         Assert.assertEquals("invalid number of tiles found for groupId query", 3, resolvedTiles.getTileCount());
 
 
-        resolvedTiles = dao.getResolvedTiles(stackId, null, null, groupId, 1300.0, null, null, null);
+        resolvedTiles = dao.getResolvedTiles(stackId, null, null, groupId, 3950.0, null, null, null);
         Assert.assertNotNull("null collection retrieved for groupId with minX query", resolvedTiles);
         Assert.assertEquals("invalid number of tiles found for groupId with minX query", 1, resolvedTiles.getTileCount());
 
@@ -308,4 +307,5 @@ public class RenderDaoReadOnlyTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDaoReadOnlyTest.class);
     private static final Double BOUNDS_DELTA = 0.1;
+    private static final String groupId = "A";
 }

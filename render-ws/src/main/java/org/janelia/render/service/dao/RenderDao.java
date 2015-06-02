@@ -552,7 +552,7 @@ public class RenderDao {
 
         final WriteResult result = tileCollection.update(query, tileSpecObject, true, false);
 
-        String action;
+        final String action;
         if (result.isUpdateOfExisting()) {
             action = "update";
         } else {
@@ -630,7 +630,7 @@ public class RenderDao {
 
         final WriteResult result = transformCollection.update(query, transformSpecObject, true, false);
 
-        String action;
+        final String action;
         if (result.isUpdateOfExisting()) {
             action = "update";
         } else {
@@ -679,7 +679,7 @@ public class RenderDao {
 
         validateRequiredParameter("owner", owner);
 
-        List<StackMetaData> list = new ArrayList<>();
+        final List<StackMetaData> list = new ArrayList<>();
 
         final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
         final BasicDBObject query = new BasicDBObject("stackId.owner", owner);
@@ -742,7 +742,7 @@ public class RenderDao {
 
         final WriteResult result = stackMetaDataCollection.update(query, stackMetaDataObject, true, false);
 
-        String action;
+        final String action;
         if (result.isUpdateOfExisting()) {
             action = "update";
         } else {
@@ -777,7 +777,7 @@ public class RenderDao {
 
         long nonIntegralSectionCount = 0;
         double truncatedZ;
-        for (Double z : zValues) {
+        for (final Double z : zValues) {
             truncatedZ = (double) z.intValue();
             if (z > truncatedZ) {
                 nonIntegralSectionCount++;
@@ -862,7 +862,7 @@ public class RenderDao {
         final AggregationOutput aggregationOutput = tileCollection.aggregate(pipeline);
 
         StackStats stats = null;
-        for (DBObject result : aggregationOutput.results()) {
+        for (final DBObject result : aggregationOutput.results()) {
 
             if (stats != null) {
                 throw new IllegalStateException("multiple aggregation results returned for " + pipeline);
@@ -906,7 +906,7 @@ public class RenderDao {
         final DBObject stackMetaDataObject = (DBObject) JSON.parse(stackMetaData.toJson());
         final WriteResult result = stackMetaDataCollection.update(query, stackMetaDataObject, true, false);
 
-        String action;
+        final String action;
         if (result.isUpdateOfExisting()) {
             action = "update";
         } else {
@@ -1090,7 +1090,7 @@ public class RenderDao {
         // EXAMPLE:   find({"z": {"$gte": 4370.0, "$lte": 4370.0}}, {"tileId": 1, "z": 1, "minX": 1, "minY": 1, "layout": 1, "mipmapLevels": 1}).sort({"z": 1, "minY": 1, "minX": 1})
         // INDEX:     z_1_minY_1_minX_1_maxY_1_maxX_1_tileId_1
 
-        BasicDBObject tileQuery;
+        final BasicDBObject tileQuery;
         if (zFilter == null) {
             tileQuery = new BasicDBObject();
         } else {
@@ -1257,7 +1257,7 @@ public class RenderDao {
                 "maxY", gte(y));
     }
 
-    private BasicDBObject getStackIdQuery(StackId stackId) {
+    private BasicDBObject getStackIdQuery(final StackId stackId) {
         return new BasicDBObject(
                 "stackId.owner", stackId.getOwner()).append(
                 "stackId.project", stackId.getProject()).append(
@@ -1291,22 +1291,22 @@ public class RenderDao {
         }
 
         if (minX != null) {
-            groupQuery.append("minX", new BasicDBObject(QueryOperators.GTE, minX));
+            groupQuery.append("maxX", new BasicDBObject(QueryOperators.GTE, minX));
         }
         if (maxX != null) {
-            groupQuery.append("maxX", new BasicDBObject(QueryOperators.LTE, maxX));
+            groupQuery.append("minX", new BasicDBObject(QueryOperators.LTE, maxX));
         }
         if (minY != null) {
-            groupQuery.append("minY", new BasicDBObject(QueryOperators.GTE, minY));
+            groupQuery.append("maxY", new BasicDBObject(QueryOperators.GTE, minY));
         }
         if (maxY != null) {
-            groupQuery.append("maxY", new BasicDBObject(QueryOperators.LTE, maxY));
+            groupQuery.append("minY", new BasicDBObject(QueryOperators.LTE, maxY));
         }
 
         return groupQuery;
     }
 
-    private BasicDBList buildBasicDBList(String[] values) {
+    private BasicDBList buildBasicDBList(final String[] values) {
         final BasicDBList list = new BasicDBList();
         Collections.addAll(list, values);
         return list;
@@ -1368,7 +1368,7 @@ public class RenderDao {
         final DBCursor cursor = tileCollection.find(query, tileKeys);
         cursor.sort(orderBy).limit(1);
         try {
-            DBObject document;
+            final DBObject document;
             if (cursor.hasNext()) {
                 document = cursor.next();
                 bound = (Double) document.get(boundKey);
@@ -1388,7 +1388,7 @@ public class RenderDao {
             throws IllegalStateException {
 
         final long fromCount = fromCollection.count();
-        long toCount;
+        final long toCount;
         final String fromFullName = fromCollection.getFullName();
         final String toFullName = toCollection.getFullName();
 
