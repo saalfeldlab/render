@@ -84,8 +84,7 @@ public class RenderDataClient {
         final URI uri = getUri(getOwnerUrlString() + "/likelyUniqueId");
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final JsonResponseHandler<String> responseHandler =
-                new JsonResponseHandler<>(requestContext, String.class);
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
 
         LOG.info("getLikelyUniqueId: submitting {}", requestContext);
 

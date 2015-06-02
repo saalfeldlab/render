@@ -62,7 +62,7 @@ public class StackMetaDataService {
 
     @Path("likelyUniqueId")
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.TEXT_PLAIN)
     public String getUniqueId() {
         final ObjectId objectId = new ObjectId();
         return objectId.toString();
@@ -77,7 +77,7 @@ public class StackMetaDataService {
 
         final List<StackMetaData> stackMetaDataList = getStackMetaDataListForOwner(owner);
         final List<StackId> list = new ArrayList<>(stackMetaDataList.size());
-        for (StackMetaData stackMetaData : stackMetaDataList) {
+        for (final StackMetaData stackMetaData : stackMetaDataList) {
             list.add(stackMetaData.getStackId());
         }
 
@@ -445,9 +445,9 @@ public class StackMetaDataService {
         LOG.debug("unRegisterSnapshots: exit, {}", stackId);
     }
 
-    private void removeUnsavedSnapshot(String owner,
-                                    String collectionName,
-                                    Integer versionNumber) {
+    private void removeUnsavedSnapshot(final String owner,
+                                    final String collectionName,
+                                    final Integer versionNumber) {
 
         final CollectionSnapshot snapshot = adminDao.getSnapshot(owner,
                                                                  RenderDao.RENDER_DB_NAME,
