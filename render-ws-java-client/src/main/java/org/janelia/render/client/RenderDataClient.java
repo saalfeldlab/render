@@ -12,6 +12,7 @@ import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -38,7 +39,6 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
  *
  * @author Eric Trautman
  */
-@SuppressWarnings("UnusedDeclaration")
 public class RenderDataClient {
 
     private final String baseDataUrl;
@@ -77,6 +77,7 @@ public class RenderDataClient {
      * @throws IOException
      *   if the request fails for any reason.
      */
+    @SuppressWarnings("UnusedDeclaration")
     public String getLikelyUniqueId()
             throws IOException {
 
@@ -121,6 +122,7 @@ public class RenderDataClient {
      * @throws IOException
      *   if the request fails for any reason.
      */
+    @SuppressWarnings("UnusedDeclaration")
     public List<Double> getStackZValues(final String stack)
             throws IOException {
 
@@ -343,6 +345,51 @@ public class RenderDataClient {
     }
 
     /**
+     * @param  stack    name of stack.
+     * @param  minZ     minimum z value for all tiles (or null for no minimum).
+     * @param  maxZ     maximum z value for all tiles (or null for no maximum).
+     * @param  groupId  group id for all tiles (or null).
+     * @param  minX     minimum x value for all tiles (or null for no minimum).
+     * @param  maxX     maximum x value for all tiles (or null for no maximum).
+     * @param  minY     minimum y value for all tiles (or null for no minimum).
+     * @param  maxY     maximum y value for all tiles (or null for no maximum).
+     *
+     * @return the set of resolved tiles and transforms that match the specified criteria.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public ResolvedTileSpecCollection getResolvedTiles(final String stack,
+                                                       final Double minZ,
+                                                       final Double maxZ,
+                                                       final String groupId,
+                                                       final Double minX,
+                                                       final Double maxX,
+                                                       final Double minY,
+                                                       final Double maxY)
+            throws IOException {
+
+        final URIBuilder uriBuilder = new URIBuilder(getResolvedTilesUri(stack, null));
+        addParameterIfDefined("minZ", minZ, uriBuilder);
+        addParameterIfDefined("maxZ", maxZ, uriBuilder);
+        addParameterIfDefined("groupId", groupId, uriBuilder);
+        addParameterIfDefined("minX", minX, uriBuilder);
+        addParameterIfDefined("maxX", maxX, uriBuilder);
+        addParameterIfDefined("minY", minY, uriBuilder);
+        addParameterIfDefined("maxY", maxY, uriBuilder);
+
+        final URI uri = getUri(uriBuilder);
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonResponseHandler<ResolvedTileSpecCollection> responseHandler =
+                new JsonResponseHandler<>(requestContext, ResolvedTileSpecCollection.class);
+
+        LOG.info("getResolvedTiles: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
      * Saves the specified collection.
      *
      * @param  resolvedTiles  collection of tile and transform specs to save.
@@ -503,6 +550,25 @@ public class RenderDataClient {
             throw new IOException("failed to create URI for '" + forString + "'", e);
         }
         return uri;
+    }
+
+    private URI getUri(final URIBuilder uriBuilder)
+            throws IOException {
+        final URI uri;
+        try {
+            uri = uriBuilder.build();
+        } catch (final URISyntaxException e) {
+            throw new IOException("failed to create URI for '" + uriBuilder + "'", e);
+        }
+        return uri;
+    }
+
+    private void addParameterIfDefined(final String name,
+                                       final Object value,
+                                       final URIBuilder uriBuilder) {
+        if (value != null) {
+            uriBuilder.addParameter(name, String.valueOf(value));
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDataClient.class);
