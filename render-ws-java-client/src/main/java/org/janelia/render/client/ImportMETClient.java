@@ -21,6 +21,7 @@ import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.validator.TemTileSpecValidator;
 import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +75,7 @@ public class ImportMETClient {
 
     private final RenderDataClient renderDataClient;
 
-    private Map<String, SectionData> metSectionToDataMap;
+    private final Map<String, SectionData> metSectionToDataMap;
 
     public ImportMETClient(final Parameters parameters) {
         this.parameters = parameters;
@@ -92,12 +93,12 @@ public class ImportMETClient {
             loadMetV1Data();
         }
 
-        for (SectionData sectionData : metSectionToDataMap.values()) {
+        for (final SectionData sectionData : metSectionToDataMap.values()) {
             sectionData.updateTiles();
         }
 
         // only save updated data if all updates completed successfully
-        for (SectionData sectionData : metSectionToDataMap.values()) {
+        for (final SectionData sectionData : metSectionToDataMap.values()) {
             sectionData.saveTiles();
         }
 
@@ -124,7 +125,7 @@ public class ImportMETClient {
         String section;
         String tileId;
         SectionData sectionData;
-        StringBuilder modelData = new StringBuilder(128);
+        final StringBuilder modelData = new StringBuilder(128);
         String modelDataString;
         while ((line = reader.readLine()) != null) {
 
@@ -162,7 +163,7 @@ public class ImportMETClient {
 
                 try {
                     transformModel.init(modelDataString);
-                } catch (Exception e) {
+                } catch (final Exception e) {
                     throw new IllegalArgumentException("Failed to parse transform data from line " + lineNumber +
                                                        " of MET file " + path + ".  Invalid data string is '" +
                                                        modelDataString + "'.", e);
@@ -211,13 +212,13 @@ public class ImportMETClient {
 
     private class SectionData {
 
-        private Path path;
-        private Double z;
-        private Map<String, TransformSpec> tileIdToAlignTransformMap;
+        private final Path path;
+        private final Double z;
+        private final Map<String, TransformSpec> tileIdToAlignTransformMap;
         private ResolvedTileSpecCollection updatedTiles;
 
-        private SectionData(Path path,
-                            Double z) {
+        private SectionData(final Path path,
+                            final Double z) {
             this.path = path;
             this.z = z;
             final int capacityForLargeSection = (int) (5000 / 0.75);
@@ -236,10 +237,10 @@ public class ImportMETClient {
                    '}';
         }
 
-        public void addTileId(String tileId,
-                              int lineNumber,
-                              String modelClassName,
-                              String modelDataString) {
+        public void addTileId(final String tileId,
+                              final int lineNumber,
+                              final String modelClassName,
+                              final String modelDataString) {
 
             if (tileIdToAlignTransformMap.containsKey(tileId)) {
                 throw new IllegalArgumentException("Tile ID " + tileId + " is listed more than once in MET file " +
@@ -256,6 +257,9 @@ public class ImportMETClient {
             LOG.info("updateTiles: entry, z={}", z);
 
             updatedTiles = renderDataClient.getResolvedTiles(parameters.acquireStack, z);
+
+            //
+            updatedTiles.setTileSpecValidator(new TemTileSpecValidator());
 
             if (!updatedTiles.hasTileSpecs()) {
                 throw new IllegalArgumentException(updatedTiles + " does not have any tiles");
@@ -277,7 +281,7 @@ public class ImportMETClient {
             int tileSpecCount = 0;
             TransformSpec alignTransform;
             TileSpec tileSpec;
-            for (String tileId : tileIdToAlignTransformMap.keySet()) {
+            for (final String tileId : tileIdToAlignTransformMap.keySet()) {
                 alignTransform = tileIdToAlignTransformMap.get(tileId);
 
                 if (parameters.replaceAll) {

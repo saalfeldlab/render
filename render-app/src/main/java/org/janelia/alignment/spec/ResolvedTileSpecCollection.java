@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,56 +21,125 @@ import org.slf4j.LoggerFactory;
  */
 public class ResolvedTileSpecCollection {
 
-    private Map<String, TransformSpec> transformIdToSpecMap;
-    private Map<String, TileSpec> tileIdToSpecMap;
+    private final Map<String, TransformSpec> transformIdToSpecMap;
+    private final Map<String, TileSpec> tileIdToSpecMap;
+
+    private transient TileSpecValidator tileSpecValidator;
 
     @SuppressWarnings("UnusedDeclaration")
     public ResolvedTileSpecCollection() {
         this(new ArrayList<TransformSpec>(), new ArrayList<TileSpec>());
     }
 
+    /**
+     * Creates a collection containing the provided transform and tile specs.
+     *
+     * @param  transformSpecs  shared (referenced) transform specifications.
+     * @param  tileSpecs       tile specifications.
+     *
+     * @throws IllegalArgumentException
+     *   if any of the tile specifications reference an unknown transform specification.
+     */
     public ResolvedTileSpecCollection(final Collection<TransformSpec> transformSpecs,
-                                      final Collection<TileSpec> tileSpecs) {
+                                      final Collection<TileSpec> tileSpecs)
+            throws IllegalArgumentException {
 
         this.transformIdToSpecMap = new HashMap<>(transformSpecs.size() * 2);
         this.tileIdToSpecMap = new HashMap<>(tileSpecs.size() * 2);
+        this.tileSpecValidator = null;
 
-        for (TransformSpec transformSpec : transformSpecs) {
+        for (final TransformSpec transformSpec : transformSpecs) {
             addTransformSpecToCollection(transformSpec);
         }
 
-        for (TileSpec tileSpec : tileSpecs) {
+        for (final TileSpec tileSpec : tileSpecs) {
             addTileSpecToCollection(tileSpec);
         }
     }
 
-    public TileSpec getTileSpec(String tileId) {
+    /**
+     * Sets the tile spec validator for this collection (a null value disables validation).
+     * Any tile spec identified as invalid by this validator will be removed / filtered from the collection.
+     *
+     * @param  tileSpecValidator  validator to use for all tile specs.
+     */
+    public void setTileSpecValidator(final TileSpecValidator tileSpecValidator) {
+        this.tileSpecValidator = tileSpecValidator;
+    }
+
+    /**
+     * @param  tileId  identifier for the desired tile.
+     *
+     * @return the tile specification with the specified id (or null if it does not exist).
+     */
+    public TileSpec getTileSpec(final String tileId) {
         return tileIdToSpecMap.get(tileId);
     }
 
+    /**
+     * @return the set of resolved tile specifications in this collection.
+     *
+     * @throws IllegalArgumentException
+     *   if any of the tile specifications reference an unknown transform specification.
+     */
     public Collection<TileSpec> getTileSpecs()
-            throws IllegalStateException {
-        resolveTileSpecs();
+            throws IllegalArgumentException {
+        resolveTileSpecs(); // this needs to be done here for collections deserialized from JSON
         return tileIdToSpecMap.values();
     }
 
-    public void addTileSpecToCollection(TileSpec tileSpec)
-            throws IllegalStateException {
+    /**
+     * Adds a tile specification to this collection and verifies that
+     * any referenced transforms already exist in this collection.
+     *
+     * @param  tileSpec  spec to add.
+     *
+     * @throws IllegalArgumentException
+     *   if the tile specification references an unknown transform specification.
+     */
+    public void addTileSpecToCollection(final TileSpec tileSpec)
+            throws IllegalArgumentException {
         resolveTileSpec(tileSpec);
         tileIdToSpecMap.put(tileSpec.getTileId(), tileSpec);
     }
 
+    /**
+     * @return the set of shared transform specifications in this collection.
+     */
     public Collection<TransformSpec> getTransformSpecs() {
         return transformIdToSpecMap.values();
     }
 
-    public void addTransformSpecToCollection(TransformSpec transformSpec) {
+    /**
+     * Adds a transform specification to this collection's set of shared transformations.
+     *
+     * @param  transformSpec  spec to add.
+     */
+    public void addTransformSpecToCollection(final TransformSpec transformSpec) {
         transformIdToSpecMap.put(transformSpec.getId(), transformSpec);
     }
 
-    public void addTransformSpecToTile(String tileId,
-                                       TransformSpec transformSpec,
-                                       boolean replaceLast) throws IllegalArgumentException {
+    /**
+     * Adds a transform specification to the specified tile.
+     *
+     * The tile's bounding box is recalculated after the new transform is applied.
+     *
+     * If this collection has a tile spec validator that determines the spec is invalid
+     * (after applying the transform), the spec will be removed from the collection.
+     *
+     * @param  tileId         identifies the tile to which the transform should be added.
+     *
+     * @param  transformSpec  the transform to add.
+     *
+     * @param  replaceLast    if true, the specified transform will replace the tile's last transform;
+     *                        otherwise, the specified transform will simply be appended.
+     *
+     * @throws IllegalArgumentException
+     *   if the specified tile cannot be found or the specified transform cannot be fully resolved.
+     */
+    public void addTransformSpecToTile(final String tileId,
+                                       final TransformSpec transformSpec,
+                                       final boolean replaceLast) throws IllegalArgumentException {
 
         final TileSpec tileSpec = tileIdToSpecMap.get(tileId);
 
@@ -97,10 +167,26 @@ public class ResolvedTileSpecCollection {
 
         tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
 
-        removeTileIfInvalid(tileSpec);
+        if (tileSpecValidator != null) {
+            removeTileIfInvalid(tileSpec);
+        }
     }
 
-    public void addReferenceTransformToAllTiles(String transformId)
+    /**
+     * Adds a reference to the specified transform to all tiles in this collection.
+     *
+     * Each tile's bounding box is recalculated after the new transform is applied
+     * (so this can potentially be a long running operation).
+     *
+     * If this collection has a tile spec validator that determines one or more tile specs are invalid
+     * (after applying the transform), those tile specs will be removed from the collection.
+     *
+     * @param  transformId         identifies the transform to be applied to all tiles.
+     *
+     * @throws IllegalArgumentException
+     *   if the specified transform cannot be found.
+     */
+    public void addReferenceTransformToAllTiles(final String transformId)
             throws IllegalArgumentException {
 
         final TransformSpec transformSpec = transformIdToSpecMap.get(transformId);
@@ -112,7 +198,7 @@ public class ResolvedTileSpecCollection {
 
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
-        for (String tileId : tileIdToSpecMap.keySet()) {
+        for (final String tileId : tileIdToSpecMap.keySet()) {
             addTransformSpecToTile(tileId, referenceTransformSpec, false);
             tileSpecCount++;
             if (timer.hasIntervalPassed()) {
@@ -125,21 +211,35 @@ public class ResolvedTileSpecCollection {
                  tileSpecCount, timer.getElapsedSeconds());
     }
 
-    public void verifyAllTileSpecsHaveZValue(double expectedZ) {
+    /**
+     * Verifies that all tile specs in this collection have the specified z value.
+     *
+     * @param  expectedZ  the expected z value for all tiles.
+     *
+     * @throws IllegalArgumentException
+     *   if the z value for any tile is null or does not match the expected z value.
+     */
+    public void verifyAllTileSpecsHaveZValue(final double expectedZ)
+            throws IllegalArgumentException {
         Double actualZ;
-        for (TileSpec tileSpec : tileIdToSpecMap.values()) {
+        for (final TileSpec tileSpec : tileIdToSpecMap.values()) {
             actualZ = tileSpec.getZ();
             if (actualZ == null) {
-                throw new IllegalStateException(getBadTileZValueMessage(expectedZ, tileSpec));
+                throw new IllegalArgumentException(getBadTileZValueMessage(expectedZ, tileSpec));
             } else {
                 if (Double.compare(expectedZ, actualZ) != 0) {
-                    throw new IllegalStateException(getBadTileZValueMessage(expectedZ, tileSpec));
+                    throw new IllegalArgumentException(getBadTileZValueMessage(expectedZ, tileSpec));
                 }
             }
         }
     }
 
-    public void filterSpecs(Set<String> tileIdsToKeep) {
+    /**
+     * Removes any tile specs not identified in the provided set from this collection.
+     *
+     * @param  tileIdsToKeep  identifies which tile specs should be kept.
+     */
+    public void filterSpecs(final Set<String> tileIdsToKeep) {
         final Iterator<Map.Entry<String, TileSpec>> i = tileIdToSpecMap.entrySet().iterator();
         Map.Entry<String, TileSpec> entry;
         while (i.hasNext()) {
@@ -152,21 +252,36 @@ public class ResolvedTileSpecCollection {
         // TODO: remove any unreferenced transforms
     }
 
+    /**
+     * @return the number opf transform specs in this collection.
+     */
     public int getTransformCount() {
         return transformIdToSpecMap.size();
     }
 
+    /**
+     * @return the number opf tile specs in this collection.
+     */
     public int getTileCount() {
         return tileIdToSpecMap.size();
     }
 
+    /**
+     * @return true if this collection has at least one tile spec; otherwise false.
+     */
     public boolean hasTileSpecs() {
         return tileIdToSpecMap.size() > 0;
     }
 
+    /**
+     * Resolves referenced transform specs for all tile specs in this collection.
+     *
+     * @throws IllegalArgumentException
+     *   if a transform spec reference cannot be resolved.
+     */
     public void resolveTileSpecs()
-            throws IllegalStateException {
-        for (TileSpec tileSpec : tileIdToSpecMap.values()) {
+            throws IllegalArgumentException {
+        for (final TileSpec tileSpec : tileIdToSpecMap.values()) {
             resolveTileSpec(tileSpec);
         }
     }
@@ -178,58 +293,31 @@ public class ResolvedTileSpecCollection {
                '}';
     }
 
-    private String getBadTileZValueMessage(double expectedZ,
-                                           TileSpec tileSpec) {
+    private String getBadTileZValueMessage(final double expectedZ,
+                                           final TileSpec tileSpec) {
         return "all tiles must have a z value of " + expectedZ + " but tile " +
                tileSpec.getTileId() + " has a z value of " + tileSpec.getZ();
     }
 
-    private void resolveTileSpec(TileSpec tileSpec)
-            throws IllegalStateException {
+    private void resolveTileSpec(final TileSpec tileSpec)
+            throws IllegalArgumentException {
         final ListTransformSpec transforms = tileSpec.getTransforms();
         if (! transforms.isFullyResolved()) {
             transforms.resolveReferences(transformIdToSpecMap);
             if (! transforms.isFullyResolved()) {
-                throw new IllegalStateException("tile " + tileSpec.getTileId() +
-                                                " requires the following transform ids " +
-                                                transforms.getUnresolvedIds());
+                throw new IllegalArgumentException("tile " + tileSpec.getTileId() +
+                                                   " requires the following transform ids " +
+                                                   transforms.getUnresolvedIds());
             }
         }
     }
 
-    private void removeTileIfInvalid(TileSpec tileSpec) {
+    private void removeTileIfInvalid(final TileSpec tileSpec) {
 
-        String errorMessage = null;
-
-        // TODO: confirm bounding box constraints (or parameter-ize them)
-        final double minCoordinate = -400;
-        final double maxCoordinate = 300000;
-        final double minSize = 500;
-        final double maxSize = 5000;
-
-        if (tileSpec.getMinX() < minCoordinate) {
-            errorMessage = "invalid minX of " + tileSpec.getMinX();
-        } else if (tileSpec.getMinY() < minCoordinate) {
-            errorMessage = "invalid minY of " + tileSpec.getMinY();
-        } else if (tileSpec.getMaxX() > maxCoordinate) {
-            errorMessage = "invalid maxX of " + tileSpec.getMaxX();
-        } else if (tileSpec.getMaxY() > maxCoordinate) {
-            errorMessage = "invalid maxY of " + tileSpec.getMaxY();
-        } else {
-            final double width = tileSpec.getMaxX() - tileSpec.getMinX();
-            final double height = tileSpec.getMaxY() - tileSpec.getMinY();
-            if ((width < minSize) || (width > maxSize)) {
-                errorMessage = "invalid width of " + width;
-            } else if ((height < minSize) || (height > maxSize)) {
-                errorMessage = "invalid height of " + height;
-            }
-        }
-
-        if (errorMessage != null) {
-            LOG.error(errorMessage + " derived for tileId '" + tileSpec.getTileId() +
-                      "', bounds are [" + tileSpec.getMinX() + ", " + tileSpec.getMinY() + ", " + tileSpec.getMaxX() +
-                      ", " + tileSpec.getMaxY() + "] with transforms " +
-                      tileSpec.getTransforms().toJson().replace('\n', ' '));
+        try {
+            tileSpecValidator.validate(tileSpec);
+        } catch (final IllegalArgumentException e) {
+            LOG.error(e.getMessage());
             tileIdToSpecMap.remove(tileSpec.getTileId());
         }
 
