@@ -20,20 +20,17 @@ import org.slf4j.LoggerFactory;
  */
 public class ResolvedTileSpecCollection {
 
-    private String stackName;
     private Map<String, TransformSpec> transformIdToSpecMap;
     private Map<String, TileSpec> tileIdToSpecMap;
 
     @SuppressWarnings("UnusedDeclaration")
     public ResolvedTileSpecCollection() {
-        this(null, new ArrayList<TransformSpec>(), new ArrayList<TileSpec>());
+        this(new ArrayList<TransformSpec>(), new ArrayList<TileSpec>());
     }
 
-    public ResolvedTileSpecCollection(final String stackName,
-                                      final Collection<TransformSpec> transformSpecs,
+    public ResolvedTileSpecCollection(final Collection<TransformSpec> transformSpecs,
                                       final Collection<TileSpec> tileSpecs) {
 
-        this.stackName = stackName;
         this.transformIdToSpecMap = new HashMap<>(transformSpecs.size() * 2);
         this.tileIdToSpecMap = new HashMap<>(tileSpecs.size() * 2);
 
@@ -176,8 +173,7 @@ public class ResolvedTileSpecCollection {
 
     @Override
     public String toString() {
-        return "{stackName: '" + stackName +
-               "', transformCount: " + getTransformCount() +
+        return "{transformCount: " + getTransformCount() +
                ", tileCount: " + getTileCount() +
                '}';
     }

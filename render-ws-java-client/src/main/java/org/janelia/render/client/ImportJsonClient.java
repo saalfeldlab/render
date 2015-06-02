@@ -82,8 +82,7 @@ public class ImportJsonClient {
             int tileSpecCount = 0;
 
             final ResolvedTileSpecCollection resolvedTiles =
-                    new ResolvedTileSpecCollection(parameters.stack,
-                                                   transformSpecs,
+                    new ResolvedTileSpecCollection(transformSpecs,
                                                    tileSpecs);
 
             for (TileSpec tileSpec : resolvedTiles.getTileSpecs()) {

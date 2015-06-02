@@ -39,8 +39,7 @@ public class CoordinateClientTest {
 
         final TileCoordinates worldCoord = TileCoordinates.buildWorldInstance("tile-1", new double[] {1.0, 2.0});
         List<List<TileCoordinates>> worldListOfLists = Arrays.asList(Arrays.asList(worldCoord));
-        ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(stackName,
-                                                                          Arrays.asList(transform1),
+        ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(Arrays.asList(transform1),
                                                                           Arrays.asList(tile1));
 
         // Hack: Add ref transform to tile after adding to collection so that it is not resolved by constructor.

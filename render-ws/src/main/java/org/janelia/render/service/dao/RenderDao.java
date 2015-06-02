@@ -417,8 +417,7 @@ public class RenderDao {
             throw new IllegalArgumentException("no tile specifications found in " + stackId +" for z=" + z);
         }
 
-        return new ResolvedTileSpecCollection(stackId.getStack(),
-                                              resolvedIdToSpecMap.values(),
+        return new ResolvedTileSpecCollection(resolvedIdToSpecMap.values(),
                                               renderParameters.getTileSpecs());
     }
 
@@ -451,8 +450,7 @@ public class RenderDao {
             throw new IllegalArgumentException("no tile specifications found in " + stackId +" for " + query);
         }
 
-        return new ResolvedTileSpecCollection(stackId.getStack(),
-                                              resolvedIdToSpecMap.values(),
+        return new ResolvedTileSpecCollection(resolvedIdToSpecMap.values(),
                                               renderParameters.getTileSpecs());
     }
 
