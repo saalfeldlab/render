@@ -3,6 +3,7 @@ package org.janelia.render.service;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.ws.rs.Consumes;
@@ -122,6 +123,34 @@ public class RenderDataService {
         return list;
     }
 
+    @Path("project/{project}/stack/{stack}/highDoseLowDoseZValues")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<Double> getHighDoseLowDoseZValues(@PathParam("owner") final String owner,
+                                                  @PathParam("project") final String project,
+                                                  @PathParam("stack") final String stack) {
+
+        final List<Double> list = getZValues(owner, project, stack);
+        final List<Double> filteredList = new ArrayList<>(list.size());
+        Double lastHighDoseZ = -1.0;
+        for (final Double z : list) {
+            if ((z - z.intValue()) > 0) {
+                if (z.intValue() == lastHighDoseZ.intValue()) {
+                    filteredList.add(lastHighDoseZ);
+                    filteredList.add(z);
+                } else {
+                    LOG.warn("getHighDoseLowDoseZValues: z {} is missing corresponding high dose (.0) section", z);
+                }
+            } else {
+                lastHighDoseZ = z;
+            }
+        }
+
+        LOG.info("getHighDoseLowDoseZValues: returning {} values", filteredList.size());
+
+        return filteredList;
+    }
+
     @Path("project/{project}/stack/{stack}/z/{z}/bounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -219,7 +248,7 @@ public class RenderDataService {
                                       @PathParam("project") final String project,
                                       @PathParam("stack") final String stack,
                                       @Context final UriInfo uriInfo,
-                                      ResolvedTileSpecCollection resolvedTiles) {
+                                      final ResolvedTileSpecCollection resolvedTiles) {
         return saveResolvedTilesForZ(owner, project, stack, null, uriInfo, resolvedTiles);
     }
 
@@ -231,7 +260,7 @@ public class RenderDataService {
                                           @PathParam("stack") final String stack,
                                           @PathParam("z") final Double z,
                                           @Context final UriInfo uriInfo,
-                                          ResolvedTileSpecCollection resolvedTiles) {
+                                          final ResolvedTileSpecCollection resolvedTiles) {
 
         LOG.info("saveResolvedTilesForZ: entry, owner={}, project={}, stack={}, z={}",
                  owner, project, stack, z);
