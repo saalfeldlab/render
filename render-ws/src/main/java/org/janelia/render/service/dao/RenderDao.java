@@ -748,7 +748,7 @@ public class RenderDao {
         } else {
             action = "insert";
             ensureCoreTransformIndex(getTransformCollection(stackId));
-            ensureCoreTileIndex(getTileCollection(stackId));
+            ensureCoreTileIndexes(getTileCollection(stackId));
         }
 
         LOG.debug("saveStackMetaData: {}.{}({})",
@@ -768,7 +768,7 @@ public class RenderDao {
 
         // should not be necessary, but okay to ensure core indexes just in case
         ensureCoreTransformIndex(transformCollection);
-        ensureCoreTileIndex(tileCollection);
+        ensureCoreTileIndexes(tileCollection);
 
         ensureSupplementaryTileIndexes(tileCollection);
 
@@ -1481,16 +1481,16 @@ public class RenderDao {
         LOG.debug("ensureCoreTransformIndex: exit");
     }
 
-    private void ensureCoreTileIndex(final DBCollection tileCollection) {
+    private void ensureCoreTileIndexes(final DBCollection tileCollection) {
         ensureIndex(tileCollection,
                     new BasicDBObject("tileId", 1),
                     new BasicDBObject("unique", true).append("background", true));
+        ensureIndex(tileCollection, new BasicDBObject("z", 1), BACKGROUND_OPTION);
         LOG.debug("ensureCoreTileIndex: exit");
     }
 
     private void ensureSupplementaryTileIndexes(final DBCollection tileCollection) {
 
-        ensureIndex(tileCollection, new BasicDBObject("z", 1), BACKGROUND_OPTION);
         ensureIndex(tileCollection, new BasicDBObject("z", 1).append("minX", 1), BACKGROUND_OPTION);
         ensureIndex(tileCollection, new BasicDBObject("z", 1).append("minY", 1), BACKGROUND_OPTION);
         ensureIndex(tileCollection, new BasicDBObject("z", 1).append("maxX", 1), BACKGROUND_OPTION);
