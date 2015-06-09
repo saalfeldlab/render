@@ -380,7 +380,10 @@ public class BoxMipmapGenerator {
         final File parentDirectory = imageFile.getParentFile();
         if (! parentDirectory.exists()) {
             if (! parentDirectory.mkdirs()) {
-                throw new IOException("failed to create " + parentDirectory.getAbsolutePath());
+                // check for existence again in case another parallel process already created the directory
+                if (! parentDirectory.exists()) {
+                    throw new IOException("failed to create " + parentDirectory.getAbsolutePath());
+                }
             }
         }
     }
@@ -390,10 +393,10 @@ public class BoxMipmapGenerator {
      */
     private class MipmapSource {
 
-        private File upperLeft;
-        private File upperRight;
-        private File lowerLeft;
-        private File lowerRight;
+        private final File upperLeft;
+        private final File upperRight;
+        private final File lowerLeft;
+        private final File lowerRight;
 
         /**
          *
