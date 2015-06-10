@@ -89,6 +89,12 @@ public class BoxClient {
         @Parameter(names = "--forceGeneration", description = "Regenerate boxes even if they already exist", required = false, arity = 0)
         private boolean forceGeneration = false;
 
+        @Parameter(names = "--renderGroup", description = "Index (1-n) that identifies portion of layer to render (omit if only one job is being used)", required = false)
+        private Integer renderGroup;
+
+        @Parameter(names = "--numberOfRenderGroups", description = "Total number of parallel jobs being used to render this layer (omit if only one job is being used)", required = false)
+        private Integer numberOfRenderGroups;
+
         @Parameter(description = "Z values for layers to render", required = true)
         private List<Double> zValues;
 
@@ -100,7 +106,7 @@ public class BoxClient {
     /**
      * @param  args  see {@link Parameters} for command line argument details.
      */
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         try {
 
             final Parameters parameters = new Parameters();
@@ -112,7 +118,7 @@ public class BoxClient {
 
             client.createEmptyImageFile();
 
-            for (Double z : parameters.zValues) {
+            for (final Double z : parameters.zValues) {
                 client.generateBoxesForZ(z);
             }
 
@@ -169,6 +175,28 @@ public class BoxClient {
         this.emptyImageFile = new File(boxDirectory.getAbsolutePath(),
                                        "empty." + format.toLowerCase());
 
+        if (params.renderGroup != null) {
+
+            if (params.numberOfRenderGroups == null) {
+                throw new IllegalArgumentException(
+                        "numberOfRenderGroups must be specified when renderGroup is specified");
+            }
+
+            if (params.renderGroup < 1) {
+                throw new IllegalArgumentException("renderGroup values start at 1");
+            }
+
+            if (params.renderGroup > params.numberOfRenderGroups) {
+                throw new IllegalArgumentException(
+                        "numberOfRenderGroups (" + params.numberOfRenderGroups +
+                        ") must be greater than the renderGroup (" + params.renderGroup + ")");
+            }
+
+        } else if (params.numberOfRenderGroups != null) {
+            throw new IllegalArgumentException(
+                    "renderGroup (1-n) must be specified when numberOfRenderGroups are specified");
+        }
+
         this.renderDataClient = params.getClient();
     }
 
@@ -217,7 +245,12 @@ public class BoxClient {
                  z, boxDirectory, renderDataClient);
 
         final Bounds layerBounds = renderDataClient.getLayerBounds(stack, z);
-        final BoxBounds boxBounds = new BoxBounds(z, layerBounds);
+        final SectionBoxBounds boxBounds = new SectionBoxBounds(z, boxWidth, boxHeight, layerBounds);
+
+        if (params.renderGroup != null) {
+            boxBounds.setRenderGroup(params.renderGroup, params.numberOfRenderGroups);
+        }
+
         final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, z);
         final int tileCount = tileBoundsList.size();
 
@@ -246,18 +279,17 @@ public class BoxClient {
                                                                        boxHeight,
                                                                        boxDirectory,
                                                                        0,
-                                                                       boxBounds.lastRow,
-                                                                       boxBounds.lastColumn,
+                                                                       boxBounds.getLastRow(),
+                                                                       boxBounds.getLastColumn(),
                                                                        params.forceGeneration);
         final IGridPaths iGridPaths;
         if (params.createIGrid) {
-            iGridPaths = new IGridPaths(boxBounds.lastRow, boxBounds.lastColumn);
+            iGridPaths = new IGridPaths(boxBounds.getLastRow(), boxBounds.getLastColumn());
         } else {
             iGridPaths = null;
         }
 
         generateLevelZero(z,
-                          layerBounds,
                           boxBounds,
                           tileCount,
                           imageProcessorCache,
@@ -291,8 +323,7 @@ public class BoxClient {
     }
 
     private void generateLevelZero(final Double z,
-                                   final Bounds layerBounds,
-                                   final BoxBounds boxBounds,
+                                   final SectionBoxBounds boxBounds,
                                    final int tileCount,
                                    final ImageProcessorCache imageProcessorCache,
                                    final BoxMipmapGenerator boxMipmapGenerator,
@@ -305,41 +336,60 @@ public class BoxClient {
         String parametersUrl;
         BufferedImage levelZeroImage;
         File levelZeroFile;
-        int row = boxBounds.firstRow;
+        int row = boxBounds.getFirstRow();
         int column;
-        for (int y = boxBounds.firstY; y < layerBounds.getMaxY(); y += boxHeight) {
+        for (int y = boxBounds.getFirstY(); y <= boxBounds.getLastY(); y += boxHeight) {
 
-            column = boxBounds.firstColumn;
+            column = boxBounds.getFirstColumn();
 
-            for (int x = boxBounds.firstX; x < layerBounds.getMaxX(); x += boxWidth) {
+            for (int x = boxBounds.getFirstX(); x <= boxBounds.getLastX(); x += boxWidth) {
 
-                levelZeroFile = BoxMipmapGenerator.getImageFile(format,
-                                                                boxDirectory,
-                                                                0,
-                                                                boxBounds.z,
-                                                                row,
-                                                                column);
+                if (boxBounds.isInRenderGroup(row, column)) {
 
-                if (params.forceGeneration || (! levelZeroFile.exists())) {
-                    parametersUrl = renderDataClient.getRenderParametersUrlString(stack, x, y, z, boxWidth, boxHeight, 1.0);
+                    levelZeroFile = BoxMipmapGenerator.getImageFile(format,
+                                                                    boxDirectory,
+                                                                    0,
+                                                                    boxBounds.getZ(),
+                                                                    row,
+                                                                    column);
 
-                    LOG.info("generateLevelZero: z={}, loading {}", z, parametersUrl);
+                    if (params.forceGeneration || (!levelZeroFile.exists())) {
+                        parametersUrl =
+                                renderDataClient.getRenderParametersUrlString(stack, x, y, z, boxWidth, boxHeight, 1.0);
 
-                    renderParameters = RenderParameters.loadFromUrl(parametersUrl);
-                    renderParameters.setSkipInterpolation(params.skipInterpolation);
-                    renderParameters.setBinaryMask(params.binaryMask);
-                    renderParameters.setBackgroundRGBColor(backgroundRGBColor);
+                        LOG.info("generateLevelZero: z={}, loading {}", z, parametersUrl);
 
-                    if (renderParameters.hasTileSpecs()) {
+                        renderParameters = RenderParameters.loadFromUrl(parametersUrl);
+                        renderParameters.setSkipInterpolation(params.skipInterpolation);
+                        renderParameters.setBinaryMask(params.binaryMask);
+                        renderParameters.setBackgroundRGBColor(backgroundRGBColor);
 
-                        levelZeroImage = renderParameters.openTargetImage();
+                        if (renderParameters.hasTileSpecs()) {
 
-                        Render.render(renderParameters, levelZeroImage, imageProcessorCache);
+                            levelZeroImage = renderParameters.openTargetImage();
 
-                        BoxMipmapGenerator.saveImage(levelZeroImage,
-                                                     levelZeroFile,
-                                                     params.label,
-                                                     format);
+                            Render.render(renderParameters, levelZeroImage, imageProcessorCache);
+
+                            BoxMipmapGenerator.saveImage(levelZeroImage,
+                                                         levelZeroFile,
+                                                         params.label,
+                                                         format);
+
+                            boxMipmapGenerator.addSource(row, column, levelZeroFile);
+
+                            if (iGridPaths != null) {
+                                iGridPaths.addImage(levelZeroFile, row, column);
+                            }
+
+                        } else {
+                            LOG.info("generateLevelZero: z={}, skipping empty box for row {}, column {})", z, row, column);
+                        }
+
+                    } else {
+
+                        LOG.info("{} already generated", levelZeroFile.getAbsolutePath());
+
+                        renderParameters = null;
 
                         boxMipmapGenerator.addSource(row, column, levelZeroFile);
 
@@ -347,73 +397,18 @@ public class BoxClient {
                             iGridPaths.addImage(levelZeroFile, row, column);
                         }
 
-                    } else {
-                        LOG.info("generateLevelZero: z={}, skipping empty box for row {}, column {})", z, row, column);
                     }
 
-                } else {
-
-                    LOG.info("{} already generated", levelZeroFile.getAbsolutePath());
-
-                    renderParameters = null;
-
-                    boxMipmapGenerator.addSource(row, column, levelZeroFile);
-
-                    if (iGridPaths != null) {
-                        iGridPaths.addImage(levelZeroFile, row, column);
-                    }
-
+                    progress.markProcessedTilesForRow(y, renderParameters);
                 }
-
-                progress.markProcessedTilesForRow(y, renderParameters);
 
                 column++;
             }
 
             LOG.info("generateLevelZero: z={}, completed row {} of {}, {}, {}",
-                     z, row, boxBounds.lastRow, progress, imageProcessorCache.getStats());
+                     z, row, boxBounds.getLastRow(), progress, imageProcessorCache.getStats());
 
             row++;
-        }
-    }
-
-    /**
-     * Simple container for a layer's derived box bounds.
-     */
-    private class BoxBounds {
-
-        public final int z;
-
-        public final int firstColumn;
-        public final int firstX;
-        public final int firstRow;
-        public final int firstY;
-
-        public final int lastColumn;
-        public final int lastX;
-        public final int lastRow;
-        public final int lastY;
-
-        public BoxBounds(final Double z,
-                         final Bounds layerBounds) {
-
-            this.z = z.intValue();
-
-            this.firstColumn = (int) (layerBounds.getMinX() / boxWidth);
-            this.firstX = firstColumn * boxWidth;
-            this.firstRow = (int) (layerBounds.getMinY() / boxHeight);
-            this.firstY = firstRow * boxHeight;
-
-            this.lastColumn = (int) (layerBounds.getMaxX() / boxWidth) + 1;
-            this.lastX = lastColumn * boxWidth - 1;
-            this.lastRow = (int) (layerBounds.getMaxY() / boxHeight) + 1;
-            this.lastY = lastRow * boxHeight - 1;
-        }
-
-        @Override
-        public String toString() {
-            return " columns " + firstColumn + " to " + lastColumn + " (x: " + firstX + " to " + lastX +
-                   "), rows " + firstRow + " to " + lastRow + " (y: " + firstY + " to " + lastY + ")";
         }
     }
 
@@ -422,10 +417,10 @@ public class BoxClient {
      */
     private class Progress {
 
-        private int numberOfLayerTiles;
-        private Set<String> processedTileIds;
-        private long startTime;
-        private SimpleDateFormat sdf;
+        private final int numberOfLayerTiles;
+        private final Set<String> processedTileIds;
+        private final long startTime;
+        private final SimpleDateFormat sdf;
         private int currentRowY;
         private double currentRowPartialTileSum;
 
@@ -447,7 +442,7 @@ public class BoxClient {
             }
 
             if (renderParameters != null) {
-                for (TileSpec tileSpec : renderParameters.getTileSpecs()) {
+                for (final TileSpec tileSpec : renderParameters.getTileSpecs()) {
                     // only add tiles that are completely above the row's max Y value
                     if (tileSpec.getMaxY() <= rowMaxY) {
                         processedTileIds.add(tileSpec.getTileId());
@@ -460,7 +455,7 @@ public class BoxClient {
 
         @Override
         public String toString() {
-            StringBuilder sb = new StringBuilder();
+            final StringBuilder sb = new StringBuilder();
             final double numberOfProcessedTiles = processedTileIds.size() + currentRowPartialTileSum;
             final int percentComplete = (int) (numberOfProcessedTiles * 100 / numberOfLayerTiles);
             sb.append(percentComplete).append("% source tiles processed");
