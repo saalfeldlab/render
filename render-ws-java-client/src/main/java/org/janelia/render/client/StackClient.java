@@ -45,14 +45,14 @@ public class StackClient {
         @Parameter(names = "--cycleStepNumber", description = "Processing cycle step number", required = false)
         private Integer cycleStepNumber;
 
-        @Parameter(names = "--stackResoutionX", description = "X resoution (in nanometers) for the stack", required = false)
-        private Double stackResoutionX;
+        @Parameter(names = "--stackResolutionX", description = "X resoution (in nanometers) for the stack", required = false)
+        private Double stackResolutionX;
 
-        @Parameter(names = "--stackResoutionY", description = "Y resoution (in nanometers) for the stack", required = false)
-        private Double stackResoutionY;
+        @Parameter(names = "--stackResolutionY", description = "Y resoution (in nanometers) for the stack", required = false)
+        private Double stackResolutionY;
 
-        @Parameter(names = "--stackResoutionZ", description = "Z resoution (in nanometers) for the stack", required = false)
-        private Double stackResoutionZ;
+        @Parameter(names = "--stackResolutionZ", description = "Z resoution (in nanometers) for the stack", required = false)
+        private Double stackResolutionZ;
 
         @Parameter(names = "--snapshotRootPath", description = "Root path for snapshot (only specify if offline snapshot should be stored)", required = false)
         private String snapshotRootPath;
@@ -68,7 +68,7 @@ public class StackClient {
     /**
      * @param  args  see {@link Parameters} for command line argument details.
      */
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         try {
 
             final Parameters parameters = new Parameters();
@@ -117,9 +117,9 @@ public class StackClient {
                                                            params.versionNotes,
                                                            params.cycleNumber,
                                                            params.cycleStepNumber,
-                                                           params.stackResoutionX,
-                                                           params.stackResoutionY,
-                                                           params.stackResoutionZ,
+                                                           params.stackResolutionX,
+                                                           params.stackResolutionY,
+                                                           params.stackResolutionZ,
                                                            params.snapshotRootPath,
                                                            null);
 
@@ -139,9 +139,9 @@ public class StackClient {
                                                            params.versionNotes,
                                                            params.cycleNumber,
                                                            params.cycleStepNumber,
-                                                           params.stackResoutionX,
-                                                           params.stackResoutionY,
-                                                           params.stackResoutionZ,
+                                                           params.stackResolutionX,
+                                                           params.stackResolutionY,
+                                                           params.stackResolutionZ,
                                                            params.snapshotRootPath,
                                                            null);
 
@@ -173,23 +173,23 @@ public class StackClient {
             renderDataClient.deleteStack(stack, null);
         } else {
             Double z;
-            for (String zString : params.deleteZList) {
+            for (final String zString : params.deleteZList) {
                 z = new Double(zString);
                 renderDataClient.deleteStack(stack, z);
             }
         }
     }
 
-    private void logMetaData(String context) {
+    private void logMetaData(final String context) {
         logMetaData(context, stack);
     }
 
-    private void logMetaData(String context,
-                             String stackName) {
+    private void logMetaData(final String context,
+                             final String stackName) {
         try {
             final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stackName);
             LOG.info("{}, stackMetaData={}", context, stackMetaData);
-        } catch (IOException e) {
+        } catch (final IOException e) {
             LOG.info("{}, no meta data returned", context);
         }
     }
