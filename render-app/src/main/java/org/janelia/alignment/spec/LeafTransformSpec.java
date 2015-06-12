@@ -31,8 +31,8 @@ public class LeafTransformSpec extends TransformSpec {
 
     public static final String TYPE = null; // use null type for leaf specs so legacy in-lined data
 
-    private String className;
-    private String dataString;
+    private final String className;
+    private final String dataString;
 
     private transient Class clazz;
 
@@ -42,8 +42,8 @@ public class LeafTransformSpec extends TransformSpec {
      * @param  className   name of transformation implementation (java) class.
      * @param  dataString  data with which transformation implementation should be initialized.
      */
-    public LeafTransformSpec(String className,
-                             String dataString) {
+    public LeafTransformSpec(final String className,
+                             final String dataString) {
         super(null, TYPE, null);
         this.className = className;
         this.dataString = dataString;
@@ -57,13 +57,21 @@ public class LeafTransformSpec extends TransformSpec {
      * @param  className   name of transformation implementation (java) class.
      * @param  dataString  data with which transformation implementation should be initialized.
      */
-    public LeafTransformSpec(String id,
-                             TransformSpecMetaData metaData,
-                             String className,
-                             String dataString) {
+    public LeafTransformSpec(final String id,
+                             final TransformSpecMetaData metaData,
+                             final String className,
+                             final String dataString) {
         super(id, TYPE, metaData);
         this.className = className;
         this.dataString = dataString;
+    }
+
+    public String getClassName() {
+        return className;
+    }
+
+    public String getDataString() {
+        return dataString;
     }
 
     @Override
@@ -72,17 +80,17 @@ public class LeafTransformSpec extends TransformSpec {
     }
 
     @Override
-    public void addUnresolvedIds(Set<String> unresolvedIds) {
+    public void addUnresolvedIds(final Set<String> unresolvedIds) {
         // nothing to do
     }
 
     @Override
-    public void resolveReferences(Map<String, TransformSpec> idToSpecMap) {
+    public void resolveReferences(final Map<String, TransformSpec> idToSpecMap) {
         // nothing to do
     }
 
     @Override
-    public void flatten(ListTransformSpec flattenedList) throws IllegalStateException {
+    public void flatten(final ListTransformSpec flattenedList) throws IllegalStateException {
         flattenedList.addSpec(this);
     }
 
@@ -106,7 +114,7 @@ public class LeafTransformSpec extends TransformSpec {
             }
             try {
                 clazz = Class.forName(className);
-            } catch (ClassNotFoundException e) {
+            } catch (final ClassNotFoundException e) {
                 throw new IllegalArgumentException("transform class '" + className + "' cannot be found", e);
             }
         }
@@ -120,7 +128,7 @@ public class LeafTransformSpec extends TransformSpec {
         final Object instance;
         try {
             instance = clazz.newInstance();
-        } catch (Exception e) {
+        } catch (final Exception e) {
             throw new IllegalArgumentException("failed to create instance of transform class '" + className + "'", e);
         }
 

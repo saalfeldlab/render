@@ -87,7 +87,7 @@ public class TileSpec implements Serializable {
     }
 
     @SuppressWarnings("UnusedDeclaration")
-    public void setGroupId(String groupId) {
+    public void setGroupId(final String groupId) {
         this.groupId = groupId;
     }
 
@@ -258,7 +258,7 @@ public class TileSpec implements Serializable {
      * @return world coordinates (x, y, z) for the specified local coordinates.
      */
     public double[] getWorldCoordinates(final double x, final double y) {
-        double[] worldCoordinates;
+        final double[] worldCoordinates;
         final double[] w = new double[] {x, y};
 
         if (hasTransforms()) {
@@ -290,7 +290,7 @@ public class TileSpec implements Serializable {
     public double[] getLocalCoordinates(final double x, final double y, final double meshCellSize)
             throws IllegalStateException, NoninvertibleModelException {
 
-        double[] localCoordinates;
+        final double[] localCoordinates;
         final double[] l = new double[] {x, y};
         if (hasTransforms()) {
             final CoordinateTransformMesh mesh = getCoordinateTransformMesh(meshCellSize);
@@ -468,7 +468,7 @@ public class TileSpec implements Serializable {
     public CoordinateTransformList<CoordinateTransform> getTransformList()
             throws IllegalArgumentException {
 
-        CoordinateTransformList<CoordinateTransform> ctl;
+        final CoordinateTransformList<CoordinateTransform> ctl;
         if (transforms == null) {
             ctl = new CoordinateTransformList<>();
         } else {
@@ -479,13 +479,22 @@ public class TileSpec implements Serializable {
     }
 
     public String toLayoutFileFormat() {
+
+        String affineData = null;
+        if (hasTransforms()) {
+            final TransformSpec lastSpec = transforms.getSpec(transforms.size() - 1);
+            if (lastSpec instanceof LeafTransformSpec) {
+                final LeafTransformSpec leafSpec = (LeafTransformSpec) lastSpec;
+                // NOTE: assumes last transform is an affine with 6 parameters
+                affineData = leafSpec.getDataString().replace(' ', '\t');
+            }
+        }
+
         String sectionId = null;
         Integer imageCol = null;
         Integer imageRow = null;
         String camera = null;
         String temca = null;
-        Double stageX = null;
-        Double stageY = null;
         Double rotation = null;
         if (layout != null) {
             sectionId = layout.getSectionId();
@@ -493,9 +502,10 @@ public class TileSpec implements Serializable {
             imageRow = layout.getImageRow();
             camera = layout.getCamera();
             temca = layout.getTemca();
-            stageX = layout.getStageX();
-            stageY = layout.getStageY();
             rotation = layout.getRotation();
+            if (affineData == null) {
+                affineData = "1.0\t0.0\t" + layout.getStageX() + "\t0.0\t1.0\t" + layout.getStageY();
+            }
         }
 
         String rawPath = null;
@@ -506,8 +516,7 @@ public class TileSpec implements Serializable {
         }
 
         // sectionId, 1.0, 0.0, stageX, 0.0, 1.0, stageY, imageCol, imageRow, camera, rawPath, temca, rotation, z
-        return sectionId + '\t' + tileId + '\t' +
-               "1.0\t0.0\t" + stageX + "\t0.0\t1.0\t" + stageY + '\t' +
+        return sectionId + '\t' + tileId + '\t' + affineData + '\t' +
                imageCol + '\t' + imageRow + '\t' + camera + '\t' + rawPath + '\t' + temca + '\t' + rotation + '\t' + z;
     }
 
@@ -519,11 +528,11 @@ public class TileSpec implements Serializable {
         return JsonUtils.GSON.fromJson(json, TileSpec.class);
     }
 
-    public static List<TileSpec> fromJsonArray(String json) {
+    public static List<TileSpec> fromJsonArray(final String json) {
         return JsonUtils.GSON.fromJson(json, LIST_TYPE);
     }
 
-    public static List<TileSpec> fromJsonArray(Reader json) {
+    public static List<TileSpec> fromJsonArray(final Reader json) {
         return JsonUtils.GSON.fromJson(json, LIST_TYPE);
     }
 

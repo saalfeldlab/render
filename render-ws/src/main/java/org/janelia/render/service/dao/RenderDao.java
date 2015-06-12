@@ -1097,8 +1097,7 @@ public class RenderDao {
             tileQuery = new BasicDBObject("z", zFilter);
         }
 
-        final DBObject tileKeys =
-                new BasicDBObject("tileId", 1).append("z", 1).append("minX", 1).append("minY", 1).append("layout", 1).append("mipmapLevels", 1);
+        final DBObject tileKeys = new BasicDBObject();
 
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
