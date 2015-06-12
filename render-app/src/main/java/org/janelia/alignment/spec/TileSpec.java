@@ -26,6 +26,7 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.regex.Pattern;
 
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
@@ -485,8 +486,12 @@ public class TileSpec implements Serializable {
             final TransformSpec lastSpec = transforms.getSpec(transforms.size() - 1);
             if (lastSpec instanceof LeafTransformSpec) {
                 final LeafTransformSpec leafSpec = (LeafTransformSpec) lastSpec;
-                // NOTE: assumes last transform is an affine with 6 parameters
-                affineData = leafSpec.getDataString().replace(' ', '\t');
+                final String[] data = WHITESPACE_PATTERN.split(leafSpec.getDataString(), -1);
+                if (data.length == 6) {
+                    // translate render order 0-5 to alignment order 0,1,4,2,3,5
+                    affineData = data[0] + '\t' + data[1] + '\t' + data[4] + '\t' +
+                                 data[2] + '\t' + data[3] + '\t' + data[5];
+                }
             }
         }
 
@@ -537,4 +542,6 @@ public class TileSpec implements Serializable {
     }
 
     private static final Type LIST_TYPE = new TypeToken<List<TileSpec>>(){}.getType();
+
+    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
 }
