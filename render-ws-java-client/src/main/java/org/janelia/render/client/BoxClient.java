@@ -248,7 +248,7 @@ public class BoxClient {
         final SectionBoxBounds boxBounds = new SectionBoxBounds(z, boxWidth, boxHeight, layerBounds);
 
         if (params.renderGroup != null) {
-            boxBounds.setRenderGroup(params.renderGroup, params.numberOfRenderGroups);
+            boxBounds.setRenderGroup(params.renderGroup, params.numberOfRenderGroups, params.maxLevel);
         }
 
         final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, z);
@@ -279,7 +279,9 @@ public class BoxClient {
                                                                        boxHeight,
                                                                        boxDirectory,
                                                                        0,
+                                                                       boxBounds.getFirstRow(),
                                                                        boxBounds.getLastRow(),
+                                                                       boxBounds.getFirstColumn(),
                                                                        boxBounds.getLastColumn(),
                                                                        params.forceGeneration);
         final IGridPaths iGridPaths;

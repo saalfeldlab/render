@@ -76,7 +76,7 @@ public class BoxMipmapGeneratorTest {
 
     @After
     public void tearDown() throws Exception {
-        for (File file : filesAndDirectoriesToDelete) {
+        for (final File file : filesAndDirectoriesToDelete) {
             deleteTestFile(file);
         }
     }
@@ -91,7 +91,9 @@ public class BoxMipmapGeneratorTest {
                                                                        boxHeight,
                                                                        boxDirectory,
                                                                        0,
+                                                                       0,
                                                                        lastRow,
+                                                                       0,
                                                                        lastColumn,
                                                                        false);
 
@@ -189,15 +191,15 @@ public class BoxMipmapGeneratorTest {
 
     }
 
-    private BoxMipmapGenerator validateNextLevel(BoxMipmapGenerator boxMipmapGenerator,
-                                                 int[][] expectedRowAndColumnPairs) throws Exception {
+    private BoxMipmapGenerator validateNextLevel(final BoxMipmapGenerator boxMipmapGenerator,
+                                                 final int[][] expectedRowAndColumnPairs) throws Exception {
 
         final BoxMipmapGenerator nextLevelGenerator = boxMipmapGenerator.generateNextLevel();
         final int level = nextLevelGenerator.getSourceLevel();
 
         final List<File> missingFiles = new ArrayList<>();
 
-        for (int[] rowAndColumn : expectedRowAndColumnPairs) {
+        for (final int[] rowAndColumn : expectedRowAndColumnPairs) {
             final File file = new File(boxDirectory, level+"/"+z+"/"+rowAndColumn[0]+"/"+rowAndColumn[1]+".png");
             filesAndDirectoriesToDelete.add(file);
             if (! file.exists()) {
@@ -227,7 +229,7 @@ public class BoxMipmapGeneratorTest {
         return nextLevelGenerator;
     }
 
-    private void deleteTestFile(File file) {
+    private void deleteTestFile(final File file) {
         if ((file != null) && file.exists()) {
             if (file.delete()) {
                 LOG.info("deleteTestFile: deleted " + file.getAbsolutePath());

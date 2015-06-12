@@ -12,21 +12,28 @@ import org.janelia.alignment.spec.Bounds;
 public class SectionBoxBounds implements Serializable {
 
     private final int z;
+    private final int boxWidth;
+    private final int boxHeight;
 
     private final int firstRow;
     private final int lastRow;
     private final int firstColumn;
     private final int lastColumn;
-    private final int firstX;
-    private final int lastX;
-    private final int firstY;
-    private final int lastY;
 
-    private final int numberOfRows;
-    private final int numberOfColumns;
+    private int firstX;
+    private int lastX;
+    private int firstY;
+    private int lastY;
 
-    private Integer firstGroupBox;
-    private Integer lastGroupBox;
+    private boolean hasRenderGroup;
+
+    private int rowsAndColumnsPerArea;
+    private int firstAreaRow;
+    private int firstAreaColumn;
+
+    private int firstGroupArea;
+    private int lastGroupArea;
+    private int numberOfAreaColumns;
 
     /**
      * Basic constructor.
@@ -42,6 +49,8 @@ public class SectionBoxBounds implements Serializable {
                             final Bounds layerBounds) {
 
         this.z = z.intValue();
+        this.boxWidth = boxWidth;
+        this.boxHeight = boxHeight;
 
         this.firstColumn = (int) (layerBounds.getMinX() / boxWidth);
         this.lastColumn = (int) (layerBounds.getMaxX() / boxWidth);
@@ -49,18 +58,12 @@ public class SectionBoxBounds implements Serializable {
         this.firstRow = (int) (layerBounds.getMinY() / boxHeight);
         this.lastRow = (int) (layerBounds.getMaxY() / boxHeight);
 
-        this.numberOfRows = this.lastRow - this.firstRow + 1;
-        this.numberOfColumns = this.lastColumn - this.firstColumn + 1;
+        setDerivedValues();
 
-        this.firstX = firstColumn * boxWidth;
-        this.lastX = ((lastColumn + 1) * boxWidth) - 1;
-
-        this.firstY = firstRow * boxHeight;
-        this.lastY = ((lastRow + 1) * boxHeight) - 1;
-
-        this.firstGroupBox = null;
-        this.lastGroupBox = null;
-
+        this.hasRenderGroup = false;
+        this.firstGroupArea = -1;
+        this.lastGroupArea = -1;
+        this.numberOfAreaColumns = -1;
     }
 
     /**
@@ -72,9 +75,11 @@ public class SectionBoxBounds implements Serializable {
     public boolean isInRenderGroup(final int row,
                                    final int column) {
         boolean isInGroup = true;
-        if (firstGroupBox != null) {
-            final int boxNumber = ((row - firstRow) * numberOfColumns) + (column - firstColumn);
-            isInGroup = (boxNumber >= firstGroupBox) && (boxNumber <= lastGroupBox);
+        if (hasRenderGroup) {
+            final int areaRow = row / rowsAndColumnsPerArea;
+            final int areaColumn = column / rowsAndColumnsPerArea;
+            final int areaNumber = ((areaRow - firstAreaRow) * numberOfAreaColumns) + (areaColumn - firstAreaColumn);
+            isInGroup = (areaNumber >= firstGroupArea) && (areaNumber <= lastGroupArea);
         }
         return isInGroup;
     }
@@ -84,41 +89,131 @@ public class SectionBoxBounds implements Serializable {
      *
      * @param  renderGroup           index (1-n) that identifies portion of layer to render.
      * @param  numberOfRenderGroups  total number of portions being rendered for the layer.
+     * @param  maxLevel              maximum mipmap level being generated.
      */
-    public void setRenderGroup(final Integer renderGroup,
-                               final Integer numberOfRenderGroups) {
+    public void setRenderGroup(final int renderGroup,
+                               final int numberOfRenderGroups,
+                               final int maxLevel) {
 
         final int renderGroupIndex = renderGroup - 1;
-        final int numberOfBoxes = numberOfRows * numberOfColumns;
 
-        if (numberOfRenderGroups <= numberOfBoxes) {
+        rowsAndColumnsPerArea = (int) Math.pow((double) 2, (double) maxLevel);
 
-            final int boxesPerGroup = numberOfBoxes / numberOfRenderGroups;
-            final int groupsWithExtraBoxCount = (numberOfBoxes % numberOfRenderGroups);
+        firstAreaRow = firstRow / rowsAndColumnsPerArea;
+        firstAreaColumn = firstColumn / rowsAndColumnsPerArea;
+        final int lastAreaRow = lastRow / rowsAndColumnsPerArea;
+        final int lastAreaColumn = lastColumn / rowsAndColumnsPerArea;
 
-            if (renderGroupIndex < groupsWithExtraBoxCount) {
-                this.firstGroupBox = renderGroupIndex * (boxesPerGroup + 1);
-                this.lastGroupBox = this.firstGroupBox + (boxesPerGroup + 1) - 1;
+        final int numberOfAreaRows = lastAreaRow - firstAreaRow + 1;
+        numberOfAreaColumns = lastAreaColumn - firstAreaColumn + 1;
+        final int numberOfAreas = numberOfAreaRows * numberOfAreaColumns;
+
+        if (numberOfRenderGroups <= numberOfAreas) {
+
+            final int areasPerGroup = numberOfAreas / numberOfRenderGroups;
+            final int groupsWithExtraAreaCount = (numberOfAreas % numberOfRenderGroups);
+
+            if (renderGroupIndex < groupsWithExtraAreaCount) {
+                firstGroupArea = renderGroupIndex * (areasPerGroup + 1);
+                lastGroupArea = firstGroupArea + (areasPerGroup + 1) - 1;
             } else {
-                final int firstStandardBox = groupsWithExtraBoxCount * (boxesPerGroup + 1);
-                final int groupsWithStandardBoxCount = renderGroupIndex - groupsWithExtraBoxCount;
-                this.firstGroupBox = firstStandardBox + (groupsWithStandardBoxCount * boxesPerGroup);
-                this.lastGroupBox = this.firstGroupBox + boxesPerGroup - 1;
+                final int firstStandardArea = groupsWithExtraAreaCount * (areasPerGroup + 1);
+                final int groupsWithStandardAreaCount = renderGroupIndex - groupsWithExtraAreaCount;
+                firstGroupArea = firstStandardArea + (groupsWithStandardAreaCount * areasPerGroup);
+                lastGroupArea = firstGroupArea + areasPerGroup - 1;
             }
 
-        } else if (renderGroupIndex < numberOfBoxes) {
+        } else if (renderGroupIndex < numberOfAreas) {
 
-            this.firstGroupBox = renderGroupIndex;
-            this.lastGroupBox = this.firstGroupBox;
+            firstGroupArea = renderGroupIndex;
+            lastGroupArea = firstGroupArea;
 
         } else {
 
-            this.firstGroupBox = 0;
-            this.lastGroupBox = -1;
+            firstGroupArea = 0;
+            lastGroupArea = -1;
 
         }
 
+        hasRenderGroup = true;
     }
+
+//    /**
+//     * @param  row     box row.
+//     * @param  column  box column.
+//     *
+//     * @return true if the specified box is within these bounds; otherwise false.
+//     */
+//    public boolean isInBounds(final int row,
+//                              final int column) {
+//        return (row >= firstRow) && (row <= lastRow) && (column >= firstColumn) && (column <= lastColumn);
+//    }
+//
+//    /**
+//     * Derives the range of boxes that should be rendered for the specified group.
+//     *
+//     * @param  renderGroup           index (1-n) that identifies portion of layer to render.
+//     * @param  numberOfRenderGroups  total number of portions being rendered for the layer.
+//     * @param  maxLevel              maximum mipmap level being generated.
+//     */
+//    public void setRenderGroup2(final int renderGroup,
+//                               final int numberOfRenderGroups,
+//                               final int maxLevel) {
+//
+//        final int renderGroupIndex = renderGroup - 1;
+//
+//        final int rowsAndColumnsPerArea = (int) Math.pow((double) 2, (double) maxLevel);
+//
+//        final int firstAreaRow = firstRow / rowsAndColumnsPerArea;
+//        final int firstAreaColumn = firstColumn  / rowsAndColumnsPerArea;
+//        final int lastAreaRow = lastRow / rowsAndColumnsPerArea;
+//        final int lastAreaColumn = lastColumn / rowsAndColumnsPerArea;
+//
+//        final int numberOfAreaRows = lastAreaRow - firstAreaRow + 1;
+//        final int numberOfAreaColumns = lastAreaColumn - firstAreaColumn + 1;
+//        final int numberOfAreas = numberOfAreaRows * numberOfAreaColumns;
+//
+//        if (numberOfRenderGroups <= numberOfAreas) {
+//
+//            final int areaRowsPerGroup;
+//            final int areaColumnsPerGroup;
+//            if (numberOfRenderGroups <= numberOfAreaRows) {
+//                areaRowsPerGroup = (numberOfAreaRows + (numberOfRenderGroups - 1)) / numberOfRenderGroups;
+//                areaColumnsPerGroup = numberOfAreaColumns;
+//            } else if (numberOfRenderGroups <= numberOfAreaColumns) {
+//                areaRowsPerGroup = numberOfAreaRows;
+//                areaColumnsPerGroup = (numberOfAreaColumns + (numberOfRenderGroups - 1)) / numberOfRenderGroups;
+//            } else if (numberOfAreaColumns > numberOfAreaRows) {
+//                areaRowsPerGroup = 1;
+//                areaColumnsPerGroup = numberOfRenderGroups / numberOfAreaRows;
+//            } else {
+//                areaColumnsPerGroup = 1;
+//                areaRowsPerGroup = numberOfRenderGroups / numberOfAreaColumns;
+//            }
+//
+//
+//
+//        } else if (renderGroupIndex < numberOfAreas) {
+//
+//            final int row = (renderGroupIndex / numberOfAreaColumns) + firstAreaRow;
+//            final int column = (renderGroupIndex % numberOfAreaColumns) + firstAreaColumn;
+//
+//            firstRow = row;
+//            lastRow = row;
+//            firstColumn = column;
+//            lastColumn = column;
+//
+//        } else {
+//
+//            firstRow = 0;
+//            lastRow = -1;
+//            firstColumn = 0;
+//            lastColumn = -1;
+//
+//        }
+//
+//        setDerivedValues();
+//    }
 
     public int getZ() {
         return z;
@@ -156,15 +251,18 @@ public class SectionBoxBounds implements Serializable {
         return lastY;
     }
 
-    public int getNumberOfColumns() {
-        return numberOfColumns;
-    }
-
     @Override
     public String toString() {
         return "z " + z + ", columns " + firstColumn + " to " + lastColumn + " (x: " + firstX + " to " + lastX +
-               "), rows " + firstRow + " to " + lastRow + " (y: " + firstY + " to " + lastY +
-               "), boxes " + firstGroupBox + " to " + lastGroupBox;
+               "), rows " + firstRow + " to " + lastRow + " (y: " + firstY + " to " + lastY + ")";
+    }
+
+    private void setDerivedValues() {
+        this.firstX = firstColumn * boxWidth;
+        this.lastX = ((lastColumn + 1) * boxWidth) - 1;
+
+        this.firstY = firstRow * boxHeight;
+        this.lastY = ((lastRow + 1) * boxHeight) - 1;
     }
 
 }

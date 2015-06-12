@@ -22,6 +22,8 @@ public class SectionBoxBoundsTest {
     private int expectedFirstY;
     private int expectedLastY;
 
+    private int maxLevels;
+
     @Test
     public void testBoxBounds() throws Exception {
 
@@ -36,6 +38,8 @@ public class SectionBoxBoundsTest {
         expectedLastX = 104;
         expectedFirstY = 0;
         expectedLastY = 104;
+
+        maxLevels = 0;
 
         SectionBoxBounds boxBounds = new SectionBoxBounds(z, boxSize, boxSize, layerBounds);
         validateBoxBounds("simple box, no groups, ", boxBounds);
@@ -57,7 +61,11 @@ public class SectionBoxBoundsTest {
 
         Integer numberOfRenderGroups = 1;
         // one group should be the same as no groups
-        validateGroupBounds(layerBounds, 1, numberOfRenderGroups, new int[] {0, 5099}, new int[] {5100});
+        validateGroupBounds(layerBounds, 1, numberOfRenderGroups,
+                            new int[][] {{expectedFirstRow, expectedFirstColumn},
+                                         {expectedLastRow, expectedLastColumn}},
+                            new int[][] {{expectedFirstRow - 1, expectedFirstColumn},
+                                         {expectedLastRow, expectedLastColumn + 1}});
 
         // 51 rows * 100 columns = 5100 boxes
         // divided into 7 groups:
@@ -65,26 +73,25 @@ public class SectionBoxBoundsTest {
         //   groups 5-7 should each have 728 boxes
         numberOfRenderGroups = 7;
 
-        // groups 1-4 should each have 729 boxes
-        int boxesPerGroup = 729;
-        int firstValidBox = 0;
-        int lastValidBox;
-        for (int g = 1; g < 5; g++) {
-            lastValidBox = firstValidBox + boxesPerGroup - 1;
-            validateGroupBounds(layerBounds, g, numberOfRenderGroups,
-                                new int[] {firstValidBox, lastValidBox},
-                                new int[] {firstValidBox - 1, lastValidBox + 1});
-            firstValidBox = lastValidBox + 1;
-        }
+        // for each group, check: first box, middle box, and last box
+        int[][][] includedRowsAndColumns = new int[][][] {
+                { {14,  9}, {18, 50}, {21,  37} }, // group 1
+                { {21, 38}, {25, 50}, {28,  66} }, // group 2
+                { {28, 67}, {32, 50}, {35,  95} }, // group 3
+                { {35, 96}, {40, 50}, {43,  24} }, // group 4
+                { {43, 25}, {47, 50}, {50,  52} }, // group 5
+                { {50, 53}, {54, 50}, {57,  80} }, // group 6
+                { {57, 81}, {62, 50}, {64, 108} }  // group 7
+        };
 
-        // groups 5-7 should each have 728 boxes
-        boxesPerGroup = 728;
-        for (int g = 5; g < 8; g++) {
-            lastValidBox = firstValidBox + boxesPerGroup - 1;
-            validateGroupBounds(layerBounds, g, numberOfRenderGroups,
-                                new int[] {firstValidBox, lastValidBox},
-                                new int[] {firstValidBox - 1, lastValidBox + 1});
-            firstValidBox = lastValidBox + 1;
+        int[][] includedData;
+        int[][] excludedData;
+        for (int g = 0; g < includedRowsAndColumns.length; g++) {
+            includedData = includedRowsAndColumns[g];
+            excludedData = includedRowsAndColumns[(g + 1) % includedRowsAndColumns.length];
+            validateGroupBounds(layerBounds, (g + 1), numberOfRenderGroups,
+                                includedData,
+                                excludedData);
         }
 
         // 51 rows * 100 columns = 5100 boxes
@@ -92,36 +99,79 @@ public class SectionBoxBoundsTest {
         //   groups 1-5100 should each have 1 box and
         //   groups 5101-5200 should not have any boxes
         numberOfRenderGroups = 5200;
-        validateGroupBounds(layerBounds, 1, numberOfRenderGroups, new int[] {0}, new int[] {1});
-        validateGroupBounds(layerBounds, 999, numberOfRenderGroups, new int[] {998}, new int[] {997});
-        validateGroupBounds(layerBounds, 5100, numberOfRenderGroups, new int[] {5099}, new int[] {5100});
-        validateGroupBounds(layerBounds, 5150, numberOfRenderGroups, new int[] {}, new int[] {5149});
+        validateGroupBounds(layerBounds,    1, numberOfRenderGroups, new int[][] {{14,  9}}, new int[][] {{14, 10}});
+        validateGroupBounds(layerBounds,  801, numberOfRenderGroups, new int[][] {{22,  9}}, new int[][] {{22, 10}});
+        validateGroupBounds(layerBounds, 5100, numberOfRenderGroups, new int[][] {{64,108}}, new int[][] {{64,107}});
+        validateGroupBounds(layerBounds, 5150, numberOfRenderGroups, new int[][] {{      }}, new int[][] {{80, 80}});
+
+        // 3 levels => rowsAndColumnsPerArea of 8
+        // firstAreaRow = 1 (14 / 8), firstAreaColumn =  1 (  9 / 8)
+        // lastAreaRow  = 8 (64 / 8), lastAreaColumn  = 13 (108 / 8)
+        // numberOfAreas = 104 (8 * 13)
+        // divided into 3 groups:
+        //   groups 1-2 should each have 35 areas and
+        //   group 3 should have 34 areas
+        maxLevels = 3;
+        numberOfRenderGroups = 3;
+
+        // for each group, check: first box, middle box, and last box
+        includedRowsAndColumns = new int[][][] {
+                { {14,  9}, {22, 50}, {31,  79} }, // group 1
+                { {31, 80}, {40, 50}, {55,  47} }, // group 2
+                { {55, 48}, {58, 50}, {64, 108} }, // group 3
+        };
+
+        for (int g = 0; g < includedRowsAndColumns.length; g++) {
+            includedData = includedRowsAndColumns[g];
+            excludedData = includedRowsAndColumns[(g + 1) % includedRowsAndColumns.length];
+            validateGroupBounds(layerBounds, (g + 1), numberOfRenderGroups,
+                                includedData,
+                                excludedData);
+        }
+
+        // 3 levels => rowsAndColumnsPerArea of 8
+        // firstAreaRow = 1 (14 / 8), firstAreaColumn =  1 (  9 / 8)
+        // lastAreaRow  = 8 (64 / 8), lastAreaColumn  = 13 (108 / 8)
+        // numberOfAreas = 104 (8 * 13)
+        // divided into 200 groups:
+        //   groups 1-104 should each have 1 area and
+        //   groups 105-200 should not have any areas
+        numberOfRenderGroups = 200;
+        validateGroupBounds(layerBounds,   1, numberOfRenderGroups, new int[][] {{14,  9}}, new int[][] {{14, 19}});
+        validateGroupBounds(layerBounds,  14, numberOfRenderGroups, new int[][] {{16,  9}}, new int[][] {{15,  9}});
+        validateGroupBounds(layerBounds, 104, numberOfRenderGroups, new int[][] {{64,108}}, new int[][] {{63,108}});
+        validateGroupBounds(layerBounds, 150, numberOfRenderGroups, new int[][] {{      }}, new int[][] {{80, 80}});
     }
 
     private void validateGroupBounds(final Bounds layerBounds,
                                      final int renderGroup,
                                      final int numberOfRenderGroups,
-                                     final int[] includedBoxes,
-                                     final int[] excludedBoxes) {
+                                     final int[][] includedRowAndColumnValues,
+                                     final int[][] excludedRowAndColumnValues) {
         final String context = "group " + renderGroup + " of " + numberOfRenderGroups;
         final SectionBoxBounds boxBounds = new SectionBoxBounds(z, boxSize, boxSize, layerBounds);
-        boxBounds.setRenderGroup(renderGroup, numberOfRenderGroups);
-        for (final int boxNumber : includedBoxes) {
-            validateIsInRenderGroup(context, boxBounds, boxNumber, true);
-        }
-        for (final int boxNumber : excludedBoxes) {
-            validateIsInRenderGroup(context, boxBounds, boxNumber, false);
-        }
-    }
+        boxBounds.setRenderGroup(renderGroup, numberOfRenderGroups, maxLevels);
 
-    private void validateIsInRenderGroup(final String context,
-                                         final SectionBoxBounds boxBounds,
-                                         final int boxNumber,
-                                         final boolean expectedResult) {
-        final int row = (boxNumber / boxBounds.getNumberOfColumns()) + boxBounds.getFirstRow();
-        final int column = (boxNumber % boxBounds.getNumberOfColumns()) + boxBounds.getFirstColumn();
-        Assert.assertEquals("invalid result for box " + boxNumber + " in " + context,
-                            expectedResult, boxBounds.isInRenderGroup(row, column));
+        int row;
+        int column;
+
+        for (final int[] rowAndColumn : includedRowAndColumnValues) {
+            if (rowAndColumn.length > 1) {
+                row = rowAndColumn[0];
+                column = rowAndColumn[1];
+                Assert.assertTrue("row " + row + ", column " + column + " should be in " + context,
+                                  boxBounds.isInRenderGroup(row, column));
+            }
+        }
+
+        for (final int[] rowAndColumn : excludedRowAndColumnValues) {
+            if (rowAndColumn.length > 1) {
+                row = rowAndColumn[0];
+                column = rowAndColumn[1];
+                Assert.assertFalse("row " + row + ", column " + column + " should NOT be in " + context,
+                                   boxBounds.isInRenderGroup(row, column));
+            }
+        }
     }
 
     private void validateBoxBounds(final String context,

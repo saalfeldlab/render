@@ -52,7 +52,9 @@ public class BoxMipmapGenerator {
     private final int boxHeight;
     private final File boxDirectory;
     private final int sourceLevel;
+    private final int firstSourceRow;
     private final int lastSourceRow;
+    private final int firstSourceColumn;
     private final int lastSourceColumn;
     private final boolean forceGeneration;
 
@@ -69,8 +71,10 @@ public class BoxMipmapGenerator {
      * @param  boxHeight         height for all generated image files.
      * @param  boxDirectory      parent directory for all generated image files.
      * @param  sourceLevel       scaling level for the source images to be down-sampled.
-     * @param  lastSourceRow     number of row (0-based) containing bottom right tile in layer.
-     * @param  lastSourceColumn  number of column (0-based) containing bottom right tile in layer.
+     * @param  firstSourceRow    number of row (0-based) containing upper left tile in layer (or portion of layer).
+     * @param  lastSourceRow     number of row (0-based) containing bottom right tile in layer (or portion of layer).
+     * @param  firstSourceColumn number of column (0-based) containing upper left tile in layer (or portion of layer).
+     * @param  lastSourceColumn  number of column (0-based) containing bottom right tile in layer (or portion of layer).
      */
     public BoxMipmapGenerator(final int z,
                               final boolean isLabel,
@@ -79,7 +83,9 @@ public class BoxMipmapGenerator {
                               final int boxHeight,
                               final File boxDirectory,
                               final int sourceLevel,
+                              final int firstSourceRow,
                               final int lastSourceRow,
+                              final int firstSourceColumn,
                               final int lastSourceColumn,
                               final boolean forceGeneration) {
         this.z = z;
@@ -89,7 +95,9 @@ public class BoxMipmapGenerator {
         this.boxHeight = boxHeight;
         this.boxDirectory = boxDirectory;
         this.sourceLevel = sourceLevel;
+        this.firstSourceRow = (firstSourceRow / 2) * 2; // ensure first row is a multiple of 2
         this.lastSourceRow = lastSourceRow;
+        this.firstSourceColumn = (firstSourceColumn / 2) * 2; // ensure first column is a multiple of 2
         this.lastSourceColumn = lastSourceColumn;
         this.forceGeneration = forceGeneration;
 
@@ -157,7 +165,9 @@ public class BoxMipmapGenerator {
                                                                               boxHeight,
                                                                               boxDirectory,
                                                                               scaledLevel,
+                                                                              (firstSourceRow / 2),
                                                                               (lastSourceRow / 2),
+                                                                              (firstSourceColumn / 2),
                                                                               (lastSourceColumn / 2),
                                                                               forceGeneration);
         List<File> firstRowFiles;
@@ -168,7 +178,7 @@ public class BoxMipmapGenerator {
         int scaledRow;
         int scaledColumn;
 
-        for (int sourceRow = 0; sourceRow <= lastSourceRow; sourceRow += 2) {
+        for (int sourceRow = firstSourceRow; sourceRow <= lastSourceRow; sourceRow += 2) {
 
             firstRowFiles = rowFileLists.get(sourceRow);
 
@@ -180,7 +190,7 @@ public class BoxMipmapGenerator {
                 secondRowFiles = emptyRow;
             }
 
-            for (int sourceColumn = 0; sourceColumn <= lastSourceColumn; sourceColumn += 2) {
+            for (int sourceColumn = firstSourceColumn; sourceColumn <= lastSourceColumn; sourceColumn += 2) {
 
                 mipmapSource = new MipmapSource(firstRowFiles,
                                                 secondRowFiles,
