@@ -138,8 +138,11 @@ public class Utils {
             final File parentDirectory = file.getParentFile();
             if ((parentDirectory != null) && (!parentDirectory.exists())) {
                 if (!parentDirectory.mkdirs()) {
-                    throw new IllegalArgumentException("failed to create directory " +
-                                                       parentDirectory.getAbsolutePath());
+                    // check for existence again in case another parallel process already created the directory
+                    if (! parentDirectory.exists()) {
+                        throw new IllegalArgumentException("failed to create directory " +
+                                                           parentDirectory.getAbsolutePath());
+                    }
                 }
             }
 
@@ -336,7 +339,7 @@ public class Utils {
 
     public static URI convertPathOrUriStringToUri(final String pathOrUriString)
             throws IllegalArgumentException {
-        URI uri;
+        final URI uri;
         if (pathOrUriString.indexOf(':') == -1) {
             // convert relative path to fully qualified URL
             File file = new File(pathOrUriString);
