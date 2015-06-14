@@ -16,52 +16,50 @@ import org.janelia.alignment.json.JsonUtils;
  */
 public class CanvasMatches implements Serializable {
 
-    private static final long serialVersionUID = 542757092635657160L;
+    /** Section identifier for all source coordinates. */
+    private final String pSectionId;
 
-    /** Z value for all source coordinates. */
-    private final Double pz;
-
-    /** Canvas identifier for all source coordinates. */
+    /** Canvas identifier for all source coordinates (e.g. tile id). */
     private final String pId;
 
-    /** Z value for all target coordinates. */
-    private final Double qz;
+    /** Section identifier for all target coordinates. */
+    private final String qSectionId;
 
-    /** Canvas identifier for all target coordinates. */
+    /** Canvas identifier for all target coordinates (e.g. tile id). */
     private final String qId;
 
     /** Weighted source-target point correspondences. */
     private final Matches matches;
 
-    public CanvasMatches(final Double pz,
+    public CanvasMatches(final String pSectionId,
                          final String pId,
-                         final Double qz,
+                         final String qSectionId,
                          final String qId,
                          final Matches matches) {
-        this.pz = pz;
+        this.pSectionId = pSectionId;
         this.pId = pId;
-        this.qz = qz;
+        this.qSectionId = qSectionId;
         this.qId = qId;
         this.matches = matches;
     }
 
-    public Double getPz() {
-        return pz;
+    public String getpSectionId() {
+        return pSectionId;
     }
 
     public String getpId() {
         return pId;
     }
 
-    public Double getQz() {
-        return qz;
+    public String getqSectionId() {
+        return qSectionId;
     }
 
     @Override
     public String toString() {
-        return "{pz: " + pz +
+        return "{pSectionId: " + pSectionId +
                ", pId: '" + pId + '\'' +
-               ", qz: " + qz +
+               ", qSectionId: " + qSectionId +
                ", qId: '" + qId + '\'' +
                '}';
     }
@@ -76,8 +74,8 @@ public class CanvasMatches implements Serializable {
         final double[] ws = matches.getWs();
         final StringBuilder sb = new StringBuilder(ws.length * 100);
         for (int i = 0; i < ws.length; i++) {
-            sb.append(pz).append('\t').append(pId).append('\t').append(ps[0][i]).append('\t').append(ps[1][i]).append('\t');
-            sb.append(qz).append('\t').append(qId).append('\t').append(qs[0][i]).append('\t').append(qs[1][i]).append('\t');
+            sb.append(pSectionId).append('\t').append(pId).append('\t').append(ps[0][i]).append('\t').append(ps[1][i]).append('\t');
+            sb.append(qSectionId).append('\t').append(qId).append('\t').append(qs[0][i]).append('\t').append(qs[1][i]).append('\t');
             sb.append(ws[i]).append('\n');
         }
         return sb.toString();
@@ -87,7 +85,7 @@ public class CanvasMatches implements Serializable {
         return JsonUtils.GSON.fromJson(json, CanvasMatches.class);
     }
 
-    public static List<CanvasMatches> fromJsonArray(Reader json) {
+    public static List<CanvasMatches> fromJsonArray(final Reader json) {
         return JsonUtils.GSON.fromJson(json, LIST_TYPE);
     }
 

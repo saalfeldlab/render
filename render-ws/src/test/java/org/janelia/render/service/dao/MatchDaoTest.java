@@ -29,6 +29,8 @@ public class MatchDaoTest {
     private static EmbeddedMongoDb embeddedMongoDb;
     private static MatchDao dao;
 
+    private final String sectionId = "section1";
+
     @BeforeClass
     public static void before() throws Exception {
         collectionName = "test";
@@ -53,58 +55,51 @@ public class MatchDaoTest {
     @Test
     public void testWriteMatchesWithinLayer() throws Exception {
 
-        final double z = 1.0;
-
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesWithinLayer(collectionName, z, outputStream);
+        dao.writeMatchesWithinLayer(collectionName, sectionId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
         Assert.assertEquals("invalid number of matches returned",
                             2, canvasMatchesList.size());
 
-        for (CanvasMatches canvasMatches : canvasMatchesList) {
+        for (final CanvasMatches canvasMatches : canvasMatchesList) {
 //            System.out.println(canvasMatches.toTabSeparatedFormat());
-            Assert.assertEquals("invalid source z: " + canvasMatches, z, canvasMatches.getPz(), Z_DELTA);
-            Assert.assertEquals("invalid target z: " + canvasMatches, z, canvasMatches.getQz(), Z_DELTA);
+            Assert.assertEquals("invalid source sectionId: " + canvasMatches, sectionId, canvasMatches.getpSectionId());
+            Assert.assertEquals("invalid target sectionId: " + canvasMatches, sectionId, canvasMatches.getqSectionId());
         }
     }
 
     @Test
     public void testWriteMatchesOutsideLayer() throws Exception {
 
-        final double z = 1.0;
-
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideLayer(collectionName, z, outputStream);
+        dao.writeMatchesOutsideLayer(collectionName, sectionId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
         Assert.assertEquals("invalid number of matches returned",
                             2, canvasMatchesList.size());
 
-        for (CanvasMatches canvasMatches : canvasMatchesList) {
+        for (final CanvasMatches canvasMatches : canvasMatchesList) {
 
             System.out.println(canvasMatches.toTabSeparatedFormat());
 
-            if (Math.abs(canvasMatches.getPz() - canvasMatches.getQz()) < Z_DELTA) {
-                Assert.fail("source and target matches have same z: " + canvasMatches);
-            }
+            Assert.assertNotSame("source and target matches have same sectionId: " + canvasMatches,
+                                 canvasMatches.getpSectionId(), canvasMatches.getqSectionId());
         }
     }
 
     @Test
     public void testRemoveMatchesOutsideLayer() throws Exception {
 
-        final double z = 1.0;
-
-        dao.removeMatchesOutsideLayer(collectionName, z);
+        dao.removeMatchesOutsideLayer(collectionName, sectionId);
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideLayer(collectionName, z, outputStream);
+        dao.writeMatchesOutsideLayer(collectionName, sectionId, outputStream);
 
         List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -113,7 +108,7 @@ public class MatchDaoTest {
 
         outputStream.reset();
 
-        dao.writeMatchesWithinLayer(collectionName, z, outputStream);
+        dao.writeMatchesWithinLayer(collectionName, sectionId, outputStream);
 
         canvasMatchesList = getListFromStream(outputStream);
 
@@ -124,14 +119,13 @@ public class MatchDaoTest {
     @Test
     public void testSaveMatches() throws Exception {
 
-        final double z = 1.0;
         final String pId = "save.p";
 
         List<CanvasMatches> canvasMatchesList = new ArrayList<>();
         for (int i = 1; i < 4; i++) {
-            canvasMatchesList.add(new CanvasMatches(z,
+            canvasMatchesList.add(new CanvasMatches(sectionId,
                                                     pId,
-                                                    z + i,
+                                                    sectionId + i,
                                                     "save.q",
                                                     new Matches(new double[][]{{1, 2, 3}, {4, 5, 6},},
                                                                 new double[][]{{11, 12, 13}, {14, 15, 16}},
@@ -142,7 +136,7 @@ public class MatchDaoTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideLayer(collectionName, z, outputStream);
+        dao.writeMatchesOutsideLayer(collectionName, sectionId, outputStream);
 
         canvasMatchesList = getListFromStream(outputStream);
 
@@ -150,7 +144,7 @@ public class MatchDaoTest {
                             5, canvasMatchesList.size());
 
         int savePCount = 0;
-        for (CanvasMatches canvasMatches : canvasMatchesList) {
+        for (final CanvasMatches canvasMatches : canvasMatchesList) {
             if (pId.equals(canvasMatches.getpId())) {
                 savePCount++;
             }
@@ -159,12 +153,10 @@ public class MatchDaoTest {
         Assert.assertEquals("invalid number of matches saved", 3, savePCount);
     }
 
-    private List<CanvasMatches> getListFromStream(ByteArrayOutputStream outputStream) {
+    private List<CanvasMatches> getListFromStream(final ByteArrayOutputStream outputStream) {
         final String json = outputStream.toString();
         final Type typeOfT = new TypeToken<List<CanvasMatches>>(){}.getType();
         return JsonUtils.GSON.fromJson(json, typeOfT);
     }
-
-    private static final Double Z_DELTA = 0.1;
 
 }

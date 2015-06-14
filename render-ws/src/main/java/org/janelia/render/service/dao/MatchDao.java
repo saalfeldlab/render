@@ -30,58 +30,58 @@ public class MatchDao {
 
     public static final String MATCH_DB_NAME = "match";
 
-    private DB matchDb;
+    private final DB matchDb;
 
-    public MatchDao(MongoClient client) {
+    public MatchDao(final MongoClient client) {
         matchDb = client.getDB(MATCH_DB_NAME);
     }
 
-    public void writeMatchesWithinLayer(String collectionName,
-                                        double z,
-                                        OutputStream outputStream)
+    public void writeMatchesWithinLayer(final String collectionName,
+                                        final String sectionId,
+                                        final OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
-        LOG.debug("writeMatchesWithinLayer: entry, collectionName={}, z={}",
-                  collectionName, z);
+        LOG.debug("writeMatchesWithinLayer: entry, collectionName={}, sectionId={}",
+                  collectionName, sectionId);
 
         validateRequiredParameter("collectionName", collectionName);
 
         final DBCollection collection = matchDb.getCollection(collectionName);
-        final BasicDBObject query = new BasicDBObject("pz", z).append("qz", z);
+        final BasicDBObject query = new BasicDBObject("pSectionId", sectionId).append("qSectionId", sectionId);
 
         writeMatches(collection, query, outputStream);
     }
 
-    public void writeMatchesOutsideLayer(String collectionName,
-                                         double z,
-                                         OutputStream outputStream)
+    public void writeMatchesOutsideLayer(final String collectionName,
+                                         final String sectionId,
+                                         final OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
-        LOG.debug("writeMatchesOutsideLayer: entry, collectionName={}, z={}",
-                  collectionName, z);
+        LOG.debug("writeMatchesOutsideLayer: entry, collectionName={}, sectionId={}",
+                  collectionName, sectionId);
 
         validateRequiredParameter("collectionName", collectionName);
 
         final DBCollection collection = matchDb.getCollection(collectionName);
-        final BasicDBObject query = getOutsideLayerQuery(z);
+        final BasicDBObject query = getOutsideLayerQuery(sectionId);
 
         writeMatches(collection, query, outputStream);
     }
 
-    public void removeMatchesOutsideLayer(String collectionName,
-                                          double z)
+    public void removeMatchesOutsideLayer(final String collectionName,
+                                          final String sectionId)
             throws IllegalArgumentException {
 
         validateRequiredParameter("collectionName", collectionName);
 
         final DBCollection collection = matchDb.getCollection(collectionName);
-        final BasicDBObject query = getOutsideLayerQuery(z);
+        final BasicDBObject query = getOutsideLayerQuery(sectionId);
 
         collection.remove(query);
     }
 
-    public void saveMatches(String collectionName,
-                            List<CanvasMatches> matchesList)
+    public void saveMatches(final String collectionName,
+                            final List<CanvasMatches> matchesList)
             throws IllegalArgumentException {
 
         validateRequiredParameter("collectionName", collectionName);
@@ -99,7 +99,7 @@ public class MatchDao {
             final BulkWriteOperation bulk = collection.initializeUnorderedBulkOperation();
 
             DBObject matchesObject;
-            for (CanvasMatches canvasMatches : matchesList) {
+            for (final CanvasMatches canvasMatches : matchesList) {
                 matchesObject = (DBObject) JSON.parse(canvasMatches.toJson());
                 bulk.insert(matchesObject);
             }
@@ -114,9 +114,9 @@ public class MatchDao {
         }
     }
 
-    private void writeMatches(DBCollection collection,
-                              BasicDBObject query,
-                              OutputStream outputStream)
+    private void writeMatches(final DBCollection collection,
+                              final BasicDBObject query,
+                              final OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
         // exclude mongo id from results
@@ -155,15 +155,19 @@ public class MatchDao {
                   count, collection.getFullName(), query, keys, timer.getElapsedSeconds());
     }
 
-    private BasicDBObject getOutsideLayerQuery(double z) {
+    private BasicDBObject getOutsideLayerQuery(final String sectionId) {
         final BasicDBList queryList = new BasicDBList();
-        queryList.add(new BasicDBObject("pz", z).append("qz", new BasicDBObject(QueryOperators.NE, z)));
-        queryList.add(new BasicDBObject("qz", z).append("pz", new BasicDBObject(QueryOperators.NE, z)));
+        queryList.add(new BasicDBObject(
+                "pSectionId", sectionId).append(
+                "qSectionId", new BasicDBObject(QueryOperators.NE, sectionId)));
+        queryList.add(new BasicDBObject(
+                "qSectionId", sectionId).append(
+                "pSectionId", new BasicDBObject(QueryOperators.NE, sectionId)));
         return new BasicDBObject(QueryOperators.OR, queryList);
     }
 
-    private void validateRequiredParameter(String context,
-                                           Object value)
+    private void validateRequiredParameter(final String context,
+                                           final Object value)
             throws IllegalArgumentException {
 
         if (value == null) {
@@ -171,16 +175,20 @@ public class MatchDao {
         }
     }
 
-    private void ensureMatchIndexes(DBCollection matchCollection) {
+    private void ensureMatchIndexes(final DBCollection matchCollection) {
         LOG.debug("ensureMatchIndexes: entry, {}", matchCollection.getName());
-        matchCollection.createIndex(new BasicDBObject("pz", 1).append("qz", 1).append("pId", 1).append("qId", 1),
+        matchCollection.createIndex(new BasicDBObject(
+                                            "pSectionId", 1).append(
+                                            "qSectionId", 1).append(
+                                            "pId", 1).append(
+                                            "qId", 1),
                                     new BasicDBObject("unique", true).append("background", true));
         LOG.debug("ensureMatchIndexes: exit");
     }
 
-    private String getBulkResultMessage(String context,
-                                        BulkWriteResult result,
-                                        int objectCount) {
+    private String getBulkResultMessage(final String context,
+                                        final BulkWriteResult result,
+                                        final int objectCount) {
 
         final StringBuilder message = new StringBuilder(128);
 

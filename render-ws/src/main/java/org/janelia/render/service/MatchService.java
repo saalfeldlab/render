@@ -49,60 +49,60 @@ public class MatchService {
         this.matchDao = matchDao;
     }
 
-    @Path("matchCollection/{matchCollection}/z/{z}/matchesWithinLayer")
+    @Path("matchCollection/{matchCollection}/section/{sectionId}/matchesWithinLayer")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response getMatchesWithinLayer(@PathParam("owner") final String owner,
                                           @PathParam("matchCollection") final String matchCollection,
-                                          @PathParam("z") final double z) {
+                                          @PathParam("sectionId") final String sectionId) {
 
-        LOG.info("getMatchesWithinLayer: entry, owner={}, matchCollection={}, z={}",
-                 owner, matchCollection, z);
+        LOG.info("getMatchesWithinLayer: entry, owner={}, matchCollection={}, sectionId={}",
+                 owner, matchCollection, sectionId);
 
         final StreamingOutput responseOutput = new StreamingOutput() {
             @Override
             public void write(final OutputStream output)
                     throws IOException, WebApplicationException {
-                matchDao.writeMatchesWithinLayer(matchCollection, z, output);
+                matchDao.writeMatchesWithinLayer(matchCollection, sectionId, output);
             }
         };
 
         return streamResponse(responseOutput);
     }
 
-    @Path("matchCollection/{matchCollection}/z/{z}/matchesOutsideLayer")
+    @Path("matchCollection/{matchCollection}/section/{sectionId}/matchesOutsideLayer")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response getMatchesOutsideLayer(@PathParam("owner") final String owner,
                                            @PathParam("matchCollection") final String matchCollection,
-                                           @PathParam("z") final double z) {
+                                           @PathParam("sectionId") final String sectionId) {
 
-        LOG.info("getMatchesWithinLayer: entry, owner={}, matchCollection={}, z={}",
-                 owner, matchCollection, z);
+        LOG.info("getMatchesWithinLayer: entry, owner={}, matchCollection={}, sectionId={}",
+                 owner, matchCollection, sectionId);
 
         final StreamingOutput responseOutput = new StreamingOutput() {
             @Override
             public void write(final OutputStream output)
                     throws IOException, WebApplicationException {
-                matchDao.writeMatchesOutsideLayer(matchCollection, z, output);
+                matchDao.writeMatchesOutsideLayer(matchCollection, sectionId, output);
             }
         };
 
         return streamResponse(responseOutput);
     }
 
-    @Path("matchCollection/{matchCollection}/z/{z}/matchesOutsideLayer")
+    @Path("matchCollection/{matchCollection}/section/{sectionId}/matchesOutsideLayer")
     @DELETE
     public Response deleteMatchesOutsideLayer(@PathParam("owner") final String owner,
                                               @PathParam("matchCollection") final String matchCollection,
-                                              @PathParam("z") final double z) {
+                                              @PathParam("sectionId") final String sectionId) {
 
-        LOG.info("deleteMatchesOutsideLayer: entry, owner={}, matchCollection={}, z={}",
-                 owner, matchCollection, z);
+        LOG.info("deleteMatchesOutsideLayer: entry, owner={}, matchCollection={}, sectionId={}",
+                 owner, matchCollection, sectionId);
 
         Response response = null;
         try {
-            matchDao.removeMatchesOutsideLayer(matchCollection, z);
+            matchDao.removeMatchesOutsideLayer(matchCollection, sectionId);
             response = Response.ok().build();
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -116,8 +116,8 @@ public class MatchService {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response saveMatches(@PathParam("owner") final String owner,
                                 @PathParam("matchCollection") final String matchCollection,
-                                @Context UriInfo uriInfo,
-                                List<CanvasMatches> canvasMatchesList) {
+                                @Context final UriInfo uriInfo,
+                                final List<CanvasMatches> canvasMatchesList) {
 
         LOG.info("saveMatches: entry, owner={}, matchCollection={}",
                  owner, matchCollection);
