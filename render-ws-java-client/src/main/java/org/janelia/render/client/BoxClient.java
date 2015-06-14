@@ -107,25 +107,24 @@ public class BoxClient {
      * @param  args  see {@link Parameters} for command line argument details.
      */
     public static void main(final String[] args) {
-        try {
+        final ClientRunner clientRunner = new ClientRunner(args) {
+            @Override
+            public void runClient(final String[] args) throws Exception {
 
-            final Parameters parameters = new Parameters();
-            parameters.parse(args);
+                final Parameters parameters = new Parameters();
+                parameters.parse(args);
 
-            LOG.info("main: entry, parameters={}", parameters);
+                LOG.info("main: runClient, parameters={}", parameters);
 
-            final BoxClient client = new BoxClient(parameters);
+                final BoxClient client = new BoxClient(parameters);
+                client.createEmptyImageFile();
 
-            client.createEmptyImageFile();
-
-            for (final Double z : parameters.zValues) {
-                client.generateBoxesForZ(z);
+                for (final Double z : parameters.zValues) {
+                    client.generateBoxesForZ(z);
+                }
             }
-
-        } catch (final Throwable t) {
-            LOG.error("main: caught exception", t);
-            System.exit(1);
-        }
+        };
+        clientRunner.run();
     }
 
     private final Parameters params;
