@@ -50,24 +50,24 @@ public class RenderSectionClient {
     /**
      * @param  args  see {@link Parameters} for command line argument details.
      */
-    public static void main(String[] args) {
-        try {
+    public static void main(final String[] args) {
+        final ClientRunner clientRunner = new ClientRunner(args) {
+            @Override
+            public void runClient(final String[] args) throws Exception {
 
-            final Parameters parameters = new Parameters();
-            parameters.parse(args);
+                final Parameters parameters = new Parameters();
+                parameters.parse(args);
 
-            LOG.info("main: entry, parameters={}", parameters);
+                LOG.info("runClient: entry, parameters={}", parameters);
 
-            final RenderSectionClient client = new RenderSectionClient(parameters);
+                final RenderSectionClient client = new RenderSectionClient(parameters);
 
-            for (Double z : parameters.zValues) {
-                client.generateImageForZ(z);
+                for (final Double z : parameters.zValues) {
+                    client.generateImageForZ(z);
+                }
             }
-
-        } catch (final Throwable t) {
-            LOG.error("main: caught exception", t);
-            System.exit(1);
-        }
+        };
+        clientRunner.run();
     }
 
     private final Parameters clientParameters;

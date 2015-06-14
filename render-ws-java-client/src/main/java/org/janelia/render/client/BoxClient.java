@@ -114,7 +114,7 @@ public class BoxClient {
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
 
-                LOG.info("main: runClient, parameters={}", parameters);
+                LOG.info("runClient: entry, parameters={}", parameters);
 
                 final BoxClient client = new BoxClient(parameters);
                 client.createEmptyImageFile();

@@ -33,22 +33,23 @@ public class ImportMatchClient {
     }
 
     public static void main(final String[] args) {
-        try {
-            final Parameters parameters = new Parameters();
-            parameters.parse(args);
+        final ClientRunner clientRunner = new ClientRunner(args) {
+            @Override
+            public void runClient(final String[] args) throws Exception {
 
-            LOG.info("main: entry, parameters={}", parameters);
+                final Parameters parameters = new Parameters();
+                parameters.parse(args);
 
-            final ImportMatchClient client = new ImportMatchClient(parameters);
+                LOG.info("runClient: entry, parameters={}", parameters);
 
-            for (final String dataFile : parameters.canvasMatchesFiles) {
-                client.importMatchData(dataFile);
+                final ImportMatchClient client = new ImportMatchClient(parameters);
+
+                for (final String dataFile : parameters.canvasMatchesFiles) {
+                    client.importMatchData(dataFile);
+                }
             }
-
-        } catch (final Throwable t) {
-            LOG.error("main: caught exception", t);
-            System.exit(1);
-        }
+        };
+        clientRunner.run();
     }
 
     private final Parameters parameters;
@@ -60,7 +61,7 @@ public class ImportMatchClient {
         this.renderDataClient = parameters.getClient();
     }
 
-    public void importMatchData(String dataFile) throws Exception {
+    public void importMatchData(final String dataFile) throws Exception {
 
         LOG.info("importMatchData: entry, dataFile={}", dataFile);
 

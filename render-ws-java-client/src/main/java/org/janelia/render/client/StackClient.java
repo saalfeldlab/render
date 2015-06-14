@@ -69,31 +69,31 @@ public class StackClient {
      * @param  args  see {@link Parameters} for command line argument details.
      */
     public static void main(final String[] args) {
-        try {
+        final ClientRunner clientRunner = new ClientRunner(args) {
+            @Override
+            public void runClient(final String[] args) throws Exception {
 
-            final Parameters parameters = new Parameters();
-            parameters.parse(args);
+                final Parameters parameters = new Parameters();
+                parameters.parse(args);
 
-            LOG.info("main: entry, parameters={}", parameters);
+                LOG.info("runClient: entry, parameters={}", parameters);
 
-            final StackClient client = new StackClient(parameters);
+                final StackClient client = new StackClient(parameters);
 
-            if (Action.CREATE.equals(parameters.action)) {
-                client.createStackVersion();
-            } else if (Action.CLONE.equals(parameters.action)) {
-                client.cloneStackVersion();
-            } else if (Action.SET_STATE.equals(parameters.action)) {
-                client.setStackState();
-            } else if (Action.DELETE.equals(parameters.action)) {
-                client.deleteStack();
-            } else {
-                throw new IllegalArgumentException("unknown action '" + parameters.action + "' specified");
+                if (Action.CREATE.equals(parameters.action)) {
+                    client.createStackVersion();
+                } else if (Action.CLONE.equals(parameters.action)) {
+                    client.cloneStackVersion();
+                } else if (Action.SET_STATE.equals(parameters.action)) {
+                    client.setStackState();
+                } else if (Action.DELETE.equals(parameters.action)) {
+                    client.deleteStack();
+                } else {
+                    throw new IllegalArgumentException("unknown action '" + parameters.action + "' specified");
+                }
             }
-
-        } catch (final Throwable t) {
-            LOG.error("main: caught exception", t);
-            System.exit(1);
-        }
+        };
+        clientRunner.run();
     }
 
     private final Parameters params;

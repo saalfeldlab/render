@@ -55,20 +55,21 @@ public class ImportMETClient {
     }
 
     public static void main(final String[] args) {
-        try {
-            final Parameters parameters = new Parameters();
-            parameters.parse(args);
+        final ClientRunner clientRunner = new ClientRunner(args) {
+            @Override
+            public void runClient(final String[] args) throws Exception {
 
-            LOG.info("main: entry, parameters={}", parameters);
+                final Parameters parameters = new Parameters();
+                parameters.parse(args);
 
-            final ImportMETClient client = new ImportMETClient(parameters);
+                LOG.info("runClient: entry, parameters={}", parameters);
 
-            client.generateStackData();
+                final ImportMETClient client = new ImportMETClient(parameters);
 
-        } catch (final Throwable t) {
-            LOG.error("main: caught exception", t);
-            System.exit(1);
-        }
+                client.generateStackData();
+            }
+        };
+        clientRunner.run();
     }
 
     private final Parameters parameters;

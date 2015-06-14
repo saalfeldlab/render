@@ -40,22 +40,23 @@ public class ImportJsonClient {
     }
 
     public static void main(final String[] args) {
-        try {
-            final Parameters parameters = new Parameters();
-            parameters.parse(args);
+        final ClientRunner clientRunner = new ClientRunner(args) {
+            @Override
+            public void runClient(final String[] args) throws Exception {
 
-            LOG.info("main: entry, parameters={}", parameters);
+                final Parameters parameters = new Parameters();
+                parameters.parse(args);
 
-            final ImportJsonClient client = new ImportJsonClient(parameters);
+                LOG.info("runClient: entry, parameters={}", parameters);
 
-            for (final String tileFile : parameters.tileFiles) {
-                client.importStackData(tileFile);
+                final ImportJsonClient client = new ImportJsonClient(parameters);
+
+                for (final String tileFile : parameters.tileFiles) {
+                    client.importStackData(tileFile);
+                }
             }
-
-        } catch (final Throwable t) {
-            LOG.error("main: caught exception", t);
-            System.exit(1);
-        }
+        };
+        clientRunner.run();
     }
 
     private final Parameters parameters;
@@ -70,7 +71,7 @@ public class ImportJsonClient {
         this.transformSpecs = loadTransformData(parameters.transformFile);
     }
 
-    public void importStackData(String tileFile) throws Exception {
+    public void importStackData(final String tileFile) throws Exception {
 
         LOG.info("importStackData: entry, tileFile={}", tileFile);
 
@@ -85,7 +86,7 @@ public class ImportJsonClient {
                     new ResolvedTileSpecCollection(transformSpecs,
                                                    tileSpecs);
 
-            for (TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
+            for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
 
                 tileSpecCount++;
 

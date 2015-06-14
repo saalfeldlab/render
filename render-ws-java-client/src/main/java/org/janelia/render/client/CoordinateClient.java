@@ -49,48 +49,52 @@ public class CoordinateClient {
     }
 
     public static void main(final String[] args) {
-        try {
-            final Parameters parameters = new Parameters();
-            parameters.parse(args);
 
-            final File fromFile = new File(parameters.fromJson).getAbsoluteFile();
-            if (! fromFile.canRead()) {
-                throw new IllegalArgumentException("cannot read " + fromFile.getAbsolutePath());
+        final ClientRunner clientRunner = new ClientRunner(args) {
+            @Override
+            public void runClient(final String[] args) throws Exception {
+
+                final Parameters parameters = new Parameters();
+                parameters.parse(args);
+
+                final File fromFile = new File(parameters.fromJson).getAbsoluteFile();
+                if (! fromFile.canRead()) {
+                    throw new IllegalArgumentException("cannot read " + fromFile.getAbsolutePath());
+                }
+
+                File toFile = new File(parameters.toJson).getAbsoluteFile();
+                if (! toFile.exists()) {
+                    toFile = toFile.getParentFile();
+                }
+                if (! toFile.canWrite()) {
+                    throw new IllegalArgumentException("cannot write " + toFile.getAbsolutePath());
+                }
+
+                LOG.info("runClient: entry, parameters={}", parameters);
+
+                final CoordinateClient client = new CoordinateClient(parameters.stack,
+                                                                     parameters.z,
+                                                                     parameters.getClient());
+
+                final Object coordinatesToSave;
+                if (parameters.localToWorld) {
+                    final List<List<TileCoordinates>> loadedLocalCoordinates =
+                            loadJsonArrayOfArraysOfCoordinates(parameters.fromJson);
+                    coordinatesToSave = client.localToWorld(loadedLocalCoordinates);
+                } else {
+                    final List<TileCoordinates> loadedWorldCoordinates =
+                            loadJsonArrayOfCoordinates(parameters.fromJson);
+                    final List<List<TileCoordinates>> worldCoordinatesWithTileIds =
+                            client.getWorldCoordinatesWithTileIds(loadedWorldCoordinates);
+                    coordinatesToSave = client.worldToLocal(worldCoordinatesWithTileIds);
+                }
+
+                saveJsonFile(parameters.toJson, coordinatesToSave);
+
             }
+        };
+        clientRunner.run();
 
-            File toFile = new File(parameters.toJson).getAbsoluteFile();
-            if (! toFile.exists()) {
-                toFile = toFile.getParentFile();
-            }
-            if (! toFile.canWrite()) {
-                throw new IllegalArgumentException("cannot write " + toFile.getAbsolutePath());
-            }
-
-            LOG.info("main: entry, parameters={}", parameters);
-
-            final CoordinateClient client = new CoordinateClient(parameters.stack,
-                                                                 parameters.z,
-                                                                 parameters.getClient());
-
-            final Object coordinatesToSave;
-            if (parameters.localToWorld) {
-                final List<List<TileCoordinates>> loadedLocalCoordinates =
-                        loadJsonArrayOfArraysOfCoordinates(parameters.fromJson);
-                coordinatesToSave = client.localToWorld(loadedLocalCoordinates);
-            } else {
-                final List<TileCoordinates> loadedWorldCoordinates =
-                        loadJsonArrayOfCoordinates(parameters.fromJson);
-                final List<List<TileCoordinates>> worldCoordinatesWithTileIds =
-                        client.getWorldCoordinatesWithTileIds(loadedWorldCoordinates);
-                coordinatesToSave = client.worldToLocal(worldCoordinatesWithTileIds);
-            }
-
-            saveJsonFile(parameters.toJson, coordinatesToSave);
-
-        } catch (final Throwable t) {
-            LOG.error("main: caught exception", t);
-            System.exit(1);
-        }
     }
 
     private final String stack;
@@ -281,11 +285,11 @@ public class CoordinateClient {
      * @return the first visible coordinates in the specified list or
      *         simply the first coordinates if none are marked as visible.
      */
-    private TileCoordinates getVisibleCoordinates(List<TileCoordinates> mappedCoordinatesList) {
+    private TileCoordinates getVisibleCoordinates(final List<TileCoordinates> mappedCoordinatesList) {
         TileCoordinates tileCoordinates = null;
         if (mappedCoordinatesList.size() > 0) {
             tileCoordinates = mappedCoordinatesList.get(0);
-            for (TileCoordinates mappedCoordinates : mappedCoordinatesList) {
+            for (final TileCoordinates mappedCoordinates : mappedCoordinatesList) {
                 if (mappedCoordinates.isVisible()) {
                     tileCoordinates = mappedCoordinates;
                     break;
@@ -334,7 +338,7 @@ public class CoordinateClient {
     private static List<TileCoordinates> loadJsonArrayOfCoordinates(final String path)
             throws IOException {
 
-        List<TileCoordinates> parsedFromJson;
+        final List<TileCoordinates> parsedFromJson;
 
         LOG.info("loadJsonArrayOfCoordinates: entry");
 
@@ -352,7 +356,7 @@ public class CoordinateClient {
     public static List<List<TileCoordinates>> loadJsonArrayOfArraysOfCoordinates(final String path)
             throws IOException {
 
-        List<List<TileCoordinates>> parsedFromJson;
+        final List<List<TileCoordinates>> parsedFromJson;
 
         LOG.info("loadJsonArrayOfArraysOfCoordinates: entry");
 
