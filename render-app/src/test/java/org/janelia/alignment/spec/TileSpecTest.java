@@ -19,7 +19,11 @@ package org.janelia.alignment.spec;
 import java.awt.Rectangle;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+
+import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.json.JsonUtils;
@@ -89,15 +93,31 @@ public class TileSpecTest {
         parsedSpec.setBoundingBox(new Rectangle(11, 12, 21, 22), parsedSpec.getMeshCellSize());
         final ImageAndMask imageAndMask = new ImageAndMask("src/test/resources/stitch-test/coll0075_row0021_cam1.png", null);
         parsedSpec.putMipmap(0, imageAndMask);
-        final String layoutFileFormat = parsedSpec.toLayoutFileFormat();
-        final String hackedFileFormat = layoutFileFormat.replaceFirst("\t[^\t]+coll0075_row0021_cam1.png",
+        String layoutFileFormat = parsedSpec.toLayoutFileFormat();
+        String hackedFileFormat = layoutFileFormat.replaceFirst("\t[^\t]+coll0075_row0021_cam1.png",
                                                                       "\timage.png");
-        final String expectedLayoutFormat =
+        String expectedLayoutFormat =
                 layoutData.getSectionId() + '\t' + tileSpec.getTileId() + "\t1.0\t0.0\t" +
                 layoutData.getStageX() + "\t0.0\t1.0\t" + layoutData.getStageY() + '\t' +
                 layoutData.getImageCol() + '\t' + layoutData.getImageRow() + '\t' + layoutData.getCamera() +
                 "\timage.png\t" + layoutData.getTemca() + '\t' + layoutData.getRotation() + '\t' + tileSpec.getZ();
         Assert.assertEquals("bad layout file format generated", expectedLayoutFormat, hackedFileFormat);
+
+        // test tile spec with affine data
+        final List<TransformSpec> list = new ArrayList<>();
+        list.add(new LeafTransformSpec(AffineModel2D.class.getName(), "1.0 4.0 2.0 5.0 3.0 6.0"));
+        parsedSpec.addTransformSpecs(list);
+
+        layoutFileFormat = parsedSpec.toLayoutFileFormat();
+        hackedFileFormat = layoutFileFormat.replaceFirst("\t[^\t]+coll0075_row0021_cam1.png",
+                                                         "\timage.png");
+        expectedLayoutFormat =
+                layoutData.getSectionId() + '\t' + tileSpec.getTileId() + "\t1.0\t2.0\t3.0\t4.0\t5.0\t6.0\t" +
+                layoutData.getImageCol() + '\t' + layoutData.getImageRow() + '\t' + layoutData.getCamera() +
+                "\timage.png\t" + layoutData.getTemca() + '\t' + layoutData.getRotation() + '\t' + tileSpec.getZ();
+
+        Assert.assertEquals("bad layout file format generated for affine", expectedLayoutFormat, hackedFileFormat);
+
     }
 
     @Test

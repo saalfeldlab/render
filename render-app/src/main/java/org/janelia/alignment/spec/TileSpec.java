@@ -488,9 +488,18 @@ public class TileSpec implements Serializable {
                 final LeafTransformSpec leafSpec = (LeafTransformSpec) lastSpec;
                 final String[] data = WHITESPACE_PATTERN.split(leafSpec.getDataString(), -1);
                 if (data.length == 6) {
-                    // translate render order 0-5 to alignment order 0,1,4,2,3,5
-                    affineData = data[0] + '\t' + data[1] + '\t' + data[4] + '\t' +
-                                 data[2] + '\t' + data[3] + '\t' + data[5];
+
+                    // Need to translate affine matrix order "back" for Matlab.
+                    //
+                    // Given: A D
+                    //        B E
+                    //        C F
+                    //
+                    // Java order is:   A D B E C F
+                    // Matlab order is: A B C D E F
+
+                    affineData = data[0] + '\t' + data[2] + '\t' + data[4] + '\t' +
+                                 data[1] + '\t' + data[3] + '\t' + data[5];
                 }
             }
         }
