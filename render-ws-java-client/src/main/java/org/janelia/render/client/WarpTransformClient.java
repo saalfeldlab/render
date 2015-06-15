@@ -49,21 +49,22 @@ public class WarpTransformClient {
     }
 
     public static void main(final String[] args) {
-        try {
-            final Parameters parameters = new Parameters();
-            parameters.parse(args);
+        final ClientRunner clientRunner = new ClientRunner(args) {
+            @Override
+            public void runClient(final String[] args) throws Exception {
 
-            LOG.info("main: entry, parameters={}", parameters);
+                final Parameters parameters = new Parameters();
+                parameters.parse(args);
 
-            final WarpTransformClient client = new WarpTransformClient(parameters);
-            for (final String z : parameters.zValues) {
-                client.generateStackDataForZ(new Double(z), parameters.alpha);
+                LOG.info("runClient: entry, parameters={}", parameters);
+
+                final WarpTransformClient client = new WarpTransformClient(parameters);
+                for (final String z : parameters.zValues) {
+                    client.generateStackDataForZ(new Double(z), parameters.alpha);
+                }
             }
-
-        } catch (final Throwable t) {
-            LOG.error("main: caught exception", t);
-            System.exit(1);
-        }
+        };
+        clientRunner.run();
     }
 
     private final Parameters parameters;
