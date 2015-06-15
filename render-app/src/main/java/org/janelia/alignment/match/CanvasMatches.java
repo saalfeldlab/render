@@ -16,50 +16,110 @@ import org.janelia.alignment.json.JsonUtils;
  */
 public class CanvasMatches implements Serializable {
 
-    /** Section identifier for all source coordinates. */
-    private final String pSectionId;
+    /** Group (or section) identifier for all source coordinates. */
+    private String pGroupId;
 
-    /** Canvas identifier for all source coordinates (e.g. tile id). */
-    private final String pId;
+    /** Canvas (or tile) identifier for all source coordinates. */
+    private String pId;
 
-    /** Section identifier for all target coordinates. */
-    private final String qSectionId;
+    /** Group (or section) identifier for all target coordinates. */
+    private String qGroupId;
 
-    /** Canvas identifier for all target coordinates (e.g. tile id). */
-    private final String qId;
+    /** Canvas (or tile) identifier for all target coordinates. */
+    private String qId;
 
     /** Weighted source-target point correspondences. */
-    private final Matches matches;
+    private Matches matches;
 
-    public CanvasMatches(final String pSectionId,
+    /**
+     * Basic constructor that also normalizes (see {@link #normalize()}) p and q ordering.
+     *
+     * @param  pGroupId  group (or section) identifier for the source canvas (or tile).
+     * @param  pId       identifier for the source canvas (or tile).
+     * @param  qGroupId  group (or section) identifier for the target canvas (or tile).
+     * @param  qId       identifier for the target canvas (or tile).
+     * @param  matches   weighted source-target point correspondences.
+     *
+     * @throws IllegalArgumentException
+     *   if any values are missing.
+     */
+    public CanvasMatches(final String pGroupId,
                          final String pId,
-                         final String qSectionId,
+                         final String qGroupId,
                          final String qId,
-                         final Matches matches) {
-        this.pSectionId = pSectionId;
+                         final Matches matches)
+            throws IllegalArgumentException {
+
+
+        this.pGroupId = pGroupId;
         this.pId = pId;
-        this.qSectionId = qSectionId;
+        this.qGroupId = qGroupId;
         this.qId = qId;
         this.matches = matches;
+
+        normalize();
     }
 
-    public String getpSectionId() {
-        return pSectionId;
+    /**
+     * Ensures that for any two canvases (tiles), the source (p) and target (q) are consistently assigned.
+     * This is done by using lexicographic ordering of the group and canvas ids.
+     * Normalized source (p) identifiers will always lexicographically precede target (q) identifiers.
+     *
+     * @throws IllegalArgumentException
+     *   if any values are missing.
+     */
+    public void normalize() throws IllegalArgumentException {
+
+        if ((pGroupId == null) || (qGroupId == null) || (pId == null) || (qId == null)) {
+            throw new IllegalArgumentException(
+                    "CanvasMatches are missing required pGroupId, qGroupId, pId, and/or qId values");
+        }
+
+        final boolean isFlipNeeded;
+        final int compareResult = pGroupId.compareTo(qGroupId);
+        if (compareResult == 0) {
+            isFlipNeeded = (pId.compareTo(qId) > 0);
+        } else {
+            isFlipNeeded = (compareResult > 0);
+        }
+
+        if (isFlipNeeded) {
+            String swap = pGroupId;
+            pGroupId = qGroupId;
+            qGroupId = swap;
+
+            swap = pId;
+            pId = qId;
+            qId = swap;
+
+            if (matches != null) {
+                matches = new Matches(matches.getQs(), matches.getPs(), matches.getWs());
+            }
+        }
+
+    }
+
+    public String getpGroupId() {
+        return pGroupId;
     }
 
     public String getpId() {
         return pId;
     }
 
-    public String getqSectionId() {
-        return qSectionId;
+    public String getqGroupId() {
+        return qGroupId;
+    }
+
+    public String getqId() {
+        return qId;
     }
 
     @Override
     public String toString() {
-        return "{pSectionId: " + pSectionId +
+        return "{pGroupId: " + pGroupId +
                ", pId: '" + pId + '\'' +
-               ", qSectionId: " + qSectionId +
+               ", qGroupId: " + qGroupId +
                ", qId: '" + qId + '\'' +
                '}';
     }
@@ -68,14 +128,15 @@ public class CanvasMatches implements Serializable {
         return JsonUtils.GSON.toJson(this);
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public String toTabSeparatedFormat() {
         final double[][] ps = matches.getPs();
         final double[][] qs = matches.getQs();
         final double[] ws = matches.getWs();
         final StringBuilder sb = new StringBuilder(ws.length * 100);
         for (int i = 0; i < ws.length; i++) {
-            sb.append(pSectionId).append('\t').append(pId).append('\t').append(ps[0][i]).append('\t').append(ps[1][i]).append('\t');
-            sb.append(qSectionId).append('\t').append(qId).append('\t').append(qs[0][i]).append('\t').append(qs[1][i]).append('\t');
+            sb.append(pGroupId).append('\t').append(pId).append('\t').append(ps[0][i]).append('\t').append(ps[1][i]).append('\t');
+            sb.append(qGroupId).append('\t').append(qId).append('\t').append(qs[0][i]).append('\t').append(qs[1][i]).append('\t');
             sb.append(ws[i]).append('\n');
         }
         return sb.toString();

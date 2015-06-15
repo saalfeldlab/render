@@ -49,60 +49,106 @@ public class MatchService {
         this.matchDao = matchDao;
     }
 
-    @Path("matchCollection/{matchCollection}/section/{sectionId}/matchesWithinLayer")
+    @Path("matchCollection/{matchCollection}/group/{groupId}/matchesWithinGroup")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getMatchesWithinLayer(@PathParam("owner") final String owner,
+    public Response getMatchesWithinGroup(@PathParam("owner") final String owner,
                                           @PathParam("matchCollection") final String matchCollection,
-                                          @PathParam("sectionId") final String sectionId) {
+                                          @PathParam("groupId") final String groupId) {
 
-        LOG.info("getMatchesWithinLayer: entry, owner={}, matchCollection={}, sectionId={}",
-                 owner, matchCollection, sectionId);
+        LOG.info("getMatchesWithinGroup: entry, owner={}, matchCollection={}, groupId={}",
+                 owner, matchCollection, groupId);
 
         final StreamingOutput responseOutput = new StreamingOutput() {
             @Override
             public void write(final OutputStream output)
                     throws IOException, WebApplicationException {
-                matchDao.writeMatchesWithinLayer(matchCollection, sectionId, output);
+                matchDao.writeMatchesWithinGroup(matchCollection, groupId, output);
             }
         };
 
         return streamResponse(responseOutput);
     }
 
-    @Path("matchCollection/{matchCollection}/section/{sectionId}/matchesOutsideLayer")
+    @Path("matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getMatchesOutsideLayer(@PathParam("owner") final String owner,
+    public Response getMatchesOutsideGroup(@PathParam("owner") final String owner,
                                            @PathParam("matchCollection") final String matchCollection,
-                                           @PathParam("sectionId") final String sectionId) {
+                                           @PathParam("groupId") final String groupId) {
 
-        LOG.info("getMatchesWithinLayer: entry, owner={}, matchCollection={}, sectionId={}",
-                 owner, matchCollection, sectionId);
+        LOG.info("getMatchesWithinGroup: entry, owner={}, matchCollection={}, groupId={}",
+                 owner, matchCollection, groupId);
 
         final StreamingOutput responseOutput = new StreamingOutput() {
             @Override
             public void write(final OutputStream output)
                     throws IOException, WebApplicationException {
-                matchDao.writeMatchesOutsideLayer(matchCollection, sectionId, output);
+                matchDao.writeMatchesOutsideGroup(matchCollection, groupId, output);
             }
         };
 
         return streamResponse(responseOutput);
     }
 
-    @Path("matchCollection/{matchCollection}/section/{sectionId}/matchesOutsideLayer")
-    @DELETE
-    public Response deleteMatchesOutsideLayer(@PathParam("owner") final String owner,
-                                              @PathParam("matchCollection") final String matchCollection,
-                                              @PathParam("sectionId") final String sectionId) {
+    @Path("matchCollection/{matchCollection}/group/{pGroupId}/matchesWith/{qGroupId}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getMatchesBetweenGroups(@PathParam("owner") final String owner,
+                                            @PathParam("matchCollection") final String matchCollection,
+                                            @PathParam("pGroupId") final String pGroupId,
+                                            @PathParam("qGroupId") final String qGroupId) {
 
-        LOG.info("deleteMatchesOutsideLayer: entry, owner={}, matchCollection={}, sectionId={}",
-                 owner, matchCollection, sectionId);
+        LOG.info("getMatchesBetweenGroups: entry, owner={}, matchCollection={}, pGroupId={}, qGroupId={}",
+                 owner, matchCollection, pGroupId, qGroupId);
+
+        final StreamingOutput responseOutput = new StreamingOutput() {
+            @Override
+            public void write(final OutputStream output)
+                    throws IOException, WebApplicationException {
+                matchDao.writeMatchesBetweenGroups(matchCollection, pGroupId, qGroupId, output);
+            }
+        };
+
+        return streamResponse(responseOutput);
+    }
+
+    @Path("matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getMatchesBetweenObjects(@PathParam("owner") final String owner,
+                                             @PathParam("matchCollection") final String matchCollection,
+                                             @PathParam("pGroupId") final String pGroupId,
+                                             @PathParam("pId") final String pId,
+                                             @PathParam("qGroupId") final String qGroupId,
+                                             @PathParam("qId") final String qId) {
+
+        LOG.info("getMatchesBetweenObjects: entry, owner={}, matchCollection={}, pGroupId={}, pId={}, qGroupId={}, qId={}",
+                 owner, matchCollection, pGroupId, pId, qGroupId, qId);
+
+        final StreamingOutput responseOutput = new StreamingOutput() {
+            @Override
+            public void write(final OutputStream output)
+                    throws IOException, WebApplicationException {
+                matchDao.writeMatchesBetweenObjects(matchCollection, pGroupId, pId, qGroupId, qId, output);
+            }
+        };
+
+        return streamResponse(responseOutput);
+    }
+
+    @Path("matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
+    @DELETE
+    public Response deleteMatchesOutsideGroup(@PathParam("owner") final String owner,
+                                              @PathParam("matchCollection") final String matchCollection,
+                                              @PathParam("groupId") final String groupId) {
+
+        LOG.info("deleteMatchesOutsideGroup: entry, owner={}, matchCollection={}, groupId={}",
+                 owner, matchCollection, groupId);
 
         Response response = null;
         try {
-            matchDao.removeMatchesOutsideLayer(matchCollection, sectionId);
+            matchDao.removeMatchesOutsideGroup(matchCollection, groupId);
             response = Response.ok().build();
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);

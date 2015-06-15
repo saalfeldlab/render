@@ -36,46 +36,100 @@ public class MatchDao {
         matchDb = client.getDB(MATCH_DB_NAME);
     }
 
-    public void writeMatchesWithinLayer(final String collectionName,
-                                        final String sectionId,
+    public void writeMatchesWithinGroup(final String collectionName,
+                                        final String groupId,
                                         final OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
-        LOG.debug("writeMatchesWithinLayer: entry, collectionName={}, sectionId={}",
-                  collectionName, sectionId);
+        LOG.debug("writeMatchesWithinGroup: entry, collectionName={}, groupId={}",
+                  collectionName, groupId);
 
         validateRequiredParameter("collectionName", collectionName);
+        validateRequiredParameter("groupId", groupId);
 
         final DBCollection collection = matchDb.getCollection(collectionName);
-        final BasicDBObject query = new BasicDBObject("pSectionId", sectionId).append("qSectionId", sectionId);
+        final BasicDBObject query = new BasicDBObject("pGroupId", groupId).append("qGroupId", groupId);
 
         writeMatches(collection, query, outputStream);
     }
 
-    public void writeMatchesOutsideLayer(final String collectionName,
-                                         final String sectionId,
+    public void writeMatchesOutsideGroup(final String collectionName,
+                                         final String groupId,
                                          final OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
-        LOG.debug("writeMatchesOutsideLayer: entry, collectionName={}, sectionId={}",
-                  collectionName, sectionId);
+        LOG.debug("writeMatchesOutsideGroup: entry, collectionName={}, groupId={}",
+                  collectionName, groupId);
 
         validateRequiredParameter("collectionName", collectionName);
+        validateRequiredParameter("groupId", groupId);
 
         final DBCollection collection = matchDb.getCollection(collectionName);
-        final BasicDBObject query = getOutsideLayerQuery(sectionId);
+        final BasicDBObject query = getOutsideGroupQuery(groupId);
 
         writeMatches(collection, query, outputStream);
     }
 
-    public void removeMatchesOutsideLayer(final String collectionName,
-                                          final String sectionId)
+    public void writeMatchesBetweenGroups(final String collectionName,
+                                          final String pGroupId,
+                                          final String qGroupId,
+                                          final OutputStream outputStream)
+            throws IllegalArgumentException, IOException {
+
+        LOG.debug("writeMatchesBetweenGroups: entry, collectionName={}, pGroupId={}, pGroupId={}",
+                  collectionName, pGroupId, qGroupId);
+
+        validateRequiredParameter("collectionName", collectionName);
+        validateRequiredParameter("pGroupId", pGroupId);
+        validateRequiredParameter("qGroupId", qGroupId);
+
+        final DBCollection collection = matchDb.getCollection(collectionName);
+        final String noTileId = "";
+        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, noTileId, qGroupId, noTileId, null);
+        final BasicDBObject query = new BasicDBObject(
+                "pGroupId", normalizedCriteria.getpGroupId()).append(
+                "qGroupId", normalizedCriteria.getqGroupId());
+
+        writeMatches(collection, query, outputStream);
+    }
+
+    public void writeMatchesBetweenObjects(final String collectionName,
+                                           final String pGroupId,
+                                           final String pId,
+                                           final String qGroupId,
+                                           final String qId,
+                                           final OutputStream outputStream)
+            throws IllegalArgumentException, IOException {
+
+        LOG.debug("writeMatchesBetweenObjects: entry, collectionName={}, pGroupId={}, pId={}, qGroupId={}, qId={}",
+                  collectionName, pGroupId, pId, qGroupId, qId);
+
+        validateRequiredParameter("collectionName", collectionName);
+        validateRequiredParameter("pGroupId", pGroupId);
+        validateRequiredParameter("pId", pId);
+        validateRequiredParameter("qGroupId", qGroupId);
+        validateRequiredParameter("qId", qId);
+
+        final DBCollection collection = matchDb.getCollection(collectionName);
+        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, pId, qGroupId, qId, null);
+        final BasicDBObject query = new BasicDBObject(
+                "pGroupId", normalizedCriteria.getpGroupId()).append(
+                "pId", normalizedCriteria.getpId()).append(
+                "qGroupId", normalizedCriteria.getqGroupId()).append(
+                "qId", normalizedCriteria.getqId());
+
+        writeMatches(collection, query, outputStream);
+    }
+
+    public void removeMatchesOutsideGroup(final String collectionName,
+                                          final String groupId)
             throws IllegalArgumentException {
 
         validateRequiredParameter("collectionName", collectionName);
+        validateRequiredParameter("groupId", groupId);
 
         final DBCollection collection = matchDb.getCollection(collectionName);
-        final BasicDBObject query = getOutsideLayerQuery(sectionId);
+        final BasicDBObject query = getOutsideGroupQuery(groupId);
 
         collection.remove(query);
     }
@@ -100,6 +154,7 @@ public class MatchDao {
 
             DBObject matchesObject;
             for (final CanvasMatches canvasMatches : matchesList) {
+                canvasMatches.normalize();
                 matchesObject = (DBObject) JSON.parse(canvasMatches.toJson());
                 bulk.insert(matchesObject);
             }
@@ -155,14 +210,14 @@ public class MatchDao {
                   count, collection.getFullName(), query, keys, timer.getElapsedSeconds());
     }
 
-    private BasicDBObject getOutsideLayerQuery(final String sectionId) {
+    private BasicDBObject getOutsideGroupQuery(final String groupId) {
         final BasicDBList queryList = new BasicDBList();
         queryList.add(new BasicDBObject(
-                "pSectionId", sectionId).append(
-                "qSectionId", new BasicDBObject(QueryOperators.NE, sectionId)));
+                "pGroupId", groupId).append(
+                "qGroupId", new BasicDBObject(QueryOperators.NE, groupId)));
         queryList.add(new BasicDBObject(
-                "qSectionId", sectionId).append(
-                "pSectionId", new BasicDBObject(QueryOperators.NE, sectionId)));
+                "qGroupId", groupId).append(
+                "pGroupId", new BasicDBObject(QueryOperators.NE, groupId)));
         return new BasicDBObject(QueryOperators.OR, queryList);
     }
 
@@ -178,8 +233,8 @@ public class MatchDao {
     private void ensureMatchIndexes(final DBCollection matchCollection) {
         LOG.debug("ensureMatchIndexes: entry, {}", matchCollection.getName());
         matchCollection.createIndex(new BasicDBObject(
-                                            "pSectionId", 1).append(
-                                            "qSectionId", 1).append(
+                                            "pGroupId", 1).append(
+                                            "qGroupId", 1).append(
                                             "pId", 1).append(
                                             "qId", 1),
                                     new BasicDBObject("unique", true).append("background", true));

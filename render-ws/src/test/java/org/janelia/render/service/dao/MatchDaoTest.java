@@ -29,7 +29,7 @@ public class MatchDaoTest {
     private static EmbeddedMongoDb embeddedMongoDb;
     private static MatchDao dao;
 
-    private final String sectionId = "section1";
+    private final String groupId = "section1";
 
     @BeforeClass
     public static void before() throws Exception {
@@ -53,11 +53,11 @@ public class MatchDaoTest {
     }
 
     @Test
-    public void testWriteMatchesWithinLayer() throws Exception {
+    public void testWriteMatchesWithinGroup() throws Exception {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesWithinLayer(collectionName, sectionId, outputStream);
+        dao.writeMatchesWithinGroup(collectionName, groupId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -66,17 +66,17 @@ public class MatchDaoTest {
 
         for (final CanvasMatches canvasMatches : canvasMatchesList) {
 //            System.out.println(canvasMatches.toTabSeparatedFormat());
-            Assert.assertEquals("invalid source sectionId: " + canvasMatches, sectionId, canvasMatches.getpSectionId());
-            Assert.assertEquals("invalid target sectionId: " + canvasMatches, sectionId, canvasMatches.getqSectionId());
+            Assert.assertEquals("invalid source groupId: " + canvasMatches, groupId, canvasMatches.getpGroupId());
+            Assert.assertEquals("invalid target groupId: " + canvasMatches, groupId, canvasMatches.getqGroupId());
         }
     }
 
     @Test
-    public void testWriteMatchesOutsideLayer() throws Exception {
+    public void testWriteMatchesOutsideGroup() throws Exception {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideLayer(collectionName, sectionId, outputStream);
+        dao.writeMatchesOutsideGroup(collectionName, groupId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -84,22 +84,72 @@ public class MatchDaoTest {
                             2, canvasMatchesList.size());
 
         for (final CanvasMatches canvasMatches : canvasMatchesList) {
-
-            System.out.println(canvasMatches.toTabSeparatedFormat());
-
-            Assert.assertNotSame("source and target matches have same sectionId: " + canvasMatches,
-                                 canvasMatches.getpSectionId(), canvasMatches.getqSectionId());
+//            System.out.println(canvasMatches.toTabSeparatedFormat());
+            Assert.assertNotSame("source and target matches have same groupId: " + canvasMatches,
+                                 canvasMatches.getpGroupId(), canvasMatches.getqGroupId());
         }
     }
 
     @Test
-    public void testRemoveMatchesOutsideLayer() throws Exception {
-
-        dao.removeMatchesOutsideLayer(collectionName, sectionId);
+    public void testWriteMatchesBetweenGroups() throws Exception {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideLayer(collectionName, sectionId, outputStream);
+        final String targetGroupId = "section2";
+        dao.writeMatchesBetweenGroups(collectionName, groupId, targetGroupId, outputStream);
+
+        final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
+
+        Assert.assertEquals("invalid number of matches returned",
+                            1, canvasMatchesList.size());
+
+        for (final CanvasMatches canvasMatches : canvasMatchesList) {
+//            System.out.println(canvasMatches.toTabSeparatedFormat());
+            Assert.assertEquals("matches have invalid pGroupId: " + canvasMatches,
+                                 groupId, canvasMatches.getpGroupId());
+            Assert.assertEquals("matches have invalid qGroupId: " + canvasMatches,
+                                targetGroupId, canvasMatches.getqGroupId());
+        }
+    }
+
+    @Test
+    public void testWriteMatchesBetweenObjects() throws Exception {
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        // "pGroupId": "section0", "pId": "tile0.1", "qGroupId": "section1", "qId": "tile1.1",
+        final String sourceId = "tile1.1";
+        final String targetGroupId = "section0";
+        final String targetId = "tile0.1";
+
+        dao.writeMatchesBetweenObjects(collectionName, groupId, sourceId, targetGroupId, targetId, outputStream);
+
+        final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
+
+        Assert.assertEquals("invalid number of matches returned",
+                            1, canvasMatchesList.size());
+
+        for (final CanvasMatches canvasMatches : canvasMatchesList) {
+//            System.out.println(canvasMatches.toTabSeparatedFormat());
+            Assert.assertEquals("matches have invalid pGroupId (should be normalized): " + canvasMatches,
+                                targetGroupId, canvasMatches.getpGroupId());
+            Assert.assertEquals("matches have invalid pId (should be normalized): " + canvasMatches,
+                                targetId, canvasMatches.getpId());
+            Assert.assertEquals("matches have invalid qGroupId (should be normalized): " + canvasMatches,
+                                groupId, canvasMatches.getqGroupId());
+            Assert.assertEquals("matches have invalid qId (should be normalized): " + canvasMatches,
+                                sourceId, canvasMatches.getqId());
+        }
+    }
+
+    @Test
+    public void testRemoveMatchesOutsideGroup() throws Exception {
+
+        dao.removeMatchesOutsideGroup(collectionName, groupId);
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        dao.writeMatchesOutsideGroup(collectionName, groupId, outputStream);
 
         List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -108,7 +158,7 @@ public class MatchDaoTest {
 
         outputStream.reset();
 
-        dao.writeMatchesWithinLayer(collectionName, sectionId, outputStream);
+        dao.writeMatchesWithinGroup(collectionName, groupId, outputStream);
 
         canvasMatchesList = getListFromStream(outputStream);
 
@@ -123,9 +173,9 @@ public class MatchDaoTest {
 
         List<CanvasMatches> canvasMatchesList = new ArrayList<>();
         for (int i = 1; i < 4; i++) {
-            canvasMatchesList.add(new CanvasMatches(sectionId,
+            canvasMatchesList.add(new CanvasMatches(groupId,
                                                     pId,
-                                                    sectionId + i,
+                                                    groupId + i,
                                                     "save.q",
                                                     new Matches(new double[][]{{1, 2, 3}, {4, 5, 6},},
                                                                 new double[][]{{11, 12, 13}, {14, 15, 16}},
@@ -136,7 +186,7 @@ public class MatchDaoTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideLayer(collectionName, sectionId, outputStream);
+        dao.writeMatchesOutsideGroup(collectionName, groupId, outputStream);
 
         canvasMatchesList = getListFromStream(outputStream);
 
