@@ -40,26 +40,6 @@
           <element id="library" level="project" name="Maven: commons-lang:commons-lang:2.4" />
           <element id="library" level="project" name="Maven: oro:oro:2.0.8" />
           <element id="library" level="project" name="Maven: org.mongodb:mongo-java-driver:2.12.3" />
-          <element id="library" level="project" name="Maven: org.apache.commons:commons-lang3:3.1" />
-          <element id="library" level="project" name="Maven: io.swagger:swagger-jaxrs:1.5.0" />
-          <element id="library" level="project" name="Maven: com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.4.2" />
-          <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-core:2.4.2" />
-          <element id="library" level="project" name="Maven: com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.4.2" />
-          <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-annotations:2.4.0" />
-          <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-databind:2.4.2" />
-          <element id="library" level="project" name="Maven: com.fasterxml.jackson.module:jackson-module-jaxb-annotations:2.4.2" />
-          <element id="library" level="project" name="Maven: org.codehaus.woodstox:stax2-api:3.1.4" />
-          <element id="library" level="project" name="Maven: io.swagger:swagger-core:1.5.0" />
-          <element id="library" level="project" name="Maven: com.fasterxml.jackson.datatype:jackson-datatype-joda:2.4.2" />
-          <element id="library" level="project" name="Maven: joda-time:joda-time:2.2" />
-          <element id="library" level="project" name="Maven: io.swagger:swagger-models:1.5.0" />
-          <element id="library" level="project" name="Maven: javax.validation:validation-api:1.1.0.Final" />
-          <element id="library" level="project" name="Maven: javax.ws.rs:jsr311-api:1.1.1" />
-          <element id="library" level="project" name="Maven: org.reflections:reflections:0.9.9" />
-          <element id="library" level="project" name="Maven: org.javassist:javassist:3.18.2-GA" />
-          <element id="library" level="project" name="Maven: com.google.code.findbugs:annotations:2.0.1" />
-          <element id="library" level="project" name="Maven: com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.4.2" />
-          <element id="library" level="project" name="Maven: com.fasterxml.jackson.jaxrs:jackson-jaxrs-base:2.4.2" />
         </element>
       </element>
       <element id="javaee-facet-resources" facet="render-ws/web/Web" />

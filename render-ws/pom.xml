@@ -99,16 +99,21 @@
 
         <dependency>
             <groupId>io.swagger</groupId>
-            <artifactId>swagger-jaxrs</artifactId>
+            <artifactId>swagger-annotations</artifactId>
             <version>${swagger-version}</version>
-            <!-- filter out slf4j jar so that it does not conflict with jetty version -->
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
+        <!--<dependency>-->
+            <!--<groupId>io.swagger</groupId>-->
+            <!--<artifactId>swagger-jaxrs</artifactId>-->
+            <!--<version>${swagger-version}</version>-->
+            <!--&lt;!&ndash; filter out slf4j jar so that it does not conflict with jetty version &ndash;&gt;-->
+            <!--<exclusions>-->
+                <!--<exclusion>-->
+                    <!--<groupId>org.slf4j</groupId>-->
+                    <!--<artifactId>slf4j-api</artifactId>-->
+                <!--</exclusion>-->
+            <!--</exclusions>-->
+        <!--</dependency>-->
 
     </dependencies>
 
