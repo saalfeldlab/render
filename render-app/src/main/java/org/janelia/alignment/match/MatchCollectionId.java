@@ -49,10 +49,8 @@ public class MatchCollectionId
 
     @Override
     public String toString() {
-        return "MatchCollectionId{" +
-               "owner='" + owner + '\'' +
-               ", name='" + name + '\'' +
-               '}';
+        return "{'owner': '" + owner +
+               "', 'name': '" + name + "'}";
     }
 
     private void validateValue(final String context,

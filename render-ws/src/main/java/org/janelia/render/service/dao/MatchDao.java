@@ -171,6 +171,18 @@ public class MatchDao {
         }
     }
 
+    public void removeAllMatches(final MatchCollectionId collectionId)
+            throws IllegalArgumentException, IOException, ObjectNotFoundException {
+
+        LOG.debug("removeAllMatches: entry, collectionId={}", collectionId);
+
+        validateRequiredParameter("collectionId", collectionId);
+
+        final DBCollection collection = getExistingCollection(collectionId.getDbCollectionName());
+
+        collection.drop();
+    }
+
     private DBCollection getExistingCollection(final String collectionId)
             throws ObjectNotFoundException {
         if (! matchDb.collectionExists(collectionId)) {

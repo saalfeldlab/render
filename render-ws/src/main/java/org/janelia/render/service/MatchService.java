@@ -100,7 +100,7 @@ public class MatchService {
                                            @PathParam("matchCollection") final String matchCollection,
                                            @PathParam("groupId") final String groupId) {
 
-        LOG.info("getMatchesWithinGroup: entry, owner={}, matchCollection={}, groupId={}",
+        LOG.info("getMatchesOutsideGroup: entry, owner={}, matchCollection={}, groupId={}",
                  owner, matchCollection, groupId);
 
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
@@ -236,6 +236,31 @@ public class MatchService {
         LOG.info("saveMatches: exit");
 
         return responseBuilder.build();
+    }
+
+    @Path("{matchCollection}/matches")
+    @DELETE
+    @ApiOperation(value = "Delete all matches in the collection",
+                  notes = "Use this wisely.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public Response deleteAllMatches(@PathParam("owner") final String owner,
+                                     @PathParam("matchCollection") final String matchCollection) {
+
+        LOG.info("deleteAllMatches: entry, owner={}, matchCollection={}",
+                 owner, matchCollection);
+
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+        Response response = null;
+        try {
+            matchDao.removeAllMatches(collectionId);
+            response = Response.ok().build();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return response;
     }
 
     private MatchCollectionId getCollectionId(final String owner,
