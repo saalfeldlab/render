@@ -22,6 +22,7 @@ import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.render.service.dao.MatchDao;
 import org.janelia.render.service.dao.SharedMongoClient;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
@@ -73,11 +74,12 @@ public class MatchService {
         LOG.info("getMatchesWithinGroup: entry, owner={}, matchCollection={}, groupId={}",
                  owner, matchCollection, groupId);
 
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final StreamingOutput responseOutput = new StreamingOutput() {
             @Override
             public void write(final OutputStream output)
                     throws IOException, WebApplicationException {
-                matchDao.writeMatchesWithinGroup(matchCollection, groupId, output);
+                matchDao.writeMatchesWithinGroup(collectionId, groupId, output);
             }
         };
 
@@ -101,11 +103,12 @@ public class MatchService {
         LOG.info("getMatchesWithinGroup: entry, owner={}, matchCollection={}, groupId={}",
                  owner, matchCollection, groupId);
 
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final StreamingOutput responseOutput = new StreamingOutput() {
             @Override
             public void write(final OutputStream output)
                     throws IOException, WebApplicationException {
-                matchDao.writeMatchesOutsideGroup(matchCollection, groupId, output);
+                matchDao.writeMatchesOutsideGroup(collectionId, groupId, output);
             }
         };
 
@@ -130,11 +133,12 @@ public class MatchService {
         LOG.info("getMatchesBetweenGroups: entry, owner={}, matchCollection={}, pGroupId={}, qGroupId={}",
                  owner, matchCollection, pGroupId, qGroupId);
 
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final StreamingOutput responseOutput = new StreamingOutput() {
             @Override
             public void write(final OutputStream output)
                     throws IOException, WebApplicationException {
-                matchDao.writeMatchesBetweenGroups(matchCollection, pGroupId, qGroupId, output);
+                matchDao.writeMatchesBetweenGroups(collectionId, pGroupId, qGroupId, output);
             }
         };
 
@@ -161,11 +165,12 @@ public class MatchService {
         LOG.info("getMatchesBetweenObjects: entry, owner={}, matchCollection={}, pGroupId={}, pId={}, qGroupId={}, qId={}",
                  owner, matchCollection, pGroupId, pId, qGroupId, qId);
 
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final StreamingOutput responseOutput = new StreamingOutput() {
             @Override
             public void write(final OutputStream output)
                     throws IOException, WebApplicationException {
-                matchDao.writeMatchesBetweenObjects(matchCollection, pGroupId, pId, qGroupId, qId, output);
+                matchDao.writeMatchesBetweenObjects(collectionId, pGroupId, pId, qGroupId, qId, output);
             }
         };
 
@@ -186,9 +191,10 @@ public class MatchService {
         LOG.info("deleteMatchesOutsideGroup: entry, owner={}, matchCollection={}, groupId={}",
                  owner, matchCollection, groupId);
 
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         Response response = null;
         try {
-            matchDao.removeMatchesOutsideGroup(matchCollection, groupId);
+            matchDao.removeMatchesOutsideGroup(collectionId, groupId);
             response = Response.ok().build();
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -213,12 +219,14 @@ public class MatchService {
         LOG.info("saveMatches: entry, owner={}, matchCollection={}",
                  owner, matchCollection);
 
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+
         if (canvasMatchesList == null) {
             throw new IllegalServiceArgumentException("no matches provided");
         }
 
         try {
-            matchDao.saveMatches(matchCollection, canvasMatchesList);
+            matchDao.saveMatches(collectionId, canvasMatchesList);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -228,6 +236,18 @@ public class MatchService {
         LOG.info("saveMatches: exit");
 
         return responseBuilder.build();
+    }
+
+    private MatchCollectionId getCollectionId(final String owner,
+                                              final String matchCollection) {
+
+        MatchCollectionId collectionId = null;
+        try {
+            collectionId = new MatchCollectionId(owner, matchCollection);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+        return collectionId;
     }
 
     private Response streamResponse(final StreamingOutput responseOutput) {

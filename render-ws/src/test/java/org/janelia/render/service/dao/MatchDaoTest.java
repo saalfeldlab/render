@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.Matches;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
@@ -25,7 +26,7 @@ import org.junit.Test;
  */
 public class MatchDaoTest {
 
-    private static String collectionName;
+    private static MatchCollectionId collectionId;
     private static EmbeddedMongoDb embeddedMongoDb;
     private static MatchDao dao;
 
@@ -33,14 +34,14 @@ public class MatchDaoTest {
 
     @BeforeClass
     public static void before() throws Exception {
-        collectionName = "test";
+        collectionId = new MatchCollectionId("testOwner", "testCollection");
         embeddedMongoDb = new EmbeddedMongoDb(MatchDao.MATCH_DB_NAME);
         dao = new MatchDao(embeddedMongoDb.getMongoClient());
     }
 
     @Before
     public void setUp() throws Exception {
-        embeddedMongoDb.importCollection(collectionName,
+        embeddedMongoDb.importCollection(collectionId.getDbCollectionName(),
                                          new File("src/test/resources/mongodb/match.json"),
                                          true,
                                          false,
@@ -57,7 +58,7 @@ public class MatchDaoTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesWithinGroup(collectionName, groupId, outputStream);
+        dao.writeMatchesWithinGroup(collectionId, groupId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -76,7 +77,7 @@ public class MatchDaoTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideGroup(collectionName, groupId, outputStream);
+        dao.writeMatchesOutsideGroup(collectionId, groupId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -96,7 +97,7 @@ public class MatchDaoTest {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
         final String targetGroupId = "section2";
-        dao.writeMatchesBetweenGroups(collectionName, groupId, targetGroupId, outputStream);
+        dao.writeMatchesBetweenGroups(collectionId, groupId, targetGroupId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -122,7 +123,7 @@ public class MatchDaoTest {
         final String targetGroupId = "section0";
         final String targetId = "tile0.1";
 
-        dao.writeMatchesBetweenObjects(collectionName, groupId, sourceId, targetGroupId, targetId, outputStream);
+        dao.writeMatchesBetweenObjects(collectionId, groupId, sourceId, targetGroupId, targetId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -145,11 +146,11 @@ public class MatchDaoTest {
     @Test
     public void testRemoveMatchesOutsideGroup() throws Exception {
 
-        dao.removeMatchesOutsideGroup(collectionName, groupId);
+        dao.removeMatchesOutsideGroup(collectionId, groupId);
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideGroup(collectionName, groupId, outputStream);
+        dao.writeMatchesOutsideGroup(collectionId, groupId, outputStream);
 
         List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -158,7 +159,7 @@ public class MatchDaoTest {
 
         outputStream.reset();
 
-        dao.writeMatchesWithinGroup(collectionName, groupId, outputStream);
+        dao.writeMatchesWithinGroup(collectionId, groupId, outputStream);
 
         canvasMatchesList = getListFromStream(outputStream);
 
@@ -182,11 +183,11 @@ public class MatchDaoTest {
                                                                 new double[]{7, 8, 9})));
         }
 
-        dao.saveMatches(collectionName, canvasMatchesList);
+        dao.saveMatches(collectionId, canvasMatchesList);
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideGroup(collectionName, groupId, outputStream);
+        dao.writeMatchesOutsideGroup(collectionId, groupId, outputStream);
 
         canvasMatchesList = getListFromStream(outputStream);
 

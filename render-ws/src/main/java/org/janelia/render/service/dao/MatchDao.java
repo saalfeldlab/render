@@ -17,7 +17,9 @@ import java.io.OutputStream;
 import java.util.List;
 
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.util.ProcessTimer;
+import org.janelia.render.service.model.ObjectNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,54 +38,54 @@ public class MatchDao {
         matchDb = client.getDB(MATCH_DB_NAME);
     }
 
-    public void writeMatchesWithinGroup(final String collectionName,
+    public void writeMatchesWithinGroup(final MatchCollectionId collectionId,
                                         final String groupId,
                                         final OutputStream outputStream)
-            throws IllegalArgumentException, IOException {
+            throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
-        LOG.debug("writeMatchesWithinGroup: entry, collectionName={}, groupId={}",
-                  collectionName, groupId);
+        LOG.debug("writeMatchesWithinGroup: entry, collectionId={}, groupId={}",
+                  collectionId, groupId);
 
-        validateRequiredParameter("collectionName", collectionName);
+        validateRequiredParameter("collectionId", collectionId);
         validateRequiredParameter("groupId", groupId);
 
-        final DBCollection collection = matchDb.getCollection(collectionName);
+        final DBCollection collection = getExistingCollection(collectionId.getDbCollectionName());
         final BasicDBObject query = new BasicDBObject("pGroupId", groupId).append("qGroupId", groupId);
 
         writeMatches(collection, query, outputStream);
     }
 
-    public void writeMatchesOutsideGroup(final String collectionName,
+    public void writeMatchesOutsideGroup(final MatchCollectionId collectionId,
                                          final String groupId,
                                          final OutputStream outputStream)
-            throws IllegalArgumentException, IOException {
+            throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
-        LOG.debug("writeMatchesOutsideGroup: entry, collectionName={}, groupId={}",
-                  collectionName, groupId);
+        LOG.debug("writeMatchesOutsideGroup: entry, collectionId={}, groupId={}",
+                  collectionId, groupId);
 
-        validateRequiredParameter("collectionName", collectionName);
+        validateRequiredParameter("collectionId", collectionId);
         validateRequiredParameter("groupId", groupId);
 
-        final DBCollection collection = matchDb.getCollection(collectionName);
+        final DBCollection collection = getExistingCollection(collectionId.getDbCollectionName());
         final BasicDBObject query = getOutsideGroupQuery(groupId);
 
         writeMatches(collection, query, outputStream);
     }
 
-    public void writeMatchesBetweenGroups(final String collectionName,
+    public void writeMatchesBetweenGroups(final MatchCollectionId collectionId,
                                           final String pGroupId,
                                           final String qGroupId,
                                           final OutputStream outputStream)
-            throws IllegalArgumentException, IOException {
+            throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
-        LOG.debug("writeMatchesBetweenGroups: entry, collectionName={}, pGroupId={}, pGroupId={}",
-                  collectionName, pGroupId, qGroupId);
+        LOG.debug("writeMatchesBetweenGroups: entry, collectionId={}, pGroupId={}, pGroupId={}",
+                  collectionId, pGroupId, qGroupId);
 
-        validateRequiredParameter("collectionName", collectionName);
+        validateRequiredParameter("collectionId", collectionId);
         validateRequiredParameter("pGroupId", pGroupId);
         validateRequiredParameter("qGroupId", qGroupId);
 
-        final DBCollection collection = matchDb.getCollection(collectionName);
+        final DBCollection collection = getExistingCollection(collectionId.getDbCollectionName());
         final String noTileId = "";
         final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, noTileId, qGroupId, noTileId, null);
         final BasicDBObject query = new BasicDBObject(
@@ -93,24 +95,24 @@ public class MatchDao {
         writeMatches(collection, query, outputStream);
     }
 
-    public void writeMatchesBetweenObjects(final String collectionName,
+    public void writeMatchesBetweenObjects(final MatchCollectionId collectionId,
                                            final String pGroupId,
                                            final String pId,
                                            final String qGroupId,
                                            final String qId,
                                            final OutputStream outputStream)
-            throws IllegalArgumentException, IOException {
+            throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
-        LOG.debug("writeMatchesBetweenObjects: entry, collectionName={}, pGroupId={}, pId={}, qGroupId={}, qId={}",
-                  collectionName, pGroupId, pId, qGroupId, qId);
+        LOG.debug("writeMatchesBetweenObjects: entry, collectionId={}, pGroupId={}, pId={}, qGroupId={}, qId={}",
+                  collectionId, pGroupId, pId, qGroupId, qId);
 
-        validateRequiredParameter("collectionName", collectionName);
+        validateRequiredParameter("collectionId", collectionId);
         validateRequiredParameter("pGroupId", pGroupId);
         validateRequiredParameter("pId", pId);
         validateRequiredParameter("qGroupId", qGroupId);
         validateRequiredParameter("qId", qId);
 
-        final DBCollection collection = matchDb.getCollection(collectionName);
+        final DBCollection collection = getExistingCollection(collectionId.getDbCollectionName());
         final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, pId, qGroupId, qId, null);
         final BasicDBObject query = new BasicDBObject(
                 "pGroupId", normalizedCriteria.getpGroupId()).append(
@@ -121,32 +123,32 @@ public class MatchDao {
         writeMatches(collection, query, outputStream);
     }
 
-    public void removeMatchesOutsideGroup(final String collectionName,
+    public void removeMatchesOutsideGroup(final MatchCollectionId collectionId,
                                           final String groupId)
-            throws IllegalArgumentException {
+            throws IllegalArgumentException, ObjectNotFoundException {
 
-        validateRequiredParameter("collectionName", collectionName);
+        validateRequiredParameter("collectionId", collectionId);
         validateRequiredParameter("groupId", groupId);
 
-        final DBCollection collection = matchDb.getCollection(collectionName);
+        final DBCollection collection = getExistingCollection(collectionId.getDbCollectionName());
         final BasicDBObject query = getOutsideGroupQuery(groupId);
 
         collection.remove(query);
     }
 
-    public void saveMatches(final String collectionName,
+    public void saveMatches(final MatchCollectionId collectionId,
                             final List<CanvasMatches> matchesList)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("collectionName", collectionName);
+        validateRequiredParameter("collectionId", collectionId);
         validateRequiredParameter("matchesList", matchesList);
 
-        LOG.debug("saveMatches: entry, collectionName={}, matchesList.size()={}",
-                  collectionName, matchesList.size());
+        LOG.debug("saveMatches: entry, collectionId={}, matchesList.size()={}",
+                  collectionId, matchesList.size());
 
         if (matchesList.size() > 0) {
 
-            final DBCollection collection = matchDb.getCollection(collectionName);
+            final DBCollection collection = matchDb.getCollection(collectionId.getDbCollectionName());
 
             ensureMatchIndexes(collection);
 
@@ -169,10 +171,18 @@ public class MatchDao {
         }
     }
 
+    private DBCollection getExistingCollection(final String collectionId)
+            throws ObjectNotFoundException {
+        if (! matchDb.collectionExists(collectionId)) {
+            throw new ObjectNotFoundException("match collection '" + collectionId + "' does not exist");
+        }
+        return matchDb.getCollection(collectionId);
+    }
+
     private void writeMatches(final DBCollection collection,
                               final BasicDBObject query,
                               final OutputStream outputStream)
-            throws IllegalArgumentException, IOException {
+            throws IOException {
 
         // exclude mongo id from results
         final BasicDBObject keys = new BasicDBObject("_id", 0);
