@@ -89,12 +89,25 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- override project dependency with provided scope since logback should be installed into tomcat directly -->
+        <!-- override project dependency with provided scope since logback should be installed into jetty directly -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.1.2</version>
+            <version>${logback-version}</version>
             <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.swagger</groupId>
+            <artifactId>swagger-jaxrs</artifactId>
+            <version>${swagger-version}</version>
+            <!-- filter out slf4j jar so that it does not conflict with jetty version -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
     </dependencies>

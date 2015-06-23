@@ -106,5 +106,11 @@
             <artifactId>jitk-tps</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>io.swagger</groupId>
+            <artifactId>swagger-annotations</artifactId>
+            <version>${swagger-version}</version>
+        </dependency>
+
     </dependencies>
 </project>

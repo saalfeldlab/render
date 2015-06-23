@@ -19,14 +19,23 @@ package org.janelia.alignment.match;
 import java.io.Serializable;
 import java.util.ArrayList;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
+
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+
 /**
  * Collection of n-dimensional weighted source-target point correspondences.
  * Both point lists are stored as double[][]
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org> and John Bogovic
  */
+@ApiModel(value = "Matches are a collection of n-dimensional weighted source-target point correspondences.")
+@XmlAccessorType(XmlAccessType.FIELD)
 public class Matches implements Serializable {
 
     private static final long serialVersionUID = 7877702099321390264L;
@@ -43,12 +52,19 @@ public class Matches implements Serializable {
             return false;
         return true;
     }
+
     /** source point coordinates */
+    @ApiModelProperty(value = "Source point coordinates", required=true)
     final protected double[][] p;
+
     /** target point coordinates */
+    @ApiModelProperty(value = "Target point coordinates", required=true)
     final protected double[][] q;
+
     /** weights */
+    @ApiModelProperty(value = "Weights", required=true)
     final protected double[] w;
+
     public Matches(
             final double[][] p,
             final double[][] q,

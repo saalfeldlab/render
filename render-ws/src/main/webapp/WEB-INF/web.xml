@@ -19,7 +19,8 @@
     <!-- URL based negotiation -->
     <context-param>
         <param-name>resteasy.media.type.mappings</param-name>
-        <param-value>html : text/html, json : application/json</param-value>
+        <!-- needed to remove json mapping here for swagger because ApiListingResource is explicitly mapped to /swagger.json -->
+        <param-value>html : text/html</param-value>
     </context-param>
 
     <listener>
@@ -40,6 +41,13 @@
         <servlet-class>
             org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher
         </servlet-class>
+    </servlet>
+
+    <servlet>
+        <!--suppress ServletWithoutMappingInspection -->
+        <servlet-name>SwaggerBootstrap</servlet-name>
+        <servlet-class>org.janelia.render.service.swagger.SwaggerBootstrapServlet</servlet-class>
+        <load-on-startup>2</load-on-startup>
     </servlet>
 
     <servlet-mapping>

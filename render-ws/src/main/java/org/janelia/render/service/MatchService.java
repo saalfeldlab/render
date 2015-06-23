@@ -29,12 +29,19 @@ import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+
 /**
  * APIs for accessing point match data stored in the Match service database.
  *
  * @author Eric Trautman
  */
-@Path("/v1/owner/{owner}")
+@Path("/v1/owner/{owner}/matchCollection")
+@Api(tags = {"Match APIs"},
+     description = "Match Service")
 public class MatchService {
 
     private final MatchDao matchDao;
@@ -49,9 +56,16 @@ public class MatchService {
         this.matchDao = matchDao;
     }
 
-    @Path("matchCollection/{matchCollection}/group/{groupId}/matchesWithinGroup")
+    @Path("{matchCollection}/group/{groupId}/matchesWithinGroup")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Find matches within the specified group",
+                  notes = "Find all matches where both tiles are in the specified layer.",
+                  response = CanvasMatches.class,
+                  responseContainer="List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
     public Response getMatchesWithinGroup(@PathParam("owner") final String owner,
                                           @PathParam("matchCollection") final String matchCollection,
                                           @PathParam("groupId") final String groupId) {
@@ -70,9 +84,16 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
+    @Path("{matchCollection}/group/{groupId}/matchesOutsideGroup")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Find matches outside the specified group",
+                  notes = "Find all matches with one tile in the specified layer and another tile outside that layer.",
+                  response = CanvasMatches.class,
+                  responseContainer="List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
     public Response getMatchesOutsideGroup(@PathParam("owner") final String owner,
                                            @PathParam("matchCollection") final String matchCollection,
                                            @PathParam("groupId") final String groupId) {
@@ -91,9 +112,16 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("matchCollection/{matchCollection}/group/{pGroupId}/matchesWith/{qGroupId}")
+    @Path("{matchCollection}/group/{pGroupId}/matchesWith/{qGroupId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Find matches between the specified groups",
+                  notes = "Find all matches with one tile in the specified p layer and another tile in the specified q layer.",
+                  response = CanvasMatches.class,
+                  responseContainer="List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
     public Response getMatchesBetweenGroups(@PathParam("owner") final String owner,
                                             @PathParam("matchCollection") final String matchCollection,
                                             @PathParam("pGroupId") final String pGroupId,
@@ -113,9 +141,16 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
+    @Path("{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Find matches between the specified objects",
+                  notes = "Find all matches between two specific tiles.",
+                  response = CanvasMatches.class,
+                  responseContainer="List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
     public Response getMatchesBetweenObjects(@PathParam("owner") final String owner,
                                              @PathParam("matchCollection") final String matchCollection,
                                              @PathParam("pGroupId") final String pGroupId,
@@ -137,8 +172,13 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
+    @Path("{matchCollection}/group/{groupId}/matchesOutsideGroup")
     @DELETE
+    @ApiOperation(value = "Delete matches outside the specified group",
+                  notes = "Delete all matches with one tile in the specified layer and another tile outside that layer.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
     public Response deleteMatchesOutsideGroup(@PathParam("owner") final String owner,
                                               @PathParam("matchCollection") final String matchCollection,
                                               @PathParam("groupId") final String groupId) {
@@ -157,9 +197,14 @@ public class MatchService {
         return response;
      }
 
-    @Path("matchCollection/{matchCollection}/matches")
+    @Path("{matchCollection}/matches")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Save a set of matches",
+                  notes = "Inserts or updates matches for the specified collection.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "If no matches are provided")
+    })
     public Response saveMatches(@PathParam("owner") final String owner,
                                 @PathParam("matchCollection") final String matchCollection,
                                 @Context final UriInfo uriInfo,

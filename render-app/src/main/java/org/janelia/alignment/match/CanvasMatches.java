@@ -7,28 +7,42 @@ import java.io.Serializable;
 import java.lang.reflect.Type;
 import java.util.List;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+
 import org.janelia.alignment.json.JsonUtils;
+
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
 
 /**
  * All weighted point correspondences between two canvases.
  *
  * @author Eric Trautman
  */
+@ApiModel(value = "A canvas match is the set of all weighted point correspondences between two canvases.")
+@XmlAccessorType(XmlAccessType.FIELD)
 public class CanvasMatches implements Serializable {
 
     /** Group (or section) identifier for all source coordinates. */
+    @ApiModelProperty(value = "Group (or section) identifier for all source coordinates",
+                      required=true)
     private String pGroupId;
 
     /** Canvas (or tile) identifier for all source coordinates. */
+    @ApiModelProperty(value = "Canvas (or tile) identifier for all source coordinates", required=true)
     private String pId;
 
     /** Group (or section) identifier for all target coordinates. */
+    @ApiModelProperty(value = "Group (or section) identifier for all target coordinates", required=true)
     private String qGroupId;
 
     /** Canvas (or tile) identifier for all target coordinates. */
+    @ApiModelProperty(value = "Canvas (or tile) identifier for all target coordinates", required=true)
     private String qId;
 
     /** Weighted source-target point correspondences. */
+    @ApiModelProperty(value = "Weighted source-target point correspondences", required=true)
     private Matches matches;
 
     /**
