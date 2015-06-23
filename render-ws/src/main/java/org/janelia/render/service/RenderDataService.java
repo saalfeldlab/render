@@ -34,6 +34,8 @@ import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.swagger.annotations.Api;
+
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
 
 /**
@@ -42,6 +44,8 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
  * @author Eric Trautman
  */
 @Path("/v1/owner/{owner}")
+@Api(tags = {"Render Data APIs"},
+     description = "Render Data Service")
 public class RenderDataService {
 
     private final RenderDao renderDao;

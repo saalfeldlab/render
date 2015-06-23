@@ -25,12 +25,19 @@ import org.janelia.render.service.util.SharedImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+
 /**
  * APIs that use the {@link Render} tool to render images.
  *
  * @author Eric Trautman
  */
 @Path("/v1/owner/{owner}")
+@Api(tags = {"Render Image APIs"},
+     description = "Render Image Service")
 public class RenderService {
 
     private final RenderDataService renderDataService;
@@ -49,6 +56,7 @@ public class RenderService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(IMAGE_JPEG_MIME_TYPE)
+    @ApiOperation(value = "Render JPEG image from a provide spec")
     public Response renderJpegImageFromProvidedParameters(final RenderParameters renderParameters) {
         return renderImageStream(renderParameters, Utils.JPEG_FORMAT, IMAGE_JPEG_MIME_TYPE, false);
     }
@@ -57,52 +65,60 @@ public class RenderService {
     @Path("png-image")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(IMAGE_JPEG_MIME_TYPE)
+    @Produces(IMAGE_PNG_MIME_TYPE)
+    @ApiOperation(value = "Render PNG image from a provide spec")
     public Response renderPngImageFromProvidedParameters(final RenderParameters renderParameters) {
         return renderImageStream(renderParameters, Utils.PNG_FORMAT, IMAGE_PNG_MIME_TYPE, false);
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/jpeg-image")
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(IMAGE_JPEG_MIME_TYPE)
+    @ApiOperation(value = "Render JPEG image for a tile")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Tile not found")
+    })
     public Response renderJpegImageForTile(@PathParam("owner") final String owner,
                                            @PathParam("project") final String project,
                                            @PathParam("stack") final String stack,
                                            @PathParam("tileId") final String tileId,
                                            @PathParam("scale") final Double scale,
-                                           @QueryParam("filter") final Boolean filter,
-                                           @QueryParam("binaryMask") final Boolean binaryMask) {
+                                           @QueryParam("filter") final Boolean filter) {
 
-        LOG.info("renderJpegImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}",
-                 owner, project, stack, tileId, scale, filter, binaryMask);
+        LOG.info("renderJpegImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
 
         final RenderParameters renderParameters =
-                renderDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, binaryMask);
+                renderDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false);
         return renderJpegImage(renderParameters, false);
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/png-image")
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(IMAGE_PNG_MIME_TYPE)
+    @ApiOperation(value = "Render PNG image for a tile")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Tile not found")
+    })
     public Response renderPngImageForTile(@PathParam("owner") final String owner,
                                           @PathParam("project") final String project,
                                           @PathParam("stack") final String stack,
                                           @PathParam("tileId") final String tileId,
                                           @PathParam("scale") final Double scale,
-                                          @QueryParam("filter") final Boolean filter,
-                                          @QueryParam("binaryMask") final Boolean binaryMask) {
+                                          @QueryParam("filter") final Boolean filter) {
 
-        LOG.info("renderPngImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}",
-                 owner, project, stack, tileId, scale, filter, binaryMask);
+        LOG.info("renderPngImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
 
         final RenderParameters renderParameters =
-                renderDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, binaryMask);
+                renderDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false);
         return renderPngImage(renderParameters, false);
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
+    @ApiOperation(value = "Render JPEG image for the specified bounding box")
     public Response renderJpegImageForBox(@PathParam("owner") final String owner,
                                           @PathParam("project") final String project,
                                           @PathParam("stack") final String stack,
@@ -125,6 +141,7 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
+    @ApiOperation(value = "Render PNG image for the specified bounding box")
     public Response renderPngImageForBox(@PathParam("owner") final String owner,
                                          @PathParam("project") final String project,
                                          @PathParam("stack") final String stack,
@@ -147,18 +164,19 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
+    @ApiOperation(value = "Render JPEG image for the specified bounding box and groupId")
     public Response renderJpegImageForGroupBox(@PathParam("owner") final String owner,
-                                          @PathParam("project") final String project,
-                                          @PathParam("stack") final String stack,
-                                          @PathParam("groupId") final String groupId,
-                                          @PathParam("x") final Double x,
-                                          @PathParam("y") final Double y,
-                                          @PathParam("z") final Double z,
-                                          @PathParam("width") final Integer width,
-                                          @PathParam("height") final Integer height,
-                                          @PathParam("scale") final Double scale,
-                                          @QueryParam("filter") final Boolean filter,
-                                          @QueryParam("binaryMask") final Boolean binaryMask) {
+                                               @PathParam("project") final String project,
+                                               @PathParam("stack") final String stack,
+                                               @PathParam("groupId") final String groupId,
+                                               @PathParam("x") final Double x,
+                                               @PathParam("y") final Double y,
+                                               @PathParam("z") final Double z,
+                                               @PathParam("width") final Integer width,
+                                               @PathParam("height") final Integer height,
+                                               @PathParam("scale") final Double scale,
+                                               @QueryParam("filter") final Boolean filter,
+                                               @QueryParam("binaryMask") final Boolean binaryMask) {
 
         LOG.info("renderJpegImageForGroupBox: entry");
         final RenderParameters renderParameters =
@@ -170,18 +188,19 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
+    @ApiOperation(value = "Render PNG image for the specified bounding box and groupId")
     public Response renderPngImageForGroupBox(@PathParam("owner") final String owner,
-                                         @PathParam("project") final String project,
-                                         @PathParam("stack") final String stack,
-                                         @PathParam("groupId") final String groupId,
-                                         @PathParam("x") final Double x,
-                                         @PathParam("y") final Double y,
-                                         @PathParam("z") final Double z,
-                                         @PathParam("width") final Integer width,
-                                         @PathParam("height") final Integer height,
-                                         @PathParam("scale") final Double scale,
-                                         @QueryParam("filter") final Boolean filter,
-                                         @QueryParam("binaryMask") final Boolean binaryMask) {
+                                              @PathParam("project") final String project,
+                                              @PathParam("stack") final String stack,
+                                              @PathParam("groupId") final String groupId,
+                                              @PathParam("x") final Double x,
+                                              @PathParam("y") final Double y,
+                                              @PathParam("z") final Double z,
+                                              @PathParam("width") final Integer width,
+                                              @PathParam("height") final Integer height,
+                                              @PathParam("scale") final Double scale,
+                                              @QueryParam("filter") final Boolean filter,
+                                              @QueryParam("binaryMask") final Boolean binaryMask) {
 
         LOG.info("renderPngImageForGroupBox: entry");
         final RenderParameters renderParameters =

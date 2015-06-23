@@ -27,12 +27,16 @@ import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.swagger.annotations.Api;
+
 /**
  * APIs for translating coordinates.
  *
  * @author Eric Trautman
  */
 @Path("/v1/owner/{owner}")
+@Api(tags = {"Render Coordinate APIs"},
+     description = "Coordinate Service")
 public class CoordinateService {
 
     private final RenderDao renderDao;
