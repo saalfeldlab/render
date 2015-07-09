@@ -17,6 +17,7 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.Bounds;
@@ -485,6 +486,40 @@ public class RenderDataClient {
         LOG.info("getTileIdsForCoordinates: submitting {}", requestContext);
 
         return httpClient.execute(httpPut, responseHandler);
+    }
+
+    /**
+     * @param  stack   name of stack.
+     * @param  x       x value for box.
+     * @param  y       y value for box.
+     * @param  z       z value for box.
+     * @param  width   width of box.
+     * @param  height  height of box.
+     * @param  scale   scale of target image.
+     *
+     * @return a render parameters result for the specified values.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public RenderParameters getRenderParameters(final String stack,
+                                                final double x,
+                                                final double y,
+                                                final double z,
+                                                final int width,
+                                                final int height,
+                                                final double scale)
+            throws IOException {
+
+        final URI uri = getUri(getRenderParametersUrlString(stack, x, y, z, width, height, scale));
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonResponseHandler<RenderParameters> responseHandler =
+                new JsonResponseHandler<>(requestContext, RenderParameters.class);
+
+        LOG.info("getRenderParameters: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
     }
 
     /**
