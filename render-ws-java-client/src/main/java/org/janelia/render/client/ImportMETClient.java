@@ -22,6 +22,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.validator.TemTileSpecValidator;
+import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,11 +48,14 @@ public class ImportMETClient {
         @Parameter(names = "--metFile", description = "MET file for section", required = true)
         private String metFile;
 
-        @Parameter(names = "--formatVersion", description = "MET format version ('v1', v2', ...), default is 'v1'", required = false)
+        @Parameter(names = "--formatVersion", description = "MET format version ('v1', v2', 'v3', ...), default is 'v1'", required = false)
         private String formatVersion = "v1";
 
         @Parameter(names = "--replaceAll", description = "Replace all transforms with the MET transform (default is to only replace the last transform)", required = false, arity = 0)
         private boolean replaceAll;
+
+        @Parameter(names = "--disableValidation", description = "Disable flyTEM tile validation", required = false, arity = 0)
+        private boolean disableValidation;
     }
 
     public static void main(final String[] args) {
@@ -73,6 +77,7 @@ public class ImportMETClient {
     }
 
     private final Parameters parameters;
+    private final TileSpecValidator tileSpecValidator;
 
     private final RenderDataClient renderDataClient;
 
@@ -80,6 +85,13 @@ public class ImportMETClient {
 
     public ImportMETClient(final Parameters parameters) {
         this.parameters = parameters;
+
+        if (parameters.disableValidation) {
+            this.tileSpecValidator = null;
+        } else {
+            this.tileSpecValidator = new TemTileSpecValidator();
+        }
+
         this.renderDataClient = parameters.getClient();
         this.metSectionToDataMap = new HashMap<>();
     }
@@ -88,7 +100,9 @@ public class ImportMETClient {
 
         LOG.info("generateStackData: entry");
 
-        if ("v2".equalsIgnoreCase(parameters.formatVersion)) {
+        if ("v3".equalsIgnoreCase(parameters.formatVersion)) {
+            loadMetV3Data();
+        } else if ("v2".equalsIgnoreCase(parameters.formatVersion)) {
             loadMetV2Data();
         } else {
             loadMetV1Data();
@@ -149,7 +163,7 @@ public class ImportMETClient {
                     final TileSpec acquireTileSpec = renderDataClient.getTile(parameters.acquireStack, tileId);
                     final Double z = acquireTileSpec.getZ();
                     LOG.info("loadMetData: mapped section {} to z value {}", section, z);
-                    sectionData = new SectionData(path, z);
+                    sectionData = new SectionData(path, z, tileSpecValidator);
                     metSectionToDataMap.put(section, sectionData);
                 }
 
@@ -211,17 +225,34 @@ public class ImportMETClient {
         loadMetData(parameterIndexes, lastAffineParameter, new PolynomialTransform2D());
     }
 
+    private void loadMetV3Data()
+            throws IOException, IllegalArgumentException {
+
+        // MET v3 data format:
+        //
+        // section  tileId                  ?  polyParameters (20 values, same order as Saalfeld)                                                                                                                                                                                           ?   ?
+        // -------  ------------------      -  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  -   --  -   --------------------------------------------------------------------------------------------------- -
+        // 11	150226163251007079.3461.0	1	144835.943662000005	-0.960117997218	-0.069830998961	0.000000475771	0.000000631026	-0.000005306870	7651.469166999998	0.117266994598	-0.962169002963	-0.000000225265	-0.000003457168	0.000009180979	7	79	3	/nobackup/flyTEM/data/whole_fly_1/141111-lens/150226163251_120x172/col0007/col0007_row0079_cam3.png	7
+
+        final int[] parameterIndexes = {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22};
+        final int lastAffineParameter = 23;
+        loadMetData(parameterIndexes, lastAffineParameter, new PolynomialTransform2D());
+    }
+
     private class SectionData {
 
         private final Path path;
         private final Double z;
+        private final TileSpecValidator tileSpecValidator;
         private final Map<String, TransformSpec> tileIdToAlignTransformMap;
         private ResolvedTileSpecCollection updatedTiles;
 
         private SectionData(final Path path,
-                            final Double z) {
+                            final Double z,
+                            final TileSpecValidator tileSpecValidator) {
             this.path = path;
             this.z = z;
+            this.tileSpecValidator = tileSpecValidator;
             final int capacityForLargeSection = (int) (5000 / 0.75);
             this.tileIdToAlignTransformMap = new HashMap<>(capacityForLargeSection);
             this.updatedTiles = null;
@@ -259,8 +290,9 @@ public class ImportMETClient {
 
             updatedTiles = renderDataClient.getResolvedTiles(parameters.acquireStack, z);
 
-            //
-            updatedTiles.setTileSpecValidator(new TemTileSpecValidator());
+            if (tileSpecValidator != null) {
+                updatedTiles.setTileSpecValidator(tileSpecValidator);
+            }
 
             if (!updatedTiles.hasTileSpecs()) {
                 throw new IllegalArgumentException(updatedTiles + " does not have any tiles");
