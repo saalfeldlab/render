@@ -227,12 +227,20 @@ public class SectionBoxBounds implements Serializable {
         return lastRow;
     }
 
+    public int getNumberOfRows() {
+        return lastRow + 1;
+    }
+
     public int getFirstColumn() {
         return firstColumn;
     }
 
     public int getLastColumn() {
         return lastColumn;
+    }
+
+    public int getNumberOfColumns() {
+        return lastColumn + 1;
     }
 
     public int getFirstX() {

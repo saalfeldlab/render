@@ -27,27 +27,42 @@ public class IGridPaths {
     private final int numberOfPaths;
     private final List<String> pathList;
 
-    public IGridPaths(int numberOfRows,
-                      int numberOfColumns) {
+    public IGridPaths(final int numberOfRows,
+                      final int numberOfColumns) {
         this.numberOfRows = numberOfRows;
         this.numberOfColumns = numberOfColumns;
         this.numberOfPaths = numberOfRows * numberOfColumns;
         this.pathList = new ArrayList<>(this.numberOfPaths);
     }
 
-    public void addImage(File imageFile,
-                         int row,
-                         int column) {
+    public void addImage(final File imageFile,
+                         final int row,
+                         final int column)
+            throws IllegalArgumentException {
+
+        if ((row < 0) || (row >= numberOfRows)) {
+            throw new IllegalArgumentException("invalid row (" + row + ") specified for " +
+                                               imageFile.getAbsolutePath() +
+                                               ", row values must be between 0 and " + (numberOfRows - 1));
+        }
+
+        if ((column < 0) || (column >= numberOfColumns)) {
+            throw new IllegalArgumentException("invalid column (" + column + ") specified for " +
+                                               imageFile.getAbsolutePath() +
+                                               ", column values must be between 0 and " + (numberOfColumns - 1));
+        }
+
         final int index = (row * numberOfColumns) + column;
         for (int i = pathList.size(); i < index; i++) {
             pathList.add(null);
         }
+
         pathList.add(imageFile.getAbsolutePath());
     }
 
-    public File saveToFile(File parentDirectory,
-                           Double z,
-                           File emptyImage)
+    public File saveToFile(final File parentDirectory,
+                           final Double z,
+                           final File emptyImage)
             throws IOException {
 
         if (! parentDirectory.exists()) {
@@ -67,7 +82,7 @@ public class IGridPaths {
         try (final BufferedWriter writer = Files.newBufferedWriter(file.toPath(),
                                                                    Charset.forName("US-ASCII"))){
             writer.write(header);
-            for (String imagePath : pathList) {
+            for (final String imagePath : pathList) {
                 if (imagePath == null) {
                     writer.write(emptyImagePath);
                 } else {

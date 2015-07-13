@@ -285,7 +285,7 @@ public class BoxClient {
                                                                        params.forceGeneration);
         final IGridPaths iGridPaths;
         if (params.createIGrid) {
-            iGridPaths = new IGridPaths(boxBounds.getLastRow(), boxBounds.getLastColumn());
+            iGridPaths = new IGridPaths(boxBounds.getNumberOfRows(), boxBounds.getNumberOfColumns());
         } else {
             iGridPaths = null;
         }
