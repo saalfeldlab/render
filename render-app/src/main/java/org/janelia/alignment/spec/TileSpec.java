@@ -489,18 +489,37 @@ public class TileSpec implements Serializable {
                 final String[] data = WHITESPACE_PATTERN.split(leafSpec.getDataString(), -1);
                 if (data.length == 6) {
 
-                    // Need to translate affine matrix order "back" for Matlab.
+                    // Need to translate affine matrix order "back" for Karsh aligner.
                     //
                     // Given: A D
                     //        B E
                     //        C F
                     //
-                    // Java order is:   A D B E C F
-                    // Matlab order is: A B C D E F
+                    // Saalfeld order is:      A D B E C F
+                    // Karsh aligner order is: A B C D E F
 
                     affineData = data[0] + '\t' + data[2] + '\t' + data[4] + '\t' +
                                  data[1] + '\t' + data[3] + '\t' + data[5];
+
+                } else if (data.length > 6) {
+
+                    // hack to export polynomial data in layout format (keep in Saalfeld order)
+
+                    final int lengthMinusOne = data.length - 1;
+                    final StringBuilder sb = new StringBuilder(1024);
+
+                    sb.append(data.length);
+                    sb.append('\t');
+
+                    for (int i = 0; i < lengthMinusOne; i++) {
+                        sb.append(data[i]);
+                        sb.append('\t');
+                    }
+                    sb.append(data[lengthMinusOne]);
+
+                    affineData = sb.toString();
                 }
+
             }
         }
 
