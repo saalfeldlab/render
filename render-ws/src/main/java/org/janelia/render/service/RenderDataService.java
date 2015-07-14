@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 import javax.ws.rs.Consumes;
@@ -135,13 +136,13 @@ public class RenderDataService {
                                                   @PathParam("stack") final String stack) {
 
         final List<Double> list = getZValues(owner, project, stack);
-        final List<Double> filteredList = new ArrayList<>(list.size());
+        final LinkedHashSet<Double> filteredSet = new LinkedHashSet<>(list.size());
         Double lastHighDoseZ = -1.0;
         for (final Double z : list) {
             if ((z - z.intValue()) > 0) {
                 if (z.intValue() == lastHighDoseZ.intValue()) {
-                    filteredList.add(lastHighDoseZ);
-                    filteredList.add(z);
+                    filteredSet.add(lastHighDoseZ);
+                    filteredSet.add(z);
                 } else {
                     LOG.warn("getHighDoseLowDoseZValues: z {} is missing corresponding high dose (.0) section", z);
                 }
@@ -150,9 +151,9 @@ public class RenderDataService {
             }
         }
 
-        LOG.info("getHighDoseLowDoseZValues: returning {} values", filteredList.size());
+        LOG.info("getHighDoseLowDoseZValues: returning {} values", filteredSet.size());
 
-        return filteredList;
+        return new ArrayList<>(filteredSet);
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/bounds")
