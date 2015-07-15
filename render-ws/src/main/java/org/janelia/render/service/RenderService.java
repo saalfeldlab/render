@@ -115,6 +115,98 @@ public class RenderService {
         return renderPngImage(renderParameters, false);
     }
 
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/jpeg-image")
+    @GET
+    @Produces(IMAGE_JPEG_MIME_TYPE)
+    @ApiOperation(value = "Render tile's source image without transformations in JPEG format")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Tile not found")
+    })
+    public Response renderJpegSourceImageForTile(@PathParam("owner") final String owner,
+                                                 @PathParam("project") final String project,
+                                                 @PathParam("stack") final String stack,
+                                                 @PathParam("tileId") final String tileId,
+                                                 @PathParam("scale") final Double scale,
+                                                 @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("renderJpegSourceImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
+
+        final RenderParameters renderParameters =
+                renderDataService.getTileSourceRenderParameters(owner, project, stack, tileId, scale, filter);
+
+        return renderJpegImage(renderParameters, false);
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/png-image")
+    @GET
+    @Produces(IMAGE_PNG_MIME_TYPE)
+    @ApiOperation(value = "Render tile's source image without transformations in PNG format")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Tile not found")
+    })
+    public Response renderPngSourceImageForTile(@PathParam("owner") final String owner,
+                                                @PathParam("project") final String project,
+                                                @PathParam("stack") final String stack,
+                                                @PathParam("tileId") final String tileId,
+                                                @PathParam("scale") final Double scale,
+                                                @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("renderPngSourceImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
+
+        final RenderParameters renderParameters =
+                renderDataService.getTileSourceRenderParameters(owner, project, stack, tileId, scale, filter);
+
+        return renderPngImage(renderParameters, false);
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/jpeg-image")
+    @GET
+    @Produces(IMAGE_JPEG_MIME_TYPE)
+    @ApiOperation(value = "Render tile's mask image without transformations in JPEG format")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Tile not found")
+    })
+    public Response renderJpegMaskImageForTile(@PathParam("owner") final String owner,
+                                               @PathParam("project") final String project,
+                                               @PathParam("stack") final String stack,
+                                               @PathParam("tileId") final String tileId,
+                                               @PathParam("scale") final Double scale,
+                                               @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("renderJpegMaskImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
+
+        final RenderParameters renderParameters =
+                renderDataService.getTileMaskRenderParameters(owner, project, stack, tileId, scale, filter);
+
+        return renderJpegImage(renderParameters, false);
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/png-image")
+    @GET
+    @Produces(IMAGE_PNG_MIME_TYPE)
+    @ApiOperation(value = "Render tile's mask image without transformations in PNG format")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Tile not found")
+    })
+    public Response renderPngMaskImageForTile(@PathParam("owner") final String owner,
+                                              @PathParam("project") final String project,
+                                              @PathParam("stack") final String stack,
+                                              @PathParam("tileId") final String tileId,
+                                              @PathParam("scale") final Double scale,
+                                              @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("renderPngMaskImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
+
+        final RenderParameters renderParameters =
+                renderDataService.getTileMaskRenderParameters(owner, project, stack, tileId, scale, filter);
+
+        return renderPngImage(renderParameters, false);
+    }
+
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)

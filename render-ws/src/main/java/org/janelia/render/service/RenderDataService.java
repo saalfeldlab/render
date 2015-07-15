@@ -6,6 +6,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -21,6 +22,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 
+import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -376,13 +378,36 @@ public class RenderDataService {
         return parameters;
     }
 
-    public TileSpec getTileSpec(final String owner,
-                                final String project,
-                                final String stack,
-                                final String tileId,
-                                final boolean resolveTransformReferences) {
-        final StackId stackId = new StackId(owner, project, stack);
-        return renderDao.getTileSpec(stackId, tileId, resolveTransformReferences);
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/render-parameters")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public RenderParameters getTileSourceRenderParameters(@PathParam("owner") final String owner,
+                                                          @PathParam("project") final String project,
+                                                          @PathParam("stack") final String stack,
+                                                          @PathParam("tileId") final String tileId,
+                                                          @PathParam("scale") final Double scale,
+                                                          @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("getTileSourceRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
+
+        return getTileRenderParameters(owner, project, stack, tileId, scale, filter, true);
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/render-parameters")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public RenderParameters getTileMaskRenderParameters(@PathParam("owner") final String owner,
+                                                        @PathParam("project") final String project,
+                                                        @PathParam("stack") final String stack,
+                                                        @PathParam("tileId") final String tileId,
+                                                        @PathParam("scale") final Double scale,
+                                                        @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("getTileMaskRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
+
+        return getTileRenderParameters(owner, project, stack, tileId, scale, filter, false);
     }
 
     @Path("project/{project}/stack/{stack}/transform/{transformId}")
@@ -501,6 +526,45 @@ public class RenderDataService {
                                                         final Double scale) {
 
         return renderDao.getParameters(stackId, groupId, x, y, z, width, height, scale);
+    }
+
+    private TileSpec getTileSpec(final String owner,
+                                 final String project,
+                                 final String stack,
+                                 final String tileId,
+                                 final boolean resolveTransformReferences) {
+        final StackId stackId = new StackId(owner, project, stack);
+        return renderDao.getTileSpec(stackId, tileId, resolveTransformReferences);
+    }
+
+    private RenderParameters getTileRenderParameters(final String owner,
+                                                     final String project,
+                                                     final String stack,
+                                                     final String tileId,
+                                                     final Double scale,
+                                                     final Boolean filter,
+                                                     final boolean isSource) {
+
+        // we only need to fetch the tile spec since no transforms are needed
+        final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId);
+
+        final RenderParameters tileRenderParameters =
+                new RenderParameters(null, 0, 0, tileSpec.getWidth(), tileSpec.getHeight(), scale);
+
+        final Map.Entry<Integer, ImageAndMask> firstEntry = tileSpec.getFirstMipmapEntry();
+        final ImageAndMask imageAndMask = firstEntry.getValue();
+        final TileSpec simpleTileSpec = new TileSpec();
+        if (isSource) {
+            final ImageAndMask imageWithoutMask = new ImageAndMask(imageAndMask.getImageUrl(), null);
+            simpleTileSpec.putMipmap(firstEntry.getKey(), imageWithoutMask);
+        } else {
+            final ImageAndMask maskAsImage = new ImageAndMask(imageAndMask.getMaskUrl(), null);
+            simpleTileSpec.putMipmap(firstEntry.getKey(), maskAsImage);
+        }
+        tileRenderParameters.addTileSpec(simpleTileSpec);
+        tileRenderParameters.setDoFilter(filter);
+
+        return tileRenderParameters;
     }
 
     private Double getLayoutMinValue(final Double minValue,
