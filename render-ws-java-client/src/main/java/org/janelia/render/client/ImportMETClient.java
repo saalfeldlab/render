@@ -100,12 +100,20 @@ public class ImportMETClient {
 
         LOG.info("generateStackData: entry");
 
-        if ("v3".equalsIgnoreCase(parameters.formatVersion)) {
-            loadMetV3Data();
-        } else if ("v2".equalsIgnoreCase(parameters.formatVersion)) {
-            loadMetV2Data();
+        if ("v2".equalsIgnoreCase(parameters.formatVersion) || "v3".equalsIgnoreCase(parameters.formatVersion)) {
+            loadMetData();
         } else {
-            loadMetV1Data();
+
+            // MET v1 data format:
+            //
+            // section  tileId              ?  affineParameters (**NOTE: order 1-6 differs from renderer 1,4,2,5,3,6)
+            // -------  ------------------  -  -------------------------------------------------------------------
+            // 5100     140731162138009113  1  0.992264  0.226714  27606.648556  -0.085614  0.712238  38075.232380  9  113  0  /nobackup/flyTEM/data/whole_fly_1/141111-lens/140731162138_112x144/col0009/col0009_row0113_cam0.png  -999
+
+            final int[] parameterIndexes = {3, 6, 4, 7, 5, 8};
+            final int lastAffineParameter = 9;
+            loadV1MetData(parameterIndexes, lastAffineParameter, new AffineModel2D());
+            
         }
 
         for (final SectionData sectionData : metSectionToDataMap.values()) {
@@ -120,15 +128,16 @@ public class ImportMETClient {
         LOG.info("generateStackData: exit, saved tiles and transforms for {}", metSectionToDataMap.values());
     }
 
-    private void loadMetData(final int[] parameterIndexes,
-                             final int lastParameterIndex,
-                             final CoordinateTransform transformModel)
+    // TODO: remove old MET loader once Khaled no longer needs it
+    private void loadV1MetData(final int[] parameterIndexes,
+                               final int lastParameterIndex,
+                               final CoordinateTransform transformModel)
             throws IOException, IllegalArgumentException {
 
         final Path path = FileSystems.getDefault().getPath(parameters.metFile).toAbsolutePath();
         final String modelClassName = transformModel.getClass().getName();
 
-        LOG.info("loadMetData: entry, formatVersion={}, modelClassName={}, path={}",
+        LOG.info("loadV1MetData: entry, formatVersion={}, modelClassName={}, path={}",
                  parameters.formatVersion, modelClassName, path);
 
         final BufferedReader reader = Files.newBufferedReader(path, Charset.defaultCharset());
@@ -150,7 +159,7 @@ public class ImportMETClient {
 
             if (w.length < lastParameterIndex) {
 
-                LOG.warn("loadMetData: skipping line {} because it only contains {} words", lineNumber, w.length);
+                LOG.warn("loadV1MetData: skipping line {} because it only contains {} words", lineNumber, w.length);
 
             } else {
 
@@ -162,7 +171,7 @@ public class ImportMETClient {
                 if (sectionData == null) {
                     final TileSpec acquireTileSpec = renderDataClient.getTile(parameters.acquireStack, tileId);
                     final Double z = acquireTileSpec.getZ();
-                    LOG.info("loadMetData: mapped section {} to z value {}", section, z);
+                    LOG.info("loadV1MetData: mapped section {} to z value {}", section, z);
                     sectionData = new SectionData(path, z, tileSpecValidator);
                     metSectionToDataMap.put(section, sectionData);
                 }
@@ -193,50 +202,117 @@ public class ImportMETClient {
             throw new IllegalArgumentException("No tile information found in MET file " + path + ".");
         }
 
-        LOG.info("loadMetData: exit, loaded {} lines for {}",
+        LOG.info("loadV1MetData: exit, loaded {} lines for {}",
                  lineNumber, metSectionToDataMap.values());
     }
 
-    private void loadMetV1Data()
+    private void loadMetData()
             throws IOException, IllegalArgumentException {
 
-        // MET v1 data format:
-        //
-        // section  tileId              ?  affineParameters (**NOTE: order 1-6 differs from renderer 1,4,2,5,3,6)
-        // -------  ------------------  -  -------------------------------------------------------------------
-        // 5100     140731162138009113  1  0.992264  0.226714  27606.648556  -0.085614  0.712238  38075.232380  9  113  0  /nobackup/flyTEM/data/whole_fly_1/141111-lens/140731162138_112x144/col0009/col0009_row0113_cam0.png  -999
+        final Path path = FileSystems.getDefault().getPath(parameters.metFile).toAbsolutePath();
 
-        final int[] parameterIndexes = {3, 6, 4, 7, 5, 8};
-        final int lastAffineParameter = 9;
-        loadMetData(parameterIndexes, lastAffineParameter, new AffineModel2D());
-    }
+        final CoordinateTransform affineModel = new AffineModel2D();
+        final CoordinateTransform polyModel = new PolynomialTransform2D();
 
-    private void loadMetV2Data()
-            throws IOException, IllegalArgumentException {
+        LOG.info("loadMetData: entry, formatVersion={}, path={}", parameters.formatVersion, path);
 
-        // MET v2 data format:
-        //
-        // section  tileId                  ?  polyParameters (12 values, same order as Saalfeld)                                                                                                                                                                                           ?   ?
-        // -------  ------------------      -  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  -   --  -   --------------------------------------------------------------------------------------------------- -
-        // 11	150226163251007079.3461.0	1	144835.943662000005	-0.960117997218	-0.069830998961	0.000000475771	0.000000631026	-0.000005306870	7651.469166999998	0.117266994598	-0.962169002963	-0.000000225265	-0.000003457168	0.000009180979	7	79	3	/nobackup/flyTEM/data/whole_fly_1/141111-lens/150226163251_120x172/col0007/col0007_row0079_cam3.png	7
+        int lineNumber = 0;
 
-        final int[] parameterIndexes = {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
-        final int lastAffineParameter = 15;
-        loadMetData(parameterIndexes, lastAffineParameter, new PolynomialTransform2D());
-    }
+        try (final BufferedReader reader = Files.newBufferedReader(path, Charset.defaultCharset())) {
 
-    private void loadMetV3Data()
-            throws IOException, IllegalArgumentException {
+            String line;
+            String[] w;
+            String section;
+            String tileId;
+            int parameterCount;
+            final int firstParameterIndex = 3;
+            int lastParameterIndex;
+            CoordinateTransform transformModel;
+            SectionData sectionData;
+            final StringBuilder modelData = new StringBuilder(128);
+            String modelDataString;
 
-        // MET v3 data format:
-        //
-        // section  tileId                  ?  polyParameters (20 values, same order as Saalfeld)                                                                                                                                                                                           ?   ?
-        // -------  ------------------      -  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  -   --  -   --------------------------------------------------------------------------------------------------- -
-        // 11	150226163251007079.3461.0	1	144835.943662000005	-0.960117997218	-0.069830998961	0.000000475771	0.000000631026	-0.000005306870	7651.469166999998	0.117266994598	-0.962169002963	-0.000000225265	-0.000003457168	0.000009180979	7	79	3	/nobackup/flyTEM/data/whole_fly_1/141111-lens/150226163251_120x172/col0007/col0007_row0079_cam3.png	7
+            while ((line = reader.readLine()) != null) {
 
-        final int[] parameterIndexes = {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22};
-        final int lastAffineParameter = 23;
-        loadMetData(parameterIndexes, lastAffineParameter, new PolynomialTransform2D());
+                lineNumber++;
+
+                w = WHITESPACE_PATTERN.split(line);
+
+                if (w.length < firstParameterIndex) {
+
+                    LOG.warn("loadMetData: skipping line {} because it only contains {} words", lineNumber, w.length);
+
+                } else {
+
+                    section = w[0];
+                    tileId = w[1];
+                    try {
+                        parameterCount = Integer.parseInt(w[2]);
+                        lastParameterIndex = firstParameterIndex + parameterCount;
+                    } catch (final NumberFormatException e) {
+                        throw new IllegalArgumentException("Failed to parse parameter count from line " + lineNumber +
+                                                           " of MET file " + path + ".  Invalid value is '" +
+                                                           w[2] + "'.", e);
+                    }
+
+                    if (parameterCount < 6) {
+                        throw new IllegalArgumentException("Failed to parse parameters from line " + lineNumber +
+                                                           " of MET file " + path + ".  Parameter count value '" +
+                                                           parameterCount + "' must be greater than 5.");
+                    }
+
+                    if (w.length < lastParameterIndex) {
+                        throw new IllegalArgumentException("Failed to parse parameters from line " + lineNumber +
+                                                           " of MET file " + path + ".  Expected " + parameterCount +
+                                                           " parameters starting at word " + (firstParameterIndex + 1) +
+                                                           " but line only contains " + w.length + " words.");
+                    }
+
+                    if (parameterCount > 6) {
+                        transformModel = polyModel;
+                    } else {
+                        transformModel = affineModel;
+                    }
+
+                    sectionData = metSectionToDataMap.get(section);
+
+                    if (sectionData == null) {
+                        final TileSpec acquireTileSpec = renderDataClient.getTile(parameters.acquireStack, tileId);
+                        final Double z = acquireTileSpec.getZ();
+                        LOG.info("loadMetData: mapped section {} to z value {}", section, z);
+                        sectionData = new SectionData(path, z, tileSpecValidator);
+                        metSectionToDataMap.put(section, sectionData);
+                    }
+
+                    modelData.setLength(0);
+                    for (int i = firstParameterIndex; i < lastParameterIndex; i++) {
+                        if (i > firstParameterIndex) {
+                            modelData.append(' ');
+                        }
+                        modelData.append(w[i]);
+                    }
+                    modelDataString = modelData.toString();
+
+                    try {
+                        transformModel.init(modelDataString);
+                    } catch (final Exception e) {
+                        throw new IllegalArgumentException("Failed to parse transform data from line " + lineNumber +
+                                                           " of MET file " + path + ".  Invalid data string is '" +
+                                                           modelDataString + "'.", e);
+                    }
+
+                    sectionData.addTileId(tileId, lineNumber, transformModel.getClass().getName(), modelDataString);
+                }
+
+            }
+        }
+
+        if (metSectionToDataMap.size() == 0) {
+            throw new IllegalArgumentException("No tile information found in MET file " + path + ".");
+        }
+
+        LOG.info("loadMetData: exit, loaded {} lines for {}",
+                 lineNumber, metSectionToDataMap.values());
     }
 
     private class SectionData {
