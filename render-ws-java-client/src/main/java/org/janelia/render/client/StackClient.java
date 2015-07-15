@@ -3,6 +3,7 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -60,8 +61,8 @@ public class StackClient {
         @Parameter(names = "--cloneResultStack", description = "Name of stack created by clone operation", required = false)
         private String cloneResultStack;
 
-        @Parameter(names = "--deleteZ", description = "Z values for sections to be removed", required = false, variableArity = true)
-        private List<String> deleteZList;
+        @Parameter(names = "--zValues", description = "Z values for filtering", required = false, variableArity = true)
+        private List<String> zValues;
 
     }
 
@@ -145,7 +146,15 @@ public class StackClient {
                                                            params.snapshotRootPath,
                                                            null);
 
-        renderDataClient.cloneStackVersion(stack, params.cloneResultStack, stackVersion);
+        List<Double> zValues = null;
+        if (params.zValues != null) {
+            zValues = new ArrayList<>(params.zValues.size());
+            for (final String zString : params.zValues) {
+                zValues.add(new Double(zString));
+            }
+        }
+
+        renderDataClient.cloneStackVersion(stack, params.cloneResultStack, stackVersion, zValues);
 
         logMetaData("cloneStackVersion: after clone", params.cloneResultStack);
     }
@@ -169,11 +178,11 @@ public class StackClient {
 
         logMetaData("deleteStack: before removal");
 
-        if (params.deleteZList == null) {
+        if (params.zValues == null) {
             renderDataClient.deleteStack(stack, null);
         } else {
             Double z;
-            for (final String zString : params.deleteZList) {
+            for (final String zString : params.zValues) {
                 z = new Double(zString);
                 renderDataClient.deleteStack(stack, z);
             }

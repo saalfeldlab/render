@@ -1033,7 +1033,8 @@ public class RenderDao {
     }
 
     public void cloneStack(final StackId fromStackId,
-                           final StackId toStackId)
+                           final StackId toStackId,
+                           final List<Double> zValues)
             throws IllegalArgumentException, IllegalStateException {
 
         validateRequiredParameter("fromStackId", fromStackId);
@@ -1041,11 +1042,19 @@ public class RenderDao {
 
         final DBCollection fromTransformCollection = getTransformCollection(fromStackId);
         final DBCollection toTransformCollection = getTransformCollection(toStackId);
-        cloneCollection(fromTransformCollection, toTransformCollection);
+        cloneCollection(fromTransformCollection, toTransformCollection, new BasicDBObject());
+
+        final BasicDBObject filterQuery = new BasicDBObject();
+        if ((zValues != null) && (zValues.size() > 0)) {
+            final BasicDBList list = new BasicDBList();
+            list.addAll(zValues);
+            final BasicDBObject zFilter = new BasicDBObject(QueryOperators.IN, list);
+            filterQuery.append("z", zFilter);
+        }
 
         final DBCollection fromTileCollection = getTileCollection(fromStackId);
         final DBCollection toTileCollection = getTileCollection(toStackId);
-        cloneCollection(fromTileCollection, toTileCollection);
+        cloneCollection(fromTileCollection, toTileCollection, filterQuery);
     }
 
     /**
@@ -1383,7 +1392,8 @@ public class RenderDao {
     }
 
     private void cloneCollection(final DBCollection fromCollection,
-                                 final DBCollection toCollection)
+                                 final DBCollection toCollection,
+                                 final DBObject filterQuery)
             throws IllegalStateException {
 
         final long fromCount = fromCollection.count();
@@ -1391,7 +1401,7 @@ public class RenderDao {
         final String fromFullName = fromCollection.getFullName();
         final String toFullName = toCollection.getFullName();
 
-        LOG.debug("cloneCollection: entry, copying {} documents in {} to {}",
+        LOG.debug("cloneCollection: entry, copying up to {} documents from {} to {}",
                   fromCount, fromFullName, toFullName);
 
         final ProcessTimer timer = new ProcessTimer(15000);
@@ -1402,10 +1412,9 @@ public class RenderDao {
         final int maxDocumentsPerBulkInsert = 10000;
 
         long count = 0;
-        final DBObject query = new BasicDBObject();
         BulkWriteOperation bulk = toCollection.initializeOrderedBulkOperation();
 
-        try (DBCursor cursor = fromCollection.find(query)) {
+        try (DBCursor cursor = fromCollection.find(filterQuery)) {
 
             BulkWriteResult result;
             long insertedCount;
@@ -1442,8 +1451,11 @@ public class RenderDao {
 
             toCount = toCollection.count();
 
-            if (toCount != fromCount) {
-                throw new IllegalStateException("only inserted " + toCount + " out of " + fromCount + " documents");
+            // if nothing was filtered, verify that all documents got copied
+            if (filterQuery.keySet().size() == 0) {
+                if (toCount != fromCount) {
+                    throw new IllegalStateException("only inserted " + toCount + " out of " + fromCount + " documents");
+                }
             }
 
         }

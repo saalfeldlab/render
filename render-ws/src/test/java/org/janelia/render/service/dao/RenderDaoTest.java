@@ -87,7 +87,7 @@ public class RenderDaoTest {
         StackMetaData fromStackMetaData = dao.getStackMetaData(stackId);
         fromStackMetaData = dao.ensureIndexesAndDeriveStats(fromStackMetaData);
 
-        dao.cloneStack(stackId, toStackId);
+        dao.cloneStack(stackId, toStackId, null);
 
         zValues = dao.getZValues(toStackId);
         Assert.assertEquals("invalid number of z values after clone", 1, zValues.size());
@@ -105,6 +105,22 @@ public class RenderDaoTest {
                             fromStats.getTileCount(), toStats.getTileCount());
         Assert.assertEquals("cloned transform count does not match",
                             fromStats.getTransformCount(), toStats.getTransformCount());
+
+        final Double newZValue = 999.0;
+        final TileSpec newTileSpec = new TileSpec();
+        newTileSpec.setTileId("new-tile-spec");
+        newTileSpec.setZ(newZValue);
+
+        dao.saveTileSpec(stackId, newTileSpec);
+
+        final StackId filteredStackId = new StackId(stackId.getOwner(), stackId.getProject(), "filteredStack");
+        final List<Double> filteredZValues = new ArrayList<>();
+        filteredZValues.add(newZValue);
+        dao.cloneStack(stackId, filteredStackId, filteredZValues);
+
+        zValues = dao.getZValues(filteredStackId);
+        Assert.assertEquals("invalid number of z values after clone filter", 1, zValues.size());
+        Assert.assertEquals("invalid z value after clone filter", newZValue, zValues.get(0));
     }
 
     @Test
@@ -266,11 +282,11 @@ public class RenderDaoTest {
         Assert.assertFalse("transformSpec should not be resolved after update", updatedSpec.isFullyResolved());
     }
 
-    public static void validateStackMetaData(String context,
-                                             StackMetaData.StackState expectedState,
-                                             Integer expectedVersionNumber,
-                                             StackVersion expectedVersion,
-                                             StackMetaData actualMetaData) {
+    public static void validateStackMetaData(final String context,
+                                             final StackMetaData.StackState expectedState,
+                                             final Integer expectedVersionNumber,
+                                             final StackVersion expectedVersion,
+                                             final StackMetaData actualMetaData) {
 
         Assert.assertNotNull("null meta data retrieved" + context, actualMetaData);
         Assert.assertEquals("invalid state" + context,

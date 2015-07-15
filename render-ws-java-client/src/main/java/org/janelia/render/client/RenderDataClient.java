@@ -177,12 +177,28 @@ public class RenderDataClient {
      */
     public void cloneStackVersion(final String fromStack,
                                   final String toStack,
-                                  final StackVersion toStackVersion)
+                                  final StackVersion toStackVersion,
+                                  final List<Double> zValues)
             throws IOException {
 
         final String json = JsonUtils.GSON.toJson(toStackVersion);
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
-        final URI uri = getUri(getStackUrlString(fromStack) + "/cloneTo/" + toStack);
+
+        final URIBuilder builder = new URIBuilder(getUri(getStackUrlString(fromStack) + "/cloneTo/" + toStack));
+
+        if (zValues != null) {
+            for (final Double z : zValues) {
+                builder.addParameter("z", z.toString());
+            }
+        }
+
+        final URI uri;
+        try {
+            uri = builder.build();
+        } catch (final URISyntaxException e) {
+            throw new IOException(e.getMessage(), e);
+        }
+
         final String requestContext = "PUT " + uri;
         final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
 

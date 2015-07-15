@@ -12,6 +12,7 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -131,11 +132,12 @@ public class StackMetaDataService {
                                       @PathParam("project") final String project,
                                       @PathParam("fromStack") final String fromStack,
                                       @PathParam("toStack") final String toStack,
+                                      @QueryParam("z") final List<Double> zValues,
                                       @Context final UriInfo uriInfo,
                                       final StackVersion stackVersion) {
 
-        LOG.info("cloneStackVersion: entry, owner={}, project={}, fromStack={}, toStack={}, stackVersion={}",
-                 owner, project, fromStack, toStack, stackVersion);
+        LOG.info("cloneStackVersion: entry, owner={}, project={}, fromStack={}, toStack={}, zValues={}, stackVersion={}",
+                 owner, project, fromStack, toStack, zValues, stackVersion);
 
         try {
             if (stackVersion == null) {
@@ -153,7 +155,7 @@ public class StackMetaDataService {
                 throw new IllegalArgumentException("stack " + toStackId + " already exists");
             }
 
-            renderDao.cloneStack(fromStackMetaData.getStackId(), toStackId);
+            renderDao.cloneStack(fromStackMetaData.getStackId(), toStackId, zValues);
             renderDao.saveStackMetaData(toStackMetaData);
 
             LOG.info("cloneStackVersion: created {} from {}", toStackId, fromStackMetaData.getStackId());

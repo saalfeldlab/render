@@ -94,7 +94,7 @@ public class StackMetaDataServiceTest {
                                      loadingStackId.getProject(),
                                      loadingStackId.getStack());
             Assert.fail("meta data should not exist for " + loadingStackId);
-        } catch (ObjectNotFoundException e) {
+        } catch (final ObjectNotFoundException e) {
             Assert.assertTrue(true); // test passed
         }
 
@@ -147,7 +147,7 @@ public class StackMetaDataServiceTest {
                                    loadingStackId.getProject(),
                                    loadingStackId.getStack());
             Assert.fail("stack without stats should fail bounds request");
-        } catch (IllegalServiceArgumentException e) {
+        } catch (final IllegalServiceArgumentException e) {
             Assert.assertTrue(true); // test passed
         }
 
@@ -160,7 +160,7 @@ public class StackMetaDataServiceTest {
                                      loadingStackId.getProject(),
                                      loadingStackId.getStack());
             Assert.fail("after delete, meta data should not exist for " + loadingStackId);
-        } catch (ObjectNotFoundException e) {
+        } catch (final ObjectNotFoundException e) {
             Assert.assertTrue(true); // test passed
         }
     }
@@ -177,7 +177,7 @@ public class StackMetaDataServiceTest {
                                    completeStackId.getProject(),
                                    completeStackId.getStack());
             Assert.fail("stack without bounds should fail bounds request");
-        } catch (IllegalServiceArgumentException e) {
+        } catch (final IllegalServiceArgumentException e) {
             Assert.assertTrue(true); // test passed
         }
 
@@ -241,7 +241,7 @@ public class StackMetaDataServiceTest {
                                   OFFLINE,
                                   getUriInfo());
             Assert.fail("stack without snapshot should not be allowed to transition to OFFLINE state");
-        } catch (IllegalServiceArgumentException e) {
+        } catch (final IllegalServiceArgumentException e) {
             e.printStackTrace();
         }
 
@@ -255,7 +255,7 @@ public class StackMetaDataServiceTest {
                                      completeStackId.getProject(),
                                      completeStackId.getStack());
             Assert.fail("after delete, meta data should not exist for " + completeStackId);
-        } catch (ObjectNotFoundException e) {
+        } catch (final ObjectNotFoundException e) {
             Assert.assertTrue(true); // test passed
         }
 
@@ -278,7 +278,7 @@ public class StackMetaDataServiceTest {
                                      clonedStackId.getProject(),
                                      clonedStackId.getStack());
             Assert.fail("before clone, meta data should not exist for " + clonedStackId);
-        } catch (ObjectNotFoundException e) {
+        } catch (final ObjectNotFoundException e) {
             Assert.assertTrue(true); // test passed
         }
 
@@ -296,6 +296,7 @@ public class StackMetaDataServiceTest {
                                   completeStackId.getProject(),
                                   completeStackId.getStack(),
                                   clonedStackId.getStack(),
+                                  null,
                                   getUriInfo(),
                                   clonedStackVersion);
 
@@ -317,7 +318,7 @@ public class StackMetaDataServiceTest {
                                        completeStackId.getStack(),
                                        z);
             Assert.fail("section should not be deleted for stack in COMPLETE state");
-        } catch (IllegalServiceArgumentException e) {
+        } catch (final IllegalServiceArgumentException e) {
             Assert.assertTrue(true); // test passed
         }
 
@@ -339,6 +340,7 @@ public class StackMetaDataServiceTest {
                                   completeStackId.getProject(),
                                   completeStackId.getStack(),
                                   clonedStackId.getStack(),
+                                  null,
                                   getUriInfo(),
                                   clonedStackVersion);
 
@@ -356,7 +358,7 @@ public class StackMetaDataServiceTest {
             specList = renderDao.getTileSpecs(clonedStackId, z);
             Assert.assertEquals("after removal, invalid number of tile specs exist for z " + z,
                                 0, specList.size());
-        } catch (IllegalArgumentException e) {
+        } catch (final IllegalArgumentException e) {
             Assert.assertTrue(true); // test passed - no tile specs exist
         }
 
