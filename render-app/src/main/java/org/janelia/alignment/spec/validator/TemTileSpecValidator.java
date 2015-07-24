@@ -16,7 +16,7 @@ public class TemTileSpecValidator implements TileSpecValidator {
 
     public TemTileSpecValidator() {
         // TODO: confirm default bounding box constraints
-        this (-400, 300000, 500, 5000);
+        this (-400, 500000, 500, 5000);
     }
 
     public TemTileSpecValidator(final double minCoordinate,
