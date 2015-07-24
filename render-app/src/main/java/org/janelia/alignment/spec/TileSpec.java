@@ -37,6 +37,7 @@ import mpicbg.trakem2.transform.TransformMesh;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 
 /**
  * Specifies a set of mipmap level images and masks along with
@@ -59,6 +60,7 @@ public class TileSpec implements Serializable {
     private Double minIntensity;
     private Double maxIntensity;
     private final TreeMap<Integer, ImageAndMask> mipmapLevels;
+    private MipmapPathBuilder mipmapPathBuilder;
     private ListTransformSpec transforms;
     private double meshCellSize = RenderParameters.DEFAULT_MESH_CELL_SIZE;
 
@@ -387,11 +389,22 @@ public class TileSpec implements Serializable {
     }
 
     public Map.Entry<Integer, ImageAndMask> getFloorMipmapEntry(final Integer mipmapLevel) {
+
         Map.Entry<Integer, ImageAndMask> floorEntry = mipmapLevels.floorEntry(mipmapLevel);
+
         if (floorEntry == null) {
             floorEntry = mipmapLevels.firstEntry();
+        } else if ((floorEntry.getKey() < mipmapLevel) && (mipmapPathBuilder != null)) {
+            floorEntry = mipmapPathBuilder.deriveImageAndMask(mipmapLevel,
+                                                              mipmapLevels.firstEntry(),
+                                                              true);
         }
+
         return floorEntry;
+    }
+
+    public void setMipmapPathBuilder(final MipmapPathBuilder mipmapPathBuilder) {
+        this.mipmapPathBuilder = mipmapPathBuilder;
     }
 
     public boolean hasTransforms() {

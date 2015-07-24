@@ -21,11 +21,11 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
     private StackState state;
     private Date lastModifiedTimestamp;
     private Integer currentVersionNumber;
-    private StackVersion currentVersion;
+    private final StackVersion currentVersion;
     private StackStats stats;
 
-    public StackMetaData(StackId stackId,
-                         StackVersion currentVersion) {
+    public StackMetaData(final StackId stackId,
+                         final StackVersion currentVersion) {
         this.stackId = stackId;
         this.state = LOADING;
         this.lastModifiedTimestamp = new Date();
@@ -78,13 +78,13 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         return layoutHeight;
     }
 
-    public StackMetaData getNextVersion(StackVersion newVersion) {
-        StackMetaData metaData = new StackMetaData(stackId, newVersion);
+    public StackMetaData getNextVersion(final StackVersion newVersion) {
+        final StackMetaData metaData = new StackMetaData(stackId, newVersion);
         metaData.currentVersionNumber = currentVersionNumber + 1;
         return metaData;
     }
 
-    public void setState(StackState state) throws IllegalArgumentException {
+    public void setState(final StackState state) throws IllegalArgumentException {
 
         if (state == null) {
             throw new IllegalArgumentException("null state specified");
@@ -108,7 +108,7 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
 
     }
 
-    public void setStats(StackStats stats) throws IllegalArgumentException {
+    public void setStats(final StackStats stats) throws IllegalArgumentException {
 
         if (OFFLINE.equals(state)) {
             throw new IllegalArgumentException("cannot set stats for OFFLINE stack");
@@ -123,9 +123,17 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         }
     }
 
+    public MipmapPathBuilder getCurrentMipmapPathBuilder() {
+        MipmapPathBuilder mipmapPathBuilder = null;
+        if (currentVersion != null) {
+            mipmapPathBuilder = currentVersion.getMipmapPathBuilder();
+        }
+        return mipmapPathBuilder;
+    }
+
     @SuppressWarnings("NullableProblems")
     @Override
-    public int compareTo(StackMetaData that) {
+    public int compareTo(final StackMetaData that) {
         return this.stackId.compareTo(that.stackId);
     }
 

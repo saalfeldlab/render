@@ -50,7 +50,7 @@ public class RenderParametersTest {
         tileSpec0.putMipmap(1, new ImageAndMask("spec0-level1.png", null));
         tileSpec0.putMipmap(2, new ImageAndMask("spec0-level2.png", null));
 
-        List<TransformSpec> transformSpecList = new ArrayList<TransformSpec>();
+        List<TransformSpec> transformSpecList = new ArrayList<>();
         transformSpecList.add(new LeafTransformSpec("mpicbg.trakem2.transform.AffineModel2D", "1 0 0 1 0 0"));
 
         tileSpec0.addTransformSpecs(transformSpecList);
@@ -60,7 +60,7 @@ public class RenderParametersTest {
         final TileSpec tileSpec1 = new TileSpec();
         tileSpec1.putMipmap(0, new ImageAndMask("spec1-level0.png", null));
 
-        transformSpecList = new ArrayList<TransformSpec>();
+        transformSpecList = new ArrayList<>();
         transformSpecList.add(new LeafTransformSpec("mpicbg.trakem2.transform.AffineModel2D", "1 0 0 1 1650 0"));
 
         tileSpec1.addTransformSpecs(transformSpecList);
@@ -79,6 +79,8 @@ public class RenderParametersTest {
         final List<TileSpec> parsedTileSpecs = parsedParameters.getTileSpecs();
         Assert.assertNotNull("json parse returned null tileSpecs", parsedTileSpecs);
         Assert.assertEquals("invalid number of tileSpecs parsed", 2, parsedTileSpecs.size());
+
+        Assert.assertFalse("mipmapPathBuilder should NOT be defined", parsedParameters.hasMipmapPathBuilder());
     }
 
     @Test
@@ -91,7 +93,7 @@ public class RenderParametersTest {
                 "--out", overrideOut,
                 "--scale", overrideScale
         };
-        RenderParameters parameters = RenderParameters.parseCommandLineArgs(args);
+        final RenderParameters parameters = RenderParameters.parseCommandLineArgs(args);
 
         Assert.assertEquals("invalid out parameter",
                             overrideOut, parameters.getOut());

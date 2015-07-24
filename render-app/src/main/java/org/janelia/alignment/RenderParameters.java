@@ -36,6 +36,7 @@ import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +54,7 @@ import com.google.gson.reflect.TypeToken;
 @Parameters
 public class RenderParameters implements Serializable {
 
+    @SuppressWarnings("FieldMayBeFinal")
     @Parameter(names = "--help", description = "Display this note", help = true)
     private transient boolean help;
 
@@ -112,6 +114,8 @@ public class RenderParameters implements Serializable {
 
     @Parameter(names = "--background_color", description = "RGB int color for background (default is 0: black)", required = false)
     private Integer backgroundRGBColor;
+
+    private MipmapPathBuilder mipmapPathBuilder;
 
     /** List of tile specifications parsed from --tileSpecUrl or deserialized directly from json. */
     private List<TileSpec> tileSpecs;
@@ -175,6 +179,7 @@ public class RenderParameters implements Serializable {
         this.parametersUrl = null;
 
         this.tileSpecs = new ArrayList<>();
+        this.mipmapPathBuilder = null;
 
         this.jCommander = null;
         this.outUri = null;
@@ -213,7 +218,7 @@ public class RenderParameters implements Serializable {
      *   if the json cannot be parsed.
      */
     public static RenderParameters parseJson(final String jsonText) throws IllegalArgumentException {
-        RenderParameters parameters;
+        final RenderParameters parameters;
         try {
             parameters = JsonUtils.GSON.fromJson(jsonText, RenderParameters.class);
         } catch (final Throwable t) {
@@ -231,7 +236,7 @@ public class RenderParameters implements Serializable {
      *   if the json cannot be parsed.
      */
     public static RenderParameters parseJson(final Reader jsonReader) throws IllegalArgumentException {
-        RenderParameters parameters;
+        final RenderParameters parameters;
         try {
             parameters = JsonUtils.GSON.fromJson(jsonReader, RenderParameters.class);
         } catch (final Throwable t) {
@@ -260,7 +265,7 @@ public class RenderParameters implements Serializable {
                                                " is not readable");
         }
 
-        FileReader parametersReader;
+        final FileReader parametersReader;
         try {
             parametersReader = new FileReader(jsonFile);
         } catch (final FileNotFoundException e) {
@@ -314,6 +319,8 @@ public class RenderParameters implements Serializable {
             }
         }
 
+        parameters.initializeDerivedValues();
+
         return parameters;
     }
 
@@ -323,6 +330,7 @@ public class RenderParameters implements Serializable {
     public void initializeDerivedValues() {
         if (! initialized) {
             parseTileSpecs();
+            applyMipmapPathBuilderToTileSpecs();
             initialized = true;
         }
     }
@@ -467,6 +475,22 @@ public class RenderParameters implements Serializable {
         }
     }
 
+    public boolean hasMipmapPathBuilder() {
+        return this.mipmapPathBuilder != null;
+    }
+
+    public void setMipmapPathBuilder(final MipmapPathBuilder mipmapPathBuilder) {
+        this.mipmapPathBuilder = mipmapPathBuilder;
+    }
+
+    public void applyMipmapPathBuilderToTileSpecs() {
+        if (hasMipmapPathBuilder()) {
+            for (final TileSpec spec : tileSpecs) {
+                spec.setMipmapPathBuilder(mipmapPathBuilder);
+            }
+        }
+    }
+
     /**
      * Displays command usage information on the console (standard-out).
      */
@@ -535,6 +559,10 @@ public class RenderParameters implements Serializable {
             sb.append("tileSpecUrl='").append(tileSpecUrl).append("', ");
         } else if (tileSpecs != null) {
             sb.append("tileSpecs=[").append(tileSpecs.size()).append(" items], ");
+        }
+
+        if (mipmapPathBuilder != null) {
+            sb.append("mipmapPathBuilder=").append(mipmapPathBuilder).append(", ");
         }
 
         if (x != DEFAULT_X_AND_Y) {
@@ -688,6 +716,7 @@ public class RenderParameters implements Serializable {
             quality = mergedValue(quality, baseParameters.quality, DEFAULT_QUALITY);
             doFilter = mergedValue(doFilter, baseParameters.doFilter, false);
             backgroundRGBColor = mergedValue(backgroundRGBColor, baseParameters.backgroundRGBColor);
+            mipmapPathBuilder = mergedValue(mipmapPathBuilder, baseParameters.mipmapPathBuilder);
 
             tileSpecs.addAll(baseParameters.tileSpecs);
         }

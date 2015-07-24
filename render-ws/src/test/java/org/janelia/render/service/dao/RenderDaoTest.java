@@ -314,8 +314,8 @@ public class RenderDaoTest {
                             expectedVersion.getStackResolutionZ(), actualVersion.getStackResolutionZ());
         Assert.assertEquals("invalid snapshotRootPath" + context,
                             expectedVersion.getSnapshotRootPath(), actualVersion.getSnapshotRootPath());
-        Assert.assertEquals("invalid mipmapMetaData" + context,
-                            expectedVersion.getMipmapMetaData(), actualVersion.getMipmapMetaData());
+        Assert.assertEquals("invalid mipmapPathBuilder" + context,
+                            expectedVersion.getMipmapPathBuilder(), actualVersion.getMipmapPathBuilder());
     }
 
 }

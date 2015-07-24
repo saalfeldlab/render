@@ -29,6 +29,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.service.dao.RenderDao;
@@ -282,11 +283,7 @@ public class RenderDataService {
             }
 
             final StackId stackId = new StackId(owner, project, stack);
-            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
-
-            if (stackMetaData == null) {
-                throw StackMetaDataService.getStackNotFoundException(owner, project, stack);
-            }
+            final StackMetaData stackMetaData = getStackMetaData(stackId);
 
             if (! stackMetaData.isLoading()) {
                 throw new IllegalStateException("Resolved tiles can only be saved to stacks in the " +
@@ -351,11 +348,7 @@ public class RenderDataService {
             }
 
             final StackId stackId = new StackId(owner, project, stack);
-            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
-
-            if (stackMetaData == null) {
-                throw StackMetaDataService.getStackNotFoundException(owner, project, stack);
-            }
+            final StackMetaData stackMetaData = getStackMetaData(stackId);
 
             final Integer stackLayoutWidth = stackMetaData.getLayoutWidth();
             final Integer stackLayoutHeight = stackMetaData.getLayoutHeight();
@@ -370,6 +363,7 @@ public class RenderDataService {
             parameters.setDoFilter(filter);
             parameters.setBinaryMask(binaryMask);
             parameters.addTileSpec(tileSpec);
+            parameters.setMipmapPathBuilder(stackMetaData.getCurrentMipmapPathBuilder());
 
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -525,7 +519,14 @@ public class RenderDataService {
                                                         final Integer height,
                                                         final Double scale) {
 
-        return renderDao.getParameters(stackId, groupId, x, y, z, width, height, scale);
+
+        final RenderParameters parameters = renderDao.getParameters(stackId, groupId, x, y, z, width, height, scale);
+        final StackMetaData stackMetaData = getStackMetaData(stackId);
+        final MipmapPathBuilder mipmapPathBuilder = stackMetaData.getCurrentMipmapPathBuilder();
+        if (mipmapPathBuilder != null) {
+            parameters.setMipmapPathBuilder(mipmapPathBuilder);
+        }
+        return parameters;
     }
 
     private TileSpec getTileSpec(final String owner,
@@ -592,6 +593,16 @@ public class RenderDataService {
         }
 
         return layoutValue;
+    }
+
+    private StackMetaData getStackMetaData(final StackId stackId) {
+        final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
+        if (stackMetaData == null) {
+            throw StackMetaDataService.getStackNotFoundException(stackId.getOwner(),
+                                                                 stackId.getProject(),
+                                                                 stackId.getStack());
+        }
+        return stackMetaData;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDataService.class);

@@ -24,17 +24,17 @@ public class StackVersion
     private final Double stackResolutionZ;
 
     private final String snapshotRootPath;
-    private final MipmapMetaData mipmapMetaData;
+    private final MipmapPathBuilder mipmapPathBuilder;
 
-    public StackVersion(Date createTimestamp,
-                        String versionNotes,
-                        Integer cycleNumber,
-                        Integer cycleStepNumber,
-                        Double stackResolutionX,
-                        Double stackResolutionY,
-                        Double stackResolutionZ,
-                        String snapshotRootPath,
-                        MipmapMetaData mipmapMetaData) {
+    public StackVersion(final Date createTimestamp,
+                        final String versionNotes,
+                        final Integer cycleNumber,
+                        final Integer cycleStepNumber,
+                        final Double stackResolutionX,
+                        final Double stackResolutionY,
+                        final Double stackResolutionZ,
+                        final String snapshotRootPath,
+                        final MipmapPathBuilder mipmapPathBuilder) {
         this.createTimestamp = createTimestamp;
         this.versionNotes = versionNotes;
         this.cycleNumber = cycleNumber;
@@ -43,7 +43,7 @@ public class StackVersion
         this.stackResolutionY = stackResolutionY;
         this.stackResolutionZ = stackResolutionZ;
         this.snapshotRootPath = snapshotRootPath;
-        this.mipmapMetaData = mipmapMetaData;
+        this.mipmapPathBuilder = mipmapPathBuilder;
     }
 
     public Date getCreateTimestamp() {
@@ -82,8 +82,8 @@ public class StackVersion
         return snapshotRootPath != null;
     }
 
-    public MipmapMetaData getMipmapMetaData() {
-        return mipmapMetaData;
+    public MipmapPathBuilder getMipmapPathBuilder() {
+        return mipmapPathBuilder;
     }
 
     @Override

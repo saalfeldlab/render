@@ -48,8 +48,10 @@ import org.slf4j.LoggerFactory;
  * @author Stephan Saalfeld <saalfeld@janelia.hhmi.org>
  */
 public class Utils {
+
     public static final String JPEG_FORMAT = "jpg";
     public static final String PNG_FORMAT = "png";
+    public static final String TIFF_FORMAT = "tiff";
 
     private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
 
