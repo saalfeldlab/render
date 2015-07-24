@@ -455,6 +455,68 @@ public class RenderDataService {
     }
 
     /**
+     * @return list of tile specs for specified layer with flattened (and therefore resolved)
+     *         transform specs suitable for external use.
+     */
+    @Path("project/{project}/stack/{stack}/z/{z}/tile-specs")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<TileSpec> getTileSpecsForZ(@PathParam("owner") final String owner,
+                                           @PathParam("project") final String project,
+                                           @PathParam("stack") final String stack,
+                                           @PathParam("z") final Double z) {
+
+        LOG.info("getTileSpecsForZ: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
+
+        List<TileSpec> tileSpecList = null;
+        try {
+            final RenderParameters parameters = getRenderParametersForZ(owner, project, stack, z, 1.0, false);
+            tileSpecList = parameters.getTileSpecs();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return tileSpecList;
+    }
+
+    /**
+     * @return render parameters for specified layer with flattened (and therefore resolved)
+     *         transform specs suitable for external use.
+     */
+    @Path("project/{project}/stack/{stack}/z/{z}/render-parameters")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public RenderParameters getRenderParametersForZ(@PathParam("owner") final String owner,
+                                                    @PathParam("project") final String project,
+                                                    @PathParam("stack") final String stack,
+                                                    @PathParam("z") final Double z,
+                                                    @QueryParam("scale") final Double scale,
+                                                    @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("getRenderParametersForZ: entry, owner={}, project={}, stack={}, z={}, scale={}",
+                 owner, project, stack, z, scale);
+
+        RenderParameters parameters = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            parameters = renderDao.getParameters(stackId, z, scale);
+            parameters.setDoFilter(filter);
+
+            final StackMetaData stackMetaData = getStackMetaData(stackId);
+            final MipmapPathBuilder mipmapPathBuilder = stackMetaData.getCurrentMipmapPathBuilder();
+            if (mipmapPathBuilder != null) {
+                parameters.setMipmapPathBuilder(mipmapPathBuilder);
+            }
+            parameters.flattenTransforms();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return parameters;
+    }
+
+    /**
      * @return render parameters for specified bounding box with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */

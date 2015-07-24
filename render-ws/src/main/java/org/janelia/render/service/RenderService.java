@@ -71,6 +71,52 @@ public class RenderService {
         return renderImageStream(renderParameters, Utils.PNG_FORMAT, IMAGE_PNG_MIME_TYPE, false);
     }
 
+    @Path("project/{project}/stack/{stack}/z/{z}/jpeg-image")
+    @GET
+    @Produces(IMAGE_JPEG_MIME_TYPE)
+    @ApiOperation(value = "Render JPEG image for a section")
+    public Response renderJpegImageForZ(@PathParam("owner") final String owner,
+                                        @PathParam("project") final String project,
+                                        @PathParam("stack") final String stack,
+                                        @PathParam("z") final Double z,
+                                        @QueryParam("scale") Double scale,
+                                        @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("renderJpegImageForZ: entry, owner={}, project={}, stack={}, z={}, scale={}, filter={}",
+                 owner, project, stack, z, scale, filter);
+
+        if (scale == null) {
+            scale = 0.01;
+        }
+
+        final RenderParameters renderParameters =
+                renderDataService.getRenderParametersForZ(owner, project, stack, z, scale, filter);
+        return renderJpegImage(renderParameters, true);
+    }
+
+    @Path("project/{project}/stack/{stack}/z/{z}/png-image")
+    @GET
+    @Produces(IMAGE_PNG_MIME_TYPE)
+    @ApiOperation(value = "Render PNG image for a section")
+    public Response renderPngImageForZ(@PathParam("owner") final String owner,
+                                       @PathParam("project") final String project,
+                                       @PathParam("stack") final String stack,
+                                       @PathParam("z") final Double z,
+                                       @QueryParam("scale") Double scale,
+                                       @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("renderPngImageForZ: entry, owner={}, project={}, stack={}, z={}, scale={}, filter={}",
+                 owner, project, stack, z, scale, filter);
+
+        if (scale == null) {
+            scale = 0.01;
+        }
+
+        final RenderParameters renderParameters =
+                renderDataService.getRenderParametersForZ(owner, project, stack, z, scale, filter);
+        return renderPngImage(renderParameters, true);
+    }
+
     @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)

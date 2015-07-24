@@ -106,6 +106,39 @@ public class RenderDao {
     }
 
     /**
+     * @return a render parameters object for all tiles that match the specified criteria.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     */
+    public RenderParameters getParameters(final StackId stackId,
+                                          final Double z,
+                                          Double scale)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("stackId", stackId);
+        validateRequiredParameter("z", z);
+
+        if (scale == null) {
+            scale = 1.0;
+        }
+
+        final Bounds bounds = getLayerBounds(stackId, z);
+        final Double x = bounds.getMinX();
+        final Double y = bounds.getMinY();
+        final Double width = bounds.getMaxX() - x;
+        final Double height = bounds.getMaxY() - y;
+
+        final BasicDBObject tileQuery = new BasicDBObject("z", z);
+
+        final RenderParameters renderParameters =
+                new RenderParameters(null, x, y, width.intValue(), height.intValue(), scale);
+        addResolvedTileSpecs(stackId, tileQuery, renderParameters);
+
+        return renderParameters;
+    }
+
+    /**
      * @return number of tiles within the specified bounding box.
      *
      * @throws IllegalArgumentException
