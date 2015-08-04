@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -34,6 +33,7 @@ import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
@@ -211,7 +211,7 @@ public class RenderDao {
         final TileSpec tileSpec = TileSpec.fromJson(document.toString());
 
         if (resolveTransformReferences) {
-            resolveTransformReferencesForTiles(stackId, Arrays.asList(tileSpec));
+            resolveTransformReferencesForTiles(stackId, Collections.singletonList(tileSpec));
         }
 
         return tileSpec;
@@ -702,6 +702,61 @@ public class RenderDao {
     }
 
     /**
+     * NOTE: This query is slow (30 seconds for a 17 million tile collection).
+     *       If we need to run this query more than once every two months, we should
+     *       investigate options for improving performance (like creating an additional index).
+     *
+     * @return list of section data objects for the specified stackId.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     */
+    public List<SectionData> getSectionData(final StackId stackId)
+            throws IllegalArgumentException {
+
+        validateRequiredParameter("stackId", stackId);
+
+        final DBCollection tileCollection = getTileCollection(stackId);
+
+        final List<SectionData> list = new ArrayList<>();
+
+        // db.<stack_prefix>__tile.aggregate(
+        //     [
+        //         { "$group": { "_id": { "sectionId": "$layout.sectionId", "z": "$z" } } } },
+        //         { "$sort": { "_id.sectionId": 1 } }
+        //     ]
+        // )
+
+        final BasicDBObject idComponents = new BasicDBObject("sectionId", "$layout.sectionId").append("z", "$z");
+        final BasicDBObject id = new BasicDBObject("_id", idComponents);
+
+        final DBObject groupStage = new BasicDBObject("$group", id);
+        final DBObject sortStage = new BasicDBObject("$sort", new BasicDBObject("_id.sectionId", 1));
+
+        final List<DBObject> pipeline = new ArrayList<>();
+        pipeline.add(groupStage);
+        pipeline.add(sortStage);
+
+        final AggregationOutput aggregationOutput = tileCollection.aggregate(pipeline);
+
+        DBObject resultId;
+        Object sectionId;
+        Object z;
+        for (final DBObject result : aggregationOutput.results()) {
+            resultId = (DBObject) result.get("_id");
+            sectionId = resultId.get("sectionId");
+            z = resultId.get("z");
+            if ((sectionId != null) && (z != null)) {
+                list.add(new SectionData(sectionId.toString(), new Double(z.toString())));
+            }
+        }
+
+        LOG.debug("getSectionData: returning {} values for {}", list.size(), tileCollection.getFullName());
+
+        return list;
+    }
+
+    /**
      * @return list of stack meta data objects for the specified owner.
      *
      * @throws IllegalArgumentException
@@ -788,6 +843,7 @@ public class RenderDao {
                   stackMetaDataCollection.getFullName(), action, query);
     }
 
+    // db.flyTEM__FAFB00__v8_acquire__tile.aggregate( [ { "$group": { "_id": { "sectionId": "$layout.sectionId", "z": "$z" } } }, { "$sort": { "_id.sectionId": 1 } } ])
     public StackMetaData ensureIndexesAndDeriveStats(final StackMetaData stackMetaData) {
 
         validateRequiredParameter("stackMetaData", stackMetaData);

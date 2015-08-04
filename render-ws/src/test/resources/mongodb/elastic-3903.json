@@ -2,6 +2,7 @@
     {
         "tileId": "134",
         "groupId": "A",
+        "layout": {"sectionId": "3903.0"},
         "z": 3903.0,
         "minX": 1094.0,
         "minY": 2006.0,
@@ -30,6 +31,7 @@
     {
         "tileId": "135",
         "groupId": "A",
+        "layout": {"sectionId": "3903.0"},
         "z": 3903.0,
         "minX": 1167.0,
         "minY": 3999.0,

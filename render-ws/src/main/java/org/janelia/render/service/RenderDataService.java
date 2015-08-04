@@ -26,6 +26,7 @@ import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -125,6 +126,26 @@ public class RenderDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             list = renderDao.getZValues(stackId);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+        return list;
+    }
+
+    @Path("project/{project}/stack/{stack}/sectionData")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<SectionData> getSectionData(@PathParam("owner") final String owner,
+                                            @PathParam("project") final String project,
+                                            @PathParam("stack") final String stack) {
+
+        LOG.info("getSectionData: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        List<SectionData> list = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            list = renderDao.getSectionData(stackId);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
