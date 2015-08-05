@@ -18,18 +18,18 @@ import org.slf4j.LoggerFactory;
  */
 public class DbConfig {
 
-    private String host;
-    private Integer port;
-    private String userName;
-    private String authenticationDatabase;
-    private String password;
+    private final String host;
+    private final Integer port;
+    private final String userName;
+    private final String authenticationDatabase;
+    private final String password;
     private int maxConnectionsPerHost;
 
-    public DbConfig(String host,
-                    Integer port,
-                    String userName,
-                    String authenticationDatabase,
-                    String password) {
+    public DbConfig(final String host,
+                    final Integer port,
+                    final String userName,
+                    final String authenticationDatabase,
+                    final String password) {
         this.host = host;
         this.port = port;
         this.userName = userName;
@@ -44,6 +44,10 @@ public class DbConfig {
 
     public Integer getPort() {
         return port;
+    }
+
+    public boolean hasCredentials() {
+        return ((userName != null) && (authenticationDatabase != null) && (password != null));
     }
 
     public String getUserName() {
@@ -62,11 +66,11 @@ public class DbConfig {
         return maxConnectionsPerHost;
     }
 
-    public static DbConfig fromFile(File file)
+    public static DbConfig fromFile(final File file)
             throws IllegalArgumentException {
 
         DbConfig dbConfig = null;
-        Properties properties = new Properties();
+        final Properties properties = new Properties();
 
         final String path = file.getAbsolutePath();
 
@@ -76,18 +80,25 @@ public class DbConfig {
             properties.load(in);
 
             final String host = getRequiredProperty("host", properties, path);
-            final String userName = getRequiredProperty("userName", properties, path);
-            final String userNameSource = getRequiredProperty("authenticationDatabase", properties, path);
-            final String password = getRequiredProperty("password", properties, path);
 
-            Integer port;
+            final String userName = properties.getProperty("userName");
+            String userNameSource = null;
+            String password = null;
+            if (userName == null) {
+                LOG.info("fromFile: skipping load of database credentials because no userName is definmed in {}", path);
+            } else {
+                userNameSource = getRequiredProperty("authenticationDatabase", properties, path);
+                password = getRequiredProperty("password", properties, path);
+            }
+
+            final Integer port;
             final String portStr = properties.getProperty("port");
             if (portStr == null) {
                 port = ServerAddress.defaultPort();
             } else {
                 try {
                     port = new Integer(portStr);
-                } catch (NumberFormatException e) {
+                } catch (final NumberFormatException e) {
                     throw new IllegalArgumentException("invalid port value (" + portStr +
                                                        ") specified in " + path, e);
                 }
@@ -99,21 +110,21 @@ public class DbConfig {
             if (maxConnectionsPerHostStr != null) {
                 try {
                     dbConfig.maxConnectionsPerHost = Integer.parseInt(maxConnectionsPerHostStr);
-                } catch (NumberFormatException e) {
+                } catch (final NumberFormatException e) {
                     throw new IllegalArgumentException("invalid maxConnectionsPerHost value (" +
                                                        maxConnectionsPerHostStr + ") specified in " + path, e);
                 }
             }
 
-        } catch (IllegalArgumentException e) {
+        } catch (final IllegalArgumentException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (final Exception e) {
             throw new IllegalArgumentException("failed to load properties from " + path, e);
         } finally {
             if (in != null) {
                 try {
                     in.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     LOG.warn("failed to close " + path + ", ignoring error");
                 }
             }
@@ -122,9 +133,9 @@ public class DbConfig {
         return dbConfig;
     }
 
-    private static String getRequiredProperty(String propertyName,
-                                              Properties properties,
-                                              String path)
+    private static String getRequiredProperty(final String propertyName,
+                                              final Properties properties,
+                                              final String path)
             throws IllegalArgumentException {
 
         final String value = properties.getProperty(propertyName);
