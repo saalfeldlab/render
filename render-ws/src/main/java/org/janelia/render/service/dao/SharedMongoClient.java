@@ -7,7 +7,7 @@ import com.mongodb.ServerAddress;
 
 import java.io.File;
 import java.net.UnknownHostException;
-import java.util.Arrays;
+import java.util.Collections;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,9 +39,9 @@ public class SharedMongoClient {
         return sharedMongoClient.client;
     }
 
-    private MongoClient client;
+    private final MongoClient client;
 
-    public SharedMongoClient(DbConfig dbConfig)
+    public SharedMongoClient(final DbConfig dbConfig)
             throws UnknownHostException {
         final ServerAddress serverAddress = new ServerAddress(dbConfig.getHost(), dbConfig.getPort());
         final MongoCredential credential = MongoCredential.createMongoCRCredential(dbConfig.getUserName(),
@@ -53,7 +53,7 @@ public class SharedMongoClient {
 
         LOG.info("creating client for {} with {}", serverAddress, options);
 
-        client = new MongoClient(serverAddress, Arrays.asList(credential), options);
+        client = new MongoClient(serverAddress, Collections.singletonList(credential), options);
     }
 
     private static synchronized void setSharedMongoClient()
