@@ -219,18 +219,20 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
 			++i;
 		}
 
-        min = new double[]{Double.MAX_VALUE, Double.MAX_VALUE};
-        max = new double[]{-Double.MAX_VALUE, -Double.MAX_VALUE};
+        min = new double[]{pq[2][0], pq[3][0]};
+        max = new double[]{pq[2][0], pq[3][0]};
 
-        for ( final double[] q : pq ) {
-            if (q[2] < min[0])
-                min[0] = q[2];
-            if (q[3] < min[1])
-                min[1] = q[3];
-            if (q[2] > max[0])
-                max[0] = q[2];
-            if (q[3] > max[1])
-                max[1] = q[3];
+        for (int j = 1; j < i; ++j) {
+            final double x = pq[2][j];
+            final double y = pq[3][j];
+            if (x < min[0])
+                min[0] = x;
+            else if (x > max[0])
+                max[0] = x;
+            if (y < min[1])
+                min[1] = y;
+            else if (y > max[1])
+                max[1] = y;
         }
 	}
 
