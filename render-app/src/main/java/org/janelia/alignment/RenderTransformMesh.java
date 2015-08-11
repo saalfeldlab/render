@@ -30,8 +30,6 @@ import mpicbg.util.Util;
 
 /**
  *
- * TODO Obsolete becausee data structure changed.  Still a mesh.
- *
  * Triangular transformation mesh.
  *
  * See an example to find out how the mesh is constructed:
@@ -49,7 +47,7 @@ import mpicbg.util.Util;
  * *---*---*---*
  * </pre>
  *
- * Each vertex is given as a {@link PointMatch} with
+ * Each vertex is listed at index <em>i</em> in a <code>double[][]</code> <em>pq</em> with
  * {@link PointMatch#getP1() p1} being the original point and
  * {@link PointMatch#getP2() p2} being the transferred point.  Keep in mind
  * that Points store local and world coordinates with local coordinates being
