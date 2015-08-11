@@ -255,10 +255,7 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
 	}
 
 	/**
-	 * Update all affine transformations that would have been affected by a
-	 * given {@link PointMatch Vertex}.
-	 *
-	 * @param p
+	 * Update all affine transformations.
 	 */
 	public void updateAffines()
 	{
@@ -276,115 +273,180 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
 	}
 
 
-    /**
-     * Checks if a location is inside a given polygon at the target side or not.
+	/**
+     * Checks whether a location is inside a given triangle or not.
      *
-     * @param pm
-     * @param t
+     * @param ax
+     * @param ay
+     * @param bx
+     * @param by
+     * @param cx
+     * @param cy
+     * @param tx
+     *            reference coordinate x
+     * @param ty
+     *            reference coordinate y
+     *
      * @return
      */
-    static public boolean isInTargetTriangle(final double[][] pq, final double[] t) {
-        assert t.length == 2 : "2d transform meshs can be applied to 2d points only.";
+    final static public boolean isInTriangle(
+            final double ax, final double ay,
+            final double bx, final double by,
+            final double cx, final double cy,
+            final double tx, final double ty) {
 
-        final double x0 = pq[2][0];
-        final double y0 = pq[3][0];
-        final double x1 = pq[2][1];
-        final double y1 = pq[3][1];
-        final double x2 = pq[2][2];
-        final double y2 = pq[3][2];
-
-        final double x01 = x1 - x0;
-        final double y01 = y1 - y0;
-        final double x02 = t[0] - x0;
-        final double y02 = t[1] - y0;
-
-        if (x01 * y02 - y01 * x02 < 0)
-            return false;
-
-        final double x11 = x2 - x1;
-        final double y11 = y2 - y1;
-        final double x12 = t[0] - x1;
-        final double y12 = t[1] - y1;
-
-        if (x11 * y12 - y11 * x12 < 0)
-            return false;
-
-        final double x21 = x0 - x2;
-        final double y21 = y0 - y2;
-        final double x22 = t[0] - x2;
-        final double y22 = t[1] - y2;
-
-        return (x21 * y22 - y21 * x22 >= 0);
+        final boolean d;
+        {
+            final double x1 = bx - ax;
+            final double y1 = by - ay;
+            final double x2 = tx - ax;
+            final double y2 = ty - ay;
+            d = x1 * y2 - y1 * x2 < 0;
+        }
+        {
+            final double x1 = cx - bx;
+            final double y1 = cy - by;
+            final double x2 = tx - bx;
+            final double y2 = ty - by;
+            if ( d ^ x1 * y2 - y1 * x2 < 0 ) return false;
+        }
+        {
+            final double x1 = ax - cx;
+            final double y1 = ay - cy;
+            final double x2 = tx - cx;
+            final double y2 = ty - cy;
+            if ( d ^ x1 * y2 - y1 * x2 < 0 ) return false;
+        }
+        return true;
     }
 
     /**
-     * Checks if a location is inside a given polygon at the source side or not.
+     * Checks whether a location is inside a given triangle at the target side
+     * or not.
      *
-     * @param pm
+     * @param pq
+     *            triangle vertices
+     * @param tx
+     *            reference coordinate x
+     * @param ty
+     *            reference coordinate y
+     *
+     * @return
+     */
+    final static public boolean isInTargetTriangle(final double[][] pq, final double tx, final double ty) {
+
+        return isInTriangle(pq[2][0], pq[3][0], pq[2][1], pq[3][1], pq[2][2], pq[3][2], tx, ty);
+    }
+
+    /**
+     * Checks whether a location is inside a given triangle at the target side
+     * or not.
+     *
+     * @param pq
+     *            triangle vertices
      * @param t
+     *            reference coordinate
+     *
+     * @return
+     */
+    final static public boolean isInTargetTriangle(final double[][] pq, final double[] t) {
+        assert t.length == 2 : "2d transform meshs can be applied to 2d points only.";
+
+        return isInTargetTriangle(pq, t[0], t[1]);
+    }
+
+    /**
+     * Checks whether a location is inside a given triangle at the suorce side
+     * or not.
+     *
+     * @param pq
+     *            triangle vertices
+     * @param tx
+     *            reference coordinate x
+     * @param ty
+     *            reference coordinate y
+     *
+     * @return
+     */
+    final static public boolean isInSourceTriangle(final double[][] pq, final double tx, final double ty) {
+
+        return isInTriangle(
+                pq[0][0], pq[1][0],
+                pq[0][1], pq[1][1],
+                pq[0][2], pq[1][2],
+                tx, ty);
+    }
+
+    /**
+     * Checks whether a location is inside a given triangle at the target side
+     * or not.
+     *
+     * @param pq
+     *            triangle vertices
+     * @param t
+     *            reference coordinate
+     *
      * @return
      */
     final static public boolean isInSourceTriangle(final double[][] pq, final double[] t) {
         assert t.length == 2 : "2d transform meshs can be applied to 2d points only.";
 
-        final double x0 = pq[0][0];
-        final double y0 = pq[1][0];
-        final double x1 = pq[0][1];
-        final double y1 = pq[1][1];
-        final double x2 = pq[0][2];
-        final double y2 = pq[1][2];
+        return isInSourceTriangle(pq, t[0], t[1]);
+    }
 
-        final double x01 = x1 - x0;
-        final double y01 = y1 - y0;
-        final double x02 = t[0] - pq[2][0];
-        final double y02 = t[1] - pq[3][0];
 
-        if (x01 * y02 - y01 * x02 < 0)
-            return false;
+    final static public void calculateBoundingBox(
+            final double[] xs,
+            final double[] ys,
+            final double[] min,
+            final double[] max) {
 
-        final double x11 = x2 - x1;
-        final double y11 = y2 - y1;
-        final double x12 = t[0] - pq[2][1];
-        final double y12 = t[1] - pq[3][1];
+        min[0] = xs[0];
+        min[1] = ys[0];
+        max[0] = xs[0];
+        max[1] = ys[0];
 
-        if (x11 * y12 - y11 * x12 < 0)
-            return false;
-
-        final double x21 = x0 - x2;
-        final double y21 = y0 - y2;
-        final double x22 = t[0] - pq[2][2];
-        final double y22 = t[1] - pq[3][2];
-
-        return (x21 * y22 - y21 * x22 >= 0);
+        for (int i = 1; i < xs.length; ++i) {
+            if (xs[i] < min[0])
+                min[0] = xs[i];
+            else if (xs[i] > max[0])
+                max[0] = xs[i];
+            if (ys[i] < min[1])
+                min[1] = ys[i];
+            else if (ys[i] > max[1])
+                max[1] = ys[i];
+        }
     }
 
     /**
-    *
-    * @param pq PointMatches [{p<sub>x</sub>, p<sub>y</sub>, q<sub>x</sub>, q<sub>y</sub><literal>}]
-    * @param min x = min[0], y = min[1]
-    * @param max x = max[0], y = max[1]
-    */
-   final static public void calculateTargetBoundingBox(
-           final double[][] pq,
-           final double[] min,
-           final double[] max) {
+     *
+     * @param pq
+     *            PointMatches [{p<sub>x</sub>, p<sub>y</sub>, q<sub>x</sub>,
+     *            q<sub>y</sub><literal>}]
+     * @param min
+     *            x = min[0], y = min[1]
+     * @param max
+     *            x = max[0], y = max[1]
+     */
+    final static public void calculateTargetBoundingBox(final double[][] pq, final double[] min, final double[] max) {
 
-        min[0] = pq[2][0];
-        min[1] = pq[3][0];
-        max[0] = pq[2][0];
-        max[1] = pq[3][0];
+        calculateBoundingBox(pq[2], pq[3], min, max);
+    }
 
-        for (int i = 1; i < pq[0].length; ++i) {
-            if (pq[2][i] < min[0])
-                min[0] = pq[2][i];
-            else if (pq[2][i] > max[0])
-                max[0] = pq[2][i];
-            if (pq[3][i] < min[1])
-                min[1] = pq[3][i];
-            else if (pq[3][i] > max[1])
-                max[1] = pq[3][i];
-        }
-   }
+    /**
+     *
+     * @param pq
+     *            PointMatches [{p<sub>x</sub>, p<sub>y</sub>, q<sub>x</sub>,
+     *            q<sub>y</sub><literal>}]
+     * @param min
+     *            x = min[0], y = min[1]
+     * @param max
+     *            x = max[0], y = max[1]
+     */
+    final static public void calculateSourceBoundingBox(final double[][] pq, final double[] min, final double[] max) {
+
+        calculateBoundingBox(pq[0], pq[1], min, max);
+    }
 
 
     @Override
@@ -449,11 +511,11 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
     }
 
     /**
-     * Scale all vertex coordinates
+     * Scale all vertex coordinates in target space
      *
      * @param scale
      */
-    public void scaleQ(final double scale) {
+    public void scaleTarget(final double scale) {
         for (final Pair<AffineModel2D, double[][]> apq : av)
             for (int j = 0; j < apq.b[2].length; ++j) {
                 apq.b[2][j] *= scale;
@@ -462,11 +524,26 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
     }
 
     /**
+     * Translate all vertex coordinates
+     *
+     * @param scale
+     */
+    public void translate(final double x, final double y) {
+        for (final Pair<AffineModel2D, double[][]> apq : av)
+            for (int j = 0; j < apq.b[2].length; ++j) {
+                apq.b[0][j] += x;
+                apq.b[1][j] += y;
+                apq.b[2][j] += x;
+                apq.b[3][j] += y;
+            }
+    }
+
+    /**
      * Scale all vertex coordinates
      *
      * @param scale
      */
-    public void translateQ(final double x, final double y) {
+    public void translateTarget(final double x, final double y) {
         for (final Pair<AffineModel2D, double[][]> apq : av)
             for (int j = 0; j < apq.b[2].length; ++j) {
                 apq.b[2][j] += x;

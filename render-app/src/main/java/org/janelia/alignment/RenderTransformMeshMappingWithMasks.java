@@ -139,7 +139,7 @@ public class RenderTransformMeshMappingWithMasks {
         final double[] t = new double[2];
         for (int y = minY; y <= maxY; ++y) {
             for (int x = minX; x <= maxX; ++x) {
-                if (RenderTransformMesh.isInTargetTriangle(pq, t)) {
+                if (RenderTransformMesh.isInTargetTriangle(pq, x, y)) {
                     t[0] = x;
                     t[1] = y;
                     try {
@@ -175,7 +175,7 @@ public class RenderTransformMeshMappingWithMasks {
         final double[] t = new double[2];
         for (int y = minY; y <= maxY; ++y) {
             for (int x = minX; x <= maxX; ++x) {
-                if (RenderTransformMesh.isInTargetTriangle(pq, t)) {
+                if (RenderTransformMesh.isInTargetTriangle(pq, x, y)) {
                     t[0] = x;
                     t[1] = y;
                     try {
@@ -211,7 +211,7 @@ public class RenderTransformMeshMappingWithMasks {
         final double[] t = new double[2];
         for (int y = minY; y <= maxY; ++y) {
             for (int x = minX; x <= maxX; ++x) {
-                if (RenderTransformMesh.isInTargetTriangle(pq, t)) {
+                if (RenderTransformMesh.isInTargetTriangle(pq, x, y)) {
                     t[0] = x;
                     t[1] = y;
                     try {
@@ -247,7 +247,7 @@ public class RenderTransformMeshMappingWithMasks {
         final double[] t = new double[2];
         for (int y = minY; y <= maxY; ++y) {
             for (int x = minX; x <= maxX; ++x) {
-                if (RenderTransformMesh.isInTargetTriangle(pq, t)) {
+                if (RenderTransformMesh.isInTargetTriangle(pq, x, y)) {
                     t[0] = x;
                     t[1] = y;
                     try {
@@ -283,7 +283,7 @@ public class RenderTransformMeshMappingWithMasks {
         final double[] t = new double[2];
         for (int y = minY; y <= maxY; ++y) {
             for (int x = minX; x <= maxX; ++x) {
-                if (RenderTransformMesh.isInTargetTriangle(pq, t)) {
+                if (RenderTransformMesh.isInTargetTriangle(pq, x, y)) {
                     t[0] = x;
                     t[1] = y;
                     try {
