@@ -7,7 +7,8 @@ import com.mongodb.ServerAddress;
 
 import java.io.File;
 import java.net.UnknownHostException;
-import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,21 +40,30 @@ public class SharedMongoClient {
         return sharedMongoClient.client;
     }
 
-    private MongoClient client;
+    private final MongoClient client;
 
-    public SharedMongoClient(DbConfig dbConfig)
+    public SharedMongoClient(final DbConfig dbConfig)
             throws UnknownHostException {
+
         final ServerAddress serverAddress = new ServerAddress(dbConfig.getHost(), dbConfig.getPort());
-        final MongoCredential credential = MongoCredential.createMongoCRCredential(dbConfig.getUserName(),
-                                                                                   dbConfig.getAuthenticationDatabase(),
-                                                                                   dbConfig.getPassword());
+
+        final List<MongoCredential> credentialsList;
+        if (dbConfig.hasCredentials()) {
+            final MongoCredential credential = MongoCredential.createMongoCRCredential(dbConfig.getUserName(),
+                                                                                       dbConfig.getAuthenticationDatabase(),
+                                                                                       dbConfig.getPassword());
+            credentialsList = Collections.singletonList(credential);
+        } else {
+            credentialsList = Collections.emptyList();
+        }
+
         final MongoClientOptions options = new MongoClientOptions.Builder()
                 .connectionsPerHost(dbConfig.getMaxConnectionsPerHost())
                 .build();
 
         LOG.info("creating client for {} with {}", serverAddress, options);
 
-        client = new MongoClient(serverAddress, Arrays.asList(credential), options);
+        client = new MongoClient(serverAddress, credentialsList, options);
     }
 
     private static synchronized void setSharedMongoClient()
