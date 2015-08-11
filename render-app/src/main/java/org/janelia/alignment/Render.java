@@ -187,11 +187,13 @@ public class Render {
                               final Integer backgroundRGBColor)
             throws IllegalArgumentException {
 
+        final int targetWidth = targetImage.getWidth();
+        final int targetHeight = targetImage.getHeight();
         final Graphics2D targetGraphics = targetImage.createGraphics();
 
         if (backgroundRGBColor != null) {
             targetGraphics.setBackground(new Color(backgroundRGBColor));
-            targetGraphics.clearRect(0, 0, targetImage.getWidth(), targetImage.getHeight());
+            targetGraphics.clearRect(0, 0, targetWidth, targetHeight);
         }
 
         LOG.debug("render: entry, processing {} tile specifications, numberOfThreads={}",
@@ -242,7 +244,7 @@ public class Render {
             ImageProcessor widthAndHeightProcessor = null;
             int width = ts.getWidth();
             int height = ts.getHeight();
-            // figure width and height
+            // if width and height were not set, figure width and height
             if ((width < 0) || (height < 0)) {
                 mipmapEntry = ts.getFirstMipmapEntry();
                 imageAndMask = mipmapEntry.getValue();
