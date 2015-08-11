@@ -30,9 +30,6 @@ import java.util.Map;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
-import mpicbg.models.CoordinateTransformMesh;
-import mpicbg.models.TransformMesh;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.filter.NormalizeLocalContrast;
@@ -325,11 +322,13 @@ public class Render {
             ctListCreationStop = System.currentTimeMillis();
 
             // create mesh
-            final CoordinateTransformMesh mesh = new CoordinateTransformMesh(
+            final RenderTransformMesh mesh = new RenderTransformMesh(
                     ctlMipmap,
                     (int) (width / meshCellSize + 0.5),
                     ipMipmap.getWidth(),
                     ipMipmap.getHeight());
+
+            mesh.updateAffines();
 
             meshCreationStop = System.currentTimeMillis();
 
@@ -349,8 +348,9 @@ public class Render {
 
             targetCreationStop = System.currentTimeMillis();
 
-            final TransformMeshMappingWithMasks<TransformMesh> mapping = new TransformMeshMappingWithMasks<TransformMesh>(mesh);
-            String mapType;
+            final RenderTransformMeshMappingWithMasks mapping = new RenderTransformMeshMappingWithMasks(mesh);
+
+            final String mapType;
             if (skipInterpolation) {
                 mapType = "";
                 mapping.map(source, target, numberOfThreads);
