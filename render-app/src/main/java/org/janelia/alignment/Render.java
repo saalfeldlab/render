@@ -284,6 +284,10 @@ public class Render {
 
         final int targetWidth = targetImage.getWidth();
         final int targetHeight = targetImage.getHeight();
+
+        final double[] min = new double[ 2 ];
+        final double[] max = new double[ 2 ];
+
         final Graphics2D targetGraphics = targetImage.createGraphics();
 
         if (backgroundRGBColor != null) {
@@ -373,20 +377,13 @@ public class Render {
 
             filterStop = System.currentTimeMillis();
 
-            // create a target
-            final ImageProcessor tp = ipMipmap.createProcessor(targetImage.getWidth(), targetImage.getHeight());
-
             // open mask
             final ImageProcessor maskSourceProcessor;
-            ImageProcessor maskTargetProcessor;
             final String maskUrl = imageAndMask.getMaskUrl();
-            if (maskUrl != null) {
+            if (maskUrl != null)
                 maskSourceProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true);
-                maskTargetProcessor = new ByteProcessor(tp.getWidth(), tp.getHeight());
-            } else {
+            else
                 maskSourceProcessor = null;
-                maskTargetProcessor = null;
-            }
 
             loadMaskStop = System.currentTimeMillis();
 
@@ -404,6 +401,23 @@ public class Render {
                     ipMipmap.getWidth(),
                     ipMipmap.getHeight());
 
+            // get bounding box
+            mesh.bounds(min, max);
+            final int tx = (int)Math.max(0, Math.min(targetWidth, min[0]));
+            final int ty = (int)Math.max(0, Math.min(targetHeight, min[1]));
+            final int w = (int)(Math.min(targetWidth, max[0]) - tx) + 1;
+            final int h = (int)(Math.min(targetHeight, max[1]) - ty) + 1;
+
+            // skip if bounding box is not in target
+            if (w <=0 || h <= 0) {
+                LOG.debug("Skipping tile {} which is outside the FOV.", ts);
+                continue;
+            }
+
+//            LOG.debug("Bounding box is {}x{}+{}+{} from min = {} and max = {}", w, h, tx, ty, min, max);
+
+            mesh.translateTarget(-tx, -ty);
+
             mesh.updateAffines();
 
             meshCreationStop = System.currentTimeMillis();
@@ -411,14 +425,22 @@ public class Render {
             final ImageProcessorWithMasks source = new ImageProcessorWithMasks(ipMipmap, maskSourceProcessor, null);
 
             // if source.mask gets "quietly" removed (because of size), we need to also remove maskSourceProcessor
-            if ((maskTargetProcessor != null) && (source.mask == null)) {
+            if ((maskSourceProcessor != null) && (source.mask == null)) {
                 LOG.warn("render: removing mask because ipMipmap and maskSourceProcessor differ in size, ipMipmap: " +
                          ipMipmap.getWidth() + "x" + ipMipmap.getHeight() + ", maskSourceProcessor: " +
                          maskSourceProcessor.getWidth() + "x" + maskSourceProcessor.getHeight());
-                maskTargetProcessor = null;
             }
 
             sourceCreationStop = System.currentTimeMillis();
+
+            // create a target
+            final ImageProcessor tp = ipMipmap.createProcessor(w, h);
+
+            final ImageProcessor maskTargetProcessor;
+            if (maskSourceProcessor != null)
+                maskTargetProcessor = new ByteProcessor(w, h);
+            else
+                maskTargetProcessor = null;
 
             final ImageProcessorWithMasks target = new ImageProcessorWithMasks(tp, maskTargetProcessor, null);
 
@@ -439,7 +461,7 @@ public class Render {
 
             final BufferedImage image = targetToARGBImage(target, ts, binaryMask);
 
-            targetGraphics.drawImage(image, 0, 0, null);
+            targetGraphics.drawImage(image, tx, ty, null);
 
             drawImageStop = System.currentTimeMillis();
 
