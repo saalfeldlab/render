@@ -94,6 +94,51 @@ public class Render {
     private Render() {
     }
 
+    /**
+     * Assemble {@link CoordinateTransform CoordinateTransforms} and add
+     * bounding box offset, areaOffset, and scale for a {@link TileSpec}
+     *
+     * @param ts
+     * @param areaOffset
+     * @param scale
+     * @param x
+     * @param y
+     *
+     * @return
+     */
+    public static CoordinateTransformList<CoordinateTransform> createRenderTransform(
+            final TileSpec ts,
+            final boolean areaOffset,
+            final double scale,
+            final double x,
+            final double y)
+    {
+        final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList<CoordinateTransform>();
+        for (final CoordinateTransform t : ts.getTransformList().getList(null))
+            ctl.add(t);
+        final AffineModel2D scaleAndOffset = new AffineModel2D();
+        if (areaOffset) {
+            final double offset = (1 - scale) * 0.5;
+            scaleAndOffset.set(scale,
+                               0,
+                               0,
+                               scale,
+                               -(x * scale + offset),
+                               -(y * scale + offset));
+        } else {
+            scaleAndOffset.set(scale,
+                               0,
+                               0,
+                               scale,
+                               -(x * scale),
+                               -(y * scale));
+        }
+
+        ctl.add(scaleAndOffset);
+
+        return ctl;
+    }
+
     public static void render(final RenderParameters params,
                               final BufferedImage targetImage,
                               final ImageProcessorCache imageProcessorCache)
@@ -212,29 +257,7 @@ public class Render {
         for (final TileSpec ts : tileSpecs) {
             tileSpecStart = System.currentTimeMillis();
 
-            // assemble coordinate transformations and add bounding box offset
-            final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList<CoordinateTransform>();
-            for (final CoordinateTransform t : ts.getTransformList().getList(null))
-                ctl.add(t);
-            final AffineModel2D scaleAndOffset = new AffineModel2D();
-            if (areaOffset) {
-                final double offset = (1 - scale) * 0.5;
-                scaleAndOffset.set(scale,
-                                   0,
-                                   0,
-                                   scale,
-                                   -(x * scale + offset),
-                                   -(y * scale + offset));
-            } else {
-                scaleAndOffset.set(scale,
-                                   0,
-                                   0,
-                                   scale,
-                                   -(x * scale),
-                                   -(y * scale));
-            }
-
-            ctl.add(scaleAndOffset);
+            final CoordinateTransformList<CoordinateTransform> ctl = createRenderTransform(ts, areaOffset, scale, x, y);
 
             Map.Entry<Integer, ImageAndMask> mipmapEntry;
             ImageAndMask imageAndMask = null;
