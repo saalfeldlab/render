@@ -214,6 +214,59 @@ public class Render {
                backgroundRGBColor);
     }
 
+    /**
+     * convert to 24bit RGB
+     *
+     * @param tp
+     * @param ts
+     * @return
+     */
+    final static private ColorProcessor convertToRGB(
+            final ImageProcessor tp,
+            final TileSpec ts) {
+        tp.setMinAndMax(ts.getMinIntensity(), ts.getMaxIntensity());
+        return tp.convertToColorProcessor();
+    }
+
+
+    final static private BufferedImage targetToARGBImage(
+            final ImageProcessorWithMasks target,
+            final TileSpec ts,
+            final boolean binaryMask) {
+
+        // convert to 24bit RGB
+        final ColorProcessor cp = convertToRGB(target.ip, ts);
+
+        // set alpha channel
+        final int[] cpPixels = (int[]) cp.getPixels();
+        final byte[] alphaPixels;
+
+        if (target.mask != null) {
+            alphaPixels = (byte[]) target.mask.getPixels();
+        } else {
+            alphaPixels = (byte[]) target.outside.getPixels();
+        }
+
+        if (binaryMask) {
+            for (int i = 0; i < cpPixels.length; ++i) {
+                if (alphaPixels[i] == -1)
+                    cpPixels[i] &= 0xffffffff;
+                else
+                    cpPixels[i] &= 0x00ffffff;
+            }
+        } else {
+            for (int i = 0; i < cpPixels.length; ++i) {
+                cpPixels[i] &= 0x00ffffff | (alphaPixels[i] << 24);
+            }
+        }
+
+        final BufferedImage image = new BufferedImage(cp.getWidth(), cp.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        final WritableRaster raster = image.getRaster();
+        raster.setDataElements(0, 0, cp.getWidth(), cp.getHeight(), cpPixels);
+
+        return image;
+    }
+
     public static void render(final List<TileSpec> tileSpecs,
                               final BufferedImage targetImage,
                               final double x,
@@ -384,36 +437,7 @@ public class Render {
 
             mapInterpolatedStop = System.currentTimeMillis();
 
-            // convert to 24bit RGB
-            tp.setMinAndMax(ts.getMinIntensity(), ts.getMaxIntensity());
-            final ColorProcessor cp = tp.convertToColorProcessor();
-
-            final int[] cpPixels = (int[]) cp.getPixels();
-            final byte[] alphaPixels;
-
-            // set alpha channel
-            if (maskTargetProcessor != null) {
-                alphaPixels = (byte[]) maskTargetProcessor.getPixels();
-            } else {
-                alphaPixels = (byte[]) target.outside.getPixels();
-            }
-
-            if (binaryMask) {
-                for (int i = 0; i < cpPixels.length; ++i) {
-                    if (alphaPixels[i] == -1)
-                        cpPixels[i] &= 0xffffffff;
-                    else
-                        cpPixels[i] &= 0x00ffffff;
-                }
-            } else {
-                for (int i = 0; i < cpPixels.length; ++i) {
-                    cpPixels[i] &= 0x00ffffff | (alphaPixels[i] << 24);
-                }
-            }
-
-            final BufferedImage image = new BufferedImage(cp.getWidth(), cp.getHeight(), BufferedImage.TYPE_INT_ARGB);
-            final WritableRaster raster = image.getRaster();
-            raster.setDataElements(0, 0, cp.getWidth(), cp.getHeight(), cpPixels);
+            final BufferedImage image = targetToARGBImage(target, ts, binaryMask);
 
             targetGraphics.drawImage(image, 0, 0, null);
 
