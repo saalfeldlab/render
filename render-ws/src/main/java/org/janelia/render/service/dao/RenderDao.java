@@ -1591,6 +1591,9 @@ public class RenderDao {
 
     private void ensureSupplementaryTileIndexes(final DBCollection tileCollection) {
 
+        // compound index used for bulk (e.g. resolvedTile) queries that sort by tileId
+        ensureIndex(tileCollection, new BasicDBObject("z", 1).append("tileId", 1), BACKGROUND_OPTION);
+
         ensureIndex(tileCollection, new BasicDBObject("z", 1).append("minX", 1), BACKGROUND_OPTION);
         ensureIndex(tileCollection, new BasicDBObject("z", 1).append("minY", 1), BACKGROUND_OPTION);
         ensureIndex(tileCollection, new BasicDBObject("z", 1).append("maxX", 1), BACKGROUND_OPTION);
