@@ -71,6 +71,15 @@ public class RenderService {
         return renderImageStream(renderParameters, Utils.PNG_FORMAT, IMAGE_PNG_MIME_TYPE, false);
     }
 
+    @Path("tiff-image")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(IMAGE_TIFF_MIME_TYPE)
+    @ApiOperation(value = "Render TIFF image from a provide spec")
+    public Response renderTiffImageFromProvidedParameters(final RenderParameters renderParameters) {
+        return renderImageStream(renderParameters, Utils.TIFF_FORMAT, IMAGE_TIFF_MIME_TYPE, false);
+    }
+
     @Path("project/{project}/stack/{stack}/z/{z}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
@@ -117,6 +126,29 @@ public class RenderService {
         return renderPngImage(renderParameters, true);
     }
 
+    @Path("project/{project}/stack/{stack}/z/{z}/tiff-image")
+    @GET
+    @Produces(IMAGE_TIFF_MIME_TYPE)
+    @ApiOperation(value = "Render TIFF image for a section")
+    public Response renderTiffImageForZ(@PathParam("owner") final String owner,
+                                        @PathParam("project") final String project,
+                                        @PathParam("stack") final String stack,
+                                        @PathParam("z") final Double z,
+                                        @QueryParam("scale") Double scale,
+                                        @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("renderTiffImageForZ: entry, owner={}, project={}, stack={}, z={}, scale={}, filter={}",
+                 owner, project, stack, z, scale, filter);
+
+        if (scale == null) {
+            scale = 0.01;
+        }
+
+        final RenderParameters renderParameters =
+                renderDataService.getRenderParametersForZ(owner, project, stack, z, scale, filter);
+        return renderTiffImage(renderParameters, true);
+    }
+
     @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
@@ -159,6 +191,28 @@ public class RenderService {
         final RenderParameters renderParameters =
                 renderDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false);
         return renderPngImage(renderParameters, false);
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/tiff-image")
+    @GET
+    @Produces(IMAGE_TIFF_MIME_TYPE)
+    @ApiOperation(value = "Render TIFF image for a tile")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Tile not found")
+    })
+    public Response renderTiffImageForTile(@PathParam("owner") final String owner,
+                                           @PathParam("project") final String project,
+                                           @PathParam("stack") final String stack,
+                                           @PathParam("tileId") final String tileId,
+                                           @PathParam("scale") final Double scale,
+                                           @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("renderTiffImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
+
+        final RenderParameters renderParameters =
+                renderDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false);
+        return renderTiffImage(renderParameters, false);
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/jpeg-image")
@@ -207,6 +261,29 @@ public class RenderService {
         return renderPngImage(renderParameters, false);
     }
 
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/tiff-image")
+    @GET
+    @Produces(IMAGE_TIFF_MIME_TYPE)
+    @ApiOperation(value = "Render tile's source image without transformations in TIFF format")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Tile not found")
+    })
+    public Response renderTiffSourceImageForTile(@PathParam("owner") final String owner,
+                                                 @PathParam("project") final String project,
+                                                 @PathParam("stack") final String stack,
+                                                 @PathParam("tileId") final String tileId,
+                                                 @PathParam("scale") final Double scale,
+                                                 @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("renderTiffSourceImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
+
+        final RenderParameters renderParameters =
+                renderDataService.getTileSourceRenderParameters(owner, project, stack, tileId, scale, filter);
+
+        return renderTiffImage(renderParameters, false);
+    }
+
     @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
@@ -253,6 +330,29 @@ public class RenderService {
         return renderPngImage(renderParameters, false);
     }
 
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/tiff-image")
+    @GET
+    @Produces(IMAGE_TIFF_MIME_TYPE)
+    @ApiOperation(value = "Render tile's mask image without transformations in TIFF format")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Tile not found")
+    })
+    public Response renderTiffMaskImageForTile(@PathParam("owner") final String owner,
+                                               @PathParam("project") final String project,
+                                               @PathParam("stack") final String stack,
+                                               @PathParam("tileId") final String tileId,
+                                               @PathParam("scale") final Double scale,
+                                               @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("renderTiffMaskImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
+                 owner, project, stack, tileId, scale, filter);
+
+        final RenderParameters renderParameters =
+                renderDataService.getTileMaskRenderParameters(owner, project, stack, tileId, scale, filter);
+
+        return renderTiffImage(renderParameters, false);
+    }
+
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
@@ -297,6 +397,29 @@ public class RenderService {
                 getRenderParametersForGroupBox(owner, project, stack, null,
                                                x, y, z, width, height, scale, filter, binaryMask);
         return renderPngImage(renderParameters, true);
+    }
+
+    @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
+    @GET
+    @Produces(IMAGE_TIFF_MIME_TYPE)
+    @ApiOperation(value = "Render TIFF image for the specified bounding box")
+    public Response renderTiffImageForBox(@PathParam("owner") final String owner,
+                                          @PathParam("project") final String project,
+                                          @PathParam("stack") final String stack,
+                                          @PathParam("x") final Double x,
+                                          @PathParam("y") final Double y,
+                                          @PathParam("z") final Double z,
+                                          @PathParam("width") final Integer width,
+                                          @PathParam("height") final Integer height,
+                                          @PathParam("scale") final Double scale,
+                                          @QueryParam("filter") final Boolean filter,
+                                          @QueryParam("binaryMask") final Boolean binaryMask) {
+
+        LOG.info("renderTiffImageForBox: entry");
+        final RenderParameters renderParameters =
+                getRenderParametersForGroupBox(owner, project, stack, null,
+                                               x, y, z, width, height, scale, filter, binaryMask);
+        return renderTiffImage(renderParameters, true);
     }
 
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
@@ -347,6 +470,30 @@ public class RenderService {
         return renderPngImage(renderParameters, true);
     }
 
+    @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
+    @GET
+    @Produces(IMAGE_TIFF_MIME_TYPE)
+    @ApiOperation(value = "Render TIFF image for the specified bounding box and groupId")
+    public Response renderTiffImageForGroupBox(@PathParam("owner") final String owner,
+                                               @PathParam("project") final String project,
+                                               @PathParam("stack") final String stack,
+                                               @PathParam("groupId") final String groupId,
+                                               @PathParam("x") final Double x,
+                                               @PathParam("y") final Double y,
+                                               @PathParam("z") final Double z,
+                                               @PathParam("width") final Integer width,
+                                               @PathParam("height") final Integer height,
+                                               @PathParam("scale") final Double scale,
+                                               @QueryParam("filter") final Boolean filter,
+                                               @QueryParam("binaryMask") final Boolean binaryMask) {
+
+        LOG.info("renderTiffImageForGroupBox: entry");
+        final RenderParameters renderParameters =
+                getRenderParametersForGroupBox(owner, project, stack, groupId,
+                                               x, y, z, width, height, scale, filter, binaryMask);
+        return renderTiffImage(renderParameters, true);
+    }
+
     private RenderParameters getRenderParametersForGroupBox(final String owner,
                                                             final String project,
                                                             final String stack,
@@ -384,6 +531,11 @@ public class RenderService {
     private Response renderPngImage(final RenderParameters renderParameters,
                                     final boolean optimizeRenderTime) {
         return renderImageStream(renderParameters, Utils.PNG_FORMAT, IMAGE_PNG_MIME_TYPE, optimizeRenderTime);
+    }
+
+    private Response renderTiffImage(final RenderParameters renderParameters,
+                                     final boolean optimizeRenderTime) {
+        return renderImageStream(renderParameters, Utils.TIFF_FORMAT, IMAGE_TIFF_MIME_TYPE, optimizeRenderTime);
     }
 
     private Response renderImageStream(final RenderParameters renderParameters,
@@ -469,6 +621,7 @@ public class RenderService {
 
     private static final String IMAGE_JPEG_MIME_TYPE = "image/jpeg";
     private static final String IMAGE_PNG_MIME_TYPE = "image/png";
+    private static final String IMAGE_TIFF_MIME_TYPE = "image/tiff";
 
     private static final int ONE_MEGABYTE = 1024 * 1024;
 }
