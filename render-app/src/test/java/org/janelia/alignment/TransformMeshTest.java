@@ -85,10 +85,7 @@ public class TransformMeshTest {
 
     }
 
-
-
-
-    @Test
+//    @Test
     public void testRenderMeshOperations() throws Exception {
 
         for (int i = 0; i < 10; ++i) {
@@ -139,7 +136,7 @@ public class TransformMeshTest {
         }
     }
 
-    @Test
+//    @Test
     public void testMeshOperations() throws Exception {
 
         for (int i = 0; i < 10; ++i) {
