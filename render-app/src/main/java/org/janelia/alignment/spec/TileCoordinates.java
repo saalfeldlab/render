@@ -1,11 +1,12 @@
 package org.janelia.alignment.spec;
 
-import com.google.gson.reflect.TypeToken;
+import com.fasterxml.jackson.core.type.TypeReference;
 
+import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import mpicbg.models.NoninvertibleModelException;
@@ -26,6 +27,16 @@ public class TileCoordinates implements Serializable {
     private final double[] local;
     private final double[] world;
     private String error;
+
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private TileCoordinates() {
+        this.tileId = null;
+        this.visible = null;
+        this.local = null;
+        this.world = null;
+        this.error = null;
+    }
 
     public TileCoordinates(final String tileId,
                            final double[] local,
@@ -67,10 +78,6 @@ public class TileCoordinates implements Serializable {
 
     public void setError(final String error) {
         this.error = error;
-    }
-
-    public String toJson() {
-        return JsonUtils.GSON.toJson(this);
     }
 
     @Override
@@ -151,20 +158,47 @@ public class TileCoordinates implements Serializable {
         return buildWorldInstance(tileSpec.getTileId(), world);
     }
 
+    public String toJson() {
+        return JSON_HELPER.toJson(this);
+    }
+
     public static TileCoordinates fromJson(final String json) {
-        return JsonUtils.GSON.fromJson(json, TileCoordinates.class);
+        return JSON_HELPER.fromJson(json);
     }
 
-    public static List<TileCoordinates> fromJsonArray(Reader json) {
-        return JsonUtils.GSON.fromJson(json, LIST_TYPE);
+    public static List<TileCoordinates> fromJsonArray(final Reader json) {
+        // TODO: verify using Arrays.asList optimization is actually faster
+        // return JSON_HELPER.fromJsonArray(json);
+        try {
+            return Arrays.asList(JsonUtils.MAPPER.readValue(json, TileCoordinates[].class));
+        } catch (final IOException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
-    public static List<List<TileCoordinates>> fromJsonArrayOfArrays(Reader json) {
-        return JsonUtils.GSON.fromJson(json, LIST_OF_LISTS_TYPE);
+    public static List<List<TileCoordinates>> fromJsonArrayOfArrays(final String json) {
+        // TODO: see if this can be done with faster arrays instead of TypeReference
+        try {
+            return JsonUtils.MAPPER.readValue(json, LIST_OF_LISTS_TYPE);
+        } catch (final IOException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    public static List<List<TileCoordinates>> fromJsonArrayOfArrays(final Reader json) {
+        // TODO: see if this can be done with faster arrays instead of TypeReference
+        try {
+            return JsonUtils.MAPPER.readValue(json, LIST_OF_LISTS_TYPE);
+        } catch (final IOException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TileCoordinates.class);
 
-    private static final Type LIST_TYPE = new TypeToken<List<TileCoordinates>>(){}.getType();
-    private static final Type LIST_OF_LISTS_TYPE = new TypeToken<List<List<TileCoordinates>>>(){}.getType();
+    private static final JsonUtils.Helper<TileCoordinates> JSON_HELPER =
+            new JsonUtils.Helper<>(TileCoordinates.class);
+
+    private static final TypeReference<List<List<TileCoordinates>>> LIST_OF_LISTS_TYPE =
+            new TypeReference<List<List<TileCoordinates>>>(){};
 }

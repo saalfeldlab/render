@@ -14,15 +14,23 @@ public class StackId implements Comparable<StackId>, Serializable {
     public static final String TILE_COLLECTION_SUFFIX = "tile";
     public static final String TRANSFORM_COLLECTION_SUFFIX = "transform";
 
-    private String owner;
-    private String project;
-    private String stack;
+    private final String owner;
+    private final String project;
+    private final String stack;
 
     private transient String scopePrefix;
 
-    public StackId(String owner,
-                   String project,
-                   String stack)
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private StackId() {
+        this.owner = null;
+        this.project = null;
+        this.stack = null;
+    }
+
+    public StackId(final String owner,
+                   final String project,
+                   final String stack)
             throws IllegalArgumentException {
 
         validateValue("owner", VALID_NAME, owner);
@@ -66,7 +74,7 @@ public class StackId implements Comparable<StackId>, Serializable {
 
     @SuppressWarnings("NullableProblems")
     @Override
-    public int compareTo(StackId that) {
+    public int compareTo(final StackId that) {
         int v = this.owner.compareTo(that.owner);
         if (v == 0) {
             v = this.project.compareTo(that.project);
@@ -85,9 +93,9 @@ public class StackId implements Comparable<StackId>, Serializable {
         return getCollectionName(TRANSFORM_COLLECTION_SUFFIX);
     }
 
-    private void validateValue(String context,
-                               Pattern pattern,
-                               String value)
+    private void validateValue(final String context,
+                               final Pattern pattern,
+                               final String value)
             throws IllegalArgumentException {
 
         final Matcher m = pattern.matcher(value);
@@ -96,9 +104,9 @@ public class StackId implements Comparable<StackId>, Serializable {
         }
     }
 
-    private void setScopePrefix(String owner,
-                                String project,
-                                String stack) {
+    private void setScopePrefix(final String owner,
+                                final String project,
+                                final String stack) {
 
         scopePrefix = owner + FIELD_SEPARATOR + project + FIELD_SEPARATOR + stack + FIELD_SEPARATOR;
 

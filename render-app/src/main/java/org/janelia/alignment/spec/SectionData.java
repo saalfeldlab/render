@@ -13,6 +13,13 @@ public class SectionData
     private final String sectionId;
     private final Double z;
 
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private SectionData() {
+        this.sectionId = null;
+        this.z = null;
+    }
+
     public SectionData(final String sectionId,
                        final Double z) {
         this.sectionId = sectionId;

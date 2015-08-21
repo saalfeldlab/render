@@ -18,6 +18,19 @@ public class LayoutData implements Serializable {
     private final Double stageY;
     private final Double rotation;
 
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private LayoutData() {
+        this.sectionId = null;
+        this.temca = null;
+        this.camera = null;
+        this.imageRow = null;
+        this.imageCol = null;
+        this.stageX = null;
+        this.stageY = null;
+        this.rotation = null;
+    }
+
     public LayoutData(final String sectionId,
                       final String temca,
                       final String camera,

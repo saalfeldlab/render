@@ -26,6 +26,20 @@ public class StackVersion
     private final String snapshotRootPath;
     private final MipmapPathBuilder mipmapPathBuilder;
 
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private StackVersion() {
+        this.createTimestamp = null;
+        this.versionNotes = null;
+        this.cycleNumber = null;
+        this.cycleStepNumber = null;
+        this.stackResolutionX = null;
+        this.stackResolutionY = null;
+        this.stackResolutionZ = null;
+        this.snapshotRootPath = null;
+        this.mipmapPathBuilder = null;
+    }
+
     public StackVersion(final Date createTimestamp,
                         final String versionNotes,
                         final Integer cycleNumber,
@@ -92,6 +106,9 @@ public class StackVersion
     }
 
     public String toJson() {
-        return JsonUtils.GSON.toJson(this, StackVersion.class);
+        return JSON_HELPER.toJson(this);
     }
+
+    private static final JsonUtils.Helper<StackVersion> JSON_HELPER =
+            new JsonUtils.Helper<>(StackVersion.class);
 }

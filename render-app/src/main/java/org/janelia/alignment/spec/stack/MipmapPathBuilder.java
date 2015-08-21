@@ -49,6 +49,14 @@ public class MipmapPathBuilder
     private final Integer numberOfLevels;
     private final String extension;
 
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private MipmapPathBuilder() {
+        this.rootPath = null;
+        this.numberOfLevels = null;
+        this.extension = null;
+    }
+
     public MipmapPathBuilder(final String rootPath,
                              final Integer numberOfLevels,
                              final String extension) {
@@ -68,7 +76,11 @@ public class MipmapPathBuilder
     }
 
     public String toJson() {
-        return JsonUtils.GSON.toJson(this);
+        return JSON_HELPER.toJson(this);
+    }
+
+    public static MipmapPathBuilder fromJson(final String json) {
+        return JSON_HELPER.fromJson(json);
     }
 
     @Override
@@ -134,4 +146,6 @@ public class MipmapPathBuilder
 
     private static final Logger LOG = LoggerFactory.getLogger(MipmapPathBuilder.class);
 
+    private static final JsonUtils.Helper<MipmapPathBuilder> JSON_HELPER =
+            new JsonUtils.Helper<>(MipmapPathBuilder.class);
 }

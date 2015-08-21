@@ -9,10 +9,9 @@ import mpicbg.models.InterpolatedCoordinateTransform;
 /**
  * Specification for an {@link InterpolatedCoordinateTransform}.
  *
- * NOTE: The {@link org.janelia.alignment.json.TransformSpecAdapter} implementation handles
- * polymorphic deserialization for this class and is tightly coupled to the implementation here.
- * The adapter will need to be modified any time attributes of this class are modified.
-
+ * NOTE: Annotations on the {@link TransformSpec} implementation handle
+ * polymorphic deserialization for this class.
+ *
  * @author Eric Trautman
  */
 public class InterpolatedTransformSpec
@@ -20,13 +19,18 @@ public class InterpolatedTransformSpec
 
     public static final String TYPE = "interpolated";
 
-    public static final String A_ELEMENT_NAME = "a";
-    public static final String B_ELEMENT_NAME = "b";
-    public static final String LAMBDA_ELEMENT_NAME = "lambda";
-
     private final TransformSpec a;
     private final TransformSpec b;
     private final Double lambda;
+
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private InterpolatedTransformSpec() {
+        super(null, TYPE, null);
+        this.a = null;
+        this.b = null;
+        this.lambda = null;
+    }
 
     public InterpolatedTransformSpec(final String id,
                                      final TransformSpecMetaData metaData,
@@ -71,9 +75,9 @@ public class InterpolatedTransformSpec
     @Override
     protected CoordinateTransform buildInstance()
             throws IllegalArgumentException {
-        return new InterpolatedCoordinateTransform<CoordinateTransform, CoordinateTransform>(a.buildInstance(),
-                                                                                             b.buildInstance(),
-                                                                                             lambda);
+        return new InterpolatedCoordinateTransform<>(a.buildInstance(),
+                                                     b.buildInstance(),
+                                                     lambda);
     }
 
     private TransformSpec getFlattenedComponentSpec(final TransformSpec spec)

@@ -3,6 +3,7 @@ package org.janelia.render.client;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import org.janelia.alignment.json.JsonUtils;
 
@@ -36,14 +37,14 @@ public class RenderDataClientParameters {
         this.jCommander = null;
     }
 
-    public void parse(String[] args) throws IllegalArgumentException {
+    public void parse(final String[] args) throws IllegalArgumentException {
 
         jCommander = new JCommander(this);
         jCommander.setProgramName("java -cp current-ws-standalone.jar " + this.getClass().getName());
 
         try {
             jCommander.parse(args);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to parse command line arguments", t);
         }
 
@@ -62,7 +63,11 @@ public class RenderDataClientParameters {
      */
     @Override
     public String toString() {
-        return JsonUtils.GSON.toJson(this);
+        try {
+            return JsonUtils.MAPPER.writeValueAsString(this);
+        } catch (final JsonProcessingException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
 }

@@ -3,13 +3,6 @@ package org.janelia.alignment;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.google.gson.reflect.TypeToken;
-import org.janelia.alignment.json.JsonUtils;
-import org.janelia.alignment.spec.ListTransformSpec;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.File;
@@ -19,13 +12,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.ListTransformSpec;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Parameters for mipmap generation.
@@ -36,40 +35,40 @@ import java.util.Map;
 public class MipmapGeneratorParameters {
 
     @Parameter(names = "--help", description = "Display this note", help = true)
-    private transient boolean help;
+    private final transient boolean help;
 
     @Parameter(names = "--root", description = "Root directory path for all generated mipmaps", required = true)
-    private String rootDirectoryPath;
+    private final String rootDirectoryPath;
 
     @Parameter(names = "--level", description = "Highest scale level of mipmaps to be generated (default is 3)", required = false)
-    private int mipmapLevel;
+    private final int mipmapLevel;
 
     @Parameter(names = "--format", description = "Mipmap file format (jpg is default)", required = false)
-    private String format;
+    private final String format;
 
     @Parameter(names = "--quality", description = "JPEG quality float [0, 1] (default is 0.85)", required = false)
-    private float quality;
+    private final float quality;
 
     @Parameter(names = "--url", description = "URL referencing input tile spec data (JSON)", required = false)
-    private String url;
+    private final String url;
 
     @Parameter(names = "--transformUrl", description = "URL referencing input transform spec data (JSON)", required = false)
-    private String transformUrl;
+    private final String transformUrl;
 
     @Parameter(names = "--out", description = "Output file for updated JSON tile spec data ", required = false)
-    private String outputFileName;
+    private final String outputFileName;
 
     @Parameter(names = "--consolidate_masks", description = "Consolidate equivalent zipped TrakEM2 mask files", required = false)
-    private boolean consolidateMasks;
+    private final boolean consolidateMasks;
 
     @Parameter(names = "--force_box", description = "Force calculation of tile bounding box attributes", required = false)
-    private boolean forceBoxCalculation;
+    private final boolean forceBoxCalculation;
 
     /** List of tile specifications parsed from --url or deserialized directly from json. */
     private List<TileSpec> tileSpecs;
 
     /** Map of transform ids to specs loaded from from --transformUrl. */
-    private transient Map<String, TransformSpec> transformIdToSpecMap;
+    private final transient Map<String, TransformSpec> transformIdToSpecMap;
 
     private transient JCommander jCommander;
     private transient boolean initialized;
@@ -80,7 +79,7 @@ public class MipmapGeneratorParameters {
         this(null);
     }
 
-    public MipmapGeneratorParameters(String rootDirectoryPath) {
+    public MipmapGeneratorParameters(final String rootDirectoryPath) {
         this.help = false;
         this.rootDirectoryPath = rootDirectoryPath;
         this.mipmapLevel = DEFAULT_MIPMAP_LEVEL;
@@ -92,8 +91,8 @@ public class MipmapGeneratorParameters {
         this.consolidateMasks = false;
         this.forceBoxCalculation = false;
 
-        this.tileSpecs = new ArrayList<TileSpec>();
-        this.transformIdToSpecMap = new HashMap<String, TransformSpec>();
+        this.tileSpecs = new ArrayList<>();
+        this.transformIdToSpecMap = new HashMap<>();
 
         this.jCommander = null;
         this.initialized = false;
@@ -107,12 +106,12 @@ public class MipmapGeneratorParameters {
      * @throws IllegalArgumentException
      *   if any invalid arguments are specified.
      */
-    public static MipmapGeneratorParameters parseCommandLineArgs(String[] args) throws IllegalArgumentException {
-        MipmapGeneratorParameters parameters = new MipmapGeneratorParameters();
+    public static MipmapGeneratorParameters parseCommandLineArgs(final String[] args) throws IllegalArgumentException {
+        final MipmapGeneratorParameters parameters = new MipmapGeneratorParameters();
         parameters.setCommander();
         try {
             parameters.jCommander.parse(args);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to parse command line arguments", t);
         }
         parameters.initializeDerivedValues();
@@ -127,11 +126,11 @@ public class MipmapGeneratorParameters {
      * @throws IllegalArgumentException
      *   if the json cannot be parsed.
      */
-    public static MipmapGeneratorParameters parseJson(Reader jsonReader) throws IllegalArgumentException {
-        MipmapGeneratorParameters parameters;
+    public static MipmapGeneratorParameters parseJson(final Reader jsonReader) throws IllegalArgumentException {
+        final MipmapGeneratorParameters parameters;
         try {
-            parameters = JsonUtils.GSON.fromJson(jsonReader, MipmapGeneratorParameters.class);
-        } catch (Throwable t) {
+            parameters = JsonUtils.MAPPER.readValue(jsonReader, MipmapGeneratorParameters.class);
+        } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to parse json reader stream", t);
         }
         return parameters;
@@ -145,7 +144,7 @@ public class MipmapGeneratorParameters {
      * @throws IllegalArgumentException
      *   if the json cannot be parsed.
      */
-    public static MipmapGeneratorParameters parseJson(File jsonFile) throws IllegalArgumentException {
+    public static MipmapGeneratorParameters parseJson(final File jsonFile) throws IllegalArgumentException {
 
         if (! jsonFile.exists()) {
             throw new IllegalArgumentException("mipmap generator parameters json file " + jsonFile.getAbsolutePath() +
@@ -157,10 +156,10 @@ public class MipmapGeneratorParameters {
                                                " is not readable");
         }
 
-        FileReader parametersReader;
+        final FileReader parametersReader;
         try {
             parametersReader = new FileReader(jsonFile);
-        } catch (FileNotFoundException e) {
+        } catch (final FileNotFoundException e) {
             throw new IllegalArgumentException("mipmap generator parameters json file " + jsonFile.getAbsolutePath() +
                                                " does not exist", e);
         }
@@ -171,7 +170,7 @@ public class MipmapGeneratorParameters {
         } finally {
             try {
                 parametersReader.close();
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 LOG.warn("failed to close reader for " + jsonFile.getAbsolutePath() + ", ignoring error", e);
             }
         }
@@ -189,7 +188,7 @@ public class MipmapGeneratorParameters {
             if (transformIdToSpecMap.size() > 0) {
                 resolveTransformSpecReferences(0);
                 ListTransformSpec transforms;
-                for (TileSpec tileSpec : tileSpecs) {
+                for (final TileSpec tileSpec : tileSpecs) {
                     if (tileSpec.hasTransforms()) {
                         transforms = tileSpec.getTransforms();
                         transforms.removeNullSpecs(); // TODO: remove this hack to work around bad data
@@ -310,7 +309,7 @@ public class MipmapGeneratorParameters {
             throw new IllegalStateException("derived parameters have not been initialized");
         }
 
-        for (TileSpec tileSpec : tileSpecs) {
+        for (final TileSpec tileSpec : tileSpecs) {
             tileSpec.validate();
         }
     }
@@ -338,18 +337,18 @@ public class MipmapGeneratorParameters {
         jCommander.setProgramName("java -cp render-app.jar " + MipmapGenerator.class.getName());
     }
 
-    private File getCanonicalFile(String name) {
+    private File getCanonicalFile(final String name) {
         File file = new File(name);
         try {
             file = file.getCanonicalFile();
-        } catch (IOException e) {
+        } catch (final IOException e) {
             LOG.warn("failed to derive canonical file for '" + name + "', ignoring error", e);
         }
         return file;
     }
 
-    private Reader getSpecReader(String context,
-                                 String urlString)
+    private Reader getSpecReader(final String context,
+                                 final String urlString)
             throws IllegalArgumentException {
 
         final URI uri = Utils.convertPathOrUriStringToUri(urlString);
@@ -357,7 +356,7 @@ public class MipmapGeneratorParameters {
         final URL urlObject;
         try {
             urlObject = uri.toURL();
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to convert URI '" + uri + "' built from " + context +
                                                " specifications URL parameter '" + urlString + "'", t);
         }
@@ -365,7 +364,7 @@ public class MipmapGeneratorParameters {
         final InputStream urlStream;
         try {
             urlStream = urlObject.openStream();
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to load " + context + " specifications from " + urlObject,
                                                t);
         }
@@ -373,12 +372,12 @@ public class MipmapGeneratorParameters {
         return new InputStreamReader(urlStream);
     }
 
-    private void closeStream(String context,
-                             Closeable closeable) {
+    private void closeStream(final String context,
+                             final Closeable closeable) {
         if (closeable != null) {
             try {
                 closeable.close();
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 LOG.warn("failed to close " + context + ", ignoring error", e);
             }
         }
@@ -395,9 +394,8 @@ public class MipmapGeneratorParameters {
             Reader reader = null;
             try {
                 reader = getSpecReader("tile", url);
-                final Type collectionType = new TypeToken<List<TileSpec>>(){}.getType();
-                tileSpecs = JsonUtils.GSON.fromJson(reader, collectionType);
-            } catch (Throwable t) {
+                tileSpecs = TileSpec.fromJsonArray(reader);
+            } catch (final Throwable t) {
                 throw new IllegalArgumentException("failed to parse tile specifications from " + url, t);
             } finally {
                 closeStream(url, reader);
@@ -412,12 +410,11 @@ public class MipmapGeneratorParameters {
             Reader reader = null;
             try {
                 reader = getSpecReader("transform", transformUrl);
-                final Type collectionType = new TypeToken<List<TransformSpec>>(){}.getType();
-                final List<TransformSpec> specList = JsonUtils.GSON.fromJson(reader, collectionType);
-                for (TransformSpec spec : specList) {
+                final List<TransformSpec> specList = TransformSpec.fromJsonArray(reader);
+                for (final TransformSpec spec : specList) {
                     transformIdToSpecMap.put(spec.getId(), spec);
                 }
-            } catch (Throwable t) {
+            } catch (final Throwable t) {
                 throw new IllegalArgumentException("failed to parse transform specifications from " + transformUrl, t);
             } finally {
                 closeStream(transformUrl, reader);
@@ -425,14 +422,14 @@ public class MipmapGeneratorParameters {
         }
     }
 
-    private void resolveTransformSpecReferences(int callCount) {
+    private void resolveTransformSpecReferences(final int callCount) {
         if (callCount > 10) {
             throw new IllegalStateException(callCount + " passes have been made to resolve transform references, " +
                                             "exiting in case the data is overly nested or there is a recursion error");
         }
 
         int fullyResolvedCount = 0;
-        for (TransformSpec spec : transformIdToSpecMap.values()) {
+        for (final TransformSpec spec : transformIdToSpecMap.values()) {
             if (spec.isFullyResolved()) {
                 fullyResolvedCount++;
             } else {

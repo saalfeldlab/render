@@ -1,8 +1,13 @@
 package org.janelia.alignment.spec;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
+import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
-import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -15,22 +20,21 @@ import mpicbg.models.InterpolatedCoordinateTransform;
 
 import org.janelia.alignment.json.JsonUtils;
 
-import com.google.gson.reflect.TypeToken;
-
 /**
  * Abstract base for all transformation specifications.
  *
- * NOTE: The {@link org.janelia.alignment.json.TransformSpecAdapter} implementation handles
- * polymorphic deserialization for this class and is tightly coupled to it's implementation here.
- * The adapter will need to be modified any time attributes of this class are modified.
- *
  * @author Eric Trautman
  */
+@JsonTypeInfo(
+        use = JsonTypeInfo.Id.NAME,
+        include = JsonTypeInfo.As.EXISTING_PROPERTY,
+        property = "type",
+        defaultImpl = LeafTransformSpec.class)
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = InterpolatedTransformSpec.class, name = InterpolatedTransformSpec.TYPE),
+        @JsonSubTypes.Type(value = ListTransformSpec.class, name = ListTransformSpec.TYPE),
+        @JsonSubTypes.Type(value = ReferenceTransformSpec.class, name = ReferenceTransformSpec.TYPE) })
 public abstract class TransformSpec implements Serializable {
-
-    public static final String ID_ELEMENT_NAME = "id";
-    public static final String TYPE_ELEMENT_NAME = "type";
-    public static final String META_DATA_ELEMENT_NAME = "metaData";
 
     private final String id;
     private final String type;
@@ -100,6 +104,7 @@ public abstract class TransformSpec implements Serializable {
      * @throws IllegalStateException
      *   if the spec's current state prevents checking resolution.
      */
+    @JsonIgnore
     public abstract boolean isFullyResolved() throws IllegalStateException;
 
     /**
@@ -137,15 +142,33 @@ public abstract class TransformSpec implements Serializable {
 
 
     public String toJson() {
-        return JsonUtils.GSON.toJson(this);
+        return JSON_HELPER.toJson(this);
+    }
+
+    public static TransformSpec fromJson(final String json) {
+        return JSON_HELPER.fromJson(json);
     }
 
     public static List<TransformSpec> fromJsonArray(final String json) {
-        return JsonUtils.GSON.fromJson(json, LIST_TYPE);
+        // TODO: verify using Arrays.asList optimization is actually faster
+        //       http://stackoverflow.com/questions/6349421/how-to-use-jackson-to-deserialise-an-array-of-objects
+        // return JSON_HELPER.fromJsonArray(json);
+        try {
+            return Arrays.asList(JsonUtils.MAPPER.readValue(json, TransformSpec[].class));
+        } catch (final IOException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
-    public static List<TransformSpec> fromJsonArray(final Reader json) {
-        return JsonUtils.GSON.fromJson(json, LIST_TYPE);
+    public static List<TransformSpec> fromJsonArray(final Reader json)
+            throws IOException {
+        // TODO: verify using Arrays.asList optimization is actually faster
+        // return JSON_HELPER.fromJsonArray(json);
+        try {
+            return Arrays.asList(JsonUtils.MAPPER.readValue(json, TransformSpec[].class));
+        } catch (final IOException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
     /**
@@ -164,7 +187,7 @@ public abstract class TransformSpec implements Serializable {
         instance = null;
     }
 
-    private static final Type LIST_TYPE = new TypeToken<List<TransformSpec>>(){}.getType();
+//    private static final TypeReference<List<TransformSpec>> LIST_TYPE = new TypeReference<List<TransformSpec>>(){};
 
     /**
      * Create a TransformSpec from a {@link CoordinateTransform}.  The
@@ -172,9 +195,6 @@ public abstract class TransformSpec implements Serializable {
      * an {@link InterpolatedCoordinateTransform} or a TrakEM2 compatible
      * {@link mpicbg.trakem2.transform.CoordinateTransform}.  Otherwise the
      * method returns null.
-     *
-     * @param transform
-     * @return
      */
     static public TransformSpec create(final CoordinateTransform transform) {
         if (CoordinateTransformList.class.isInstance(transform)) {
@@ -196,5 +216,8 @@ public abstract class TransformSpec implements Serializable {
             //return new LeafTransformSpec(UUID.randomUUID().toString(), null, t.getClass().getCanonicalName(), null);
         } else return null;
     }
+
+    private static final JsonUtils.Helper<TransformSpec> JSON_HELPER =
+            new JsonUtils.Helper<>(TransformSpec.class);
 
 }

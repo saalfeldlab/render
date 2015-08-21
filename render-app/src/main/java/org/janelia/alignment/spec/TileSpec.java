@@ -16,13 +16,12 @@
  */
 package org.janelia.alignment.spec;
 
-import com.google.gson.reflect.TypeToken;
-
 import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
+import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
-import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -567,22 +566,36 @@ public class TileSpec implements Serializable {
     }
 
     public String toJson() {
-        return JsonUtils.GSON.toJson(this, TileSpec.class);
+        return JSON_HELPER.toJson(this);
     }
 
     public static TileSpec fromJson(final String json) {
-        return JsonUtils.GSON.fromJson(json, TileSpec.class);
+        return JSON_HELPER.fromJson(json);
     }
 
     public static List<TileSpec> fromJsonArray(final String json) {
-        return JsonUtils.GSON.fromJson(json, LIST_TYPE);
+        // TODO: verify using Arrays.asList optimization is actually faster
+        // return JSON_HELPER.fromJsonArray(json);
+        try {
+            return Arrays.asList(JsonUtils.MAPPER.readValue(json, TileSpec[].class));
+        } catch (final IOException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
-    public static List<TileSpec> fromJsonArray(final Reader json) {
-        return JsonUtils.GSON.fromJson(json, LIST_TYPE);
+    public static List<TileSpec> fromJsonArray(final Reader json)
+            throws IOException {
+        // TODO: verify using Arrays.asList optimization is actually faster
+        // return JSON_HELPER.fromJsonArray(json);
+        try {
+            return Arrays.asList(JsonUtils.MAPPER.readValue(json, TileSpec[].class));
+        } catch (final IOException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
-
-    private static final Type LIST_TYPE = new TypeToken<List<TileSpec>>(){}.getType();
 
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
+
+    private static final JsonUtils.Helper<TileSpec> JSON_HELPER =
+            new JsonUtils.Helper<>(TileSpec.class);
 }

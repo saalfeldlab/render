@@ -28,12 +28,12 @@ public class Bounds implements Serializable {
         this(minX, minY, null, maxX, maxY, null);
     }
 
-    public Bounds(Double minX,
-                  Double minY,
-                  Double minZ,
-                  Double maxX,
-                  Double maxY,
-                  Double maxZ) {
+    public Bounds(final Double minX,
+                  final Double minY,
+                  final Double minZ,
+                  final Double maxX,
+                  final Double maxY,
+                  final Double maxZ) {
         this.minX = minX;
         this.minY = minY;
         this.minZ = minZ;
@@ -84,10 +84,14 @@ public class Bounds implements Serializable {
     }
 
     public String toJson() {
-        return JsonUtils.GSON.toJson(this);
+        return JSON_HELPER.toJson(this);
     }
 
     public static Bounds fromJson(final String json) {
-        return JsonUtils.GSON.fromJson(json, Bounds.class);
+        return JSON_HELPER.fromJson(json);
     }
+
+    private static final JsonUtils.Helper<Bounds> JSON_HELPER =
+            new JsonUtils.Helper<>(Bounds.class);
+
 }

@@ -1,14 +1,10 @@
 package org.janelia.render.service.dao;
 
-import com.google.gson.reflect.TypeToken;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.Matches;
@@ -206,8 +202,7 @@ public class MatchDaoTest {
 
     private List<CanvasMatches> getListFromStream(final ByteArrayOutputStream outputStream) {
         final String json = outputStream.toString();
-        final Type typeOfT = new TypeToken<List<CanvasMatches>>(){}.getType();
-        return JsonUtils.GSON.fromJson(json, typeOfT);
+        return CanvasMatches.fromJsonArray(json);
     }
 
 }

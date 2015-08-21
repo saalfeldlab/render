@@ -103,12 +103,10 @@ public class RenderParametersTest {
                             "1.0", String.valueOf(parameters.getX()));
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testExtraneousComma() throws Exception {
         final File jsonFile = new File("src/test/resources/render-parameters-test/extraneous-comma-render.json");
-        final RenderParameters parameters = RenderParameters.parseJson(jsonFile);
-        parameters.initializeDerivedValues();
-        parameters.validate();
+        RenderParameters.parseJson(jsonFile);
     }
 
 }

@@ -1,9 +1,8 @@
 package org.janelia.render.client;
 
-import com.google.gson.reflect.TypeToken;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -106,8 +105,8 @@ public class RenderDataClient {
         final URI uri = getStackUri(stack);
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final JsonResponseHandler<StackMetaData> responseHandler =
-                new JsonResponseHandler<>(requestContext, StackMetaData.class);
+        final JsonUtils.Helper<StackMetaData> helper = new JsonUtils.Helper<>(StackMetaData.class);
+        final JsonResponseHandler<StackMetaData> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
         LOG.info("getStackMetaData: submitting {}", requestContext);
 
@@ -129,9 +128,9 @@ public class RenderDataClient {
         final URI uri = getUri(getStackUrlString(stack) + "/zValues");
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final Type typeOfT = new TypeToken<List<Double>>(){}.getType();
-        final JsonResponseHandler<List<Double>> responseHandler =
-                new JsonResponseHandler<>(requestContext, typeOfT);
+        final TypeReference<List<Double>> typeReference = new TypeReference<List<Double>>() {};
+        final JsonUtils.GenericHelper<List<Double>> helper = new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<Double>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
         LOG.info("getStackZValues: submitting {}", requestContext);
 
@@ -151,7 +150,7 @@ public class RenderDataClient {
                                  final StackVersion stackVersion)
             throws IOException {
 
-        final String json = JsonUtils.GSON.toJson(stackVersion);
+        final String json = stackVersion.toJson();
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
         final URI uri = getStackUri(stack);
         final String requestContext = "POST " + uri;
@@ -181,7 +180,7 @@ public class RenderDataClient {
                                   final List<Double> zValues)
             throws IOException {
 
-        final String json = JsonUtils.GSON.toJson(toStackVersion);
+        final String json = toStackVersion.toJson();
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
 
         final URIBuilder builder = new URIBuilder(getUri(getStackUrlString(fromStack) + "/cloneTo/" + toStack));
@@ -279,8 +278,8 @@ public class RenderDataClient {
         final URI uri = getUri(getStackUrlString(stack) + "/tile/" + tileId);
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final JsonResponseHandler<TileSpec> responseHandler =
-                new JsonResponseHandler<>(requestContext, TileSpec.class);
+        final JsonUtils.Helper<TileSpec> helper = new JsonUtils.Helper<>(TileSpec.class);
+        final JsonResponseHandler<TileSpec> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
         LOG.info("getResolvedTiles: submitting {}", requestContext);
 
@@ -303,8 +302,8 @@ public class RenderDataClient {
         final URI uri = getUri(getZUrlString(stack, z) + "/bounds");
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final JsonResponseHandler<Bounds> responseHandler =
-                new JsonResponseHandler<>(requestContext, Bounds.class);
+        final JsonUtils.Helper<Bounds> helper = new JsonUtils.Helper<>(Bounds.class);
+        final JsonResponseHandler<Bounds> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
         LOG.info("getLayerBounds: submitting {}", requestContext);
 
@@ -327,9 +326,9 @@ public class RenderDataClient {
         final URI uri = getUri(getZUrlString(stack, z) + "/tileBounds");
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final Type typeOfT = new TypeToken<List<TileBounds>>(){}.getType();
-        final JsonResponseHandler<List<TileBounds>> responseHandler =
-                new JsonResponseHandler<>(requestContext, typeOfT);
+        final TypeReference<List<TileBounds>> typeReference = new TypeReference<List<TileBounds>>() {};
+        final JsonUtils.GenericHelper<List<TileBounds>> helper = new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<TileBounds>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
         LOG.info("getTileBounds: submitting {}", requestContext);
 
@@ -352,8 +351,10 @@ public class RenderDataClient {
         final URI uri = getResolvedTilesUri(stack, z);
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
+        final JsonUtils.Helper<ResolvedTileSpecCollection> helper =
+                new JsonUtils.Helper<>(ResolvedTileSpecCollection.class);
         final JsonResponseHandler<ResolvedTileSpecCollection> responseHandler =
-                new JsonResponseHandler<>(requestContext, ResolvedTileSpecCollection.class);
+                new JsonResponseHandler<>(requestContext, helper);
 
         LOG.info("getResolvedTiles: submitting {}", requestContext);
 
@@ -397,8 +398,10 @@ public class RenderDataClient {
         final URI uri = getUri(uriBuilder);
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
+        final JsonUtils.Helper<ResolvedTileSpecCollection> helper =
+                new JsonUtils.Helper<>(ResolvedTileSpecCollection.class);
         final JsonResponseHandler<ResolvedTileSpecCollection> responseHandler =
-                new JsonResponseHandler<>(requestContext, ResolvedTileSpecCollection.class);
+                new JsonResponseHandler<>(requestContext, helper);
 
         LOG.info("getResolvedTiles: submitting {}", requestContext);
 
@@ -420,7 +423,7 @@ public class RenderDataClient {
                                   final Double z)
             throws IOException {
 
-        final String json = JsonUtils.GSON.toJson(resolvedTiles);
+        final String json = resolvedTiles.toJson();
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
         final URI uri = getResolvedTilesUri(stack, z);
         final String requestContext = "PUT " + uri;
@@ -445,7 +448,7 @@ public class RenderDataClient {
     public void saveMatches(final List<CanvasMatches> canvasMatches)
             throws IOException {
 
-        final String json = JsonUtils.GSON.toJson(canvasMatches);
+        final String json = JsonUtils.MAPPER.writeValueAsString(canvasMatches);
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
         final URI uri = getUri(getOwnerUrlString() + "/matchCollection/" + project + "/matches");
         final String requestContext = "PUT " + uri;
@@ -487,7 +490,7 @@ public class RenderDataClient {
                                                                 final Double z)
             throws IOException {
 
-        final String worldCoordinatesJson = JsonUtils.GSON.toJson(worldCoordinates);
+        final String worldCoordinatesJson = JsonUtils.MAPPER.writeValueAsString(worldCoordinates);
         final StringEntity stringEntity = new StringEntity(worldCoordinatesJson, ContentType.APPLICATION_JSON);
         final URI uri = getUri(getZUrlString(stack, z) + "/tileIdsForCoordinates");
         final String requestContext = "PUT " + uri;
@@ -495,9 +498,12 @@ public class RenderDataClient {
         final HttpPut httpPut = new HttpPut(uri);
         httpPut.setEntity(stringEntity);
 
-        final Type typeOfT = new TypeToken<List<List<TileCoordinates>>>(){}.getType();
+        final TypeReference<List<List<TileCoordinates>>> typeReference =
+                new TypeReference<List<List<TileCoordinates>>>() {};
+        final JsonUtils.GenericHelper<List<List<TileCoordinates>>> helper =
+                new JsonUtils.GenericHelper<>(typeReference);
         final JsonResponseHandler<List<List<TileCoordinates>>> responseHandler =
-                new JsonResponseHandler<>(requestContext, typeOfT);
+                new JsonResponseHandler<>(requestContext, helper);
 
         LOG.info("getTileIdsForCoordinates: submitting {}", requestContext);
 
@@ -530,8 +536,8 @@ public class RenderDataClient {
         final URI uri = getUri(getRenderParametersUrlString(stack, x, y, z, width, height, scale));
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final JsonResponseHandler<RenderParameters> responseHandler =
-                new JsonResponseHandler<>(requestContext, RenderParameters.class);
+        final JsonUtils.Helper<RenderParameters> helper = new JsonUtils.Helper<>(RenderParameters.class);
+        final JsonResponseHandler<RenderParameters> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
         LOG.info("getRenderParameters: submitting {}", requestContext);
 

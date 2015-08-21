@@ -13,7 +13,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.slf4j.Logger;
@@ -34,8 +33,8 @@ public class ValidationService {
     @PUT
     @Consumes(MediaType.WILDCARD)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response validateRenderParametersJson(@PathParam("owner") String owner,
-                                                 String json) {
+    public Response validateRenderParametersJson(@PathParam("owner") final String owner,
+                                                 final String json) {
         LOG.info("validateRenderParametersJson: entry, owner={}", owner);
         final String context = RenderParameters.class.getName() + " instance";
         Response response;
@@ -44,7 +43,7 @@ public class ValidationService {
             renderParameters.initializeDerivedValues();
             renderParameters.validate();
             response = getParseSuccessResponse(context, String.valueOf(renderParameters));
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             response = getParseFailureResponse(t, context, json);
         }
         return response;
@@ -54,8 +53,8 @@ public class ValidationService {
     @PUT
     @Consumes(MediaType.WILDCARD)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response validateTileJson(@PathParam("owner") String owner,
-                                     String json) {
+    public Response validateTileJson(@PathParam("owner") final String owner,
+                                     final String json) {
         LOG.info("validateTileJson: entry, owner={}", owner);
         final String context = TileSpec.class.getName() + " instance";
         Response response;
@@ -63,7 +62,7 @@ public class ValidationService {
             final TileSpec tileSpec = TileSpec.fromJson(json);
             tileSpec.validate();
             response = getParseSuccessResponse(context, String.valueOf(tileSpec));
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             response = getParseFailureResponse(t, context, json);
         }
         return response;
@@ -73,19 +72,19 @@ public class ValidationService {
     @PUT
     @Consumes(MediaType.WILDCARD)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response validateTileJsonArray(@PathParam("owner") String owner,
-                                          String json) {
+    public Response validateTileJsonArray(@PathParam("owner") final String owner,
+                                          final String json) {
         LOG.info("validateTileJsonArray: entry, owner={}", owner);
         final String context = "array of " + TileSpec.class.getName() + " instances";
         Response response;
         try {
             final List<TileSpec> list = TileSpec.fromJsonArray(json);
-            for (TileSpec spec : list) {
+            for (final TileSpec spec : list) {
                 spec.validateMipmaps();
             }
             final String value = "array of " + list.size() + " tile specifications";
             response = getParseSuccessResponse(context, value);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             response = getParseFailureResponse(t, context, json);
         }
         return response;
@@ -95,16 +94,16 @@ public class ValidationService {
     @PUT
     @Consumes(MediaType.WILDCARD)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response validateTransformJson(@PathParam("owner") String owner,
-                                          String json) {
+    public Response validateTransformJson(@PathParam("owner") final String owner,
+                                          final String json) {
         LOG.info("validateTransformJson: entry, owner={}", owner);
         final String context = TransformSpec.class.getName() + " instance";
         Response response;
         try {
-            final TransformSpec transformSpec = JsonUtils.GSON.fromJson(json, TransformSpec.class);
+            final TransformSpec transformSpec = TransformSpec.fromJson(json);
             transformSpec.validate();
             response = getParseSuccessResponse(context, String.valueOf(transformSpec));
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             response = getParseFailureResponse(t, context, json);
         }
         return response;
@@ -114,34 +113,34 @@ public class ValidationService {
     @PUT
     @Consumes(MediaType.WILDCARD)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response validateTransformJsonArray(@PathParam("owner") String owner,
-                                               String json) {
+    public Response validateTransformJsonArray(@PathParam("owner") final String owner,
+                                               final String json) {
         LOG.info("validateTransformJsonArray: entry, owner={}", owner);
         final String context = "array of " + TransformSpec.class.getName() + " instances";
         Response response;
         try {
             final List<TransformSpec> list = TransformSpec.fromJsonArray(json);
             final Map<String, TransformSpec> map = new HashMap<>((int) (list.size() * 1.5));
-            for (TransformSpec spec : list) {
+            for (final TransformSpec spec : list) {
                 if (spec.hasId()) {
                     map.put(spec.getId(), spec);
                 }
             }
-            for (TransformSpec spec : list) {
+            for (final TransformSpec spec : list) {
                 spec.resolveReferences(map);
                 spec.validate();
             }
             final String value = "array of " + list.size() + " transform specifications";
             response = getParseSuccessResponse(context, value);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             response = getParseFailureResponse(t, context, json);
         }
         return response;
     }
 
-    private Response getParseFailureResponse(Throwable t,
-                                             String context,
-                                             String json) {
+    private Response getParseFailureResponse(final Throwable t,
+                                             final String context,
+                                             final String json) {
         final String message = "Failed to parse " + context +
                                " from JSON text.  Specific error is: " + t.getMessage() + "\n";
         String logJson = json;
@@ -155,8 +154,8 @@ public class ValidationService {
         return responseBuilder.build();
     }
 
-    private Response getParseSuccessResponse(String context,
-                                             String value) {
+    private Response getParseSuccessResponse(final String context,
+                                             final String value) {
         final String message = "Successfully parsed " + context + " from JSON text.  Parsed value is: " + value + ".\n";
         LOG.info(message);
         final Response.ResponseBuilder responseBuilder = Response.ok(message);

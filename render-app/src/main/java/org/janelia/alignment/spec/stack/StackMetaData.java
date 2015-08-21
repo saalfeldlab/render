@@ -24,6 +24,17 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
     private final StackVersion currentVersion;
     private StackStats stats;
 
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private StackMetaData() {
+        this.stackId = null;
+        this.state = null;
+        this.lastModifiedTimestamp = null;
+        this.currentVersionNumber = null;
+        this.currentVersion = null;
+        this.stats = null;
+    }
+
     public StackMetaData(final StackId stackId,
                          final StackVersion currentVersion) {
         this.stackId = stackId;
@@ -143,10 +154,13 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
     }
 
     public String toJson() {
-        return JsonUtils.GSON.toJson(this, StackMetaData.class);
+        return JSON_HELPER.toJson(this);
     }
 
     public static StackMetaData fromJson(final String json) {
-        return JsonUtils.GSON.fromJson(json, StackMetaData.class);
+        return JSON_HELPER.fromJson(json);
     }
+
+    private static final JsonUtils.Helper<StackMetaData> JSON_HELPER =
+            new JsonUtils.Helper<>(StackMetaData.class);
 }

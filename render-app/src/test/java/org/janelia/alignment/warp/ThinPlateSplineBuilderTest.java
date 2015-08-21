@@ -4,14 +4,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
-import java.lang.reflect.Type;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
 import mpicbg.trakem2.transform.ThinPlateSplineTransform;
 
-import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -19,8 +17,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.gson.reflect.TypeToken;
 
 /**
  * Tests the {@link ThinPlateSplineBuilder} class.
@@ -52,7 +48,7 @@ public class ThinPlateSplineBuilderTest {
         final double acceptableCenterDelta = 0.001;
 
 
-        final HashMap<String, TileSpec> alignTileSpecsLUT = new HashMap<String, TileSpec>();
+        final HashMap<String, TileSpec> alignTileSpecsLUT = new HashMap<>();
         for (final TileSpec ts : alignTiles) {
             alignTileSpecsLUT.put(ts.getTileId(), ts);
         }
@@ -60,17 +56,18 @@ public class ThinPlateSplineBuilderTest {
         LOG.info("montage.size = {}; align.size = {}", montageTiles.size(), alignTiles.size());
 
         int j = 0;
-        for (int i = 0; i < montageTiles.size(); i++) {
+        for (final TileSpec montageTile : montageTiles) {
 
-            montageTileSpec = montageTiles.get(i);
-            montageTileSpec.addTransformSpecs(Arrays.asList(tpsSpec));
+            montageTileSpec = montageTile;
+            montageTileSpec.addTransformSpecs(Collections.singletonList(tpsSpec));
 
             montageCenter = getCenter(montageTileSpec);
 
             alignTileSpec = alignTileSpecsLUT.get(montageTileSpec.getTileId());
 
-            if (alignTileSpec == null)
+            if (alignTileSpec == null) {
                 continue;
+            }
 
             ++j;
 
@@ -85,10 +82,9 @@ public class ThinPlateSplineBuilderTest {
 
     private List<TileSpec> getTiles(final String jsonFileName) throws IOException {
         final File jsonFile = new File("src/test/resources/warp-test/" + jsonFileName);
-        final Type collectionType = new TypeToken<List<TileSpec>>() {}.getType();
-        List<TileSpec> tileSpecs;
+        final List<TileSpec> tileSpecs;
         try (Reader reader = new FileReader(jsonFile)) {
-            tileSpecs = JsonUtils.GSON.fromJson(reader, collectionType);
+            tileSpecs = TileSpec.fromJsonArray(reader);
         } catch (final Throwable t) {
             throw new IllegalArgumentException(
                     "failed to parse tile specifications loaded from " + jsonFile.getAbsolutePath(), t);

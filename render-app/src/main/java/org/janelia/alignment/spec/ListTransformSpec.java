@@ -1,5 +1,7 @@
 package org.janelia.alignment.spec;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -12,18 +14,16 @@ import mpicbg.models.CoordinateTransformList;
 /**
  * List of transform specifications.
  *
- * NOTE: The {@link org.janelia.alignment.json.TransformSpecAdapter} implementation handles
- * polymorphic deserialization for this class and is tightly coupled to it's implementation here.
- * The adapter will need to be modified any time attributes of this class are modified.
+ * NOTE: Annotations on the {@link TransformSpec} implementation handle
+ * polymorphic deserialization for this class.
  *
  * @author Eric Trautman
  */
 public class ListTransformSpec extends TransformSpec {
 
     public static final String TYPE = "list";
-    public static final String SPEC_LIST_ELEMENT_NAME = "specList";
 
-    private List<TransformSpec> specList;
+    private final List<TransformSpec> specList;
 
     public ListTransformSpec() {
         this(null, null);
@@ -32,7 +32,7 @@ public class ListTransformSpec extends TransformSpec {
     public ListTransformSpec(final String id,
                              final TransformSpecMetaData metaData) {
         super(id, TYPE, metaData);
-        this.specList = new ArrayList<TransformSpec>();
+        this.specList = new ArrayList<>();
     }
 
     public TransformSpec getSpec(final int index) {
@@ -41,12 +41,6 @@ public class ListTransformSpec extends TransformSpec {
 
     public void addSpec(final TransformSpec spec) {
         specList.add(spec);
-        removeInstance();
-    }
-
-    public void setSpec(final int index,
-                        final TransformSpec spec) {
-        specList.set(index, spec);
         removeInstance();
     }
 
@@ -116,6 +110,7 @@ public class ListTransformSpec extends TransformSpec {
     }
 
     @SuppressWarnings("unchecked")
+    @JsonIgnore
     public CoordinateTransformList<CoordinateTransform> getInstanceAsList()
             throws IllegalArgumentException {
         return (CoordinateTransformList<CoordinateTransform>) super.getInstance();
@@ -124,7 +119,7 @@ public class ListTransformSpec extends TransformSpec {
     @Override
     protected CoordinateTransform buildInstance()
             throws IllegalArgumentException {
-        final CoordinateTransformList<CoordinateTransform> ctList = new CoordinateTransformList<CoordinateTransform>();
+        final CoordinateTransformList<CoordinateTransform> ctList = new CoordinateTransformList<>();
         for (final TransformSpec spec : specList) {
             ctList.add(spec.buildInstance());
         }

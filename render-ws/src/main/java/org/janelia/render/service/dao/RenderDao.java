@@ -29,7 +29,6 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -629,7 +628,7 @@ public class RenderDao {
                                               transformCollection.getFullName() + " collection");
         }
 
-        return JsonUtils.GSON.fromJson(document.toString(), TransformSpec.class);
+        return TransformSpec.fromJson(document.toString());
     }
 
     /**
@@ -1247,7 +1246,7 @@ public class RenderDao {
                 TransformSpec transformSpec;
                 while (cursor.hasNext()) {
                     document = cursor.next();
-                    transformSpec = JsonUtils.GSON.fromJson(document.toString(), TransformSpec.class);
+                    transformSpec = TransformSpec.fromJson(document.toString());
                     transformSpecList.add(transformSpec);
                 }
             }

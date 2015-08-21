@@ -16,6 +16,11 @@
  */
 package org.janelia.alignment;
 
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.Parameters;
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -26,7 +31,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Serializable;
-import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -39,11 +43,6 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.Parameters;
-import com.google.gson.reflect.TypeToken;
 
 /**
  * Parameters for render operations.  Includes a collection of TileSpecs and
@@ -142,7 +141,7 @@ public class RenderParameters implements Serializable {
     private transient URI outUri;
     private transient boolean initialized;
 
-	    public RenderParameters() {
+    public RenderParameters() {
         this(null,
              DEFAULT_X_AND_Y,
              DEFAULT_X_AND_Y,
@@ -220,7 +219,7 @@ public class RenderParameters implements Serializable {
     public static RenderParameters parseJson(final String jsonText) throws IllegalArgumentException {
         final RenderParameters parameters;
         try {
-            parameters = JsonUtils.GSON.fromJson(jsonText, RenderParameters.class);
+            parameters = JsonUtils.MAPPER.readValue(jsonText, RenderParameters.class);
         } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to parse json text", t);
         }
@@ -238,7 +237,7 @@ public class RenderParameters implements Serializable {
     public static RenderParameters parseJson(final Reader jsonReader) throws IllegalArgumentException {
         final RenderParameters parameters;
         try {
-            parameters = JsonUtils.GSON.fromJson(jsonReader, RenderParameters.class);
+            parameters = JsonUtils.MAPPER.readValue(jsonReader, RenderParameters.class);
         } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to parse json reader stream", t);
         }
@@ -630,8 +629,9 @@ public class RenderParameters implements Serializable {
         return sb.toString();
     }
 
-    public String toJson() {
-        return JsonUtils.GSON.toJson(this);
+    public String toJson()
+            throws JsonProcessingException {
+        return JsonUtils.MAPPER.writeValueAsString(this);
     }
 
     private void setCommander() {
@@ -663,9 +663,8 @@ public class RenderParameters implements Serializable {
                 }
 
                 final Reader reader = new InputStreamReader(urlStream);
-                final Type collectionType = new TypeToken<List<TileSpec>>() {}.getType();
                 try {
-                    tileSpecs = JsonUtils.GSON.fromJson(reader, collectionType);
+                    tileSpecs = TileSpec.fromJsonArray(reader);
                 } catch (final Throwable t) {
                     throw new IllegalArgumentException(
                             "failed to parse tile specification loaded from " + urlObject, t);

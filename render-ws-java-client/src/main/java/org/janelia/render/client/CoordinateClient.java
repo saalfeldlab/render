@@ -9,7 +9,7 @@ import java.io.Writer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
@@ -188,7 +188,7 @@ public class CoordinateClient {
                 }
                 coordinates.setError(t.getMessage());
 
-                localListOfLists.add(Arrays.asList(coordinates));
+                localListOfLists.add(Collections.singletonList(coordinates));
             }
 
             if (timer.hasIntervalPassed()) {
@@ -380,7 +380,7 @@ public class CoordinateClient {
         LOG.info("saveJsonFile: entry");
 
         try (final Writer writer = FileUtil.DEFAULT_INSTANCE.getExtensionBasedWriter(toPath.toString())) {
-            JsonUtils.GSON.toJson(coordinateData, writer);
+            JsonUtils.MAPPER.writeValue(writer, coordinateData);
         }
 
         LOG.info("saveJsonFile: exit, wrote coordinate data to {}", toPath);

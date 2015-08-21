@@ -1,9 +1,9 @@
 package org.janelia.alignment.spec;
 
-import mpicbg.models.CoordinateTransform;
-
 import java.util.Map;
 import java.util.Set;
+
+import mpicbg.models.CoordinateTransform;
 
 /**
  * A reference to another {@link TransformSpec} instance.
@@ -16,7 +16,7 @@ public class ReferenceTransformSpec extends TransformSpec {
 
     public static final String TYPE = "ref";
 
-    private String refId;
+    private final String refId;
 
     /**
      * The effective id being referenced.
@@ -26,10 +26,18 @@ public class ReferenceTransformSpec extends TransformSpec {
     private transient String effectiveRefId;
     private transient TransformSpec resolvedInstance;
 
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private ReferenceTransformSpec() {
+        super(null, TYPE, null);
+        this.refId = null;
+        this.effectiveRefId = null;
+    }
+
     /**
      * @param  refId  the id this specification references.
      */
-    public ReferenceTransformSpec(String refId) {
+    public ReferenceTransformSpec(final String refId) {
         super(null, TYPE, null);
         this.refId = refId;
         this.effectiveRefId = refId;
@@ -53,7 +61,7 @@ public class ReferenceTransformSpec extends TransformSpec {
     }
 
     @Override
-    public void addUnresolvedIds(Set<String> unresolvedIds) {
+    public void addUnresolvedIds(final Set<String> unresolvedIds) {
         if (resolvedInstance == null) {
             unresolvedIds.add(getEffectiveRefId());
         } else {
@@ -62,7 +70,7 @@ public class ReferenceTransformSpec extends TransformSpec {
     }
 
     @Override
-    public void resolveReferences(Map<String, TransformSpec> idToSpecMap) {
+    public void resolveReferences(final Map<String, TransformSpec> idToSpecMap) {
         if (resolvedInstance == null) {
             final TransformSpec spec = idToSpecMap.get(getEffectiveRefId());
             if (spec != null) {
@@ -76,7 +84,7 @@ public class ReferenceTransformSpec extends TransformSpec {
     }
 
     @Override
-    public void flatten(ListTransformSpec flattenedList) throws IllegalStateException {
+    public void flatten(final ListTransformSpec flattenedList) throws IllegalStateException {
         if (! isFullyResolved()) {
             throw new IllegalStateException("cannot flatten unresolved reference to " + getEffectiveRefId());
         }

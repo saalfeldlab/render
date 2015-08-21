@@ -65,6 +65,14 @@ public class Matches implements Serializable {
     @ApiModelProperty(value = "Weights", required=true)
     final protected double[] w;
 
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private Matches() {
+        this.p = null;
+        this.q = null;
+        this.w = null;
+    }
+
     public Matches(
             final double[][] p,
             final double[][] q,

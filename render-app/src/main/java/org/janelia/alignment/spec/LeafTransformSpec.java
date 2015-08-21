@@ -36,6 +36,14 @@ public class LeafTransformSpec extends TransformSpec {
 
     private transient Class clazz;
 
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private LeafTransformSpec() {
+        super(null, TYPE, null);
+        this.className = null;
+        this.dataString = null;
+    }
+
     /**
      * "Legacy" constructor that supports simple specs without ids or metadata.
      *

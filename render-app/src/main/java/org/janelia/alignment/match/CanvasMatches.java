@@ -1,10 +1,9 @@
 package org.janelia.alignment.match;
 
-import com.google.gson.reflect.TypeToken;
-
+import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
-import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -44,6 +43,11 @@ public class CanvasMatches implements Serializable {
     /** Weighted source-target point correspondences. */
     @ApiModelProperty(value = "Weighted source-target point correspondences", required=true)
     private Matches matches;
+
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private CanvasMatches() {
+    }
 
     /**
      * Basic constructor that also normalizes (see {@link #normalize()}) p and q ordering.
@@ -138,10 +142,6 @@ public class CanvasMatches implements Serializable {
                '}';
     }
 
-    public String toJson() {
-        return JsonUtils.GSON.toJson(this);
-    }
-
     @SuppressWarnings("UnusedDeclaration")
     public String toTabSeparatedFormat() {
         final double[][] ps = matches.getPs();
@@ -156,13 +156,34 @@ public class CanvasMatches implements Serializable {
         return sb.toString();
     }
 
+    public String toJson() {
+        return JSON_HELPER.toJson(this);
+    }
+
     public static CanvasMatches fromJson(final String json) {
-        return JsonUtils.GSON.fromJson(json, CanvasMatches.class);
+        return JSON_HELPER.fromJson(json);
+    }
+
+    public static List<CanvasMatches> fromJsonArray(final String json) {
+        // TODO: verify using Arrays.asList optimization is actually faster
+        // return JSON_HELPER.fromJsonArray(json);
+        try {
+            return Arrays.asList(JsonUtils.MAPPER.readValue(json, CanvasMatches[].class));
+        } catch (final IOException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
     public static List<CanvasMatches> fromJsonArray(final Reader json) {
-        return JsonUtils.GSON.fromJson(json, LIST_TYPE);
+        // TODO: verify using Arrays.asList optimization is actually faster
+        // return JSON_HELPER.fromJsonArray(json);
+        try {
+            return Arrays.asList(JsonUtils.MAPPER.readValue(json, CanvasMatches[].class));
+        } catch (final IOException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
-    private static final Type LIST_TYPE = new TypeToken<List<CanvasMatches>>(){}.getType();
+    private static final JsonUtils.Helper<CanvasMatches> JSON_HELPER =
+            new JsonUtils.Helper<>(CanvasMatches.class);
 }

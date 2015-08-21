@@ -9,22 +9,27 @@ import org.janelia.alignment.json.JsonUtils;
  */
 public class TileBounds extends Bounds {
 
-    private String tileId;
+    private final String tileId;
 
-    public TileBounds(String tileId,
-                      Double minX,
-                      Double minY,
-                      Double maxX,
-                      Double maxY) {
-        super(minX, minY, maxX, maxY);
-        this.tileId = tileId;
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private TileBounds() {
+        super(null, null, null, null);
+        this.tileId = null;
     }
 
     public String getTileId() {
         return tileId;
     }
 
-    public static TileBounds fromJson(String json) {
-        return JsonUtils.GSON.fromJson(json, TileBounds.class);
+    public String toJson() {
+        return JSON_HELPER.toJson(this);
     }
+
+    public static TileBounds fromJson(final String json) {
+        return JSON_HELPER.fromJson(json);
+    }
+
+    private static final JsonUtils.Helper<TileBounds> JSON_HELPER =
+            new JsonUtils.Helper<>(TileBounds.class);
 }

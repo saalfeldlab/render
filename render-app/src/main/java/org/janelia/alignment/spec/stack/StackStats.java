@@ -23,15 +23,29 @@ public class StackStats
     private final Integer minTileHeight;
     private final Integer maxTileHeight;
 
-    public StackStats(Bounds stackBounds,
-                      Long sectionCount,
-                      Long nonIntegralSectionCount,
-                      Long tileCount,
-                      Long transformCount,
-                      Integer minTileWidth,
-                      Integer maxTileWidth,
-                      Integer minTileHeight,
-                      Integer maxTileHeight) {
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private StackStats() {
+        this.stackBounds = null;
+        this.sectionCount = null;
+        this.nonIntegralSectionCount = null;
+        this.tileCount = null;
+        this.transformCount = null;
+        this.minTileWidth = null;
+        this.maxTileWidth = null;
+        this.minTileHeight = null;
+        this.maxTileHeight = null;
+    }
+
+    public StackStats(final Bounds stackBounds,
+                      final Long sectionCount,
+                      final Long nonIntegralSectionCount,
+                      final Long tileCount,
+                      final Long transformCount,
+                      final Integer minTileWidth,
+                      final Integer maxTileWidth,
+                      final Integer minTileHeight,
+                      final Integer maxTileHeight) {
         this.stackBounds = stackBounds;
         this.sectionCount = sectionCount;
         this.nonIntegralSectionCount = nonIntegralSectionCount;
@@ -85,7 +99,9 @@ public class StackStats
     }
 
     public String toJson() {
-        return JsonUtils.GSON.toJson(this);
+        return JSON_HELPER.toJson(this);
     }
 
+    private static final JsonUtils.Helper<StackStats> JSON_HELPER =
+            new JsonUtils.Helper<>(StackStats.class);
 }

@@ -1,13 +1,15 @@
 package org.janelia.alignment.spec;
 
+import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
@@ -19,15 +21,16 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class ResolvedTileSpecCollection {
+public class ResolvedTileSpecCollection implements Serializable {
 
     private final Map<String, TransformSpec> transformIdToSpecMap;
     private final Map<String, TileSpec> tileIdToSpecMap;
 
     private transient TileSpecValidator tileSpecValidator;
 
-    @SuppressWarnings("UnusedDeclaration")
-    public ResolvedTileSpecCollection() {
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private ResolvedTileSpecCollection() {
         this(new ArrayList<TransformSpec>(), new ArrayList<TileSpec>());
     }
 
@@ -159,7 +162,7 @@ public class ResolvedTileSpecCollection {
             tileSpec.removeLastTransformSpec();
         }
 
-        tileSpec.addTransformSpecs(Arrays.asList(transformSpec));
+        tileSpec.addTransformSpecs(Collections.singletonList(transformSpec));
 
         // addition of new transform spec obsolesces the previously resolved coordinate transform instance,
         // so we need to re-resolve the tile before re-deriving the bounding box
@@ -293,6 +296,14 @@ public class ResolvedTileSpecCollection {
                '}';
     }
 
+    public String toJson() {
+        return JSON_HELPER.toJson(this);
+    }
+
+    public static ResolvedTileSpecCollection fromJson(final String json) {
+        return JSON_HELPER.fromJson(json);
+    }
+
     private String getBadTileZValueMessage(final double expectedZ,
                                            final TileSpec tileSpec) {
         return "all tiles must have a z value of " + expectedZ + " but tile " +
@@ -324,4 +335,7 @@ public class ResolvedTileSpecCollection {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ResolvedTileSpecCollection.class);
+
+    private static final JsonUtils.Helper<ResolvedTileSpecCollection> JSON_HELPER =
+            new JsonUtils.Helper<>(ResolvedTileSpecCollection.class);
 }

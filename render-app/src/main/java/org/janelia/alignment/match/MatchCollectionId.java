@@ -14,7 +14,15 @@ public class MatchCollectionId
 
     private final String owner;
     private final String name;
-    private final String dbCollectionName;
+
+    private transient String dbCollectionName;
+
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private MatchCollectionId() {
+        this.owner = null;
+        this.name = null;
+    }
 
     public MatchCollectionId(final String owner,
                              final String name)
@@ -25,14 +33,7 @@ public class MatchCollectionId
 
         this.owner = owner;
         this.name = name;
-        this.dbCollectionName = owner + FIELD_SEPARATOR + name;
-
-        if (dbCollectionName.length() > MAX_COLLECTION_NAME_LENGTH) {
-            throw new IllegalArgumentException("match db collection name '" + this.dbCollectionName +
-                                               "' must be less than " + MAX_COLLECTION_NAME_LENGTH +
-                                               " characters therefore the length of the owner and/or " +
-                                               "match collection names needs to be reduced");
-        }
+        setDbCollectionName();
     }
 
     public String getOwner() {
@@ -43,7 +44,10 @@ public class MatchCollectionId
         return name;
     }
 
-    public String getDbCollectionName() {
+    public String getDbCollectionName() throws IllegalArgumentException {
+        if (dbCollectionName == null) {
+            setDbCollectionName();
+        }
         return dbCollectionName;
     }
 
@@ -64,6 +68,17 @@ public class MatchCollectionId
         }
     }
 
+    private void setDbCollectionName() throws IllegalArgumentException {
+
+        dbCollectionName = owner + FIELD_SEPARATOR + name;
+
+        if (dbCollectionName.length() > MAX_COLLECTION_NAME_LENGTH) {
+            throw new IllegalArgumentException("match db collection name '" + this.dbCollectionName +
+                                               "' must be less than " + MAX_COLLECTION_NAME_LENGTH +
+                                               " characters therefore the length of the owner and/or " +
+                                               "match collection names needs to be reduced");
+        }
+    }
 
     // use consecutive underscores to separate fields within a scoped name
     private static final String FIELD_SEPARATOR = "__";

@@ -26,7 +26,6 @@ import javax.imageio.stream.MemoryCacheImageOutputStream;
 
 import mpicbg.trakem2.util.Downsampler;
 
-import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,7 +98,7 @@ public class MipmapGenerator {
                     if (tileCount != 0) {
                         outputStream.write(",\n".getBytes());
                     }
-                    outputStream.write(JsonUtils.GSON.toJson(updatedTileSpec).getBytes());
+                    outputStream.write(updatedTileSpec.toJson().getBytes());
                     tileCount++;
                     if ((System.currentTimeMillis() - timeOfLastProgressLog) > 10000) {
                         LOG.info("main: updated tile {} of {}", tileCount, tileSpecs.size());
@@ -175,7 +174,8 @@ public class MipmapGenerator {
      * @throws IOException
      *   if mipmap files cannot be generated for any reason.
      */
-    public void generateMissingMipmapFiles(TileSpec tileSpec, final int greatestMipmapLevel)
+    public void generateMissingMipmapFiles(final TileSpec tileSpec,
+                                           final int greatestMipmapLevel)
             throws IllegalArgumentException, IOException {
 
         ImageAndMask imageAndMask = tileSpec.getMipmap(0);

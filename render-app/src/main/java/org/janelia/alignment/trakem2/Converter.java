@@ -29,7 +29,6 @@ import mpicbg.trakem2.transform.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMesh;
 
 import org.janelia.alignment.ImageAndMask;
-import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -167,7 +166,7 @@ public class Converter {
                     tileSpec.validate();
                 }
 
-                JsonUtils.GSON.toJson(tileSpec, json);
+                json.append(tileSpec.toJson());
 
                 try {
                     jsonStream.write(json.toString().getBytes());
@@ -282,8 +281,8 @@ public class Converter {
     }
 
     private interface Transformable {
-        public void addToList(List<TransformSpec> list);
-        public void addToCoordinateTransformList(CoordinateTransformList<CoordinateTransform> list)
+        void addToList(List<TransformSpec> list);
+        void addToCoordinateTransformList(CoordinateTransformList<CoordinateTransform> list)
                 throws Exception;
     }
 
@@ -353,7 +352,7 @@ public class Converter {
                                     final String baseMaskPath,
                                     final double z) {
 
-            String imageUrl;
+            final String imageUrl;
             // TODO: make sure we don't need to check for Windows paths
             if (filePath.startsWith("/")) {
                 imageUrl = "file:" + filePath;
@@ -410,7 +409,7 @@ public class Converter {
                 fullCoordinateTransform = new AffineTransform(d[0], d[1], d[2], d[3], d[4], d[5]);
 
                 if (transforms != null) {
-                    Rectangle box;
+                    final Rectangle box;
                     try {
                         final CoordinateTransformList<CoordinateTransform> ctList = new CoordinateTransformList<>();
                         transforms.addToCoordinateTransformList(ctList);
@@ -493,11 +492,11 @@ public class Converter {
         }
 
         // This listener is invoked every time a new patch is unmarshalled.
-        public static interface Listener {
-            public void handlePatch(String baseMaskPath,
-                                    T2Layer layer,
-                                    T2Patch patch,
-                                    boolean isFirstPatch);
+        public interface Listener {
+            void handlePatch(String baseMaskPath,
+                             T2Layer layer,
+                             T2Patch patch,
+                             boolean isFirstPatch);
         }
 
     }

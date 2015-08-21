@@ -26,15 +26,32 @@ public class CollectionSnapshot
     private final String fullPath;
     private final Long actualBytes;
 
-    public CollectionSnapshot(String owner,
-                              String project,
-                              String databaseName,
-                              String collectionName,
-                              Integer version,
-                              String rootPath,
-                              Date collectionCreateTimestamp,
-                              String versionNotes,
-                              Long estimatedBytes) throws IllegalArgumentException {
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private CollectionSnapshot() {
+        this.owner = null;
+        this.project = null;
+        this.databaseName = null;
+        this.collectionName = null;
+        this.version = null;
+        this.rootPath = null;
+        this.collectionCreateTimestamp = null;
+        this.versionNotes = null;
+        this.estimatedBytes = null;
+        this.snapshotDate = null;
+        this.fullPath = null;
+        this.actualBytes = null;
+    }
+
+    public CollectionSnapshot(final String owner,
+                              final String project,
+                              final String databaseName,
+                              final String collectionName,
+                              final Integer version,
+                              final String rootPath,
+                              final Date collectionCreateTimestamp,
+                              final String versionNotes,
+                              final Long estimatedBytes) throws IllegalArgumentException {
         this(owner,
              project,
              databaseName,
@@ -49,18 +66,18 @@ public class CollectionSnapshot
              null);
     }
 
-    public CollectionSnapshot(String owner,
-                              String project,
-                              String databaseName,
-                              String collectionName,
-                              Integer version,
-                              String rootPath,
-                              Date collectionCreateTimestamp,
-                              String versionNotes,
-                              Long estimatedBytes,
-                              Date snapshotDate,
-                              String fullPath,
-                              Long actualBytes) throws IllegalArgumentException {
+    public CollectionSnapshot(final String owner,
+                              final String project,
+                              final String databaseName,
+                              final String collectionName,
+                              final Integer version,
+                              final String rootPath,
+                              final Date collectionCreateTimestamp,
+                              final String versionNotes,
+                              final Long estimatedBytes,
+                              final Date snapshotDate,
+                              final String fullPath,
+                              final Long actualBytes) throws IllegalArgumentException {
         this.owner = owner;
         this.project = project;
         this.databaseName = databaseName;
@@ -73,13 +90,11 @@ public class CollectionSnapshot
         this.snapshotDate = snapshotDate;
         this.fullPath = fullPath;
         this.actualBytes = actualBytes;
-
-        validate();
     }
 
-    public CollectionSnapshot getSnapshotWithPersistenceData(Date snapshotDate,
-                                                             String fullPath,
-                                                             Long actualBytes) {
+    public CollectionSnapshot getSnapshotWithPersistenceData(final Date snapshotDate,
+                                                             final String fullPath,
+                                                             final Long actualBytes) {
         return new CollectionSnapshot(this.owner,
                                       this.project,
                                       this.databaseName,
@@ -170,11 +185,13 @@ public class CollectionSnapshot
     }
 
     public String toJson() {
-        return JsonUtils.GSON.toJson(this, CollectionSnapshot.class);
+        return JSON_HELPER.toJson(this);
     }
 
     public static CollectionSnapshot fromJson(final String json) {
-        return JsonUtils.GSON.fromJson(json, CollectionSnapshot.class);
+        return JSON_HELPER.fromJson(json);
     }
 
+    private static final JsonUtils.Helper<CollectionSnapshot> JSON_HELPER =
+            new JsonUtils.Helper<>(CollectionSnapshot.class);
 }

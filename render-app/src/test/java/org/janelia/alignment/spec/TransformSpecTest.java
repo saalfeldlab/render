@@ -6,7 +6,6 @@ import java.util.Set;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
-import org.janelia.alignment.json.JsonUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,9 +75,8 @@ public class TransformSpecTest {
 
         LOG.info("generated:\n" + json);
 
-        final TransformSpec parsedSpec = JsonUtils.GSON.fromJson(json, TransformSpec.class);
-
-        Assert.assertNotNull("null spec returned from json parse");
+        final TransformSpec parsedSpec = TransformSpec.fromJson(json);
+        Assert.assertNotNull("null spec returned from json parse", parsedSpec);
 
         ListTransformSpec parsedListSpec = null;
         if (parsedSpec instanceof ListTransformSpec) {
@@ -117,7 +115,7 @@ public class TransformSpecTest {
 
         validateUnresolvedSize("before resolution", listSpec, 2);
 
-        final Map<String, TransformSpec> idToSpecMap = new HashMap<String, TransformSpec>();
+        final Map<String, TransformSpec> idToSpecMap = new HashMap<>();
         idToSpecMap.put(ref1.getRefId(), leaf1);
         idToSpecMap.put(ref99.getRefId(), new ReferenceTransformSpec(leaf2.getId()));
 

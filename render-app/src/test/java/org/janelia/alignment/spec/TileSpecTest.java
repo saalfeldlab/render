@@ -26,7 +26,6 @@ import java.util.Map;
 import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.janelia.alignment.ImageAndMask;
-import org.janelia.alignment.json.JsonUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -70,7 +69,7 @@ public class TileSpecTest {
         final LayoutData layoutData = new LayoutData("s12", "array-a", "camera-b", 4, 5, 6.0, 7.0, 8.0);
         tileSpec.setLayout(layoutData);
 
-        final String json = JsonUtils.GSON.toJson(tileSpec);
+        final String json = tileSpec.toJson();
 
         Assert.assertNotNull("json generation returned null string", json);
 
@@ -193,7 +192,7 @@ public class TileSpecTest {
 
     private static final String JSON_WITH_UNSORTED_MIPMAP_LEVELS =
             "{\n" +
-            "  \"tileId\": " + EXPECTED_TILE_ID + ",\n" +
+            "  \"tileId\": \"" + EXPECTED_TILE_ID + "\",\n" +
             "  \"width\": " + EXPECTED_WIDTH + ",\n" +
             "  \"height\": -1,\n" +
             "  \"minIntensity\": 0.0,\n" +
@@ -213,8 +212,8 @@ public class TileSpecTest {
             "    }\n" +
             "  },\n" +
             "  \"transforms\": {\n" +
-            "    type= \"list\",\n" +
-            "    specList= [\n" +
+            "    \"type\": \"list\",\n" +
+            "    \"specList\": [\n" +
             "      {\n" +
             "        \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
             "        \"dataString\": \"1 0 0 1 0 0\"\n" +
@@ -230,8 +229,8 @@ public class TileSpecTest {
             "  \"minIntensity\": 0.0,\n" +
             "  \"maxIntensity\": 255.0,\n" +
             "  \"transforms\": {\n" +
-            "    type= \"list\",\n" +
-            "    specList= [\n" +
+            "    \"type\": \"list\",\n" +
+            "    \"specList\": [\n" +
             "      {\n" +
             "        \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
             "        \"dataString\": \"1 0 0 1 0 0\"\n" +
