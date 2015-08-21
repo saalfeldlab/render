@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
 
@@ -68,6 +69,9 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/layoutFile")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
+    @ApiOperation(
+            value = "Get layout file text for all stack layers",
+            produces = MediaType.TEXT_PLAIN)
     public Response getLayoutFile(@PathParam("owner") final String owner,
                                   @PathParam("project") final String project,
                                   @PathParam("stack") final String stack,
@@ -79,6 +83,9 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/zRange/{minZ},{maxZ}/layoutFile")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
+    @ApiOperation(
+            value = "Get layout file text for specified stack layers",
+            produces = MediaType.TEXT_PLAIN)
     public Response getLayoutFileForZRange(@PathParam("owner") final String owner,
                                            @PathParam("project") final String project,
                                            @PathParam("stack") final String stack,
