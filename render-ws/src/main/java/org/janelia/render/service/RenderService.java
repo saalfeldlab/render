@@ -89,7 +89,8 @@ public class RenderService {
                                         @PathParam("stack") final String stack,
                                         @PathParam("z") final Double z,
                                         @QueryParam("scale") Double scale,
-                                        @QueryParam("filter") final Boolean filter) {
+                                        @QueryParam("filter") final Boolean filter,
+                                        @QueryParam("optimizeRenderTime") final Boolean optimizeRenderTime) {
 
         LOG.info("renderJpegImageForZ: entry, owner={}, project={}, stack={}, z={}, scale={}, filter={}",
                  owner, project, stack, z, scale, filter);
@@ -100,7 +101,7 @@ public class RenderService {
 
         final RenderParameters renderParameters =
                 renderDataService.getRenderParametersForZ(owner, project, stack, z, scale, filter);
-        return renderJpegImage(renderParameters, true);
+        return renderJpegImage(renderParameters, optimizeRenderTime);
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/png-image")
@@ -112,7 +113,8 @@ public class RenderService {
                                        @PathParam("stack") final String stack,
                                        @PathParam("z") final Double z,
                                        @QueryParam("scale") Double scale,
-                                       @QueryParam("filter") final Boolean filter) {
+                                       @QueryParam("filter") final Boolean filter,
+                                       @QueryParam("optimizeRenderTime") final Boolean optimizeRenderTime) {
 
         LOG.info("renderPngImageForZ: entry, owner={}, project={}, stack={}, z={}, scale={}, filter={}",
                  owner, project, stack, z, scale, filter);
@@ -121,9 +123,11 @@ public class RenderService {
             scale = 0.01;
         }
 
+
+
         final RenderParameters renderParameters =
                 renderDataService.getRenderParametersForZ(owner, project, stack, z, scale, filter);
-        return renderPngImage(renderParameters, true);
+        return renderPngImage(renderParameters, optimizeRenderTime);
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/tiff-image")
@@ -135,7 +139,8 @@ public class RenderService {
                                         @PathParam("stack") final String stack,
                                         @PathParam("z") final Double z,
                                         @QueryParam("scale") Double scale,
-                                        @QueryParam("filter") final Boolean filter) {
+                                        @QueryParam("filter") final Boolean filter,
+                                        @QueryParam("optimizeRenderTime") final Boolean optimizeRenderTime) {
 
         LOG.info("renderTiffImageForZ: entry, owner={}, project={}, stack={}, z={}, scale={}, filter={}",
                  owner, project, stack, z, scale, filter);
@@ -146,7 +151,7 @@ public class RenderService {
 
         final RenderParameters renderParameters =
                 renderDataService.getRenderParametersForZ(owner, project, stack, z, scale, filter);
-        return renderTiffImage(renderParameters, true);
+        return renderTiffImage(renderParameters, optimizeRenderTime);
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/jpeg-image")
@@ -367,13 +372,14 @@ public class RenderService {
                                           @PathParam("height") final Integer height,
                                           @PathParam("scale") final Double scale,
                                           @QueryParam("filter") final Boolean filter,
-                                          @QueryParam("binaryMask") final Boolean binaryMask) {
+                                          @QueryParam("binaryMask") final Boolean binaryMask,
+                                          @QueryParam("optimizeRenderTime") final Boolean optimizeRenderTime) {
 
         LOG.info("renderJpegImageForBox: entry");
         final RenderParameters renderParameters =
                 getRenderParametersForGroupBox(owner, project, stack, null,
                                                x, y, z, width, height, scale, filter, binaryMask);
-        return renderJpegImage(renderParameters, true);
+        return renderJpegImage(renderParameters, optimizeRenderTime);
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
@@ -390,13 +396,14 @@ public class RenderService {
                                          @PathParam("height") final Integer height,
                                          @PathParam("scale") final Double scale,
                                          @QueryParam("filter") final Boolean filter,
-                                         @QueryParam("binaryMask") final Boolean binaryMask) {
+                                         @QueryParam("binaryMask") final Boolean binaryMask,
+                                         @QueryParam("optimizeRenderTime") final Boolean optimizeRenderTime) {
 
         LOG.info("renderPngImageForBox: entry");
         final RenderParameters renderParameters =
                 getRenderParametersForGroupBox(owner, project, stack, null,
                                                x, y, z, width, height, scale, filter, binaryMask);
-        return renderPngImage(renderParameters, true);
+        return renderPngImage(renderParameters, optimizeRenderTime);
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
@@ -413,13 +420,14 @@ public class RenderService {
                                           @PathParam("height") final Integer height,
                                           @PathParam("scale") final Double scale,
                                           @QueryParam("filter") final Boolean filter,
-                                          @QueryParam("binaryMask") final Boolean binaryMask) {
+                                          @QueryParam("binaryMask") final Boolean binaryMask,
+                                          @QueryParam("optimizeRenderTime") final Boolean optimizeRenderTime) {
 
         LOG.info("renderTiffImageForBox: entry");
         final RenderParameters renderParameters =
                 getRenderParametersForGroupBox(owner, project, stack, null,
                                                x, y, z, width, height, scale, filter, binaryMask);
-        return renderTiffImage(renderParameters, true);
+        return renderTiffImage(renderParameters, optimizeRenderTime);
     }
 
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
@@ -437,13 +445,14 @@ public class RenderService {
                                                @PathParam("height") final Integer height,
                                                @PathParam("scale") final Double scale,
                                                @QueryParam("filter") final Boolean filter,
-                                               @QueryParam("binaryMask") final Boolean binaryMask) {
+                                               @QueryParam("binaryMask") final Boolean binaryMask,
+                                               @QueryParam("optimizeRenderTime") final Boolean optimizeRenderTime) {
 
         LOG.info("renderJpegImageForGroupBox: entry");
         final RenderParameters renderParameters =
                 getRenderParametersForGroupBox(owner, project, stack, groupId,
                                                x, y, z, width, height, scale, filter, binaryMask);
-        return renderJpegImage(renderParameters, true);
+        return renderJpegImage(renderParameters, optimizeRenderTime);
     }
 
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
@@ -461,13 +470,14 @@ public class RenderService {
                                               @PathParam("height") final Integer height,
                                               @PathParam("scale") final Double scale,
                                               @QueryParam("filter") final Boolean filter,
-                                              @QueryParam("binaryMask") final Boolean binaryMask) {
+                                              @QueryParam("binaryMask") final Boolean binaryMask,
+                                              @QueryParam("optimizeRenderTime") final Boolean optimizeRenderTime) {
 
         LOG.info("renderPngImageForGroupBox: entry");
         final RenderParameters renderParameters =
                 getRenderParametersForGroupBox(owner, project, stack, groupId,
                                                x, y, z, width, height, scale, filter, binaryMask);
-        return renderPngImage(renderParameters, true);
+        return renderPngImage(renderParameters, optimizeRenderTime);
     }
 
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
@@ -485,13 +495,14 @@ public class RenderService {
                                                @PathParam("height") final Integer height,
                                                @PathParam("scale") final Double scale,
                                                @QueryParam("filter") final Boolean filter,
-                                               @QueryParam("binaryMask") final Boolean binaryMask) {
+                                               @QueryParam("binaryMask") final Boolean binaryMask,
+                                               @QueryParam("optimizeRenderTime") final Boolean optimizeRenderTime) {
 
         LOG.info("renderTiffImageForGroupBox: entry");
         final RenderParameters renderParameters =
                 getRenderParametersForGroupBox(owner, project, stack, groupId,
                                                x, y, z, width, height, scale, filter, binaryMask);
-        return renderTiffImage(renderParameters, true);
+        return renderTiffImage(renderParameters, optimizeRenderTime);
     }
 
     private RenderParameters getRenderParametersForGroupBox(final String owner,
@@ -523,25 +534,25 @@ public class RenderService {
     }
 
     private Response renderJpegImage(final RenderParameters renderParameters,
-                                     final boolean optimizeRenderTime) {
+                                     final Boolean optimizeRenderTime) {
         return renderImageStream(renderParameters, Utils.JPEG_FORMAT, IMAGE_JPEG_MIME_TYPE, optimizeRenderTime);
     }
 
 
     private Response renderPngImage(final RenderParameters renderParameters,
-                                    final boolean optimizeRenderTime) {
+                                    final Boolean optimizeRenderTime) {
         return renderImageStream(renderParameters, Utils.PNG_FORMAT, IMAGE_PNG_MIME_TYPE, optimizeRenderTime);
     }
 
     private Response renderTiffImage(final RenderParameters renderParameters,
-                                     final boolean optimizeRenderTime) {
+                                     final Boolean optimizeRenderTime) {
         return renderImageStream(renderParameters, Utils.TIFF_FORMAT, IMAGE_TIFF_MIME_TYPE, optimizeRenderTime);
     }
 
     private Response renderImageStream(final RenderParameters renderParameters,
                                        final String format,
                                        final String mimeType,
-                                       final boolean optimizeRenderTime) {
+                                       final Boolean optimizeRenderTime) {
 
         LOG.info("renderImageStream: entry, format={}, mimeType={}", format, mimeType);
 
@@ -549,7 +560,8 @@ public class RenderService {
 
         Response response = null;
         try {
-            final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters, optimizeRenderTime);
+            final boolean optimize = (optimizeRenderTime != null) && optimizeRenderTime;
+            final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters, optimize);
             final BufferedImageStreamingOutput out =
                     new BufferedImageStreamingOutput(targetImage,
                                                      format,
