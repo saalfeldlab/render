@@ -31,7 +31,7 @@ public class ListTransformSpec extends TransformSpec {
 
     public ListTransformSpec(final String id,
                              final TransformSpecMetaData metaData) {
-        super(id, TYPE, metaData);
+        super(id, metaData);
         this.specList = new ArrayList<>();
     }
 

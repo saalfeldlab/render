@@ -4,10 +4,11 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.core.util.DefaultIndenter;
+//import com.fasterxml.jackson.core.util.DefaultIndenter;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.io.IOException;
@@ -33,7 +34,8 @@ public class JsonUtils {
 
     public static class ArraysOnNewLinePrettyPrinter extends DefaultPrettyPrinter {
         public ArraysOnNewLinePrettyPrinter() {
-            _arrayIndenter = DefaultIndenter.SYSTEM_LINEFEED_INSTANCE;
+//            _arrayIndenter = DefaultIndenter.SYSTEM_LINEFEED_INSTANCE;
+            _arrayIndenter = new DefaultPrettyPrinter.Lf2SpacesIndenter();
         }
     }
 
@@ -44,12 +46,14 @@ public class JsonUtils {
             setVisibility(PropertyAccessor.IS_GETTER, JsonAutoDetect.Visibility.NONE).
             setVisibility(PropertyAccessor.SETTER, JsonAutoDetect.Visibility.NONE).
             configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).
-            configure(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES, false).
+//            configure(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES, false).
             setDateFormat(getDateFormat());
 
     public static final ObjectMapper MAPPER = FAST_MAPPER.copy().
-            setDefaultPrettyPrinter(new ArraysOnNewLinePrettyPrinter()).
+//            setDefaultPrettyPrinter(new ArraysOnNewLinePrettyPrinter()).
             enable(SerializationFeature.INDENT_OUTPUT);
+
+    public static final ObjectWriter WRITER = MAPPER.writer(new ArraysOnNewLinePrettyPrinter());
 
     public static class Helper<T> {
 
@@ -64,7 +68,7 @@ public class JsonUtils {
         public String toJson(final T value)
                 throws IllegalArgumentException {
             try {
-                return MAPPER.writeValueAsString(value);
+                return WRITER.writeValueAsString(value);
             } catch (final IOException e) {
                 throw new IllegalArgumentException(e);
             }
@@ -119,7 +123,7 @@ public class JsonUtils {
         public String toJson(final T value)
                 throws IllegalArgumentException {
             try {
-                return MAPPER.writeValueAsString(value);
+                return WRITER.writeValueAsString(value);
             } catch (final IOException e) {
                 throw new IllegalArgumentException(e);
             }

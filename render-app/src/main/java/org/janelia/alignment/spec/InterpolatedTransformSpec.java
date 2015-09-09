@@ -26,7 +26,7 @@ public class InterpolatedTransformSpec
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private InterpolatedTransformSpec() {
-        super(null, TYPE, null);
+        super(null, null);
         this.a = null;
         this.b = null;
         this.lambda = null;
@@ -37,7 +37,7 @@ public class InterpolatedTransformSpec
                                      final TransformSpec a,
                                      final TransformSpec b,
                                      final Double lambda) {
-        super(id, TYPE, metaData);
+        super(id, metaData);
         this.a = a;
         this.b = b;
         this.lambda = lambda;

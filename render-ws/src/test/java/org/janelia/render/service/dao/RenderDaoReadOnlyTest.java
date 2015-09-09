@@ -176,7 +176,7 @@ public class RenderDaoReadOnlyTest {
     public void testGetTransformSpec() throws Exception {
         final TransformSpec transformSpec = dao.getTransformSpec(stackId, "2");
         Assert.assertNotNull("null transformSpec retrieved", transformSpec);
-        Assert.assertEquals("invalid type retrieved", "list", transformSpec.getType());
+        Assert.assertTrue("invalid type retrieved", transformSpec instanceof ListTransformSpec);
     }
 
     @Test(expected = ObjectNotFoundException.class)

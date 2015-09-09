@@ -16,10 +16,10 @@
  */
 package org.janelia.alignment.spec;
 
-import mpicbg.models.CoordinateTransform;
-
 import java.util.Map;
 import java.util.Set;
+
+import mpicbg.models.CoordinateTransform;
 
 /**
  * Specifies a {@link mpicbg.trakem2.transform.CoordinateTransform} implementation
@@ -29,7 +29,7 @@ import java.util.Set;
  */
 public class LeafTransformSpec extends TransformSpec {
 
-    public static final String TYPE = null; // use null type for leaf specs so legacy in-lined data
+    public static final String TYPE = "leaf";
 
     private final String className;
     private final String dataString;
@@ -39,7 +39,7 @@ public class LeafTransformSpec extends TransformSpec {
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private LeafTransformSpec() {
-        super(null, TYPE, null);
+        super(null, null);
         this.className = null;
         this.dataString = null;
     }
@@ -52,7 +52,7 @@ public class LeafTransformSpec extends TransformSpec {
      */
     public LeafTransformSpec(final String className,
                              final String dataString) {
-        super(null, TYPE, null);
+        super(null, null);
         this.className = className;
         this.dataString = dataString;
     }
@@ -69,7 +69,7 @@ public class LeafTransformSpec extends TransformSpec {
                              final TransformSpecMetaData metaData,
                              final String className,
                              final String dataString) {
-        super(id, TYPE, metaData);
+        super(id, metaData);
         this.className = className;
         this.dataString = dataString;
     }

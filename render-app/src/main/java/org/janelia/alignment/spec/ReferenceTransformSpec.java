@@ -29,7 +29,7 @@ public class ReferenceTransformSpec extends TransformSpec {
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private ReferenceTransformSpec() {
-        super(null, TYPE, null);
+        super(null, null);
         this.refId = null;
         this.effectiveRefId = null;
     }
@@ -38,7 +38,7 @@ public class ReferenceTransformSpec extends TransformSpec {
      * @param  refId  the id this specification references.
      */
     public ReferenceTransformSpec(final String refId) {
-        super(null, TYPE, null);
+        super(null, null);
         this.refId = refId;
         this.effectiveRefId = refId;
     }

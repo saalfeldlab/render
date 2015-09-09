@@ -27,26 +27,24 @@ import org.janelia.alignment.json.JsonUtils;
  */
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
-        include = JsonTypeInfo.As.EXISTING_PROPERTY,
+        include = JsonTypeInfo.As.PROPERTY,
         property = "type",
         defaultImpl = LeafTransformSpec.class)
 @JsonSubTypes({
         @JsonSubTypes.Type(value = InterpolatedTransformSpec.class, name = InterpolatedTransformSpec.TYPE),
+        @JsonSubTypes.Type(value = LeafTransformSpec.class, name = LeafTransformSpec.TYPE),
         @JsonSubTypes.Type(value = ListTransformSpec.class, name = ListTransformSpec.TYPE),
         @JsonSubTypes.Type(value = ReferenceTransformSpec.class, name = ReferenceTransformSpec.TYPE) })
 public abstract class TransformSpec implements Serializable {
 
     private final String id;
-    private final String type;
     private final TransformSpecMetaData metaData;
 
     private transient CoordinateTransform instance;
 
     protected TransformSpec(final String id,
-                            final String type,
                             final TransformSpecMetaData metaData) {
         this.id = id;
-        this.type = type;
         this.metaData = metaData;
     }
 
@@ -56,10 +54,6 @@ public abstract class TransformSpec implements Serializable {
 
     public String getId() {
         return id;
-    }
-
-    public String getType() {
-        return type;
     }
 
     public TransformSpecMetaData getMetaData() {
