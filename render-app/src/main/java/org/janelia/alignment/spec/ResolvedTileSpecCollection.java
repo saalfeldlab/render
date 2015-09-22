@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -252,7 +253,52 @@ public class ResolvedTileSpecCollection implements Serializable {
             }
         }
 
-        // TODO: remove any unreferenced transforms
+        removeUnreferencedTransforms();
+    }
+
+    /**
+     * Uses this collection's tileSpecValidator to remove any invalid tile specs.
+     */
+    public void filterInvalidSpecs() {
+
+        if (tileSpecValidator != null) {
+            final Iterator<Map.Entry<String, TileSpec>> i = tileIdToSpecMap.entrySet().iterator();
+            Map.Entry<String, TileSpec> entry;
+            while (i.hasNext()) {
+                entry = i.next();
+                if (isTileInvalid(entry.getValue())) {
+                    i.remove();
+                }
+            }
+        }
+
+        removeUnreferencedTransforms();
+    }
+
+    /**
+     * Removes any shared transforms that are not referenced by tile specs.
+     */
+    public void removeUnreferencedTransforms() {
+
+        if (transformIdToSpecMap.size() > 0) {
+
+            final Set<String> referencedTransformIds = new HashSet<>();
+            for (final TileSpec tileSpec : tileIdToSpecMap.values()) {
+                addReferencedTransformIds(tileSpec.getTransforms(), referencedTransformIds);
+            }
+
+            final Iterator<Map.Entry<String, TransformSpec>> i = transformIdToSpecMap.entrySet().iterator();
+            String transformSpecId;
+            while (i.hasNext()) {
+                transformSpecId = i.next().getKey();
+                if (! referencedTransformIds.contains(transformSpecId)) {
+                    i.remove();
+                    LOG.info("removeUnreferencedTransforms: removed '" + transformSpecId + "'");
+                }
+            }
+
+        }
+
     }
 
     /**
@@ -324,14 +370,33 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     private void removeTileIfInvalid(final TileSpec tileSpec) {
+        if (isTileInvalid(tileSpec)) {
+            tileIdToSpecMap.remove(tileSpec.getTileId());
+        }
+    }
 
+    private boolean isTileInvalid(final TileSpec tileSpec) {
+        boolean isInvalid = false;
         try {
             tileSpecValidator.validate(tileSpec);
         } catch (final IllegalArgumentException e) {
             LOG.error(e.getMessage());
-            tileIdToSpecMap.remove(tileSpec.getTileId());
+            isInvalid = true;
         }
+        return isInvalid;
+    }
 
+    private void addReferencedTransformIds(final ListTransformSpec listTransformSpec,
+                                           final Set<String> referencedTransformIds) {
+        TransformSpec transformSpec;
+        for (int i = 0; i < listTransformSpec.size(); i++) {
+            transformSpec = listTransformSpec.getSpec(i);
+            if (transformSpec instanceof ReferenceTransformSpec) {
+                referencedTransformIds.add(((ReferenceTransformSpec) transformSpec).getRefId());
+            } else if (transformSpec instanceof ListTransformSpec) {
+                addReferencedTransformIds((ListTransformSpec) transformSpec, referencedTransformIds);
+            }
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ResolvedTileSpecCollection.class);

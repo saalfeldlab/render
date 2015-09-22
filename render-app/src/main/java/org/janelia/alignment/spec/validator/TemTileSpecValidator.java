@@ -29,6 +29,32 @@ public class TemTileSpecValidator implements TileSpecValidator {
         this.maxSize = maxSize;
     }
 
+    public double getMinCoordinate() {
+        return minCoordinate;
+    }
+
+    public double getMaxCoordinate() {
+        return maxCoordinate;
+    }
+
+    public double getMaxSize() {
+        return maxSize;
+    }
+
+    public double getMinSize() {
+        return minSize;
+    }
+
+    @Override
+    public String toString() {
+        return "TemTileSpecValidator{" +
+               "maxCoordinate=" + getMaxCoordinate() +
+               ", minCoordinate=" + getMinCoordinate() +
+               ", minSize=" + getMinSize() +
+               ", maxSize=" + getMaxSize() +
+               '}';
+    }
+
     /**
      * @param  tileSpec  specification to validate.
      *

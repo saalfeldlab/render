@@ -8,11 +8,15 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.validator.TemTileSpecValidator;
+import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +38,9 @@ public class ImportJsonClient {
 
         @Parameter(names = "--transformFile", description = "file containing shared JSON transform specs (.json, .gz, or .zip)", required = false)
         private String transformFile;
+
+        @Parameter(names = "--disableValidation", description = "Disable flyTEM tile validation", required = false, arity = 0)
+        private boolean disableValidation;
 
         @Parameter(description = "list of tile spec files (.json, .gz, or .zip)", required = true)
         private List<String> tileFiles;
@@ -60,12 +67,21 @@ public class ImportJsonClient {
     }
 
     private final Parameters parameters;
+    private final TileSpecValidator tileSpecValidator;
+
     private final RenderDataClient renderDataClient;
     private final List<TransformSpec> transformSpecs;
 
     public ImportJsonClient(final Parameters parameters)
             throws IOException {
         this.parameters = parameters;
+
+        if (parameters.disableValidation) {
+            this.tileSpecValidator = null;
+        } else {
+            this.tileSpecValidator = new TemTileSpecValidator();
+        }
+
         this.renderDataClient = parameters.getClient();
 
         this.transformSpecs = loadTransformData(parameters.transformFile);
@@ -99,6 +115,37 @@ public class ImportJsonClient {
 
                 // TODO: generate mipmaps?
 
+            }
+
+            if ((tileSpecValidator != null) && (tileSpecCount > 0)) {
+
+                // filter out invalid specs based upon bounding box
+                resolvedTiles.setTileSpecValidator(tileSpecValidator);
+                resolvedTiles.filterInvalidSpecs();
+
+                // filter out specs with differing widths or heights
+                final Set<String> validSpecIds = new HashSet<>(resolvedTiles.getTileCount());
+                Integer standardWidth = null;
+                Integer standardHeight = null;
+                for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
+
+                    if (standardWidth == null) {
+                        standardWidth = tileSpec.getWidth();
+                        standardHeight = tileSpec.getHeight();
+                    }
+
+                    if (! standardWidth.equals(tileSpec.getWidth())){
+                        LOG.error("removing tileId '" + tileSpec.getTileId() + "' because its width (" +
+                                  tileSpec.getWidth() + ") differs from the standard width (" + standardWidth + ")");
+                    } else if (! standardHeight.equals(tileSpec.getHeight())){
+                        LOG.error("removing tileId '" + tileSpec.getTileId() + "' because its height (" +
+                                  tileSpec.getHeight() + ") differs from the standard height (" + standardHeight + ")");
+                    } else {
+                        validSpecIds.add(tileSpec.getTileId());
+                    }
+                }
+
+                resolvedTiles.filterSpecs(validSpecIds);
             }
 
             LOG.info("importStackData: derived bounding box for {} tiles, elapsedSeconds={}",

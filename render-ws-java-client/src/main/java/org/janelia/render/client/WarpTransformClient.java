@@ -11,6 +11,8 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.validator.TemTileSpecValidator;
+import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.warp.AbstractWarpTransformBuilder;
 import org.janelia.alignment.warp.MovingLeastSquaresBuilder;
 import org.janelia.alignment.warp.ThinPlateSplineBuilder;
@@ -44,6 +46,9 @@ public class WarpTransformClient {
         @Parameter(names = "--deriveTPS", description = "Derive thin plate spline transform instead of MLS transform", required = false, arity = 0)
         private boolean deriveTPS;
 
+        @Parameter(names = "--disableValidation", description = "Disable flyTEM tile validation", required = false, arity = 0)
+        private boolean disableValidation;
+
         @Parameter(description = "Z values", required = true)
         private List<String> zValues;
     }
@@ -68,11 +73,19 @@ public class WarpTransformClient {
     }
 
     private final Parameters parameters;
+    private final TileSpecValidator tileSpecValidator;
 
     private final RenderDataClient renderDataClient;
 
     public WarpTransformClient(final Parameters parameters) {
         this.parameters = parameters;
+
+        if (parameters.disableValidation) {
+            this.tileSpecValidator = null;
+        } else {
+            this.tileSpecValidator = new TemTileSpecValidator();
+        }
+
         this.renderDataClient = parameters.getClient();
     }
 
@@ -91,6 +104,10 @@ public class WarpTransformClient {
                                                               z);
 
         LOG.info("generateStackDataForZ: derived moving least squares transform for {}", z);
+
+        if (tileSpecValidator != null) {
+            montageTiles.setTileSpecValidator(tileSpecValidator);
+        }
 
         montageTiles.addTransformSpecToCollection(mlsTransformSpec);
         montageTiles.addReferenceTransformToAllTiles(mlsTransformSpec.getId());
