@@ -432,7 +432,8 @@ public class RenderDataClient {
         final HttpPut httpPut = new HttpPut(uri);
         httpPut.setEntity(stringEntity);
 
-        LOG.info("saveResolvedTiles: submitting {}", requestContext);
+        LOG.info("saveResolvedTiles: submitting {} for {} transforms and {} tiles",
+                 requestContext, resolvedTiles.getTransformCount(), resolvedTiles.getTileCount());
 
         httpClient.execute(httpPut, responseHandler);
     }
