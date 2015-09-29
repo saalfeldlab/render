@@ -81,7 +81,7 @@ public class RenderDataClient {
     public String getLikelyUniqueId()
             throws IOException {
 
-        final URI uri = getUri(getOwnerUrlString() + "/likelyUniqueId");
+        final URI uri = getUri(baseDataUrl + "/likelyUniqueId");
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);

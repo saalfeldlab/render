@@ -23,7 +23,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -794,6 +793,25 @@ public class RenderDao {
         }
 
         LOG.debug("getSectionData: returning {} values for {}", list.size(), tileCollection.getFullName());
+
+        return list;
+    }
+
+    /**
+     * @return list of stack owners.
+     *
+     * @throws IllegalArgumentException
+     *   if required parameters are not specified.
+     */
+    public List<String> getOwners()
+            throws IllegalArgumentException {
+
+        final List<String> list = new ArrayList<>();
+
+        final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
+        for (final Object owner : stackMetaDataCollection.distinct("stackId.owner")) {
+            list.add(owner.toString());
+        }
 
         return list;
     }

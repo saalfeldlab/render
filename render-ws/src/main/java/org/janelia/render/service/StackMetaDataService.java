@@ -42,7 +42,7 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState.OFFLINE;
  *
  * @author Eric Trautman
  */
-@Path("/v1/owner/{owner}")
+@Path("/v1")
 public class StackMetaDataService {
 
     private final RenderDao renderDao;
@@ -69,7 +69,15 @@ public class StackMetaDataService {
         return objectId.toString();
     }
 
-    @Path("stackIds")
+    @Path("owners")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<String> getOwners() {
+        LOG.info("getOwners: entry");
+        return renderDao.getOwners();
+    }
+
+    @Path("owner/{owner}/stackIds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public List<StackId> getStackIds(@PathParam("owner") final String owner) {
@@ -85,7 +93,7 @@ public class StackMetaDataService {
         return list;
     }
 
-    @Path("stacks")
+    @Path("owner/{owner}/stacks")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public List<StackMetaData> getStackMetaDataListForOwner(@PathParam("owner") final String owner) {
@@ -101,7 +109,7 @@ public class StackMetaDataService {
         return list;
     }
 
-    @Path("project/{project}/stack/{stack}")
+    @Path("owner/{owner}/project/{project}/stack/{stack}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public StackMetaData getStackMetaData(@PathParam("owner") final String owner,
@@ -125,7 +133,7 @@ public class StackMetaDataService {
         return stackMetaData;
     }
 
-    @Path("project/{project}/stack/{fromStack}/cloneTo/{toStack}")
+    @Path("owner/{owner}/project/{project}/stack/{fromStack}/cloneTo/{toStack}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     public Response cloneStackVersion(@PathParam("owner") final String owner,
@@ -169,7 +177,7 @@ public class StackMetaDataService {
         return responseBuilder.build();
     }
 
-    @Path("project/{project}/stack/{stack}")
+    @Path("owner/{owner}/project/{project}/stack/{stack}")
     @POST  // NOTE: POST method is used because version number is auto-incremented
     @Consumes(MediaType.APPLICATION_JSON)
     public Response saveStackVersion(@PathParam("owner") final String owner,
@@ -208,7 +216,7 @@ public class StackMetaDataService {
         return responseBuilder.build();
     }
 
-    @Path("project/{project}/stack/{stack}")
+    @Path("owner/{owner}/project/{project}/stack/{stack}")
     @DELETE
     public Response deleteStack(@PathParam("owner") final String owner,
                                 @PathParam("project") final String project,
@@ -244,7 +252,7 @@ public class StackMetaDataService {
         return response;
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}")
+    @Path("owner/{owner}/project/{project}/stack/{stack}/z/{z}")
     @DELETE
     public Response deleteStackSection(@PathParam("owner") final String owner,
                                        @PathParam("project") final String project,
@@ -273,7 +281,7 @@ public class StackMetaDataService {
         return response;
     }
 
-    @Path("project/{project}/stack/{stack}/state/{state}")
+    @Path("owner/{owner}/project/{project}/stack/{stack}/state/{state}")
     @PUT
     public Response setStackState(@PathParam("owner") final String owner,
                                   @PathParam("project") final String project,
@@ -346,7 +354,7 @@ public class StackMetaDataService {
         return responseBuilder.build();
     }
 
-    @Path("project/{project}/stack/{stack}/bounds")
+    @Path("owner/{owner}/project/{project}/stack/{stack}/bounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Bounds getStackBounds(@PathParam("owner") final String owner,
