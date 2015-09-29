@@ -27,7 +27,7 @@ public class CopyStackClient {
         @Parameter(names = "--z", description = "Z value of section to be copied", required = true)
         private Double z;
 
-        @Parameter(names = "--deleteExisting",
+        @Parameter(names = "--keepExisting",
                 description = "Keep any existing target stack tiles with the specified z (default is to remove them)",
                 required = false, arity = 0)
         private boolean keepExisting = false;
