@@ -26,6 +26,11 @@ public class CopyStackClient {
 
         @Parameter(names = "--z", description = "Z value of section to be copied", required = true)
         private Double z;
+
+        @Parameter(names = "--deleteExisting",
+                description = "Keep any existing target stack tiles with the specified z (default is to remove them)",
+                required = false, arity = 0)
+        private boolean keepExisting = false;
     }
 
     public static void main(final String[] args) {
@@ -60,6 +65,10 @@ public class CopyStackClient {
                 renderDataClient.getResolvedTiles(parameters.fromStack, parameters.z);
 
         sourceCollection.removeUnreferencedTransforms();
+
+        if (! parameters.keepExisting) {
+            renderDataClient.deleteStack(parameters.toStack, parameters.z);
+        }
 
         renderDataClient.saveResolvedTiles(sourceCollection, parameters.toStack, parameters.z);
     }
