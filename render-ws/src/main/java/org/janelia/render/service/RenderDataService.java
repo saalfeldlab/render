@@ -332,6 +332,63 @@ public class RenderDataService {
         return responseBuilder.build();
     }
 
+    @Path("project/{project}/stack/{stack}/section/{sectionId}/z")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Double getZForSection(@PathParam("owner") final String owner,
+                                 @PathParam("project") final String project,
+                                 @PathParam("stack") final String stack,
+                                 @PathParam("sectionId") final String sectionId,
+                                 @Context final UriInfo uriInfo) {
+
+        LOG.info("getZForSection: entry, owner={}, project={}, stack={}, sectionId={}",
+                 owner, project, stack, sectionId);
+
+        Double z = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            z = renderDao.getZForSection(stackId, sectionId);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+        return z;
+    }
+
+    @Path("project/{project}/stack/{stack}/section/{sectionId}/z")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response updateZForSection(@PathParam("owner") final String owner,
+                                      @PathParam("project") final String project,
+                                      @PathParam("stack") final String stack,
+                                      @PathParam("sectionId") final String sectionId,
+                                      @Context final UriInfo uriInfo,
+                                      final Double z) {
+        LOG.info("updateZForSection: entry, owner={}, project={}, stack={}, sectionId={}, z={}",
+                 owner, project, stack, sectionId, z);
+
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = getStackMetaData(stackId);
+
+            if (! stackMetaData.isLoading()) {
+                throw new IllegalStateException("Z values can only be updated for stacks in the " +
+                                                LOADING + " state, but this stack's state is " +
+                                                stackMetaData.getState() + ".");
+            }
+
+            renderDao.updateZForSection(stackId, sectionId, z);
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
+
+        LOG.info("updateZForSection: exit");
+
+        return responseBuilder.build();
+    }
+
     @Path("project/{project}/stack/{stack}/tile/{tileId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)

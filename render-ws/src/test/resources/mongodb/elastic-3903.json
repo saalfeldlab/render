@@ -60,6 +60,7 @@
     {
         "tileId": "136",
         "groupId": "A",
+        "layout": {"sectionId": "mis-ordered-section"},
         "z": 3903.0,
         "minX": 1334.0,
         "minY": 5949.0,

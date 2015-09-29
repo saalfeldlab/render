@@ -439,6 +439,35 @@ public class RenderDataClient {
     }
 
     /**
+     * Updates the z value for the specified stack section.
+     *
+     * @param  stack          name of stack.
+     * @param  sectionId      identifier for section.
+     * @param  z              z value for section.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void updateZForSection(final String stack,
+                                  final String sectionId,
+                                  final Double z)
+            throws IOException {
+
+        final String json = z.toString();
+        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+        final URI uri = getUri(getStackUrlString(stack) + "/section/" + sectionId + "/z");
+        final String requestContext = "PUT " + uri;
+        final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        LOG.info("updateZForSection: submitting {}", requestContext);
+
+        httpClient.execute(httpPut, responseHandler);
+    }
+
+    /**
      * Saves the specified matches.
      *
      * @param  canvasMatches  matches to save.

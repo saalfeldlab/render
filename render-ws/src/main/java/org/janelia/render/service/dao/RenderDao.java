@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -699,6 +700,48 @@ public class RenderDao {
 
         return list;
     }
+
+    public Double getZForSection(final StackId stackId,
+                                 final String sectionId)
+            throws IllegalArgumentException, IllegalStateException {
+
+        validateRequiredParameter("stackId", stackId);
+        validateRequiredParameter("sectionId", sectionId);
+
+        final DBCollection tileCollection = getTileCollection(stackId);
+        final BasicDBObject query = new BasicDBObject("layout.sectionId", sectionId);
+
+        final DBObject document = tileCollection.findOne(query);
+
+        if (document == null) {
+            throw new ObjectNotFoundException("sectionId '" + sectionId + "' does not exist in the " +
+                                              tileCollection.getFullName() + " collection");
+        }
+
+        final TileSpec tileSpec = TileSpec.fromJson(document.toString());
+
+        return tileSpec.getZ();
+    }
+
+    public void updateZForSection(final StackId stackId,
+                                  final String sectionId,
+                                  final Double z)
+            throws IllegalArgumentException, IllegalStateException {
+
+        validateRequiredParameter("stackId", stackId);
+        validateRequiredParameter("sectionId", sectionId);
+        validateRequiredParameter("z", z);
+
+        final DBCollection tileCollection = getTileCollection(stackId);
+        final BasicDBObject query = new BasicDBObject("layout.sectionId", sectionId);
+        final BasicDBObject update = new BasicDBObject("$set", new BasicDBObject("z", z));
+
+        tileCollection.update(query, update, false, true);
+
+        LOG.debug("updateZForSection: {}.update({},{})",
+                  tileCollection.getFullName(), query, update);
+    }
+
 
     /**
      * NOTE: This query is slow (30 seconds for a 17 million tile collection).

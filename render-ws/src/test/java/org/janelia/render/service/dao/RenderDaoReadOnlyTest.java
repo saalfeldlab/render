@@ -205,7 +205,7 @@ public class RenderDaoReadOnlyTest {
         final List<SectionData> list = dao.getSectionData(stackId);
 
         Assert.assertNotNull("null list retrieved", list);
-        Assert.assertEquals("invalid number of sections found", 1, list.size());
+        Assert.assertEquals("invalid number of sections found", 2, list.size());
         final SectionData sectionData = list.get(0);
         Assert.assertEquals("invalid sectionId", "3903.0", sectionData.getSectionId());
         Assert.assertEquals("invalid sectionId", 3903, sectionData.getZ(), 0.01);

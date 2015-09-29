@@ -282,6 +282,22 @@ public class RenderDaoTest {
         Assert.assertFalse("transformSpec should not be resolved after update", updatedSpec.isFullyResolved());
     }
 
+    @Test
+    public void testUpdateZForSection() throws Exception {
+
+        final String sectionId = "mis-ordered-section";
+        final Double zBeforeUpdate = dao.getZForSection(stackId, sectionId);
+
+        Assert.assertEquals("incorrect z before update", 3903.0, zBeforeUpdate, 0.1);
+
+        final Double updatedZ = 999.0;
+        dao.updateZForSection(stackId, "mis-ordered-section", updatedZ);
+
+        final Double zAfterUpdate = dao.getZForSection(stackId, sectionId);
+
+        Assert.assertEquals("incorrect z before update", updatedZ, zAfterUpdate, 0.1);
+    }
+
     public static void validateStackMetaData(final String context,
                                              final StackMetaData.StackState expectedState,
                                              final Integer expectedVersionNumber,
