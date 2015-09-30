@@ -414,6 +414,8 @@ public class ImportMETClient {
                 }
             }
 
+            updatedTiles.filterInvalidSpecs();
+
             final int removedTiles = tileSpecCount - updatedTiles.getTileCount();
 
             LOG.debug("updateTiles: updated transforms for {} tiles, removed {} bad tiles, elapsedSeconds={}",

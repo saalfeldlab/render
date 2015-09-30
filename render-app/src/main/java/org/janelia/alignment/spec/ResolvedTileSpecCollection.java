@@ -170,10 +170,6 @@ public class ResolvedTileSpecCollection implements Serializable {
         resolveTileSpec(tileSpec);
 
         tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
-
-        if (tileSpecValidator != null) {
-            removeTileIfInvalid(tileSpec);
-        }
     }
 
     /**

@@ -105,14 +105,18 @@ public class WarpTransformClient {
 
         LOG.info("generateStackDataForZ: derived moving least squares transform for {}", z);
 
-        if (tileSpecValidator != null) {
-            montageTiles.setTileSpecValidator(tileSpecValidator);
-        }
-
         montageTiles.addTransformSpecToCollection(mlsTransformSpec);
         montageTiles.addReferenceTransformToAllTiles(mlsTransformSpec.getId());
 
-        LOG.info("generateStackDataForZ: added transform and derived bounding boxes for {}", z);
+        final int totalNumberOfTiles = montageTiles.getTileCount();
+        if (tileSpecValidator != null) {
+            montageTiles.setTileSpecValidator(tileSpecValidator);
+            montageTiles.filterInvalidSpecs();
+        }
+        final int numberOfRemovedTiles = totalNumberOfTiles - montageTiles.getTileCount();
+
+        LOG.info("generateStackDataForZ: added transform and derived bounding boxes for {} tiles with z of {}, removed {} bad tiles",
+                 totalNumberOfTiles, z, numberOfRemovedTiles);
 
         renderDataClient.saveResolvedTiles(montageTiles, parameters.mlsStack, z);
 
