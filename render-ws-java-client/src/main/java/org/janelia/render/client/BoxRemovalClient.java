@@ -89,7 +89,7 @@ public class BoxRemovalClient {
     public BoxRemovalClient(final Parameters params) {
         this.boxDirectory = new File(params.stackDirectory).getAbsoluteFile();
         if (! boxDirectory.exists()) {
-            throw new IllegalArgumentException("missing root directory " + boxDirectory);
+            throw new IllegalArgumentException("missing stack directory " + boxDirectory);
         }
     }
 
