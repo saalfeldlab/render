@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
  * All generated images have the same dimensions and pixel count and are stored within a
  * CATMAID LargeDataTileSource directory structure that looks like this:
  * <pre>
- *         [root directory]/[tile width]x[tile height]/[level]/[row]/[col].[format]
+ *         [root directory]/[tile width]x[tile height]/[level]/[z]/[row]/[col].[format]
  * </pre>
  *
  * Details about the CATMAID LargeDataTileSource can be found at
