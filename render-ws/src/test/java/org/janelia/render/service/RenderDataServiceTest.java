@@ -3,8 +3,8 @@ package org.janelia.render.service;
 import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 
 import javax.ws.rs.core.PathSegment;
 import javax.ws.rs.core.UriInfo;
@@ -14,8 +14,8 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.render.service.dao.RenderDao;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.render.service.dao.RenderDao;
 import org.janelia.test.EmbeddedMongoDb;
 import org.jboss.resteasy.specimpl.UriInfoImpl;
 import org.junit.AfterClass;
@@ -131,7 +131,10 @@ public class RenderDataServiceTest {
         final TileSpec tileSpecB = new TileSpec();
         tileSpecB.setTileId("test_tile_b");
         tileSpecB.setZ(Z);
-        tileSpecB.addTransformSpecs(Arrays.asList(leafTransformSpecB));
+        tileSpecB.addTransformSpecs(Collections.singletonList(leafTransformSpecB));
+        tileSpecB.setWidth(10.0);
+        tileSpecB.setHeight(10.0);
+        tileSpecB.deriveBoundingBox(tileSpecB.getMeshCellSize(), false);
 
         resolvedTestTiles.addTileSpecToCollection(tileSpecB);
 
@@ -150,10 +153,10 @@ public class RenderDataServiceTest {
         validateResolvedTiles("after second save", resolvedTest2Tiles, 2, 2);
     }
 
-    private void validateResolvedTiles(String context,
-                                       ResolvedTileSpecCollection resolvedTiles,
-                                       int expectedNumberOfTileSpecs,
-                                       int expectedNumberOfTransformSpecs) {
+    private void validateResolvedTiles(final String context,
+                                       final ResolvedTileSpecCollection resolvedTiles,
+                                       final int expectedNumberOfTileSpecs,
+                                       final int expectedNumberOfTransformSpecs) {
         Assert.assertNotNull(context + ", null resolved tiles returned",
                              resolvedTiles);
 

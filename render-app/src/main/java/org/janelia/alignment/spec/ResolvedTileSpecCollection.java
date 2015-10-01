@@ -219,17 +219,36 @@ public class ResolvedTileSpecCollection implements Serializable {
      * @throws IllegalArgumentException
      *   if the z value for any tile is null or does not match the expected z value.
      */
-    public void verifyAllTileSpecsHaveZValue(final double expectedZ)
+    public void validateCollection(final Double expectedZ)
             throws IllegalArgumentException {
+
         Double actualZ;
+
+        if (getTileCount() == 0) {
+            throw new IllegalArgumentException("collection does not have any tiles " +
+                                               "(maybe they were removed by a prior validation process)");
+        }
+
         for (final TileSpec tileSpec : tileIdToSpecMap.values()) {
-            actualZ = tileSpec.getZ();
-            if (actualZ == null) {
-                throw new IllegalArgumentException(getBadTileZValueMessage(expectedZ, tileSpec));
-            } else {
-                if (Double.compare(expectedZ, actualZ) != 0) {
+
+            if (! tileSpec.isBoundingBoxDefined(tileSpec.getMeshCellSize())) {
+                throw new IllegalArgumentException("tile with id '" + tileSpec.getTileId() + "' is missing bounding " +
+                                                   "box attributes (minX, minY, maxX, and/or maxY)");
+            }
+
+            if (expectedZ != null) {
+                actualZ = tileSpec.getZ();
+                if (actualZ == null) {
                     throw new IllegalArgumentException(getBadTileZValueMessage(expectedZ, tileSpec));
+                } else {
+                    if (Double.compare(expectedZ, actualZ) != 0) {
+                        throw new IllegalArgumentException(getBadTileZValueMessage(expectedZ, tileSpec));
+                    }
                 }
+            }
+
+            if (tileSpecValidator != null) {
+                tileSpecValidator.validate(tileSpec);
             }
         }
     }
@@ -348,8 +367,8 @@ public class ResolvedTileSpecCollection implements Serializable {
 
     private String getBadTileZValueMessage(final double expectedZ,
                                            final TileSpec tileSpec) {
-        return "all tiles must have a z value of " + expectedZ + " but tile " +
-               tileSpec.getTileId() + " has a z value of " + tileSpec.getZ();
+        return "all tiles must have a z value of " + expectedZ + " but tile with id '" +
+               tileSpec.getTileId() + "' has a z value of " + tileSpec.getZ();
     }
 
     private void resolveTileSpec(final TileSpec tileSpec)

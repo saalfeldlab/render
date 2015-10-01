@@ -306,10 +306,6 @@ public class RenderDataService {
                 throw new IllegalServiceArgumentException("no resolved tiles provided");
             }
 
-            if (z != null) {
-                resolvedTiles.verifyAllTileSpecsHaveZValue(z);
-            }
-
             final StackId stackId = new StackId(owner, project, stack);
             final StackMetaData stackMetaData = getStackMetaData(stackId);
 
@@ -318,6 +314,8 @@ public class RenderDataService {
                                                 LOADING + " state, but this stack's state is " +
                                                 stackMetaData.getState() + ".");
             }
+
+            resolvedTiles.validateCollection(z);
 
             renderDao.saveResolvedTiles(stackId, resolvedTiles);
 
