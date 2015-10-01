@@ -1017,31 +1017,37 @@ public class RenderDao {
                 throw new IllegalStateException("multiple aggregation results returned for " + pipeline);
             }
 
-            final Bounds stackBounds = new Bounds(new Double(result.get(minXKey).toString()),
-                                                  new Double(result.get(minYKey).toString()),
-                                                  new Double(result.get(minZKey).toString()),
-                                                  new Double(result.get(maxXKey).toString()),
-                                                  new Double(result.get(maxYKey).toString()),
-                                                  new Double(result.get(maxZKey).toString()));
+            final Bounds stackBounds = new Bounds(getDoubleValue(result.get(minXKey)),
+                                                  getDoubleValue(result.get(minYKey)),
+                                                  getDoubleValue(result.get(minZKey)),
+                                                  getDoubleValue(result.get(maxXKey)),
+                                                  getDoubleValue(result.get(maxYKey)),
+                                                  getDoubleValue(result.get(maxZKey)));
 
-            final Double minTileWidth = new Double(result.get(minWidthKey).toString());
-            final Double maxTileWidth = new Double(result.get(maxWidthKey).toString());
-            final Double minTileHeight = new Double(result.get(minHeightKey).toString());
-            final Double maxTileHeight = new Double(result.get(maxHeightKey).toString());
+            final Integer minTileWidth = getDoubleValueAsInteger(result.get(minWidthKey));
+            final Integer maxTileWidth = getDoubleValueAsInteger(result.get(maxWidthKey));
+            final Integer minTileHeight = getDoubleValueAsInteger(result.get(minHeightKey));
+            final Integer maxTileHeight = getDoubleValueAsInteger(result.get(maxHeightKey));
 
             stats = new StackStats(stackBounds,
                                    sectionCount,
                                    nonIntegralSectionCount,
                                    tileCount,
                                    transformCount,
-                                   minTileWidth.intValue(),
-                                   maxTileWidth.intValue(),
-                                   minTileHeight.intValue(),
-                                   maxTileHeight.intValue());
+                                   minTileWidth,
+                                   maxTileWidth,
+                                   minTileHeight,
+                                   maxTileHeight);
         }
 
         if (stats == null) {
-            throw new IllegalStateException("no aggregation results returned for " + pipeline);
+            String cause = "";
+            if (tileCollection.count() == 0) {
+                cause = " because the stack has no tiles";
+            }
+            throw new IllegalStateException("Stack data aggregation returned no results" + cause + ".  " +
+                                            "The aggregation query was " + tileCollection.getFullName() +
+                                            ".aggregate(" + pipeline + ") .");
         }
 
         stackMetaData.setStats(stats);
@@ -1701,6 +1707,23 @@ public class RenderDao {
         }
 
         return message.toString();
+    }
+
+    private Integer getDoubleValueAsInteger(final Object value) {
+        Integer integerValue = null;
+        final Double doubleValue = getDoubleValue(value);
+        if (doubleValue != null) {
+            integerValue = doubleValue.intValue();
+        }
+        return integerValue;
+    }
+
+    private Double getDoubleValue(final Object value) {
+        Double doubleValue = null;
+        if (value != null) {
+            doubleValue = new Double(value.toString());
+        }
+        return doubleValue;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDao.class);
