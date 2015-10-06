@@ -159,6 +159,37 @@ public class RenderDataService {
         return list;
     }
 
+    @Path("project/{project}/stack/{stack}/reorderedSectionData")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<SectionData> getReorderedSectionData(@PathParam("owner") final String owner,
+                                                     @PathParam("project") final String project,
+                                                     @PathParam("stack") final String stack) {
+
+        LOG.info("getReorderedSectionData: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        final List<SectionData> list = getSectionData(owner, project, stack);
+        final List<SectionData> filteredList = new ArrayList<>(list.size());
+        int sectionIdInt;
+        int zInt;
+            for (final SectionData sectionData : list) {
+                try {
+                    sectionIdInt = (int) Double.parseDouble(sectionData.getSectionId());
+                    zInt = sectionData.getZ().intValue();
+                } catch (final Exception e) {
+                    throw new IllegalServiceArgumentException(
+                            "reordered sections cannot be determined because " +
+                            "stack contains non-standard sectionId (" + sectionData.getSectionId() +
+                            ") or z value (" + sectionData.getZ() + ")", e);
+                }
+                if (sectionIdInt != zInt) {
+                    filteredList.add(sectionData);
+                }
+            }
+        return filteredList;
+    }
+
     @Path("project/{project}/stack/{stack}/highDoseLowDoseZValues")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
