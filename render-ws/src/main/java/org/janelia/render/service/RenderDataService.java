@@ -173,20 +173,20 @@ public class RenderDataService {
         final List<SectionData> filteredList = new ArrayList<>(list.size());
         int sectionIdInt;
         int zInt;
-            for (final SectionData sectionData : list) {
-                try {
-                    sectionIdInt = (int) Double.parseDouble(sectionData.getSectionId());
-                    zInt = sectionData.getZ().intValue();
-                } catch (final Exception e) {
-                    throw new IllegalServiceArgumentException(
-                            "reordered sections cannot be determined because " +
-                            "stack contains non-standard sectionId (" + sectionData.getSectionId() +
-                            ") or z value (" + sectionData.getZ() + ")", e);
-                }
-                if (sectionIdInt != zInt) {
-                    filteredList.add(sectionData);
-                }
+        for (final SectionData sectionData : list) {
+            try {
+                sectionIdInt = (int) Double.parseDouble(sectionData.getSectionId());
+                zInt = sectionData.getZ().intValue();
+            } catch (final Exception e) {
+                throw new IllegalServiceArgumentException(
+                        "reordered sections cannot be determined because " +
+                        "stack contains non-standard sectionId (" + sectionData.getSectionId() +
+                        ") or z value (" + sectionData.getZ() + ")", e);
             }
+            if (sectionIdInt != zInt) {
+                filteredList.add(sectionData);
+            }
+        }
         return filteredList;
     }
 
