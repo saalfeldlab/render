@@ -13,6 +13,7 @@ import com.mongodb.MongoClient;
 import com.mongodb.QueryOperators;
 import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
+import com.mongodb.client.MongoDatabase;
 import com.mongodb.util.JSON;
 
 import java.io.IOException;
@@ -62,9 +63,11 @@ public class RenderDao {
     }
 
     private final DB renderDb;
+    private final MongoDatabase renderDatabase;
 
     public RenderDao(final MongoClient client) {
         renderDb = client.getDB(RENDER_DB_NAME);
+        renderDatabase = client.getDatabase(RENDER_DB_NAME);
     }
 
     /**
@@ -743,10 +746,6 @@ public class RenderDao {
 
 
     /**
-     * NOTE: This query is slow (30 seconds for a 17 million tile collection).
-     *       If we need to run this query more than once every two months, we should
-     *       investigate options for improving performance (like creating an additional index).
-     *
      * @return list of section data objects for the specified stackId.
      *
      * @throws IllegalArgumentException
@@ -757,42 +756,35 @@ public class RenderDao {
 
         validateRequiredParameter("stackId", stackId);
 
-        final DBCollection tileCollection = getTileCollection(stackId);
-
         final List<SectionData> list = new ArrayList<>();
 
-        // db.<stack_prefix>__tile.aggregate(
-        //     [
-        //         { "$group": { "_id": { "sectionId": "$layout.sectionId", "z": "$z" } } } },
-        //         { "$sort": { "_id.sectionId": 1 } }
-        //     ]
-        // )
+        if (! collectionExists(stackId.getSectionCollectionName())) {
+            throw new IllegalArgumentException("section data not aggregated for " + stackId +
+                                               ", set stack state to COMPLETE to generate the aggregate collection");
+        }
 
-        final BasicDBObject idComponents = new BasicDBObject("sectionId", "$layout.sectionId").append("z", "$z");
-        final BasicDBObject id = new BasicDBObject("_id", idComponents);
+        final DBCollection sectionCollection = getSectionCollection(stackId);
 
-        final DBObject groupStage = new BasicDBObject("$group", id);
-        final DBObject sortStage = new BasicDBObject("$sort", new BasicDBObject("_id.sectionId", 1));
+        final BasicDBObject query = new BasicDBObject();
 
-        final List<DBObject> pipeline = new ArrayList<>();
-        pipeline.add(groupStage);
-        pipeline.add(sortStage);
-
-        final AggregationOutput aggregationOutput = tileCollection.aggregate(pipeline);
-
-        DBObject resultId;
-        Object sectionId;
-        Object z;
-        for (final DBObject result : aggregationOutput.results()) {
-            resultId = (DBObject) result.get("_id");
-            sectionId = resultId.get("sectionId");
-            z = resultId.get("z");
-            if ((sectionId != null) && (z != null)) {
-                list.add(new SectionData(sectionId.toString(), new Double(z.toString())));
+        try (DBCursor cursor = sectionCollection.find(query)) {
+            DBObject document;
+            DBObject resultId;
+            Object sectionId;
+            Object z;
+            while (cursor.hasNext()) {
+                document = cursor.next();
+                resultId = (DBObject) document.get("_id");
+                sectionId = resultId.get("sectionId");
+                z = resultId.get("z");
+                if ((sectionId != null) && (z != null)) {
+                    list.add(new SectionData(sectionId.toString(), new Double(z.toString())));
+                }
             }
         }
 
-        LOG.debug("getSectionData: returning {} values for {}", list.size(), tileCollection.getFullName());
+        LOG.debug("getSectionData: returning {} values for {}.find({})",
+                  list.size(), sectionCollection.getFullName());
 
         return list;
     }
@@ -903,7 +895,6 @@ public class RenderDao {
                   stackMetaDataCollection.getFullName(), action, query);
     }
 
-    // db.flyTEM__FAFB00__v8_acquire__tile.aggregate( [ { "$group": { "_id": { "sectionId": "$layout.sectionId", "z": "$z" } } }, { "$sort": { "_id.sectionId": 1 } } ])
     public StackMetaData ensureIndexesAndDeriveStats(final StackMetaData stackMetaData) {
 
         validateRequiredParameter("stackMetaData", stackMetaData);
@@ -920,6 +911,8 @@ public class RenderDao {
         ensureCoreTileIndexes(tileCollection);
 
         ensureSupplementaryTileIndexes(tileCollection);
+
+        deriveSectionData(stackId);
 
         final List<Double> zValues = getZValues(stackId);
         final long sectionCount = zValues.size();
@@ -1072,6 +1065,41 @@ public class RenderDao {
                   stackMetaDataCollection.getFullName(), action, query);
 
         return stackMetaData;
+    }
+
+    private void deriveSectionData(final StackId stackId)
+            throws IllegalArgumentException {
+
+        final DBCollection tileCollection = getTileCollection(stackId);
+
+        // db.<stack_prefix>__tile.aggregate(
+        //     [
+        //         { "$group": { "_id": { "sectionId": "$layout.sectionId", "z": "$z" } } },
+        //         { "$sort": { "_id.sectionId": 1 } }
+        //     ]
+        // )
+
+        final BasicDBObject idComponents = new BasicDBObject("sectionId", "$layout.sectionId").append("z", "$z");
+        final BasicDBObject id = new BasicDBObject("_id", idComponents);
+
+        final DBObject groupStage = new BasicDBObject("$group", id);
+        final DBObject sortStage = new BasicDBObject("$sort", new BasicDBObject("_id.sectionId", 1));
+        final DBObject outStage = new BasicDBObject("$out", stackId.getSectionCollectionName());
+
+        final List<DBObject> pipeline = new ArrayList<>();
+        pipeline.add(groupStage);
+        pipeline.add(sortStage);
+        pipeline.add(outStage);
+
+        LOG.debug("deriveSectionData: running {}.aggregate({})", tileCollection.getFullName(), pipeline);
+
+        tileCollection.aggregate(pipeline);
+
+        final DBCollection sectionCollection = getSectionCollection(stackId);
+        final long sectionCount = sectionCollection.count();
+
+        LOG.debug("deriveSectionData: saved data for {} sections in {}",
+                  sectionCount, sectionCollection.getFullName());
     }
 
     public void removeStack(final StackId stackId,
@@ -1627,6 +1655,10 @@ public class RenderDao {
         return renderDb.getCollection(stackId.getTileCollectionName());
     }
 
+    private DBCollection getSectionCollection(final StackId stackId) {
+        return renderDb.getCollection(stackId.getSectionCollectionName());
+    }
+
     private DBCollection getTransformCollection(final StackId stackId) {
         return renderDb.getCollection(stackId.getTransformCollectionName());
     }
@@ -1687,6 +1719,15 @@ public class RenderDao {
                              final DBObject options) {
         LOG.debug("ensureIndex: entry, collection={}, keys={}, options={}", collection.getName(), keys, options);
         collection.createIndex(keys, options);
+    }
+
+    private boolean collectionExists(final String collectionName) {
+        for (final String name : renderDatabase.listCollectionNames()) {
+            if (name.equalsIgnoreCase(collectionName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String getBulkResultMessage(final String context,

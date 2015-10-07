@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
  */
 public class StackId implements Comparable<StackId>, Serializable {
 
+    public static final String SECTION_COLLECTION_SUFFIX = "section";
     public static final String TILE_COLLECTION_SUFFIX = "tile";
     public static final String TRANSFORM_COLLECTION_SUFFIX = "transform";
 
@@ -83,6 +84,10 @@ public class StackId implements Comparable<StackId>, Serializable {
             }
         }
         return v;
+    }
+
+    public String getSectionCollectionName() {
+        return getCollectionName(SECTION_COLLECTION_SUFFIX);
     }
 
     public String getTileCollectionName() {

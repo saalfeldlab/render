@@ -4,9 +4,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -188,6 +192,34 @@ public class RenderDataService {
             }
         }
         return filteredList;
+    }
+
+    @Path("project/{project}/stack/{stack}/mergedZValues")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<Double> getMergedZValues(@PathParam("owner") final String owner,
+                                         @PathParam("project") final String project,
+                                         @PathParam("stack") final String stack) {
+
+        LOG.info("getMergedZValues: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        final List<SectionData> sectionDataList = getSectionData(owner, project, stack);
+        final Map<Double, String> zToSectionIdMap = new HashMap<>(sectionDataList.size() * 2);
+        final Set<Double> mergedZValues = new HashSet<>();
+
+        String previousSectionIdForZ;
+        for (final SectionData sectionData : sectionDataList) {
+            previousSectionIdForZ = zToSectionIdMap.put(sectionData.getZ(), sectionData.getSectionId());
+            if (previousSectionIdForZ != null) {
+                mergedZValues.add(sectionData.getZ());
+            }
+        }
+
+        final List<Double> sortedZList = new ArrayList<>(mergedZValues);
+        Collections.sort(sortedZList);
+
+        return sortedZList;
     }
 
     @Path("project/{project}/stack/{stack}/highDoseLowDoseZValues")

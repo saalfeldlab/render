@@ -12,6 +12,7 @@ import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.TransformSpecMetaData;
@@ -155,6 +156,14 @@ public class RenderDaoTest {
         Assert.assertEquals("invalid bounds", expectedBounds.toJson(), stats.getStackBounds().toJson());
         Assert.assertEquals("invalid tile count", new Long(12), stats.getTileCount());
 
+        // test getSectionData after section collection was created by call to ensureIndexesAndDeriveStats
+        final List<SectionData> list = dao.getSectionData(stackId);
+
+        Assert.assertNotNull("null list retrieved", list);
+        Assert.assertEquals("invalid number of sections found", 2, list.size());
+        final SectionData sectionData = list.get(0);
+        Assert.assertEquals("invalid sectionId", "3903.0", sectionData.getSectionId());
+        Assert.assertEquals("invalid sectionId", 3903, sectionData.getZ(), 0.01);
     }
 
     @Test
