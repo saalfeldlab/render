@@ -1,20 +1,20 @@
 package org.janelia.render.service.dao;
 
-import com.mongodb.AggregationOutput;
 import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.BulkWriteOperation;
-import com.mongodb.BulkWriteResult;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.QueryOperators;
-import com.mongodb.WriteConcern;
-import com.mongodb.WriteResult;
+import com.mongodb.bulk.BulkWriteResult;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.util.JSON;
+import com.mongodb.client.model.BulkWriteOptions;
+import com.mongodb.client.model.IndexOptions;
+import com.mongodb.client.model.InsertOneModel;
+import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.model.WriteModel;
+import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.UpdateResult;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -29,6 +29,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import javax.annotation.Nonnull;
+
+import org.bson.Document;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ListTransformSpec;
@@ -62,11 +65,9 @@ public class RenderDao {
         return new RenderDao(mongoClient);
     }
 
-    private final DB renderDb;
     private final MongoDatabase renderDatabase;
 
     public RenderDao(final MongoClient client) {
-        renderDb = client.getDB(RENDER_DB_NAME);
         renderDatabase = client.getDatabase(RENDER_DB_NAME);
     }
 
@@ -96,7 +97,7 @@ public class RenderDao {
 
         final double lowerRightX = x + width;
         final double lowerRightY = y + height;
-        final BasicDBObject tileQuery = getIntersectsBoxQuery(z, x, y, lowerRightX, lowerRightY);
+        final Document tileQuery = getIntersectsBoxQuery(z, x, y, lowerRightX, lowerRightY);
         if (groupId != null) {
             tileQuery.append("groupId", groupId);
         }
@@ -131,7 +132,7 @@ public class RenderDao {
         final Double width = bounds.getMaxX() - x;
         final Double height = bounds.getMaxY() - y;
 
-        final BasicDBObject tileQuery = new BasicDBObject("z", z);
+        final Document tileQuery = new Document("z", z);
 
         final RenderParameters renderParameters =
                 new RenderParameters(null, x, y, width.intValue(), height.intValue(), scale);
@@ -146,12 +147,12 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
-    public int getTileCount(final StackId stackId,
-                            final Double x,
-                            final Double y,
-                            final Double z,
-                            final Integer width,
-                            final Integer height)
+    public long getTileCount(final StackId stackId,
+                             final Double x,
+                             final Double y,
+                             final Double z,
+                             final Integer width,
+                             final Integer height)
             throws IllegalArgumentException {
 
         validateRequiredParameter("stackId", stackId);
@@ -161,16 +162,16 @@ public class RenderDao {
         validateRequiredParameter("width", width);
         validateRequiredParameter("height", height);
 
-        final DBCollection tileCollection = getTileCollection(stackId);
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
         final double lowerRightX = x + width;
         final double lowerRightY = y + height;
-        final DBObject tileQuery = getIntersectsBoxQuery(z, x, y, lowerRightX, lowerRightY);
+        final Document tileQuery = getIntersectsBoxQuery(z, x, y, lowerRightX, lowerRightY);
 
-        final int count = tileCollection.find(tileQuery).count();
+        final long count = tileCollection.count(tileQuery);
 
-        LOG.debug("getTileCount: found {} tile spec(s) for {}.{}.find({})",
-                  count, RENDER_DB_NAME, tileCollection.getName(), tileQuery);
+        LOG.debug("getTileCount: found {} tile spec(s) for {}.find({})",
+                  count, getFullName(tileCollection), tileQuery.toJson());
 
         return count;
     }
@@ -193,24 +194,23 @@ public class RenderDao {
         validateRequiredParameter("stackId", stackId);
         validateRequiredParameter("tileId", tileId);
 
-        final DBCollection tileCollection = getTileCollection(stackId);
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
-        final BasicDBObject query = new BasicDBObject();
+        final Document query = new Document();
         query.put("tileId", tileId);
 
-        LOG.debug("getTileSpec: {}.{}.find({})",
-                  tileCollection.getDB().getName(), tileCollection.getName(), query);
+        LOG.debug("getTileSpec: {}.find({})", getFullName(tileCollection), query.toJson());
 
         // EXAMPLE:   find({ "tileId" : "140723171842050101.3299.0"})
         // INDEX:     tileId_1
-        final DBObject document = tileCollection.findOne(query);
+        final Document document = tileCollection.find(query).first();
 
         if (document == null) {
             throw new ObjectNotFoundException("tile spec with id '" + tileId + "' does not exist in the " +
-                                              tileCollection.getFullName() + " collection");
+                                              getFullName(tileCollection) + " collection");
         }
 
-        final TileSpec tileSpec = TileSpec.fromJson(document.toString());
+        final TileSpec tileSpec = TileSpec.fromJson(document.toJson());
 
         if (resolveTransformReferences) {
             resolveTransformReferencesForTiles(stackId, Collections.singletonList(tileSpec));
@@ -237,7 +237,7 @@ public class RenderDao {
         final int unresolvedCount = unresolvedIds.size();
         if (unresolvedCount > 0) {
 
-            final DBCollection transformCollection = getTransformCollection(stackId);
+            final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
             getDataForTransformSpecReferences(transformCollection, unresolvedIds, resolvedIdToSpecMap, 1);
 
             // resolve any references within the retrieved transform specs
@@ -280,7 +280,7 @@ public class RenderDao {
         validateRequiredParameter("y", y);
         validateRequiredParameter("z", z);
 
-        final DBObject tileQuery = getIntersectsBoxQuery(z, x, y, x, y);
+        final Document tileQuery = getIntersectsBoxQuery(z, x, y, x, y);
         final RenderParameters renderParameters = new RenderParameters();
         addResolvedTileSpecs(stackId, tileQuery, renderParameters);
 
@@ -304,11 +304,11 @@ public class RenderDao {
         validateRequiredParameter("stackId", stackId);
         validateRequiredParameter("z", z);
 
-        final DBCollection tileCollection = getTileCollection(stackId);
-        final DBObject tileKeys = new BasicDBObject("tileId", 1).append("_id", 0);
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+        final Document tileKeys = new Document("tileId", 1).append("_id", 0);
 
         // order tile specs by tileId to ensure consistent coordinate mapping
-        final DBObject orderBy = new BasicDBObject("tileId", 1);
+        final Document orderBy = new Document("tileId", 1);
 
         final ProcessTimer timer = new ProcessTimer();
         final byte[] openBracket = "[".getBytes();
@@ -318,9 +318,9 @@ public class RenderDao {
         int coordinateCount = 0;
 
         double[] world;
-        DBObject tileQuery = null;
-        DBCursor cursor = null;
-        DBObject document;
+        Document tileQuery = new Document();
+        MongoCursor<Document> cursor = null;
+        Document document;
         Object tileId;
         String coordinatesJson;
         try {
@@ -343,8 +343,7 @@ public class RenderDao {
 
                 // EXAMPLE:   find({"z": 3299.0 , "minX": {"$lte": 95000.0}, "minY": {"$lte": 200000.0}, "maxX": {"$gte": 95000.0}, "maxY": {"$gte": 200000.0}}, {"tileId":1, "_id": 0}).sort({"tileId" : 1})
                 // INDEXES:   z_1_minY_1_minX_1_maxY_1_maxX_1_tileId_1 (z1_minX_1, z1_maxX_1, ... used for edge cases)
-                cursor = tileCollection.find(tileQuery, tileKeys);
-                cursor.sort(orderBy);
+                cursor = tileCollection.find(tileQuery).projection(tileKeys).sort(orderBy).iterator();
 
                 if (i > 0) {
                     outputStream.write(comma);
@@ -400,7 +399,8 @@ public class RenderDao {
         }
 
         LOG.debug("writeCoordinatesWithTileIds: wrote data for {} coordinates returned by queries like {}.find({},{}).sort({}), elapsedSeconds={}",
-                  coordinateCount, tileCollection.getFullName(), tileQuery, tileKeys, orderBy, timer.getElapsedSeconds());
+                  coordinateCount, getFullName(tileCollection),
+                  tileQuery.toJson(), tileKeys.toJson(), orderBy.toJson(), timer.getElapsedSeconds());
     }
 
     /**
@@ -417,7 +417,7 @@ public class RenderDao {
         validateRequiredParameter("stackId", stackId);
         validateRequiredParameter("z", z);
 
-        final DBObject tileQuery = new BasicDBObject("z", z);
+        final Document tileQuery = new Document("z", z);
         final RenderParameters renderParameters = new RenderParameters();
         addResolvedTileSpecs(stackId, tileQuery, renderParameters);
 
@@ -442,7 +442,7 @@ public class RenderDao {
         validateRequiredParameter("stackId", stackId);
         validateRequiredParameter("z", z);
 
-        final DBObject tileQuery = new BasicDBObject("z", z);
+        final Document tileQuery = new Document("z", z);
         final RenderParameters renderParameters = new RenderParameters();
         final Map<String, TransformSpec> resolvedIdToSpecMap = addResolvedTileSpecs(stackId,
                                                                                     tileQuery,
@@ -475,7 +475,7 @@ public class RenderDao {
 
         validateRequiredParameter("stackId", stackId);
 
-        final BasicDBObject query = getGroupQuery(minZ, maxZ, groupId, minX, maxX, minY, maxY);
+        final Document query = getGroupQuery(minZ, maxZ, groupId, minX, maxX, minY, maxY);
         final RenderParameters renderParameters = new RenderParameters();
         final Map<String, TransformSpec> resolvedIdToSpecMap = addResolvedTileSpecs(stackId,
                                                                                     query,
@@ -510,23 +510,23 @@ public class RenderDao {
 
         if (transformSpecs.size() > 0) {
 
-            final DBCollection transformCollection = getTransformCollection(stackId);
-            final BulkWriteOperation bulk = transformCollection.initializeUnorderedBulkOperation();
+            final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
 
-            BasicDBObject query = null;
-            DBObject transformSpecObject;
+            final List<WriteModel<Document>> modelList = new ArrayList<>(transformSpecs.size());
+            Document query = new Document();
+            Document transformSpecObject;
             for (final TransformSpec transformSpec : transformSpecs) {
-                query = new BasicDBObject("id", transformSpec.getId());
-                transformSpecObject = (DBObject) JSON.parse(transformSpec.toJson());
-                bulk.find(query).upsert().replaceOne(transformSpecObject);
+                query = new Document("id", transformSpec.getId());
+                transformSpecObject = Document.parse(transformSpec.toJson());
+                modelList.add(new ReplaceOneModel<>(query, transformSpecObject, UPSERT_OPTION));
             }
 
-            final BulkWriteResult result = bulk.execute();
+            final BulkWriteResult result = transformCollection.bulkWrite(modelList, UNORDERED_OPTION);
 
             if (LOG.isDebugEnabled()) {
                 final String bulkResultMessage = getBulkResultMessage("transform specs", result, transformSpecs.size());
                 LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
-                          bulkResultMessage, transformCollection.getFullName(), query);
+                          bulkResultMessage, getFullName(transformCollection), query.toJson());
             }
 
             // TODO: re-derive bounding boxes for all tiles (outside this collection) that reference modified transforms
@@ -534,23 +534,23 @@ public class RenderDao {
 
         if (tileSpecs.size() > 0) {
 
-            final DBCollection tileCollection = getTileCollection(stackId);
-            final BulkWriteOperation bulkTileOperation = tileCollection.initializeUnorderedBulkOperation();
+            final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
-            BasicDBObject query = null;
-            DBObject tileSpecObject;
+            final List<WriteModel<Document>> modelList = new ArrayList<>(tileSpecs.size());
+            Document query = new Document();
+            Document tileSpecObject;
             for (final TileSpec tileSpec : tileSpecs) {
-                query = new BasicDBObject("tileId", tileSpec.getTileId());
-                tileSpecObject = (DBObject) JSON.parse(tileSpec.toJson());
-                bulkTileOperation.find(query).upsert().replaceOne(tileSpecObject);
+                query = new Document("tileId", tileSpec.getTileId());
+                tileSpecObject = Document.parse(tileSpec.toJson());
+                modelList.add(new ReplaceOneModel<>(query, tileSpecObject, UPSERT_OPTION));
             }
 
-            final BulkWriteResult result = bulkTileOperation.execute();
+            final BulkWriteResult result = tileCollection.bulkWrite(modelList, UNORDERED_OPTION);
 
             if (LOG.isDebugEnabled()) {
                 final String bulkResultMessage = getBulkResultMessage("tile specs", result, tileSpecs.size());
                 LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
-                          bulkResultMessage, tileCollection.getFullName(), query);
+                          bulkResultMessage, getFullName(tileCollection), query.toJson());
             }
         }
 
@@ -575,27 +575,20 @@ public class RenderDao {
         validateRequiredParameter("tileSpec", tileSpec);
         validateRequiredParameter("tileSpec.tileId", tileSpec.getTileId());
 
-        final DBCollection tileCollection = getTileCollection(stackId);
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
         final String context = "tile spec with id '" + tileSpec.getTileId();
         validateTransformReferences(context, stackId, tileSpec.getTransforms());
 
-        final BasicDBObject query = new BasicDBObject();
+        final Document query = new Document();
         query.put("tileId", tileSpec.getTileId());
 
-        final DBObject tileSpecObject = (DBObject) JSON.parse(tileSpec.toJson());
+        final Document tileSpecObject = Document.parse(tileSpec.toJson());
 
-        final WriteResult result = tileCollection.update(query, tileSpecObject, true, false);
-
-        final String action;
-        if (result.isUpdateOfExisting()) {
-            action = "update";
-        } else {
-            action = "insert";
-        }
+        final UpdateResult result = tileCollection.replaceOne(query, tileSpecObject, UPSERT_OPTION);
 
         LOG.debug("saveTileSpec: {}.{},({}), upsertedId is {}",
-                  tileCollection.getFullName(), action, query, result.getUpsertedId());
+                  getFullName(tileCollection), getInsertOrUpdate(result), query.toJson(), result.getUpsertedId());
 
         return tileSpec;
     }
@@ -617,21 +610,21 @@ public class RenderDao {
         validateRequiredParameter("stackId", stackId);
         validateRequiredParameter("transformId", transformId);
 
-        final DBCollection transformCollection = getTransformCollection(stackId);
+        final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
 
-        final BasicDBObject query = new BasicDBObject();
+        final Document query = new Document();
         query.put("id", transformId);
 
-        LOG.debug("getTransformSpec: {}.find({})", transformCollection.getFullName(), query);
+        LOG.debug("getTransformSpec: {}.find({})", getFullName(transformCollection), query.toJson());
 
-        final DBObject document = transformCollection.findOne(query);
+        final Document document = transformCollection.find(query).first();
 
         if (document == null) {
             throw new ObjectNotFoundException("transform spec with id '" + transformId + "' does not exist in the " +
-                                              transformCollection.getFullName() + " collection");
+                                              getFullName(transformCollection) + " collection");
         }
 
-        return TransformSpec.fromJson(document.toString());
+        return TransformSpec.fromJson(document.toJson());
     }
 
     /**
@@ -653,27 +646,20 @@ public class RenderDao {
         validateRequiredParameter("transformSpec", transformSpec);
         validateRequiredParameter("transformSpec.id", transformSpec.getId());
 
-        final DBCollection transformCollection = getTransformCollection(stackId);
+        final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
 
         final String context = "transform spec with id '" + transformSpec.getId() + "'";
         validateTransformReferences(context, stackId, transformSpec);
 
-        final BasicDBObject query = new BasicDBObject();
+        final Document query = new Document();
         query.put("id", transformSpec.getId());
 
-        final DBObject transformSpecObject = (DBObject) JSON.parse(transformSpec.toJson());
+        final Document transformSpecObject = Document.parse(transformSpec.toJson());
 
-        final WriteResult result = transformCollection.update(query, transformSpecObject, true, false);
-
-        final String action;
-        if (result.isUpdateOfExisting()) {
-            action = "update";
-        } else {
-            action = "insert";
-        }
+        final UpdateResult result = transformCollection.replaceOne(query, transformSpecObject, UPSERT_OPTION);
 
         LOG.debug("saveTransformSpec: {}.{},({}), upsertedId is {}",
-                  transformCollection.getFullName(), action, query, result.getUpsertedId());
+                  getFullName(transformCollection), getInsertOrUpdate(result), query.toJson(), result.getUpsertedId());
 
         return transformSpec;
     }
@@ -689,16 +675,16 @@ public class RenderDao {
 
         validateRequiredParameter("stackId", stackId);
 
-        final DBCollection tileCollection = getTileCollection(stackId);
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
         final List<Double> list = new ArrayList<>();
-        for (final Object zValue : tileCollection.distinct("z")) {
+        for (final Double zValue : tileCollection.distinct("z", Double.class)) {
             if (zValue != null) {
-                list.add(new Double(zValue.toString()));
+                list.add(zValue);
             }
         }
 
-        LOG.debug("getZValues: returning {} values for {}", list.size(), tileCollection.getFullName());
+        LOG.debug("getZValues: returning {} values for {}", list.size(), getFullName(tileCollection));
 
         return list;
     }
@@ -710,17 +696,17 @@ public class RenderDao {
         validateRequiredParameter("stackId", stackId);
         validateRequiredParameter("sectionId", sectionId);
 
-        final DBCollection tileCollection = getTileCollection(stackId);
-        final BasicDBObject query = new BasicDBObject("layout.sectionId", sectionId);
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+        final Document query = new Document("layout.sectionId", sectionId);
 
-        final DBObject document = tileCollection.findOne(query);
+        final Document document = tileCollection.find(query).first();
 
         if (document == null) {
             throw new ObjectNotFoundException("sectionId '" + sectionId + "' does not exist in the " +
-                                              tileCollection.getFullName() + " collection");
+                                              getFullName(tileCollection) + " collection");
         }
 
-        final TileSpec tileSpec = TileSpec.fromJson(document.toString());
+        final TileSpec tileSpec = TileSpec.fromJson(document.toJson());
 
         return tileSpec.getZ();
     }
@@ -734,14 +720,14 @@ public class RenderDao {
         validateRequiredParameter("sectionId", sectionId);
         validateRequiredParameter("z", z);
 
-        final DBCollection tileCollection = getTileCollection(stackId);
-        final BasicDBObject query = new BasicDBObject("layout.sectionId", sectionId);
-        final BasicDBObject update = new BasicDBObject("$set", new BasicDBObject("z", z));
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+        final Document query = new Document("layout.sectionId", sectionId);
+        final Document update = new Document("$set", new Document("z", z));
 
-        tileCollection.update(query, update, false, true);
+        final UpdateResult result = tileCollection.updateMany(query, update);
 
-        LOG.debug("updateZForSection: {}.update({},{})",
-                  tileCollection.getFullName(), query, update);
+        LOG.debug("updateZForSection: updated {} tile specs with {}.update({},{})",
+                  result.getModifiedCount(), getFullName(tileCollection), query.toJson(), update.toJson());
     }
 
 
@@ -763,28 +749,28 @@ public class RenderDao {
                                                ", set stack state to COMPLETE to generate the aggregate collection");
         }
 
-        final DBCollection sectionCollection = getSectionCollection(stackId);
+        final MongoCollection<Document> sectionCollection = getSectionCollection(stackId);
 
-        final BasicDBObject query = new BasicDBObject();
+        final Document query = new Document();
 
-        try (DBCursor cursor = sectionCollection.find(query)) {
-            DBObject document;
-            DBObject resultId;
-            Object sectionId;
-            Object z;
+        try (MongoCursor<Document> cursor = sectionCollection.find(query).iterator()) {
+            Document document;
+            Document resultId;
+            String sectionId;
+            Double z;
             while (cursor.hasNext()) {
                 document = cursor.next();
-                resultId = (DBObject) document.get("_id");
-                sectionId = resultId.get("sectionId");
-                z = resultId.get("z");
+                resultId = document.get("_id", Document.class);
+                sectionId = resultId.get("sectionId", String.class);
+                z = resultId.get("z", Double.class);
                 if ((sectionId != null) && (z != null)) {
-                    list.add(new SectionData(sectionId.toString(), new Double(z.toString())));
+                    list.add(new SectionData(sectionId, z));
                 }
             }
         }
 
         LOG.debug("getSectionData: returning {} values for {}.find({})",
-                  list.size(), sectionCollection.getFullName());
+                  list.size(), sectionCollection.getNamespace().getFullName());
 
         return list;
     }
@@ -800,9 +786,9 @@ public class RenderDao {
 
         final List<String> list = new ArrayList<>();
 
-        final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
-        for (final Object owner : stackMetaDataCollection.distinct("stackId.owner")) {
-            list.add(owner.toString());
+        final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
+        for (final String owner : stackMetaDataCollection.distinct("stackId.owner", String.class)) {
+            list.add(owner);
         }
 
         return list;
@@ -821,24 +807,25 @@ public class RenderDao {
 
         final List<StackMetaData> list = new ArrayList<>();
 
-        final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
-        final BasicDBObject query = new BasicDBObject("stackId.owner", owner);
-        final BasicDBObject sortCriteria = new BasicDBObject(
+        final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
+        final Document query = new Document("stackId.owner", owner);
+        final Document sortCriteria = new Document(
                 "stackId.project", 1).append(
                 "currentVersion.cycleNumber", 1).append(
                 "currentVersion.cycleStepNumber", 1).append(
                 "stackId.name", 1);
 
-        try (DBCursor cursor = stackMetaDataCollection.find(query).sort(sortCriteria)) {
-            DBObject document;
+        try (MongoCursor<Document> cursor = stackMetaDataCollection.find(query).sort(sortCriteria).iterator()) {
+            Document document;
             while (cursor.hasNext()) {
                 document = cursor.next();
-                list.add(StackMetaData.fromJson(document.toString()));
+                list.add(StackMetaData.fromJson(document.toJson()));
             }
         }
 
         LOG.debug("getStackMetaDataListForOwner: returning {} values for {}.find({}).sort({})",
-                  list.size(), stackMetaDataCollection.getFullName(), query, sortCriteria);
+                  list.size(), stackMetaDataCollection.getNamespace().getFullName(),
+                  query.toJson(), sortCriteria.toJson());
 
         return list;
     }
@@ -856,12 +843,12 @@ public class RenderDao {
 
         StackMetaData stackMetaData = null;
 
-        final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
-        final BasicDBObject query = getStackIdQuery(stackId);
+        final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
+        final Document query = getStackIdQuery(stackId);
 
-        final DBObject document = stackMetaDataCollection.findOne(query);
+        final Document document = stackMetaDataCollection.find(query).first();
         if (document != null) {
-            stackMetaData = StackMetaData.fromJson(document.toString());
+            stackMetaData = StackMetaData.fromJson(document.toJson());
         }
 
         return stackMetaData;
@@ -874,16 +861,14 @@ public class RenderDao {
         validateRequiredParameter("stackMetaData", stackMetaData);
 
         final StackId stackId = stackMetaData.getStackId();
-        final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
+        final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
 
-        final BasicDBObject query = getStackIdQuery(stackId);
-
-        final DBObject stackMetaDataObject = (DBObject) JSON.parse(stackMetaData.toJson());
-
-        final WriteResult result = stackMetaDataCollection.update(query, stackMetaDataObject, true, false);
+        final Document query = getStackIdQuery(stackId);
+        final Document stackMetaDataObject = Document.parse(stackMetaData.toJson());
+        final UpdateResult result = stackMetaDataCollection.replaceOne(query, stackMetaDataObject, UPSERT_OPTION);
 
         final String action;
-        if (result.isUpdateOfExisting()) {
+        if (result.getMatchedCount() > 0) {
             action = "update";
         } else {
             action = "insert";
@@ -892,7 +877,7 @@ public class RenderDao {
         }
 
         LOG.debug("saveStackMetaData: {}.{}({})",
-                  stackMetaDataCollection.getFullName(), action, query);
+                  stackMetaDataCollection.getNamespace().getFullName(), action, query.toJson());
     }
 
     public StackMetaData ensureIndexesAndDeriveStats(final StackMetaData stackMetaData) {
@@ -903,8 +888,8 @@ public class RenderDao {
 
         LOG.debug("ensureIndexesAndDeriveStats: entry, {}", stackId);
 
-        final DBCollection transformCollection = getTransformCollection(stackId);
-        final DBCollection tileCollection = getTileCollection(stackId);
+        final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
         // should not be necessary, but okay to ensure core indexes just in case
         ensureCoreTransformIndex(transformCollection);
@@ -964,13 +949,13 @@ public class RenderDao {
         //     ]
         // )
 
-        final DBObject tileWidth = new BasicDBObject("$subtract", buildBasicDBList(new String[] {"$maxX","$minX" }));
-        final DBObject tileHeight = new BasicDBObject("$subtract", buildBasicDBList(new String[] {"$maxY","$minY" }));
-        final DBObject tileValues = new BasicDBObject("z", "$z").append(
+        final Document tileWidth = new Document("$subtract", buildBasicDBList(new String[] {"$maxX","$minX" }));
+        final Document tileHeight = new Document("$subtract", buildBasicDBList(new String[] {"$maxY","$minY" }));
+        final Document tileValues = new Document("z", "$z").append(
                 "minX", "$minX").append("minY", "$minY").append("maxX", "$maxX").append("maxY", "$maxY").append(
                 "width", tileWidth).append("height", tileHeight);
 
-        final DBObject projectStage = new BasicDBObject("$project", tileValues);
+        final Document projectStage = new Document("$project", tileValues);
 
         final String minXKey = "stackMinX";
         final String minYKey = "stackMinY";
@@ -983,86 +968,73 @@ public class RenderDao {
         final String minHeightKey = "stackMinTileHeight";
         final String maxHeightKey = "stackMaxTileHeight";
 
-        final BasicDBObject minAndMaxValues = new BasicDBObject("_id", "minAndMaxValues");
-        minAndMaxValues.append(minXKey, new BasicDBObject(QueryOperators.MIN, "$minX"));
-        minAndMaxValues.append(minYKey, new BasicDBObject(QueryOperators.MIN, "$minY"));
-        minAndMaxValues.append(minZKey, new BasicDBObject(QueryOperators.MIN, "$z"));
-        minAndMaxValues.append(maxXKey, new BasicDBObject(QueryOperators.MAX, "$maxX"));
-        minAndMaxValues.append(maxYKey, new BasicDBObject(QueryOperators.MAX, "$maxY"));
-        minAndMaxValues.append(maxZKey, new BasicDBObject(QueryOperators.MAX, "$z"));
-        minAndMaxValues.append(minWidthKey, new BasicDBObject(QueryOperators.MIN, "$width"));
-        minAndMaxValues.append(maxWidthKey, new BasicDBObject(QueryOperators.MAX, "$width"));
-        minAndMaxValues.append(minHeightKey, new BasicDBObject(QueryOperators.MIN, "$height"));
-        minAndMaxValues.append(maxHeightKey, new BasicDBObject(QueryOperators.MAX, "$height"));
+        final Document minAndMaxValues = new Document("_id", "minAndMaxValues");
+        minAndMaxValues.append(minXKey, new Document(QueryOperators.MIN, "$minX"));
+        minAndMaxValues.append(minYKey, new Document(QueryOperators.MIN, "$minY"));
+        minAndMaxValues.append(minZKey, new Document(QueryOperators.MIN, "$z"));
+        minAndMaxValues.append(maxXKey, new Document(QueryOperators.MAX, "$maxX"));
+        minAndMaxValues.append(maxYKey, new Document(QueryOperators.MAX, "$maxY"));
+        minAndMaxValues.append(maxZKey, new Document(QueryOperators.MAX, "$z"));
+        minAndMaxValues.append(minWidthKey, new Document(QueryOperators.MIN, "$width"));
+        minAndMaxValues.append(maxWidthKey, new Document(QueryOperators.MAX, "$width"));
+        minAndMaxValues.append(minHeightKey, new Document(QueryOperators.MIN, "$height"));
+        minAndMaxValues.append(maxHeightKey, new Document(QueryOperators.MAX, "$height"));
 
-        final DBObject groupStage = new BasicDBObject("$group", minAndMaxValues);
+        final Document groupStage = new Document("$group", minAndMaxValues);
 
-        final List<DBObject> pipeline = new ArrayList<>();
+        final List<Document> pipeline = new ArrayList<>();
         pipeline.add(projectStage);
         pipeline.add(groupStage);
 
-        final AggregationOutput aggregationOutput = tileCollection.aggregate(pipeline);
 
-        StackStats stats = null;
-        for (final DBObject result : aggregationOutput.results()) {
+        // mongodb java 3.0 driver notes:
+        // -- need to set cursor batchSize to prevent NPE from cursor creation
+        final Document aggregateResult = tileCollection.aggregate(pipeline).batchSize(1).first();
 
-            if (stats != null) {
-                throw new IllegalStateException("multiple aggregation results returned for " + pipeline);
-            }
-
-            final Bounds stackBounds = new Bounds(getDoubleValue(result.get(minXKey)),
-                                                  getDoubleValue(result.get(minYKey)),
-                                                  getDoubleValue(result.get(minZKey)),
-                                                  getDoubleValue(result.get(maxXKey)),
-                                                  getDoubleValue(result.get(maxYKey)),
-                                                  getDoubleValue(result.get(maxZKey)));
-
-            final Integer minTileWidth = getDoubleValueAsInteger(result.get(minWidthKey));
-            final Integer maxTileWidth = getDoubleValueAsInteger(result.get(maxWidthKey));
-            final Integer minTileHeight = getDoubleValueAsInteger(result.get(minHeightKey));
-            final Integer maxTileHeight = getDoubleValueAsInteger(result.get(maxHeightKey));
-
-            stats = new StackStats(stackBounds,
-                                   sectionCount,
-                                   nonIntegralSectionCount,
-                                   tileCount,
-                                   transformCount,
-                                   minTileWidth,
-                                   maxTileWidth,
-                                   minTileHeight,
-                                   maxTileHeight);
-        }
-
-        if (stats == null) {
+        if (aggregateResult == null) {
             String cause = "";
             if (tileCollection.count() == 0) {
                 cause = " because the stack has no tiles";
             }
             throw new IllegalStateException("Stack data aggregation returned no results" + cause + ".  " +
-                                            "The aggregation query was " + tileCollection.getFullName() +
+                                            "The aggregation query was " + getFullName(tileCollection) +
                                             ".aggregate(" + pipeline + ") .");
         }
 
+        final Bounds stackBounds = new Bounds(getDoubleValue(aggregateResult.get(minXKey)),
+                                              getDoubleValue(aggregateResult.get(minYKey)),
+                                              getDoubleValue(aggregateResult.get(minZKey)),
+                                              getDoubleValue(aggregateResult.get(maxXKey)),
+                                              getDoubleValue(aggregateResult.get(maxYKey)),
+                                              getDoubleValue(aggregateResult.get(maxZKey)));
+
+        final Integer minTileWidth = getDoubleValueAsInteger(aggregateResult.get(minWidthKey));
+        final Integer maxTileWidth = getDoubleValueAsInteger(aggregateResult.get(maxWidthKey));
+        final Integer minTileHeight = getDoubleValueAsInteger(aggregateResult.get(minHeightKey));
+        final Integer maxTileHeight = getDoubleValueAsInteger(aggregateResult.get(maxHeightKey));
+
+        final StackStats stats = new StackStats(stackBounds,
+                                                sectionCount,
+                                                nonIntegralSectionCount,
+                                                tileCount,
+                                                transformCount,
+                                                minTileWidth,
+                                                maxTileWidth,
+                                                minTileHeight,
+                                                maxTileHeight);
         stackMetaData.setStats(stats);
 
         LOG.debug("ensureIndexesAndDeriveStats: completed stat derivation for {}, stats={}", stackId, stats);
 
         stackMetaData.setState(StackMetaData.StackState.COMPLETE);
 
-        final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
-        final BasicDBObject query = getStackIdQuery(stackId);
-        final DBObject stackMetaDataObject = (DBObject) JSON.parse(stackMetaData.toJson());
-        final WriteResult result = stackMetaDataCollection.update(query, stackMetaDataObject, true, false);
-
-        final String action;
-        if (result.isUpdateOfExisting()) {
-            action = "update";
-        } else {
-            action = "insert";
-        }
+        final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
+        final Document query = getStackIdQuery(stackId);
+        final Document stackMetaDataObject = Document.parse(stackMetaData.toJson());
+        final UpdateResult result = stackMetaDataCollection.replaceOne(query, stackMetaDataObject, UPSERT_OPTION);
 
         LOG.debug("ensureIndexesAndDeriveStats: {}.{}({})",
-                  stackMetaDataCollection.getFullName(), action, query);
+                  getFullName(stackMetaDataCollection), getInsertOrUpdate(result), query.toJson());
 
         return stackMetaData;
     }
@@ -1070,7 +1042,8 @@ public class RenderDao {
     private void deriveSectionData(final StackId stackId)
             throws IllegalArgumentException {
 
-        final DBCollection tileCollection = getTileCollection(stackId);
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+        final String sectionCollectionName = stackId.getSectionCollectionName();
 
         // db.<stack_prefix>__tile.aggregate(
         //     [
@@ -1079,27 +1052,35 @@ public class RenderDao {
         //     ]
         // )
 
-        final BasicDBObject idComponents = new BasicDBObject("sectionId", "$layout.sectionId").append("z", "$z");
-        final BasicDBObject id = new BasicDBObject("_id", idComponents);
+        final Document idComponents = new Document("sectionId", "$layout.sectionId").append("z", "$z");
+        final Document id = new Document("_id", idComponents);
 
-        final DBObject groupStage = new BasicDBObject("$group", id);
-        final DBObject sortStage = new BasicDBObject("$sort", new BasicDBObject("_id.sectionId", 1));
-        final DBObject outStage = new BasicDBObject("$out", stackId.getSectionCollectionName());
+        final List<Document> pipeline = new ArrayList<>();
+        pipeline.add(new Document("$group", id));
+        pipeline.add(new Document("$sort", new Document("_id.sectionId", 1)));
+        pipeline.add(new Document("$out", sectionCollectionName));
 
-        final List<DBObject> pipeline = new ArrayList<>();
-        pipeline.add(groupStage);
-        pipeline.add(sortStage);
-        pipeline.add(outStage);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("deriveSectionData: running {}.aggregate({})",
+                      getFullName(tileCollection),
+                      getJsonString(pipeline));
+        }
 
-        LOG.debug("deriveSectionData: running {}.aggregate({})", tileCollection.getFullName(), pipeline);
+        // mongodb java 3.0 driver notes:
+        // -- need to retrieve first batch from cursor - via first() call - to force aggregate operation to run
+        //    (even though we don't need to work with the batch result here)
+        // -- need to set cursor batchSize to prevent NPE from cursor creation
+        tileCollection.aggregate(pipeline).batchSize(0).first();
 
-        tileCollection.aggregate(pipeline);
+        if (! collectionExists(sectionCollectionName)) {
+            throw new IllegalStateException("Section data aggregation results were not saved to " +
+                                            sectionCollectionName);
+        }
 
-        final DBCollection sectionCollection = getSectionCollection(stackId);
+        final MongoCollection<Document> sectionCollection = getSectionCollection(stackId);
         final long sectionCount = sectionCollection.count();
 
-        LOG.debug("deriveSectionData: saved data for {} sections in {}",
-                  sectionCount, sectionCollection.getFullName());
+        LOG.debug("deriveSectionData: saved data for {} sections in {}", sectionCount, getFullName(sectionCollection));
     }
 
     public void removeStack(final StackId stackId,
@@ -1108,27 +1089,27 @@ public class RenderDao {
 
         validateRequiredParameter("stackId", stackId);
 
-        final DBCollection tileCollection = getTileCollection(stackId);
-        final long tileCount = tileCollection.getCount();
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+        final long tileCount = tileCollection.count();
         tileCollection.drop();
 
-        LOG.debug("removeStack: {}.drop() deleted {} document(s)",
-                  tileCollection.getFullName(), tileCount);
+        LOG.debug("removeStack: {}.drop() deleted {} document(s)", getFullName(tileCollection), tileCount);
 
-        final DBCollection transformCollection = getTransformCollection(stackId);
-        final long transformCount = transformCollection.getCount();
+        final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
+        final long transformCount = transformCollection.count();
         transformCollection.drop();
 
-        LOG.debug("removeStack: {}.drop() deleted {} document(s)",
-                  transformCollection.getFullName(), transformCount);
+        LOG.debug("removeStack: {}.drop() deleted {} document(s)", getFullName(transformCollection), transformCount);
 
         if (includeMetaData) {
-            final DBCollection stackMetaDataCollection = getStackMetaDataCollection();
-            final BasicDBObject stackIdQuery = getStackIdQuery(stackId);
-            final WriteResult stackMetaDataRemoveResult = stackMetaDataCollection.remove(stackIdQuery);
+            final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
+            final Document stackIdQuery = getStackIdQuery(stackId);
+            final DeleteResult stackMetaDataRemoveResult = stackMetaDataCollection.deleteOne(stackIdQuery);
 
             LOG.debug("removeStack: {}.remove({}) deleted {} document(s)",
-                      stackMetaDataCollection.getFullName(), stackIdQuery, stackMetaDataRemoveResult.getN());
+                      getFullName(stackMetaDataCollection),
+                      stackIdQuery.toJson(),
+                      stackMetaDataRemoveResult.getDeletedCount());
         }
     }
 
@@ -1139,12 +1120,12 @@ public class RenderDao {
         validateRequiredParameter("stackId", stackId);
         validateRequiredParameter("z", z);
 
-        final DBCollection tileCollection = getTileCollection(stackId);
-        final BasicDBObject tileQuery = new BasicDBObject("z", z);
-        final WriteResult removeResult = tileCollection.remove(tileQuery);
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+        final Document tileQuery = new Document("z", z);
+        final DeleteResult removeResult = tileCollection.deleteMany(tileQuery);
 
         LOG.debug("removeSection: {}.remove({}) deleted {} document(s)",
-                  tileCollection.getFullName(), tileQuery, removeResult.getN());
+                  getFullName(tileCollection), tileQuery.toJson(), removeResult.getDeletedCount());
     }
 
     /**
@@ -1160,8 +1141,8 @@ public class RenderDao {
         validateRequiredParameter("stackId", stackId);
         validateRequiredParameter("z", z);
 
-        final DBCollection tileCollection = getTileCollection(stackId);
-        final BasicDBObject tileQuery = new BasicDBObject("z", z);
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+        final Document tileQuery = new Document("z", z);
 
         final Double minX = getBound(tileCollection, tileQuery, "minX", true);
 
@@ -1190,27 +1171,27 @@ public class RenderDao {
         validateRequiredParameter("stackId", stackId);
         validateRequiredParameter("z", z);
 
-        final DBCollection tileCollection = getTileCollection(stackId);
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
         // EXAMPLE:   find({"z" : 3466.0},{"tileId": 1, "minX": 1, "minY": 1, "maxX": 1, "maxY": 1, "_id": 0})
         // INDEX:     z_1_minY_1_minX_1_maxY_1_maxX_1_tileId_1
-        final DBObject tileQuery = new BasicDBObject("z", z);
-        final DBObject tileKeys =
-                new BasicDBObject("tileId", 1).append(
+        final Document tileQuery = new Document("z", z);
+        final Document tileKeys =
+                new Document("tileId", 1).append(
                         "minX", 1).append("minY", 1).append("maxX", 1).append("maxY", 1).append("_id", 0);
 
         final List<TileBounds> list = new ArrayList<>();
 
-        try (DBCursor cursor = tileCollection.find(tileQuery, tileKeys)) {
-            DBObject document;
+        try (MongoCursor<Document> cursor = tileCollection.find(tileQuery).projection(tileKeys).iterator()) {
+            Document document;
             while (cursor.hasNext()) {
                 document = cursor.next();
-                list.add(TileBounds.fromJson(document.toString()));
+                list.add(TileBounds.fromJson(document.toJson()));
             }
         }
 
         LOG.debug("getTileBounds: found {} tile spec(s) for {}.find({},{})",
-                  list.size(), tileCollection.getFullName(), tileQuery, tileKeys);
+                  list.size(), getFullName(tileCollection), tileQuery.toJson(), tileKeys.toJson());
 
         return list;
     }
@@ -1223,20 +1204,20 @@ public class RenderDao {
         validateRequiredParameter("fromStackId", fromStackId);
         validateRequiredParameter("toStackId", toStackId);
 
-        final DBCollection fromTransformCollection = getTransformCollection(fromStackId);
-        final DBCollection toTransformCollection = getTransformCollection(toStackId);
-        cloneCollection(fromTransformCollection, toTransformCollection, new BasicDBObject());
+        final MongoCollection<Document> fromTransformCollection = getTransformCollection(fromStackId);
+        final MongoCollection<Document> toTransformCollection = getTransformCollection(toStackId);
+        cloneCollection(fromTransformCollection, toTransformCollection, new Document());
 
-        final BasicDBObject filterQuery = new BasicDBObject();
+        final Document filterQuery = new Document();
         if ((zValues != null) && (zValues.size() > 0)) {
             final BasicDBList list = new BasicDBList();
             list.addAll(zValues);
-            final BasicDBObject zFilter = new BasicDBObject(QueryOperators.IN, list);
+            final Document zFilter = new Document(QueryOperators.IN, list);
             filterQuery.append("z", zFilter);
         }
 
-        final DBCollection fromTileCollection = getTileCollection(fromStackId);
-        final DBCollection toTileCollection = getTileCollection(toStackId);
+        final MongoCollection<Document> fromTileCollection = getTileCollection(fromStackId);
+        final MongoCollection<Document> toTileCollection = getTileCollection(toStackId);
         cloneCollection(fromTileCollection, toTileCollection, filterQuery);
     }
 
@@ -1267,45 +1248,43 @@ public class RenderDao {
 
         validateRequiredParameter("stackId", stackId);
 
-        final DBCollection tileCollection = getTileCollection(stackId);
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
-        BasicDBObject zFilter = null;
+        Document zFilter = null;
         if (minZ != null) {
-            zFilter = new BasicDBObject(QueryOperators.GTE, minZ);
+            zFilter = new Document(QueryOperators.GTE, minZ);
             if (maxZ != null) {
                 zFilter = zFilter.append(QueryOperators.LTE, maxZ);
             }
         } else if (maxZ != null) {
-            zFilter = new BasicDBObject(QueryOperators.LTE, maxZ);
+            zFilter = new Document(QueryOperators.LTE, maxZ);
         }
 
         // EXAMPLE:   find({"z": {"$gte": 4370.0, "$lte": 4370.0}}, {"tileId": 1, "z": 1, "minX": 1, "minY": 1, "layout": 1, "mipmapLevels": 1}).sort({"z": 1, "minY": 1, "minX": 1})
         // INDEX:     z_1_minY_1_minX_1_maxY_1_maxX_1_tileId_1
 
-        final BasicDBObject tileQuery;
+        final Document tileQuery;
         if (zFilter == null) {
-            tileQuery = new BasicDBObject();
+            tileQuery = new Document();
         } else {
-            tileQuery = new BasicDBObject("z", zFilter);
+            tileQuery = new Document("z", zFilter);
         }
 
-        final DBObject tileKeys = new BasicDBObject();
+        final Document tileKeys = new Document();
 
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
-        final DBObject orderBy = new BasicDBObject("z", 1).append("minY", 1).append("minX", 1);
-        try (DBCursor cursor = tileCollection.find(tileQuery, tileKeys)) {
+        final Document orderBy = new Document("z", 1).append("minY", 1).append("minX", 1);
+        try (MongoCursor<Document> cursor = tileCollection.find(tileQuery).projection(tileKeys).sort(orderBy).iterator()) {
             final String baseUriString = '\t' + stackRequestUri + "/tile/";
 
-            cursor.sort(orderBy);
-
-            DBObject document;
+            Document document;
             TileSpec tileSpec;
             String layoutData;
             String uriString;
             while (cursor.hasNext()) {
                 document = cursor.next();
-                tileSpec = TileSpec.fromJson(document.toString());
+                tileSpec = TileSpec.fromJson(document.toJson());
                 layoutData = tileSpec.toLayoutFileFormat();
                 outputStream.write(layoutData.getBytes());
 
@@ -1322,26 +1301,27 @@ public class RenderDao {
         }
 
         LOG.debug("writeLayoutFileData: wrote data for {} tile spec(s) returned by {}.find({},{}).sort({}), elapsedSeconds={}",
-                  tileSpecCount, tileCollection.getFullName(), tileQuery, tileKeys, orderBy, timer.getElapsedSeconds());
+                  tileSpecCount, getFullName(tileCollection),
+                  tileQuery.toJson(), tileKeys.toJson(), orderBy.toJson(), timer.getElapsedSeconds());
     }
 
-    private List<TransformSpec> getTransformSpecs(final DBCollection transformCollection,
+    private List<TransformSpec> getTransformSpecs(final MongoCollection<Document> transformCollection,
                                                   final Set<String> specIds) {
         final int specCount = specIds.size();
         final List<TransformSpec> transformSpecList = new ArrayList<>(specCount);
         if (specCount > 0) {
 
-            final BasicDBObject transformQuery = new BasicDBObject();
-            transformQuery.put("id", new BasicDBObject(QueryOperators.IN, specIds));
+            final Document transformQuery = new Document();
+            transformQuery.put("id", new Document(QueryOperators.IN, specIds));
 
-            LOG.debug("getTransformSpecs: {}.find({})", transformCollection.getFullName(), transformQuery);
+            LOG.debug("getTransformSpecs: {}.find({})", getFullName(transformCollection), transformQuery.toJson());
 
-            try (DBCursor cursor = transformCollection.find(transformQuery)) {
-                DBObject document;
+            try (MongoCursor<Document> cursor = transformCollection.find(transformQuery).iterator()) {
+                Document document;
                 TransformSpec transformSpec;
                 while (cursor.hasNext()) {
                     document = cursor.next();
-                    transformSpec = TransformSpec.fromJson(document.toString());
+                    transformSpec = TransformSpec.fromJson(document.toJson());
                     transformSpecList.add(transformSpec);
                 }
             }
@@ -1351,7 +1331,7 @@ public class RenderDao {
         return transformSpecList;
     }
 
-    private void getDataForTransformSpecReferences(final DBCollection transformCollection,
+    private void getDataForTransformSpecReferences(final MongoCollection<Document> transformCollection,
                                                    final Set<String> unresolvedSpecIds,
                                                    final Map<String, TransformSpec> resolvedIdToSpecMap,
                                                    final int callCount) {
@@ -1391,19 +1371,19 @@ public class RenderDao {
     }
 
     private Map<String, TransformSpec> addResolvedTileSpecs(final StackId stackId,
-                                                            final DBObject tileQuery,
+                                                            final Document tileQuery,
                                                             final RenderParameters renderParameters) {
-        final DBCollection tileCollection = getTileCollection(stackId);
+
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
         // EXAMPLE:   find({"z": 4050.0 , "minX": {"$lte": 239850.0} , "minY": {"$lte": 149074.0}, "maxX": {"$gte": -109.0}, "maxY": {"$gte": 370.0}}).sort({"tileId": 1})
         // INDEXES:   z_1_minY_1_minX_1_maxY_1_maxX_1_tileId_1 (z1_minX_1, z1_maxX_1, ... used for edge cases)
-        final DBCursor cursor = tileCollection.find(tileQuery);
 
         // order tile specs by tileId to ensure consistent coordinate mapping
-        final DBObject orderBy = new BasicDBObject("tileId", 1);
-        cursor.sort(orderBy);
-        try {
-            DBObject document;
+        final Document orderBy = new Document("tileId", 1);
+
+        try (MongoCursor<Document> cursor = tileCollection.find(tileQuery).sort(orderBy).iterator()) {
+            Document document;
             TileSpec tileSpec;
             int count = 0;
             while (cursor.hasNext()) {
@@ -1411,69 +1391,69 @@ public class RenderDao {
                     throw new IllegalArgumentException("query too broad, over " + count + " tiles match " + tileQuery);
                 }
                 document = cursor.next();
-                tileSpec = TileSpec.fromJson(document.toString());
+                tileSpec = TileSpec.fromJson(document.toJson());
                 renderParameters.addTileSpec(tileSpec);
                 count++;
             }
-        } finally {
-            cursor.close();
         }
 
         LOG.debug("addResolvedTileSpecs: found {} tile spec(s) for {}.find({}).sort({})",
-                  renderParameters.numberOfTileSpecs(), tileCollection.getFullName(), tileQuery, orderBy);
+                  renderParameters.numberOfTileSpecs(), getFullName(tileCollection),
+                  tileQuery.toJson(), orderBy.toJson());
 
         return resolveTransformReferencesForTiles(stackId, renderParameters.getTileSpecs());
     }
 
-    private DBObject lte(final double value) {
-        return new BasicDBObject(QueryOperators.LTE, value);
+    private Document lte(final double value) {
+        return new Document(QueryOperators.LTE, value);
     }
 
-    private DBObject gte(final double value) {
-        return new BasicDBObject(QueryOperators.GTE, value);
+    private Document gte(final double value) {
+        return new Document(QueryOperators.GTE, value);
     }
 
-    private BasicDBObject getIntersectsBoxQuery(final double z,
-                                                final double x,
-                                                final double y,
-                                                final double lowerRightX,
-                                                final double lowerRightY) {
+    private Document getIntersectsBoxQuery(final double z,
+                                           final double x,
+                                           final double y,
+                                           final double lowerRightX,
+                                           final double lowerRightY) {
         // intersection logic stolen from java.awt.Rectangle#intersects (without overflow checks)
         //   rx => minX, ry => minY, rw => maxX,        rh => maxY
         //   tx => x,    ty => y,    tw => lowerRightX, th => lowerRightY
-        return new BasicDBObject("z", z).append(
+//        return Filters.eq("z", z)
+        return new Document("z", z).append(
                 "minX", lte(lowerRightX)).append(
                 "minY", lte(lowerRightY)).append(
                 "maxX", gte(x)).append(
                 "maxY", gte(y));
     }
 
-    private BasicDBObject getStackIdQuery(final StackId stackId) {
-        return new BasicDBObject(
+    private Document getStackIdQuery(final StackId stackId) {
+        return new Document(
                 "stackId.owner", stackId.getOwner()).append(
                 "stackId.project", stackId.getProject()).append(
                 "stackId.stack", stackId.getStack());
     }
 
-    private BasicDBObject getGroupQuery(final Double minZ,
-                                        final Double maxZ,
-                                        final String groupId,
-                                        final Double minX,
-                                        final Double maxX,
-                                        final Double minY,
-                                        final Double maxY)
+    private Document getGroupQuery(final Double minZ,
+                                   final Double maxZ,
+                                   final String groupId,
+                                   final Double minX,
+                                   final Double maxX,
+                                   final Double minY,
+                                   final Double maxY)
             throws IllegalArgumentException {
 
-        final BasicDBObject groupQuery = new BasicDBObject();
+        final Document groupQuery = new Document();
 
         if ((minZ != null) && minZ.equals(maxZ)) {
             groupQuery.append("z", minZ);
         } else {
             if (minZ != null) {
-                groupQuery.append("z", new BasicDBObject(QueryOperators.GTE, minZ));
+                groupQuery.append("z", new Document(QueryOperators.GTE, minZ));
             }
             if (maxZ != null) {
-                groupQuery.append("z", new BasicDBObject(QueryOperators.LTE, maxZ));
+                groupQuery.append("z", new Document(QueryOperators.LTE, maxZ));
             }
         }
 
@@ -1482,16 +1462,16 @@ public class RenderDao {
         }
 
         if (minX != null) {
-            groupQuery.append("maxX", new BasicDBObject(QueryOperators.GTE, minX));
+            groupQuery.append("maxX", new Document(QueryOperators.GTE, minX));
         }
         if (maxX != null) {
-            groupQuery.append("minX", new BasicDBObject(QueryOperators.LTE, maxX));
+            groupQuery.append("minX", new Document(QueryOperators.LTE, maxX));
         }
         if (minY != null) {
-            groupQuery.append("maxY", new BasicDBObject(QueryOperators.GTE, minY));
+            groupQuery.append("maxY", new Document(QueryOperators.GTE, minY));
         }
         if (maxY != null) {
-            groupQuery.append("minY", new BasicDBObject(QueryOperators.LTE, maxY));
+            groupQuery.append("minY", new Document(QueryOperators.LTE, maxY));
         }
 
         return groupQuery;
@@ -1510,7 +1490,7 @@ public class RenderDao {
         final Set<String> unresolvedTransformSpecIds = transformSpec.getUnresolvedIds();
 
         if (unresolvedTransformSpecIds.size() > 0) {
-            final DBCollection transformCollection = getTransformCollection(stackId);
+            final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
             final List<TransformSpec> transformSpecList = getTransformSpecs(transformCollection,
                                                                             unresolvedTransformSpecIds);
             if (transformSpecList.size() != unresolvedTransformSpecIds.size()) {
@@ -1526,19 +1506,19 @@ public class RenderDao {
                 }
                 throw new IllegalArgumentException(context + " references transform id(s) " + missingIds +
                                                    " which do not exist in the " +
-                                                   transformCollection.getFullName() + " collection");
+                                                   getFullName(transformCollection) + " collection");
             }
         }
     }
 
-    private Double getBound(final DBCollection tileCollection,
-                            final BasicDBObject tileQuery,
+    private Double getBound(final MongoCollection<Document> tileCollection,
+                            final Document tileQuery,
                             final String boundKey,
                             final boolean isMin) {
 
         Double bound = null;
 
-        final BasicDBObject query = (BasicDBObject) tileQuery.copy();
+        final Document query = new Document(tileQuery);
 
         // Add a $gt / $lt constraint to ensure that null values aren't included and
         // that an indexOnly query is possible ($exists is not sufficient).
@@ -1546,43 +1526,36 @@ public class RenderDao {
         if (isMin) {
             order = 1;
             // Double.MIN_VALUE is the minimum positive double value, so we need to use -Double.MAX_VALUE here
-            query.append(boundKey, new BasicDBObject("$gt", -Double.MAX_VALUE));
+            query.append(boundKey, new Document("$gt", -Double.MAX_VALUE));
         } else {
-            query.append(boundKey, new BasicDBObject("$lt", Double.MAX_VALUE));
+            query.append(boundKey, new Document("$lt", Double.MAX_VALUE));
         }
 
-        final DBObject tileKeys = new BasicDBObject(boundKey, 1).append("_id", 0);
-        final DBObject orderBy = new BasicDBObject(boundKey, order);
+        final Document tileKeys = new Document(boundKey, 1).append("_id", 0);
+        final Document orderBy = new Document(boundKey, order);
 
         // EXAMPLE:   find({ "z" : 3299.0},{ "minX" : 1 , "_id" : 0}).sort({ "minX" : 1}).limit(1)
         // INDEXES:   z_1_minX_1, z_1_minY_1, z_1_maxX_1, z_1_maxY_1
-        final DBCursor cursor = tileCollection.find(query, tileKeys);
-        cursor.sort(orderBy).limit(1);
-        try {
-            final DBObject document;
-            if (cursor.hasNext()) {
-                document = cursor.next();
-                bound = (Double) document.get(boundKey);
-            }
-        } finally {
-            cursor.close();
+        final Document document = tileCollection.find(query).projection(tileKeys).sort(orderBy).first();
+        if (document != null) {
+            bound = document.get(boundKey, Double.class);
         }
 
-        LOG.debug("getBound: returning {} for {}.{}.find({},{}).sort({}).limit(1)",
-                  bound, RENDER_DB_NAME, tileCollection.getName(), query, tileKeys, orderBy);
+        LOG.debug("getBound: returning {} for {}.find({},{}).sort({}).limit(1)",
+                  bound, getFullName(tileCollection), query.toJson(), tileKeys.toJson(), orderBy.toJson());
 
         return bound;
     }
 
-    private void cloneCollection(final DBCollection fromCollection,
-                                 final DBCollection toCollection,
-                                 final DBObject filterQuery)
+    private void cloneCollection(final MongoCollection<Document> fromCollection,
+                                 final MongoCollection<Document> toCollection,
+                                 final Document filterQuery)
             throws IllegalStateException {
 
         final long fromCount = fromCollection.count();
         final long toCount;
-        final String fromFullName = fromCollection.getFullName();
-        final String toFullName = toCollection.getFullName();
+        final String fromFullName = getFullName(fromCollection);
+        final String toFullName = getFullName(toCollection);
 
         LOG.debug("cloneCollection: entry, copying up to {} documents from {} to {}",
                   fromCount, fromFullName, toFullName);
@@ -1595,26 +1568,27 @@ public class RenderDao {
         final int maxDocumentsPerBulkInsert = 10000;
 
         long count = 0;
-        BulkWriteOperation bulk = toCollection.initializeOrderedBulkOperation();
 
-        try (DBCursor cursor = fromCollection.find(filterQuery)) {
+        final List<WriteModel<Document>> modelList = new ArrayList<>(maxDocumentsPerBulkInsert);
+
+        try (MongoCursor<Document> cursor = fromCollection.find(filterQuery).iterator()) {
 
             BulkWriteResult result;
             long insertedCount;
-            DBObject document;
+            Document document;
             while (cursor.hasNext()) {
                 document = cursor.next();
-                bulk.insert(document);
+                modelList.add(new InsertOneModel<>(document));
                 count++;
                 if (count % maxDocumentsPerBulkInsert == 0) {
-                    result = bulk.execute(WriteConcern.ACKNOWLEDGED);
+                    result = toCollection.bulkWrite(modelList, UNORDERED_OPTION);
                     insertedCount = result.getInsertedCount();
                     if (insertedCount != maxDocumentsPerBulkInsert) {
                         throw new IllegalStateException("only inserted " + insertedCount + " out of " +
                                                         maxDocumentsPerBulkInsert +
                                                         " documents for batch ending with document " + count);
                     }
-                    bulk = toCollection.initializeOrderedBulkOperation();
+                    modelList.clear();
                     if (timer.hasIntervalPassed()) {
                         LOG.debug("cloneCollection: inserted {} documents", count);
                     }
@@ -1622,7 +1596,7 @@ public class RenderDao {
             }
 
             if (count % maxDocumentsPerBulkInsert > 0) {
-                result = bulk.execute(WriteConcern.ACKNOWLEDGED);
+                result = toCollection.bulkWrite(modelList, UNORDERED_OPTION);
                 insertedCount = result.getInsertedCount();
                 final long expectedCount = count % maxDocumentsPerBulkInsert;
                 if (insertedCount != expectedCount) {
@@ -1647,20 +1621,20 @@ public class RenderDao {
                   toCount, fromFullName, toFullName);
     }
 
-    private DBCollection getStackMetaDataCollection() {
-        return renderDb.getCollection(STACK_META_DATA_COLLECTION_NAME);
+    private MongoCollection<Document> getStackMetaDataCollection() {
+        return renderDatabase.getCollection(STACK_META_DATA_COLLECTION_NAME);
     }
 
-    private DBCollection getTileCollection(final StackId stackId) {
-        return renderDb.getCollection(stackId.getTileCollectionName());
+    private MongoCollection<Document> getTileCollection(final StackId stackId) {
+        return renderDatabase.getCollection(stackId.getTileCollectionName());
     }
 
-    private DBCollection getSectionCollection(final StackId stackId) {
-        return renderDb.getCollection(stackId.getSectionCollectionName());
+    private MongoCollection<Document> getSectionCollection(final StackId stackId) {
+        return renderDatabase.getCollection(stackId.getSectionCollectionName());
     }
 
-    private DBCollection getTransformCollection(final StackId stackId) {
-        return renderDb.getCollection(stackId.getTransformCollectionName());
+    private MongoCollection<Document> getTransformCollection(final StackId stackId) {
+        return renderDatabase.getCollection(stackId.getTransformCollectionName());
     }
 
     private void validateRequiredParameter(final String context,
@@ -1672,52 +1646,53 @@ public class RenderDao {
         }
     }
 
-    private void ensureCoreTransformIndex(final DBCollection transformCollection) {
-        ensureIndex(transformCollection,
-                    new BasicDBObject("id", 1),
-                    new BasicDBObject("unique", true).append("background", true));
+    private void ensureCoreTransformIndex(final MongoCollection<Document> transformCollection) {
+        createIndex(transformCollection,
+                    new Document("id", 1),
+                    new IndexOptions().unique(true).background(true));
         LOG.debug("ensureCoreTransformIndex: exit");
     }
 
-    private void ensureCoreTileIndexes(final DBCollection tileCollection) {
-        ensureIndex(tileCollection,
-                    new BasicDBObject("tileId", 1),
-                    new BasicDBObject("unique", true).append("background", true));
-        ensureIndex(tileCollection, new BasicDBObject("z", 1), BACKGROUND_OPTION);
+    private void ensureCoreTileIndexes(final MongoCollection<Document> tileCollection) {
+        createIndex(tileCollection,
+                    new Document("tileId", 1),
+                    new IndexOptions().unique(true).background(true));
+        createIndex(tileCollection, new Document("z", 1), BACKGROUND_OPTION);
         LOG.debug("ensureCoreTileIndex: exit");
     }
 
-    private void ensureSupplementaryTileIndexes(final DBCollection tileCollection) {
+    private void ensureSupplementaryTileIndexes(final MongoCollection<Document> tileCollection) {
 
         // compound index used for bulk (e.g. resolvedTile) queries that sort by tileId
-        ensureIndex(tileCollection, new BasicDBObject("z", 1).append("tileId", 1), BACKGROUND_OPTION);
+        createIndex(tileCollection, new Document("z", 1).append("tileId", 1), BACKGROUND_OPTION);
 
-        ensureIndex(tileCollection, new BasicDBObject("z", 1).append("minX", 1), BACKGROUND_OPTION);
-        ensureIndex(tileCollection, new BasicDBObject("z", 1).append("minY", 1), BACKGROUND_OPTION);
-        ensureIndex(tileCollection, new BasicDBObject("z", 1).append("maxX", 1), BACKGROUND_OPTION);
-        ensureIndex(tileCollection, new BasicDBObject("z", 1).append("maxY", 1), BACKGROUND_OPTION);
+        createIndex(tileCollection, new Document("z", 1).append("minX", 1), BACKGROUND_OPTION);
+        createIndex(tileCollection, new Document("z", 1).append("minY", 1), BACKGROUND_OPTION);
+        createIndex(tileCollection, new Document("z", 1).append("maxX", 1), BACKGROUND_OPTION);
+        createIndex(tileCollection, new Document("z", 1).append("maxY", 1), BACKGROUND_OPTION);
 
         // compound index used for most box intersection queries
         // - z, minY, minX order used to match layout file sorting needs
         // - appended tileId so that getTileBounds query can be index only (must not sort)
-        ensureIndex(tileCollection,
-                    new BasicDBObject("z", 1).append(
+        createIndex(tileCollection,
+                    new Document("z", 1).append(
                             "minY", 1).append("minX", 1).append("maxY", 1).append("maxX", 1).append("tileId", 1),
                     BACKGROUND_OPTION);
 
         // compound index used for group queries
-        ensureIndex(tileCollection,
-                    new BasicDBObject("z", 1).append(
+        createIndex(tileCollection,
+                    new Document("z", 1).append(
                             "groupId", 1).append("minY", 1).append("minX", 1).append("maxY", 1).append("maxX", 1),
                     BACKGROUND_OPTION);
 
         LOG.debug("ensureSupplementaryTileIndexes: exit");
     }
 
-    private void ensureIndex(final DBCollection collection,
-                             final DBObject keys,
-                             final DBObject options) {
-        LOG.debug("ensureIndex: entry, collection={}, keys={}, options={}", collection.getName(), keys, options);
+    private void createIndex(final MongoCollection<Document> collection,
+                             final Document keys,
+                             final IndexOptions options) {
+        LOG.debug("createIndex: entry, collection={}, keys={}, options={}",
+                  getFullName(collection), keys.toJson(), getOptionsJson(options));
         collection.createIndex(keys, options);
     }
 
@@ -1730,6 +1705,23 @@ public class RenderDao {
         return false;
     }
 
+    private String getFullName(final MongoCollection<Document> collection) {
+        return collection.getNamespace().getFullName();
+    }
+
+    private String getJsonString(final List<Document> list) {
+        final StringBuilder sb = new StringBuilder(1024);
+        sb.append('[');
+        for (int i = 0; i < list.size(); i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append(list.get(i).toJson());
+        }
+        sb.append(']');
+        return sb.toString();
+    }
+
     private String getBulkResultMessage(final String context,
                                         final BulkWriteResult result,
                                         final int objectCount) {
@@ -1738,7 +1730,7 @@ public class RenderDao {
 
         message.append("processed ").append(objectCount).append(" ").append(context);
 
-        if (result.isAcknowledged()) {
+        if (result.wasAcknowledged()) {
             final int updates = result.getMatchedCount();
             final int inserts = objectCount - updates;
             message.append(" with ").append(inserts).append(" inserts and ");
@@ -1767,7 +1759,37 @@ public class RenderDao {
         return doubleValue;
     }
 
+    @Nonnull
+    private String getInsertOrUpdate(final UpdateResult result) {
+        final String action;
+        if (result.getMatchedCount() > 0) {
+            action = "update";
+        } else {
+            action = "insert";
+        }
+        return action;
+    }
+
+    private String getOptionsJson(final IndexOptions options) {
+
+        @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
+        final Document document = new Document();
+
+        if (options.isBackground()) {
+            document.append("background", true);
+        }
+        if (options.isUnique()) {
+            document.append("unique", true);
+        }
+
+        // add other options if/when they are used
+
+        return document.toJson();
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(RenderDao.class);
 
-    private static final BasicDBObject BACKGROUND_OPTION = new BasicDBObject("background", true);
+    private static final IndexOptions BACKGROUND_OPTION = new IndexOptions().background(true);
+    private static final UpdateOptions UPSERT_OPTION = new UpdateOptions().upsert(true);
+    private static final BulkWriteOptions UNORDERED_OPTION = new BulkWriteOptions().ordered(false);
 }
