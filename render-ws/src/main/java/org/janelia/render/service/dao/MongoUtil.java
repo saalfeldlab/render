@@ -1,5 +1,6 @@
 package org.janelia.render.service.dao;
 
+import com.mongodb.DBCollection;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -11,6 +12,9 @@ import com.mongodb.client.result.UpdateResult;
 import java.util.List;
 
 import org.bson.Document;
+import org.janelia.render.service.model.ObjectNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Mongodb utility methods for all DAOs.
@@ -31,6 +35,25 @@ public class MongoUtil {
             action = "insert";
         }
         return action;
+    }
+
+    public static void createIndex(final MongoCollection<Document> collection,
+                                   final Document keys,
+                                   final IndexOptions options) {
+        LOG.debug("createIndex: entry, collection={}, keys={}, options={}",
+                  MongoUtil.fullName(collection), keys.toJson(), toJson(options));
+        collection.createIndex(keys, options);
+        LOG.debug("createIndex: exit");
+    }
+
+    public static MongoCollection<Document> getExistingCollection(final MongoDatabase database,
+                                                                  final String collectionName)
+            throws ObjectNotFoundException {
+        if (! exists(database, collectionName)) {
+            throw new ObjectNotFoundException(
+                    database.getName() + " collection '" + collectionName + "' does not exist");
+        }
+        return database.getCollection(collectionName);
     }
 
     public static boolean exists(final MongoDatabase database,
@@ -104,5 +127,16 @@ public class MongoUtil {
         sb.append(']');
         return sb.toString();
     }
+
+    public static void validateRequiredParameter(final String context,
+                                                 final Object value)
+            throws IllegalArgumentException {
+
+        if (value == null) {
+            throw new IllegalArgumentException(context + " value must be specified");
+        }
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(MongoUtil.class);
 
 }

@@ -83,13 +83,13 @@ public class RenderDao {
                                           final Double scale)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("x", x);
-        validateRequiredParameter("y", y);
-        validateRequiredParameter("z", z);
-        validateRequiredParameter("width", width);
-        validateRequiredParameter("height", height);
-        validateRequiredParameter("scale", scale);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("x", x);
+        MongoUtil.validateRequiredParameter("y", y);
+        MongoUtil.validateRequiredParameter("z", z);
+        MongoUtil.validateRequiredParameter("width", width);
+        MongoUtil.validateRequiredParameter("height", height);
+        MongoUtil.validateRequiredParameter("scale", scale);
 
         final double lowerRightX = x + width;
         final double lowerRightY = y + height;
@@ -115,8 +115,8 @@ public class RenderDao {
                                           Double scale)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("z", z);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("z", z);
 
         if (scale == null) {
             scale = 1.0;
@@ -151,12 +151,12 @@ public class RenderDao {
                              final Integer height)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("x", x);
-        validateRequiredParameter("y", y);
-        validateRequiredParameter("z", z);
-        validateRequiredParameter("width", width);
-        validateRequiredParameter("height", height);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("x", x);
+        MongoUtil.validateRequiredParameter("y", y);
+        MongoUtil.validateRequiredParameter("z", z);
+        MongoUtil.validateRequiredParameter("width", width);
+        MongoUtil.validateRequiredParameter("height", height);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
@@ -187,8 +187,8 @@ public class RenderDao {
             throws IllegalArgumentException,
                    ObjectNotFoundException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("tileId", tileId);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("tileId", tileId);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
@@ -272,10 +272,10 @@ public class RenderDao {
                                        final Double z)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("x", x);
-        validateRequiredParameter("y", y);
-        validateRequiredParameter("z", z);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("x", x);
+        MongoUtil.validateRequiredParameter("y", y);
+        MongoUtil.validateRequiredParameter("z", z);
 
         final Document tileQuery = getIntersectsBoxQuery(z, x, y, x, y);
         final RenderParameters renderParameters = new RenderParameters();
@@ -298,8 +298,8 @@ public class RenderDao {
         LOG.debug("writeCoordinatesWithTileIds: entry, stackId={}, z={}, worldCoordinatesList.size()={}",
                   stackId, z, worldCoordinatesList.size());
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("z", z);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("z", z);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
         final Document tileKeys = new Document("tileId", 1).append("_id", 0);
@@ -411,8 +411,8 @@ public class RenderDao {
                                        final Double z)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("z", z);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("z", z);
 
         final Document tileQuery = new Document("z", z);
         final RenderParameters renderParameters = new RenderParameters();
@@ -436,8 +436,8 @@ public class RenderDao {
                                                        final Double z)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("z", z);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("z", z);
 
         final Document tileQuery = new Document("z", z);
         final RenderParameters renderParameters = new RenderParameters();
@@ -470,7 +470,7 @@ public class RenderDao {
                                                        final Double maxY)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
 
         final Document query = getGroupQuery(minZ, maxZ, groupId, minX, maxX, minY, maxY);
         final RenderParameters renderParameters = new RenderParameters();
@@ -499,8 +499,8 @@ public class RenderDao {
                                   final ResolvedTileSpecCollection resolvedTileSpecs)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("resolvedTileSpecs", resolvedTileSpecs);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("resolvedTileSpecs", resolvedTileSpecs);
 
         final Collection<TransformSpec> transformSpecs = resolvedTileSpecs.getTransformSpecs();
         final Collection<TileSpec> tileSpecs = resolvedTileSpecs.getTileSpecs();
@@ -568,9 +568,9 @@ public class RenderDao {
                                  final TileSpec tileSpec)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("tileSpec", tileSpec);
-        validateRequiredParameter("tileSpec.tileId", tileSpec.getTileId());
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("tileSpec", tileSpec);
+        MongoUtil.validateRequiredParameter("tileSpec.tileId", tileSpec.getTileId());
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
@@ -607,8 +607,8 @@ public class RenderDao {
             throws IllegalArgumentException,
                    ObjectNotFoundException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("transformId", transformId);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("transformId", transformId);
 
         final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
 
@@ -642,9 +642,9 @@ public class RenderDao {
                                            final TransformSpec transformSpec)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("transformSpec", transformSpec);
-        validateRequiredParameter("transformSpec.id", transformSpec.getId());
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("transformSpec", transformSpec);
+        MongoUtil.validateRequiredParameter("transformSpec.id", transformSpec.getId());
 
         final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
 
@@ -678,7 +678,7 @@ public class RenderDao {
     public List<Double> getZValues(final StackId stackId)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
@@ -698,8 +698,8 @@ public class RenderDao {
                                  final String sectionId)
             throws IllegalArgumentException, IllegalStateException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("sectionId", sectionId);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("sectionId", sectionId);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
         final Document query = new Document("layout.sectionId", sectionId);
@@ -721,9 +721,9 @@ public class RenderDao {
                                   final Double z)
             throws IllegalArgumentException, IllegalStateException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("sectionId", sectionId);
-        validateRequiredParameter("z", z);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("sectionId", sectionId);
+        MongoUtil.validateRequiredParameter("z", z);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
         final Document query = new Document("layout.sectionId", sectionId);
@@ -745,7 +745,7 @@ public class RenderDao {
     public List<SectionData> getSectionData(final StackId stackId)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
 
         final List<SectionData> list = new ArrayList<>();
 
@@ -808,7 +808,7 @@ public class RenderDao {
     public List<StackMetaData> getStackMetaDataListForOwner(final String owner)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("owner", owner);
+        MongoUtil.validateRequiredParameter("owner", owner);
 
         final List<StackMetaData> list = new ArrayList<>();
 
@@ -844,7 +844,7 @@ public class RenderDao {
     public StackMetaData getStackMetaData(final StackId stackId)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
 
         StackMetaData stackMetaData = null;
 
@@ -863,7 +863,7 @@ public class RenderDao {
 
         LOG.debug("saveStackMetaData: entry, stackMetaData={}", stackMetaData);
 
-        validateRequiredParameter("stackMetaData", stackMetaData);
+        MongoUtil.validateRequiredParameter("stackMetaData", stackMetaData);
 
         final StackId stackId = stackMetaData.getStackId();
         final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
@@ -889,7 +889,7 @@ public class RenderDao {
 
     public StackMetaData ensureIndexesAndDeriveStats(final StackMetaData stackMetaData) {
 
-        validateRequiredParameter("stackMetaData", stackMetaData);
+        MongoUtil.validateRequiredParameter("stackMetaData", stackMetaData);
 
         final StackId stackId = stackMetaData.getStackId();
 
@@ -1097,7 +1097,7 @@ public class RenderDao {
                             final boolean includeMetaData)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
         final long tileCount = tileCollection.count();
@@ -1128,8 +1128,8 @@ public class RenderDao {
                               final Double z)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("z", z);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("z", z);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
         final Document tileQuery = new Document("z", z);
@@ -1149,8 +1149,8 @@ public class RenderDao {
                                  final Double z)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("z", z);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("z", z);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
         final Document tileQuery = new Document("z", z);
@@ -1179,8 +1179,8 @@ public class RenderDao {
                                           final Double z)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("stackId", stackId);
-        validateRequiredParameter("z", z);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("z", z);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
@@ -1212,8 +1212,8 @@ public class RenderDao {
                            final List<Double> zValues)
             throws IllegalArgumentException, IllegalStateException {
 
-        validateRequiredParameter("fromStackId", fromStackId);
-        validateRequiredParameter("toStackId", toStackId);
+        MongoUtil.validateRequiredParameter("fromStackId", fromStackId);
+        MongoUtil.validateRequiredParameter("toStackId", toStackId);
 
         final MongoCollection<Document> fromTransformCollection = getTransformCollection(fromStackId);
         final MongoCollection<Document> toTransformCollection = getTransformCollection(toStackId);
@@ -1257,7 +1257,7 @@ public class RenderDao {
         LOG.debug("writeLayoutFileData: entry, stackId={}, minZ={}, maxZ={}",
                   stackId, minZ, maxZ);
 
-        validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("stackId", stackId);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
@@ -1651,63 +1651,46 @@ public class RenderDao {
         return renderDatabase.getCollection(stackId.getTransformCollectionName());
     }
 
-    private void validateRequiredParameter(final String context,
-                                           final Object value)
-            throws IllegalArgumentException {
-
-        if (value == null) {
-            throw new IllegalArgumentException(context + " value must be specified");
-        }
-    }
-
     private void ensureCoreTransformIndex(final MongoCollection<Document> transformCollection) {
-        createIndex(transformCollection,
-                    new Document("id", 1),
-                    new IndexOptions().unique(true).background(true));
+        MongoUtil.createIndex(transformCollection,
+                              new Document("id", 1),
+                              new IndexOptions().unique(true).background(true));
         LOG.debug("ensureCoreTransformIndex: exit");
     }
 
     private void ensureCoreTileIndexes(final MongoCollection<Document> tileCollection) {
-        createIndex(tileCollection,
-                    new Document("tileId", 1),
-                    new IndexOptions().unique(true).background(true));
-        createIndex(tileCollection, new Document("z", 1), MongoUtil.BACKGROUND_OPTION);
+        MongoUtil.createIndex(tileCollection,
+                              new Document("tileId", 1),
+                              new IndexOptions().unique(true).background(true));
+        MongoUtil.createIndex(tileCollection, new Document("z", 1), MongoUtil.BACKGROUND_OPTION);
         LOG.debug("ensureCoreTileIndex: exit");
     }
 
     private void ensureSupplementaryTileIndexes(final MongoCollection<Document> tileCollection) {
 
         // compound index used for bulk (e.g. resolvedTile) queries that sort by tileId
-        createIndex(tileCollection, new Document("z", 1).append("tileId", 1), MongoUtil.BACKGROUND_OPTION);
+        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("tileId", 1), MongoUtil.BACKGROUND_OPTION);
 
-        createIndex(tileCollection, new Document("z", 1).append("minX", 1), MongoUtil.BACKGROUND_OPTION);
-        createIndex(tileCollection, new Document("z", 1).append("minY", 1), MongoUtil.BACKGROUND_OPTION);
-        createIndex(tileCollection, new Document("z", 1).append("maxX", 1), MongoUtil.BACKGROUND_OPTION);
-        createIndex(tileCollection, new Document("z", 1).append("maxY", 1), MongoUtil.BACKGROUND_OPTION);
+        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("minX", 1), MongoUtil.BACKGROUND_OPTION);
+        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("minY", 1), MongoUtil.BACKGROUND_OPTION);
+        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("maxX", 1), MongoUtil.BACKGROUND_OPTION);
+        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("maxY", 1), MongoUtil.BACKGROUND_OPTION);
 
         // compound index used for most box intersection queries
         // - z, minY, minX order used to match layout file sorting needs
         // - appended tileId so that getTileBounds query can be index only (must not sort)
-        createIndex(tileCollection,
-                    new Document("z", 1).append(
-                            "minY", 1).append("minX", 1).append("maxY", 1).append("maxX", 1).append("tileId", 1),
-                    MongoUtil.BACKGROUND_OPTION);
+        MongoUtil.createIndex(tileCollection,
+                              new Document("z", 1).append("minY", 1).append("minX", 1).append(
+                                      "maxY", 1).append("maxX", 1).append("tileId", 1),
+                              MongoUtil.BACKGROUND_OPTION);
 
         // compound index used for group queries
-        createIndex(tileCollection,
-                    new Document("z", 1).append(
-                            "groupId", 1).append("minY", 1).append("minX", 1).append("maxY", 1).append("maxX", 1),
-                    MongoUtil.BACKGROUND_OPTION);
+        MongoUtil.createIndex(tileCollection,
+                              new Document("z", 1).append("groupId", 1).append("minY", 1).append("minX", 1).append(
+                                      "maxY", 1).append("maxX", 1),
+                              MongoUtil.BACKGROUND_OPTION);
 
         LOG.debug("ensureSupplementaryTileIndexes: exit");
-    }
-
-    private void createIndex(final MongoCollection<Document> collection,
-                             final Document keys,
-                             final IndexOptions options) {
-        LOG.debug("createIndex: entry, collection={}, keys={}, options={}",
-                  MongoUtil.fullName(collection), keys.toJson(), MongoUtil.toJson(options));
-        collection.createIndex(keys, options);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDao.class);
