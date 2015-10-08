@@ -229,7 +229,7 @@ public class MatchDao {
         outputStream.write(closeBracket);
 
         LOG.debug("writeMatches: wrote data for {} matches returned by {}.find({},{}), elapsedSeconds={}",
-                  count, MongoUtil.fullName(collection), query, keys, timer.getElapsedSeconds());
+                  count, MongoUtil.fullName(collection), query.toJson(), keys.toJson(), timer.getElapsedSeconds());
     }
 
     private Document getOutsideGroupQuery(final String groupId) {
