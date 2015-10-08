@@ -29,8 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.annotation.Nonnull;
-
 import org.bson.Document;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.Bounds;
@@ -171,7 +169,7 @@ public class RenderDao {
         final long count = tileCollection.count(tileQuery);
 
         LOG.debug("getTileCount: found {} tile spec(s) for {}.find({})",
-                  count, getFullName(tileCollection), tileQuery.toJson());
+                  count, MongoUtil.fullName(tileCollection), tileQuery.toJson());
 
         return count;
     }
@@ -199,7 +197,7 @@ public class RenderDao {
         final Document query = new Document();
         query.put("tileId", tileId);
 
-        LOG.debug("getTileSpec: {}.find({})", getFullName(tileCollection), query.toJson());
+        LOG.debug("getTileSpec: {}.find({})", MongoUtil.fullName(tileCollection), query.toJson());
 
         // EXAMPLE:   find({ "tileId" : "140723171842050101.3299.0"})
         // INDEX:     tileId_1
@@ -207,7 +205,7 @@ public class RenderDao {
 
         if (document == null) {
             throw new ObjectNotFoundException("tile spec with id '" + tileId + "' does not exist in the " +
-                                              getFullName(tileCollection) + " collection");
+                                              MongoUtil.fullName(tileCollection) + " collection");
         }
 
         final TileSpec tileSpec = TileSpec.fromJson(document.toJson());
@@ -250,9 +248,10 @@ public class RenderDao {
                 transforms = tileSpec.getTransforms();
                 transforms.resolveReferences(resolvedIdToSpecMap);
                 if (! transforms.isFullyResolved()) {
-                    throw new IllegalStateException("tile spec " + tileSpec.getTileId() +
-                                                    " is not fully resolved after applying the following transform specs: " +
-                                                    resolvedIdToSpecMap.keySet());
+                    throw new IllegalStateException(
+                            "tile spec " + tileSpec.getTileId() +
+                            " is not fully resolved after applying the following transform specs: " +
+                            resolvedIdToSpecMap.keySet());
                 }
             }
 
@@ -399,7 +398,7 @@ public class RenderDao {
         }
 
         LOG.debug("writeCoordinatesWithTileIds: wrote data for {} coordinates returned by queries like {}.find({},{}).sort({}), elapsedSeconds={}",
-                  coordinateCount, getFullName(tileCollection),
+                  coordinateCount, MongoUtil.fullName(tileCollection),
                   tileQuery.toJson(), tileKeys.toJson(), orderBy.toJson(), timer.getElapsedSeconds());
     }
 
@@ -524,9 +523,9 @@ public class RenderDao {
             final BulkWriteResult result = transformCollection.bulkWrite(modelList, UNORDERED_OPTION);
 
             if (LOG.isDebugEnabled()) {
-                final String bulkResultMessage = getBulkResultMessage("transform specs", result, transformSpecs.size());
+                final String bulkResultMessage = MongoUtil.toMessage("transform specs", result, transformSpecs.size());
                 LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
-                          bulkResultMessage, getFullName(transformCollection), query.toJson());
+                          bulkResultMessage, MongoUtil.fullName(transformCollection), query.toJson());
             }
 
             // TODO: re-derive bounding boxes for all tiles (outside this collection) that reference modified transforms
@@ -548,9 +547,9 @@ public class RenderDao {
             final BulkWriteResult result = tileCollection.bulkWrite(modelList, UNORDERED_OPTION);
 
             if (LOG.isDebugEnabled()) {
-                final String bulkResultMessage = getBulkResultMessage("tile specs", result, tileSpecs.size());
+                final String bulkResultMessage = MongoUtil.toMessage("tile specs", result, tileSpecs.size());
                 LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
-                          bulkResultMessage, getFullName(tileCollection), query.toJson());
+                          bulkResultMessage, MongoUtil.fullName(tileCollection), query.toJson());
             }
         }
 
@@ -588,7 +587,10 @@ public class RenderDao {
         final UpdateResult result = tileCollection.replaceOne(query, tileSpecObject, UPSERT_OPTION);
 
         LOG.debug("saveTileSpec: {}.{},({}), upsertedId is {}",
-                  getFullName(tileCollection), getInsertOrUpdate(result), query.toJson(), result.getUpsertedId());
+                  MongoUtil.fullName(tileCollection),
+                  MongoUtil.action(result),
+                  query.toJson(),
+                  result.getUpsertedId());
 
         return tileSpec;
     }
@@ -615,13 +617,13 @@ public class RenderDao {
         final Document query = new Document();
         query.put("id", transformId);
 
-        LOG.debug("getTransformSpec: {}.find({})", getFullName(transformCollection), query.toJson());
+        LOG.debug("getTransformSpec: {}.find({})", MongoUtil.fullName(transformCollection), query.toJson());
 
         final Document document = transformCollection.find(query).first();
 
         if (document == null) {
             throw new ObjectNotFoundException("transform spec with id '" + transformId + "' does not exist in the " +
-                                              getFullName(transformCollection) + " collection");
+                                              MongoUtil.fullName(transformCollection) + " collection");
         }
 
         return TransformSpec.fromJson(document.toJson());
@@ -659,7 +661,10 @@ public class RenderDao {
         final UpdateResult result = transformCollection.replaceOne(query, transformSpecObject, UPSERT_OPTION);
 
         LOG.debug("saveTransformSpec: {}.{},({}), upsertedId is {}",
-                  getFullName(transformCollection), getInsertOrUpdate(result), query.toJson(), result.getUpsertedId());
+                  MongoUtil.fullName(transformCollection),
+                  MongoUtil.action(result),
+                  query.toJson(),
+                  result.getUpsertedId());
 
         return transformSpec;
     }
@@ -684,7 +689,7 @@ public class RenderDao {
             }
         }
 
-        LOG.debug("getZValues: returning {} values for {}", list.size(), getFullName(tileCollection));
+        LOG.debug("getZValues: returning {} values for {}", list.size(), MongoUtil.fullName(tileCollection));
 
         return list;
     }
@@ -703,7 +708,7 @@ public class RenderDao {
 
         if (document == null) {
             throw new ObjectNotFoundException("sectionId '" + sectionId + "' does not exist in the " +
-                                              getFullName(tileCollection) + " collection");
+                                              MongoUtil.fullName(tileCollection) + " collection");
         }
 
         final TileSpec tileSpec = TileSpec.fromJson(document.toJson());
@@ -727,7 +732,7 @@ public class RenderDao {
         final UpdateResult result = tileCollection.updateMany(query, update);
 
         LOG.debug("updateZForSection: updated {} tile specs with {}.update({},{})",
-                  result.getModifiedCount(), getFullName(tileCollection), query.toJson(), update.toJson());
+                  result.getModifiedCount(), MongoUtil.fullName(tileCollection), query.toJson(), update.toJson());
     }
 
 
@@ -744,7 +749,7 @@ public class RenderDao {
 
         final List<SectionData> list = new ArrayList<>();
 
-        if (! collectionExists(stackId.getSectionCollectionName())) {
+        if (! MongoUtil.exists(renderDatabase, stackId.getSectionCollectionName())) {
             throw new IllegalArgumentException("section data not aggregated for " + stackId +
                                                ", set stack state to COMPLETE to generate the aggregate collection");
         }
@@ -997,21 +1002,21 @@ public class RenderDao {
                 cause = " because the stack has no tiles";
             }
             throw new IllegalStateException("Stack data aggregation returned no results" + cause + ".  " +
-                                            "The aggregation query was " + getFullName(tileCollection) +
+                                            "The aggregation query was " + MongoUtil.fullName(tileCollection) +
                                             ".aggregate(" + pipeline + ") .");
         }
 
-        final Bounds stackBounds = new Bounds(getDoubleValue(aggregateResult.get(minXKey)),
-                                              getDoubleValue(aggregateResult.get(minYKey)),
-                                              getDoubleValue(aggregateResult.get(minZKey)),
-                                              getDoubleValue(aggregateResult.get(maxXKey)),
-                                              getDoubleValue(aggregateResult.get(maxYKey)),
-                                              getDoubleValue(aggregateResult.get(maxZKey)));
+        final Bounds stackBounds = new Bounds(aggregateResult.get(minXKey, Double.class),
+                                              aggregateResult.get(minYKey, Double.class),
+                                              aggregateResult.get(minZKey, Double.class),
+                                              aggregateResult.get(maxXKey, Double.class),
+                                              aggregateResult.get(maxYKey, Double.class),
+                                              aggregateResult.get(maxZKey, Double.class));
 
-        final Integer minTileWidth = getDoubleValueAsInteger(aggregateResult.get(minWidthKey));
-        final Integer maxTileWidth = getDoubleValueAsInteger(aggregateResult.get(maxWidthKey));
-        final Integer minTileHeight = getDoubleValueAsInteger(aggregateResult.get(minHeightKey));
-        final Integer maxTileHeight = getDoubleValueAsInteger(aggregateResult.get(maxHeightKey));
+        final Integer minTileWidth = MongoUtil.toInteger(aggregateResult.get(minWidthKey, Double.class));
+        final Integer maxTileWidth = MongoUtil.toInteger(aggregateResult.get(maxWidthKey, Double.class));
+        final Integer minTileHeight = MongoUtil.toInteger(aggregateResult.get(minHeightKey, Double.class));
+        final Integer maxTileHeight = MongoUtil.toInteger(aggregateResult.get(maxHeightKey, Double.class));
 
         final StackStats stats = new StackStats(stackBounds,
                                                 sectionCount,
@@ -1034,7 +1039,7 @@ public class RenderDao {
         final UpdateResult result = stackMetaDataCollection.replaceOne(query, stackMetaDataObject, UPSERT_OPTION);
 
         LOG.debug("ensureIndexesAndDeriveStats: {}.{}({})",
-                  getFullName(stackMetaDataCollection), getInsertOrUpdate(result), query.toJson());
+                  MongoUtil.fullName(stackMetaDataCollection), MongoUtil.action(result), query.toJson());
 
         return stackMetaData;
     }
@@ -1062,8 +1067,8 @@ public class RenderDao {
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("deriveSectionData: running {}.aggregate({})",
-                      getFullName(tileCollection),
-                      getJsonString(pipeline));
+                      MongoUtil.fullName(tileCollection),
+                      MongoUtil.toJson(pipeline));
         }
 
         // mongodb java 3.0 driver notes:
@@ -1072,7 +1077,7 @@ public class RenderDao {
         // -- need to set cursor batchSize to prevent NPE from cursor creation
         tileCollection.aggregate(pipeline).batchSize(0).first();
 
-        if (! collectionExists(sectionCollectionName)) {
+        if (! MongoUtil.exists(renderDatabase, sectionCollectionName)) {
             throw new IllegalStateException("Section data aggregation results were not saved to " +
                                             sectionCollectionName);
         }
@@ -1080,7 +1085,8 @@ public class RenderDao {
         final MongoCollection<Document> sectionCollection = getSectionCollection(stackId);
         final long sectionCount = sectionCollection.count();
 
-        LOG.debug("deriveSectionData: saved data for {} sections in {}", sectionCount, getFullName(sectionCollection));
+        LOG.debug("deriveSectionData: saved data for {} sections in {}",
+                  sectionCount, MongoUtil.fullName(sectionCollection));
     }
 
     public void removeStack(final StackId stackId,
@@ -1093,13 +1099,14 @@ public class RenderDao {
         final long tileCount = tileCollection.count();
         tileCollection.drop();
 
-        LOG.debug("removeStack: {}.drop() deleted {} document(s)", getFullName(tileCollection), tileCount);
+        LOG.debug("removeStack: {}.drop() deleted {} document(s)", MongoUtil.fullName(tileCollection), tileCount);
 
         final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
         final long transformCount = transformCollection.count();
         transformCollection.drop();
 
-        LOG.debug("removeStack: {}.drop() deleted {} document(s)", getFullName(transformCollection), transformCount);
+        LOG.debug("removeStack: {}.drop() deleted {} document(s)",
+                  MongoUtil.fullName(transformCollection), transformCount);
 
         if (includeMetaData) {
             final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
@@ -1107,7 +1114,7 @@ public class RenderDao {
             final DeleteResult stackMetaDataRemoveResult = stackMetaDataCollection.deleteOne(stackIdQuery);
 
             LOG.debug("removeStack: {}.remove({}) deleted {} document(s)",
-                      getFullName(stackMetaDataCollection),
+                      MongoUtil.fullName(stackMetaDataCollection),
                       stackIdQuery.toJson(),
                       stackMetaDataRemoveResult.getDeletedCount());
         }
@@ -1125,7 +1132,7 @@ public class RenderDao {
         final DeleteResult removeResult = tileCollection.deleteMany(tileQuery);
 
         LOG.debug("removeSection: {}.remove({}) deleted {} document(s)",
-                  getFullName(tileCollection), tileQuery.toJson(), removeResult.getDeletedCount());
+                  MongoUtil.fullName(tileCollection), tileQuery.toJson(), removeResult.getDeletedCount());
     }
 
     /**
@@ -1191,7 +1198,7 @@ public class RenderDao {
         }
 
         LOG.debug("getTileBounds: found {} tile spec(s) for {}.find({},{})",
-                  list.size(), getFullName(tileCollection), tileQuery.toJson(), tileKeys.toJson());
+                  list.size(), MongoUtil.fullName(tileCollection), tileQuery.toJson(), tileKeys.toJson());
 
         return list;
     }
@@ -1275,7 +1282,9 @@ public class RenderDao {
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
         final Document orderBy = new Document("z", 1).append("minY", 1).append("minX", 1);
-        try (MongoCursor<Document> cursor = tileCollection.find(tileQuery).projection(tileKeys).sort(orderBy).iterator()) {
+        try (MongoCursor<Document> cursor =
+                     tileCollection.find(tileQuery).projection(tileKeys).sort(orderBy).iterator()) {
+
             final String baseUriString = '\t' + stackRequestUri + "/tile/";
 
             Document document;
@@ -1301,7 +1310,7 @@ public class RenderDao {
         }
 
         LOG.debug("writeLayoutFileData: wrote data for {} tile spec(s) returned by {}.find({},{}).sort({}), elapsedSeconds={}",
-                  tileSpecCount, getFullName(tileCollection),
+                  tileSpecCount, MongoUtil.fullName(tileCollection),
                   tileQuery.toJson(), tileKeys.toJson(), orderBy.toJson(), timer.getElapsedSeconds());
     }
 
@@ -1314,7 +1323,8 @@ public class RenderDao {
             final Document transformQuery = new Document();
             transformQuery.put("id", new Document(QueryOperators.IN, specIds));
 
-            LOG.debug("getTransformSpecs: {}.find({})", getFullName(transformCollection), transformQuery.toJson());
+            LOG.debug("getTransformSpecs: {}.find({})",
+                      MongoUtil.fullName(transformCollection), transformQuery.toJson());
 
             try (MongoCursor<Document> cursor = transformCollection.find(transformQuery).iterator()) {
                 Document document;
@@ -1398,7 +1408,7 @@ public class RenderDao {
         }
 
         LOG.debug("addResolvedTileSpecs: found {} tile spec(s) for {}.find({}).sort({})",
-                  renderParameters.numberOfTileSpecs(), getFullName(tileCollection),
+                  renderParameters.numberOfTileSpecs(), MongoUtil.fullName(tileCollection),
                   tileQuery.toJson(), orderBy.toJson());
 
         return resolveTransformReferencesForTiles(stackId, renderParameters.getTileSpecs());
@@ -1506,7 +1516,7 @@ public class RenderDao {
                 }
                 throw new IllegalArgumentException(context + " references transform id(s) " + missingIds +
                                                    " which do not exist in the " +
-                                                   getFullName(transformCollection) + " collection");
+                                                   MongoUtil.fullName(transformCollection) + " collection");
             }
         }
     }
@@ -1542,7 +1552,7 @@ public class RenderDao {
         }
 
         LOG.debug("getBound: returning {} for {}.find({},{}).sort({}).limit(1)",
-                  bound, getFullName(tileCollection), query.toJson(), tileKeys.toJson(), orderBy.toJson());
+                  bound, MongoUtil.fullName(tileCollection), query.toJson(), tileKeys.toJson(), orderBy.toJson());
 
         return bound;
     }
@@ -1554,8 +1564,8 @@ public class RenderDao {
 
         final long fromCount = fromCollection.count();
         final long toCount;
-        final String fromFullName = getFullName(fromCollection);
-        final String toFullName = getFullName(toCollection);
+        final String fromFullName = MongoUtil.fullName(fromCollection);
+        final String toFullName = MongoUtil.fullName(toCollection);
 
         LOG.debug("cloneCollection: entry, copying up to {} documents from {} to {}",
                   fromCount, fromFullName, toFullName);
@@ -1692,99 +1702,8 @@ public class RenderDao {
                              final Document keys,
                              final IndexOptions options) {
         LOG.debug("createIndex: entry, collection={}, keys={}, options={}",
-                  getFullName(collection), keys.toJson(), getOptionsJson(options));
+                  MongoUtil.fullName(collection), keys.toJson(), MongoUtil.toJson(options));
         collection.createIndex(keys, options);
-    }
-
-    private boolean collectionExists(final String collectionName) {
-        for (final String name : renderDatabase.listCollectionNames()) {
-            if (name.equalsIgnoreCase(collectionName)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private String getFullName(final MongoCollection<Document> collection) {
-        return collection.getNamespace().getFullName();
-    }
-
-    private String getJsonString(final List<Document> list) {
-        final StringBuilder sb = new StringBuilder(1024);
-        sb.append('[');
-        for (int i = 0; i < list.size(); i++) {
-            if (i > 0) {
-                sb.append(',');
-            }
-            sb.append(list.get(i).toJson());
-        }
-        sb.append(']');
-        return sb.toString();
-    }
-
-    private String getBulkResultMessage(final String context,
-                                        final BulkWriteResult result,
-                                        final int objectCount) {
-
-        final StringBuilder message = new StringBuilder(128);
-
-        message.append("processed ").append(objectCount).append(" ").append(context);
-
-        if (result.wasAcknowledged()) {
-            final int updates = result.getMatchedCount();
-            final int inserts = objectCount - updates;
-            message.append(" with ").append(inserts).append(" inserts and ");
-            message.append(updates).append(" updates");
-        } else {
-            message.append(" (result NOT acknowledged)");
-        }
-
-        return message.toString();
-    }
-
-    private Integer getDoubleValueAsInteger(final Object value) {
-        Integer integerValue = null;
-        final Double doubleValue = getDoubleValue(value);
-        if (doubleValue != null) {
-            integerValue = doubleValue.intValue();
-        }
-        return integerValue;
-    }
-
-    private Double getDoubleValue(final Object value) {
-        Double doubleValue = null;
-        if (value != null) {
-            doubleValue = new Double(value.toString());
-        }
-        return doubleValue;
-    }
-
-    @Nonnull
-    private String getInsertOrUpdate(final UpdateResult result) {
-        final String action;
-        if (result.getMatchedCount() > 0) {
-            action = "update";
-        } else {
-            action = "insert";
-        }
-        return action;
-    }
-
-    private String getOptionsJson(final IndexOptions options) {
-
-        @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
-        final Document document = new Document();
-
-        if (options.isBackground()) {
-            document.append("background", true);
-        }
-        if (options.isUnique()) {
-            document.append("unique", true);
-        }
-
-        // add other options if/when they are used
-
-        return document.toJson();
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDao.class);
