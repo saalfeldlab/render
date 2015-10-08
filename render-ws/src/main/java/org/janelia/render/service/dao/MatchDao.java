@@ -1,21 +1,22 @@
 package org.janelia.render.service.dao;
 
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.BulkWriteOperation;
-import com.mongodb.BulkWriteResult;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.QueryOperators;
-import com.mongodb.util.JSON;
+import com.mongodb.bulk.BulkWriteResult;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.IndexOptions;
+import com.mongodb.client.model.InsertOneModel;
+import com.mongodb.client.model.WriteModel;
+import com.mongodb.client.result.DeleteResult;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.List;
 
+import org.bson.Document;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.util.ProcessTimer;
@@ -32,10 +33,10 @@ public class MatchDao {
 
     public static final String MATCH_DB_NAME = "match";
 
-    private final DB matchDb;
+    private final MongoDatabase matchDatabase;
 
     public MatchDao(final MongoClient client) {
-        matchDb = client.getDB(MATCH_DB_NAME);
+        matchDatabase = client.getDatabase(MATCH_DB_NAME);
     }
 
     public void writeMatchesWithinGroup(final MatchCollectionId collectionId,
@@ -46,11 +47,11 @@ public class MatchDao {
         LOG.debug("writeMatchesWithinGroup: entry, collectionId={}, groupId={}",
                   collectionId, groupId);
 
-        validateRequiredParameter("collectionId", collectionId);
-        validateRequiredParameter("groupId", groupId);
+        MongoUtil.validateRequiredParameter("collectionId", collectionId);
+        MongoUtil.validateRequiredParameter("groupId", groupId);
 
-        final DBCollection collection = getExistingCollection(collectionId.getDbCollectionName());
-        final BasicDBObject query = new BasicDBObject("pGroupId", groupId).append("qGroupId", groupId);
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+        final Document query = new Document("pGroupId", groupId).append("qGroupId", groupId);
 
         writeMatches(collection, query, outputStream);
     }
@@ -63,11 +64,11 @@ public class MatchDao {
         LOG.debug("writeMatchesOutsideGroup: entry, collectionId={}, groupId={}",
                   collectionId, groupId);
 
-        validateRequiredParameter("collectionId", collectionId);
-        validateRequiredParameter("groupId", groupId);
+        MongoUtil.validateRequiredParameter("collectionId", collectionId);
+        MongoUtil.validateRequiredParameter("groupId", groupId);
 
-        final DBCollection collection = getExistingCollection(collectionId.getDbCollectionName());
-        final BasicDBObject query = getOutsideGroupQuery(groupId);
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+        final Document query = getOutsideGroupQuery(groupId);
 
         writeMatches(collection, query, outputStream);
     }
@@ -81,14 +82,14 @@ public class MatchDao {
         LOG.debug("writeMatchesBetweenGroups: entry, collectionId={}, pGroupId={}, pGroupId={}",
                   collectionId, pGroupId, qGroupId);
 
-        validateRequiredParameter("collectionId", collectionId);
-        validateRequiredParameter("pGroupId", pGroupId);
-        validateRequiredParameter("qGroupId", qGroupId);
+        MongoUtil.validateRequiredParameter("collectionId", collectionId);
+        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
+        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
 
-        final DBCollection collection = getExistingCollection(collectionId.getDbCollectionName());
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
         final String noTileId = "";
         final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, noTileId, qGroupId, noTileId, null);
-        final BasicDBObject query = new BasicDBObject(
+        final Document query = new Document(
                 "pGroupId", normalizedCriteria.getpGroupId()).append(
                 "qGroupId", normalizedCriteria.getqGroupId());
 
@@ -106,15 +107,15 @@ public class MatchDao {
         LOG.debug("writeMatchesBetweenObjects: entry, collectionId={}, pGroupId={}, pId={}, qGroupId={}, qId={}",
                   collectionId, pGroupId, pId, qGroupId, qId);
 
-        validateRequiredParameter("collectionId", collectionId);
-        validateRequiredParameter("pGroupId", pGroupId);
-        validateRequiredParameter("pId", pId);
-        validateRequiredParameter("qGroupId", qGroupId);
-        validateRequiredParameter("qId", qId);
+        MongoUtil.validateRequiredParameter("collectionId", collectionId);
+        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
+        MongoUtil.validateRequiredParameter("pId", pId);
+        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
+        MongoUtil.validateRequiredParameter("qId", qId);
 
-        final DBCollection collection = getExistingCollection(collectionId.getDbCollectionName());
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
         final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, pId, qGroupId, qId, null);
-        final BasicDBObject query = new BasicDBObject(
+        final Document query = new Document(
                 "pGroupId", normalizedCriteria.getpGroupId()).append(
                 "pId", normalizedCriteria.getpId()).append(
                 "qGroupId", normalizedCriteria.getqGroupId()).append(
@@ -127,46 +128,49 @@ public class MatchDao {
                                           final String groupId)
             throws IllegalArgumentException, ObjectNotFoundException {
 
-        validateRequiredParameter("collectionId", collectionId);
-        validateRequiredParameter("groupId", groupId);
+        MongoUtil.validateRequiredParameter("collectionId", collectionId);
+        MongoUtil.validateRequiredParameter("groupId", groupId);
 
-        final DBCollection collection = getExistingCollection(collectionId.getDbCollectionName());
-        final BasicDBObject query = getOutsideGroupQuery(groupId);
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+        final Document query = getOutsideGroupQuery(groupId);
 
-        collection.remove(query);
+        final DeleteResult result = collection.deleteMany(query);
+
+        LOG.debug("removeMatchesOutsideGroup: removed {} matches using {}.delete({})",
+                  result.getDeletedCount(), MongoUtil.fullName(collection), query.toJson());
     }
 
     public void saveMatches(final MatchCollectionId collectionId,
                             final List<CanvasMatches> matchesList)
             throws IllegalArgumentException {
 
-        validateRequiredParameter("collectionId", collectionId);
-        validateRequiredParameter("matchesList", matchesList);
+        MongoUtil.validateRequiredParameter("collectionId", collectionId);
+        MongoUtil.validateRequiredParameter("matchesList", matchesList);
 
         LOG.debug("saveMatches: entry, collectionId={}, matchesList.size()={}",
                   collectionId, matchesList.size());
 
         if (matchesList.size() > 0) {
 
-            final DBCollection collection = matchDb.getCollection(collectionId.getDbCollectionName());
+            final MongoCollection<Document> collection = getExistingCollection(collectionId);
 
             ensureMatchIndexes(collection);
 
-            final BulkWriteOperation bulk = collection.initializeUnorderedBulkOperation();
+            final List<WriteModel<Document>> modelList = new ArrayList<>(matchesList.size());
 
-            DBObject matchesObject;
+            Document matchesObject;
             for (final CanvasMatches canvasMatches : matchesList) {
                 canvasMatches.normalize();
-                matchesObject = (DBObject) JSON.parse(canvasMatches.toJson());
-                bulk.insert(matchesObject);
+                matchesObject = Document.parse(canvasMatches.toJson());
+                modelList.add(new InsertOneModel<>(matchesObject));
             }
 
-            final BulkWriteResult result = bulk.execute();
+            final BulkWriteResult result = collection.bulkWrite(modelList, MongoUtil.UNORDERED_OPTION);
 
             if (LOG.isDebugEnabled()) {
-                final String bulkResultMessage = getBulkResultMessage("matches", result, matchesList.size());
+                final String bulkResultMessage = MongoUtil.toMessage("matches", result, matchesList.size());
                 LOG.debug("saveMatches: {} using {}.initializeUnorderedBulkOp()",
-                          bulkResultMessage, collection.getFullName());
+                          bulkResultMessage, MongoUtil.fullName(collection));
             }
         }
     }
@@ -176,28 +180,24 @@ public class MatchDao {
 
         LOG.debug("removeAllMatches: entry, collectionId={}", collectionId);
 
-        validateRequiredParameter("collectionId", collectionId);
+        MongoUtil.validateRequiredParameter("collectionId", collectionId);
 
-        final DBCollection collection = getExistingCollection(collectionId.getDbCollectionName());
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
 
         collection.drop();
     }
 
-    private DBCollection getExistingCollection(final String collectionId)
-            throws ObjectNotFoundException {
-        if (! matchDb.collectionExists(collectionId)) {
-            throw new ObjectNotFoundException("match collection '" + collectionId + "' does not exist");
-        }
-        return matchDb.getCollection(collectionId);
+    private MongoCollection<Document> getExistingCollection(final MatchCollectionId collectionId) {
+        return MongoUtil.getExistingCollection(matchDatabase, collectionId.getDbCollectionName());
     }
 
-    private void writeMatches(final DBCollection collection,
-                              final BasicDBObject query,
+    private void writeMatches(final MongoCollection<Document> collection,
+                              final Document query,
                               final OutputStream outputStream)
             throws IOException {
 
         // exclude mongo id from results
-        final BasicDBObject keys = new BasicDBObject("_id", 0);
+        final Document keys = new Document("_id", 0);
 
         final ProcessTimer timer = new ProcessTimer();
         final byte[] openBracket = "[".getBytes();
@@ -207,9 +207,9 @@ public class MatchDao {
         outputStream.write(openBracket);
 
         int count = 0;
-        try (DBCursor cursor = collection.find(query, keys)) {
+        try (MongoCursor<Document> cursor = collection.find(query).projection(keys).iterator()) {
 
-            DBObject document;
+            Document document;
             while (cursor.hasNext()) {
 
                 if (count > 0) {
@@ -217,7 +217,7 @@ public class MatchDao {
                 }
 
                 document = cursor.next();
-                outputStream.write(document.toString().getBytes());
+                outputStream.write(document.toJson().getBytes());
                 count++;
 
                 if (timer.hasIntervalPassed()) {
@@ -229,58 +229,25 @@ public class MatchDao {
         outputStream.write(closeBracket);
 
         LOG.debug("writeMatches: wrote data for {} matches returned by {}.find({},{}), elapsedSeconds={}",
-                  count, collection.getFullName(), query, keys, timer.getElapsedSeconds());
+                  count, MongoUtil.fullName(collection), query, keys, timer.getElapsedSeconds());
     }
 
-    private BasicDBObject getOutsideGroupQuery(final String groupId) {
-        final BasicDBList queryList = new BasicDBList();
-        queryList.add(new BasicDBObject(
-                "pGroupId", groupId).append(
-                "qGroupId", new BasicDBObject(QueryOperators.NE, groupId)));
-        queryList.add(new BasicDBObject(
-                "qGroupId", groupId).append(
-                "pGroupId", new BasicDBObject(QueryOperators.NE, groupId)));
-        return new BasicDBObject(QueryOperators.OR, queryList);
+    private Document getOutsideGroupQuery(final String groupId) {
+        final List<Document> queryList = new ArrayList<>();
+        queryList.add(new Document("pGroupId", groupId).append(
+                "qGroupId", new Document(QueryOperators.NE, groupId)));
+        queryList.add(new Document("qGroupId", groupId).append(
+                "pGroupId", new Document(QueryOperators.NE, groupId)));
+        return new Document(QueryOperators.OR, queryList);
     }
 
-    private void validateRequiredParameter(final String context,
-                                           final Object value)
-            throws IllegalArgumentException {
-
-        if (value == null) {
-            throw new IllegalArgumentException(context + " value must be specified");
-        }
-    }
-
-    private void ensureMatchIndexes(final DBCollection matchCollection) {
-        LOG.debug("ensureMatchIndexes: entry, {}", matchCollection.getName());
-        matchCollection.createIndex(new BasicDBObject(
-                                            "pGroupId", 1).append(
-                                            "qGroupId", 1).append(
-                                            "pId", 1).append(
-                                            "qId", 1),
-                                    new BasicDBObject("unique", true).append("background", true));
-        LOG.debug("ensureMatchIndexes: exit");
-    }
-
-    private String getBulkResultMessage(final String context,
-                                        final BulkWriteResult result,
-                                        final int objectCount) {
-
-        final StringBuilder message = new StringBuilder(128);
-
-        message.append("processed ").append(objectCount).append(" ").append(context);
-
-        if (result.isAcknowledged()) {
-            final int updates = result.getMatchedCount();
-            final int inserts = objectCount - updates;
-            message.append(" with ").append(inserts).append(" inserts and ");
-            message.append(updates).append(" updates");
-        } else {
-            message.append(" (result NOT acknowledged)");
-        }
-
-        return message.toString();
+    private void ensureMatchIndexes(final MongoCollection<Document> collection) {
+        MongoUtil.createIndex(collection,
+                              new Document("pGroupId", 1).append(
+                                      "qGroupId", 1).append(
+                                      "pId", 1).append(
+                                      "qId", 1),
+                              new IndexOptions().unique(true).background(true));
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MatchDao.class);
