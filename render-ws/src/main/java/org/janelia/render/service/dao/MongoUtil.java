@@ -3,7 +3,9 @@ package org.janelia.render.service.dao;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.IndexOptions;
+import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.result.UpdateResult;
 
 import java.util.List;
@@ -16,6 +18,10 @@ import org.bson.Document;
  * @author Eric Trautman
  */
 public class MongoUtil {
+
+    public static final IndexOptions BACKGROUND_OPTION = new IndexOptions().background(true);
+    public static final UpdateOptions UPSERT_OPTION = new UpdateOptions().upsert(true);
+    public static final BulkWriteOptions UNORDERED_OPTION = new BulkWriteOptions().ordered(false);
 
     public static String action(final UpdateResult result) {
         final String action;

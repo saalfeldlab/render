@@ -7,11 +7,9 @@ import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.ReplaceOneModel;
-import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
@@ -517,10 +515,10 @@ public class RenderDao {
             for (final TransformSpec transformSpec : transformSpecs) {
                 query = new Document("id", transformSpec.getId());
                 transformSpecObject = Document.parse(transformSpec.toJson());
-                modelList.add(new ReplaceOneModel<>(query, transformSpecObject, UPSERT_OPTION));
+                modelList.add(new ReplaceOneModel<>(query, transformSpecObject, MongoUtil.UPSERT_OPTION));
             }
 
-            final BulkWriteResult result = transformCollection.bulkWrite(modelList, UNORDERED_OPTION);
+            final BulkWriteResult result = transformCollection.bulkWrite(modelList, MongoUtil.UNORDERED_OPTION);
 
             if (LOG.isDebugEnabled()) {
                 final String bulkResultMessage = MongoUtil.toMessage("transform specs", result, transformSpecs.size());
@@ -541,10 +539,10 @@ public class RenderDao {
             for (final TileSpec tileSpec : tileSpecs) {
                 query = new Document("tileId", tileSpec.getTileId());
                 tileSpecObject = Document.parse(tileSpec.toJson());
-                modelList.add(new ReplaceOneModel<>(query, tileSpecObject, UPSERT_OPTION));
+                modelList.add(new ReplaceOneModel<>(query, tileSpecObject, MongoUtil.UPSERT_OPTION));
             }
 
-            final BulkWriteResult result = tileCollection.bulkWrite(modelList, UNORDERED_OPTION);
+            final BulkWriteResult result = tileCollection.bulkWrite(modelList, MongoUtil.UNORDERED_OPTION);
 
             if (LOG.isDebugEnabled()) {
                 final String bulkResultMessage = MongoUtil.toMessage("tile specs", result, tileSpecs.size());
@@ -584,7 +582,7 @@ public class RenderDao {
 
         final Document tileSpecObject = Document.parse(tileSpec.toJson());
 
-        final UpdateResult result = tileCollection.replaceOne(query, tileSpecObject, UPSERT_OPTION);
+        final UpdateResult result = tileCollection.replaceOne(query, tileSpecObject, MongoUtil.UPSERT_OPTION);
 
         LOG.debug("saveTileSpec: {}.{},({}), upsertedId is {}",
                   MongoUtil.fullName(tileCollection),
@@ -658,7 +656,9 @@ public class RenderDao {
 
         final Document transformSpecObject = Document.parse(transformSpec.toJson());
 
-        final UpdateResult result = transformCollection.replaceOne(query, transformSpecObject, UPSERT_OPTION);
+        final UpdateResult result = transformCollection.replaceOne(query,
+                                                                   transformSpecObject,
+                                                                   MongoUtil.UPSERT_OPTION);
 
         LOG.debug("saveTransformSpec: {}.{},({}), upsertedId is {}",
                   MongoUtil.fullName(transformCollection),
@@ -870,7 +870,9 @@ public class RenderDao {
 
         final Document query = getStackIdQuery(stackId);
         final Document stackMetaDataObject = Document.parse(stackMetaData.toJson());
-        final UpdateResult result = stackMetaDataCollection.replaceOne(query, stackMetaDataObject, UPSERT_OPTION);
+        final UpdateResult result = stackMetaDataCollection.replaceOne(query,
+                                                                       stackMetaDataObject,
+                                                                       MongoUtil.UPSERT_OPTION);
 
         final String action;
         if (result.getMatchedCount() > 0) {
@@ -1036,7 +1038,9 @@ public class RenderDao {
         final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
         final Document query = getStackIdQuery(stackId);
         final Document stackMetaDataObject = Document.parse(stackMetaData.toJson());
-        final UpdateResult result = stackMetaDataCollection.replaceOne(query, stackMetaDataObject, UPSERT_OPTION);
+        final UpdateResult result = stackMetaDataCollection.replaceOne(query,
+                                                                       stackMetaDataObject,
+                                                                       MongoUtil.UPSERT_OPTION);
 
         LOG.debug("ensureIndexesAndDeriveStats: {}.{}({})",
                   MongoUtil.fullName(stackMetaDataCollection), MongoUtil.action(result), query.toJson());
@@ -1591,7 +1595,7 @@ public class RenderDao {
                 modelList.add(new InsertOneModel<>(document));
                 count++;
                 if (count % maxDocumentsPerBulkInsert == 0) {
-                    result = toCollection.bulkWrite(modelList, UNORDERED_OPTION);
+                    result = toCollection.bulkWrite(modelList, MongoUtil.UNORDERED_OPTION);
                     insertedCount = result.getInsertedCount();
                     if (insertedCount != maxDocumentsPerBulkInsert) {
                         throw new IllegalStateException("only inserted " + insertedCount + " out of " +
@@ -1606,7 +1610,7 @@ public class RenderDao {
             }
 
             if (count % maxDocumentsPerBulkInsert > 0) {
-                result = toCollection.bulkWrite(modelList, UNORDERED_OPTION);
+                result = toCollection.bulkWrite(modelList, MongoUtil.UNORDERED_OPTION);
                 insertedCount = result.getInsertedCount();
                 final long expectedCount = count % maxDocumentsPerBulkInsert;
                 if (insertedCount != expectedCount) {
@@ -1667,19 +1671,19 @@ public class RenderDao {
         createIndex(tileCollection,
                     new Document("tileId", 1),
                     new IndexOptions().unique(true).background(true));
-        createIndex(tileCollection, new Document("z", 1), BACKGROUND_OPTION);
+        createIndex(tileCollection, new Document("z", 1), MongoUtil.BACKGROUND_OPTION);
         LOG.debug("ensureCoreTileIndex: exit");
     }
 
     private void ensureSupplementaryTileIndexes(final MongoCollection<Document> tileCollection) {
 
         // compound index used for bulk (e.g. resolvedTile) queries that sort by tileId
-        createIndex(tileCollection, new Document("z", 1).append("tileId", 1), BACKGROUND_OPTION);
+        createIndex(tileCollection, new Document("z", 1).append("tileId", 1), MongoUtil.BACKGROUND_OPTION);
 
-        createIndex(tileCollection, new Document("z", 1).append("minX", 1), BACKGROUND_OPTION);
-        createIndex(tileCollection, new Document("z", 1).append("minY", 1), BACKGROUND_OPTION);
-        createIndex(tileCollection, new Document("z", 1).append("maxX", 1), BACKGROUND_OPTION);
-        createIndex(tileCollection, new Document("z", 1).append("maxY", 1), BACKGROUND_OPTION);
+        createIndex(tileCollection, new Document("z", 1).append("minX", 1), MongoUtil.BACKGROUND_OPTION);
+        createIndex(tileCollection, new Document("z", 1).append("minY", 1), MongoUtil.BACKGROUND_OPTION);
+        createIndex(tileCollection, new Document("z", 1).append("maxX", 1), MongoUtil.BACKGROUND_OPTION);
+        createIndex(tileCollection, new Document("z", 1).append("maxY", 1), MongoUtil.BACKGROUND_OPTION);
 
         // compound index used for most box intersection queries
         // - z, minY, minX order used to match layout file sorting needs
@@ -1687,13 +1691,13 @@ public class RenderDao {
         createIndex(tileCollection,
                     new Document("z", 1).append(
                             "minY", 1).append("minX", 1).append("maxY", 1).append("maxX", 1).append("tileId", 1),
-                    BACKGROUND_OPTION);
+                    MongoUtil.BACKGROUND_OPTION);
 
         // compound index used for group queries
         createIndex(tileCollection,
                     new Document("z", 1).append(
                             "groupId", 1).append("minY", 1).append("minX", 1).append("maxY", 1).append("maxX", 1),
-                    BACKGROUND_OPTION);
+                    MongoUtil.BACKGROUND_OPTION);
 
         LOG.debug("ensureSupplementaryTileIndexes: exit");
     }
@@ -1708,7 +1712,4 @@ public class RenderDao {
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDao.class);
 
-    private static final IndexOptions BACKGROUND_OPTION = new IndexOptions().background(true);
-    private static final UpdateOptions UPSERT_OPTION = new UpdateOptions().upsert(true);
-    private static final BulkWriteOptions UNORDERED_OPTION = new BulkWriteOptions().ordered(false);
 }
