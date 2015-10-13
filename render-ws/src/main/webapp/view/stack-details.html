@@ -3,14 +3,14 @@
 <head>
 
     <meta charset="utf-8">
-    <title>Project Stacks</title>
+    <title>Stack Details</title>
 
     <link rel="stylesheet" href="../css/render.css">
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
 
     <script type="text/javascript" src="../script/render.js"></script>
-    <script type="text/javascript" src="../script/stacks.js"></script>
+    <script type="text/javascript" src="../script/stack-details.js"></script>
 
 </head>
 
@@ -20,23 +20,9 @@
     $(document).ready(initPage());
 </script>
 
-<div class="m20">
-    <h3><span id="bodyHeader"></span> <span id="bodyHeaderDetails"></span></h3>
-    <form onsubmit="return false">
+<span id="owner"></span> <a id="project" href=""></a>
 
-        <label for="owner">Owner:</label>
-        <select id="owner" name="owner">
-        </select>
-
-        <br/>
-        <br/>
-
-        <label for="project">Project:</label>
-        <select id="project" name="project">
-        </select>
-
-    </form>
-</div>
+<h3><span id="bodyHeader"></span> <span id="bodyHeaderDetails"></span></h3>
 
 <div class="m20">
     <table id="stackInfo">
