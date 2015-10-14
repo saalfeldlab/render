@@ -39,6 +39,7 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
+import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -737,6 +738,18 @@ public class RenderDataService {
         return parameters;
     }
 
+    public StackMetaData getStackMetaData(final StackId stackId)
+            throws ObjectNotFoundException {
+
+        final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
+        if (stackMetaData == null) {
+            throw StackMetaDataService.getStackNotFoundException(stackId.getOwner(),
+                                                                 stackId.getProject(),
+                                                                 stackId.getStack());
+        }
+        return stackMetaData;
+    }
+
     private TileSpec getTileSpec(final String owner,
                                  final String project,
                                  final String stack,
@@ -801,16 +814,6 @@ public class RenderDataService {
         }
 
         return layoutValue;
-    }
-
-    private StackMetaData getStackMetaData(final StackId stackId) {
-        final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
-        if (stackMetaData == null) {
-            throw StackMetaDataService.getStackNotFoundException(stackId.getOwner(),
-                                                                 stackId.getProject(),
-                                                                 stackId.getStack());
-        }
-        return stackMetaData;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDataService.class);
