@@ -154,16 +154,18 @@ public class TransformSpecTest {
     }
 
     @Test
-    public void testGetInstanceWithValidation() throws Exception {
-        leaf1.validate();
-        final mpicbg.models.CoordinateTransform coordinateTransform = leaf1.getInstance();
-        Assert.assertNotNull("transform not created after validation", coordinateTransform);
-    }
+    public void testGetNewInstance() throws Exception {
 
-    @Test
-    public void testGetInstanceWithoutValidation() throws Exception {
-        final mpicbg.models.CoordinateTransform coordinateTransform = leaf1.getInstance();
-        Assert.assertNotNull("transform not created prior to validation", coordinateTransform);
+        leaf1.validate();
+
+        final mpicbg.models.CoordinateTransform coordinateTransform1 = leaf1.getNewInstance();
+        final mpicbg.models.CoordinateTransform coordinateTransform2 = leaf1.getNewInstance();
+
+        Assert.assertNotNull("transform 1 not created", coordinateTransform1);
+        Assert.assertNotNull("transform 2 not created", coordinateTransform2);
+        //noinspection ConstantConditions
+        Assert.assertFalse("transform instances should be different",
+                           (coordinateTransform1 == coordinateTransform2));
     }
 
     @Test(expected = IllegalArgumentException.class)

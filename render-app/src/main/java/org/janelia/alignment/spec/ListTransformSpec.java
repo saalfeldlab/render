@@ -41,19 +41,16 @@ public class ListTransformSpec extends TransformSpec {
 
     public void addSpec(final TransformSpec spec) {
         specList.add(spec);
-        removeInstance();
     }
 
     public void removeLastSpec() {
         if (specList.size() > 0) {
             specList.remove(specList.size() - 1);
-            removeInstance();
         }
     }
 
     public void addAllSpecs(final List<TransformSpec> specs) {
         this.specList.addAll(specs);
-        removeInstance();
     }
 
     public int size() {
@@ -68,7 +65,6 @@ public class ListTransformSpec extends TransformSpec {
                 i.remove();
             }
         }
-        removeInstance();
     }
 
     @Override
@@ -111,9 +107,9 @@ public class ListTransformSpec extends TransformSpec {
 
     @SuppressWarnings("unchecked")
     @JsonIgnore
-    public CoordinateTransformList<CoordinateTransform> getInstanceAsList()
+    public CoordinateTransformList<CoordinateTransform> getNewInstanceAsList()
             throws IllegalArgumentException {
-        return (CoordinateTransformList<CoordinateTransform>) super.getInstance();
+        return (CoordinateTransformList<CoordinateTransform>) super.getNewInstance();
     }
 
     @Override

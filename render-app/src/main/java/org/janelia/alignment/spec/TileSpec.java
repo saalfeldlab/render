@@ -457,23 +457,12 @@ public class TileSpec implements Serializable {
     }
 
     /**
-     * Get the transforms of the {@link TileSpec} as a
-     * {@link CoordinateTransformList}.  If the transform of the
-     * {@link TileSpec} is a list, this instance will be returned.  Otherwise,
-     * a new instance containing a single simple transform, or no transform at
-     * all will be returned.
+     * Get a copy of this {@link TileSpec}'s transforms as a {@link CoordinateTransformList}.
+     * If this {@link TileSpec} does not have any transforms, an empty list is returned.
      *
-     * Note that modifying the returned list can change the transforms of the
-     * {@link TileSpec}, i.e. copy the list or add it to a new list if you want
-     * to add other transformations.
+     * The returned list is no longer cached, so it can be used/changed safely without affecting this {@link TileSpec}.
      *
-     * TODO Think more carefully if this is a good idea at all.  Having a safe
-     * to use list is probably what everybody wants from this method.  It is,
-     * however, used in other contexts, e.g. to simply apply the transforms,
-     * for which a more general function getTransform() would have served
-     * better and simpler.
-     *
-     * @return transform list for this tile spec.
+     * @return transform list copy for this tile spec.
      *
      * @throws IllegalArgumentException
      *   if the list cannot be generated.
@@ -485,7 +474,7 @@ public class TileSpec implements Serializable {
         if (transforms == null) {
             ctl = new CoordinateTransformList<>();
         } else {
-            ctl = transforms.getInstanceAsList();
+            ctl = transforms.getNewInstanceAsList();
         }
 
         return ctl;

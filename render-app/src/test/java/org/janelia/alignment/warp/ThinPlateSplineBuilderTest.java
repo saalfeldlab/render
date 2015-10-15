@@ -97,7 +97,7 @@ public class ThinPlateSplineBuilderTest {
                 tileSpec.getWidth() * 0.5,
                 tileSpec.getHeight() * 0.5
         };
-        tileSpec.getTransforms().getInstance().applyInPlace(center);
+        tileSpec.getTransforms().getNewInstance().applyInPlace(center);
         return center;
     }
 

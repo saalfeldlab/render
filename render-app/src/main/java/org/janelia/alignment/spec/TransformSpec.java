@@ -40,8 +40,6 @@ public abstract class TransformSpec implements Serializable {
     private final String id;
     private final TransformSpecMetaData metaData;
 
-    private transient CoordinateTransform instance;
-
     protected TransformSpec(final String id,
                             final TransformSpecMetaData metaData) {
         this.id = id;
@@ -66,30 +64,24 @@ public abstract class TransformSpec implements Serializable {
      */
     public void validate()
             throws IllegalArgumentException {
-        if (instance == null) {
-            if (! isFullyResolved()) {
-                final Set<String> unresolvedIdList = new HashSet<>();
-                addUnresolvedIds(unresolvedIdList);
-                throw new IllegalArgumentException("spec '" + id +
-                                                   "' has the following unresolved references: " + unresolvedIdList);
-            }
-            instance = buildInstance(); // cache instance for first getInstance call
-        } // else the instance is already built, so the spec is valid
+        if (! isFullyResolved()) {
+            final Set<String> unresolvedIdList = new HashSet<>();
+            addUnresolvedIds(unresolvedIdList);
+            throw new IllegalArgumentException("spec '" + id +
+                                               "' has the following unresolved references: " + unresolvedIdList);
+        }
+        buildInstance(); // building instance will force everything to be validated
     }
 
     /**
-     * @return the {@link CoordinateTransform} instance built from this specification.
+     * @return a new (distinct and thread safe) {@link CoordinateTransform} instance built from this specification.
      *
      * @throws IllegalArgumentException
      *   if the instance cannot be created.
      */
-    public CoordinateTransform getInstance()
+    public CoordinateTransform getNewInstance()
             throws IllegalArgumentException {
-
-        if (instance == null) {
-            instance = buildInstance();
-        }
-        return instance;
+        return buildInstance();
     }
 
     /**
@@ -173,13 +165,6 @@ public abstract class TransformSpec implements Serializable {
      */
     protected abstract CoordinateTransform buildInstance()
             throws IllegalArgumentException;
-
-    /**
-     * Remove cached coordinate transform instance (to force future rebuild).
-     */
-    protected void removeInstance() {
-        instance = null;
-    }
 
 //    private static final TypeReference<List<TransformSpec>> LIST_TYPE = new TypeReference<List<TransformSpec>>(){};
 
