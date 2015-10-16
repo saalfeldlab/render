@@ -24,68 +24,13 @@ import org.junit.Test;
 public class CoordinateClientTest {
 
     @Test
-    public void testRoundTripMapping()
-            throws Exception {
-        final String stackName = "test-stack";
-        final Double z = 9.9;
-        final CoordinateClient client = new CoordinateClient(stackName, z, null);
+    public void testRoundTripMapping() throws Exception {
+        testRoundTripMapping(1);
+    }
 
-        final String transformId = "transform-1";
-        final AffineModel2D noOpAffine = new AffineModel2D();
-        final TransformSpec transform1 = new LeafTransformSpec(transformId,
-                                                               null,
-                                                               noOpAffine.getClass().getName(),
-                                                               noOpAffine.toDataString());
-
-        final String tile1json = "{ \"tileId\": \"tile-1\", \"z\": " + z + ", \"width\": 2560, \"height\": 2160}";
-        final TileSpec tile1 = TileSpec.fromJson(tile1json);
-
-        final TileCoordinates worldCoord = TileCoordinates.buildWorldInstance("tile-1", new double[]{1.0, 2.0});
-        final List<List<TileCoordinates>> worldListOfLists =
-                Collections.singletonList(Collections.singletonList(worldCoord));
-        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(Collections.singletonList(transform1),
-                                                                                Collections.singletonList(tile1));
-
-        // Hack: Add ref transform to tile after adding to collection so that it is not resolved by constructor.
-        //       This should mimic what happens after JSON deserialization.
-        final TransformSpec transform1Ref = new ReferenceTransformSpec(transformId);
-        tile1.addTransformSpecs(Collections.singletonList(transform1Ref));
-
-        // Then force resolution ...
-        tiles.resolveTileSpecs();
-
-        final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
-
-        Assert.assertEquals("invalid number of local lists returned", 1, localListOfLists.size());
-
-        final List<TileCoordinates> localList = localListOfLists.get(0);
-
-        Assert.assertEquals("invalid number of coordinates in first local list", 1, localList.size());
-
-        final TileCoordinates localCoord = localList.get(0);
-
-        Assert.assertFalse("returned local coordinates have error: " + localCoord.toJson(), localCoord.hasError());
-
-        final double acceptableDelta = 0.001;
-        Assert.assertEquals("invalid local x coordinate returned",
-                            worldCoord.getWorld()[0], localCoord.getLocal()[0], acceptableDelta);
-
-        Assert.assertEquals("invalid local y coordinate returned",
-                            worldCoord.getWorld()[1], localCoord.getLocal()[1], acceptableDelta);
-
-        final List<TileCoordinates> roundTripWorldList = client.localToWorld(localListOfLists, tiles);
-
-        Assert.assertEquals("incorrect number of round trip world coordinates", 1, roundTripWorldList.size());
-
-        final TileCoordinates roundTripWorldCoord = roundTripWorldList.get(0);
-        Assert.assertEquals("incorrect round trip tile id", worldCoord.getTileId(), roundTripWorldCoord.getTileId());
-
-        final double[] expectedArray = worldCoord.getWorld();
-        final double[] actualArray = roundTripWorldCoord.getWorld();
-        Assert.assertEquals("incorrect round trip world array length", expectedArray.length + 1, actualArray.length);
-        for (int i = 0; i < expectedArray.length; i++) {
-            Assert.assertEquals("incorrect round trip value for item " + i, expectedArray[i], actualArray[i], 0.01);
-        }
+    @Test
+    public void testMultiThreadedRoundTripMapping() throws Exception {
+        testRoundTripMapping(3);
     }
 
     /**
@@ -102,7 +47,7 @@ public class CoordinateClientTest {
 
         final RenderDataClient renderDataClient =
                 new RenderDataClient("http://renderer-dev:8080/render-ws/v1", "flyTEM", "FAFB00");
-        final CoordinateClient client = new CoordinateClient("v5_montage", 3451.0, renderDataClient);
+        final CoordinateClient client = new CoordinateClient("v5_montage", 3451.0, renderDataClient, 1);
 
         final TileCoordinates worldCoord =
                 TileCoordinates.buildWorldInstance(null, new double[]{194000.0, 1000.0});
@@ -125,5 +70,130 @@ public class CoordinateClientTest {
 
         Assert.assertEquals("invalid tileId returned",
                             "150226193751108009.3451.0", returnedWorldCoord.getTileId());
+    }
+
+    @Test
+    public void testGetBatchIndexes()
+            throws Exception {
+        validateBatchIndexes(3, 10, 4, 4, 2);
+        validateBatchIndexes(3, 11, 4, 4, 3);
+        validateBatchIndexes(3, 12, 4, 4, 4);
+        validateBatchIndexes(3, 1, 2, 1, 1);
+        validateBatchIndexes(3, 3, 4, 1, 1);
+        validateBatchIndexes(1, 3, 2, 3, 3);
+    }
+
+    private void validateBatchIndexes(final int threads,
+                                      final int size,
+                                      final int expectedNumberOfIndexes,
+                                      final int expectedFirstDelta,
+                                      final int expectedLastDelta) {
+
+        final List<Integer> list = CoordinateClient.getBatchIndexes(threads, size);
+
+        final String context = threads + " threads and " + size + " items";
+        Assert.assertEquals("invalid number of batch indexes returned for " + context,
+                            expectedNumberOfIndexes, list.size());
+        Assert.assertEquals("invalid delta between first and second indexes " + context,
+                            expectedFirstDelta, (list.get(1) - list.get(0)));
+        Assert.assertEquals("invalid delta between last and second-to-last indexes " + context,
+                            expectedLastDelta, (list.get(list.size() - 1) - list.get(list.size() - 2)));
+    }
+
+    private void testRoundTripMapping(final int numberOfThreads)
+            throws Exception {
+
+        final String stackName = "test-stack";
+        final Double z = 9.9;
+        final CoordinateClient client = new CoordinateClient(stackName, z, null, numberOfThreads);
+
+        final String transformId = "transform-1";
+        final AffineModel2D noOpAffine = new AffineModel2D();
+        final TransformSpec transform1 = new LeafTransformSpec(transformId,
+                                                               null,
+                                                               noOpAffine.getClass().getName(),
+                                                               noOpAffine.toDataString());
+
+        final List<List<TileCoordinates>> worldListOfLists = new ArrayList<>();
+        final List<TileSpec> tileSpecList = new ArrayList<>();
+        // use same tile to make sure concurrent access doesn't break coordinate mapping
+        final TileSpec tile = getTileSpec("tile-1", z);
+        tileSpecList.add(tile);
+
+        for (int i = 0; i < numberOfThreads; i++) {
+            final TileCoordinates worldCoord = TileCoordinates.buildWorldInstance(tile.getTileId(),
+                                                                                  new double[]{i, (i+1)});
+            worldListOfLists.add(Collections.singletonList(worldCoord));
+        }
+
+        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(Collections.singletonList(transform1),
+                                                                                tileSpecList);
+
+        // Hack: Add ref transform to tile after adding to collection so that it is not resolved by constructor.
+        //       This should mimic what happens after JSON deserialization.
+        final TransformSpec transform1Ref = new ReferenceTransformSpec(transformId);
+        tile.addTransformSpecs(Collections.singletonList(transform1Ref));
+
+        // Then force resolution ...
+        tiles.resolveTileSpecs();
+
+        final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
+
+        Assert.assertEquals("invalid number of local lists returned",
+                            worldListOfLists.size(), localListOfLists.size());
+
+        final double acceptableDelta = 0.001;
+        for (int i = 0; i < worldListOfLists.size(); i++) {
+            final List<TileCoordinates> worldList = worldListOfLists.get(i);
+            final List<TileCoordinates> localList = localListOfLists.get(i);
+
+            Assert.assertEquals("invalid number of coordinates in worldList[" + i + "]", 1, worldList.size());
+            Assert.assertEquals("invalid number of coordinates in localList[" + i + "]", 1, localList.size());
+
+            final TileCoordinates worldCoord = worldList.get(0);
+            final TileCoordinates localCoord = localList.get(0);
+
+            Assert.assertFalse("returned local coordinates for localList[" + i +
+                               "] have error: " + localCoord.toJson(),
+                               localCoord.hasError());
+
+            Assert.assertEquals("invalid local x coordinate returned for localList[" + i + "]",
+                                worldCoord.getWorld()[0], localCoord.getLocal()[0], acceptableDelta);
+
+            Assert.assertEquals("invalid local y coordinate returned for localList[" + i + "]",
+                                worldCoord.getWorld()[1], localCoord.getLocal()[1], acceptableDelta);
+        }
+
+        final List<TileCoordinates> roundTripWorldList = client.localToWorld(localListOfLists, tiles);
+
+        Assert.assertEquals("incorrect number of round trip world coordinates",
+                            worldListOfLists.size(), roundTripWorldList.size());
+
+        for (int i = 0; i < worldListOfLists.size(); i++) {
+            final String context = "worldListOfLists[" + i + "]";
+            final List<TileCoordinates> worldList = worldListOfLists.get(i);
+            final TileCoordinates worldCoord = worldList.get(0);
+
+            final TileCoordinates roundTripWorldCoord = roundTripWorldList.get(i);
+            Assert.assertEquals("incorrect round trip tile id for " + context,
+                                worldCoord.getTileId(), roundTripWorldCoord.getTileId());
+
+            final double[] expectedArray = worldCoord.getWorld();
+            final double[] actualArray = roundTripWorldCoord.getWorld();
+            Assert.assertEquals("incorrect round trip world array length for " + context,
+                                expectedArray.length + 1, actualArray.length);
+            for (int j = 0; j < expectedArray.length; j++) {
+                Assert.assertEquals("incorrect round trip value for item " + j + " in " + context,
+                                    expectedArray[j], actualArray[j], 0.01);
+            }
+        }
+
+    }
+
+    private TileSpec getTileSpec(final String tileId,
+                                 final double z) {
+        final String tile1json = "{ \"tileId\": \"" + tileId + "\", \"z\": " + z +
+                                 ", \"width\": 2560, \"height\": 2160}";
+        return TileSpec.fromJson(tile1json);
     }
 }
