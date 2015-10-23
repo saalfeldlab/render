@@ -115,10 +115,27 @@ public class BoxRemovalClient {
 
         final File smallDirectory = new File(boxDirectory, "small");
         if (smallDirectory.exists()) {
-            final File overview = new File(smallDirectory, z + ".png");
+            File overview = new File(smallDirectory, z + ".jpg");
             if (overview.exists()) {
                 if (! overview.delete()) {
                     LOG.warn("failed to delete {}", overview);
+                }
+            } else {
+                overview = new File(smallDirectory, z + ".png");
+                if (overview.exists()) {
+                    if (! overview.delete()) {
+                        LOG.warn("failed to delete {}", overview);
+                    }
+                }
+            }
+        }
+
+        final File iGridDirectory = new File(boxDirectory, "0/iGrid");
+        if (iGridDirectory.exists()) {
+            final File iGrid = new File(iGridDirectory, z + ".iGrid");
+            if (iGrid.exists()) {
+                if (! iGrid.delete()) {
+                    LOG.warn("failed to delete {}", iGrid);
                 }
             }
         }
