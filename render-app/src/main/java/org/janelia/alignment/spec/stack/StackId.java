@@ -105,7 +105,9 @@ public class StackId implements Comparable<StackId>, Serializable {
 
         final Matcher m = pattern.matcher(value);
         if (! m.matches()) {
-            throw new IllegalArgumentException("invalid " + context + " '" + value + "' specified");
+            throw new IllegalArgumentException("invalid " + context + " '" + value + "' specified, " +
+                                               "names may only contain alphanumeric or underscore '_' characters " +
+                                               "and may not contain consecutive underscores '_'");
         }
     }
 
@@ -130,7 +132,7 @@ public class StackId implements Comparable<StackId>, Serializable {
     private static final String FIELD_SEPARATOR = "__";
 
     // valid names are alphanumeric with underscores but no consecutive underscores
-    private static final Pattern VALID_NAME = Pattern.compile("([A-Za-z0-9]+(_[A-Za-z0-9])?)++");
+    private static final Pattern VALID_NAME = Pattern.compile("([A-Za-z0-9]+_?)++");
 
     // From http://docs.mongodb.org/manual/reference/limits/
     //   mongodb namespace limit is 123
