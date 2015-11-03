@@ -140,7 +140,7 @@ public class BoxRemovalClient {
             }
         }
 
-        LOG.info("generateBoxesForZ: exit, z={}", z);
+        LOG.info("removeBoxesForZ: exit, z={}", z);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(BoxRemovalClient.class);
