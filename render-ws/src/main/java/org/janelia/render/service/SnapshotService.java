@@ -23,23 +23,26 @@ import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.swagger.annotations.Api;
+
 /**
  * APIs for accessing snapshot data stored in the Admin database.
  *
  * @author Eric Trautman
  */
 @Path("/v1/admin")
-public class AdminService {
+@Api(tags = {"Snapshot APIs"})
+public class SnapshotService {
 
     private final AdminDao adminDao;
 
     @SuppressWarnings("UnusedDeclaration")
-    public AdminService()
+    public SnapshotService()
             throws UnknownHostException {
         this(AdminDao.build());
     }
 
-    public AdminService(final AdminDao adminDao) {
+    public SnapshotService(final AdminDao adminDao) {
         this.adminDao = adminDao;
     }
 
@@ -164,7 +167,7 @@ public class AdminService {
         }
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(AdminService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SnapshotService.class);
 
 
 }

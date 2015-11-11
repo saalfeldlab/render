@@ -33,6 +33,11 @@ import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.COMPLETE;
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.OFFLINE;
@@ -43,6 +48,7 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState.OFFLINE;
  * @author Eric Trautman
  */
 @Path("/v1")
+@Api(tags = {"Stack Management APIs"})
 public class StackMetaDataService {
 
     private final RenderDao renderDao;
@@ -64,6 +70,7 @@ public class StackMetaDataService {
     @Path("likelyUniqueId")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
+    @ApiOperation(value = "A (very likely) globally unique identifier")
     public String getUniqueId() {
         final ObjectId objectId = new ObjectId();
         return objectId.toString();
@@ -72,6 +79,7 @@ public class StackMetaDataService {
     @Path("owners")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "List of all data owners")
     public List<String> getOwners() {
         LOG.info("getOwners: entry");
         return renderDao.getOwners();
@@ -80,6 +88,7 @@ public class StackMetaDataService {
     @Path("owner/{owner}/stackIds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "List of stack identifiers for the specified owner")
     public List<StackId> getStackIds(@PathParam("owner") final String owner) {
 
         LOG.info("getStackIds: entry, owner={}", owner);
@@ -96,6 +105,7 @@ public class StackMetaDataService {
     @Path("owner/{owner}/stacks")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "List of stack metadata for the specified owner")
     public List<StackMetaData> getStackMetaDataListForOwner(@PathParam("owner") final String owner) {
 
         LOG.info("getStackMetaDataListForOwner: entry, owner={}", owner);
@@ -112,6 +122,12 @@ public class StackMetaDataService {
     @Path("owner/{owner}/project/{project}/stack/{stack}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "Metadata for the specified stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Stack not found")
+    })
     public StackMetaData getStackMetaData(@PathParam("owner") final String owner,
                                           @PathParam("project") final String project,
                                           @PathParam("stack") final String stack) {
@@ -136,6 +152,15 @@ public class StackMetaDataService {
     @Path("owner/{owner}/project/{project}/stack/{fromStack}/cloneTo/{toStack}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs"},
+            value = "Clones one stack to another",
+            notes = "This operation copies all fromStack tiles and transformations to a new stack with the specified metadata.  This is a potentially long running operation (depending upon the size of the fromStack).")
+    @ApiResponses(value = {
+            @ApiResponse(code = 201, message = "stack successfully cloned"),
+            @ApiResponse(code = 400, message = "toStack already exists"),
+            @ApiResponse(code = 404, message = "fromStack not found")
+    })
     public Response cloneStackVersion(@PathParam("owner") final String owner,
                                       @PathParam("project") final String project,
                                       @PathParam("fromStack") final String fromStack,
@@ -180,6 +205,13 @@ public class StackMetaDataService {
     @Path("owner/{owner}/project/{project}/stack/{stack}")
     @POST  // NOTE: POST method is used because version number is auto-incremented
     @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs"},
+            value = "Saves new version of stack metadata")
+    @ApiResponses(value = {
+            @ApiResponse(code = 201, message = "stackVersion successfully created"),
+            @ApiResponse(code = 400, message = "stackVersion not specified")
+    })
     public Response saveStackVersion(@PathParam("owner") final String owner,
                                      @PathParam("project") final String project,
                                      @PathParam("stack") final String stack,
@@ -218,6 +250,10 @@ public class StackMetaDataService {
 
     @Path("owner/{owner}/project/{project}/stack/{stack}")
     @DELETE
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs"},
+            value = "Deletes specified stack",
+            notes = "Deletes all tiles, transformations, meta data, and unsaved snapshot data for the stack.")
     public Response deleteStack(@PathParam("owner") final String owner,
                                 @PathParam("project") final String project,
                                 @PathParam("stack") final String stack) {
@@ -254,6 +290,14 @@ public class StackMetaDataService {
 
     @Path("owner/{owner}/project/{project}/stack/{stack}/z/{z}")
     @DELETE
+    @ApiOperation(
+            tags = {"Section Data APIs", "Stack Management APIs"},
+            value = "Deletes all tiles in section",
+            notes = "Deletes all tiles in the specified stack with the specified z value.  This operation can only be performed against stacks in the LOADING state")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack state is not LOADING"),
+            @ApiResponse(code = 404, message = "stack not found"),
+    })
     public Response deleteStackSection(@PathParam("owner") final String owner,
                                        @PathParam("project") final String project,
                                        @PathParam("stack") final String stack,
@@ -283,6 +327,15 @@ public class StackMetaDataService {
 
     @Path("owner/{owner}/project/{project}/stack/{stack}/state/{state}")
     @PUT
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs"},
+            value = "Sets the stack's current state",
+            notes = "Transitions stack from LOADING to COMPLETE to OFFLINE.  Transitioning to COMPLETE is a potentially long running operation since it creates indexes and aggregates meta data.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 201, message = "state successfully changed"),
+            @ApiResponse(code = 400, message = "stack state cannot be changed because of current state"),
+            @ApiResponse(code = 404, message = "stack not found"),
+    })
     public Response setStackState(@PathParam("owner") final String owner,
                                   @PathParam("project") final String project,
                                   @PathParam("stack") final String stack,
@@ -294,10 +347,6 @@ public class StackMetaDataService {
 
         try {
             StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
-
-            if (stackMetaData == null) {
-                throw getStackNotFoundException(owner, project, stack);
-            }
 
             if (COMPLETE.equals(state)) {
 
@@ -357,6 +406,13 @@ public class StackMetaDataService {
     @Path("owner/{owner}/project/{project}/stack/{stack}/bounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs"},
+            value = "Bounds for the specified stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack bounds not available"),
+            @ApiResponse(code = 404, message = "stack not found"),
+    })
     public Bounds getStackBounds(@PathParam("owner") final String owner,
                                  @PathParam("project") final String project,
                                  @PathParam("stack") final String stack) {

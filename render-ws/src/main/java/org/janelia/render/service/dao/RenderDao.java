@@ -429,12 +429,14 @@ public class RenderDao {
      * @return a resolved tile spec collection for all tiles that have the specified z.
      *
      * @throws IllegalArgumentException
-     *   if any required parameters are missing or if the stack cannot be found, or
+     *   if any required parameters are missing or if the stack cannot be found.
+     *
+     * @throws ObjectNotFoundException
      *   if no tile can be found for the specified z.
      */
     public ResolvedTileSpecCollection getResolvedTiles(final StackId stackId,
                                                        final Double z)
-            throws IllegalArgumentException {
+            throws IllegalArgumentException, ObjectNotFoundException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
         MongoUtil.validateRequiredParameter("z", z);
@@ -446,7 +448,7 @@ public class RenderDao {
                                                                                     renderParameters);
 
         if (! renderParameters.hasTileSpecs()) {
-            throw new IllegalArgumentException("no tile specifications found in " + stackId +" for z=" + z);
+            throw new ObjectNotFoundException("no tile specifications found in " + stackId +" for z=" + z);
         }
 
         return new ResolvedTileSpecCollection(resolvedIdToSpecMap.values(),
@@ -457,7 +459,9 @@ public class RenderDao {
      * @return a resolved tile spec collection for all tiles that match the specified criteria.
      *
      * @throws IllegalArgumentException
-     *   if any required parameters are missing or if the stack cannot be found, or
+     *   if any required parameters are missing or if the stack cannot be found.
+     *
+     * @throws ObjectNotFoundException
      *   if no tile can be found for the specified criteria.
      */
     public ResolvedTileSpecCollection getResolvedTiles(final StackId stackId,
@@ -468,7 +472,7 @@ public class RenderDao {
                                                        final Double maxX,
                                                        final Double minY,
                                                        final Double maxY)
-            throws IllegalArgumentException {
+            throws IllegalArgumentException, ObjectNotFoundException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
 
@@ -479,7 +483,7 @@ public class RenderDao {
                                                                                     renderParameters);
 
         if (! renderParameters.hasTileSpecs()) {
-            throw new IllegalArgumentException("no tile specifications found in " + stackId +" for " + query);
+            throw new ObjectNotFoundException("no tile specifications found in " + stackId +" for " + query);
         }
 
         return new ResolvedTileSpecCollection(resolvedIdToSpecMap.values(),

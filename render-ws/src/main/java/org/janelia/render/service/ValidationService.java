@@ -18,6 +18,8 @@ import org.janelia.alignment.spec.TransformSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.swagger.annotations.Api;
+
 /**
  * APIs for validating JSON representations of the Render model objects.
  *
@@ -27,6 +29,7 @@ import org.slf4j.LoggerFactory;
  * @author Eric Trautman
  */
 @Path("/v1/owner/{owner}/validate-json")
+@Api(tags = {"Validation APIs"})
 public class ValidationService {
 
     @Path("render")

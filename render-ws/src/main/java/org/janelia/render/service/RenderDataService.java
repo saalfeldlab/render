@@ -46,6 +46,8 @@ import org.slf4j.LoggerFactory;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
 
@@ -55,8 +57,7 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
  * @author Eric Trautman
  */
 @Path("/v1/owner/{owner}")
-@Api(tags = {"Render Data APIs"},
-     description = "Render Data Service")
+@Api(tags = {"Render Data APIs"})
 public class RenderDataService {
 
     private final RenderDao renderDao;
@@ -75,6 +76,7 @@ public class RenderDataService {
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     @ApiOperation(
+            tags = "Layout Data APIs",
             value = "Get layout file text for all stack layers",
             produces = MediaType.TEXT_PLAIN)
     public Response getLayoutFile(@PathParam("owner") final String owner,
@@ -89,6 +91,7 @@ public class RenderDataService {
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     @ApiOperation(
+            tags = "Layout Data APIs",
             value = "Get layout file text for specified stack layers",
             produces = MediaType.TEXT_PLAIN)
     public Response getLayoutFileForZRange(@PathParam("owner") final String owner,
@@ -127,6 +130,9 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/zValues")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "List z values for specified stack")
     public List<Double> getZValues(@PathParam("owner") final String owner,
                                    @PathParam("project") final String project,
                                    @PathParam("stack") final String stack) {
@@ -147,6 +153,12 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/sectionData")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "List z and sectionId for all sections in specified stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "section data not generated"),
+    })
     public List<SectionData> getSectionData(@PathParam("owner") final String owner,
                                             @PathParam("project") final String project,
                                             @PathParam("stack") final String stack) {
@@ -167,6 +179,12 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/reorderedSectionData")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "List z and sectionId for all reordered sections in specified stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "section data not generated"),
+    })
     public List<SectionData> getReorderedSectionData(@PathParam("owner") final String owner,
                                                      @PathParam("project") final String project,
                                                      @PathParam("stack") final String stack) {
@@ -198,6 +216,12 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/mergedZValues")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "List z values for all merged sections in specified stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "section data not generated"),
+    })
     public List<Double> getMergedZValues(@PathParam("owner") final String owner,
                                          @PathParam("project") final String project,
                                          @PathParam("stack") final String stack) {
@@ -226,6 +250,13 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/highDoseLowDoseZValues")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "List z values for all high dose low dose sections in specified stack",
+            notes = "Only sections with both a high dose and at least one low dose section are included.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "section data not generated"),
+    })
     public List<Double> getHighDoseLowDoseZValues(@PathParam("owner") final String owner,
                                                   @PathParam("project") final String project,
                                                   @PathParam("stack") final String stack) {
@@ -254,6 +285,9 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/z/{z}/bounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Section Data APIs",
+            value = "Get bounds for section with specified z")
     public Bounds getLayerBounds(@PathParam("owner") final String owner,
                                  @PathParam("project") final String project,
                                  @PathParam("stack") final String stack,
@@ -275,6 +309,9 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/z/{z}/tileBounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Section Data APIs",
+            value = "Get bounds for each tile with specified z")
     public List<TileBounds> getTileBounds(@PathParam("owner") final String owner,
                                           @PathParam("project") final String project,
                                           @PathParam("stack") final String stack,
@@ -296,6 +333,13 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Section Data APIs",
+            value = "Get raw tile and transform specs for section with specified z")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "too many (> 50,000) tiles in section"),
+            @ApiResponse(code = 404, message = "no tile specs found"),
+    })
     public ResolvedTileSpecCollection getResolvedTiles(@PathParam("owner") final String owner,
                                                        @PathParam("project") final String project,
                                                        @PathParam("stack") final String stack,
@@ -317,6 +361,13 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/resolvedTiles")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "Get raw tile and transform specs for specified group or bounding box")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "too many (> 50,000) matching tiles found"),
+            @ApiResponse(code = 404, message = "no tile specs found"),
+    })
     public ResolvedTileSpecCollection getResolvedTiles(@PathParam("owner") final String owner,
                                                        @PathParam("project") final String project,
                                                        @PathParam("stack") final String stack,
@@ -344,6 +395,13 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/resolvedTiles")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "Save specified raw tile and transform specs")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack not in LOADING state, invalid data provided"),
+            @ApiResponse(code = 404, message = "stack not found"),
+    })
     public Response saveResolvedTiles(@PathParam("owner") final String owner,
                                       @PathParam("project") final String project,
                                       @PathParam("stack") final String stack,
@@ -355,6 +413,13 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Section Data APIs",
+            value = "Save specified raw tile and transform specs for section")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack not in LOADING state, invalid data provided"),
+            @ApiResponse(code = 404, message = "stack not found"),
+    })
     public Response saveResolvedTilesForZ(@PathParam("owner") final String owner,
                                           @PathParam("project") final String project,
                                           @PathParam("stack") final String stack,
@@ -397,6 +462,12 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/section/{sectionId}/z")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Section Data APIs",
+            value = "Get z value for section")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack or section not found"),
+    })
     public Double getZForSection(@PathParam("owner") final String owner,
                                  @PathParam("project") final String project,
                                  @PathParam("stack") final String stack,
@@ -419,6 +490,13 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/section/{sectionId}/z")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Section Data APIs",
+            value = "Set z value for section")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack not in LOADING state"),
+            @ApiResponse(code = 404, message = "stack not found"),
+    })
     public Response updateZForSection(@PathParam("owner") final String owner,
                                       @PathParam("project") final String project,
                                       @PathParam("stack") final String stack,
@@ -454,6 +532,12 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Tile Data APIs",
+            value = "Get tile spec")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "tile not found"),
+    })
     public TileSpec getTileSpec(@PathParam("owner") final String owner,
                                 @PathParam("project") final String project,
                                 @PathParam("stack") final String stack,
@@ -475,6 +559,13 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Tile Data APIs",
+            value = "Get parameters for rendering 'uniform' tile",
+            notes = "The returned x, y, width, and height parameters are uniform for all tiles in the stack.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "tile not found"),
+    })
     public RenderParameters getRenderParameters(@PathParam("owner") final String owner,
                                                 @PathParam("project") final String project,
                                                 @PathParam("stack") final String stack,
@@ -522,6 +613,12 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Tile Data APIs",
+            value = "Get parameters for rendering tile source image (without transformations or mask)")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "tile not found"),
+    })
     public RenderParameters getTileSourceRenderParameters(@PathParam("owner") final String owner,
                                                           @PathParam("project") final String project,
                                                           @PathParam("stack") final String stack,
@@ -538,6 +635,12 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Tile Data APIs",
+            value = "Get parameters for rendering tile mask image (without transformations)")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "tile not found"),
+    })
     public RenderParameters getTileMaskRenderParameters(@PathParam("owner") final String owner,
                                                         @PathParam("project") final String project,
                                                         @PathParam("stack") final String stack,
@@ -554,6 +657,12 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/transform/{transformId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Transform Data APIs",
+            value = "Get transform spec")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "transform not found"),
+    })
     public TransformSpec getTransformSpec(@PathParam("owner") final String owner,
                                           @PathParam("project") final String project,
                                           @PathParam("stack") final String stack,
@@ -579,6 +688,9 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height}/tile-count")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Bounding Box Data APIs",
+            value = "Get number of tiles within box")
     public Long getTileCount(@PathParam("owner") final String owner,
                              @PathParam("project") final String project,
                              @PathParam("stack") final String stack,
@@ -608,6 +720,10 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/z/{z}/tile-specs")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Section Data APIs",
+            value = "Get flattened tile specs with the specified z",
+            notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
     public List<TileSpec> getTileSpecsForZ(@PathParam("owner") final String owner,
                                            @PathParam("project") final String project,
                                            @PathParam("stack") final String stack,
@@ -634,6 +750,10 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/z/{z}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Section Data APIs",
+            value = "Get parameters to render all tiles with the specified z",
+            notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
     public RenderParameters getRenderParametersForZ(@PathParam("owner") final String owner,
                                                     @PathParam("project") final String project,
                                                     @PathParam("stack") final String stack,
@@ -670,6 +790,10 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Bounding Box Data APIs",
+            value = "Get parameters to render all tiles within the specified box",
+            notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
     public RenderParameters getExternalRenderParameters(@PathParam("owner") final String owner,
                                                         @PathParam("project") final String project,
                                                         @PathParam("stack") final String stack,
@@ -690,6 +814,10 @@ public class RenderDataService {
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Bounding Box Data APIs",
+            value = "Get parameters to render all tiles within the specified group and box",
+            notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
     public RenderParameters getExternalRenderParameters(@PathParam("owner") final String owner,
                                                         @PathParam("project") final String project,
                                                         @PathParam("stack") final String stack,

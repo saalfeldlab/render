@@ -21,21 +21,21 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * Tests the {@link AdminService} class.
+ * Tests the {@link SnapshotService} class.
  *
  * @author Eric Trautman
  */
-public class AdminServiceTest {
+public class SnapshotServiceTest {
 
     private static EmbeddedMongoDb embeddedMongoDb;
-    private static AdminService service;
+    private static SnapshotService service;
 
     @BeforeClass
     public static void before() throws Exception {
         embeddedMongoDb = new EmbeddedMongoDb(AdminDao.ADMIN_DB_NAME);
         final AdminDao dao = new AdminDao(embeddedMongoDb.getMongoClient());
 
-        service = new AdminService(dao);
+        service = new SnapshotService(dao);
     }
 
     @AfterClass
@@ -65,7 +65,7 @@ public class AdminServiceTest {
                                 snapshot1.getCollectionName(),
                                 snapshot1.getVersion());
             Assert.fail("snapshot data should not exist for " + snapshot1);
-        } catch (ObjectNotFoundException e) {
+        } catch (final ObjectNotFoundException e) {
             Assert.assertTrue(true); // test passed
         }
 
@@ -83,7 +83,7 @@ public class AdminServiceTest {
                                  uriInfo,
                                  snapshot1);
             Assert.fail("save of inconsistent snapshot data should have failed");
-        } catch (IllegalServiceArgumentException e) {
+        } catch (final IllegalServiceArgumentException e) {
             Assert.assertTrue(true); // test passed
         }
 
@@ -94,7 +94,7 @@ public class AdminServiceTest {
                              uriInfo,
                              snapshot1);
 
-        CollectionSnapshot retrievedSnapshot =
+        final CollectionSnapshot retrievedSnapshot =
                 service.getSnapshot(snapshot1.getOwner(),
                                     snapshot1.getDatabaseName(),
                                     snapshot1.getCollectionName(),

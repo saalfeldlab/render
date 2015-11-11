@@ -41,8 +41,7 @@ import io.swagger.annotations.ApiResponses;
  * @author Eric Trautman
  */
 @Path("/v1/owner/{owner}/matchCollection")
-@Api(tags = {"Match APIs"},
-     description = "Match Service")
+@Api(tags = {"Point Match APIs"})
 public class MatchService {
 
     private final MatchDao matchDao;
@@ -60,10 +59,11 @@ public class MatchService {
     @Path("{matchCollection}/group/{groupId}/matchesWithinGroup")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(value = "Find matches within the specified group",
-                  notes = "Find all matches where both tiles are in the specified layer.",
-                  response = CanvasMatches.class,
-                  responseContainer="List")
+    @ApiOperation(
+            value = "Find matches within the specified group",
+            notes = "Find all matches where both tiles are in the specified layer.",
+            response = CanvasMatches.class,
+            responseContainer="List")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Match collection not found")
     })
@@ -89,10 +89,11 @@ public class MatchService {
     @Path("{matchCollection}/group/{groupId}/matchesOutsideGroup")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(value = "Find matches outside the specified group",
-                  notes = "Find all matches with one tile in the specified layer and another tile outside that layer.",
-                  response = CanvasMatches.class,
-                  responseContainer="List")
+    @ApiOperation(
+            value = "Find matches outside the specified group",
+            notes = "Find all matches with one tile in the specified layer and another tile outside that layer.",
+            response = CanvasMatches.class,
+            responseContainer="List")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Match collection not found")
     })
@@ -118,10 +119,11 @@ public class MatchService {
     @Path("{matchCollection}/group/{pGroupId}/matchesWith/{qGroupId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(value = "Find matches between the specified groups",
-                  notes = "Find all matches with one tile in the specified p layer and another tile in the specified q layer.",
-                  response = CanvasMatches.class,
-                  responseContainer="List")
+    @ApiOperation(
+            value = "Find matches between the specified groups",
+            notes = "Find all matches with one tile in the specified p layer and another tile in the specified q layer.",
+            response = CanvasMatches.class,
+            responseContainer="List")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Match collection not found")
     })
@@ -148,10 +150,11 @@ public class MatchService {
     @Path("{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(value = "Find matches between the specified objects",
-                  notes = "Find all matches between two specific tiles.",
-                  response = CanvasMatches.class,
-                  responseContainer="List")
+    @ApiOperation(
+            value = "Find matches between the specified objects",
+            notes = "Find all matches between two specific tiles.",
+            response = CanvasMatches.class,
+            responseContainer="List")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Match collection not found")
     })
@@ -179,8 +182,9 @@ public class MatchService {
 
     @Path("{matchCollection}/group/{groupId}/matchesOutsideGroup")
     @DELETE
-    @ApiOperation(value = "Delete matches outside the specified group",
-                  notes = "Delete all matches with one tile in the specified layer and another tile outside that layer.")
+    @ApiOperation(
+            value = "Delete matches outside the specified group",
+            notes = "Delete all matches with one tile in the specified layer and another tile outside that layer.")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Match collection not found")
     })
@@ -206,9 +210,11 @@ public class MatchService {
     @Path("{matchCollection}/matches")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    @ApiOperation(value = "Save a set of matches",
-                  notes = "Inserts or updates matches for the specified collection.")
+    @ApiOperation(
+            value = "Save a set of matches",
+            notes = "Inserts or updates matches for the specified collection.")
     @ApiResponses(value = {
+            @ApiResponse(code = 201, message = "matches successfully saved"),
             @ApiResponse(code = 400, message = "If no matches are provided")
     })
     public Response saveMatches(@PathParam("owner") final String owner,
@@ -240,8 +246,9 @@ public class MatchService {
 
     @Path("{matchCollection}/matches")
     @DELETE
-    @ApiOperation(value = "Delete all matches in the collection",
-                  notes = "Use this wisely.")
+    @ApiOperation(
+            value = "Delete all matches in the collection",
+            notes = "Use this wisely.")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Match collection not found")
     })

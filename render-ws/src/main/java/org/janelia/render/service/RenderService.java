@@ -42,8 +42,7 @@ import io.swagger.annotations.ApiResponses;
  * @author Eric Trautman
  */
 @Path("/v1/owner/{owner}")
-@Api(tags = {"Render Image APIs"},
-     description = "Render Image Service")
+@Api(tags = {"Image APIs"})
 public class RenderService {
 
     private final RenderDataService renderDataService;
@@ -62,7 +61,9 @@ public class RenderService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    @ApiOperation(value = "Render JPEG image from a provide spec")
+    @ApiOperation(
+            tags = "Spec Image APIs",
+            value = "Render JPEG image from a provide spec")
     public Response renderJpegImageFromProvidedParameters(final RenderParameters renderParameters) {
         return renderImageStream(renderParameters, Utils.JPEG_FORMAT, IMAGE_JPEG_MIME_TYPE, false, NO_CACHE_HELPER);
     }
@@ -72,7 +73,9 @@ public class RenderService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(IMAGE_PNG_MIME_TYPE)
-    @ApiOperation(value = "Render PNG image from a provide spec")
+    @ApiOperation(
+            tags = "Spec Image APIs",
+            value = "Render PNG image from a provide spec")
     public Response renderPngImageFromProvidedParameters(final RenderParameters renderParameters) {
         return renderImageStream(renderParameters, Utils.PNG_FORMAT, IMAGE_PNG_MIME_TYPE, false, NO_CACHE_HELPER);
     }
@@ -81,7 +84,9 @@ public class RenderService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(IMAGE_TIFF_MIME_TYPE)
-    @ApiOperation(value = "Render TIFF image from a provide spec")
+    @ApiOperation(
+            tags = "Spec Image APIs",
+            value = "Render TIFF image from a provide spec")
     public Response renderTiffImageFromProvidedParameters(final RenderParameters renderParameters) {
         return renderImageStream(renderParameters, Utils.TIFF_FORMAT, IMAGE_TIFF_MIME_TYPE, false, NO_CACHE_HELPER);
     }
@@ -89,7 +94,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/z/{z}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    @ApiOperation(value = "Render JPEG image for a section")
+    @ApiOperation(
+            tags = "Section Image APIs",
+            value = "Render JPEG image for a section")
     public Response renderJpegImageForZ(@PathParam("owner") final String owner,
                                         @PathParam("project") final String project,
                                         @PathParam("stack") final String stack,
@@ -119,7 +126,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/z/{z}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
-    @ApiOperation(value = "Render PNG image for a section")
+    @ApiOperation(
+            tags = "Section Image APIs",
+            value = "Render PNG image for a section")
     public Response renderPngImageForZ(@PathParam("owner") final String owner,
                                        @PathParam("project") final String project,
                                        @PathParam("stack") final String stack,
@@ -149,7 +158,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/z/{z}/tiff-image")
     @GET
     @Produces(IMAGE_TIFF_MIME_TYPE)
-    @ApiOperation(value = "Render TIFF image for a section")
+    @ApiOperation(
+            tags = "Section Image APIs",
+            value = "Render TIFF image for a section")
     public Response renderTiffImageForZ(@PathParam("owner") final String owner,
                                         @PathParam("project") final String project,
                                         @PathParam("stack") final String stack,
@@ -179,7 +190,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    @ApiOperation(value = "Render JPEG image for a tile")
+    @ApiOperation(
+            tags = "Tile Image APIs",
+            value = "Render JPEG image for a tile")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Tile not found")
     })
@@ -207,7 +220,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
-    @ApiOperation(value = "Render PNG image for a tile")
+    @ApiOperation(
+            tags = "Tile Image APIs",
+            value = "Render PNG image for a tile")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Tile not found")
     })
@@ -235,7 +250,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/tiff-image")
     @GET
     @Produces(IMAGE_TIFF_MIME_TYPE)
-    @ApiOperation(value = "Render TIFF image for a tile")
+    @ApiOperation(
+            tags = "Tile Image APIs",
+            value = "Render TIFF image for a tile")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Tile not found")
     })
@@ -263,7 +280,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    @ApiOperation(value = "Render tile's source image without transformations in JPEG format")
+    @ApiOperation(
+            tags = "Tile Image APIs",
+            value = "Render tile's source image without transformations in JPEG format")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Tile not found")
     })
@@ -291,7 +310,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
-    @ApiOperation(value = "Render tile's source image without transformations in PNG format")
+    @ApiOperation(
+            tags = "Tile Image APIs",
+            value = "Render tile's source image without transformations in PNG format")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Tile not found")
     })
@@ -319,7 +340,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/tiff-image")
     @GET
     @Produces(IMAGE_TIFF_MIME_TYPE)
-    @ApiOperation(value = "Render tile's source image without transformations in TIFF format")
+    @ApiOperation(
+            tags = "Tile Image APIs",
+            value = "Render tile's source image without transformations in TIFF format")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Tile not found")
     })
@@ -347,7 +370,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    @ApiOperation(value = "Render tile's mask image without transformations in JPEG format")
+    @ApiOperation(
+            tags = "Tile Image APIs",
+            value = "Render tile's mask image without transformations in JPEG format")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Tile not found")
     })
@@ -375,7 +400,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
-    @ApiOperation(value = "Render tile's mask image without transformations in PNG format")
+    @ApiOperation(
+            tags = "Tile Image APIs",
+            value = "Render tile's mask image without transformations in PNG format")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Tile not found")
     })
@@ -403,7 +430,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/tiff-image")
     @GET
     @Produces(IMAGE_TIFF_MIME_TYPE)
-    @ApiOperation(value = "Render tile's mask image without transformations in TIFF format")
+    @ApiOperation(
+            tags = "Tile Image APIs",
+            value = "Render tile's mask image without transformations in TIFF format")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Tile not found")
     })
@@ -431,7 +460,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    @ApiOperation(value = "Render JPEG image for the specified bounding box")
+    @ApiOperation(
+            tags = "Bounding Box Image APIs",
+            value = "Render JPEG image for the specified bounding box")
     public Response renderJpegImageForBox(@PathParam("owner") final String owner,
                                           @PathParam("project") final String project,
                                           @PathParam("stack") final String stack,
@@ -462,7 +493,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
-    @ApiOperation(value = "Render PNG image for the specified bounding box")
+    @ApiOperation(
+            tags = "Bounding Box Image APIs",
+            value = "Render PNG image for the specified bounding box")
     public Response renderPngImageForBox(@PathParam("owner") final String owner,
                                          @PathParam("project") final String project,
                                          @PathParam("stack") final String stack,
@@ -493,7 +526,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
     @GET
     @Produces(IMAGE_TIFF_MIME_TYPE)
-    @ApiOperation(value = "Render TIFF image for the specified bounding box")
+    @ApiOperation(
+            tags = "Bounding Box Image APIs",
+            value = "Render TIFF image for the specified bounding box")
     public Response renderTiffImageForBox(@PathParam("owner") final String owner,
                                           @PathParam("project") final String project,
                                           @PathParam("stack") final String stack,
@@ -524,7 +559,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
     @GET
     @Produces(IMAGE_JPEG_MIME_TYPE)
-    @ApiOperation(value = "Render JPEG image for the specified bounding box and groupId")
+    @ApiOperation(
+            tags = "Bounding Box Image APIs",
+            value = "Render JPEG image for the specified bounding box and groupId")
     public Response renderJpegImageForGroupBox(@PathParam("owner") final String owner,
                                                @PathParam("project") final String project,
                                                @PathParam("stack") final String stack,
@@ -556,7 +593,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
     @GET
     @Produces(IMAGE_PNG_MIME_TYPE)
-    @ApiOperation(value = "Render PNG image for the specified bounding box and groupId")
+    @ApiOperation(
+            tags = "Bounding Box Image APIs",
+            value = "Render PNG image for the specified bounding box and groupId")
     public Response renderPngImageForGroupBox(@PathParam("owner") final String owner,
                                               @PathParam("project") final String project,
                                               @PathParam("stack") final String stack,
@@ -588,7 +627,9 @@ public class RenderService {
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
     @GET
     @Produces(IMAGE_TIFF_MIME_TYPE)
-    @ApiOperation(value = "Render TIFF image for the specified bounding box and groupId")
+    @ApiOperation(
+            tags = "Bounding Box Image APIs",
+            value = "Render TIFF image for the specified bounding box and groupId")
     public Response renderTiffImageForGroupBox(@PathParam("owner") final String owner,
                                                @PathParam("project") final String project,
                                                @PathParam("stack") final String stack,

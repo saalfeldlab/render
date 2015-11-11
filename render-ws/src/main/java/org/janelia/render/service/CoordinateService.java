@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import javax.ws.rs.Consumes;
@@ -28,6 +28,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 
 /**
  * APIs for translating coordinates.
@@ -35,8 +38,7 @@ import io.swagger.annotations.Api;
  * @author Eric Trautman
  */
 @Path("/v1/owner/{owner}")
-@Api(tags = {"Render Coordinate APIs"},
-     description = "Coordinate Service")
+@Api(tags = {"Coordinate Mapping APIs"})
 public class CoordinateService {
 
     private final RenderDao renderDao;
@@ -55,6 +57,14 @@ public class CoordinateService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Map world coordinates to tileId(s)",
+            notes = "Locates all tiles that contain each specified world coordinate.  An array of arrays of coordinates with tileIds are then returned.",
+            response = TileCoordinates.class,
+            responseContainer = "List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "problem with specified coordinates")
+    })
     public Response getTileIdsForCoordinates(@PathParam("owner") final String owner,
                                              @PathParam("project") final String project,
                                              @PathParam("stack") final String stack,
@@ -87,6 +97,7 @@ public class CoordinateService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Derive world coordinates for specified local coordinates using provided tile spec")
     public double[] getWorldCoordinates(@PathParam("x") final double x,
                                        @PathParam("y") final double y,
                                        final TileSpec tileSpec) {
@@ -105,6 +116,10 @@ public class CoordinateService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Derive local coordinates for specified world coordinates using provided tile spec")
+    @ApiResponses(value = {
+            @ApiResponse(code = 500, message = "coordinates not invertible")
+    })
     public double[] getLocalCoordinates(@PathParam("x") final double x,
                                        @PathParam("y") final double y,
                                        @QueryParam("meshCellSize") final Double meshCellSize,
@@ -123,6 +138,10 @@ public class CoordinateService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/local-to-world-coordinates/{x},{y}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Derive world coordinates for specified tile local coordinates")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "tile not found")
+    })
     public TileCoordinates getWorldCoordinates(@PathParam("owner") final String owner,
                                                @PathParam("project") final String project,
                                                @PathParam("stack") final String stack,
@@ -149,6 +168,11 @@ public class CoordinateService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Derive array of world coordinates for provided tile local coordinates")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "missing tile or coordinate data"),
+            @ApiResponse(code = 404, message = "tile not found")
+    })
     public List<TileCoordinates> getWorldCoordinates(@PathParam("owner") final String owner,
                                                      @PathParam("project") final String project,
                                                      @PathParam("stack") final String stack,
@@ -222,6 +246,12 @@ public class CoordinateService {
     @Path("project/{project}/stack/{stack}/z/{z}/world-to-local-coordinates/{x},{y}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Derive array of local coordinates for specified world coordinates",
+            notes = "World coordinates can map to multiple (overlapping) tiles.  An array of local coordinates, one element per tile, is returned with the visible (last drawn) tile marked.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 500, message = "coordinates not invertible")
+    })
     public List<TileCoordinates> getLocalCoordinates(@PathParam("owner") final String owner,
                                                      @PathParam("project") final String project,
                                                      @PathParam("stack") final String stack,
@@ -250,6 +280,13 @@ public class CoordinateService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Derive array of arrays of local coordinates for provided array of world coordinates",
+            notes = "World coordinates can map to multiple (overlapping) tiles.  For each provided world coordinate, an array of local coordinates, one element per tile, is returned with the visible (last drawn) tile marked.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "missing tile or coordinate data"),
+            @ApiResponse(code = 500, message = "coordinates not invertible")
+    })
     public List<List<TileCoordinates>> getLocalCoordinates(@PathParam("owner") final String owner,
                                                            @PathParam("project") final String project,
                                                            @PathParam("stack") final String stack,
@@ -299,7 +336,7 @@ public class CoordinateService {
                 }
                 coordinates.setError(t.getMessage());
 
-                localCoordinatesList.add(Arrays.asList(coordinates));
+                localCoordinatesList.add(Collections.singletonList(coordinates));
             }
 
             if ((System.currentTimeMillis() - lastStatusTime) > COORDINATE_PROCESSING_LOG_INTERVAL) {
