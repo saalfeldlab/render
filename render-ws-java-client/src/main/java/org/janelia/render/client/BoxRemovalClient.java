@@ -115,13 +115,13 @@ public class BoxRemovalClient {
 
         final File smallDirectory = new File(boxDirectory, "small");
         if (smallDirectory.exists()) {
-            File overview = new File(smallDirectory, z + ".jpg");
+            File overview = new File(smallDirectory, z.intValue() + ".jpg");
             if (overview.exists()) {
                 if (! overview.delete()) {
                     LOG.warn("failed to delete {}", overview);
                 }
             } else {
-                overview = new File(smallDirectory, z + ".png");
+                overview = new File(smallDirectory, z.intValue() + ".png");
                 if (overview.exists()) {
                     if (! overview.delete()) {
                         LOG.warn("failed to delete {}", overview);
