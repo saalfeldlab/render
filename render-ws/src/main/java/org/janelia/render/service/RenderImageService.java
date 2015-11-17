@@ -14,7 +14,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Request;
 import javax.ws.rs.core.Response;
 
-import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.stack.StackId;
@@ -28,23 +27,23 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
 /**
- * APIs that use the {@link Render} tool to render images.
+ * APIs for rendering images server-side.
  *
  * @author Eric Trautman
  */
 @Path("/v1/owner/{owner}")
 @Api(tags = {"Image APIs"})
-public class RenderService {
+public class RenderImageService {
 
     private final RenderDataService renderDataService;
 
     @SuppressWarnings("UnusedDeclaration")
-    public RenderService()
+    public RenderImageService()
             throws UnknownHostException {
         this(new RenderDataService());
     }
 
-    public RenderService(final RenderDataService renderDataService) {
+    public RenderImageService(final RenderDataService renderDataService) {
         this.renderDataService = renderDataService;
     }
 
@@ -426,5 +425,5 @@ public class RenderService {
         return renderDataService.getStackMetaData(stackId);
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(RenderService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RenderImageService.class);
 }
