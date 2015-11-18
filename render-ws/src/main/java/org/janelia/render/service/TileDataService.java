@@ -36,6 +36,7 @@ import io.swagger.annotations.ApiResponses;
 public class TileDataService {
 
     private final RenderDao renderDao;
+    private final RenderDataService renderDataService;
 
     @SuppressWarnings("UnusedDeclaration")
     public TileDataService()
@@ -45,6 +46,7 @@ public class TileDataService {
 
     public TileDataService(final RenderDao renderDao) {
         this.renderDao = renderDao;
+        this.renderDataService = new RenderDataService(renderDao);
     }
 
 
@@ -167,6 +169,69 @@ public class TileDataService {
                  owner, project, stack, tileId, scale, filter);
 
         return getTileRenderParameters(owner, project, stack, tileId, scale, filter, false);
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/render-parameters")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Get parameters for rendering a tile with its neighbors")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "tile not found"),
+    })
+    public RenderParameters getTileWithNeighborsRenderParameters(@PathParam("owner") final String owner,
+                                                                 @PathParam("project") final String project,
+                                                                 @PathParam("stack") final String stack,
+                                                                 @PathParam("tileId") final String tileId,
+                                                                 @QueryParam("widthFactor") Double widthFactor,
+                                                                 @QueryParam("heightFactor") Double heightFactor,
+                                                                 @QueryParam("scale") Double scale,
+                                                                 @QueryParam("filter") final Boolean filter) {
+
+        LOG.info("getTileWithNeighborsRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, widthFactor={}, heightFactor={}, scale={}, filter={}",
+                 owner, project, stack, tileId, widthFactor, heightFactor, scale, filter);
+
+        RenderParameters parameters = null;
+        try {
+            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
+
+            if (widthFactor == null) {
+                widthFactor = 0.3;
+            }
+
+            if (heightFactor == null) {
+                heightFactor = 0.3;
+            }
+
+            if (scale == null) {
+                scale = 1.0;
+            }
+
+            final double neighborhoodWidth = tileSpec.getWidth() * widthFactor;
+            final double neighborhoodHeight = tileSpec.getHeight() * heightFactor;
+
+            final double x = tileSpec.getMinX() - neighborhoodWidth;
+            final double y = tileSpec.getMinY() - neighborhoodHeight;
+            final double z = tileSpec.getZ();
+            final int width = tileSpec.getWidth() + (int) (2 * neighborhoodWidth);
+            final int height = tileSpec.getHeight() + (int) (2 * neighborhoodHeight);
+
+            parameters = renderDataService.getExternalRenderParameters(owner,
+                                                                       project,
+                                                                       stack,
+                                                                       x,
+                                                                       y,
+                                                                       z,
+                                                                       width,
+                                                                       height,
+                                                                       scale);
+            parameters.setDoFilter(filter);
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return parameters;
     }
 
     public StackMetaData getStackMetaData(final StackId stackId)

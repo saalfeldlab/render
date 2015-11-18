@@ -39,6 +39,31 @@ public class RenderServiceUtil {
         }
     }
 
+    public static Response renderJpegBoundingBoxes(final RenderParameters renderParameters,
+                                                   final ResponseHelper responseHelper) {
+
+        LOG.info("renderJpegBoundingBoxes: entry");
+
+        Response response = null;
+        try {
+
+            final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters,
+                                                                               true);
+            final BufferedImageStreamingOutput out =
+                    new BufferedImageStreamingOutput(targetImage,
+                                                     Utils.JPEG_FORMAT,
+                                                     renderParameters.isConvertToGray(),
+                                                     renderParameters.getQuality());
+            response = responseHelper.getImageByteResponse(out, IMAGE_JPEG_MIME_TYPE);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        LOG.info("renderJpegBoundingBoxes: exit");
+
+        return response;
+    }
+
     public static Response renderJpegImage(final RenderParameters renderParameters,
                                            final Boolean optimizeRenderTime,
                                            final ResponseHelper responseHelper) {
@@ -80,8 +105,16 @@ public class RenderServiceUtil {
 
         Response response = null;
         try {
-            final boolean optimize = (optimizeRenderTime != null) && optimizeRenderTime;
-            final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters, optimize);
+
+            // if we need to optimize render time (e.g. when we're rendering a box from a database stack)
+            // and there are too many tiles to dynamically render the result quickly,
+            // just render the tile bounding boxes instead ...
+            final boolean renderBoundingBoxesOnly = (optimizeRenderTime != null) &&
+                                                    optimizeRenderTime &&
+                                                    (renderParameters.numberOfTileSpecs() > 100);
+
+            final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters,
+                                                                               renderBoundingBoxesOnly);
             final BufferedImageStreamingOutput out =
                     new BufferedImageStreamingOutput(targetImage,
                                                      format,
@@ -97,8 +130,8 @@ public class RenderServiceUtil {
         return response;
     }
 
-    public static BufferedImage validateParametersAndRenderImage(final RenderParameters renderParameters,
-                                                                 final boolean optimizeRenderTime)
+    private static BufferedImage validateParametersAndRenderImage(final RenderParameters renderParameters,
+                                                                  final boolean renderBoundingBoxesOnly)
             throws IllegalArgumentException, IllegalStateException {
 
         LOG.info("validateParametersAndRenderImage: entry, renderParameters={}", renderParameters);
@@ -109,11 +142,7 @@ public class RenderServiceUtil {
 
         final BufferedImage targetImage = renderParameters.openTargetImage();
 
-        if (optimizeRenderTime && (renderParameters.numberOfTileSpecs() > 100)) {
-
-            // if we need to optimize render time (e.g. when we're rendering a box from a database stack)
-            // and there are too many tiles to dynamically render the result quickly,
-            // just render the tile bounding boxes instead ...
+        if (renderBoundingBoxesOnly) {
 
             final BoundingBoxRenderer boundingBoxRenderer = new BoundingBoxRenderer(renderParameters, Color.GREEN);
             boundingBoxRenderer.render(targetImage);

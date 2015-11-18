@@ -301,6 +301,42 @@ public class TileImageService {
         }
     }
 
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/jpeg-image")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
+    @ApiOperation(value = "Render tile's mask image without transformations in JPEG format")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Tile not found")
+    })
+    public Response renderJpegTileWithNeighborsImage(@PathParam("owner") final String owner,
+                                                     @PathParam("project") final String project,
+                                                     @PathParam("stack") final String stack,
+                                                     @PathParam("tileId") final String tileId,
+                                                     @QueryParam("widthFactor") final Double widthFactor,
+                                                     @QueryParam("heightFactor") final Double heightFactor,
+                                                     @QueryParam("scale") final Double scale,
+                                                     @QueryParam("filter") final Boolean filter,
+                                                     @QueryParam("boundingBoxesOnly") final Boolean boundingBoxesOnly,
+                                                     @Context final Request request) {
+
+        LOG.info("renderJpegTileWithNeighborsImage: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, boundingBoxesOnly={}",
+                 owner, project, stack, tileId, scale, filter, boundingBoxesOnly);
+
+        final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
+        if (responseHelper.isModified()) {
+            final RenderParameters renderParameters =
+                    tileDataService.getTileWithNeighborsRenderParameters(owner, project, stack, tileId,
+                                                                         widthFactor, heightFactor, scale, filter);
+            if ((boundingBoxesOnly != null) && boundingBoxesOnly) {
+                return RenderServiceUtil.renderJpegBoundingBoxes(renderParameters, responseHelper);
+            } else {
+                return RenderServiceUtil.renderJpegImage(renderParameters, false, responseHelper);
+            }
+        } else {
+            return responseHelper.getNotModifiedResponse();
+        }
+    }
+
     private StackMetaData getStackMetaData(final String owner,
                                            final String project,
                                            final String stack) {
