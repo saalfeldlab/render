@@ -193,7 +193,7 @@ public class TileDataService {
 
         RenderParameters parameters = null;
         try {
-            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
+            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, false);
 
             if (widthFactor == null) {
                 widthFactor = 0.3;
