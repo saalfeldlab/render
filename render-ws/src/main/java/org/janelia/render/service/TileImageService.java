@@ -304,7 +304,7 @@ public class TileImageService {
     @Path("project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/jpeg-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
-    @ApiOperation(value = "Render tile's mask image without transformations in JPEG format")
+    @ApiOperation(value = "Render tile with its neighbors in JPEG format")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Tile not found")
     })
