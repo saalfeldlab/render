@@ -100,23 +100,17 @@ public class TileDataService {
         try {
             final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
             tileSpec.flattenTransforms();
-            if (scale == null) {
-                scale = 1.0;
-            }
+            scale = RenderServiceUtil.defaultScaleIfNecessary(scale);
 
             final StackId stackId = new StackId(owner, project, stack);
             final StackMetaData stackMetaData = getStackMetaData(stackId);
 
-            final Integer stackLayoutWidth = stackMetaData.getLayoutWidth();
-            final Integer stackLayoutHeight = stackMetaData.getLayoutHeight();
-
-            final int margin = 0;
-            final Double x = getLayoutMinValue(tileSpec.getMinX(), margin);
-            final Double y = getLayoutMinValue(tileSpec.getMinY(), margin);
-            final Integer width = getLayoutSizeValue(stackLayoutWidth, tileSpec.getWidth(), margin);
-            final Integer height = getLayoutSizeValue(stackLayoutHeight, tileSpec.getHeight(), margin);
-
-            parameters = new RenderParameters(null, x, y, width, height, scale);
+            parameters = new RenderParameters(null,
+                                              tileSpec.getMinX(),
+                                              tileSpec.getMinY(),
+                                              tileSpec.getWidth(),
+                                              tileSpec.getHeight(),
+                                              scale);
             parameters.setDoFilter(filter);
             parameters.setBinaryMask(binaryMask);
             parameters.addTileSpec(tileSpec);
@@ -147,7 +141,7 @@ public class TileDataService {
         LOG.info("getTileSourceRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
                  owner, project, stack, tileId, scale, filter);
 
-        return getTileRenderParameters(owner, project, stack, tileId, scale, filter, true);
+        return getRawTileRenderParameters(owner, project, stack, tileId, scale, filter, true);
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/render-parameters")
@@ -168,7 +162,7 @@ public class TileDataService {
         LOG.info("getTileMaskRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}",
                  owner, project, stack, tileId, scale, filter);
 
-        return getTileRenderParameters(owner, project, stack, tileId, scale, filter, false);
+        return getRawTileRenderParameters(owner, project, stack, tileId, scale, filter, false);
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/render-parameters")
@@ -255,13 +249,13 @@ public class TileDataService {
         return renderDao.getTileSpec(stackId, tileId, resolveTransformReferences);
     }
 
-    private RenderParameters getTileRenderParameters(final String owner,
-                                                     final String project,
-                                                     final String stack,
-                                                     final String tileId,
-                                                     final Double scale,
-                                                     final Boolean filter,
-                                                     final boolean isSource) {
+    private RenderParameters getRawTileRenderParameters(final String owner,
+                                                        final String project,
+                                                        final String stack,
+                                                        final String tileId,
+                                                        final Double scale,
+                                                        final Boolean filter,
+                                                        final boolean isSource) {
 
         // we only need to fetch the tile spec since no transforms are needed
         final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId);
@@ -283,33 +277,6 @@ public class TileDataService {
         tileRenderParameters.setDoFilter(filter);
 
         return tileRenderParameters;
-    }
-
-    private Double getLayoutMinValue(final Double minValue,
-                                     final int margin) {
-        Double layoutValue = null;
-        if (minValue != null) {
-            layoutValue = minValue - margin;
-        }
-        return layoutValue;
-    }
-
-    private Integer getLayoutSizeValue(final Integer stackValue,
-                                       final Integer tileValue,
-                                       final int margin) {
-        Integer layoutValue = null;
-
-        if (stackValue != null) {
-            layoutValue = stackValue + margin;
-        } else if ((tileValue != null) && (tileValue >= 0)) {
-            layoutValue = tileValue + margin;
-        }
-
-        if ((layoutValue != null) && ((layoutValue % 2) != 0)) {
-            layoutValue = layoutValue + 1;
-        }
-
-        return layoutValue;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TileDataService.class);

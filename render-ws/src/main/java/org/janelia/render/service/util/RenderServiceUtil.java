@@ -39,6 +39,14 @@ public class RenderServiceUtil {
         }
     }
 
+    public static Double defaultScaleIfNecessary(final Double scale) {
+        if (scale == null) {
+            return 1.0;
+        } else {
+            return scale;
+        }
+    }
+
     public static Response renderJpegBoundingBoxes(final RenderParameters renderParameters,
                                                    final ResponseHelper responseHelper) {
 

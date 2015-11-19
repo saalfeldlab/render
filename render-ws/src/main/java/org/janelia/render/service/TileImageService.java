@@ -49,7 +49,7 @@ public class TileImageService {
         this.tileDataService = tileDataService;
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/jpeg-image")
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/jpeg-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(value = "Render JPEG image for a tile")
@@ -60,7 +60,7 @@ public class TileImageService {
                                            @PathParam("project") final String project,
                                            @PathParam("stack") final String stack,
                                            @PathParam("tileId") final String tileId,
-                                           @PathParam("scale") final Double scale,
+                                           @QueryParam("scale") final Double scale,
                                            @QueryParam("filter") final Boolean filter,
                                            @Context final Request request) {
 
@@ -77,7 +77,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/png-image")
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/png-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(value = "Render PNG image for a tile")
@@ -88,7 +88,7 @@ public class TileImageService {
                                           @PathParam("project") final String project,
                                           @PathParam("stack") final String stack,
                                           @PathParam("tileId") final String tileId,
-                                          @PathParam("scale") final Double scale,
+                                          @QueryParam("scale") final Double scale,
                                           @QueryParam("filter") final Boolean filter,
                                           @Context final Request request) {
 
@@ -105,7 +105,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/scale/{scale}/tiff-image")
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/tiff-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
     @ApiOperation(value = "Render TIFF image for a tile")
@@ -116,7 +116,7 @@ public class TileImageService {
                                            @PathParam("project") final String project,
                                            @PathParam("stack") final String stack,
                                            @PathParam("tileId") final String tileId,
-                                           @PathParam("scale") final Double scale,
+                                           @QueryParam("scale") final Double scale,
                                            @QueryParam("filter") final Boolean filter,
                                            @Context final Request request) {
 
@@ -133,7 +133,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/jpeg-image")
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/jpeg-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(value = "Render tile's source image without transformations in JPEG format")
@@ -144,7 +144,7 @@ public class TileImageService {
                                                  @PathParam("project") final String project,
                                                  @PathParam("stack") final String stack,
                                                  @PathParam("tileId") final String tileId,
-                                                 @PathParam("scale") final Double scale,
+                                                 @QueryParam("scale") final Double scale,
                                                  @QueryParam("filter") final Boolean filter,
                                                  @Context final Request request) {
 
@@ -161,7 +161,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/png-image")
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/png-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(value = "Render tile's source image without transformations in PNG format")
@@ -172,7 +172,7 @@ public class TileImageService {
                                                 @PathParam("project") final String project,
                                                 @PathParam("stack") final String stack,
                                                 @PathParam("tileId") final String tileId,
-                                                @PathParam("scale") final Double scale,
+                                                @QueryParam("scale") final Double scale,
                                                 @QueryParam("filter") final Boolean filter,
                                                 @Context final Request request) {
 
@@ -189,7 +189,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/tiff-image")
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/tiff-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
     @ApiOperation(value = "Render tile's source image without transformations in TIFF format")
@@ -200,7 +200,7 @@ public class TileImageService {
                                                  @PathParam("project") final String project,
                                                  @PathParam("stack") final String stack,
                                                  @PathParam("tileId") final String tileId,
-                                                 @PathParam("scale") final Double scale,
+                                                 @QueryParam("scale") final Double scale,
                                                  @QueryParam("filter") final Boolean filter,
                                                  @Context final Request request) {
 
@@ -217,7 +217,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/jpeg-image")
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/jpeg-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(value = "Render tile's mask image without transformations in JPEG format")
@@ -228,7 +228,7 @@ public class TileImageService {
                                                @PathParam("project") final String project,
                                                @PathParam("stack") final String stack,
                                                @PathParam("tileId") final String tileId,
-                                               @PathParam("scale") final Double scale,
+                                               @QueryParam("scale") final Double scale,
                                                @QueryParam("filter") final Boolean filter,
                                                @Context final Request request) {
 
@@ -245,7 +245,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/png-image")
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/png-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(value = "Render tile's mask image without transformations in PNG format")
@@ -256,7 +256,7 @@ public class TileImageService {
                                               @PathParam("project") final String project,
                                               @PathParam("stack") final String stack,
                                               @PathParam("tileId") final String tileId,
-                                              @PathParam("scale") final Double scale,
+                                              @QueryParam("scale") final Double scale,
                                               @QueryParam("filter") final Boolean filter,
                                               @Context final Request request) {
 
@@ -273,7 +273,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/tiff-image")
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/tiff-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
     @ApiOperation(value = "Render tile's mask image without transformations in TIFF format")
@@ -284,7 +284,7 @@ public class TileImageService {
                                                @PathParam("project") final String project,
                                                @PathParam("stack") final String stack,
                                                @PathParam("tileId") final String tileId,
-                                               @PathParam("scale") final Double scale,
+                                               @QueryParam("scale") final Double scale,
                                                @QueryParam("filter") final Boolean filter,
                                                @Context final Request request) {
 
@@ -312,10 +312,10 @@ public class TileImageService {
                                                      @PathParam("project") final String project,
                                                      @PathParam("stack") final String stack,
                                                      @PathParam("tileId") final String tileId,
-                                                     @QueryParam("widthFactor") final Double widthFactor,
-                                                     @QueryParam("heightFactor") final Double heightFactor,
                                                      @QueryParam("scale") final Double scale,
                                                      @QueryParam("filter") final Boolean filter,
+                                                     @QueryParam("widthFactor") final Double widthFactor,
+                                                     @QueryParam("heightFactor") final Double heightFactor,
                                                      @QueryParam("boundingBoxesOnly") final Boolean boundingBoxesOnly,
                                                      @Context final Request request) {
 
