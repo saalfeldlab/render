@@ -152,7 +152,8 @@ public class MatchDao {
 
         if (matchesList.size() > 0) {
 
-            final MongoCollection<Document> collection = getExistingCollection(collectionId);
+            final MongoCollection<Document> collection =
+                    matchDatabase.getCollection(collectionId.getDbCollectionName());
 
             ensureMatchIndexes(collection);
 
