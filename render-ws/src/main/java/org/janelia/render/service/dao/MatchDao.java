@@ -7,7 +7,8 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.IndexOptions;
-import com.mongodb.client.model.InsertOneModel;
+import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.client.result.DeleteResult;
 
@@ -159,11 +160,18 @@ public class MatchDao {
 
             final List<WriteModel<Document>> modelList = new ArrayList<>(matchesList.size());
 
+            final UpdateOptions upsertOption = new UpdateOptions().upsert(true);
+            Document filter;
             Document matchesObject;
             for (final CanvasMatches canvasMatches : matchesList) {
                 canvasMatches.normalize();
+                filter = new Document(
+                        "pGroupId", canvasMatches.getpGroupId()).append(
+                        "pId", canvasMatches.getpId()).append(
+                        "qGroupId", canvasMatches.getqGroupId()).append(
+                        "qId", canvasMatches.getqId());
                 matchesObject = Document.parse(canvasMatches.toJson());
-                modelList.add(new InsertOneModel<>(matchesObject));
+                modelList.add(new ReplaceOneModel<>(filter, matchesObject, upsertOption));
             }
 
             final BulkWriteResult result = collection.bulkWrite(modelList, MongoUtil.UNORDERED_OPTION);

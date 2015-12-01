@@ -200,6 +200,51 @@ public class MatchDaoTest {
         Assert.assertEquals("invalid number of matches saved", 3, savePCount);
     }
 
+    @Test
+    public void testUpdateMatches() throws Exception {
+
+        final String updateGroupA = "updateGroupA";
+        final CanvasMatches insertMatches = new CanvasMatches(updateGroupA,
+                                                              "tile.p",
+                                                              "section.b",
+                                                              "tile.q",
+                                                              new Matches(new double[][]{{1}, {4},},
+                                                                          new double[][]{{11}, {14}},
+                                                                          new double[]{7}));
+
+        final List<CanvasMatches> insertList = new ArrayList<>();
+        insertList.add(insertMatches);
+
+        dao.saveMatches(collectionId, insertList);
+
+        final CanvasMatches updateMatches = new CanvasMatches(insertMatches.getpGroupId(),
+                                                              insertMatches.getpId(),
+                                                              insertMatches.getqGroupId(),
+                                                              insertMatches.getqId(),
+                                                              new Matches(new double[][]{{2}, {5},},
+                                                                          new double[][]{{12}, {15}},
+                                                                          new double[]{8}));
+        final List<CanvasMatches> updateList = new ArrayList<>();
+        updateList.add(updateMatches);
+
+        dao.saveMatches(collectionId, updateList);
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        dao.writeMatchesOutsideGroup(collectionId, updateGroupA, outputStream);
+
+        final List<CanvasMatches> retrievedList = getListFromStream(outputStream);
+
+        Assert.assertEquals("invalid number of matches returned, matches=" + retrievedList,
+                            1, retrievedList.size());
+
+        for (final CanvasMatches canvasMatches : retrievedList) {
+            final Matches matches = canvasMatches.getMatches();
+            final double ws[] = matches.getWs();
+            Assert.assertEquals("weight not updated", 8.0, ws[0], 0.01);
+        }
+    }
+
     private List<CanvasMatches> getListFromStream(final ByteArrayOutputStream outputStream) {
         final String json = outputStream.toString();
         return CanvasMatches.fromJsonArray(json);
