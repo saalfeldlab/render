@@ -133,6 +133,10 @@ public class CanvasMatches implements Serializable {
         return qId;
     }
 
+    public Matches getMatches() {
+        return matches;
+    }
+
     @Override
     public String toString() {
         return "{pGroupId: " + pGroupId +
