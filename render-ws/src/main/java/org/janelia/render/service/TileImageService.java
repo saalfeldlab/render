@@ -71,7 +71,7 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false);
-            return RenderServiceUtil.renderJpegImage(renderParameters, false, responseHelper);
+            return RenderServiceUtil.renderJpegImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
         }
@@ -99,7 +99,7 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false);
-            return RenderServiceUtil.renderPngImage(renderParameters, false, responseHelper);
+            return RenderServiceUtil.renderPngImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
         }
@@ -127,7 +127,7 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false);
-            return RenderServiceUtil.renderTiffImage(renderParameters, false, responseHelper);
+            return RenderServiceUtil.renderTiffImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
         }
@@ -155,7 +155,7 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getTileSourceRenderParameters(owner, project, stack, tileId, scale, filter);
-            return RenderServiceUtil.renderJpegImage(renderParameters, false, responseHelper);
+            return RenderServiceUtil.renderJpegImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
         }
@@ -183,7 +183,7 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getTileSourceRenderParameters(owner, project, stack, tileId, scale, filter);
-            return RenderServiceUtil.renderPngImage(renderParameters, false, responseHelper);
+            return RenderServiceUtil.renderPngImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
         }
@@ -211,7 +211,7 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getTileSourceRenderParameters(owner, project, stack, tileId, scale, filter);
-            return RenderServiceUtil.renderTiffImage(renderParameters, false, responseHelper);
+            return RenderServiceUtil.renderTiffImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
         }
@@ -239,7 +239,7 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getTileMaskRenderParameters(owner, project, stack, tileId, scale, filter);
-            return RenderServiceUtil.renderJpegImage(renderParameters, false, responseHelper);
+            return RenderServiceUtil.renderJpegImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
         }
@@ -267,7 +267,7 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getTileMaskRenderParameters(owner, project, stack, tileId, scale, filter);
-            return RenderServiceUtil.renderPngImage(renderParameters, false, responseHelper);
+            return RenderServiceUtil.renderPngImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
         }
@@ -295,7 +295,7 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getTileMaskRenderParameters(owner, project, stack, tileId, scale, filter);
-            return RenderServiceUtil.renderTiffImage(renderParameters, false, responseHelper);
+            return RenderServiceUtil.renderTiffImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
         }
@@ -330,7 +330,7 @@ public class TileImageService {
             if ((boundingBoxesOnly != null) && boundingBoxesOnly) {
                 return RenderServiceUtil.renderJpegBoundingBoxes(renderParameters, responseHelper);
             } else {
-                return RenderServiceUtil.renderJpegImage(renderParameters, false, responseHelper);
+                return RenderServiceUtil.renderJpegImage(renderParameters, null, responseHelper);
             }
         } else {
             return responseHelper.getNotModifiedResponse();

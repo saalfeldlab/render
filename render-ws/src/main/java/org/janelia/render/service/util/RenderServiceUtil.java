@@ -74,40 +74,40 @@ public class RenderServiceUtil {
     }
 
     public static Response renderJpegImage(final RenderParameters renderParameters,
-                                           final Boolean optimizeRenderTime,
+                                           final Integer maxTileSpecsToRender,
                                            final ResponseHelper responseHelper) {
         return renderImageStream(renderParameters,
                                  Utils.JPEG_FORMAT,
                                  IMAGE_JPEG_MIME_TYPE,
-                                 optimizeRenderTime,
+                                 maxTileSpecsToRender,
                                  responseHelper);
     }
 
 
     public static Response renderPngImage(final RenderParameters renderParameters,
-                                          final Boolean optimizeRenderTime,
+                                          final Integer maxTileSpecsToRender,
                                           final ResponseHelper responseHelper) {
         return renderImageStream(renderParameters,
                                  Utils.PNG_FORMAT,
                                  IMAGE_PNG_MIME_TYPE,
-                                 optimizeRenderTime,
+                                 maxTileSpecsToRender,
                                  responseHelper);
     }
 
     public static Response renderTiffImage(final RenderParameters renderParameters,
-                                           final Boolean optimizeRenderTime,
+                                           final Integer maxTileSpecsToRender,
                                            final ResponseHelper responseHelper) {
         return renderImageStream(renderParameters,
                                  Utils.TIFF_FORMAT,
                                  IMAGE_TIFF_MIME_TYPE,
-                                 optimizeRenderTime,
+                                 maxTileSpecsToRender,
                                  responseHelper);
     }
 
     public static Response renderImageStream(final RenderParameters renderParameters,
                                              final String format,
                                              final String mimeType,
-                                             final Boolean optimizeRenderTime,
+                                             final Integer maxTileSpecsToRender,
                                              final ResponseHelper responseHelper) {
 
         LOG.info("renderImageStream: entry, format={}, mimeType={}", format, mimeType);
@@ -118,9 +118,8 @@ public class RenderServiceUtil {
             // if we need to optimize render time (e.g. when we're rendering a box from a database stack)
             // and there are too many tiles to dynamically render the result quickly,
             // just render the tile bounding boxes instead ...
-            final boolean renderBoundingBoxesOnly = (optimizeRenderTime != null) &&
-                                                    optimizeRenderTime &&
-                                                    (renderParameters.numberOfTileSpecs() > 100);
+            final boolean renderBoundingBoxesOnly = (maxTileSpecsToRender != null) &&
+                                                    (renderParameters.numberOfTileSpecs() > maxTileSpecsToRender);
 
             final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters,
                                                                                renderBoundingBoxesOnly);
@@ -154,7 +153,7 @@ public class RenderServiceUtil {
             RenderServiceUtil.throwServiceException(t);
         }
 
-        LOG.info("renderImageStream: exit");
+        LOG.info("streamImageFile: exit");
 
         return response;
     }
