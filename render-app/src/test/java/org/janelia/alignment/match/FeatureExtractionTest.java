@@ -75,8 +75,8 @@ public class FeatureExtractionTest {
         // tune here ...
         siftParameters.fdSize = 4;
         siftParameters.steps = 3;
-        minScale = 0.5;
-        maxScale = 0.85;
+        minScale = 0.1;
+        maxScale = 0.4;
 
         saveTileImage = false;    // set this to true if you want to see the generated tile image
         printFeatureList = false; // set this to true if you want to see list of features
@@ -221,7 +221,7 @@ public class FeatureExtractionTest {
                "  \"y\" : 146000.0,\n" +
                "  \"width\" : 2760,\n" +
                "  \"height\" : 2330,\n" +
-               "  \"scale\" : 1.0,\n" +
+               "  \"scale\" : 0.4,\n" +
                "  \"tileSpecs\" : [ {\n" +
                "    \"tileId\" : \"141215105451090080.5489.0\",\n" +
                "    \"z\" : 5489.0,\n" +
@@ -256,7 +256,7 @@ public class FeatureExtractionTest {
                "  \"y\" : 186200.0,\n" +
                "  \"width\" : 2760,\n" +
                "  \"height\" : 2330,\n" +
-               "  \"scale\" : 1.0,\n" +
+               "  \"scale\" : 0.4,\n" +
                "  \"tileSpecs\" : [ {\n" +
                "    \"tileId\" : \"141215105451066102.5489.0\",\n" +
                "    \"z\" : 5489.0,\n" +
