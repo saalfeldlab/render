@@ -4,6 +4,7 @@ import javax.ws.rs.core.CacheControl;
 import javax.ws.rs.core.EntityTag;
 import javax.ws.rs.core.Request;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.StreamingOutput;
 
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.service.model.ObjectNotFoundException;
@@ -55,7 +56,7 @@ public class ResponseHelper {
         return notModifiedBuilder.build();
     }
 
-    public Response getImageByteResponse(final BufferedImageStreamingOutput imageByteStream,
+    public Response getImageByteResponse(final StreamingOutput imageByteStream,
                                          final String mimeType) {
         Response.ResponseBuilder responseBuilder = Response.ok(imageByteStream, mimeType);
         if (stackMetaData != null) {

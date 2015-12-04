@@ -106,6 +106,7 @@ public class StackMetaDataServiceTest {
                                                             4.0,
                                                             35.0,
                                                             null,
+                                                            null,
                                                             null);
 
         service.saveStackVersion(loadingStackId.getOwner(),
@@ -127,6 +128,7 @@ public class StackMetaDataServiceTest {
                                                             4.2,
                                                             4.2,
                                                             35.2,
+                                                            null,
                                                             null,
                                                             null);
 
@@ -290,6 +292,7 @@ public class StackMetaDataServiceTest {
                                                                  4.1,
                                                                  5.1,
                                                                  null,
+                                                                 null,
                                                                  null);
 
         service.cloneStackVersion(completeStackId.getOwner(),
@@ -333,6 +336,7 @@ public class StackMetaDataServiceTest {
                                                                  3.1,
                                                                  4.1,
                                                                  5.1,
+                                                                 null,
                                                                  null,
                                                                  null);
 

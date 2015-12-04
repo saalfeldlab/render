@@ -1,6 +1,8 @@
 package org.janelia.render.service;
 
+import java.io.File;
 import java.net.UnknownHostException;
+import java.nio.file.Paths;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -16,8 +18,10 @@ import javax.ws.rs.core.Response;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.render.service.util.RenderServiceUtil;
 import org.janelia.render.service.util.ResponseHelper;
 import org.slf4j.Logger;
@@ -388,6 +392,267 @@ public class RenderImageService {
         } else {
             return responseHelper.getNotModifiedResponse();
         }
+    }
+
+    @Path("project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.jpg")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
+    @ApiOperation(
+            tags = "Bounding Box Image APIs",
+            value = "Render JPEG image for the specified large data (type 5) tile")
+    public Response renderLargeDataTileSourceJpeg(@PathParam("owner") final String owner,
+                                                  @PathParam("project") final String project,
+                                                  @PathParam("stack") final String stack,
+                                                  @PathParam("width") final Integer width,
+                                                  @PathParam("height") final Integer height,
+                                                  @PathParam("level") final Integer level,
+                                                  @PathParam("z") final Double z,
+                                                  @PathParam("row") final Integer row,
+                                                  @PathParam("column") final Integer column,
+                                                  @QueryParam("filter") final Boolean filter,
+                                                  @QueryParam("binaryMask") final Boolean binaryMask,
+                                                  @Context final Request request) {
+
+        return renderLargeDataTileSource(owner, project, stack, width, height, level, z, row, column,
+                                         Utils.JPEG_FORMAT, RenderServiceUtil.IMAGE_JPEG_MIME_TYPE,
+                                         filter, binaryMask,
+                                         request);
+    }
+
+
+    @Path("project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/small/{z}.jpg")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
+    @ApiOperation(
+            tags = "Bounding Box Image APIs",
+            value = "Render JPEG image for the specified large data (type 5) section overview")
+    public Response renderLargeDataOverviewJpeg(@PathParam("owner") final String owner,
+                                                @PathParam("project") final String project,
+                                                @PathParam("stack") final String stack,
+                                                @PathParam("width") final Integer width,
+                                                @PathParam("height") final Integer height,
+                                                @PathParam("z") final Double z,
+                                                @QueryParam("overviewWidth") final Integer overviewWidth,
+                                                @QueryParam("filter") final Boolean filter,
+                                                @QueryParam("binaryMask") final Boolean binaryMask,
+                                                @Context final Request request) {
+
+        return renderLargeDataOverview(owner, project, stack, width, height, z,
+                                       Utils.JPEG_FORMAT, RenderServiceUtil.IMAGE_JPEG_MIME_TYPE,
+                                       overviewWidth, filter, binaryMask,
+                                       request);
+    }
+
+    @Path("project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.png")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
+    @ApiOperation(
+            tags = "Bounding Box Image APIs",
+            value = "Render PNG image for the specified large data (type 5) tile")
+    public Response renderLargeDataTileSourcePng(@PathParam("owner") final String owner,
+                                                 @PathParam("project") final String project,
+                                                 @PathParam("stack") final String stack,
+                                                 @PathParam("width") final Integer width,
+                                                 @PathParam("height") final Integer height,
+                                                 @PathParam("level") final Integer level,
+                                                 @PathParam("z") final Double z,
+                                                 @PathParam("row") final Integer row,
+                                                 @PathParam("column") final Integer column,
+                                                 @QueryParam("filter") final Boolean filter,
+                                                 @QueryParam("binaryMask") final Boolean binaryMask,
+                                                 @Context final Request request) {
+
+        return renderLargeDataTileSource(owner, project, stack, width, height, level, z, row, column,
+                                         Utils.PNG_FORMAT, RenderServiceUtil.IMAGE_PNG_MIME_TYPE,
+                                         filter, binaryMask,
+                                         request);
+    }
+
+    @Path("project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/small/{z}.png")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
+    @ApiOperation(
+            tags = "Bounding Box Image APIs",
+            value = "Render PNG image for the specified large data (type 5) section overview")
+    public Response renderLargeDataOverviewPng(@PathParam("owner") final String owner,
+                                               @PathParam("project") final String project,
+                                               @PathParam("stack") final String stack,
+                                               @PathParam("width") final Integer width,
+                                               @PathParam("height") final Integer height,
+                                               @PathParam("z") final Double z,
+                                               @QueryParam("overviewWidth") final Integer overviewWidth,
+                                               @QueryParam("filter") final Boolean filter,
+                                               @QueryParam("binaryMask") final Boolean binaryMask,
+                                               @Context final Request request) {
+
+        return renderLargeDataOverview(owner, project, stack, width, height, z,
+                                       Utils.PNG_FORMAT, RenderServiceUtil.IMAGE_PNG_MIME_TYPE,
+                                       overviewWidth, filter, binaryMask,
+                                       request);
+    }
+
+    private Response renderLargeDataTileSource(final String owner,
+                                               final String project,
+                                               final String stack,
+                                               final Integer width,
+                                               final Integer height,
+                                               final Integer level,
+                                               final Double z,
+                                               final Integer row,
+                                               final Integer column,
+                                               final String format,
+                                               final String mimeType,
+                                               final Boolean filter,
+                                               final Boolean binaryMask,
+                                               final Request request) {
+
+        LOG.info("renderLargeDataTileSource: entry, stack={}, width={}, height={}, z={}, row={}, column={}",
+                 stack, width, height, z, row, column);
+
+        final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+        final ResponseHelper responseHelper = new ResponseHelper(request, stackMetaData);
+        if (responseHelper.isModified()) {
+
+            final File sourceFile = getLargeDataFile(stackMetaData, filter, binaryMask,
+                                                     width + "x" + height,
+                                                     level.toString(),
+                                                     String.valueOf(z.intValue()),
+                                                     row.toString(),
+                                                     column + "." + format);
+
+            if (sourceFile == null) {
+
+                final double factor = 1 << level;
+                final double scaledWidth = width * factor;
+                final double scaledHeight = height * factor;
+                final double x = column * scaledWidth;
+                final double y = row * scaledHeight;
+                final double scale = 1.0 / factor;
+
+                final RenderParameters renderParameters =
+                        getRenderParametersForGroupBox(owner, project, stack, null,
+                                                       x, y, z, (int) scaledWidth, (int) scaledHeight, scale,
+                                                       filter, binaryMask);
+
+                return RenderServiceUtil.renderImageStream(renderParameters,
+                                                           format,
+                                                           mimeType,
+                                                           true, // always optimize result if too many tiles match
+                                                           responseHelper);
+
+            }  else {
+
+                return RenderServiceUtil.streamImageFile(sourceFile, mimeType, responseHelper);
+
+            }
+
+        } else {
+
+            return responseHelper.getNotModifiedResponse();
+
+        }
+    }
+
+    private Response renderLargeDataOverview(final String owner,
+                                             final String project,
+                                             final String stack,
+                                             final Integer width,
+                                             final Integer height,
+                                             final Double z,
+                                             final String format,
+                                             final String mimeType,
+                                             Integer overviewWidth,
+                                             final Boolean filter,
+                                             final Boolean binaryMask,
+                                             final Request request) {
+
+        LOG.info("renderLargeDataOverview: entry, stack={}, width={}, height={}, z={}",
+                 stack, width, height, z);
+
+        final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+        final ResponseHelper responseHelper = new ResponseHelper(request, stackMetaData);
+        if (responseHelper.isModified()) {
+
+            final File overviewSourceFile = getLargeDataFile(stackMetaData, filter, binaryMask,
+                                                             width + "x" + height,
+                                                             "small",
+                                                             String.valueOf(z.intValue()) + "." + format);
+
+            if (overviewSourceFile == null) {
+
+                int stackWidth = 1;
+                int stackHeight = 1;
+
+                final StackStats stats = stackMetaData.getStats();
+                if (stats != null) {
+                    final Bounds stackBounds = stats.getStackBounds();
+                    if (stackBounds != null) {
+                        stackWidth = stackBounds.getMaxX().intValue();
+                        stackHeight = stackBounds.getMaxY().intValue();
+                    }
+                }
+
+                final double x = 0;
+                final double y = 0;
+                if ((overviewWidth == null) || (overviewWidth < 1)) {
+                    overviewWidth = 192;
+                }
+                final double scale = (double) overviewWidth / stackWidth;
+
+                final RenderParameters renderParameters =
+                        getRenderParametersForGroupBox(owner, project, stack, null,
+                                                       x, y, z, stackWidth, stackHeight, scale,
+                                                       filter, binaryMask);
+
+                return RenderServiceUtil.renderImageStream(renderParameters,
+                                                           format,
+                                                           mimeType,
+                                                           true, // always optimize result if too many tiles match
+                                                           responseHelper);
+
+            }  else {
+
+                return RenderServiceUtil.streamImageFile(overviewSourceFile, mimeType, responseHelper);
+
+            }
+
+        } else {
+
+            return responseHelper.getNotModifiedResponse();
+
+        }
+    }
+
+    private File getLargeDataFile(final StackMetaData stackMetaData,
+                                  final Boolean filter,
+                                  final Boolean binaryMask,
+                                  final String... additionalPathElements) {
+
+        File file = null;
+
+        final String rootPath = stackMetaData.getCurrentMaterializedBoxRootPath();
+        if (rootPath != null) {
+
+            file = Paths.get(rootPath, additionalPathElements).toFile();
+
+            queueLargeDataFileRequest(file, filter, binaryMask);
+
+            if (! file.exists()) {
+                // force dynamic rendering if materialized box does not exist
+                file = null;
+            }
+
+        }
+
+        return file;
+    }
+
+    private void queueLargeDataFileRequest(final File file,
+                                           final Boolean filter,
+                                           final Boolean binaryMask) {
+        // TODO: queue (POST) request for materialize service (will either generate file or just mark usage)
+        LOG.info("need to queue materialize service request for {}, filter={}, binaryMask={}",
+                 file, filter, binaryMask);
     }
 
     private RenderParameters getRenderParametersForGroupBox(final String owner,

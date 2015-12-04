@@ -2,6 +2,7 @@ package org.janelia.render.service.util;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.io.File;
 
 import javax.ws.rs.core.Response;
 
@@ -128,6 +129,26 @@ public class RenderServiceUtil {
                                                      format,
                                                      renderParameters.isConvertToGray(),
                                                      renderParameters.getQuality());
+            response = responseHelper.getImageByteResponse(out, mimeType);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        LOG.info("renderImageStream: exit");
+
+        return response;
+    }
+
+    public static Response streamImageFile(final File imageFile,
+                                           final String mimeType,
+                                           final ResponseHelper responseHelper) {
+
+        LOG.info("streamImageFile: entry, imageFile={}", imageFile);
+
+        Response response = null;
+        try {
+
+            final FileStreamingOutput out = new FileStreamingOutput(imageFile);
             response = responseHelper.getImageByteResponse(out, mimeType);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);

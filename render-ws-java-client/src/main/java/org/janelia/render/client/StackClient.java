@@ -55,6 +55,9 @@ public class StackClient {
         @Parameter(names = "--stackResolutionZ", description = "Z resoution (in nanometers) for the stack", required = false)
         private Double stackResolutionZ;
 
+        @Parameter(names = "--materializedBoxRootPath", description = "Root path for materialized boxes", required = false)
+        private String materializedBoxRootPath;
+
         @Parameter(names = "--snapshotRootPath", description = "Root path for snapshot (only specify if offline snapshot should be stored)", required = false)
         private String snapshotRootPath;
 
@@ -121,6 +124,7 @@ public class StackClient {
                                                            params.stackResolutionX,
                                                            params.stackResolutionY,
                                                            params.stackResolutionZ,
+                                                           params.materializedBoxRootPath,
                                                            params.snapshotRootPath,
                                                            null);
 
@@ -143,6 +147,7 @@ public class StackClient {
                                                            params.stackResolutionX,
                                                            params.stackResolutionY,
                                                            params.stackResolutionZ,
+                                                           params.materializedBoxRootPath,
                                                            params.snapshotRootPath,
                                                            null);
 

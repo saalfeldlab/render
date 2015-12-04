@@ -135,6 +135,7 @@ public class RenderDaoTest {
                                                         4.2,
                                                         35.2,
                                                         null,
+                                                        null,
                                                         null);
 
         final StackMetaData stackMetaDataBeforeSave = dao.getStackMetaData(stackId);
