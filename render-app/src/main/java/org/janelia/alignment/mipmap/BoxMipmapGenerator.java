@@ -226,7 +226,7 @@ public class BoxMipmapGenerator {
      * An overview image will only be generated if this generator contains one and only one source image.
      *
      * @param  overviewWidth  width of the overview image.
-     * @param  layerBounds    full scale (level 0) bounds for tiles in layer (used to clip source image).
+     * @param  stackBounds    full scale (level 0) bounds for stack.
      *
      * @return true if the overview image file was generated;
      *         false if generation was skipped because this generator has more than one source image.
@@ -235,7 +235,7 @@ public class BoxMipmapGenerator {
      *   if the overview image cannot be saved to disk.
      */
     public boolean generateOverview(final int overviewWidth,
-                                    final Bounds layerBounds,
+                                    final Bounds stackBounds,
                                     final File overviewFile)
             throws IOException {
 
@@ -243,33 +243,36 @@ public class BoxMipmapGenerator {
 
         if ((lastSourceRow == 0) && (lastSourceColumn == 0)) {
 
-            double scaledLayerMaxX = layerBounds.getMaxX();
-            double scaledLayerMaxY = layerBounds.getMaxX();
+            double scaledStackMaxX = stackBounds.getMaxX();
+            double scaledStackMaxY = stackBounds.getMaxY();
             for (int level = 0; level < sourceLevel; level++) {
-                scaledLayerMaxX = scaledLayerMaxX / 2;
-                scaledLayerMaxY = scaledLayerMaxY / 2;
+                scaledStackMaxX = scaledStackMaxX / 2;
+                scaledStackMaxY = scaledStackMaxY / 2;
             }
 
-            LOG.info("generateOverview: generating overview with width {} for z={}, sourceLevel={}, scaledLayerMaxX={}, scaledLayerMaxY={}",
-                     overviewWidth, z, sourceLevel, scaledLayerMaxX, scaledLayerMaxY);
+            LOG.info("generateOverview: generating overview with width {} for z={}, sourceLevel={}, scaledStackMaxX={}, scaledStackMaxY={}",
+                     overviewWidth, z, sourceLevel, scaledStackMaxX, scaledStackMaxY);
 
             makeDirectories(overviewFile.getCanonicalFile());
 
             final List<File> firstRowFiles = rowFileLists.get(0);
             final File sourceFile = firstRowFiles.get(0);
-            final BufferedImage sourceImage = Utils.openImage(sourceFile.getAbsolutePath());
-            final BufferedImage clippedSourceImage =
-                    sourceImage.getSubimage(0, 0, (int) scaledLayerMaxX, (int) scaledLayerMaxY);
+            BufferedImage sourceImage = Utils.openImage(sourceFile.getAbsolutePath());
+
+            // clip source image if it is bigger than scaled stack bounds
+            if ((scaledStackMaxX <= sourceImage.getWidth()) &&
+                (scaledStackMaxY <= sourceImage.getHeight())) {
+                sourceImage = sourceImage.getSubimage(0, 0, (int) scaledStackMaxX, (int) scaledStackMaxY);
+            }
 
             final int overviewHeight = (int)
-                    (((double) overviewWidth / clippedSourceImage.getWidth()) * clippedSourceImage.getHeight());
-
+                    (((double) overviewWidth / sourceImage.getWidth()) * sourceImage.getHeight());
             final BufferedImage overviewImage =
                     new BufferedImage(overviewWidth, overviewHeight, BufferedImage.TYPE_INT_ARGB);
 
             final Graphics2D overviewGraphics = overviewImage.createGraphics();
             overviewGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            overviewGraphics.drawImage(clippedSourceImage, 0, 0, overviewWidth, overviewHeight, null);
+            overviewGraphics.drawImage(sourceImage, 0, 0, overviewWidth, overviewHeight, null);
             overviewGraphics.dispose();
 
             if (isLabel) {

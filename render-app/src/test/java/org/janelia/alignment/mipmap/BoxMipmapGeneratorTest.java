@@ -50,7 +50,7 @@ public class BoxMipmapGeneratorTest {
     private int lastRow = 3;
     private int lastColumn = 3;
     private int overviewWidth;
-    private Bounds layerBounds;
+    private Bounds stackBounds;
 
     private List<File> filesAndDirectoriesToDelete;
 
@@ -69,7 +69,7 @@ public class BoxMipmapGeneratorTest {
 
         final double layerMaxX = ((lastColumn + 1) * boxWidth) - 1;
         final double layerMaxY = ((lastRow + 1) * boxHeight) - 1;
-        this.layerBounds = new Bounds(0.0, 0.0, layerMaxX, layerMaxY);
+        this.stackBounds = new Bounds(0.0, 0.0, layerMaxX, layerMaxY);
 
         filesAndDirectoriesToDelete = new ArrayList<>();
     }
@@ -127,7 +127,7 @@ public class BoxMipmapGeneratorTest {
         final Path overviewDirPath = Paths.get(boxDirectory.getAbsolutePath(), "small");
         final File overviewFile = new File(overviewDirPath.toFile(), z + ".png").getAbsoluteFile();
         final boolean isOverviewGenerated = boxMipmapGenerator.generateOverview(overviewWidth,
-                                                                                layerBounds,
+                                                                                stackBounds,
                                                                                 overviewFile);
 
         filesAndDirectoriesToDelete.add(overviewFile);
@@ -217,7 +217,7 @@ public class BoxMipmapGeneratorTest {
         final Path overviewDirPath = Paths.get(boxDirectory.getAbsolutePath(), "small");
         final File overviewFile = new File(overviewDirPath.toFile(), z + ".png").getAbsoluteFile();
         final boolean isOverviewGenerated = boxMipmapGenerator.generateOverview(overviewWidth,
-                                                                                layerBounds,
+                                                                                stackBounds,
                                                                                 overviewFile);
         filesAndDirectoriesToDelete.add(overviewFile);
         filesAndDirectoriesToDelete.add(overviewFile.getParentFile());

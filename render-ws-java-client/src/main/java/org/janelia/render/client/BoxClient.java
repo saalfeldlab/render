@@ -23,6 +23,7 @@ import org.janelia.alignment.mipmap.BoxMipmapGenerator;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.LabelImageProcessorCache;
 import org.slf4j.Logger;
@@ -136,9 +137,11 @@ public class BoxClient {
     private final File boxDirectory;
     private final Integer backgroundRGBColor;
     private final File emptyImageFile;
+    private final Bounds stackBounds;
     private final RenderDataClient renderDataClient;
 
-    public BoxClient(final Parameters params) {
+    public BoxClient(final Parameters params)
+            throws IOException {
 
         this.params = params;
         this.stack = params.stack;
@@ -197,6 +200,9 @@ public class BoxClient {
         }
 
         this.renderDataClient = params.getClient();
+
+        final StackMetaData stackMetaData = this.renderDataClient.getStackMetaData(this.stack);
+        this.stackBounds = stackMetaData.getStats().getStackBounds();
     }
 
     public void createEmptyImageFile()
@@ -315,7 +321,7 @@ public class BoxClient {
             boxMipmapGenerator = boxMipmapGenerator.generateNextLevel();
             if (params.isOverviewNeeded() && (! isOverviewGenerated)) {
                 isOverviewGenerated = boxMipmapGenerator.generateOverview(params.overviewWidth,
-                                                                          layerBounds,
+                                                                          stackBounds,
                                                                           overviewFile);
             }
         }
