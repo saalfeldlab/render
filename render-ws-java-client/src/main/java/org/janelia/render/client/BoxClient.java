@@ -72,8 +72,8 @@ public class BoxClient {
         @Parameter(names = "--format", description = "Format for rendered boxes (default is PNG)", required = false)
         private String format = Utils.PNG_FORMAT;
 
-        @Parameter(names = "--overviewWidth", description = "Width of layer overview image (omit or set to zero to disable overview generation)", required = false)
-        private Integer overviewWidth;
+        @Parameter(names = "--maxOverviewWidthAndHeight", description = "Max width and height of layer overview image (omit or set to zero to disable overview generation)", required = false)
+        private Integer maxOverviewWidthAndHeight;
 
         @Parameter(names = "--skipInterpolation", description = "skip interpolation (e.g. for DMG data)", required = false, arity = 0)
         private boolean skipInterpolation = false;
@@ -100,7 +100,7 @@ public class BoxClient {
         private List<Double> zValues;
 
         public boolean isOverviewNeeded() {
-            return ((overviewWidth != null) && (overviewWidth > 0));
+            return ((maxOverviewWidthAndHeight != null) && (maxOverviewWidthAndHeight > 0));
         }
     }
 
@@ -320,7 +320,7 @@ public class BoxClient {
         for (int level = 0; level < params.maxLevel; level++) {
             boxMipmapGenerator = boxMipmapGenerator.generateNextLevel();
             if (params.isOverviewNeeded() && (! isOverviewGenerated)) {
-                isOverviewGenerated = boxMipmapGenerator.generateOverview(params.overviewWidth,
+                isOverviewGenerated = boxMipmapGenerator.generateOverview(params.maxOverviewWidthAndHeight,
                                                                           stackBounds,
                                                                           overviewFile);
             }

@@ -433,7 +433,7 @@ public class RenderImageService {
                                                 @PathParam("width") final Integer width,
                                                 @PathParam("height") final Integer height,
                                                 @PathParam("z") final Double z,
-                                                @QueryParam("overviewWidth") final Integer overviewWidth,
+                                                @QueryParam("maxOverviewWidthAndHeight") final Integer maxOverviewWidthAndHeight,
                                                 @QueryParam("filter") final Boolean filter,
                                                 @QueryParam("binaryMask") final Boolean binaryMask,
                                                 @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
@@ -441,7 +441,7 @@ public class RenderImageService {
 
         return renderLargeDataOverview(owner, project, stack, width, height, z,
                                        Utils.JPEG_FORMAT, RenderServiceUtil.IMAGE_JPEG_MIME_TYPE,
-                                       overviewWidth, filter, binaryMask, maxTileSpecsToRender,
+                                       maxOverviewWidthAndHeight, filter, binaryMask, maxTileSpecsToRender,
                                        request);
     }
 
@@ -483,7 +483,7 @@ public class RenderImageService {
                                                @PathParam("width") final Integer width,
                                                @PathParam("height") final Integer height,
                                                @PathParam("z") final Double z,
-                                               @QueryParam("overviewWidth") final Integer overviewWidth,
+                                               @QueryParam("maxOverviewWidthAndHeight") final Integer maxOverviewWidthAndHeight,
                                                @QueryParam("filter") final Boolean filter,
                                                @QueryParam("binaryMask") final Boolean binaryMask,
                                                @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
@@ -491,7 +491,7 @@ public class RenderImageService {
 
         return renderLargeDataOverview(owner, project, stack, width, height, z,
                                        Utils.PNG_FORMAT, RenderServiceUtil.IMAGE_PNG_MIME_TYPE,
-                                       overviewWidth, filter, binaryMask, maxTileSpecsToRender,
+                                       maxOverviewWidthAndHeight, filter, binaryMask, maxTileSpecsToRender,
                                        request);
     }
 
@@ -570,7 +570,7 @@ public class RenderImageService {
                                              final Double z,
                                              final String format,
                                              final String mimeType,
-                                             Integer overviewWidth,
+                                             Integer maxOverviewWidthAndHeight,
                                              final Boolean filter,
                                              final Boolean binaryMask,
                                              Integer maxTileSpecsToRender,
@@ -602,13 +602,21 @@ public class RenderImageService {
                     }
                 }
 
+                if ((maxOverviewWidthAndHeight == null) || (maxOverviewWidthAndHeight < 1)) {
+                    // default to 192 since CATMAID overview box is 192x192
+                    maxOverviewWidthAndHeight = 192;
+                }
+
+                // scale overview image based upon larger dimension - width or height
+                final double scale;
+                if (stackWidth > stackHeight) {
+                    scale = (double) maxOverviewWidthAndHeight / stackWidth;
+                } else {
+                    scale = (double) maxOverviewWidthAndHeight / stackHeight;
+                }
+
                 final double x = 0;
                 final double y = 0;
-                if ((overviewWidth == null) || (overviewWidth < 1)) {
-                    overviewWidth = 192;
-                }
-                final double scale = (double) overviewWidth / stackWidth;
-
                 final RenderParameters renderParameters =
                         getRenderParametersForGroupBox(owner, project, stack, null,
                                                        x, y, z, stackWidth, stackHeight, scale,

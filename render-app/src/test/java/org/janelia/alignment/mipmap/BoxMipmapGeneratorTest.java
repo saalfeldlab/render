@@ -49,7 +49,7 @@ public class BoxMipmapGeneratorTest {
     private int boxHeight = 148;
     private int lastRow = 3;
     private int lastColumn = 3;
-    private int overviewWidth;
+    private int maxOverviewWidthAndHeight;
     private Bounds stackBounds;
 
     private List<File> filesAndDirectoriesToDelete;
@@ -65,7 +65,7 @@ public class BoxMipmapGeneratorTest {
         this.lastRow = 3;
         this.lastColumn = 3;
 
-        this.overviewWidth = 80;
+        this.maxOverviewWidthAndHeight = 80;
 
         final double layerMaxX = ((lastColumn + 1) * boxWidth) - 1;
         final double layerMaxY = ((lastRow + 1) * boxHeight) - 1;
@@ -126,7 +126,7 @@ public class BoxMipmapGeneratorTest {
 
         final Path overviewDirPath = Paths.get(boxDirectory.getAbsolutePath(), "small");
         final File overviewFile = new File(overviewDirPath.toFile(), z + ".png").getAbsoluteFile();
-        final boolean isOverviewGenerated = boxMipmapGenerator.generateOverview(overviewWidth,
+        final boolean isOverviewGenerated = boxMipmapGenerator.generateOverview(maxOverviewWidthAndHeight,
                                                                                 stackBounds,
                                                                                 overviewFile);
 
@@ -216,7 +216,7 @@ public class BoxMipmapGeneratorTest {
 
         final Path overviewDirPath = Paths.get(boxDirectory.getAbsolutePath(), "small");
         final File overviewFile = new File(overviewDirPath.toFile(), z + ".png").getAbsoluteFile();
-        final boolean isOverviewGenerated = boxMipmapGenerator.generateOverview(overviewWidth,
+        final boolean isOverviewGenerated = boxMipmapGenerator.generateOverview(maxOverviewWidthAndHeight,
                                                                                 stackBounds,
                                                                                 overviewFile);
         filesAndDirectoriesToDelete.add(overviewFile);

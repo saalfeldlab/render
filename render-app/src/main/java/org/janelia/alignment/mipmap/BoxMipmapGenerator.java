@@ -225,8 +225,8 @@ public class BoxMipmapGenerator {
      * Generates a CATMAID overview image from this generator's source image.
      * An overview image will only be generated if this generator contains one and only one source image.
      *
-     * @param  overviewWidth  width of the overview image.
-     * @param  stackBounds    full scale (level 0) bounds for stack.
+     * @param  maxOverviewWidthAndHeight  max width and height for overview image.
+     * @param  stackBounds                full scale (level 0) bounds for stack.
      *
      * @return true if the overview image file was generated;
      *         false if generation was skipped because this generator has more than one source image.
@@ -234,7 +234,7 @@ public class BoxMipmapGenerator {
      * @throws IOException
      *   if the overview image cannot be saved to disk.
      */
-    public boolean generateOverview(final int overviewWidth,
+    public boolean generateOverview(final int maxOverviewWidthAndHeight,
                                     final Bounds stackBounds,
                                     final File overviewFile)
             throws IOException {
@@ -250,8 +250,8 @@ public class BoxMipmapGenerator {
                 scaledStackMaxY = scaledStackMaxY / 2;
             }
 
-            LOG.info("generateOverview: generating overview with width {} for z={}, sourceLevel={}, scaledStackMaxX={}, scaledStackMaxY={}",
-                     overviewWidth, z, sourceLevel, scaledStackMaxX, scaledStackMaxY);
+            LOG.info("generateOverview: generating overview for z={}, maxOverviewWidthAndHeight={}, sourceLevel={}, scaledStackMaxX={}, scaledStackMaxY={}",
+                     z, maxOverviewWidthAndHeight, sourceLevel, scaledStackMaxX, scaledStackMaxY);
 
             makeDirectories(overviewFile.getCanonicalFile());
 
@@ -265,8 +265,16 @@ public class BoxMipmapGenerator {
                 sourceImage = sourceImage.getSubimage(0, 0, (int) scaledStackMaxX, (int) scaledStackMaxY);
             }
 
-            final int overviewHeight = (int)
-                    (((double) overviewWidth / sourceImage.getWidth()) * sourceImage.getHeight());
+            final double scale;
+            if (stackBounds.getMaxX() > stackBounds.getMaxY()) {
+                scale = (double) maxOverviewWidthAndHeight / sourceImage.getWidth();
+            } else {
+                scale = (double) maxOverviewWidthAndHeight / sourceImage.getHeight();
+            }
+
+            final int overviewWidth = (int) (scale * sourceImage.getWidth());
+            final int overviewHeight = (int) (scale * sourceImage.getHeight());
+
             final BufferedImage overviewImage =
                     new BufferedImage(overviewWidth, overviewHeight, BufferedImage.TYPE_INT_ARGB);
 
