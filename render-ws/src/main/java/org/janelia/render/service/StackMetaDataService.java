@@ -149,7 +149,7 @@ public class StackMetaDataService {
         return stackMetaData;
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{fromStack}/cloneTo/{toStack}")
+    @Path("owner/{owner}/project/{fromProject}/stack/{fromStack}/cloneTo/{toStack}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -162,23 +162,28 @@ public class StackMetaDataService {
             @ApiResponse(code = 404, message = "fromStack not found")
     })
     public Response cloneStackVersion(@PathParam("owner") final String owner,
-                                      @PathParam("project") final String project,
+                                      @PathParam("fromProject") final String fromProject,
                                       @PathParam("fromStack") final String fromStack,
                                       @PathParam("toStack") final String toStack,
                                       @QueryParam("z") final List<Double> zValues,
+                                      @QueryParam("toProject") String toProject,
                                       @Context final UriInfo uriInfo,
                                       final StackVersion stackVersion) {
 
-        LOG.info("cloneStackVersion: entry, owner={}, project={}, fromStack={}, toStack={}, zValues={}, stackVersion={}",
-                 owner, project, fromStack, toStack, zValues, stackVersion);
+        LOG.info("cloneStackVersion: entry, owner={}, fromProject={}, fromStack={}, toProject={}, toStack={}, zValues={}, stackVersion={}",
+                 owner, fromProject, fromStack, toProject, toStack, zValues, stackVersion);
 
         try {
             if (stackVersion == null) {
                 throw new IllegalArgumentException("no stack version provided");
             }
 
-            final StackMetaData fromStackMetaData = getStackMetaData(owner, project, fromStack);
-            final StackId toStackId = new StackId(owner, project, toStack);
+            if (toProject == null) {
+                toProject = fromProject;
+            }
+
+            final StackMetaData fromStackMetaData = getStackMetaData(owner, fromProject, fromStack);
+            final StackId toStackId = new StackId(owner, toProject, toStack);
 
             StackMetaData toStackMetaData = renderDao.getStackMetaData(toStackId);
 

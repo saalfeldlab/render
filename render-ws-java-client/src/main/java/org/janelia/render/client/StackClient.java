@@ -61,6 +61,9 @@ public class StackClient {
         @Parameter(names = "--snapshotRootPath", description = "Root path for snapshot (only specify if offline snapshot should be stored)", required = false)
         private String snapshotRootPath;
 
+        @Parameter(names = "--cloneResultProject", description = "Name of project for stack created by clone operation (default is to use source project)", required = false)
+        private String cloneResultProject;
+
         @Parameter(names = "--cloneResultStack", description = "Name of stack created by clone operation", required = false)
         private String cloneResultStack;
 
@@ -159,7 +162,7 @@ public class StackClient {
             }
         }
 
-        renderDataClient.cloneStackVersion(stack, params.cloneResultStack, stackVersion, zValues);
+        renderDataClient.cloneStackVersion(stack, params.cloneResultProject, params.cloneResultStack, stackVersion, zValues);
 
         logMetaData("cloneStackVersion: after clone", params.cloneResultStack);
     }

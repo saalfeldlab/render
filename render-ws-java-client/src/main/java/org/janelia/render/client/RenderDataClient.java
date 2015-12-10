@@ -168,6 +168,7 @@ public class RenderDataClient {
      * Clones the specified stack.
      *
      * @param  fromStack       source stack to clone.
+     * @param  toProject       project for new stack with cloned data (null if same as source project).
      * @param  toStack         new stack to hold cloned data.
      * @param  toStackVersion  version data for the new stack.
      *
@@ -175,6 +176,7 @@ public class RenderDataClient {
      *   if the request fails for any reason.
      */
     public void cloneStackVersion(final String fromStack,
+                                  final String toProject,
                                   final String toStack,
                                   final StackVersion toStackVersion,
                                   final List<Double> zValues)
@@ -189,6 +191,10 @@ public class RenderDataClient {
             for (final Double z : zValues) {
                 builder.addParameter("z", z.toString());
             }
+        }
+
+        if (toProject != null) {
+            builder.addParameter("toProject", toProject);
         }
 
         final URI uri;
