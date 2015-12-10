@@ -1116,6 +1116,13 @@ public class RenderDao {
         LOG.debug("removeStack: {}.drop() deleted {} document(s)",
                   MongoUtil.fullName(transformCollection), transformCount);
 
+        final MongoCollection<Document> sectionCollection = getSectionCollection(stackId);
+        final long sectionCount = sectionCollection.count();
+        sectionCollection.drop();
+
+        LOG.debug("removeStack: {}.drop() deleted {} document(s)",
+                  MongoUtil.fullName(sectionCollection), sectionCount);
+
         if (includeMetaData) {
             final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
             final Document stackIdQuery = getStackIdQuery(stackId);
