@@ -714,5 +714,5 @@ public class RenderImageService {
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderImageService.class);
 
-    private static final Integer DEFAULT_MAX_TILE_SPECS_FOR_LARGE_DATA = 20;
+    private static final Integer DEFAULT_MAX_TILE_SPECS_FOR_LARGE_DATA = 40;
 }
