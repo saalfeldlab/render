@@ -52,6 +52,10 @@ function addStackInfo(ownerUrl, stackInfo) {
     }
 
     var stats = stackInfo.stats;
+    var xp = 0;
+    var yp = 0;
+    var zp = 0;
+
     if (typeof stats === 'undefined') {
         values.push('');
         values.push('');
@@ -67,6 +71,12 @@ function addStackInfo(ownerUrl, stackInfo) {
         } else {
             values.push(getDefinedValue(bounds.minZ));
             values.push(getDefinedValue(bounds.maxZ));
+
+            if (typeof version !== 'undefined') {
+                xp = ((bounds.maxX - bounds.minX) / 2) * version.stackResolutionX;
+                yp = ((bounds.maxY - bounds.minY) / 2) * version.stackResolutionY;
+                zp = bounds.minZ * version.stackResolutionZ;
+            }
         }
         values.push(numberWithCommas(getDefinedValue(stats.sectionCount)));
         values.push(numberWithCommas(getDefinedValue(stats.nonIntegralSectionCount)));
@@ -76,8 +86,14 @@ function addStackInfo(ownerUrl, stackInfo) {
 
     var baseStackUrl = ownerUrl + 'project/' + stackInfo.stackId.project +
                        '/stack/' + stackInfo.stackId.stack;
+
+    var CATMAIDUrl = 'http://renderer-catmaid.int.janelia.org:8000/?tool=navigator&s0=8' +
+                     '&pid=' + stackInfo.stackId.project +
+                     '&sid0=' + stackInfo.stackId.stack +
+                     '&zp=' + zp + '&yp=' + yp  + '&xp=' + xp;
+
     var linksHtml = '<a target="_blank" href="' + baseStackUrl + '">Metadata</a> ' +
-                    '<a target="_blank" href="' + baseStackUrl + '/bounds">Bounds</a> ' +
+                    '<a target="_blank" href="' + CATMAIDUrl + '">CATMAID-alpha</a> ' +
                     '<a target="_blank" href="' + baseStackUrl + '/zValues">Z Values</a> ' +
                     '<a target="_blank" href="' + baseStackUrl + '/highDoseLowDoseZValues">HDLD</a>';
 
