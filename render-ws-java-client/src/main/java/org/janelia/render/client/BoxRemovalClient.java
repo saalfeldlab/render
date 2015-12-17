@@ -34,7 +34,7 @@ public class BoxRemovalClient {
         @Parameter(names = "--minLevel", description = "Minimum mipmap level to remove (default is 0)", required = false)
         private int minLevel = 0;
 
-        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to remove (default is 9)", required = false)
+        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to remove (default is 9, values > 8 will also delete small overview images)", required = false)
         private int maxLevel = 9;
 
         @Parameter(description = "Z values for layers to remove", required = true)
@@ -119,37 +119,44 @@ public class BoxRemovalClient {
         for (int level = minLevel; level <= maxLevel; level++) {
             levelDirectory = new File(boxDirectory, String.valueOf(level));
             if (levelDirectory.exists()) {
+
                 zDirectory = new File(levelDirectory, zName);
                 if (zDirectory.exists()) {
                     LOG.info("removeBoxesForZ: removing {}", zDirectory);
                     FileUtils.deleteDirectory(zDirectory);
                 }
-            }
-        }
 
-        final File smallDirectory = new File(boxDirectory, "small");
-        if (smallDirectory.exists()) {
-            File overview = new File(smallDirectory, z.intValue() + ".jpg");
-            if (overview.exists()) {
-                if (! overview.delete()) {
-                    LOG.warn("failed to delete {}", overview);
-                }
-            } else {
-                overview = new File(smallDirectory, z.intValue() + ".png");
-                if (overview.exists()) {
-                    if (! overview.delete()) {
-                        LOG.warn("failed to delete {}", overview);
+                if (level == 0) {
+                    final File iGridDirectory = new File(levelDirectory, "iGrid");
+                    if (iGridDirectory.exists()) {
+                        final File iGrid = new File(iGridDirectory, z + ".iGrid");
+                        if (iGrid.exists()) {
+                            if (! iGrid.delete()) {
+                                LOG.warn("failed to delete {}", iGrid);
+                            }
+                        }
                     }
                 }
+
             }
+
         }
 
-        final File iGridDirectory = new File(boxDirectory, "0/iGrid");
-        if (iGridDirectory.exists()) {
-            final File iGrid = new File(iGridDirectory, z + ".iGrid");
-            if (iGrid.exists()) {
-                if (! iGrid.delete()) {
-                    LOG.warn("failed to delete {}", iGrid);
+        if (maxLevel > 8) {
+            final File smallDirectory = new File(boxDirectory, "small");
+            if (smallDirectory.exists()) {
+                File overview = new File(smallDirectory, z.intValue() + ".jpg");
+                if (overview.exists()) {
+                    if (!overview.delete()) {
+                        LOG.warn("failed to delete {}", overview);
+                    }
+                } else {
+                    overview = new File(smallDirectory, z.intValue() + ".png");
+                    if (overview.exists()) {
+                        if (!overview.delete()) {
+                            LOG.warn("failed to delete {}", overview);
+                        }
+                    }
                 }
             }
         }
