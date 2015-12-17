@@ -131,7 +131,9 @@ public class BoxRemovalClient {
                     if (iGridDirectory.exists()) {
                         final File iGrid = new File(iGridDirectory, z + ".iGrid");
                         if (iGrid.exists()) {
-                            if (! iGrid.delete()) {
+                            if (iGrid.delete()) {
+                                LOG.info("removeBoxesForZ: removed {}", iGrid);
+                            } else {
                                 LOG.warn("failed to delete {}", iGrid);
                             }
                         }
@@ -147,14 +149,18 @@ public class BoxRemovalClient {
             if (smallDirectory.exists()) {
                 File overview = new File(smallDirectory, z.intValue() + ".jpg");
                 if (overview.exists()) {
-                    if (!overview.delete()) {
-                        LOG.warn("failed to delete {}", overview);
+                    if (overview.delete()) {
+                        LOG.info("removeBoxesForZ: removed {}", overview);
+                    } else {
+                        LOG.warn("removeBoxesForZ: failed to delete {}", overview);
                     }
                 } else {
                     overview = new File(smallDirectory, z.intValue() + ".png");
                     if (overview.exists()) {
-                        if (!overview.delete()) {
-                            LOG.warn("failed to delete {}", overview);
+                        if (overview.delete()) {
+                            LOG.info("removeBoxesForZ: removed {}", overview);
+                        } else {
+                            LOG.warn("removeBoxesForZ: failed to delete {}", overview);
                         }
                     }
                 }
