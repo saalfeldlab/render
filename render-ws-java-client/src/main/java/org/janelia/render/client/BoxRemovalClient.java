@@ -31,6 +31,12 @@ public class BoxRemovalClient {
         @Parameter(names = "--stackDirectory", description = "Stack directory containing boxes to remove (e.g. /tier2/flyTEM/nobackup/rendered_boxes/FAFB00/v7_align_tps/8192x8192)", required = true)
         private String stackDirectory;
 
+        @Parameter(names = "--minLevel", description = "Minimum mipmap level to remove (default is 0)", required = false)
+        private int minLevel = 0;
+
+        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to remove (default is 9)", required = false)
+        private int maxLevel = 9;
+
         @Parameter(description = "Z values for layers to remove", required = true)
         private List<Double> zValues;
 
@@ -85,11 +91,19 @@ public class BoxRemovalClient {
     }
 
     private final File boxDirectory;
+    private final int minLevel;
+    private final int maxLevel;
 
     public BoxRemovalClient(final Parameters params) {
         this.boxDirectory = new File(params.stackDirectory).getAbsoluteFile();
         if (! boxDirectory.exists()) {
             throw new IllegalArgumentException("missing stack directory " + boxDirectory);
+        }
+        this.minLevel = params.minLevel;
+        this.maxLevel = params.maxLevel;
+        if ((minLevel < 0) || (minLevel > maxLevel)) {
+            throw new IllegalArgumentException("minLevel of " + minLevel +
+                                               " must be > 0 and <= maxLevel of " + maxLevel);
         }
     }
 
@@ -102,7 +116,7 @@ public class BoxRemovalClient {
 
         File levelDirectory;
         File zDirectory;
-        for (int level = 0; level < 10; level++) {
+        for (int level = minLevel; level <= maxLevel; level++) {
             levelDirectory = new File(boxDirectory, String.valueOf(level));
             if (levelDirectory.exists()) {
                 zDirectory = new File(levelDirectory, zName);
