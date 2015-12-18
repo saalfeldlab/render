@@ -766,14 +766,25 @@ public class RenderDao {
             Document document;
             Document resultId;
             String sectionId;
+            Number tileCount;
+            Long tileCountLong = null;
             Double z;
             while (cursor.hasNext()) {
                 document = cursor.next();
                 resultId = document.get("_id", Document.class);
                 sectionId = resultId.get("sectionId", String.class);
                 z = resultId.get("z", Double.class);
+
+                // Need to convert tileCount to long this way because aggregation seems
+                // to create an Integer if the tileCount is small enough.
+                // Using a long "just in case" there is a section with more than 2^31-1 tiles.
+                tileCount = document.get("tileCount", Number.class);
+                if (tileCount != null) {
+                    tileCountLong = tileCount.longValue();
+                }
+
                 if ((sectionId != null) && (z != null)) {
-                    list.add(new SectionData(sectionId, z));
+                    list.add(new SectionData(sectionId, z, tileCountLong));
                 }
             }
         }
@@ -1066,10 +1077,11 @@ public class RenderDao {
         // )
 
         final Document idComponents = new Document("sectionId", "$layout.sectionId").append("z", "$z");
-        final Document id = new Document("_id", idComponents);
+        final Document tileCountComponents = new Document("$sum", 1);
+        final Document group = new Document("_id", idComponents).append("tileCount", tileCountComponents);
 
         final List<Document> pipeline = new ArrayList<>();
-        pipeline.add(new Document("$group", id));
+        pipeline.add(new Document("$group", group));
         pipeline.add(new Document("$sort", new Document("_id.sectionId", 1)));
         pipeline.add(new Document("$out", sectionCollectionName));
 

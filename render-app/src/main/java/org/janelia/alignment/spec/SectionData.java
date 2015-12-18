@@ -12,18 +12,20 @@ public class SectionData
 
     private final String sectionId;
     private final Double z;
+    private final Long tileCount;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private SectionData() {
-        this.sectionId = null;
-        this.z = null;
+        this(null, null, null);
     }
 
     public SectionData(final String sectionId,
-                       final Double z) {
+                       final Double z,
+                       final Long tileCount) {
         this.sectionId = sectionId;
         this.z = z;
+        this.tileCount = tileCount;
     }
 
     public String getSectionId() {
@@ -32,5 +34,9 @@ public class SectionData
 
     public Double getZ() {
         return z;
+    }
+
+    public Long getTileCount() {
+        return tileCount;
     }
 }

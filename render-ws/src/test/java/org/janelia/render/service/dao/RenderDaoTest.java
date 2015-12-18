@@ -163,8 +163,9 @@ public class RenderDaoTest {
         Assert.assertNotNull("null list retrieved", list);
         Assert.assertEquals("invalid number of sections found", 2, list.size());
         final SectionData sectionData = list.get(0);
-        Assert.assertEquals("invalid sectionId", "3903.0", sectionData.getSectionId());
-        Assert.assertEquals("invalid sectionId", 3903, sectionData.getZ(), 0.01);
+        Assert.assertEquals("invalid sectionId for first section", "3903.0", sectionData.getSectionId());
+        Assert.assertEquals("invalid z for section 3903.0", 3903, sectionData.getZ(), 0.01);
+        Assert.assertEquals("invalid tileCount for section 3903.0", new Long(2), sectionData.getTileCount());
     }
 
     @Test
