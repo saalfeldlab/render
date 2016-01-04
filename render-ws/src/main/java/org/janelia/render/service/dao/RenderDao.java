@@ -1341,6 +1341,77 @@ public class RenderDao {
                   tileQuery.toJson(), tileKeys.toJson(), orderBy.toJson(), timer.getElapsedSeconds());
     }
 
+    /**
+     * Writes all tileIds for the specified stack to the specified stream (as a JSON array of strings).
+     *
+     * @param  stackId          stack identifier.
+     * @param  outputStream     stream to which tileIds are to be written.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     *
+     * @throws IOException
+     *   if the data cannot be written for any reason.
+     */
+    public void writeTileIds(final StackId stackId,
+                             final OutputStream outputStream)
+            throws IllegalArgumentException, IOException {
+
+        LOG.debug("writeTileIds: entry, stackId={}", stackId);
+
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+
+        final String tileIdKey = "tileId";
+        final byte[] commaBytes = ",".getBytes();
+        final byte[] singleQuoteBytes = "'".getBytes();
+
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+
+        // EXAMPLE:   find( { "tileId": { $gt: "" } }, {"_id": 0, "tileId": 1} ).sort( { "tileId": 1} )
+
+        // Add a $gt constraint to ensure that null values aren't included and
+        // that an indexOnly query is possible ($exists is not sufficient).
+        final Document tileQuery = new Document(tileIdKey, new Document("$gt", ""));
+        final Document tileKeys = new Document("_id", 0).append(tileIdKey, 1);
+
+        outputStream.write("[".getBytes());
+
+        final ProcessTimer timer = new ProcessTimer();
+        int tileSpecCount = 0;
+        final Document orderBy = new Document(tileIdKey, 1);
+        try (MongoCursor<Document> cursor =
+                     tileCollection.find(tileQuery).projection(tileKeys).sort(orderBy).iterator()) {
+
+            Document document;
+            String tileId;
+            while (cursor.hasNext()) {
+                document = cursor.next();
+                tileId = document.getString(tileIdKey);
+
+                if (tileSpecCount > 0) {
+                    outputStream.write(commaBytes);
+                }
+
+                outputStream.write(singleQuoteBytes);
+                outputStream.write(tileId.getBytes());
+                outputStream.write(singleQuoteBytes);
+
+                tileSpecCount++;
+
+                if (timer.hasIntervalPassed()) {
+                    LOG.debug("writeTileIds: data written for {} tiles", tileSpecCount);
+                }
+
+            }
+        }
+
+        outputStream.write("]".getBytes());
+
+        LOG.debug("writeTileIds: wrote IDs for {} tile spec(s) returned by {}.find({},{}).sort({}), elapsedSeconds={}",
+                  tileSpecCount, MongoUtil.fullName(tileCollection),
+                  tileQuery.toJson(), tileKeys.toJson(), orderBy.toJson(), timer.getElapsedSeconds());
+    }
+
     private List<TransformSpec> getTransformSpecs(final MongoCollection<Document> transformCollection,
                                                   final Set<String> specIds) {
         final int specCount = specIds.size();

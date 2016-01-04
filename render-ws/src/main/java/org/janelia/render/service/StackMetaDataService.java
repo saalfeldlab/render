@@ -1,5 +1,7 @@
 package org.janelia.render.service;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,9 +15,11 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 
 import org.bson.types.ObjectId;
@@ -453,6 +457,40 @@ public class StackMetaDataService {
         }
 
         return bounds;
+    }
+
+    @Path("owner/{owner}/project/{project}/stack/{stack}/tileIds")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Stack Data APIs"},
+            value = "Tile IDs for the specified stack",
+            produces = MediaType.APPLICATION_JSON,
+            notes = "For stacks with large numbers of tiles, this will produce a large amount of data (e.g. 500MB for 18 million tiles) - use wisely.")
+    public Response getStackTileIds(@PathParam("owner") final String owner,
+                                    @PathParam("project") final String project,
+                                    @PathParam("stack") final String stack) {
+
+        LOG.info("getStackTileIds: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        Response response = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+
+            final StreamingOutput responseOutput = new StreamingOutput() {
+                @Override
+                public void write(final OutputStream output)
+                        throws IOException, WebApplicationException {
+                    renderDao.writeTileIds(stackId, output);
+                }
+            };
+            response = Response.ok(responseOutput).build();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return response;
     }
 
     public static ObjectNotFoundException getStackNotFoundException(final String owner,

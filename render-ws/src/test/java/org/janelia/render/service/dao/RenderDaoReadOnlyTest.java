@@ -308,6 +308,17 @@ public class RenderDaoReadOnlyTest {
 
     }
 
+    @Test
+    public void testWriteTileIds() throws Exception {
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        dao.writeTileIds(stackId, outputStream);
+
+        final String[] tileIds = outputStream.toString().split(",");
+
+        Assert.assertEquals("invalid number of tileIds written for query", 12, tileIds.length);
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(RenderDaoReadOnlyTest.class);
     private static final Double BOUNDS_DELTA = 0.1;
     private static final String groupId = "A";
