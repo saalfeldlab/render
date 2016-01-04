@@ -465,7 +465,8 @@ public class StackMetaDataService {
     @ApiOperation(
             tags = {"Stack Data APIs"},
             value = "Tile IDs for the specified stack",
-            produces = MediaType.APPLICATION_JSON,
+            responseContainer = "List",
+            response = String.class,
             notes = "For stacks with large numbers of tiles, this will produce a large amount of data (e.g. 500MB for 18 million tiles) - use wisely.")
     public Response getStackTileIds(@PathParam("owner") final String owner,
                                     @PathParam("project") final String project,
