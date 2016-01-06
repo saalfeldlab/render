@@ -156,6 +156,10 @@ public class ImageAndMask implements Serializable {
                 throw new IllegalArgumentException("no read access for " + context + " file '" +
                                                    file.getAbsolutePath() + "'");
             }
+            if (file.length() == 0) {
+                throw new IllegalArgumentException(context + " file '" +
+                                                   file.getAbsolutePath() + "' is empty");
+            }
         }
     }
 
