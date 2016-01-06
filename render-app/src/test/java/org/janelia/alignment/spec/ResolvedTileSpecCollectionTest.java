@@ -17,12 +17,14 @@
 package org.janelia.alignment.spec;
 
 import java.awt.Rectangle;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
+import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.validator.TemTileSpecValidator;
 import org.junit.Assert;
@@ -52,8 +54,13 @@ public class ResolvedTileSpecCollectionTest {
         tileSpecs.add(getTileSpec("good-3", false));
         tileSpecs.add(getTileSpec("bad-4", true));
         tileSpecs.add(getTileSpec("good-5", false));
+
+        final TileSpec tileSpecWithMissingImage = new TileSpec();
+        tileSpecWithMissingImage.setTileId("bad-missing-image");
+        tileSpecs.add(tileSpecWithMissingImage);
+
         final int expectedTileCountBeforeFilter = tileSpecs.size();
-        final int expectedTileCountAfterFilter = tileSpecs.size() - 2;
+        final int expectedTileCountAfterFilter = tileSpecs.size() - 3;
 
         final ResolvedTileSpecCollection collection = new ResolvedTileSpecCollection(transformSpecs, tileSpecs);
 
@@ -82,6 +89,11 @@ public class ResolvedTileSpecCollectionTest {
                                  final boolean isBad) {
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setTileId(tileId);
+
+        final File scaledImagesDir = new File("src/test/resources/mipmap-test/scaled-images");
+        tileSpec.putMipmap(0, new ImageAndMask(new File(scaledImagesDir, "col0060_row0140_cam0.tif"),
+                                               new File(scaledImagesDir, "49.134.zip")));
+
         if (isBad) {
             tileSpec.setBoundingBox(new Rectangle(-5, 0, 1, 1), RenderParameters.DEFAULT_MESH_CELL_SIZE);
         } else {

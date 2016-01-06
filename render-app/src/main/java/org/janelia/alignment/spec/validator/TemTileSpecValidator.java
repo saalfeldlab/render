@@ -65,6 +65,14 @@ public class TemTileSpecValidator implements TileSpecValidator {
     public void validate(final TileSpec tileSpec)
             throws IllegalArgumentException {
 
+        try {
+            tileSpec.validate();
+        } catch (final Throwable t) {
+            throw new IllegalArgumentException(
+                    "core validation failed for tileId '" + tileSpec.getTileId() +
+                    "', specific error is: " + t.getMessage());
+        }
+
         String errorMessage = null;
 
         if (tileSpec.getMinX() < minCoordinate) {
