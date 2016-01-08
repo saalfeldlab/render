@@ -1,7 +1,38 @@
 var locationVars;
 var sectionData = [];
 
-function getSeriesData() {
+function getOrderData() {
+
+    var originalData = [];
+    var reorderedData = [];
+    var z;
+    var zInteger;
+    var sectionFloat;
+    var sectionInteger;
+    var name;
+    for (var index = 0; index < sectionData.length; index++) {
+        z = sectionData[index].z;
+        zInteger = parseInt(z);
+        sectionFloat = parseFloat(sectionData[index].sectionId);
+        sectionInteger = parseInt(sectionFloat);
+        if (zInteger == sectionInteger) {
+            data = originalData;
+        } else {
+            data = reorderedData;
+        }
+        name = sectionFloat + ' --> ' + z;
+        data.push({ 'x': 0, 'y': sectionFloat, 'name': name });
+        data.push({ 'x': 1, 'y': z, 'name': name });
+        data.push(null);
+    }
+
+    return [
+        { 'name': 'Original', 'data': originalData },
+        { 'name': 'Reordered', 'data': reorderedData }
+    ];
+}
+
+function getTileCountData() {
 
     var zToSectionDataMap = {};
     var zIntegerValues = {};
@@ -89,7 +120,7 @@ function getSeriesData() {
     ];
 }
 
-function drawSectionDataChart(project, stack) {
+function drawSectionDataCharts(owner, project, stack) {
 
     Highcharts.setOptions({
         lang: {
@@ -97,7 +128,67 @@ function drawSectionDataChart(project, stack) {
         }
     });
 
-    $('#container').highcharts({
+    var chartHeight = 600;
+    var orderingChartWidth = 280;
+    var tileCountChartWidth = 1400 - orderingChartWidth;
+
+    // TODO: determine best way to make render server references dynamic
+    var baseRenderUrl = 'http://renderer.int.janelia.org:8080/render-ws/v1';
+    var baseOverviewZUrl = baseRenderUrl + '/owner/' + owner + '/project/' + project + '/stack/' + stack +
+                            '/largeDataTileSource/2048/2048/small/';
+    var overviewZUrlSuffix = '.jpg?maxOverviewWidthAndHeight=800&maxTileSpecsToRender=1';
+
+    $('#sectionOrdering').highcharts({
+        title: {
+            text: 'Section Ordering'
+        },
+        subtitle: {
+            text: 'FAFB00 v10_acquire'
+        },
+        chart: {
+            type: 'scatter',
+            zoomType: 'y',
+            height: chartHeight,
+            width: orderingChartWidth
+        },
+        xAxis: {
+            categories: ['From', 'To'],
+            max: 1
+
+        },
+        yAxis: {
+            title: {
+                text: 'Z'
+            }
+        },
+        tooltip: {
+            headerFormat: '<span>{series.name} Section</span><br>',
+            pointFormat: '<span>{point.name}</span> <a target="_blank" href="' +
+                         baseOverviewZUrl + '{point.y}' + overviewZUrlSuffix + '">overview</a>',
+            useHTML: true
+        },
+        legend: {
+            layout: 'vertical',
+            align: 'right',
+            verticalAlign: 'middle',
+            borderWidth: 0
+        },
+        plotOptions: {
+            series: {
+                marker: {
+                    radius: 2
+                },
+                // see http://api.highcharts.com/highcharts#plotOptions.series.turboThreshold
+                turboThreshold: 0
+            },
+            scatter:{
+                lineWidth:2
+            }
+        },
+        series: getOrderData()
+    });
+
+    $('#sectionTileCounts').highcharts({
         title: {
             text: 'Section Data'
         },
@@ -105,7 +196,10 @@ function drawSectionDataChart(project, stack) {
             text: project + ' ' + stack
         },
         chart: {
-            type: 'scatter'
+            type: 'scatter',
+            zoomType: 'x',
+            height: chartHeight,
+            width: tileCountChartWidth
         },
         xAxis: {
             title: {
@@ -119,7 +213,9 @@ function drawSectionDataChart(project, stack) {
         },
         tooltip: {
             headerFormat: '<span>Type: {series.name}</span><br>',
-            pointFormat: '<span>Sections: "{point.name}"</span><br/><span>Z: {point.x}</span><br/>Tiles: {point.y}<br/>'
+            pointFormat: '<span>Sections: "{point.name}"</span><br/><span>Z: {point.x}</span> <a target="_blank" href="' +
+                         baseOverviewZUrl + '{point.x}' + overviewZUrlSuffix + '">overview</a><br/>Tiles: {point.y}',
+            useHTML: true
         },
         legend: {
             layout: 'vertical',
@@ -133,7 +229,7 @@ function drawSectionDataChart(project, stack) {
                 turboThreshold: 0
             }
         },
-        series: getSeriesData()
+        series: getTileCountData()
     });
 }
 
@@ -159,7 +255,7 @@ function initPage() {
     loadJSON(stackUrl + "/sectionData",
              function(data) {
                  sectionData = data;
-                 drawSectionDataChart(locationVars.project, locationVars.stack);
+                 drawSectionDataCharts(locationVars.owner, locationVars.project, locationVars.stack);
              },
              function(xhr) {
                  console.error(xhr);
