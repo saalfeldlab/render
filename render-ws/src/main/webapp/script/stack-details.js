@@ -21,8 +21,18 @@ function getOrderData() {
             data = reorderedData;
         }
         name = sectionFloat + ' --> ' + z;
-        data.push({ 'x': 0, 'y': sectionFloat, 'name': name });
-        data.push({ 'x': 1, 'y': z, 'name': name });
+        if ((sectionFloat - sectionInteger) > 0) {
+            // highlight re-acquired sections
+            data.push({ 'x': 0, 'y': sectionFloat, 'name': name, 'zString': z.toString(), 'color': 'red' });
+        } else {
+            data.push({ 'x': 0, 'y': sectionFloat, 'name': name, 'zString': z.toString() });
+        }
+        if ((z - zInteger) > 0) {
+            // highlight un-merged sections
+            data.push({ 'x': 1, 'y': z, 'name': name, 'zString': z.toString(), 'color': 'red' });
+        } else {
+            data.push({ 'x': 1, 'y': z, 'name': name, 'zString': z.toString() });
+        }
         data.push(null);
     }
 
@@ -143,7 +153,7 @@ function drawSectionDataCharts(owner, project, stack) {
             text: 'Section Ordering'
         },
         subtitle: {
-            text: 'FAFB00 v10_acquire'
+            text: project + ' ' + stack
         },
         chart: {
             type: 'scatter',
@@ -164,8 +174,9 @@ function drawSectionDataCharts(owner, project, stack) {
         tooltip: {
             headerFormat: '<span>{series.name} Section</span><br>',
             pointFormat: '<span>{point.name}</span> <a target="_blank" href="' +
-                         baseOverviewZUrl + '{point.y}' + overviewZUrlSuffix + '">overview</a>',
-            useHTML: true
+                         baseOverviewZUrl + '{point.zString}' + overviewZUrlSuffix + '">overview</a>',
+            useHTML: true,
+            shared : true
         },
         legend: {
             layout: 'vertical',
@@ -190,7 +201,7 @@ function drawSectionDataCharts(owner, project, stack) {
 
     $('#sectionTileCounts').highcharts({
         title: {
-            text: 'Section Data'
+            text: 'Tile Counts'
         },
         subtitle: {
             text: project + ' ' + stack
@@ -200,6 +211,9 @@ function drawSectionDataCharts(owner, project, stack) {
             zoomType: 'x',
             height: chartHeight,
             width: tileCountChartWidth
+        },
+        scrollbar: {
+            enabled: true
         },
         xAxis: {
             title: {
@@ -215,7 +229,8 @@ function drawSectionDataCharts(owner, project, stack) {
             headerFormat: '<span>Type: {series.name}</span><br>',
             pointFormat: '<span>Sections: "{point.name}"</span><br/><span>Z: {point.x}</span> <a target="_blank" href="' +
                          baseOverviewZUrl + '{point.x}' + overviewZUrlSuffix + '">overview</a><br/>Tiles: {point.y}',
-            useHTML: true
+            useHTML: true,
+            shared: true
         },
         legend: {
             layout: 'vertical',
@@ -231,6 +246,8 @@ function drawSectionDataCharts(owner, project, stack) {
         },
         series: getTileCountData()
     });
+
+    $('#loadingSectionData').hide();
 }
 
 function initPage() {

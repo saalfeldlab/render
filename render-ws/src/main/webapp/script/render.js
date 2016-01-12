@@ -8,7 +8,7 @@ function loadJSON(path, success, error) {
                     success(JSON.parse(xhr.responseText));
                 }
             } else if (error) {
-                error(xhr);
+                console.error(xhr);
             }
         }
     };
