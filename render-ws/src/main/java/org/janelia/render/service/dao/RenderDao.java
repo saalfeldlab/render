@@ -89,7 +89,6 @@ public class RenderDao {
         MongoUtil.validateRequiredParameter("z", z);
         MongoUtil.validateRequiredParameter("width", width);
         MongoUtil.validateRequiredParameter("height", height);
-        MongoUtil.validateRequiredParameter("scale", scale);
 
         final double lowerRightX = x + width;
         final double lowerRightY = y + height;
@@ -112,15 +111,11 @@ public class RenderDao {
      */
     public RenderParameters getParameters(final StackId stackId,
                                           final Double z,
-                                          Double scale)
+                                          final Double scale)
             throws IllegalArgumentException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
         MongoUtil.validateRequiredParameter("z", z);
-
-        if (scale == null) {
-            scale = 1.0;
-        }
 
         final Bounds bounds = getLayerBounds(stackId, z);
         final Double x = bounds.getMinX();

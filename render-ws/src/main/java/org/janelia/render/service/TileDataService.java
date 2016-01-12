@@ -89,7 +89,7 @@ public class TileDataService {
                                                 @PathParam("project") final String project,
                                                 @PathParam("stack") final String stack,
                                                 @PathParam("tileId") final String tileId,
-                                                @QueryParam("scale") Double scale,
+                                                @QueryParam("scale") final Double scale,
                                                 @QueryParam("filter") final Boolean filter,
                                                 @QueryParam("binaryMask") final Boolean binaryMask) {
 
@@ -100,7 +100,6 @@ public class TileDataService {
         try {
             final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
             tileSpec.flattenTransforms();
-            scale = RenderServiceUtil.defaultScaleIfNecessary(scale);
 
             final StackId stackId = new StackId(owner, project, stack);
             final StackMetaData stackMetaData = getStackMetaData(stackId);

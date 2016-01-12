@@ -155,13 +155,18 @@ public class RenderParameters implements Serializable {
                             final double y,
                             final int width,
                             final int height,
-                            final double scale) {
+                            final Double scale) {
         this.tileSpecUrl = tileSpecUrl;
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
-        this.scale = scale;
+
+        if (scale == null) {
+            this.scale = 1.0;
+        } else {
+            this.scale = scale;
+        }
 
         this.help = false;
         this.meshCellSize = DEFAULT_MESH_CELL_SIZE;
