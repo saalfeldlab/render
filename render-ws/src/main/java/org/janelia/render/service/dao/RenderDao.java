@@ -1770,6 +1770,8 @@ public class RenderDao {
         MongoUtil.createIndex(tileCollection, new Document("z", 1).append("maxX", 1), MongoUtil.BACKGROUND_OPTION);
         MongoUtil.createIndex(tileCollection, new Document("z", 1).append("maxY", 1), MongoUtil.BACKGROUND_OPTION);
 
+        MongoUtil.createIndex(tileCollection, new Document("layout.sectionId", 1), MongoUtil.BACKGROUND_OPTION);
+
         // compound index used for most box intersection queries
         // - z, minY, minX order used to match layout file sorting needs
         // - appended tileId so that getTileBounds query can be index only (must not sort)
