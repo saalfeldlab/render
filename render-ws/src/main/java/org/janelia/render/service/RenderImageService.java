@@ -590,6 +590,8 @@ public class RenderImageService {
 
             if (overviewSourceFile == null) {
 
+                Double stackMinX = 0.0;
+                Double stackMinY = 0.0;
                 int stackWidth = 1;
                 int stackHeight = 1;
 
@@ -597,8 +599,10 @@ public class RenderImageService {
                 if (stats != null) {
                     final Bounds stackBounds = stats.getStackBounds();
                     if (stackBounds != null) {
-                        stackWidth = stackBounds.getMaxX().intValue();
-                        stackHeight = stackBounds.getMaxY().intValue();
+                        stackMinX = stackBounds.getMinX();
+                        stackMinY = stackBounds.getMinY();
+                        stackWidth = stackBounds.getMaxX().intValue() - stackMinX.intValue();
+                        stackHeight = stackBounds.getMaxY().intValue() - stackMinY.intValue();
                     }
                 }
 
@@ -615,11 +619,9 @@ public class RenderImageService {
                     scale = (double) maxOverviewWidthAndHeight / stackHeight;
                 }
 
-                final double x = 0;
-                final double y = 0;
                 final RenderParameters renderParameters =
                         getRenderParametersForGroupBox(owner, project, stack, null,
-                                                       x, y, z, stackWidth, stackHeight, scale,
+                                                       stackMinX, stackMinY, z, stackWidth, stackHeight, scale,
                                                        filter, binaryMask);
 
                 if (maxTileSpecsToRender == null) {
