@@ -171,7 +171,7 @@ public class ImportMETClient {
                 if (sectionData == null) {
                     final TileSpec acquireTileSpec = renderDataClient.getTile(parameters.acquireStack, tileId);
                     final Double z = acquireTileSpec.getZ();
-                    LOG.info("loadV1MetData: mapped section {} to z value {}", section, z);
+                    LOG.info("loadV1MetData: mapped section {} to z value {} using tile {}", section, z, tileId);
                     sectionData = new SectionData(path, z, tileSpecValidator);
                     metSectionToDataMap.put(section, sectionData);
                 }
@@ -279,7 +279,7 @@ public class ImportMETClient {
                     if (sectionData == null) {
                         final TileSpec acquireTileSpec = renderDataClient.getTile(parameters.acquireStack, tileId);
                         final Double z = acquireTileSpec.getZ();
-                        LOG.info("loadMetData: mapped section {} to z value {}", section, z);
+                        LOG.info("loadMetData: mapped section {} to z value {} using tile {}", section, z, tileId);
                         sectionData = new SectionData(path, z, tileSpecValidator);
                         metSectionToDataMap.put(section, sectionData);
                     }
