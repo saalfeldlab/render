@@ -68,7 +68,8 @@ public class TemTileSpecValidator implements TileSpecValidator {
         try {
             tileSpec.validate();
         } catch (final Throwable t) {
-            throw new IllegalArgumentException("core validation failed for tileId '" + tileSpec.getTileId() + "'", t);
+            throw new IllegalArgumentException("core validation failed for tileId '" + tileSpec.getTileId() +
+                                               "', cause: " + t.getMessage(), t);
         }
 
         String errorMessage = null;
