@@ -34,12 +34,12 @@ import org.slf4j.LoggerFactory;
  */
 public class LabelImageProcessorCache extends ImageProcessorCache {
 
-    private int width;
-    private int height;
+    private final int width;
+    private final int height;
 
     private int labelIndex;
-    private List<Color> colors;
-    private Map<String, Color> urlToColor;
+    private final List<Color> colors;
+    private final Map<String, Color> urlToColor;
 
     /**
      * Constructs a cache instance using the specified parameters.
@@ -63,12 +63,12 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
      *
      * @param maxLabels                            maximum number of distinct label colors (tiles) needed.
      */
-    public LabelImageProcessorCache(long maximumNumberOfCachedPixels,
-                                    boolean recordStats,
-                                    boolean cacheOriginalsForDownSampledImages,
-                                    int width,
-                                    int height,
-                                    int maxLabels) {
+    public LabelImageProcessorCache(final long maximumNumberOfCachedPixels,
+                                    final boolean recordStats,
+                                    final boolean cacheOriginalsForDownSampledImages,
+                                    final int width,
+                                    final int height,
+                                    final int maxLabels) {
 
         super(maximumNumberOfCachedPixels, recordStats, cacheOriginalsForDownSampledImages);
 
@@ -161,8 +161,10 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         }
 
         int step = (int) (maxValue / squareRoot);
-        if (step > 1) {
-            step = step - 1;
+        if (step > 30) {
+            step = 30;           // larger step values won't always produce enough colors, so limit step value to 30
+        } else if (step > 1) {
+            step = step - 1;     // make room to toss out black values
         }
 
         final List<Color> colorList = new ArrayList<>(maxLabels);
@@ -179,7 +181,8 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         }
 
         if (colorList.size() < maxLabels) {
-            throw new IllegalStateException("failed to create " + maxLabels + " distinct label colors");
+            throw new IllegalStateException("created " + colorList.size() + " instead of " + maxLabels +
+                                            " distinct label colors using step of " + step);
         }
 
         Collections.shuffle(colorList);
