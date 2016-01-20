@@ -34,6 +34,7 @@ import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -302,16 +303,52 @@ public class RenderParameters implements Serializable {
             throw new IllegalArgumentException("failed to convert URI '" + uri + "'", t);
         }
 
-        RenderParameters parameters;
+        final int maxNumberOfAttempts = 3;
+        RenderParameters parameters = null;
         InputStream urlStream = null;
         try {
-            try {
-                urlStream = urlObject.openStream();
-            } catch (final Throwable t) {
-                throw new IllegalArgumentException("failed to load render parameters from " + urlObject, t);
+
+            // work around January 2016 DNS issue at Janelia by retrying unknown host failures
+            // up to 3 times with a 5 second delay between each retry ...
+
+            for (int attempt = 1; attempt <= maxNumberOfAttempts; attempt++) {
+
+                try {
+                    urlStream = urlObject.openStream();
+                } catch (final UnknownHostException uhe) {
+
+                    urlStream = null;
+
+                    if (attempt < maxNumberOfAttempts) {
+                        LOG.info("attempt {} to open stream for {} failed with cause {}",
+                                 attempt, urlObject, uhe.getMessage());
+
+                        final int retryWaitTime = 5000;
+                        LOG.info("waiting {}ms before retrying request", retryWaitTime);
+                        try {
+                            Thread.sleep(retryWaitTime);
+                        } catch (final InterruptedException ie) {
+                            LOG.warn("retry wait was interrupted", ie);
+                        }
+                    } else {
+                        throw new IllegalArgumentException("after " + attempt +
+                                                           " attempts, failed to load render parameters from " +
+                                                           urlObject, uhe);
+                    }
+
+                } catch (final Throwable t) {
+                    throw new IllegalArgumentException("failed to load render parameters from " + urlObject, t);
+                }
+
+                if (urlStream != null) {
+                    break;
+                }
+
             }
 
-            parameters = parseJson(new InputStreamReader(urlStream));
+            if (urlStream != null) {
+                parameters = parseJson(new InputStreamReader(urlStream));
+            }
 
         } finally {
             if (urlStream != null) {
@@ -323,7 +360,9 @@ public class RenderParameters implements Serializable {
             }
         }
 
-        parameters.initializeDerivedValues();
+        if (parameters != null) {
+            parameters.initializeDerivedValues();
+        }
 
         return parameters;
     }

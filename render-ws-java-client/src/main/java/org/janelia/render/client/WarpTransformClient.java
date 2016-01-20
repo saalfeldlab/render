@@ -106,7 +106,7 @@ public class WarpTransformClient {
         LOG.info("generateStackDataForZ: derived moving least squares transform for {}", z);
 
         montageTiles.addTransformSpecToCollection(mlsTransformSpec);
-        montageTiles.addReferenceTransformToAllTiles(mlsTransformSpec.getId());
+        montageTiles.addReferenceTransformToAllTiles(mlsTransformSpec.getId(), false);
 
         final int totalNumberOfTiles = montageTiles.getTileCount();
         if (tileSpecValidator != null) {

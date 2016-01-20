@@ -39,6 +39,9 @@ public class TransformSectionClient {
         @Parameter(names = "--disableValidation", description = "Disable flyTEM tile validation", required = false, arity = 0)
         private boolean disableValidation;
 
+        @Parameter(names = "--replaceLast", description = "Replace each tile's last transform with this one (default is to append new transform)", required = false, arity = 0)
+        private boolean replaceLast;
+
         @Parameter(description = "Z values", required = true)
         private List<String> zValues;
     }
@@ -94,7 +97,7 @@ public class TransformSectionClient {
         final ResolvedTileSpecCollection tiles = renderDataClient.getResolvedTiles(parameters.stack, z);
 
         tiles.addTransformSpecToCollection(stackTransform);
-        tiles.addReferenceTransformToAllTiles(stackTransform.getId());
+        tiles.addReferenceTransformToAllTiles(stackTransform.getId(), parameters.replaceLast);
 
         final int totalNumberOfTiles = tiles.getTileCount();
         if (tileSpecValidator != null) {

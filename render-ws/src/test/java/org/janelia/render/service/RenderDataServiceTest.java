@@ -100,7 +100,7 @@ public class RenderDataServiceTest {
                                                                           "mpicbg.trakem2.transform.AffineModel2D",
                                                                           "1  0  0  1  0  0");
         resolvedTiles.addTransformSpecToCollection(leafTransformSpecA);
-        resolvedTiles.addReferenceTransformToAllTiles(leafTransformSpecA.getId());
+        resolvedTiles.addReferenceTransformToAllTiles(leafTransformSpecA.getId(), false);
 
         final StackId testStackId = new StackId(alignStackId.getOwner(), alignStackId.getProject(), "test");
 
