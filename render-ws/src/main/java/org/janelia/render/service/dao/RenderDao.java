@@ -764,6 +764,10 @@ public class RenderDao {
             Number tileCount;
             Long tileCountLong = null;
             Double z;
+            Double minX;
+            Double maxX;
+            Double minY;
+            Double maxY;
             while (cursor.hasNext()) {
                 document = cursor.next();
                 resultId = document.get("_id", Document.class);
@@ -778,8 +782,13 @@ public class RenderDao {
                     tileCountLong = tileCount.longValue();
                 }
 
+                minX = document.getDouble("minX");
+                maxX = document.getDouble("maxX");
+                minY = document.getDouble("minY");
+                maxY = document.getDouble("maxY");
+
                 if ((sectionId != null) && (z != null)) {
-                    list.add(new SectionData(sectionId, z, tileCountLong));
+                    list.add(new SectionData(sectionId, z, tileCountLong, minX, maxX, minY, maxY));
                 }
             }
         }
@@ -1066,14 +1075,27 @@ public class RenderDao {
 
         // db.<stack_prefix>__tile.aggregate(
         //     [
-        //         { "$group": { "_id": { "sectionId": "$layout.sectionId", "z": "$z" } } },
+        //         { "$group": { "_id": { "sectionId": "$layout.sectionId", "z": "$z" } },
+        //                       "tileCount": { "$sum": 1 },
+        //                       "minX": { "$min": "$minX" }, "maxX": { "$max": "$maxX" },
+        //                       "minY": { "$min": "$minY" }, "maxY": { "$max": "$maxY" }},
         //         { "$sort": { "_id.sectionId": 1 } }
         //     ]
         // )
 
         final Document idComponents = new Document("sectionId", "$layout.sectionId").append("z", "$z");
         final Document tileCountComponents = new Document("$sum", 1);
-        final Document group = new Document("_id", idComponents).append("tileCount", tileCountComponents);
+        final Document minXComponents = new Document("$min", "$minX");
+        final Document maxXComponents = new Document("$max", "$maxX");
+        final Document minYComponents = new Document("$min", "$minY");
+        final Document maxYComponents = new Document("$max", "$maxY");
+        final Document group = new Document(
+                "_id", idComponents).append(
+                "tileCount", tileCountComponents).append(
+                "minX", minXComponents).append(
+                "maxX", maxXComponents).append(
+                "minY", minYComponents).append(
+                "maxY", maxYComponents);
 
         final List<Document> pipeline = new ArrayList<>();
         pipeline.add(new Document("$group", group));

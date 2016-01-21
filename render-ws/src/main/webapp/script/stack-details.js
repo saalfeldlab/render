@@ -202,6 +202,38 @@ function getTileCountData() {
     ];
 }
 
+function getBoundsData() {
+
+    var minXData = [];
+    var maxXData = [];
+    var minYData = [];
+    var maxYData = [];
+
+    var sectionList;
+    var floatZ;
+    for (z in zToSectionDataMap) {
+        if (zToSectionDataMap.hasOwnProperty(z)) {
+            sectionList = zToSectionDataMap[z].sectionList;
+            floatZ = parseFloat(z);
+            for (var index = 0; index < sectionList.length; index++) {
+                if (sectionList[index].minX !== undefined) {
+                    minXData.push([floatZ, sectionList[index].minX]);
+                    maxXData.push([floatZ, sectionList[index].maxX]);
+                    minYData.push([floatZ, sectionList[index].minY]);
+                    maxYData.push([floatZ, sectionList[index].maxY]);
+                }
+            }
+        }
+    }
+
+    return [
+        { 'name': 'minX', 'data': minXData },
+        { 'name': 'maxX', 'data': maxXData },
+        { 'name': 'minY', 'data': minYData },
+        { 'name': 'maxY', 'data': maxYData }
+    ];
+}
+
 function drawSectionDataCharts(data, owner, project, stack) {
 
     loadAndMapSectionData(data);
@@ -325,6 +357,56 @@ function drawSectionDataCharts(data, owner, project, stack) {
             width: 130
         },
         series: getTileCountData()
+    });
+
+    //noinspection JSJQueryEfficiency
+    $('#sectionDataStatus').text('building bounds chart ...');
+
+    $('#sectionBounds').highcharts({
+        title: {
+            text: 'Section Bounds'
+        },
+        subtitle: {
+            text: project + ' ' + stack
+        },
+        chart: {
+            type: 'scatter',
+            zoomType: 'x'
+        },
+        scrollbar: {
+            enabled: true
+        },
+        xAxis: {
+            title: {
+                text: 'Z'
+            }
+        },
+        yAxis: {
+            title: {
+                text: 'Bounds'
+            }
+        },
+        tooltip: {
+            formatter: function() {
+                var z = parseFloat(this.x);
+                var sectionIds = joinSectionIds(zToSectionDataMap[z].sectionList);
+                var links = getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, z);
+                return '<span>Z: ' + z + '</span><br/>' +
+                       '<span>Sections: ' + sectionIds + '</span><br/>' +
+                       '<span>' + this.series.name + ': ' + this.y + '</span><br/>' +
+                       links;
+            },
+            useHTML: true,
+            shared: true
+        },
+        legend: {
+            layout: 'vertical',
+            align: 'right',
+            verticalAlign: 'middle',
+            borderWidth: 0,
+            width: 130
+        },
+        series: getBoundsData()
     });
 
     //noinspection JSJQueryEfficiency
