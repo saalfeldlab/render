@@ -360,54 +360,54 @@ function drawSectionDataCharts(data, owner, project, stack) {
     });
 
     //noinspection JSJQueryEfficiency
-    $('#sectionDataStatus').text('building bounds chart ...');
-
-    $('#sectionBounds').highcharts({
-        title: {
-            text: 'Section Bounds'
-        },
-        subtitle: {
-            text: project + ' ' + stack
-        },
-        chart: {
-            type: 'scatter',
-            zoomType: 'x'
-        },
-        scrollbar: {
-            enabled: true
-        },
-        xAxis: {
-            title: {
-                text: 'Z'
-            }
-        },
-        yAxis: {
-            title: {
-                text: 'Bounds'
-            }
-        },
-        tooltip: {
-            formatter: function() {
-                var z = parseFloat(this.x);
-                var sectionIds = joinSectionIds(zToSectionDataMap[z].sectionList);
-                var links = getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, z);
-                return '<span>Z: ' + z + '</span><br/>' +
-                       '<span>Sections: ' + sectionIds + '</span><br/>' +
-                       '<span>' + this.series.name + ': ' + this.y + '</span><br/>' +
-                       links;
-            },
-            useHTML: true,
-            shared: true
-        },
-        legend: {
-            layout: 'vertical',
-            align: 'right',
-            verticalAlign: 'middle',
-            borderWidth: 0,
-            width: 130
-        },
-        series: getBoundsData()
-    });
+    //$('#sectionDataStatus').text('building bounds chart ...');
+    //
+    //$('#sectionBounds').highcharts({
+    //    title: {
+    //        text: 'Section Bounds'
+    //    },
+    //    subtitle: {
+    //        text: project + ' ' + stack
+    //    },
+    //    chart: {
+    //        type: 'scatter',
+    //        zoomType: 'x'
+    //    },
+    //    scrollbar: {
+    //        enabled: true
+    //    },
+    //    xAxis: {
+    //        title: {
+    //            text: 'Z'
+    //        }
+    //    },
+    //    yAxis: {
+    //        title: {
+    //            text: 'Bounds'
+    //        }
+    //    },
+    //    tooltip: {
+    //        formatter: function() {
+    //            var z = parseFloat(this.x);
+    //            var sectionIds = joinSectionIds(zToSectionDataMap[z].sectionList);
+    //            var links = getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, z);
+    //            return '<span>Z: ' + z + '</span><br/>' +
+    //                   '<span>Sections: ' + sectionIds + '</span><br/>' +
+    //                   '<span>' + this.series.name + ': ' + this.y + '</span><br/>' +
+    //                   links;
+    //        },
+    //        useHTML: true,
+    //        shared: true
+    //    },
+    //    legend: {
+    //        layout: 'vertical',
+    //        align: 'right',
+    //        verticalAlign: 'middle',
+    //        borderWidth: 0,
+    //        width: 130
+    //    },
+    //    series: getBoundsData()
+    //});
 
     //noinspection JSJQueryEfficiency
     $('#sectionDataStatus').hide();
