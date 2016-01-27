@@ -179,10 +179,12 @@ public class TileDataService {
                                                                  @QueryParam("widthFactor") Double widthFactor,
                                                                  @QueryParam("heightFactor") Double heightFactor,
                                                                  @QueryParam("scale") Double scale,
-                                                                 @QueryParam("filter") final Boolean filter) {
+                                                                 @QueryParam("filter") final Boolean filter,
+                                                                 @QueryParam("binaryMask") final Boolean binaryMask,
+                                                                 @QueryParam("convertToGray") final Boolean convertToGray) {
 
-        LOG.info("getTileWithNeighborsRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, widthFactor={}, heightFactor={}, scale={}, filter={}",
-                 owner, project, stack, tileId, widthFactor, heightFactor, scale, filter);
+        LOG.info("getTileWithNeighborsRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, widthFactor={}, heightFactor={}, scale={}, filter={}, binaryMask={}, convertToGray={}",
+                 owner, project, stack, tileId, widthFactor, heightFactor, scale, filter, binaryMask, convertToGray);
 
         RenderParameters parameters = null;
         try {
@@ -217,8 +219,10 @@ public class TileDataService {
                                                                        z,
                                                                        width,
                                                                        height,
-                                                                       scale);
-            parameters.setDoFilter(filter);
+                                                                       scale,
+                                                                       filter,
+                                                                       binaryMask,
+                                                                       convertToGray);
 
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);

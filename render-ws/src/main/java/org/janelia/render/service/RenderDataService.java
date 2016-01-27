@@ -717,9 +717,12 @@ public class RenderDataService {
                                                         @PathParam("z") final Double z,
                                                         @PathParam("width") final Integer width,
                                                         @PathParam("height") final Integer height,
-                                                        @PathParam("scale") final Double scale) {
+                                                        @PathParam("scale") final Double scale,
+                                                        @QueryParam("filter") final Boolean filter,
+                                                        @QueryParam("binaryMask") final Boolean binaryMask,
+                                                        @QueryParam("convertToGray") final Boolean convertToGray) {
 
-        return getExternalRenderParameters(owner, project, stack, null, x, y, z, width, height, scale);
+        return getExternalRenderParameters(owner, project, stack, null, x, y, z, width, height, scale, filter, binaryMask, convertToGray);
     }
 
     /**
@@ -742,16 +745,22 @@ public class RenderDataService {
                                                         @PathParam("z") final Double z,
                                                         @PathParam("width") final Integer width,
                                                         @PathParam("height") final Integer height,
-                                                        @PathParam("scale") final Double scale) {
+                                                        @PathParam("scale") final Double scale,
+                                                        @QueryParam("filter") final Boolean filter,
+                                                        @QueryParam("binaryMask") final Boolean binaryMask,
+                                                        @QueryParam("convertToGray") final Boolean convertToGray) {
 
-        LOG.info("getExternalRenderParameters: entry, owner={}, project={}, stack={}, groupId={}, x={}, y={}, z={}, width={}, height={}, scale={}",
-                 owner, project, stack, groupId, x, y, z, width, height, scale);
+        LOG.info("getExternalRenderParameters: entry, owner={}, project={}, stack={}, groupId={}, x={}, y={}, z={}, width={}, height={}, scale={}, filter={}, binaryMask={}, convertToGray={}",
+                 owner, project, stack, groupId, x, y, z, width, height, scale, filter, binaryMask, convertToGray);
 
         RenderParameters parameters = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
             parameters = getInternalRenderParameters(stackId, groupId, x, y, z, width, height, scale);
             parameters.flattenTransforms();
+            parameters.setDoFilter(filter);
+            parameters.setBinaryMask(binaryMask);
+            parameters.setConvertToGray(convertToGray);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }

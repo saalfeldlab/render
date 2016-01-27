@@ -2,6 +2,8 @@ package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
 
+import ij.process.ByteProcessor;
+
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
@@ -18,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Java client for rendering a composite image of all tiles in a section for one or more sections.
+ * Images are placed in [rootDirectory]/[project]/[stack]/sections_at_[scale]/000/001/123.png
  *
  * @author Eric Trautman
  */
@@ -40,8 +43,11 @@ public class RenderSectionClient {
         @Parameter(names = "--format", description = "Format for rendered boxes (default is PNG)", required = false)
         private String format = Utils.PNG_FORMAT;
 
-        @Parameter(names = "--do_filter", description = "use ad hoc filters to support alignment (default is true)", required = false, arity = 0)
+        @Parameter(names = "--doFilter", description = "Use ad hoc filter to support alignment (default is true)", required = false, arity = 0)
         private boolean doFilter = true;
+
+        @Parameter(names = "--fillWithNoise", description = "Fill image with noise before rendering to improve point match derivation (default is true)", required = false, arity = 0)
+        private boolean fillWithNoise = true;
 
         @Parameter(description = "Z values for sections to render", required = true)
         private List<Double> zValues;
@@ -83,11 +89,6 @@ public class RenderSectionClient {
         final Path projectPath = Paths.get(clientParameters.rootDirectory,
                                            clientParameters.project).toAbsolutePath();
 
-        final File projectDirectory = projectPath.toFile();
-        if (! projectDirectory.exists()) {
-            throw new IllegalArgumentException("missing project directory " + projectDirectory);
-        }
-
         final String sectionsAtScaleName = "sections_at_" + clientParameters.scale;
         final Path sectionPath = Paths.get(projectPath.toString(),
                                            clientParameters.stack,
@@ -128,11 +129,17 @@ public class RenderSectionClient {
 
         final BufferedImage sectionImage = renderParameters.openTargetImage();
 
+        if (clientParameters.fillWithNoise) {
+            final ByteProcessor ip = new ByteProcessor(sectionImage.getWidth(), sectionImage.getHeight());
+            mpicbg.ij.util.Util.fillWithNoise(ip);
+            sectionImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
+        }
+
         Render.render(renderParameters, sectionImage, imageProcessorCache);
 
-        Utils.saveImage(sectionImage, sectionFile.getAbsolutePath(), clientParameters.format, false, 0.85f);
+        Utils.saveImage(sectionImage, sectionFile.getAbsolutePath(), clientParameters.format, true, 0.85f);
 
-        LOG.info("generateBoxesForZ: {}, exit", z);
+        LOG.info("generateImageForZ: {}, exit", z);
     }
 
     private File getSectionFile(final Double z) {

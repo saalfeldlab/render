@@ -443,6 +443,10 @@ public class RenderParameters implements Serializable {
         return convertToGray;
     }
 
+    public void setConvertToGray(final Boolean convertToGray) {
+        this.convertToGray = (convertToGray != null) && convertToGray;
+    }
+
     public float getQuality() {
         return quality;
     }

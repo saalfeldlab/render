@@ -314,19 +314,22 @@ public class TileImageService {
                                                      @PathParam("tileId") final String tileId,
                                                      @QueryParam("scale") final Double scale,
                                                      @QueryParam("filter") final Boolean filter,
+                                                     @QueryParam("binaryMask") final Boolean binaryMask,
+                                                     @QueryParam("convertToGray") final Boolean convertToGray,
                                                      @QueryParam("widthFactor") final Double widthFactor,
                                                      @QueryParam("heightFactor") final Double heightFactor,
                                                      @QueryParam("boundingBoxesOnly") final Boolean boundingBoxesOnly,
                                                      @Context final Request request) {
 
-        LOG.info("renderJpegTileWithNeighborsImage: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, boundingBoxesOnly={}",
-                 owner, project, stack, tileId, scale, filter, boundingBoxesOnly);
+        LOG.info("renderJpegTileWithNeighborsImage: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}, convertToGray={}, boundingBoxesOnly={}",
+                 owner, project, stack, tileId, scale, filter, binaryMask, convertToGray, boundingBoxesOnly);
 
         final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getTileWithNeighborsRenderParameters(owner, project, stack, tileId,
-                                                                         widthFactor, heightFactor, scale, filter);
+                                                                         widthFactor, heightFactor, scale,
+                                                                         filter, binaryMask, convertToGray);
             if ((boundingBoxesOnly != null) && boundingBoxesOnly) {
                 return RenderServiceUtil.renderJpegBoundingBoxes(renderParameters, responseHelper);
             } else {
