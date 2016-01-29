@@ -58,9 +58,6 @@ public class StackClient {
         @Parameter(names = "--materializedBoxRootPath", description = "Root path for materialized boxes", required = false)
         private String materializedBoxRootPath;
 
-        @Parameter(names = "--snapshotRootPath", description = "Root path for snapshot (only specify if offline snapshot should be stored)", required = false)
-        private String snapshotRootPath;
-
         @Parameter(names = "--cloneResultProject", description = "Name of project for stack created by clone operation (default is to use source project)", required = false)
         private String cloneResultProject;
 
@@ -128,7 +125,6 @@ public class StackClient {
                                                            params.stackResolutionY,
                                                            params.stackResolutionZ,
                                                            params.materializedBoxRootPath,
-                                                           params.snapshotRootPath,
                                                            null);
 
         renderDataClient.saveStackVersion(stack, stackVersion);
@@ -151,7 +147,6 @@ public class StackClient {
                                                            params.stackResolutionY,
                                                            params.stackResolutionZ,
                                                            params.materializedBoxRootPath,
-                                                           params.snapshotRootPath,
                                                            null);
 
         List<Double> zValues = null;

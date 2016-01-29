@@ -16,10 +16,8 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
-import org.janelia.render.service.dao.AdminDao;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.dao.RenderDaoTest;
-import org.janelia.render.service.model.CollectionSnapshot;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.test.EmbeddedMongoDb;
@@ -32,7 +30,6 @@ import org.junit.Test;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.COMPLETE;
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
-import static org.janelia.alignment.spec.stack.StackMetaData.StackState.OFFLINE;
 
 /**
  * Tests the {@link StackMetaDataService} class.
@@ -47,7 +44,6 @@ public class StackMetaDataServiceTest {
     private static EmbeddedMongoDb embeddedMongoDb;
     private static StackMetaDataService service;
     private static RenderDao renderDao;
-    private static AdminDao adminDao;
 
     @BeforeClass
     public static void before() throws Exception {
@@ -56,8 +52,7 @@ public class StackMetaDataServiceTest {
 
         embeddedMongoDb = new EmbeddedMongoDb(RenderDao.RENDER_DB_NAME);
         renderDao = new RenderDao(embeddedMongoDb.getMongoClient());
-        adminDao = new AdminDao(embeddedMongoDb.getMongoClient());
-        service = new StackMetaDataService(renderDao, adminDao);
+        service = new StackMetaDataService(renderDao);
     }
 
     @Before
@@ -106,7 +101,6 @@ public class StackMetaDataServiceTest {
                                                             4.0,
                                                             35.0,
                                                             null,
-                                                            null,
                                                             null);
 
         service.saveStackVersion(loadingStackId.getOwner(),
@@ -128,7 +122,6 @@ public class StackMetaDataServiceTest {
                                                             4.2,
                                                             4.2,
                                                             35.2,
-                                                            null,
                                                             null,
                                                             null);
 
@@ -224,30 +217,6 @@ public class StackMetaDataServiceTest {
         Assert.assertEquals("invalid min Y returned after storing stats",
                             stackBounds.getMinY(), stackBounds2.getMinY(), 0.01);
 
-        final CollectionSnapshot snapshotBeforeDelete =
-                adminDao.getSnapshot(completeStackId.getOwner(),
-                                     RenderDao.RENDER_DB_NAME,
-                                     completeStackId.getTileCollectionName(),
-                                     stackMetaData2.getCurrentVersionNumber());
-
-        Assert.assertNotNull("snapshot not saved", snapshotBeforeDelete);
-        Assert.assertEquals("snapshot has invalid create timestamp",
-                            stackMetaData2.getCurrentVersion().getCreateTimestamp(),
-                            snapshotBeforeDelete.getCollectionCreateTimestamp());
-
-
-        try {
-            service.setStackState(completeStackId.getOwner(),
-                                  completeStackId.getProject(),
-                                  completeStackId.getStack(),
-                                  OFFLINE,
-                                  getUriInfo());
-            Assert.fail("stack without snapshot should not be allowed to transition to OFFLINE state");
-        } catch (final IllegalServiceArgumentException e) {
-            e.printStackTrace();
-        }
-
-
         service.deleteStack(completeStackId.getOwner(),
                             completeStackId.getProject(),
                             completeStackId.getStack());
@@ -260,12 +229,6 @@ public class StackMetaDataServiceTest {
         } catch (final ObjectNotFoundException e) {
             Assert.assertTrue(true); // test passed
         }
-
-        final CollectionSnapshot snapshot = adminDao.getSnapshot(completeStackId.getOwner(),
-                                                                 RenderDao.RENDER_DB_NAME,
-                                                                 completeStackId.getTileCollectionName(),
-                                                                 stackMetaData2.getCurrentVersionNumber());
-        Assert.assertNull("after delete, snapshot data should not exist for " + completeStackId, snapshot);
 
     }
 
@@ -291,7 +254,6 @@ public class StackMetaDataServiceTest {
                                                                  3.1,
                                                                  4.1,
                                                                  5.1,
-                                                                 null,
                                                                  null,
                                                                  null);
 
@@ -337,7 +299,6 @@ public class StackMetaDataServiceTest {
                                                                  3.1,
                                                                  4.1,
                                                                  5.1,
-                                                                 null,
                                                                  null,
                                                                  null);
 

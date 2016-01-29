@@ -135,7 +135,6 @@ public class RenderDaoTest {
                                                         4.2,
                                                         35.2,
                                                         null,
-                                                        null,
                                                         null);
 
         final StackMetaData stackMetaDataBeforeSave = dao.getStackMetaData(stackId);
@@ -339,8 +338,6 @@ public class RenderDaoTest {
                             expectedVersion.getStackResolutionY(), actualVersion.getStackResolutionY());
         Assert.assertEquals("invalid stackResolutionZ" + context,
                             expectedVersion.getStackResolutionZ(), actualVersion.getStackResolutionZ());
-        Assert.assertEquals("invalid snapshotRootPath" + context,
-                            expectedVersion.getSnapshotRootPath(), actualVersion.getSnapshotRootPath());
         Assert.assertEquals("invalid mipmapPathBuilder" + context,
                             expectedVersion.getMipmapPathBuilder(), actualVersion.getMipmapPathBuilder());
     }

@@ -28,9 +28,7 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
-import org.janelia.render.service.dao.AdminDao;
 import org.janelia.render.service.dao.RenderDao;
-import org.janelia.render.service.model.CollectionSnapshot;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.render.service.util.RenderServiceUtil;
@@ -56,19 +54,16 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState.OFFLINE;
 public class StackMetaDataService {
 
     private final RenderDao renderDao;
-    private final AdminDao adminDao;
 
     @SuppressWarnings("UnusedDeclaration")
     public StackMetaDataService()
             throws UnknownHostException {
-        this(RenderDao.build(), AdminDao.build());
+        this(RenderDao.build());
     }
 
-    public StackMetaDataService(final RenderDao renderDao,
-                                final AdminDao adminDao)
+    public StackMetaDataService(final RenderDao renderDao)
             throws UnknownHostException {
         this.renderDao = renderDao;
-        this.adminDao = adminDao;
     }
 
     @Path("likelyUniqueId")
@@ -280,12 +275,6 @@ public class StackMetaDataService {
                 LOG.info("deleteStack: {} is already gone, nothing to do", stackId);
 
             } else {
-
-                final StackVersion currentVersion = stackMetaData.getCurrentVersion();
-                if (currentVersion.isSnapshotNeeded()) {
-                    removeUnsavedSnapshots(stackMetaData);
-                }
-
                 renderDao.removeStack(stackId, true);
             }
 
@@ -355,16 +344,11 @@ public class StackMetaDataService {
                  owner, project, stack, state);
 
         try {
-            StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
 
             if (COMPLETE.equals(state)) {
 
-                stackMetaData = renderDao.ensureIndexesAndDeriveStats(stackMetaData);
-
-                final StackVersion stackVersion = stackMetaData.getCurrentVersion();
-                if (stackVersion.isSnapshotNeeded()) {
-                    registerSnapshots(stackMetaData);
-                }
+                renderDao.ensureIndexesAndDeriveStats(stackMetaData); // also sets state to COMPLETE
 
             } else if (OFFLINE.equals(state)) {
 
@@ -373,31 +357,11 @@ public class StackMetaDataService {
                                                        " but must be COMPLETE before transitioning to OFFLINE.");
                 }
 
-                final StackVersion currentVersion = stackMetaData.getCurrentVersion();
-                if (! currentVersion.isSnapshotNeeded()) {
-                    throw new IllegalArgumentException(
-                            "The stack does not require a snapshot so it cannot be transitioned OFFLINE.");
-                }
-
-                if (! hasSavedSnapshots(stackMetaData)) {
-                    throw new IllegalArgumentException(
-                            "The stack snapshot has not yet been saved so it cannot be transitioned OFFLINE.");
-                }
-
                 stackMetaData.setState(state);
                 renderDao.saveStackMetaData(stackMetaData);
                 renderDao.removeStack(stackMetaData.getStackId(), false);
 
             } else { // LOADING
-
-                if (COMPLETE.equals(stackMetaData.getState())) {
-                    final StackVersion currentVersion = stackMetaData.getCurrentVersion();
-                    if (currentVersion.isSnapshotNeeded() && (! hasSavedSnapshots(stackMetaData))) {
-                        throw new IllegalArgumentException(
-                                "The stack snapshot has not yet been saved so it cannot be transitioned " +
-                                "back to LOADING.");
-                    }
-                }
 
                 stackMetaData.setState(state);
                 renderDao.saveStackMetaData(stackMetaData);
@@ -499,104 +463,6 @@ public class StackMetaDataService {
                                                                     final String stack) {
         return new ObjectNotFoundException("stack with owner '" + owner + "', project '" + project +
                                             "', and name '" + stack + "' does not exist");
-    }
-
-    private void registerSnapshots(final StackMetaData stackMetaData) {
-
-        final StackId stackId = stackMetaData.getStackId();
-
-        LOG.debug("registerSnapshots: entry, {}", stackId);
-
-        final StackStats stats = stackMetaData.getStats();
-        final StackVersion stackVersion = stackMetaData.getCurrentVersion();
-
-        final long v5AlignTPSBytesPerTile = 7033973184L / 6978148;
-        final long estimatedTileBytes = stats.getTileCount() * v5AlignTPSBytesPerTile;
-
-        final CollectionSnapshot tileSnapshot = new CollectionSnapshot(stackId.getOwner(),
-                                                                       stackId.getProject(),
-                                                                       RenderDao.RENDER_DB_NAME,
-                                                                       stackId.getTileCollectionName(),
-                                                                       stackMetaData.getCurrentVersionNumber(),
-                                                                       stackVersion.getSnapshotRootPath(),
-                                                                       stackVersion.getCreateTimestamp(),
-                                                                       stackVersion.getVersionNotes(),
-                                                                       estimatedTileBytes);
-        adminDao.saveSnapshot(tileSnapshot);
-
-        final long v5AlignTPSBytesPerTransform = 445194400L / 2454;
-        final long estimatedTransformBytes = stats.getTransformCount() * v5AlignTPSBytesPerTransform;
-
-        final CollectionSnapshot transformSnapshot = new CollectionSnapshot(stackId.getOwner(),
-                                                                            stackId.getProject(),
-                                                                            RenderDao.RENDER_DB_NAME,
-                                                                            stackId.getTransformCollectionName(),
-                                                                            stackMetaData.getCurrentVersionNumber(),
-                                                                            stackVersion.getSnapshotRootPath(),
-                                                                            stackVersion.getCreateTimestamp(),
-                                                                            stackVersion.getVersionNotes(),
-                                                                            estimatedTransformBytes);
-        adminDao.saveSnapshot(transformSnapshot);
-
-        LOG.debug("registerSnapshots: exit, {}", stackId);
-    }
-
-    private void removeUnsavedSnapshots(final StackMetaData stackMetaData) {
-
-        final StackId stackId = stackMetaData.getStackId();
-        final Integer versionNumber = stackMetaData.getCurrentVersionNumber();
-        final String owner = stackId.getOwner();
-
-        LOG.debug("unRegisterSnapshots: entry, stackId={}, versionNumber={}", stackId, versionNumber);
-
-        removeUnsavedSnapshot(owner, stackId.getTileCollectionName(), versionNumber);
-        removeUnsavedSnapshot(owner, stackId.getTransformCollectionName(), versionNumber);
-
-        LOG.debug("unRegisterSnapshots: exit, {}", stackId);
-    }
-
-    private void removeUnsavedSnapshot(final String owner,
-                                    final String collectionName,
-                                    final Integer versionNumber) {
-
-        final CollectionSnapshot snapshot = adminDao.getSnapshot(owner,
-                                                                 RenderDao.RENDER_DB_NAME,
-                                                                 collectionName,
-                                                                 versionNumber);
-        if ((snapshot != null) && (! snapshot.isSaved())) {
-            adminDao.removeSnapshot(owner,
-                                    RenderDao.RENDER_DB_NAME,
-                                    collectionName,
-                                    versionNumber);
-        }
-    }
-
-    private boolean hasSavedSnapshots(final StackMetaData stackMetaData) {
-
-        final StackId stackId = stackMetaData.getStackId();
-        final Integer versionNumber = stackMetaData.getCurrentVersionNumber();
-
-        LOG.debug("hasSavedSnapshots: entry, stackId={}, versionNumber={}", stackId, versionNumber);
-
-        final CollectionSnapshot tileSnapshot = adminDao.getSnapshot(stackId.getOwner(),
-                                                                     RenderDao.RENDER_DB_NAME,
-                                                                     stackId.getTileCollectionName(),
-                                                                     versionNumber);
-
-        boolean hasSavedSnapshots = false;
-
-        if ((tileSnapshot != null) && tileSnapshot.isSaved()) {
-
-            final CollectionSnapshot transformSnapshot = adminDao.getSnapshot(stackId.getOwner(),
-                                                                              RenderDao.RENDER_DB_NAME,
-                                                                              stackId.getTransformCollectionName(),
-                                                                              versionNumber);
-
-            hasSavedSnapshots = transformSnapshot == null || transformSnapshot.isSaved();
-
-        }
-
-        return hasSavedSnapshots;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(StackMetaDataService.class);

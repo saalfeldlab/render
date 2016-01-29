@@ -24,13 +24,12 @@ public class StackVersion
     private final Double stackResolutionZ;
 
     private final String materializedBoxRootPath;
-    private final String snapshotRootPath;
     private final MipmapPathBuilder mipmapPathBuilder;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private StackVersion() {
-        this(null, null, null, null, null, null, null, null, null, null);
+        this(null, null, null, null, null, null, null, null, null);
     }
 
     public StackVersion(final Date createTimestamp,
@@ -41,7 +40,6 @@ public class StackVersion
                         final Double stackResolutionY,
                         final Double stackResolutionZ,
                         final String materializedBoxRootPath,
-                        final String snapshotRootPath,
                         final MipmapPathBuilder mipmapPathBuilder) {
         this.createTimestamp = createTimestamp;
         this.versionNotes = versionNotes;
@@ -51,7 +49,6 @@ public class StackVersion
         this.stackResolutionY = stackResolutionY;
         this.stackResolutionZ = stackResolutionZ;
         this.materializedBoxRootPath = materializedBoxRootPath;
-        this.snapshotRootPath = snapshotRootPath;
         this.mipmapPathBuilder = mipmapPathBuilder;
     }
 
@@ -85,14 +82,6 @@ public class StackVersion
 
     public String getMaterializedBoxRootPath() {
         return materializedBoxRootPath;
-    }
-
-    public String getSnapshotRootPath() {
-        return snapshotRootPath;
-    }
-
-    public boolean isSnapshotNeeded() {
-        return snapshotRootPath != null;
     }
 
     public MipmapPathBuilder getMipmapPathBuilder() {
