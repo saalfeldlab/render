@@ -274,16 +274,16 @@ public class StackMetaDataServiceTest {
     }
 
     @Test
-    public void testDeleteStackSection() throws Exception {
+    public void testDeleteStackTilesWithZ() throws Exception {
 
         final Double z = 3903.0;
 
         try {
-            service.deleteStackSection(completeStackId.getOwner(),
-                                       completeStackId.getProject(),
-                                       completeStackId.getStack(),
-                                       z);
-            Assert.fail("section should not be deleted for stack in COMPLETE state");
+            service.deleteStackTilesWithZ(completeStackId.getOwner(),
+                                          completeStackId.getProject(),
+                                          completeStackId.getStack(),
+                                          z);
+            Assert.fail("tiles should not be deleted for stack in COMPLETE state");
         } catch (final IllegalServiceArgumentException e) {
             Assert.assertTrue(true); // test passed
         }
@@ -316,10 +316,10 @@ public class StackMetaDataServiceTest {
                           specList.size() > 0);
 
 
-        service.deleteStackSection(clonedStackId.getOwner(),
-                                   clonedStackId.getProject(),
-                                   clonedStackId.getStack(),
-                                   z);
+        service.deleteStackTilesWithZ(clonedStackId.getOwner(),
+                                      clonedStackId.getProject(),
+                                      clonedStackId.getStack(),
+                                      z);
 
         try {
             specList = renderDao.getTileSpecs(clonedStackId, z);

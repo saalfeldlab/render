@@ -286,22 +286,59 @@ public class StackMetaDataService {
         return response;
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/z/{z}")
+    @Path("owner/{owner}/project/{project}/stack/{stack}/section/{sectionId}")
     @DELETE
     @ApiOperation(
             tags = {"Section Data APIs", "Stack Management APIs"},
             value = "Deletes all tiles in section",
+            notes = "Deletes all tiles in the specified stack with the specified sectionId value.  This operation can only be performed against stacks in the LOADING state")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack state is not LOADING"),
+            @ApiResponse(code = 404, message = "stack not found"),
+    })
+    public Response deleteStackTilesWithSectionId(@PathParam("owner") final String owner,
+                                                  @PathParam("project") final String project,
+                                                  @PathParam("stack") final String stack,
+                                                  @PathParam("sectionId") final String sectionId) {
+
+        LOG.info("deleteStackTilesWithSectionId: entry, owner={}, project={}, stack={}, sectionId={}",
+                 owner, project, stack, sectionId);
+
+        Response response = null;
+        try {
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+
+            if (! stackMetaData.isLoading()) {
+                throw new IllegalArgumentException("stack state is " + stackMetaData.getState() +
+                                                   " but must be LOADING to delete data");
+            }
+
+            renderDao.removeTilesWithSectionId(stackMetaData.getStackId(), sectionId);
+
+            response = Response.ok().build();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return response;
+    }
+
+    @Path("owner/{owner}/project/{project}/stack/{stack}/z/{z}")
+    @DELETE
+    @ApiOperation(
+            tags = {"Section Data APIs", "Stack Management APIs"},
+            value = "Deletes all tiles in layer",
             notes = "Deletes all tiles in the specified stack with the specified z value.  This operation can only be performed against stacks in the LOADING state")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "stack state is not LOADING"),
             @ApiResponse(code = 404, message = "stack not found"),
     })
-    public Response deleteStackSection(@PathParam("owner") final String owner,
-                                       @PathParam("project") final String project,
-                                       @PathParam("stack") final String stack,
-                                       @PathParam("z") final Double z) {
+    public Response deleteStackTilesWithZ(@PathParam("owner") final String owner,
+                                          @PathParam("project") final String project,
+                                          @PathParam("stack") final String stack,
+                                          @PathParam("z") final Double z) {
 
-        LOG.info("deleteStackSection: entry, owner={}, project={}, stack={}, z={}",
+        LOG.info("deleteStackTilesWithZ: entry, owner={}, project={}, stack={}, z={}",
                  owner, project, stack, z);
 
         Response response = null;
@@ -313,7 +350,7 @@ public class StackMetaDataService {
                                                    " but must be LOADING to delete data");
             }
 
-            renderDao.removeSection(stackMetaData.getStackId(), z);
+            renderDao.removeTilesWithZ(stackMetaData.getStackId(), z);
 
             response = Response.ok().build();
         } catch (final Throwable t) {

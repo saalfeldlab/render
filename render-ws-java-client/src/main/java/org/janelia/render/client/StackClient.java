@@ -64,6 +64,9 @@ public class StackClient {
         @Parameter(names = "--cloneResultStack", description = "Name of stack created by clone operation", required = false)
         private String cloneResultStack;
 
+        @Parameter(names = "--sectionId", description = "The sectionId to delete", required = false)
+        private String sectionId;
+
         @Parameter(names = "--zValues", description = "Z values for filtering", required = false, variableArity = true)
         private List<String> zValues;
 
@@ -182,12 +185,19 @@ public class StackClient {
         logMetaData("deleteStack: before removal");
 
         if (params.zValues == null) {
-            renderDataClient.deleteStack(stack, null);
+            if (params.sectionId == null) {
+                renderDataClient.deleteStack(stack, null);
+            } else {
+                renderDataClient.deleteStackSection(stack, params.sectionId);
+            }
         } else {
             Double z;
             for (final String zString : params.zValues) {
                 z = new Double(zString);
                 renderDataClient.deleteStack(stack, z);
+            }
+            if (params.sectionId != null) {
+                renderDataClient.deleteStackSection(stack, params.sectionId);
             }
         }
     }

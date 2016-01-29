@@ -13,6 +13,7 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.SectionData;
+import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.TransformSpecMetaData;
@@ -192,7 +193,26 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testRemoveSection() throws Exception {
+    public void testRemoveTilesWithSectionId() throws Exception {
+
+        final Double z = 3903.0;
+        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBounds(stackId, z);
+
+        Assert.assertNotNull("tileBoundsBeforeRemove null for " + stackId + " before removal",
+                             tileBoundsBeforeRemove);
+
+        dao.removeTilesWithSectionId(stackId, "mis-ordered-section");
+
+        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBounds(stackId, z);
+
+        Assert.assertNotNull("tileBoundsAfterRemove null for " + stackId + " after removal",
+                             tileBoundsAfterRemove);
+        Assert.assertEquals("invalid tile count after section removal (only one tile should be removed)",
+                            (tileBoundsBeforeRemove.size() - 1), tileBoundsAfterRemove.size());
+    }
+
+    @Test
+    public void testRemoveTilesWithZ() throws Exception {
 
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setTileId("testTileId");
@@ -206,7 +226,7 @@ public class RenderDaoTest {
         Assert.assertEquals("incorrect number of zValues for " + stackId + " before removal",
                             2, zValuesBeforeRemove.size());
 
-        dao.removeSection(stackId, tileSpec.getZ());
+        dao.removeTilesWithZ(stackId, tileSpec.getZ());
 
         final List<Double> zValuesAfterRemove = dao.getZValues(stackId);
         Assert.assertNotNull("zValues null for " + stackId + " after removal",

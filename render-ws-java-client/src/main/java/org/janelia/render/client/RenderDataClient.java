@@ -273,7 +273,7 @@ public class RenderDataClient {
     }
 
     /**
-     * Deletes the specified stack or a section of the specified stack.
+     * Deletes the specified stack or a layer of the specified stack.
      *
      * @param  stack  stack to delete.
      * @param  z      z value for layer to delete (or null to delete all layers).
@@ -297,6 +297,30 @@ public class RenderDataClient {
         final HttpDelete httpDelete = new HttpDelete(uri);
 
         LOG.info("deleteStack: submitting {}", requestContext);
+
+        httpClient.execute(httpDelete, responseHandler);
+    }
+
+    /**
+     * Deletes all tiles with the specified sectionId from the specified stack.
+     *
+     * @param  stack      stack containing tiles to delete.
+     * @param  sectionId  sectionId for all tiles to delete.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void deleteStackSection(final String stack,
+                                   final String sectionId)
+            throws IOException {
+
+        final URI uri = getUri(getStackUrlString(stack) + "/sectionId/" + sectionId);
+        final String requestContext = "DELETE " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpDelete httpDelete = new HttpDelete(uri);
+
+        LOG.info("deleteStackSection: submitting {}", requestContext);
 
         httpClient.execute(httpDelete, responseHandler);
     }

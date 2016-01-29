@@ -1164,8 +1164,23 @@ public class RenderDao {
         }
     }
 
-    public void removeSection(final StackId stackId,
-                              final Double z)
+    public void removeTilesWithSectionId(final StackId stackId,
+                                         final String sectionId)
+            throws IllegalArgumentException {
+
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("sectionId", sectionId);
+
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+        final Document tileQuery = new Document("layout.sectionId", sectionId);
+        final DeleteResult removeResult = tileCollection.deleteMany(tileQuery);
+
+        LOG.debug("removeTilesWithSectionId: {}.remove({}) deleted {} document(s)",
+                  MongoUtil.fullName(tileCollection), tileQuery.toJson(), removeResult.getDeletedCount());
+    }
+
+    public void removeTilesWithZ(final StackId stackId,
+                                    final Double z)
             throws IllegalArgumentException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
@@ -1175,7 +1190,7 @@ public class RenderDao {
         final Document tileQuery = new Document("z", z);
         final DeleteResult removeResult = tileCollection.deleteMany(tileQuery);
 
-        LOG.debug("removeSection: {}.remove({}) deleted {} document(s)",
+        LOG.debug("removeTilesWithZ: {}.remove({}) deleted {} document(s)",
                   MongoUtil.fullName(tileCollection), tileQuery.toJson(), removeResult.getDeletedCount());
     }
 
