@@ -152,21 +152,19 @@ public class BoxMipmapGeneratorTest {
         final int row = 0;
         final int column = 0;
 
-        final int tileWidth = 2650;
-        final int tileHeight = 2650;
         final String[] args = {
                 "--tile_spec_url", "src/test/resources/stitch-test/test_4_tiles_level_1.json",
                 "--out", "test-label.png", // not used but required
                 "--width", "4576",
                 "--height", "4173",
-                "--scale", "0.05"
+                "--scale", "1.0"
         };
 
         final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
         params.setBackgroundRGBColor(Color.WHITE.getRGB());
         final BufferedImage argbLabelImage = params.openTargetImage();
         final LabelImageProcessorCache cache =
-                new LabelImageProcessorCache(1000000, false, false, tileWidth, tileHeight, 10);
+                new LabelImageProcessorCache(1000000, false, false, params.getTileSpecs());
 
         Render.render(params, argbLabelImage, cache);
 

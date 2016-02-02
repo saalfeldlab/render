@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.spec.TileSpec;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -17,36 +19,59 @@ import org.junit.Test;
 public class LabelImageProcessorCacheTest {
 
     @Test
-    public void testBuildColors() throws Exception {
+    public void testBuildColorList() throws Exception {
 
-        final List<Integer> failedMaxLabelValues = new ArrayList<>();
-        // make sure can generate correct number of labels for every tile count
-        for (int maxLabels = 1; maxLabels < 8000; maxLabels++) {
-            try {
-                LabelImageProcessorCache.buildColorList(maxLabels);
-            } catch (final IllegalStateException ise) {
-                failedMaxLabelValues.add(maxLabels);
-            }
-        }
-
-        Assert.assertEquals("could not create correct number of distinct colors for " + failedMaxLabelValues,
-                            0, failedMaxLabelValues.size());
+        // ensure distinct set of 16-bit colors are generated
+        final List<Color> colorList = LabelImageProcessorCache.buildColorList();
 
         final int maxLabels = 20000;
-        final List<Color> colorList = LabelImageProcessorCache.buildColorList(maxLabels);
-
-        Assert.assertEquals("invalid number of colors returned", maxLabels, colorList.size());
-
-        final Map<Short, Color> shortToColorMap = new HashMap<>(colorList.size() * 2);
+        final Map<Short, Color> shortToColorMap = new HashMap<>(maxLabels * 2);
+        Color c;
         short s;
-        for (final Color c : colorList) {
+        for (int tileIndex = 0; tileIndex < maxLabels; tileIndex++) {
+            c = colorList.get(tileIndex);
             s = (short) c.getRGB();
             if (shortToColorMap.containsKey(s)) {
                 Assert.fail(s + " maps to " + shortToColorMap.get(s) + " and " + c);
             } else {
                 shortToColorMap.put(s, c);
             }
+
+//            // print css color style definitions for use in http://jsfiddle.net/trautmane/6wnasfxn/
+//            if (tileIndex < 100) {
+//                System.out.println(".color-" + tileIndex + " { background-color: rgb(" + c.getRed() + "," + c.getGreen() + "," + c.getBlue() + "); }");
+//            }
+
         }
+    }
+
+    @Test
+    public void testColorMappingConsistency() throws Exception {
+
+        final int tileCount = 8000;
+        final List<TileSpec> tileSpecs = new ArrayList<>(tileCount);
+        TileSpec tileSpec;
+        String imageUrl;
+        for (int i = 0; i < tileCount; i++) {
+            tileSpec = new TileSpec();
+            imageUrl = "file://tile_" + i;
+            tileSpec.putMipmap(0, new ImageAndMask(imageUrl, null));
+            tileSpec.setWidth((double) i);
+            tileSpec.setHeight((double) i + 1);
+            tileSpecs.add(tileSpec);
+        }
+
+        final LabelImageProcessorCache cache1 = new LabelImageProcessorCache(100, false, false, tileSpecs);
+
+        final LabelImageProcessorCache cache2 = new LabelImageProcessorCache(100, false, false, tileSpecs);
+
+        for (int i = tileSpecs.size(); i > 0; i--) {
+            tileSpec = tileSpecs.get(i-1);
+            imageUrl = tileSpec.getFirstMipmapEntry().getValue().getImageUrl();
+            Assert.assertEquals("different label color mapped for second cache instance",
+                                cache1.getColorForUrl(imageUrl), cache2.getColorForUrl(imageUrl));
+        }
+
     }
 
 }

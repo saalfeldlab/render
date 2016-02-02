@@ -7,13 +7,16 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import mpicbg.trakem2.util.Downsampler;
 
+import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,19 +30,40 @@ import org.slf4j.LoggerFactory;
  *     http://www.cs.jhu.edu/~misha/Code/DMG/Version3.11/
  * </a>).
  *
- * Although the approach does not require it, an attempt is made to randomly distribute assigned label
+ * Although the approach does not require it, a naive attempt is made to distribute assigned label
  * colors so that adjacent tiles are less likely to be assigned similar label colors.
+ * This distribution is now consistent across runs so that failed runs can be resumed instead of
+ * needing to be restarted from scratch.
  *
  * @author Eric Trautman
  */
 public class LabelImageProcessorCache extends ImageProcessorCache {
 
-    private final int width;
-    private final int height;
+    /*
+     * @return a list of consistently shuffled RGB colors suitable for use as
+     *         16-bit gray colors (red = 0).
+     */
+    public static List<Color> buildColorList() {
+        final int maxComponentCount = 256 - 2; // exclude 0 and 255
+        final List<Color> colorList = new ArrayList<>(maxComponentCount * maxComponentCount);
+        for (int green = 1; green < maxComponentCount; green++) {
+            for (int blue = 1; blue < maxComponentCount; blue++) {
+                // only use low order (green and blue) bytes for RGB colors
+                // so that no data is lost during 16-bit gray conversion;
+                colorList.add(new Color(0, green, blue));
+            }
+        }
 
-    private int labelIndex;
-    private final List<Color> colors;
+        // use same seed to shuffle consistently, 99 seems to distribute colors well enough
+        final Random consistentShuffler = new Random(99);
+
+        Collections.shuffle(colorList, consistentShuffler);
+
+        return colorList;
+    }
+
     private final Map<String, Color> urlToColor;
+    private final Map<String, TileSpec> urlToTileSpec;
 
     /**
      * Constructs a cache instance using the specified parameters.
@@ -57,27 +81,35 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
      *                                             of future down sampling to a different level);
      *                                             otherwise only the down sampled result images are cached.
      *
-     * @param width                                standard width for all loaded tiles.
-     *
-     * @param height                               standard height for all loaded tiles.
-     *
-     * @param maxLabels                            maximum number of distinct label colors (tiles) needed.
+     * @param  tileSpecs                           collection of all tileSpecs that may be loaded from this cache.
+     *                                             The collection is used to consistently assign label colors to each tile
+     *                                             across runs (assuming each run uses the same collection of tiles
+     *                                             in the same order).
      */
     public LabelImageProcessorCache(final long maximumNumberOfCachedPixels,
                                     final boolean recordStats,
                                     final boolean cacheOriginalsForDownSampledImages,
-                                    final int width,
-                                    final int height,
-                                    final int maxLabels) {
+                                    final Collection<TileSpec> tileSpecs) {
 
         super(maximumNumberOfCachedPixels, recordStats, cacheOriginalsForDownSampledImages);
 
-        this.width = width;
-        this.height = height;
+        final int initialCapacity = tileSpecs.size() * 2;
+        this.urlToColor = new HashMap<>(initialCapacity);
+        this.urlToTileSpec = new HashMap<>(initialCapacity);
 
-        this.labelIndex = -1;
-        this.colors = buildColorList(maxLabels);
-        this.urlToColor = new HashMap<>((int) (maxLabels * 1.4));
+        buildMaps(tileSpecs);
+    }
+
+    protected Color getColorForUrl(final String url)
+            throws IllegalArgumentException {
+
+        final Color labelColor = urlToColor.get(url);
+
+        if (labelColor == null) {
+            throw new IllegalArgumentException("no label color defined for " + url);
+        }
+
+        return labelColor;
     }
 
     /**
@@ -105,20 +137,15 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
             imageProcessor = super.loadImageProcessor(url, downSampleLevels, true);
         } else {
 
-            Color labelColor = urlToColor.get(url);
-
-            if (labelColor == null) {
-                final int index = getNextLabelIndex();
-                labelColor = colors.get(index);
-                urlToColor.put(url, labelColor);
-            }
+            final Color labelColor = getColorForUrl(url);
 
             if (LOG.isDebugEnabled()) {
                 LOG.debug("loadImageProcessor: loading label, url={}, downSampleLevels={}, color={}",
                           url, downSampleLevels, labelColor);
             }
 
-            imageProcessor = loadLabelProcessor(labelColor);
+            final TileSpec tileSpec = urlToTileSpec.get(url);
+            imageProcessor = loadLabelProcessor(tileSpec.getWidth(), tileSpec.getHeight(), labelColor);
 
             // down sample the image as needed
             if (downSampleLevels > 0) {
@@ -133,7 +160,9 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         return imageProcessor;
     }
 
-    private ImageProcessor loadLabelProcessor(final Color color)
+    private ImageProcessor loadLabelProcessor(final int width,
+                                              final int height,
+                                              final Color color)
             throws IllegalArgumentException {
 
         final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
@@ -143,51 +172,25 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
 
     }
 
-    private synchronized int getNextLabelIndex() {
-        labelIndex++;
-        return labelIndex;
-    }
+    private void buildMaps(final Collection<TileSpec> tileSpecs) {
 
-    public static List<Color> buildColorList(final int maxLabels) {
+        final List<Color> colorList = buildColorList();
 
-        if (maxLabels == 0) {
-            throw new IllegalArgumentException("max labels must be greater than zero");
+        if (tileSpecs.size() > colorList.size()) {
+            throw new IllegalArgumentException(
+                    tileSpecs.size() + " tile specs were specified but color model can only support a maximum of " +
+                    colorList.size() + " distinct labels");
         }
 
-        final double squareRoot = Math.sqrt(maxLabels);
-        final int maxValue = 255;
-        if (squareRoot > maxValue) {
-            throw new IllegalArgumentException("color model cannot support " + maxLabels + " distinct labels");
+        int tileIndex = 0;
+        String imageUrl;
+        for (final TileSpec tileSpec : tileSpecs) {
+            imageUrl = tileSpec.getFloorMipmapEntry(0).getValue().getImageUrl();
+            urlToTileSpec.put(imageUrl, tileSpec);
+            urlToColor.put(imageUrl, colorList.get(tileIndex));
+            tileIndex++;
         }
 
-        int step = (int) (maxValue / squareRoot);
-        if (step > 30) {
-            step = 30;           // larger step values won't always produce enough colors, so limit step value to 30
-        } else if (step > 1) {
-            step = step - 1;     // make room to toss out black values
-        }
-
-        final List<Color> colorList = new ArrayList<>(maxLabels);
-
-        // only use low order (green and blue) bytes for RGB colors so that no data is lost during 16-bit gray conversion
-        for (int green = 0; ((green < maxValue) && (colorList.size() < maxLabels)); green += step) {
-            for (int blue = 0; ((blue < maxValue) && (colorList.size() < maxLabels)); blue += step) {
-
-                if (green != blue) { // skip values that look like black background
-                    colorList.add(new Color(0, green, blue));
-                }
-
-            }
-        }
-
-        if (colorList.size() < maxLabels) {
-            throw new IllegalStateException("created " + colorList.size() + " instead of " + maxLabels +
-                                            " distinct label colors using step of " + step);
-        }
-
-        Collections.shuffle(colorList);
-
-        return colorList;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(LabelImageProcessorCache.class);

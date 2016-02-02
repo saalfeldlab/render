@@ -21,6 +21,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.mipmap.BoxMipmapGenerator;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -256,26 +257,31 @@ public class BoxClient {
             boxBounds.setRenderGroup(params.renderGroup, params.numberOfRenderGroups, params.maxLevel);
         }
 
-        final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, z);
-        final int tileCount = tileBoundsList.size();
-
-        final TileBounds firstTileBounds = tileBoundsList.get(0);
-        final TileSpec firstTileSpec = renderDataClient.getTile(stack, firstTileBounds.getTileId());
-
-        LOG.info("generateBoxesForZ: {}, layerBounds={}, boxBounds={}, tileCount={}",
-                 z, layerBounds, boxBounds, tileCount);
-
+        final int tileCount;
         final ImageProcessorCache imageProcessorCache;
         if (params.label) {
+
+            // retrieve all tile specs for layer so that imageUrls can be consistently mapped to label colors
+            // (this allows label runs to be resumed after failures)
+
+            final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
+            tileCount = resolvedTiles.getTileCount();
+
             imageProcessorCache = new LabelImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
                                                                true,
                                                                false,
-                                                               firstTileSpec.getWidth(),
-                                                               firstTileSpec.getHeight(),
-                                                               tileCount);
+                                                               resolvedTiles.getTileSpecs());
+
         } else {
+
+            final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, z);
+            tileCount = tileBoundsList.size();
             imageProcessorCache = new ImageProcessorCache();
+
         }
+
+        LOG.info("generateBoxesForZ: {}, layerBounds={}, boxBounds={}, tileCount={}",
+                 z, layerBounds, boxBounds, tileCount);
 
         BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z.intValue(),
                                                                        params.label,
