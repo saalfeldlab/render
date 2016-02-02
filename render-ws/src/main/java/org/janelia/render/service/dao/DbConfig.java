@@ -24,6 +24,7 @@ public class DbConfig {
     private final String authenticationDatabase;
     private final String password;
     private int maxConnectionsPerHost;
+    private int maxConnectionIdleTime;
 
     public DbConfig(final String host,
                     final Integer port,
@@ -35,7 +36,8 @@ public class DbConfig {
         this.userName = userName;
         this.authenticationDatabase = authenticationDatabase;
         this.password = password;
-        this.maxConnectionsPerHost = new MongoClientOptions.Builder().build().getConnectionsPerHost();
+        this.maxConnectionsPerHost = new MongoClientOptions.Builder().build().getConnectionsPerHost(); // 100
+        this.maxConnectionIdleTime = 600000; // 10 minutes
     }
 
     public String getHost() {
@@ -64,6 +66,10 @@ public class DbConfig {
 
     public int getMaxConnectionsPerHost() {
         return maxConnectionsPerHost;
+    }
+
+    public int getMaxConnectionIdleTime() {
+        return maxConnectionIdleTime;
     }
 
     public static DbConfig fromFile(final File file)
@@ -113,6 +119,16 @@ public class DbConfig {
                 } catch (final NumberFormatException e) {
                     throw new IllegalArgumentException("invalid maxConnectionsPerHost value (" +
                                                        maxConnectionsPerHostStr + ") specified in " + path, e);
+                }
+            }
+
+            final String maxConnectionIdleTimeStr = properties.getProperty("maxConnectionIdleTime");
+            if (maxConnectionIdleTimeStr != null) {
+                try {
+                    dbConfig.maxConnectionIdleTime = Integer.parseInt(maxConnectionIdleTimeStr);
+                } catch (final NumberFormatException e) {
+                    throw new IllegalArgumentException("invalid maxConnectionIdleTime value (" +
+                                                       maxConnectionIdleTimeStr + ") specified in " + path, e);
                 }
             }
 
