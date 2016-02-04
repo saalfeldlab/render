@@ -92,6 +92,12 @@ public class ImageAndMask implements Serializable {
         return validatedMaskUrl;
     }
 
+    public String getMaskFilePath() {
+        final String maskUrl = getMaskUrl();
+        final Matcher m = FILE_NAME_PATTERN.matcher(maskUrl);
+        return m.replaceFirst("/");
+    }
+
     @Override
     public String toString() {
         return "ImageAndMask{" +
