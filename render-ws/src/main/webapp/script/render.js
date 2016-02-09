@@ -95,7 +95,7 @@ function addStackInfo(ownerUrl, stackInfo) {
     var linksHtml = '<a target="_blank" href="' + baseStackUrl + '">Metadata</a> ' +
                     '<a target="_blank" href="' + CATMAIDUrl + '">CATMAID-alpha</a> ' +
                     '<a target="_blank" href="' + baseStackUrl + '/zValues">Z Values</a> ' +
-                    '<a target="_blank" href="' + baseStackUrl + '/highDoseLowDoseZValues">HDLD</a>';
+                    '<a target="_blank" href="' + baseStackUrl + '/mergeableZValues">mergeable Z Values</a>';
 
     if (stackInfo.state == 'OFFLINE') {
         linksHtml = '';

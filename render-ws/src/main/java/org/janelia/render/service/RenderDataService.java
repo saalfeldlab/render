@@ -252,7 +252,7 @@ public class RenderDataService {
     @ApiOperation(
             tags = "Stack Data APIs",
             value = "List plain text data for all mergeable sections in specified stack",
-            notes = "Data format is 'toIndex < fromIndex : toZ < fromZ'.  Only low dose sections with a corresponding high dose section are included.")
+            notes = "Data format is 'toIndex < fromIndex : toZ < fromZ'.  Only layers with both an integral (.0) and at least one non-integral (e.g. .1) section are included.")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "section data not generated"),
     })
@@ -267,57 +267,57 @@ public class RenderDataService {
 
         final StringBuilder mergeableData = new StringBuilder(list.size() * 10);
         Double z;
-        int lastHighDoseIndex = -1;
-        Double lastHighDoseZ = -1.0;
+        int lastIntegralIndex = -1;
+        Double lastIntegralZ = -1.0;
         for (int i = 0; i < list.size(); i++) {
             z = list.get(i);
             if ((z - z.intValue()) > 0) {
-                if (z.intValue() == lastHighDoseZ.intValue()) {
-                    mergeableData.append(lastHighDoseIndex).append(" < ").append(i).append(" : ");
-                    mergeableData.append(lastHighDoseZ).append(" < ").append(z).append('\n');
+                if (z.intValue() == lastIntegralZ.intValue()) {
+                    mergeableData.append(lastIntegralIndex).append(" < ").append(i).append(" : ");
+                    mergeableData.append(lastIntegralZ).append(" < ").append(z).append('\n');
                 } else {
                     LOG.warn("getMergeableData: z {} is missing corresponding high dose (.0) section", z);
                 }
             } else {
-                lastHighDoseIndex = i;
-                lastHighDoseZ = z;
+                lastIntegralIndex = i;
+                lastIntegralZ = z;
             }
         }
 
         return mergeableData.toString();
     }
 
-    @Path("project/{project}/stack/{stack}/highDoseLowDoseZValues")
+    @Path("project/{project}/stack/{stack}/mergeableZValues")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
             tags = "Stack Data APIs",
-            value = "List z values for all high dose low dose sections in specified stack",
-            notes = "Only sections with both a high dose and at least one low dose section are included.")
+            value = "List z values for all mergeable layers in specified stack",
+            notes = "Only layers with both an integral (.0) and at least one non-integral (e.g. .1) section are included.")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "section data not generated"),
     })
-    public List<Double> getHighDoseLowDoseZValues(@PathParam("owner") final String owner,
-                                                  @PathParam("project") final String project,
-                                                  @PathParam("stack") final String stack) {
+    public List<Double> getMergeableZValues(@PathParam("owner") final String owner,
+                                            @PathParam("project") final String project,
+                                            @PathParam("stack") final String stack) {
 
         final List<Double> list = getZValues(owner, project, stack);
         final LinkedHashSet<Double> filteredSet = new LinkedHashSet<>(list.size());
-        Double lastHighDoseZ = -1.0;
+        Double lastIntegralZ = -1.0;
         for (final Double z : list) {
             if ((z - z.intValue()) > 0) {
-                if (z.intValue() == lastHighDoseZ.intValue()) {
-                    filteredSet.add(lastHighDoseZ);
+                if (z.intValue() == lastIntegralZ.intValue()) {
+                    filteredSet.add(lastIntegralZ);
                     filteredSet.add(z);
                 } else {
-                    LOG.warn("getHighDoseLowDoseZValues: z {} is missing corresponding high dose (.0) section", z);
+                    LOG.warn("getMergeableZValues: z {} is missing corresponding integral (.0) section", z);
                 }
             } else {
-                lastHighDoseZ = z;
+                lastIntegralZ = z;
             }
         }
 
-        LOG.info("getHighDoseLowDoseZValues: returning {} values", filteredSet.size());
+        LOG.info("getMergeableZValues: returning {} values", filteredSet.size());
 
         return new ArrayList<>(filteredSet);
     }
