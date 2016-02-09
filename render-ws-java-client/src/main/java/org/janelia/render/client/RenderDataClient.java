@@ -212,6 +212,7 @@ public class RenderDataClient {
                                   final String toProject,
                                   final String toStack,
                                   final StackVersion toStackVersion,
+                                  final Boolean skipTransforms,
                                   final List<Double> zValues)
             throws IOException {
 
@@ -228,6 +229,10 @@ public class RenderDataClient {
 
         if (toProject != null) {
             builder.addParameter("toProject", toProject);
+        }
+
+        if (skipTransforms != null) {
+            builder.addParameter("skipTransforms", skipTransforms.toString());
         }
 
         final URI uri;

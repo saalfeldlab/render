@@ -166,6 +166,7 @@ public class StackMetaDataService {
                                       @PathParam("toStack") final String toStack,
                                       @QueryParam("z") final List<Double> zValues,
                                       @QueryParam("toProject") String toProject,
+                                      @QueryParam("skipTransforms") final Boolean skipTransforms,
                                       @Context final UriInfo uriInfo,
                                       final StackVersion stackVersion) {
 
@@ -186,13 +187,14 @@ public class StackMetaDataService {
 
             StackMetaData toStackMetaData = renderDao.getStackMetaData(toStackId);
 
-            if (toStackMetaData == null) {
-                toStackMetaData = new StackMetaData(toStackId, stackVersion);
-            } else {
-                throw new IllegalArgumentException("stack " + toStackId + " already exists");
+            if ((toStackMetaData != null) && (! toStackMetaData.isLoading())) {
+                throw new IllegalStateException("Tiles cannot be cloned to stack " + toStack +
+                                                " because it is " + toStackMetaData.getState() + ".");
             }
 
-            renderDao.cloneStack(fromStackMetaData.getStackId(), toStackId, zValues);
+            renderDao.cloneStack(fromStackMetaData.getStackId(), toStackId, zValues, skipTransforms);
+
+            toStackMetaData = new StackMetaData(toStackId, stackVersion);
             renderDao.saveStackMetaData(toStackMetaData);
 
             LOG.info("cloneStackVersion: created {} from {}", toStackId, fromStackMetaData.getStackId());

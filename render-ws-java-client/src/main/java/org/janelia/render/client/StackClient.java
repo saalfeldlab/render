@@ -67,6 +67,9 @@ public class StackClient {
         @Parameter(names = "--sectionId", description = "The sectionId to delete", required = false)
         private String sectionId;
 
+        @Parameter(names = "--skipSharedTransformClone", description = "Only clone tiles, skipping clone of shared transforms (default is false)", required = false, arity = 0)
+        private Boolean skipSharedTransformClone;
+
         @Parameter(names = "--zValues", description = "Z values for filtering", required = false, variableArity = true)
         private List<String> zValues;
 
@@ -160,7 +163,12 @@ public class StackClient {
             }
         }
 
-        renderDataClient.cloneStackVersion(stack, params.cloneResultProject, params.cloneResultStack, stackVersion, zValues);
+        renderDataClient.cloneStackVersion(stack,
+                                           params.cloneResultProject,
+                                           params.cloneResultStack,
+                                           stackVersion,
+                                           params.skipSharedTransformClone,
+                                           zValues);
 
         logMetaData("cloneStackVersion: after clone", params.cloneResultStack);
     }

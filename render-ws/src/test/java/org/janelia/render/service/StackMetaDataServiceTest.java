@@ -263,6 +263,7 @@ public class StackMetaDataServiceTest {
                                   clonedStackId.getStack(),
                                   null,
                                   null,
+                                  null,
                                   getUriInfo(),
                                   clonedStackVersion);
 
@@ -306,6 +307,7 @@ public class StackMetaDataServiceTest {
                                   completeStackId.getProject(),
                                   completeStackId.getStack(),
                                   clonedStackId.getStack(),
+                                  null,
                                   null,
                                   null,
                                   getUriInfo(),

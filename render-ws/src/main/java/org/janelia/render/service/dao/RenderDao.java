@@ -1264,15 +1264,18 @@ public class RenderDao {
 
     public void cloneStack(final StackId fromStackId,
                            final StackId toStackId,
-                           final List<Double> zValues)
+                           final List<Double> zValues,
+                           final Boolean skipTransforms)
             throws IllegalArgumentException, IllegalStateException {
 
         MongoUtil.validateRequiredParameter("fromStackId", fromStackId);
         MongoUtil.validateRequiredParameter("toStackId", toStackId);
 
-        final MongoCollection<Document> fromTransformCollection = getTransformCollection(fromStackId);
-        final MongoCollection<Document> toTransformCollection = getTransformCollection(toStackId);
-        cloneCollection(fromTransformCollection, toTransformCollection, new Document());
+        if ((skipTransforms == null) || (! skipTransforms)) {
+            final MongoCollection<Document> fromTransformCollection = getTransformCollection(fromStackId);
+            final MongoCollection<Document> toTransformCollection = getTransformCollection(toStackId);
+            cloneCollection(fromTransformCollection, toTransformCollection, new Document());
+        }
 
         final Document filterQuery = new Document();
         if ((zValues != null) && (zValues.size() > 0)) {

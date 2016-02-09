@@ -89,7 +89,7 @@ public class RenderDaoTest {
         StackMetaData fromStackMetaData = dao.getStackMetaData(stackId);
         fromStackMetaData = dao.ensureIndexesAndDeriveStats(fromStackMetaData);
 
-        dao.cloneStack(stackId, toStackId, null);
+        dao.cloneStack(stackId, toStackId, null, null);
 
         zValues = dao.getZValues(toStackId);
         Assert.assertEquals("invalid number of z values after clone", 1, zValues.size());
@@ -118,7 +118,7 @@ public class RenderDaoTest {
         final StackId filteredStackId = new StackId(stackId.getOwner(), stackId.getProject(), "filteredStack");
         final List<Double> filteredZValues = new ArrayList<>();
         filteredZValues.add(newZValue);
-        dao.cloneStack(stackId, filteredStackId, filteredZValues);
+        dao.cloneStack(stackId, filteredStackId, filteredZValues, null);
 
         zValues = dao.getZValues(filteredStackId);
         Assert.assertEquals("invalid number of z values after clone filter", 1, zValues.size());
