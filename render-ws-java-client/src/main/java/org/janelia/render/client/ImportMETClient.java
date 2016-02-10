@@ -98,7 +98,7 @@ public class ImportMETClient {
 
     public void generateStackData() throws Exception {
 
-        LOG.info("generateStackData: entry");
+        LOG.info("updateTiles: entry");
 
         if ("v2".equalsIgnoreCase(parameters.formatVersion) || "v3".equalsIgnoreCase(parameters.formatVersion)) {
             loadMetData();
@@ -125,7 +125,7 @@ public class ImportMETClient {
             sectionData.saveTiles();
         }
 
-        LOG.info("generateStackData: exit, saved tiles and transforms for {}", metSectionToDataMap.values());
+        LOG.info("updateTiles: exit, saved tiles and transforms for {}", metSectionToDataMap.values());
     }
 
     // TODO: remove old MET loader once Khaled no longer needs it

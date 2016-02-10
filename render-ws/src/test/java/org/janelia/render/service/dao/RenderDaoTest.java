@@ -2,6 +2,7 @@ package org.janelia.render.service.dao;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -326,6 +327,32 @@ public class RenderDaoTest {
         final Double zAfterUpdate = dao.getZForSection(stackId, sectionId);
 
         Assert.assertEquals("incorrect z before update", updatedZ, zAfterUpdate, 0.1);
+    }
+
+    @Test
+    public void testUpdateZForTiles() throws Exception {
+        final String tileIdA = "134";
+        final String tileIdB = "135";
+
+        final List<String> tileIds = Arrays.asList(tileIdA, tileIdB);
+
+        final Double zBeforeUpdateA = dao.getTileSpec(stackId, tileIdA, false).getZ();
+        final Double zBeforeUpdateB = dao.getTileSpec(stackId, tileIdB, false).getZ();
+
+        final Double updatedZ = 999.0;
+
+        Assert.assertNotSame("z for tile '" + tileIdA + "' should differ from update value",
+                             updatedZ, zBeforeUpdateA);
+        Assert.assertNotSame("z for tile '" + tileIdB + "' should differ from update value",
+                             updatedZ, zBeforeUpdateB);
+
+        dao.updateZForTiles(stackId, updatedZ, tileIds);
+
+        final Double zAfterUpdateA = dao.getTileSpec(stackId, tileIdA, false).getZ();
+        final Double zAfterUpdateB = dao.getTileSpec(stackId, tileIdB, false).getZ();
+
+        Assert.assertEquals("z not updated for tile '" + tileIdA + "'", updatedZ, zAfterUpdateA);
+        Assert.assertEquals("z not updated for tile '" + tileIdB + "'", updatedZ, zAfterUpdateB);
     }
 
     public static void validateStackMetaData(final String context,

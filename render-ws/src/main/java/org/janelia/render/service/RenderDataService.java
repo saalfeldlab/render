@@ -370,6 +370,48 @@ public class RenderDataService {
         return list;
     }
 
+    @Path("project/{project}/stack/{stack}/z/{z}/tileIds")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Section Data APIs",
+            value = "Set z value for specified tiles (e.g. to split a layer)")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack not in LOADING state"),
+            @ApiResponse(code = 404, message = "stack not found"),
+    })
+    public Response updateZForTiles(@PathParam("owner") final String owner,
+                                    @PathParam("project") final String project,
+                                    @PathParam("stack") final String stack,
+                                    @PathParam("z") final Double z,
+                                    @Context final UriInfo uriInfo,
+                                    final List<String> tileIds) {
+        LOG.info("updateZForTiles: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
+
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = getStackMetaData(stackId);
+
+            if (! stackMetaData.isLoading()) {
+                throw new IllegalStateException("Z values can only be updated for stacks in the " +
+                                                LOADING + " state, but this stack's state is " +
+                                                stackMetaData.getState() + ".");
+            }
+
+            renderDao.updateZForTiles(stackId, z, tileIds);
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
+
+        LOG.info("updateZForTiles: exit");
+
+        return responseBuilder.build();
+    }
+
     @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
     @GET
     @Produces(MediaType.APPLICATION_JSON)

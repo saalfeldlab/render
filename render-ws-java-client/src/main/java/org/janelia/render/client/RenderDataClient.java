@@ -404,6 +404,36 @@ public class RenderDataClient {
     }
 
     /**
+     * Updates the z value for the specified tiles.
+     *
+     * @param  stack    name of stack.
+     * @param  z        new z value for specified tiles.
+     * @param  tileIds  list of tiles to update.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void updateZForTiles(final String stack,
+                                final Double z,
+                                final List<String> tileIds)
+            throws IOException {
+
+        final String json = JsonUtils.FAST_MAPPER.writeValueAsString(tileIds);
+        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+        final URI uri = getUri(getZUrlString(stack, z) + "/tileIds");
+        final String requestContext = "PUT " + uri;
+        final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        LOG.info("updateZForTiles: submitting {} for {} tileIds",
+                 requestContext, tileIds.size());
+
+        httpClient.execute(httpPut, responseHandler);
+    }
+
+    /**
      * @param  stack  name of stack.
      * @param  z      z value for layer.
      *

@@ -734,6 +734,25 @@ public class RenderDao {
                   result.getModifiedCount(), MongoUtil.fullName(tileCollection), query.toJson(), update.toJson());
     }
 
+    public void updateZForTiles(final StackId stackId,
+                                final Double z,
+                                final List<String> tileIds)
+            throws IllegalArgumentException, IllegalStateException {
+
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("z", z);
+        MongoUtil.validateRequiredParameter("tileIds", tileIds);
+
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+        final Document query = new Document("tileId", new Document("$in", tileIds));
+        final Document update = new Document("$set", new Document("z", z));
+
+        final UpdateResult result = tileCollection.updateMany(query, update);
+
+        final String shortQueryForLog = "{ 'tileId': { '$in': [ " + tileIds.size() + " tile ids ... ] } }";
+        LOG.debug("updateZForTiles: updated {} tile specs with {}.update({},{})",
+                  result.getModifiedCount(), MongoUtil.fullName(tileCollection), shortQueryForLog, update.toJson());
+    }
 
     /**
      * @return list of section data objects for the specified stackId.
