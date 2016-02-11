@@ -57,7 +57,7 @@ public class RenderImageService {
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(
             tags = "Spec Image APIs",
-            value = "Render JPEG image from a provide spec")
+            value = "Render JPEG image from a provided spec")
     public Response renderJpegImageFromProvidedParameters(final RenderParameters renderParameters) {
         return RenderServiceUtil.renderImageStream(renderParameters,
                                                    Utils.JPEG_FORMAT,
@@ -73,7 +73,7 @@ public class RenderImageService {
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(
             tags = "Spec Image APIs",
-            value = "Render PNG image from a provide spec")
+            value = "Render PNG image from a provided spec")
     public Response renderPngImageFromProvidedParameters(final RenderParameters renderParameters) {
         return RenderServiceUtil.renderImageStream(renderParameters,
                                                    Utils.PNG_FORMAT,
@@ -88,7 +88,7 @@ public class RenderImageService {
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
     @ApiOperation(
             tags = "Spec Image APIs",
-            value = "Render TIFF image from a provide spec")
+            value = "Render TIFF image from a provided spec")
     public Response renderTiffImageFromProvidedParameters(final RenderParameters renderParameters) {
         return RenderServiceUtil.renderImageStream(renderParameters,
                                                    Utils.TIFF_FORMAT,
