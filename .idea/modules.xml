@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/docs/docs.iml" filepath="$PROJECT_DIR$/docs/docs.iml" />
       <module fileurl="file://$PROJECT_DIR$/render.iml" filepath="$PROJECT_DIR$/render.iml" />
       <module fileurl="file://$PROJECT_DIR$/render-app/render-app.iml" filepath="$PROJECT_DIR$/render-app/render-app.iml" />
       <module fileurl="file://$PROJECT_DIR$/render-ws/render-ws.iml" filepath="$PROJECT_DIR$/render-ws/render-ws.iml" />
@@ -10,4 +11,3 @@
     </modules>
   </component>
 </project>
-

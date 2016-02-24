@@ -47,8 +47,15 @@
         <processorPath useClasspath="true" />
         <module name="trakem2-scripts" />
       </profile>
+      <profile default="false" name="Annotation profile for docs" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="true" />
+      </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="docs" target="1.7" />
       <module name="render" target="1.5" />
       <module name="render-app" target="1.7" />
       <module name="render-ws" target="1.7" />

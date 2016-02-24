@@ -1,0 +1,4913 @@
+{
+  "swagger" : "2.0",
+  "info" : {
+    "version" : "v1",
+    "title" : "flyTEM Web Service APIs",
+    "contact" : {
+      "name" : "Eric Trautman"
+    }
+  },
+  "host" : "localhost:8080",
+  "basePath" : "/render-ws",
+  "tags" : [ {
+    "name" : "Tile Image APIs"
+  }, {
+    "name" : "Validation APIs"
+  }, {
+    "name" : "Point Match APIs"
+  }, {
+    "name" : "Render Data APIs"
+  }, {
+    "name" : "Layout Data APIs"
+  }, {
+    "name" : "Stack Data APIs"
+  }, {
+    "name" : "Section Data APIs"
+  }, {
+    "name" : "Transform Data APIs"
+  }, {
+    "name" : "Bounding Box Data APIs"
+  }, {
+    "name" : "Coordinate Mapping APIs"
+  }, {
+    "name" : "Tile Data APIs"
+  }, {
+    "name" : "Stack Management APIs"
+  }, {
+    "name" : "Image APIs"
+  }, {
+    "name" : "Spec Image APIs"
+  }, {
+    "name" : "Section Image APIs"
+  }, {
+    "name" : "Bounding Box Image APIs"
+  } ],
+  "schemes" : [ "http" ],
+  "paths" : {
+    "/v1/likelyUniqueId" : {
+      "get" : {
+        "tags" : [ "Stack Management APIs" ],
+        "summary" : "A (very likely) globally unique identifier",
+        "description" : "",
+        "operationId" : "getUniqueId",
+        "produces" : [ "text/plain" ],
+        "parameters" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/jpeg-image" : {
+      "put" : {
+        "tags" : [ "Spec Image APIs" ],
+        "summary" : "Render JPEG image from a provided spec",
+        "description" : "",
+        "operationId" : "renderJpegImageFromProvidedParameters",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "image/jpeg" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/RenderParameters"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/local-to-world-coordinates/{x},{y}" : {
+      "put" : {
+        "tags" : [ "Coordinate Mapping APIs" ],
+        "summary" : "Derive world coordinates for specified local coordinates using provided tile spec",
+        "description" : "",
+        "operationId" : "getWorldCoordinates",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/TileSpec"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "type" : "number",
+                "format" : "double"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup" : {
+      "get" : {
+        "tags" : [ "Point Match APIs" ],
+        "summary" : "Find matches outside the specified group",
+        "description" : "Find all matches with one tile in the specified layer and another tile outside that layer.",
+        "operationId" : "getMatchesOutsideGroup",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "matchCollection",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "groupId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/A canvas match is the set of all weighted point correspondences between two canvases."
+              }
+            }
+          },
+          "404" : {
+            "description" : "Match collection not found"
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Point Match APIs" ],
+        "summary" : "Delete matches outside the specified group",
+        "description" : "Delete all matches with one tile in the specified layer and another tile outside that layer.",
+        "operationId" : "deleteMatchesOutsideGroup",
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "matchCollection",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "groupId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "404" : {
+            "description" : "Match collection not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesWithinGroup" : {
+      "get" : {
+        "tags" : [ "Point Match APIs" ],
+        "summary" : "Find matches within the specified group",
+        "description" : "Find all matches where both tiles are in the specified layer.",
+        "operationId" : "getMatchesWithinGroup",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "matchCollection",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "groupId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/A canvas match is the set of all weighted point correspondences between two canvases."
+              }
+            }
+          },
+          "404" : {
+            "description" : "Match collection not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}" : {
+      "get" : {
+        "tags" : [ "Point Match APIs" ],
+        "summary" : "Find matches between the specified objects",
+        "description" : "Find all matches between two specific tiles.",
+        "operationId" : "getMatchesBetweenObjects",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "matchCollection",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "pGroupId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "pId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "qGroupId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "qId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/A canvas match is the set of all weighted point correspondences between two canvases."
+              }
+            }
+          },
+          "404" : {
+            "description" : "Match collection not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/matchesWith/{qGroupId}" : {
+      "get" : {
+        "tags" : [ "Point Match APIs" ],
+        "summary" : "Find matches between the specified groups",
+        "description" : "Find all matches with one tile in the specified p layer and another tile in the specified q layer.",
+        "operationId" : "getMatchesBetweenGroups",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "matchCollection",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "pGroupId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "qGroupId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/A canvas match is the set of all weighted point correspondences between two canvases."
+              }
+            }
+          },
+          "404" : {
+            "description" : "Match collection not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/matchCollection/{matchCollection}/matches" : {
+      "put" : {
+        "tags" : [ "Point Match APIs" ],
+        "summary" : "Save a set of matches",
+        "description" : "Inserts or updates matches for the specified collection.",
+        "operationId" : "saveMatches",
+        "consumes" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "matchCollection",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/A canvas match is the set of all weighted point correspondences between two canvases."
+            }
+          }
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "matches successfully saved"
+          },
+          "400" : {
+            "description" : "If no matches are provided"
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Point Match APIs" ],
+        "summary" : "Delete all matches in the collection",
+        "description" : "Use this wisely.",
+        "operationId" : "deleteAllMatches",
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "matchCollection",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "404" : {
+            "description" : "Match collection not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/png-image" : {
+      "put" : {
+        "tags" : [ "Spec Image APIs" ],
+        "summary" : "Render PNG image from a provided spec",
+        "description" : "",
+        "operationId" : "renderPngImageFromProvidedParameters",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "image/png" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/RenderParameters"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{fromProject}/stack/{fromStack}/cloneTo/{toStack}" : {
+      "put" : {
+        "tags" : [ "Stack Data APIs", "Stack Management APIs" ],
+        "summary" : "Clones one stack to another",
+        "description" : "This operation copies all fromStack tiles and transformations to a new stack with the specified metadata.  This is a potentially long running operation (depending upon the size of the fromStack).",
+        "operationId" : "cloneStackVersion",
+        "consumes" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "fromProject",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "fromStack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "toStack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "query",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "collectionFormat" : "csv"
+        }, {
+          "name" : "toProject",
+          "in" : "query",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "skipTransforms",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/StackVersion"
+          }
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "stack successfully cloned"
+          },
+          "400" : {
+            "description" : "toStack already exists"
+          },
+          "404" : {
+            "description" : "fromStack not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}" : {
+      "get" : {
+        "tags" : [ "Stack Data APIs" ],
+        "summary" : "Metadata for the specified stack",
+        "description" : "",
+        "operationId" : "getStackMetaData",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/StackMetaData"
+            }
+          },
+          "404" : {
+            "description" : "Stack not found"
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Stack Data APIs", "Stack Management APIs" ],
+        "summary" : "Saves new version of stack metadata",
+        "description" : "",
+        "operationId" : "saveStackVersion",
+        "consumes" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/StackVersion"
+          }
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "stackVersion successfully created"
+          },
+          "400" : {
+            "description" : "stackVersion not specified"
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Stack Data APIs", "Stack Management APIs" ],
+        "summary" : "Deletes specified stack",
+        "description" : "Deletes all tiles, transformations, meta data, and unsaved snapshot data for the stack.",
+        "operationId" : "deleteStack",
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/bounds" : {
+      "get" : {
+        "tags" : [ "Stack Data APIs", "Stack Management APIs" ],
+        "summary" : "Bounds for the specified stack",
+        "description" : "",
+        "operationId" : "getStackBounds",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/Bounds"
+            }
+          },
+          "400" : {
+            "description" : "stack bounds not available"
+          },
+          "404" : {
+            "description" : "stack not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image" : {
+      "get" : {
+        "tags" : [ "Bounding Box Image APIs" ],
+        "summary" : "Render JPEG image for the specified bounding box and groupId",
+        "description" : "",
+        "operationId" : "renderJpegImageForGroupBox",
+        "produces" : [ "image/jpeg" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "groupId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "scale",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image" : {
+      "get" : {
+        "tags" : [ "Bounding Box Image APIs" ],
+        "summary" : "Render PNG image for the specified bounding box and groupId",
+        "description" : "",
+        "operationId" : "renderPngImageForGroupBox",
+        "produces" : [ "image/png" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "groupId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "scale",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters" : {
+      "get" : {
+        "tags" : [ "Bounding Box Data APIs" ],
+        "summary" : "Get parameters to render all tiles within the specified group and box",
+        "description" : "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.",
+        "operationId" : "getExternalRenderParameters",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "groupId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "scale",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "convertToGray",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/RenderParameters"
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image" : {
+      "get" : {
+        "tags" : [ "Bounding Box Image APIs" ],
+        "summary" : "Render TIFF image for the specified bounding box and groupId",
+        "description" : "",
+        "operationId" : "renderTiffImageForGroupBox",
+        "produces" : [ "image/tiff" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "groupId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "scale",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/small/{z}.jpg" : {
+      "get" : {
+        "tags" : [ "Bounding Box Image APIs" ],
+        "summary" : "Render JPEG image for the specified large data (type 5) section overview",
+        "description" : "",
+        "operationId" : "renderLargeDataOverviewJpeg",
+        "produces" : [ "image/jpeg" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "maxOverviewWidthAndHeight",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/small/{z}.png" : {
+      "get" : {
+        "tags" : [ "Bounding Box Image APIs" ],
+        "summary" : "Render PNG image for the specified large data (type 5) section overview",
+        "description" : "",
+        "operationId" : "renderLargeDataOverviewPng",
+        "produces" : [ "image/png" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "maxOverviewWidthAndHeight",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.jpg" : {
+      "get" : {
+        "tags" : [ "Bounding Box Image APIs" ],
+        "summary" : "Render JPEG image for the specified large data (type 5) tile",
+        "description" : "",
+        "operationId" : "renderLargeDataTileSourceJpeg",
+        "produces" : [ "image/jpeg" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "level",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "row",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "column",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.png" : {
+      "get" : {
+        "tags" : [ "Bounding Box Image APIs" ],
+        "summary" : "Render PNG image for the specified large data (type 5) tile",
+        "description" : "",
+        "operationId" : "renderLargeDataTileSourcePng",
+        "produces" : [ "image/png" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "level",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "row",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "column",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/layoutFile" : {
+      "get" : {
+        "tags" : [ "Layout Data APIs" ],
+        "summary" : "Get layout file text for all stack layers",
+        "description" : "",
+        "operationId" : "getLayoutFile",
+        "produces" : [ "text/plain" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/mergeableData" : {
+      "get" : {
+        "tags" : [ "Stack Data APIs" ],
+        "summary" : "List plain text data for all mergeable sections in specified stack",
+        "description" : "Data format is 'toIndex < fromIndex : toZ < fromZ'.  Only layers with both an integral (.0) and at least one non-integral (e.g. .1) section are included.",
+        "operationId" : "getMergeableData",
+        "produces" : [ "text/plain" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          "400" : {
+            "description" : "section data not generated"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/mergeableZValues" : {
+      "get" : {
+        "tags" : [ "Stack Data APIs" ],
+        "summary" : "List z values for all mergeable layers in specified stack",
+        "description" : "Only layers with both an integral (.0) and at least one non-integral (e.g. .1) section are included.",
+        "operationId" : "getMergeableZValues",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "type" : "number",
+                "format" : "double"
+              }
+            }
+          },
+          "400" : {
+            "description" : "section data not generated"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/mergedZValues" : {
+      "get" : {
+        "tags" : [ "Stack Data APIs" ],
+        "summary" : "List z values for all merged sections in specified stack",
+        "description" : "",
+        "operationId" : "getMergedZValues",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "type" : "number",
+                "format" : "double"
+              }
+            }
+          },
+          "400" : {
+            "description" : "section data not generated"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/reorderedSectionData" : {
+      "get" : {
+        "tags" : [ "Stack Data APIs" ],
+        "summary" : "List z and sectionId for all reordered sections in specified stack",
+        "description" : "",
+        "operationId" : "getReorderedSectionData",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/SectionData"
+              }
+            }
+          },
+          "400" : {
+            "description" : "section data not generated"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/resolvedTiles" : {
+      "get" : {
+        "tags" : [ "Stack Data APIs" ],
+        "summary" : "Get raw tile and transform specs for specified group or bounding box",
+        "description" : "",
+        "operationId" : "getResolvedTiles",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "minZ",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "maxZ",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "groupId",
+          "in" : "query",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "minX",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "maxX",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "minY",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "maxY",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/ResolvedTileSpecCollection"
+            }
+          },
+          "400" : {
+            "description" : "too many (> 50,000) matching tiles found"
+          },
+          "404" : {
+            "description" : "no tile specs found"
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Stack Data APIs" ],
+        "summary" : "Save specified raw tile and transform specs",
+        "description" : "",
+        "operationId" : "saveResolvedTiles",
+        "consumes" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/ResolvedTileSpecCollection"
+          }
+        } ],
+        "responses" : {
+          "400" : {
+            "description" : "stack not in LOADING state, invalid data provided"
+          },
+          "404" : {
+            "description" : "stack not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/section/{sectionId}" : {
+      "delete" : {
+        "tags" : [ "Section Data APIs", "Stack Management APIs" ],
+        "summary" : "Deletes all tiles in section",
+        "description" : "Deletes all tiles in the specified stack with the specified sectionId value.  This operation can only be performed against stacks in the LOADING state",
+        "operationId" : "deleteStackTilesWithSectionId",
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "sectionId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "400" : {
+            "description" : "stack state is not LOADING"
+          },
+          "404" : {
+            "description" : "stack not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/section/{sectionId}/z" : {
+      "get" : {
+        "tags" : [ "Section Data APIs" ],
+        "summary" : "Get z value for section",
+        "description" : "",
+        "operationId" : "getZForSection",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "sectionId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "number",
+              "format" : "double"
+            }
+          },
+          "404" : {
+            "description" : "stack or section not found"
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Section Data APIs" ],
+        "summary" : "Set z value for section",
+        "description" : "",
+        "operationId" : "updateZForSection",
+        "consumes" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "sectionId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "type" : "number",
+            "format" : "double"
+          }
+        } ],
+        "responses" : {
+          "400" : {
+            "description" : "stack not in LOADING state"
+          },
+          "404" : {
+            "description" : "stack not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/sectionData" : {
+      "get" : {
+        "tags" : [ "Stack Data APIs" ],
+        "summary" : "List z and sectionId for all sections in specified stack",
+        "description" : "",
+        "operationId" : "getSectionData",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/SectionData"
+              }
+            }
+          },
+          "400" : {
+            "description" : "section data not generated"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/state/{state}" : {
+      "put" : {
+        "tags" : [ "Stack Data APIs", "Stack Management APIs" ],
+        "summary" : "Sets the stack's current state",
+        "description" : "Transitions stack from LOADING to COMPLETE to OFFLINE.  Transitioning to COMPLETE is a potentially long running operation since it creates indexes and aggregates meta data.",
+        "operationId" : "setStackState",
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "state",
+          "in" : "path",
+          "required" : true,
+          "type" : "string",
+          "enum" : [ "LOADING", "COMPLETE", "OFFLINE" ]
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "state successfully changed"
+          },
+          "400" : {
+            "description" : "stack state cannot be changed because of current state"
+          },
+          "404" : {
+            "description" : "stack not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}" : {
+      "get" : {
+        "tags" : [ "Tile Data APIs" ],
+        "summary" : "Get tile spec",
+        "description" : "",
+        "operationId" : "getTileSpec",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/TileSpec"
+            }
+          },
+          "404" : {
+            "description" : "tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/jpeg-image" : {
+      "get" : {
+        "tags" : [ "Tile Image APIs" ],
+        "summary" : "Render JPEG image for a tile",
+        "description" : "",
+        "operationId" : "renderJpegImageForTile",
+        "produces" : [ "image/jpeg" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "404" : {
+            "description" : "Tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/local-to-world-coordinates/{x},{y}" : {
+      "get" : {
+        "tags" : [ "Coordinate Mapping APIs" ],
+        "summary" : "Derive world coordinates for specified tile local coordinates",
+        "description" : "",
+        "operationId" : "getWorldCoordinates",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/TileCoordinates"
+            }
+          },
+          "404" : {
+            "description" : "tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/mask/jpeg-image" : {
+      "get" : {
+        "tags" : [ "Tile Image APIs" ],
+        "summary" : "Render tile's mask image without transformations in JPEG format",
+        "description" : "",
+        "operationId" : "renderJpegMaskImageForTile",
+        "produces" : [ "image/jpeg" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "404" : {
+            "description" : "Tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/mask/png-image" : {
+      "get" : {
+        "tags" : [ "Tile Image APIs" ],
+        "summary" : "Render tile's mask image without transformations in PNG format",
+        "description" : "",
+        "operationId" : "renderPngMaskImageForTile",
+        "produces" : [ "image/png" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "404" : {
+            "description" : "Tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/render-parameters" : {
+      "get" : {
+        "tags" : [ "Tile Data APIs" ],
+        "summary" : "Get parameters for rendering tile mask image (without transformations)",
+        "description" : "",
+        "operationId" : "getTileMaskRenderParameters",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/RenderParameters"
+            }
+          },
+          "404" : {
+            "description" : "tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/mask/tiff-image" : {
+      "get" : {
+        "tags" : [ "Tile Image APIs" ],
+        "summary" : "Render tile's mask image without transformations in TIFF format",
+        "description" : "",
+        "operationId" : "renderTiffMaskImageForTile",
+        "produces" : [ "image/tiff" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "404" : {
+            "description" : "Tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/png-image" : {
+      "get" : {
+        "tags" : [ "Tile Image APIs" ],
+        "summary" : "Render PNG image for a tile",
+        "description" : "",
+        "operationId" : "renderPngImageForTile",
+        "produces" : [ "image/png" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "404" : {
+            "description" : "Tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/render-parameters" : {
+      "get" : {
+        "tags" : [ "Tile Data APIs" ],
+        "summary" : "Get parameters for rendering 'uniform' tile",
+        "description" : "The returned x, y, width, and height parameters are uniform for all tiles in the stack.",
+        "operationId" : "getRenderParameters",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/RenderParameters"
+            }
+          },
+          "404" : {
+            "description" : "tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/source/jpeg-image" : {
+      "get" : {
+        "tags" : [ "Tile Image APIs" ],
+        "summary" : "Render tile's source image without transformations in JPEG format",
+        "description" : "",
+        "operationId" : "renderJpegSourceImageForTile",
+        "produces" : [ "image/jpeg" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "404" : {
+            "description" : "Tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/source/png-image" : {
+      "get" : {
+        "tags" : [ "Tile Image APIs" ],
+        "summary" : "Render tile's source image without transformations in PNG format",
+        "description" : "",
+        "operationId" : "renderPngSourceImageForTile",
+        "produces" : [ "image/png" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "404" : {
+            "description" : "Tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/render-parameters" : {
+      "get" : {
+        "tags" : [ "Tile Data APIs" ],
+        "summary" : "Get parameters for rendering tile source image (without transformations or mask)",
+        "description" : "",
+        "operationId" : "getTileSourceRenderParameters",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/RenderParameters"
+            }
+          },
+          "404" : {
+            "description" : "tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/source/tiff-image" : {
+      "get" : {
+        "tags" : [ "Tile Image APIs" ],
+        "summary" : "Render tile's source image without transformations in TIFF format",
+        "description" : "",
+        "operationId" : "renderTiffSourceImageForTile",
+        "produces" : [ "image/tiff" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "404" : {
+            "description" : "Tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/tiff-image" : {
+      "get" : {
+        "tags" : [ "Tile Image APIs" ],
+        "summary" : "Render TIFF image for a tile",
+        "description" : "",
+        "operationId" : "renderTiffImageForTile",
+        "produces" : [ "image/tiff" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "404" : {
+            "description" : "Tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/jpeg-image" : {
+      "get" : {
+        "tags" : [ "Tile Image APIs" ],
+        "summary" : "Render tile with its neighbors in JPEG format",
+        "description" : "",
+        "operationId" : "renderJpegTileWithNeighborsImage",
+        "produces" : [ "image/jpeg" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "convertToGray",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "widthFactor",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "heightFactor",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "boundingBoxesOnly",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "404" : {
+            "description" : "Tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/render-parameters" : {
+      "get" : {
+        "tags" : [ "Tile Data APIs" ],
+        "summary" : "Get parameters for rendering a tile with its neighbors",
+        "description" : "",
+        "operationId" : "getTileWithNeighborsRenderParameters",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "tileId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "widthFactor",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "heightFactor",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "convertToGray",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/RenderParameters"
+            }
+          },
+          "404" : {
+            "description" : "tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/tileIds" : {
+      "get" : {
+        "tags" : [ "Stack Data APIs" ],
+        "summary" : "Tile IDs for the specified stack",
+        "description" : "For stacks with large numbers of tiles, this will produce a large amount of data (e.g. 500MB for 18 million tiles) - use wisely.",
+        "operationId" : "getStackTileIds",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/transform/{transformId}" : {
+      "get" : {
+        "tags" : [ "Transform Data APIs" ],
+        "summary" : "Get transform spec",
+        "description" : "",
+        "operationId" : "getTransformSpec",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "transformId",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/TransformSpec"
+            }
+          },
+          "404" : {
+            "description" : "transform not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}" : {
+      "delete" : {
+        "tags" : [ "Section Data APIs", "Stack Management APIs" ],
+        "summary" : "Deletes all tiles in layer",
+        "description" : "Deletes all tiles in the specified stack with the specified z value.  This operation can only be performed against stacks in the LOADING state",
+        "operationId" : "deleteStackTilesWithZ",
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        } ],
+        "responses" : {
+          "400" : {
+            "description" : "stack state is not LOADING"
+          },
+          "404" : {
+            "description" : "stack not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/bounds" : {
+      "get" : {
+        "tags" : [ "Section Data APIs" ],
+        "summary" : "Get bounds for section with specified z",
+        "description" : "",
+        "operationId" : "getLayerBounds",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/Bounds"
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image" : {
+      "get" : {
+        "tags" : [ "Bounding Box Image APIs" ],
+        "summary" : "Render JPEG image for the specified bounding box",
+        "description" : "",
+        "operationId" : "renderJpegImageForBox",
+        "produces" : [ "image/jpeg" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "scale",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image" : {
+      "get" : {
+        "tags" : [ "Bounding Box Image APIs" ],
+        "summary" : "Render PNG image for the specified bounding box",
+        "description" : "",
+        "operationId" : "renderPngImageForBox",
+        "produces" : [ "image/png" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "scale",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters" : {
+      "get" : {
+        "tags" : [ "Bounding Box Data APIs" ],
+        "summary" : "Get parameters to render all tiles within the specified box",
+        "description" : "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.",
+        "operationId" : "getExternalRenderParameters",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "scale",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "convertToGray",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/RenderParameters"
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image" : {
+      "get" : {
+        "tags" : [ "Bounding Box Image APIs" ],
+        "summary" : "Render TIFF image for the specified bounding box",
+        "description" : "",
+        "operationId" : "renderTiffImageForBox",
+        "produces" : [ "image/tiff" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "scale",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "binaryMask",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height}/tile-count" : {
+      "get" : {
+        "tags" : [ "Bounding Box Data APIs" ],
+        "summary" : "Get number of tiles within box",
+        "description" : "",
+        "operationId" : "getTileCount",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "width",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "height",
+          "in" : "path",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/jpeg-image" : {
+      "get" : {
+        "tags" : [ "Section Image APIs" ],
+        "summary" : "Render JPEG image for a section",
+        "description" : "",
+        "operationId" : "renderJpegImageForZ",
+        "produces" : [ "image/jpeg" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/local-to-world-coordinates" : {
+      "put" : {
+        "tags" : [ "Coordinate Mapping APIs" ],
+        "summary" : "Derive array of world coordinates for provided tile local coordinates",
+        "description" : "",
+        "operationId" : "getWorldCoordinates",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/TileCoordinates"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/TileCoordinates"
+              }
+            }
+          },
+          "400" : {
+            "description" : "missing tile or coordinate data"
+          },
+          "404" : {
+            "description" : "tile not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/png-image" : {
+      "get" : {
+        "tags" : [ "Section Image APIs" ],
+        "summary" : "Render PNG image for a section",
+        "description" : "",
+        "operationId" : "renderPngImageForZ",
+        "produces" : [ "image/png" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/render-parameters" : {
+      "get" : {
+        "tags" : [ "Section Data APIs" ],
+        "summary" : "Get parameters to render all tiles with the specified z",
+        "description" : "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.",
+        "operationId" : "getRenderParametersForZ",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/RenderParameters"
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/resolvedTiles" : {
+      "get" : {
+        "tags" : [ "Section Data APIs" ],
+        "summary" : "Get raw tile and transform specs for section with specified z",
+        "description" : "",
+        "operationId" : "getResolvedTiles",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/ResolvedTileSpecCollection"
+            }
+          },
+          "400" : {
+            "description" : "too many (> 50,000) tiles in section"
+          },
+          "404" : {
+            "description" : "no tile specs found"
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Section Data APIs" ],
+        "summary" : "Save specified raw tile and transform specs for section",
+        "description" : "",
+        "operationId" : "saveResolvedTilesForZ",
+        "consumes" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/ResolvedTileSpecCollection"
+          }
+        } ],
+        "responses" : {
+          "400" : {
+            "description" : "stack not in LOADING state, invalid data provided"
+          },
+          "404" : {
+            "description" : "stack not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/tiff-image" : {
+      "get" : {
+        "tags" : [ "Section Image APIs" ],
+        "summary" : "Render TIFF image for a section",
+        "description" : "",
+        "operationId" : "renderTiffImageForZ",
+        "produces" : [ "image/tiff" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "scale",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "filter",
+          "in" : "query",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "maxTileSpecsToRender",
+          "in" : "query",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/tile-specs" : {
+      "get" : {
+        "tags" : [ "Section Data APIs" ],
+        "summary" : "Get flattened tile specs with the specified z",
+        "description" : "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.",
+        "operationId" : "getTileSpecsForZ",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/TileSpec"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/tileBounds" : {
+      "get" : {
+        "tags" : [ "Section Data APIs" ],
+        "summary" : "Get bounds for each tile with specified z",
+        "description" : "",
+        "operationId" : "getTileBounds",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/TileBounds"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/tileIds" : {
+      "put" : {
+        "tags" : [ "Section Data APIs" ],
+        "summary" : "Set z value for specified tiles (e.g. to split a layer)",
+        "description" : "",
+        "operationId" : "updateZForTiles",
+        "consumes" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        } ],
+        "responses" : {
+          "400" : {
+            "description" : "stack not in LOADING state"
+          },
+          "404" : {
+            "description" : "stack not found"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/tileIdsForCoordinates" : {
+      "put" : {
+        "tags" : [ "Coordinate Mapping APIs" ],
+        "summary" : "Map world coordinates to tileId(s)",
+        "description" : "Locates all tiles that contain each specified world coordinate.  An array of arrays of coordinates with tileIds are then returned.",
+        "operationId" : "getTileIdsForCoordinates",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/TileCoordinates"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/TileCoordinates"
+              }
+            }
+          },
+          "400" : {
+            "description" : "problem with specified coordinates"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/world-to-local-coordinates" : {
+      "put" : {
+        "tags" : [ "Coordinate Mapping APIs" ],
+        "summary" : "Derive array of arrays of local coordinates for provided array of world coordinates",
+        "description" : "World coordinates can map to multiple (overlapping) tiles.  For each provided world coordinate, an array of local coordinates, one element per tile, is returned with the visible (last drawn) tile marked.",
+        "operationId" : "getLocalCoordinates",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/TileCoordinates"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/definitions/TileCoordinates"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "missing tile or coordinate data"
+          },
+          "500" : {
+            "description" : "coordinates not invertible"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/world-to-local-coordinates/{x},{y}" : {
+      "get" : {
+        "tags" : [ "Coordinate Mapping APIs" ],
+        "summary" : "Derive array of local coordinates for specified world coordinates",
+        "description" : "World coordinates can map to multiple (overlapping) tiles.  An array of local coordinates, one element per tile, is returned with the visible (last drawn) tile marked.",
+        "operationId" : "getLocalCoordinates",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "z",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/TileCoordinates"
+              }
+            }
+          },
+          "500" : {
+            "description" : "coordinates not invertible"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/zRange/{minZ},{maxZ}/layoutFile" : {
+      "get" : {
+        "tags" : [ "Layout Data APIs" ],
+        "summary" : "Get layout file text for specified stack layers",
+        "description" : "",
+        "operationId" : "getLayoutFileForZRange",
+        "produces" : [ "text/plain" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "minZ",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "maxZ",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/project/{project}/stack/{stack}/zValues" : {
+      "get" : {
+        "tags" : [ "Stack Data APIs" ],
+        "summary" : "List z values for specified stack",
+        "description" : "",
+        "operationId" : "getZValues",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "project",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "stack",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "type" : "number",
+                "format" : "double"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/stackIds" : {
+      "get" : {
+        "tags" : [ "Stack Management APIs" ],
+        "summary" : "List of stack identifiers for the specified owner",
+        "description" : "",
+        "operationId" : "getStackIds",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/StackId"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/stacks" : {
+      "get" : {
+        "tags" : [ "Stack Management APIs" ],
+        "summary" : "List of stack metadata for the specified owner",
+        "description" : "",
+        "operationId" : "getStackMetaDataListForOwner",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/StackMetaData"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/tiff-image" : {
+      "put" : {
+        "tags" : [ "Spec Image APIs" ],
+        "summary" : "Render TIFF image from a provided spec",
+        "description" : "",
+        "operationId" : "renderTiffImageFromProvidedParameters",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "image/tiff" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/RenderParameters"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/validate-json/render" : {
+      "put" : {
+        "tags" : [ "Validation APIs" ],
+        "operationId" : "validateRenderParametersJson",
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/validate-json/tile" : {
+      "put" : {
+        "tags" : [ "Validation APIs" ],
+        "operationId" : "validateTileJson",
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/validate-json/tile-array" : {
+      "put" : {
+        "tags" : [ "Validation APIs" ],
+        "operationId" : "validateTileJsonArray",
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/validate-json/transform" : {
+      "put" : {
+        "tags" : [ "Validation APIs" ],
+        "operationId" : "validateTransformJson",
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/validate-json/transform-array" : {
+      "put" : {
+        "tags" : [ "Validation APIs" ],
+        "operationId" : "validateTransformJsonArray",
+        "parameters" : [ {
+          "name" : "owner",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation"
+          }
+        }
+      }
+    },
+    "/v1/owner/{owner}/world-to-local-coordinates/{x},{y}" : {
+      "put" : {
+        "tags" : [ "Coordinate Mapping APIs" ],
+        "summary" : "Derive local coordinates for specified world coordinates using provided tile spec",
+        "description" : "",
+        "operationId" : "getLocalCoordinates",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "x",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "y",
+          "in" : "path",
+          "required" : true,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "name" : "meshCellSize",
+          "in" : "query",
+          "required" : false,
+          "type" : "number",
+          "format" : "double"
+        }, {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/TileSpec"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "type" : "number",
+                "format" : "double"
+              }
+            }
+          },
+          "500" : {
+            "description" : "coordinates not invertible"
+          }
+        }
+      }
+    },
+    "/v1/owners" : {
+      "get" : {
+        "tags" : [ "Stack Management APIs" ],
+        "summary" : "List of all data owners",
+        "description" : "",
+        "operationId" : "getOwners",
+        "produces" : [ "application/json" ],
+        "parameters" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions" : {
+    "CoordinateTransformListCoordinateTransform" : {
+      "type" : "object"
+    },
+    "CanvasMatches" : {
+      "type" : "object",
+      "description" : "The set of all weighted point correspondences between two canvases.",
+      "required" : [ "matches", "pGroupId", "pId", "qGroupId", "qId" ],
+      "properties" : {
+        "pGroupId" : {
+          "type" : "string",
+          "description" : "Group (or section) identifier for all source coordinates"
+        },
+        "pId" : {
+          "type" : "string",
+          "description" : "Canvas (or tile) identifier for all source coordinates"
+        },
+        "qGroupId" : {
+          "type" : "string",
+          "description" : "Group (or section) identifier for all target coordinates"
+        },
+        "qId" : {
+          "type" : "string",
+          "description" : "Canvas (or tile) identifier for all target coordinates"
+        },
+        "matches" : {
+          "description" : "Weighted source-target point correspondences",
+          "$ref" : "#/definitions/Matches are a collection of n-dimensional weighted source-target point correspondences."
+        }
+      }
+    },
+    "StackTraceElement" : {
+      "type" : "object",
+      "properties" : {
+        "methodName" : {
+          "type" : "string"
+        },
+        "fileName" : {
+          "type" : "string"
+        },
+        "lineNumber" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "className" : {
+          "type" : "string"
+        },
+        "nativeMethod" : {
+          "type" : "boolean",
+          "default" : false
+        }
+      }
+    },
+    "StackMetaData" : {
+      "type" : "object",
+      "properties" : {
+        "stackId" : {
+          "$ref" : "#/definitions/StackId"
+        },
+        "state" : {
+          "type" : "string",
+          "enum" : [ "LOADING", "COMPLETE", "OFFLINE" ]
+        },
+        "lastModifiedTimestamp" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "currentVersionNumber" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "currentVersion" : {
+          "$ref" : "#/definitions/StackVersion"
+        },
+        "stats" : {
+          "$ref" : "#/definitions/StackStats"
+        },
+        "loading" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "currentMipmapPathBuilder" : {
+          "$ref" : "#/definitions/MipmapPathBuilder"
+        },
+        "currentMaterializedBoxRootPath" : {
+          "type" : "string"
+        },
+        "layoutWidth" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "layoutHeight" : {
+          "type" : "integer",
+          "format" : "int32"
+        }
+      }
+    },
+    "TileBounds" : {
+      "type" : "object",
+      "properties" : {
+        "minX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "minY" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "minZ" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "maxX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "maxY" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "maxZ" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "tileId" : {
+          "type" : "string"
+        },
+        "boundingBoxDefined" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "deltaX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "deltaY" : {
+          "type" : "number",
+          "format" : "double"
+        }
+      }
+    },
+    "EntryIntegerImageAndMask" : {
+      "type" : "object",
+      "properties" : {
+        "value" : {
+          "$ref" : "#/definitions/ImageAndMask"
+        },
+        "key" : {
+          "type" : "integer",
+          "format" : "int32"
+        }
+      }
+    },
+    "InterpolatedTransformSpec" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/TransformSpec"
+      }, {
+        "type" : "object",
+        "properties" : {
+        }
+      } ]
+    },
+    "MipmapPathBuilder" : {
+      "type" : "object",
+      "properties" : {
+        "numberOfLevels" : {
+          "type" : "integer",
+          "format" : "int32"
+        }
+      }
+    },
+    "StackStats" : {
+      "type" : "object",
+      "properties" : {
+        "stackBounds" : {
+          "$ref" : "#/definitions/Bounds"
+        },
+        "sectionCount" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "nonIntegralSectionCount" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "tileCount" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "transformCount" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "minTileWidth" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "maxTileWidth" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "minTileHeight" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "maxTileHeight" : {
+          "type" : "integer",
+          "format" : "int32"
+        }
+      }
+    },
+    "RenderParameters" : {
+      "type" : "object",
+      "properties" : {
+        "meshCellSize" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "minMeshCellSize" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "in" : {
+          "type" : "string"
+        },
+        "out" : {
+          "type" : "string"
+        },
+        "x" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "y" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "width" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "height" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "scale" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "areaOffset" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "convertToGray" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "quality" : {
+          "type" : "number",
+          "format" : "float"
+        },
+        "numberOfThreads" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "skipInterpolation" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "binaryMask" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "backgroundRGBColor" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "tileSpecs" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/TileSpec"
+          }
+        },
+        "minBoundsMinX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "minBoundsMinY" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "minBoundsMaxX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "minBoundsMaxY" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "res" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "outUri" : {
+          "type" : "string",
+          "format" : "uri"
+        }
+      }
+    },
+    "ResolvedTileSpecCollection" : {
+      "type" : "object",
+      "properties" : {
+        "tileCount" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "tileSpecs" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/TileSpec"
+          }
+        },
+        "transformCount" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "transformSpecs" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/TransformSpec"
+          }
+        }
+      }
+    },
+    "TileCoordinates" : {
+      "type" : "object",
+      "properties" : {
+        "tileId" : {
+          "type" : "string"
+        },
+        "visible" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "local" : {
+          "type" : "array",
+          "items" : {
+            "type" : "number",
+            "format" : "double"
+          }
+        },
+        "world" : {
+          "type" : "array",
+          "items" : {
+            "type" : "number",
+            "format" : "double"
+          }
+        }
+      }
+    },
+    "StackVersion" : {
+      "type" : "object",
+      "properties" : {
+        "createTimestamp" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "versionNotes" : {
+          "type" : "string"
+        },
+        "cycleNumber" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "cycleStepNumber" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "stackResolutionX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "stackResolutionY" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "stackResolutionZ" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "materializedBoxRootPath" : {
+          "type" : "string"
+        },
+        "mipmapPathBuilder" : {
+          "$ref" : "#/definitions/MipmapPathBuilder"
+        }
+      }
+    },
+    "ImageAndMask" : {
+      "type" : "object",
+      "properties" : {
+        "imageUrl" : {
+          "type" : "string"
+        },
+        "maskUrl" : {
+          "type" : "string"
+        },
+        "imageFilePath" : {
+          "type" : "string"
+        },
+        "maskFilePath" : {
+          "type" : "string"
+        }
+      }
+    },
+    "Matches are a collection of n-dimensional weighted source-target point correspondences." : {
+      "type" : "object",
+      "required" : [ "p", "q", "w" ],
+      "properties" : {
+        "p" : {
+          "type" : "array",
+          "description" : "Source point coordinates",
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "type" : "number",
+              "format" : "double"
+            }
+          }
+        },
+        "q" : {
+          "type" : "array",
+          "description" : "Target point coordinates",
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "type" : "number",
+              "format" : "double"
+            }
+          }
+        },
+        "w" : {
+          "type" : "array",
+          "description" : "Weights",
+          "items" : {
+            "type" : "number",
+            "format" : "double"
+          }
+        }
+      }
+    },
+    "Bounds" : {
+      "type" : "object",
+      "properties" : {
+        "minX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "minY" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "minZ" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "maxX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "maxY" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "maxZ" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "boundingBoxDefined" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "deltaX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "deltaY" : {
+          "type" : "number",
+          "format" : "double"
+        }
+      }
+    },
+    "SectionData" : {
+      "type" : "object",
+      "properties" : {
+        "sectionId" : {
+          "type" : "string"
+        },
+        "z" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "tileCount" : {
+          "type" : "integer",
+          "format" : "int64"
+        },
+        "minX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "maxX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "minY" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "maxY" : {
+          "type" : "number",
+          "format" : "double"
+        }
+      }
+    },
+    "LeafTransformSpec" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/TransformSpec"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "className" : {
+            "type" : "string"
+          },
+          "dataString" : {
+            "type" : "string"
+          }
+        }
+      } ]
+    },
+    "TransformSpec" : {
+      "type" : "object",
+      "discriminator" : "type",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "metaData" : {
+          "$ref" : "#/definitions/TransformSpecMetaData"
+        },
+        "unresolvedIds" : {
+          "type" : "array",
+          "uniqueItems" : true,
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "newInstance" : {
+          "$ref" : "#/definitions/CoordinateTransform"
+        }
+      }
+    },
+    "Response" : {
+      "type" : "object",
+      "properties" : {
+        "status" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "metadata" : {
+          "type" : "object",
+          "additionalProperties" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object"
+            }
+          }
+        },
+        "entity" : {
+          "type" : "object"
+        }
+      }
+    },
+    "ListTransformSpec" : {
+      "type" : "object",
+      "discriminator" : "type",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "metaData" : {
+          "$ref" : "#/definitions/TransformSpecMetaData"
+        },
+        "unresolvedIds" : {
+          "type" : "array",
+          "uniqueItems" : true,
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "newInstance" : {
+          "$ref" : "#/definitions/CoordinateTransform"
+        }
+      }
+    },
+    "LayoutData" : {
+      "type" : "object",
+      "properties" : {
+        "sectionId" : {
+          "type" : "string"
+        },
+        "temca" : {
+          "type" : "string"
+        },
+        "camera" : {
+          "type" : "string"
+        },
+        "imageRow" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "imageCol" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "stageX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "stageY" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "rotation" : {
+          "type" : "number",
+          "format" : "double"
+        }
+      }
+    },
+    "ReferenceTransformSpec" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/TransformSpec"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "refId" : {
+            "type" : "string"
+          },
+          "effectiveRefId" : {
+            "type" : "string"
+          }
+        }
+      } ]
+    },
+    "TransformSpecMetaData" : {
+      "type" : "object",
+      "properties" : {
+        "group" : {
+          "type" : "string"
+        }
+      }
+    },
+    "TileSpec" : {
+      "type" : "object",
+      "properties" : {
+        "tileId" : {
+          "type" : "string"
+        },
+        "layout" : {
+          "$ref" : "#/definitions/LayoutData"
+        },
+        "groupId" : {
+          "type" : "string"
+        },
+        "z" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "minX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "minY" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "maxX" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "maxY" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "width" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "height" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "minIntensity" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "maxIntensity" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "transforms" : {
+          "$ref" : "#/definitions/ListTransformSpec"
+        },
+        "meshCellSize" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "firstMipmapEntry" : {
+          "$ref" : "#/definitions/EntryIntegerImageAndMask"
+        },
+        "transformList" : {
+          "$ref" : "#/definitions/CoordinateTransformListCoordinateTransform"
+        }
+      }
+    },
+    "CoordinateTransform" : {
+      "type" : "object"
+    },
+    "StackId" : {
+      "type" : "object",
+      "properties" : {
+        "owner" : {
+          "type" : "string"
+        },
+        "project" : {
+          "type" : "string"
+        },
+        "stack" : {
+          "type" : "string"
+        },
+        "scopePrefix" : {
+          "type" : "string"
+        },
+        "sectionCollectionName" : {
+          "type" : "string"
+        },
+        "tileCollectionName" : {
+          "type" : "string"
+        },
+        "transformCollectionName" : {
+          "type" : "string"
+        }
+      }
+    }
+  }
+}
