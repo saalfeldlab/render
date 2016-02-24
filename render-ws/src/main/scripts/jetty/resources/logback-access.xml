@@ -1,0 +1,24 @@
+<configuration>
+    <!-- uncomment to display details about parsing of config file -->
+    <!-- <statusListener class="ch.qos.logback.core.status.OnConsoleStatusListener" /> -->
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!--    
+                 The first %d token is marked as auxiliary, so the second %d token is then assumed to be primary.
+                 Rollover will occur daily (default for %d) and the folder name will depend on the year and month.  
+                 For example, during the month of November 2014, archived files will all placed  
+                 under the logs/2014-11/ folder (e.g logs/2014-11/2014-11-14-jetty.log).
+            -->     
+            <fileNamePattern>${jetty.base}/logs/%d{yyyy-MM,aux}/%d-access.log.gz</fileNamePattern>
+        </rollingPolicy>
+
+        <encoder>
+            <!-- combined pattern with elapsed time -->
+            <pattern>%h %l %u [%t] "%r" %s %b "%i{Referer}" "%i{User-Agent}" [%D ms]</pattern>
+        </encoder>
+    </appender>
+
+    <appender-ref ref="FILE" />
+
+</configuration>
