@@ -19,7 +19,7 @@ import io.swagger.annotations.ApiModelProperty;
  *
  * @author Eric Trautman
  */
-@ApiModel(value = "A canvas match is the set of all weighted point correspondences between two canvases.")
+@ApiModel(description = "The set of all weighted point correspondences between two canvases.")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class CanvasMatches implements Serializable {
 

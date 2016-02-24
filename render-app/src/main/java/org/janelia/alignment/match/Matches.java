@@ -34,7 +34,7 @@ import io.swagger.annotations.ApiModelProperty;
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org> and John Bogovic
  */
-@ApiModel(value = "Matches are a collection of n-dimensional weighted source-target point correspondences.")
+@ApiModel(description = "A collection of n-dimensional weighted source-target point correspondences.")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class Matches implements Serializable {
 
