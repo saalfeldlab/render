@@ -66,7 +66,7 @@ sudo service mongod start
 
 
 
-  [API listing]: <../api/overview.md>
+  [API listing]: <render-ws-api/overview.md>
   [data model]: <data-model.md>
   [Jetty]: <https://eclipse.org/jetty/>
   [level 2 REST APIs]: <http://martinfowler.com/articles/richardsonMaturityModel.html>
