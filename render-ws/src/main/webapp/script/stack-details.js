@@ -20,7 +20,8 @@ var RenderWebServiceStackDetails = function() {
         document.title = renderData.stack;
         $('#owner').text(renderData.owner + ' > ');
 
-        var projectHref = 'stacks.html?owner=' + renderData.owner + '&project=' + renderData.project;
+        var projectHref = 'stacks.html?' +
+                          renderData.buildQueryParameters(renderData.owner, renderData.project, undefined);
         $('#bodyHeaderLink').attr("href", projectHref).text(renderData.owner + ' ' + renderData.project);
 
         $('#bodyHeader').text(renderData.stack);
@@ -133,17 +134,20 @@ RenderWebServiceStackDetails.prototype.isOriginalSection = function(sectionId) {
 RenderWebServiceStackDetails.prototype.getLinksForZ = function(baseDataUrl, baseRenderUrl, owner, project, stack, z) {
     var dataServiceZBase = '<a target="_blank" href="' + baseDataUrl + '/owner/' +
                            owner + '/project/' + project + '/stack/' + stack + '/z/' + z;
-    //noinspection HtmlUnknownTarget
-    var overview = '<a target="_blank" href="' + baseRenderUrl + '/owner/' +
-                   owner + '/project/' + project + '/stack/' + stack  +
-                   '/largeDataTileSource/2048/2048/small/' + z +
-                   '.jpg?maxOverviewWidthAndHeight=400&maxTileSpecsToRender=1">overview</a>';
     var links = [
         dataServiceZBase + '/bounds">bounds</a>',
         dataServiceZBase + '/tileBounds">tile bounds</a>',
-        dataServiceZBase + '/resolvedTiles">resolved tiles</a>',
-        overview
+        dataServiceZBase + '/resolvedTiles">resolved tiles</a>'
     ];
+
+    if (typeof baseRenderUrl != 'undefined') {
+        //noinspection HtmlUnknownTarget
+        var overview = '<a target="_blank" href="' + baseRenderUrl + '/owner/' +
+                       owner + '/project/' + project + '/stack/' + stack  +
+                       '/largeDataTileSource/2048/2048/small/' + z +
+                       '.jpg?maxOverviewWidthAndHeight=400&maxTileSpecsToRender=1">overview</a>';
+        links.push(overview);
+    }
 
     return links.join(', ');
 };
@@ -300,8 +304,7 @@ RenderWebServiceStackDetails.prototype.drawSectionDataCharts = function(data, ow
         }
     });
 
-    // TODO: determine best way to make render server references dynamic
-    var baseRenderUrl = 'http://renderer.int.janelia.org:8080/render-ws/v1';
+    var baseRenderUrl = this.renderData.getDynamicRenderBaseUrl();
     var baseDataUrl = '../v1';
 
     var sectionOrderingTooltipFormatter = function() {

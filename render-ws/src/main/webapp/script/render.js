@@ -8,6 +8,8 @@ var RenderWebServiceData = function(successfulLoadCallback, failedLoadCallback) 
     this.owner = queryParameters['owner'];
     this.project = queryParameters['project'];
     this.stack = queryParameters['stack'];
+    this.dynamicRenderHost = queryParameters['dynamicRenderHost'];
+    this.catmaidHost = queryParameters['catmaidHost'];
 
     var href = window.location.href;
     var stopIndex = href.indexOf('/view/');
@@ -75,25 +77,8 @@ RenderWebServiceData.prototype.getStackMetaData = function() {
 };
 
 RenderWebServiceData.prototype.changeOwnerAndProject = function(owner, project) {
-    var queryParameters = this.getUrlParameterMap();
-    var reloadPage = false;
-
-    if (owner != queryParameters['owner']) {
-        queryParameters['owner'] = owner;
-        reloadPage = true;
-    }
-
-    if (project != queryParameters['project']) {
-        if (typeof project == 'undefined') {
-            delete queryParameters['project'];
-        } else {
-            queryParameters['project'] = project;
-        }
-        reloadPage = true;
-    }
-
-    if (reloadPage) {
-        location.search = $.param(queryParameters);
+    if ((owner != this.owner) || (project != this.project)) {
+        this.resetPageQueryParameters(owner,  project, undefined);
     }
 };
 
@@ -131,7 +116,7 @@ RenderWebServiceData.prototype.setOwnerList = function(data) {
                        }
                    });
         } else {
-            location.search = $.param( { owner : this.ownerList[0] } );
+            this.resetPageQueryParameters(this.ownerList[0], this.project, this.stack);
         }
 
     } else {
@@ -170,10 +155,7 @@ RenderWebServiceData.prototype.setStackMetaDataList = function(data) {
         }
 
         if (selectedProjectIndex < 0) {
-            location.search = $.param({
-                                          owner : this.owner,
-                                          project : this.distinctProjects[0]
-                                      });
+            this.resetPageQueryParameters(this.owner, this.distinctProjects[0], this.stack);
         } else {
 
             this.stackCount = projectToStackCountMap[this.project];
@@ -187,11 +169,7 @@ RenderWebServiceData.prototype.setStackMetaDataList = function(data) {
 
                 var stackMetaData = this.getStackMetaDataWithStackName(this.stack, projectStackMetaDataList);
                 if (typeof stackMetaData == 'undefined') {
-                    location.search = $.param({
-                                                  owner : this.owner,
-                                                  project : this.project,
-                                                  stack : projectStackMetaDataList[0].stackId.stack
-                                              });
+                    this.resetPageQueryParameters(this.owner, this.project, projectStackMetaDataList[0].stackId.stack);
                 }
 
             }
@@ -206,6 +184,51 @@ RenderWebServiceData.prototype.setStackMetaDataList = function(data) {
 
     }
 
+};
+
+RenderWebServiceData.prototype.buildQueryParameters = function(owner, project, stack) {
+
+    var parameters = {};
+
+    var keyValueList = [
+        ['owner', owner],
+        ['project', project],
+        ['stack', stack],
+        ['dynamicRenderHost', this.dynamicRenderHost],
+        ['catmaidHost', this.catmaidHost]
+    ];
+
+    var key;
+    var value;
+    for (var i = 0; i < keyValueList.length; i++) {
+        key = keyValueList[i][0];
+        value = keyValueList[i][1];
+        if (typeof value != 'undefined') {
+            parameters[key] = value;
+        }
+    }
+
+    return $.param(parameters);
+};
+
+RenderWebServiceData.prototype.resetPageQueryParameters = function(owner, project, stack) {
+    location.search = this.buildQueryParameters(owner, project, stack);
+};
+
+RenderWebServiceData.prototype.isDynamicRenderHostDefined = function() {
+    return typeof this.dynamicRenderHost != 'undefined';
+};
+
+RenderWebServiceData.prototype.getDynamicRenderBaseUrl = function() {
+    var baseRenderUrl = undefined;
+    if (this.isDynamicRenderHostDefined()) {
+        baseRenderUrl = 'http://' + this.dynamicRenderHost + '/render-ws/v1';
+    }
+    return baseRenderUrl;
+};
+
+RenderWebServiceData.prototype.isCatmaidHostDefined = function() {
+    return typeof this.catmaidHost != 'undefined';
 };
 
 // =========================================================================================================
@@ -296,28 +319,28 @@ RenderWebServiceData.prototype.getStackSummaryHtml = function(ownerUrl, stackInf
         values.push(this.numberWithCommas(this.getDefinedValue(stats.transformCount)));
     }
 
-    var baseStackUrl = ownerUrl + 'project/' + stackInfo.stackId.project +
-                       '/stack/' + stackInfo.stackId.stack;
-
-    var CATMAIDUrl = 'http://renderer-catmaid.int.janelia.org:8000/?tool=navigator&s0=8' +
-                     '&pid=' + stackInfo.stackId.project +
-                     '&sid0=' + stackInfo.stackId.stack +
-                     '&zp=' + zp + '&yp=' + yp  + '&xp=' + xp;
+    var stackId = stackInfo.stackId;
+    var baseStackUrl = ownerUrl + 'project/' + stackId.project + '/stack/' + stackId.stack;
 
     //noinspection HtmlUnknownTarget
     var linksHtml = '<a target="_blank" href="' + baseStackUrl + '">Metadata</a> ' +
-                    '<a target="_blank" href="' + CATMAIDUrl + '">CATMAID-alpha</a> ' +
                     '<a target="_blank" href="' + baseStackUrl + '/zValues">Z Values</a> ' +
                     '<a target="_blank" href="' + baseStackUrl + '/mergeableZValues">mergeable Z Values</a>';
+
+    if (this.isCatmaidHostDefined()) {
+        var CATMAIDUrl = 'http://' + this.catmaidHost + '/?tool=navigator&s0=8' +
+                         '&pid=' + stackId.project + '&sid0=' + stackId.stack +
+                         '&zp=' + zp + '&yp=' + yp  + '&xp=' + xp;
+        linksHtml = linksHtml + ' <a target="_blank" href="' + CATMAIDUrl + '">CATMAID-alpha</a>';
+    }
 
     if (stackInfo.state == 'OFFLINE') {
         linksHtml = '';
     }
 
+    var detailsQueryString = '?' + this.buildQueryParameters(stackId.owner, stackId.project, stackId.stack);
     //noinspection HtmlUnknownTarget
-    var detailsLink = '<a href="stack-details.html?owner=' + stackInfo.stackId.owner +
-                      '&project=' + stackInfo.stackId.project + '&stack=' + stackInfo.stackId.stack +
-                      '">' + stackInfo.stackId.stack  +'</a>';
+    var detailsLink = '<a href="stack-details.html' + detailsQueryString + '">' + stackId.stack  +'</a>';
 
     return '<tr class="' + stackInfo.state + '">\n' +
            '  <td class="number">' + values[0] + '</td>\n' +
