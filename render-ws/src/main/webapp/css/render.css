@@ -45,6 +45,11 @@ ul {
     color: red;
 }
 
+.floatRight {
+    float: right;
+    margin-right: 20px;
+}
+
 .m20 {
     margin: 20px;
 }
@@ -52,11 +57,6 @@ ul {
 .number {
     text-align: right;
     font-family: monospace;
-}
-
-#breadcrumbs a {
-    padding: 0 5px 0 5px;
-    border-left: 1px solid black;
 }
 
 #stackInfo th {
