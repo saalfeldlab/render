@@ -20,12 +20,11 @@ database running on the most recent stable release of Ubuntu (14.04 precise).
 
 ### 1. Install Git and Maven
 ```bash
-sudo apt-get install git maven
+sudo apt-get install -y git maven
 ```
 ### 2. Clone the Repository
 ```bash
 git clone https://github.com/saalfeldlab/render.git
-git checkout --track origin/ws_phase_1
 ```
 ### 3. Install JDK and Jetty
 ```bash
