@@ -1,14 +1,65 @@
-var locationVars;
-var sectionData = [];
-var zToSectionDataMap = {};
-var sectionFloatToZMap = {};
-var minZForStack = 0;
+var RenderWebServiceStackDetails = function() {
 
-function loadAndMapSectionData(data) {
+    this.sectionData = [];
+    this.zToSectionDataMap = {};
+    this.sectionFloatToZMap = {};
+    this.minZForStack = undefined;
 
-    sectionData = data;
-    zToSectionDataMap = {};
-    minZForStack = undefined;
+    var self = this;
+
+    var failedLoadCallback = function (message) {
+        var sectionDataStatusSelect = $('#sectionDataStatus');
+        sectionDataStatusSelect.text(message);
+        sectionDataStatusSelect.addClass("error");
+    };
+
+    var successfulLoadCallback = function () {
+
+        var renderData = self.renderData;
+
+        document.title = renderData.stack;
+        $('#owner').text(renderData.owner + ' > ');
+
+        var projectHref = 'stacks.html?owner=' + renderData.owner + '&project=' + renderData.project;
+        $('#bodyHeaderLink').attr("href", projectHref).text(renderData.owner + ' ' + renderData.project);
+
+        $('#bodyHeader').text(renderData.stack);
+
+        var stackInfoSelect = $('#stackInfo');
+        var summaryHtml = renderData.getStackSummaryHtml(renderData.getOwnerUrl(),
+                                                         renderData.getStackMetaData());
+        stackInfoSelect.find('tr:last').after(summaryHtml);
+
+        var sectionDataUrl = renderData.getProjectUrl() + "stack/" + renderData.stack + "/sectionData";
+
+        // load section data
+        $.ajax({
+                   url: sectionDataUrl,
+                   cache: false,
+                   success: function(data) {
+                       self.drawSectionDataCharts(data, renderData.owner, renderData.project, renderData.stack);
+                   },
+                   error: function(data, textStatus, xhr) {
+                       console.error(xhr);
+                       failedLoadCallback("Failed to load section data.  " +  xhr);
+                   }
+               });
+
+    };
+
+    this.renderData = new RenderWebServiceData(successfulLoadCallback, failedLoadCallback);
+
+};
+
+/**
+ * @param data
+ * @param data.sectionId
+ */
+RenderWebServiceStackDetails.prototype.loadAndMapSectionData = function(data) {
+
+    this.sectionData = data;
+    this.zToSectionDataMap = {};
+    this.minZForStack = undefined;
 
     var zIntegerValues = {};
 
@@ -17,11 +68,11 @@ function loadAndMapSectionData(data) {
     var maxIntegerZ = undefined;
     var z;
     var sectionFloat;
-    for (var index = 0; index < sectionData.length; index++) {
+    for (var index = 0; index < this.sectionData.length; index++) {
 
-        z = sectionData[index].z;
-        if ((minZForStack === undefined) || (z < minZForStack)) {
-            minZForStack = z;
+        z = this.sectionData[index].z;
+        if ((this.minZForStack === undefined) || (z < this.minZForStack)) {
+            this.minZForStack = z;
         }
 
         integerZ = parseInt(z);
@@ -33,25 +84,25 @@ function loadAndMapSectionData(data) {
             maxIntegerZ = integerZ;
         }
 
-        if (z in zToSectionDataMap) {
-            zToSectionDataMap[z].zTileCount += sectionData[index].tileCount;
-            zToSectionDataMap[z].sectionList.push(sectionData[index]);
+        if (z in this.zToSectionDataMap) {
+            this.zToSectionDataMap[z].zTileCount += this.sectionData[index].tileCount;
+            this.zToSectionDataMap[z].sectionList.push(this.sectionData[index]);
         } else {
-            zToSectionDataMap[z] = {
-                'zTileCount': sectionData[index].tileCount,
-                'sectionList': [ sectionData[index] ]
+            this.zToSectionDataMap[z] = {
+                'zTileCount': this.sectionData[index].tileCount,
+                'sectionList': [ this.sectionData[index] ]
             };
         }
 
-        sectionFloat = parseFloat(sectionData[index].sectionId);
-        sectionFloatToZMap[sectionFloat] = z;
+        sectionFloat = parseFloat(this.sectionData[index].sectionId);
+        this.sectionFloatToZMap[sectionFloat] = z;
     }
 
-    if (sectionData.length > 0) {
+    if (this.sectionData.length > 0) {
 
         for (z = minIntegerZ; z <= maxIntegerZ; z++) {
             if (!(z in zIntegerValues)) {
-                zToSectionDataMap[z] = {
+                this.zToSectionDataMap[z] = {
                     'zTileCount': 0,
                     'sectionList': []
                 };
@@ -59,29 +110,30 @@ function loadAndMapSectionData(data) {
         }
 
     } else {
-        minZForStack = 0;
+        this.minZForStack = 0;
     }
-}
+};
 
-function joinSectionIds(sectionList) {
+RenderWebServiceStackDetails.prototype.joinSectionIds = function(sectionList) {
     return sectionList.map(
             function(elem) {
                 return elem.sectionId;
             }).join(', ');
-}
+};
 
-function isOriginalSection(sectionId) {
+RenderWebServiceStackDetails.prototype.isOriginalSection = function(sectionId) {
     var isOriginal = true;
     var dotIndex = sectionId.lastIndexOf('.');
     if (dotIndex > 0) {
         isOriginal = (sectionId.substr(dotIndex) === '.0');
     }
     return isOriginal;
-}
+};
 
-function getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, z) {
+RenderWebServiceStackDetails.prototype.getLinksForZ = function(baseDataUrl, baseRenderUrl, owner, project, stack, z) {
     var dataServiceZBase = '<a target="_blank" href="' + baseDataUrl + '/owner/' +
                            owner + '/project/' + project + '/stack/' + stack + '/z/' + z;
+    //noinspection HtmlUnknownTarget
     var overview = '<a target="_blank" href="' + baseRenderUrl + '/owner/' +
                    owner + '/project/' + project + '/stack/' + stack  +
                    '/largeDataTileSource/2048/2048/small/' + z +
@@ -94,9 +146,9 @@ function getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, z) {
     ];
 
     return links.join(', ');
-}
+};
 
-function getOrderData() {
+RenderWebServiceStackDetails.prototype.getOrderData = function() {
 
     var originalData = [];
     var reorderedData = [];
@@ -110,12 +162,12 @@ function getOrderData() {
     var sectionFloat;
     var sectionInteger;
 
-    for (z in zToSectionDataMap) {
+    for (z in this.zToSectionDataMap) {
 
-        if (zToSectionDataMap.hasOwnProperty(z)) {
+        if (this.zToSectionDataMap.hasOwnProperty(z)) {
 
             zFloat = parseFloat(z);
-            sectionList = zToSectionDataMap[z].sectionList;
+            sectionList = this.zToSectionDataMap[z].sectionList;
 
             if (sectionList.length > 1) {
 
@@ -158,9 +210,9 @@ function getOrderData() {
         { 'name': 'Merged', 'data': mergedData },
         { 'name': 'Missing', 'data': missingData }
     ];
-}
+};
 
-function getTileCountData() {
+RenderWebServiceStackDetails.prototype.getTileCountData = function() {
 
     var originalData = [];
     var reacquiredData = [];
@@ -169,12 +221,12 @@ function getTileCountData() {
 
     var dataObject;
     var sectionList;
-    for (z in zToSectionDataMap) {
+    for (var z in this.zToSectionDataMap) {
 
-        if (zToSectionDataMap.hasOwnProperty(z)) {
+        if (this.zToSectionDataMap.hasOwnProperty(z)) {
 
-            dataObject = [parseFloat(z), zToSectionDataMap[z].zTileCount];
-            sectionList = zToSectionDataMap[z].sectionList;
+            dataObject = [parseFloat(z), this.zToSectionDataMap[z].zTileCount];
+            sectionList = this.zToSectionDataMap[z].sectionList;
 
             if (sectionList.length > 1) {
 
@@ -182,7 +234,7 @@ function getTileCountData() {
 
             } else if (sectionList.length > 0) {
 
-                if (isOriginalSection(sectionList[0].sectionId)) {
+                if (this.isOriginalSection(sectionList[0].sectionId)) {
                     originalData.push(dataObject);
                 } else {
                     reacquiredData.push(dataObject);
@@ -200,9 +252,9 @@ function getTileCountData() {
         { 'name': 'Merged', 'data': mergedData },
         { 'name': 'Missing', 'data': missingData }
     ];
-}
+};
 
-function getBoundsData() {
+RenderWebServiceStackDetails.prototype.getBoundsData = function() {
 
     var minXData = [];
     var maxXData = [];
@@ -211,9 +263,9 @@ function getBoundsData() {
 
     var sectionList;
     var floatZ;
-    for (z in zToSectionDataMap) {
-        if (zToSectionDataMap.hasOwnProperty(z)) {
-            sectionList = zToSectionDataMap[z].sectionList;
+    for (var z in this.zToSectionDataMap) {
+        if (this.zToSectionDataMap.hasOwnProperty(z)) {
+            sectionList = this.zToSectionDataMap[z].sectionList;
             floatZ = parseFloat(z);
             for (var index = 0; index < sectionList.length; index++) {
                 if (sectionList[index].minX !== undefined) {
@@ -232,11 +284,12 @@ function getBoundsData() {
         { 'name': 'minY', 'data': minYData },
         { 'name': 'maxY', 'data': maxYData }
     ];
-}
+};
 
-function drawSectionDataCharts(data, owner, project, stack) {
+RenderWebServiceStackDetails.prototype.drawSectionDataCharts = function(data, owner, project, stack) {
 
-    loadAndMapSectionData(data);
+    var self = this;
+    self.loadAndMapSectionData(data);
 
     //noinspection JSJQueryEfficiency
     $('#sectionDataStatus').text('building section ordering chart ...');
@@ -250,6 +303,22 @@ function drawSectionDataCharts(data, owner, project, stack) {
     // TODO: determine best way to make render server references dynamic
     var baseRenderUrl = 'http://renderer.int.janelia.org:8080/render-ws/v1';
     var baseDataUrl = '../v1';
+
+    var sectionOrderingTooltipFormatter = function() {
+        var z = parseFloat(this.x);
+        var toZ = z;
+        if (this.y == 0) {
+            toZ = self.sectionFloatToZMap[z];
+        }
+        var sectionIds = self.joinSectionIds(self.zToSectionDataMap[toZ].sectionList);
+        if (sectionIds.length > 0) {
+            sectionIds = sectionIds + ' --> ';
+        }
+        var links = self.getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, toZ);
+        return '<span>' + this.series.name + ' Section</span><br/>' +
+               '<span>' + sectionIds + toZ + '</span><br/>' +
+               links;
+    };
 
     $('#sectionOrdering').highcharts({
         title: {
@@ -270,7 +339,7 @@ function drawSectionDataCharts(data, owner, project, stack) {
             title: {
                 text: 'Z'
             },
-            min: minZForStack
+            min: self.minZForStack
         },
         yAxis: {
             title: {
@@ -280,21 +349,7 @@ function drawSectionDataCharts(data, owner, project, stack) {
             max: 2
         },
         tooltip: {
-            formatter: function() {
-                var z = parseFloat(this.x);
-                var toZ = z;
-                if (this.y == 0) {
-                    toZ = sectionFloatToZMap[z];
-                }
-                var sectionIds = joinSectionIds(zToSectionDataMap[toZ].sectionList);
-                if (sectionIds.length > 0) {
-                    sectionIds = sectionIds + ' --> ';
-                }
-                var links = getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, toZ);
-                return '<span>' + this.series.name + ' Section</span><br/>' +
-                       '<span>' + sectionIds + toZ + '</span><br/>' +
-                       links;
-            },
+            formatter: sectionOrderingTooltipFormatter,
             useHTML: true,
             shared : true
         },
@@ -305,11 +360,22 @@ function drawSectionDataCharts(data, owner, project, stack) {
             borderWidth: 0,
             width: 130
         },
-        series: getOrderData()
+        series: self.getOrderData()
     });
 
     //noinspection JSJQueryEfficiency
     $('#sectionDataStatus').text('building tile counts chart ...');
+
+    var sectionTileCountsTooltipFormatter = function() {
+        var z = parseFloat(this.x);
+        var sectionIds = self.joinSectionIds(self.zToSectionDataMap[z].sectionList);
+        var links = self.getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, z);
+        return '<span>Z: ' + z + '</span><br/>' +
+               '<span>Sections: ' + sectionIds + '</span><br/>' +
+               '<span>Type: ' + this.series.name + '</span><br/>' +
+               '<span>Tile Count: ' + this.y + '</span><br/>' +
+               links;
+    };
 
     $('#sectionTileCounts').highcharts({
         title: {
@@ -336,16 +402,7 @@ function drawSectionDataCharts(data, owner, project, stack) {
             }
         },
         tooltip: {
-            formatter: function() {
-                var z = parseFloat(this.x);
-                var sectionIds = joinSectionIds(zToSectionDataMap[z].sectionList);
-                var links = getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, z);
-                return '<span>Z: ' + z + '</span><br/>' +
-                       '<span>Sections: ' + sectionIds + '</span><br/>' +
-                       '<span>Type: ' + this.series.name + '</span><br/>' +
-                       '<span>Tile Count: ' + this.y + '</span><br/>' +
-                       links;
-            },
+            formatter: sectionTileCountsTooltipFormatter,
             useHTML: true,
             shared: true
         },
@@ -356,7 +413,7 @@ function drawSectionDataCharts(data, owner, project, stack) {
             borderWidth: 0,
             width: 130
         },
-        series: getTileCountData()
+        series: self.getTileCountData()
     });
 
     //noinspection JSJQueryEfficiency
@@ -389,8 +446,8 @@ function drawSectionDataCharts(data, owner, project, stack) {
     //    tooltip: {
     //        formatter: function() {
     //            var z = parseFloat(this.x);
-    //            var sectionIds = joinSectionIds(zToSectionDataMap[z].sectionList);
-    //            var links = getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, z);
+    //            var sectionIds = self.joinSectionIds(zToSectionDataMap[z].sectionList);
+    //            var links = self.getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, z);
     //            return '<span>Z: ' + z + '</span><br/>' +
     //                   '<span>Sections: ' + sectionIds + '</span><br/>' +
     //                   '<span>' + this.series.name + ': ' + this.y + '</span><br/>' +
@@ -406,38 +463,9 @@ function drawSectionDataCharts(data, owner, project, stack) {
     //        borderWidth: 0,
     //        width: 130
     //    },
-    //    series: getBoundsData()
+    //    series: self.getBoundsData()
     //});
 
     //noinspection JSJQueryEfficiency
     $('#sectionDataStatus').hide();
-}
-
-function initPage() {
-
-    locationVars = new LocationVars();
-
-    var stackUrl = locationVars.ownerUrl + "project/" + locationVars.project + "/stack/" + locationVars.stack;
-
-    loadJSON(stackUrl,
-             function(data) {
-                 addStackInfo(locationVars.ownerUrl, data);
-                 document.title = locationVars.stack;
-                 $('#owner').text(locationVars.owner + ' > ');
-
-                 var projectHref = 'stacks.html?owner=' + locationVars.owner + '&project=' + locationVars.project;
-                 $('#project').attr("href", projectHref).text(locationVars.project);
-
-                 $('#bodyHeader').text(locationVars.stack);
-             },
-             function(xhr) { console.error(xhr); });
-
-    loadJSON(stackUrl + "/sectionData",
-             function(data) {
-                 drawSectionDataCharts(data, locationVars.owner, locationVars.project, locationVars.stack);
-             },
-             function(xhr) {
-                 console.error(xhr);
-                 alert('ERROR: failed to load section data.\n\nDetails:\n' + xhr.responseText);
-             });
-}
+};

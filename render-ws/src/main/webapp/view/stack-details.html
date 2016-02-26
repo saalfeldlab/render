@@ -20,14 +20,13 @@
 <body>
 
 <script>
-    $(document).ready(initPage());
+    $(document).ready(new RenderWebServiceStackDetails());
 </script>
 
-<span id="owner"></span> <a id="project" href=""></a>
-
-<h3><span id="bodyHeader"></span> <span id="bodyHeaderDetails"></span></h3>
-
 <div class="m20">
+
+    <h3><a id="bodyHeaderLink" href=""></a> <span id="bodyHeader"></span> <span id="bodyHeaderDetails"></span></h3>
+
     <table id="stackInfo">
         <tr>
             <th>Cycle</th>
@@ -43,15 +42,16 @@
             <th>Links</th>
         </tr>
     </table>
-</div>
 
-<hr/>
-<p id="sectionDataStatus">loading section data ...</p>
-<div id="sectionOrdering"></div>
-<hr/>
-<div id="sectionTileCounts"></div>
-<!--<hr/>-->
-<!--<div id="sectionBounds"></div>-->
+    <hr/>
+    <p id="sectionDataStatus">loading section data ...</p>
+    <div id="sectionOrdering"></div>
+    <hr/>
+    <div id="sectionTileCounts"></div>
+    <!--<hr/>-->
+    <!--<div id="sectionBounds"></div>-->
+
+</div>
 
 </body>
 </html>

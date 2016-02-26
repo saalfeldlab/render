@@ -1,91 +1,75 @@
-var locationVars;
-var stackMetaData;
+var RenderWebServiceProjectStacks = function() {
 
-function updateStackInfoForProject(ownerUrl, projectName) {
+    var self = this;
 
-    $('#stackInfo').find("tr:gt(0)").remove();
+    var updateStackInfoForProject = function() {
 
-    for (var index = 0; index < stackMetaData.length; index++) {
-        if (stackMetaData[index].stackId.project == projectName) {
-            addStackInfo(ownerUrl, stackMetaData[index]);
+        var renderData = self.renderData;
+        var stackInfoSelect = $('#stackInfo');
+        stackInfoSelect.find("tr:gt(0)").remove();
+
+        var projectStackMetaDataList = renderData.getProjectStackMetaDataList();
+        var summaryHtml;
+        for (var index = 0; index < projectStackMetaDataList.length; index++) {
+            summaryHtml = renderData.getStackSummaryHtml(renderData.getOwnerUrl(),
+                                                         projectStackMetaDataList[index]);
+            stackInfoSelect.find('tr:last').after(summaryHtml);
         }
-    }
-}
+    };
 
-function updateOwnerList(ownerList, selectedOwner) {
-    var ownerSelect = $('#owner');
-    var isSelected;
-    for (index = 0; index < ownerList.length; index++) {
-        isSelected = (ownerList[index] == selectedOwner);
-        ownerSelect.append($('<option>', { value : ownerList[index] }).text(ownerList[index]).prop('selected', isSelected));
-    }
+    var successfulLoadCallback = function () {
 
-    ownerSelect.change(function() {
-        var selectedOwner = getSelectedValue("owner");
-        changeOwnerAndProject(selectedOwner, undefined);
-    });
-}
+        var renderData = self.renderData;
+        var ownerAndProject = renderData.owner + ' ' + renderData.project;
 
-function updateStackMetaData(data, selectedProject) {
+        document.title = ownerAndProject + ' Stacks';
+        $('#bodyHeader').text(ownerAndProject);
 
-    stackMetaData = data;
-
-    var projectToStackCountMap = {};
-    var project;
-    for (var index = 0; index < stackMetaData.length; index++) {
-        project = stackMetaData[index].stackId.project;
-        if (typeof projectToStackCountMap[project] == 'undefined') {
-            projectToStackCountMap[project] = 0;
+        var stackSuffix = ' stacks)';
+        if (renderData.stackCount == 1) {
+            stackSuffix = ' stack)';
         }
-        projectToStackCountMap[project]++;
-    }
+        $('#bodyHeaderDetails').text('(' + renderData.stackCount + stackSuffix);
 
-    var distinctProjects = Object.keys(projectToStackCountMap);
-
-    var selectedProjectIndex = 0;
-    for (index = 0; index < distinctProjects.length; index++) {
-        if (distinctProjects[index] == selectedProject) {
-            selectedProjectIndex = index;
+        var ownerSelect = $('#owner');
+        var index;
+        var owner;
+        var isSelected;
+        for (index = 0; index < renderData.ownerList.length; index++) {
+            owner = renderData.ownerList[index];
+            isSelected = (owner == renderData.owner);
+            ownerSelect.append($('<option/>').val(owner).text(owner).prop('selected', isSelected));
         }
-    }
 
-    var projectSelect = $('#project');
-    var isSelected;
-    for (index = 0; index < distinctProjects.length; index++) {
-        isSelected = (index == selectedProjectIndex);
-        projectSelect.append($('<option>', {value: distinctProjects[index]}).text(distinctProjects[index]).prop('selected', isSelected));
-    }
+        ownerSelect.change(function () {
+            var selectedOwner = renderData.getSelectedValue("owner");
+            renderData.changeOwnerAndProject(selectedOwner, undefined);
+        });
 
-    locationVars.project = distinctProjects[selectedProjectIndex];
+        var projectSelect = $('#project');
+        var project;
+        for (index = 0; index < renderData.distinctProjects.length; index++) {
+            project = renderData.distinctProjects[index];
+            isSelected = (project == renderData.project);
+            projectSelect.append($('<option/>').val(project).text(project).prop('selected', isSelected));
+        }
 
-    document.title = locationVars.owner + ' ' + locationVars.project + ' Stacks';
-    $('#bodyHeader').text(locationVars.owner + ' ' + locationVars.project);
+        projectSelect.change(function () {
+            renderData.changeOwnerAndProject(renderData.owner,
+                                             renderData.getSelectedValue("project"));
+        });
 
-    var stackCount = projectToStackCountMap[locationVars.project];
-    var stackSuffix = ' stacks)';
-    if (stackCount == 1) {
-        stackSuffix = ' stack)';
-    }
-    $('#bodyHeaderDetails').text('(' + stackCount + stackSuffix);
+        updateStackInfoForProject();
+    };
 
-    updateStackInfoForProject(locationVars.ownerUrl, locationVars.project);
+    var failedLoadCallback = function (message) {
+        var messageSelect = $('#message');
+        messageSelect.text(message);
+        messageSelect.addClass("error");
+    };
 
-    projectSelect.change(function () {
-        changeOwnerAndProject(locationVars.owner, getSelectedValue("project"));
-    });
+    // load data and update page
+    self.renderData = new RenderWebServiceData(successfulLoadCallback, failedLoadCallback);
 
-}
-
-function initPage() {
-
-    locationVars = new LocationVars();
-
-    loadJSON(locationVars.baseUrl + '/v1/owners',
-             function(data) { updateOwnerList(data, locationVars.owner); },
-             function(xhr) { console.error(xhr); });
-
-    loadJSON(locationVars.ownerUrl + "stacks",
-             function(data) { updateStackMetaData(data, locationVars.project); },
-             function(xhr) { console.error(xhr); });
-}
+};
 

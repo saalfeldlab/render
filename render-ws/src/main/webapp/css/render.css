@@ -4,6 +4,10 @@ h3 {
     padding: 5px 0 5px 5px;
 }
 
+h3 a {
+    color: white;
+}
+
 label {
     font-weight: bold;
     margin-right: 10px;
@@ -35,6 +39,10 @@ ul {
 
 .OFFLINE {
     color: gray;
+}
+
+.error {
+    color: red;
 }
 
 .m20 {

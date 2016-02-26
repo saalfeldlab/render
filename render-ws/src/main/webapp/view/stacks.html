@@ -17,7 +17,7 @@
 <body>
 
 <script>
-    $(document).ready(initPage());
+    $(document).ready(new RenderWebServiceProjectStacks());
 </script>
 
 <div class="m20">
@@ -27,7 +27,9 @@
         <span id="bodyHeaderDetails"></span>
     </h3>
 
-    <form onsubmit="return false">
+    <span id="message"></span>
+
+    <form id="ownerProjectForm" onsubmit="return false">
 
         <label for="owner">Owner:</label>
         <select id="owner" name="owner">
