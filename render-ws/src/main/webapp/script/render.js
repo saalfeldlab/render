@@ -82,9 +82,18 @@ RenderWebServiceData.prototype.changeOwnerAndProject = function(owner, project) 
     }
 };
 
+RenderWebServiceData.prototype.getErrorMessage = function(data) {
+    var contentType = data.getResponseHeader('content-type') || '';
+    var message = data.responseText;
+    if (contentType.indexOf('html') > -1) {
+        message = data.statusText;
+    }
+    return message;
+};
+
 RenderWebServiceData.prototype.handleAjaxError = function(data, textStatus, xhr) {
     console.log(xhr);
-    this.failedLoadCallback("Failed to load render data.  " + xhr);
+    this.failedLoadCallback("Failed to load render data.  Detailed error: " + this.getErrorMessage(data));
 };
 
 RenderWebServiceData.prototype.setOwnerList = function(data) {

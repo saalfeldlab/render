@@ -42,7 +42,8 @@ var RenderWebServiceStackDetails = function() {
                    },
                    error: function(data, textStatus, xhr) {
                        console.error(xhr);
-                       failedLoadCallback("Failed to load section data.  " +  xhr);
+                       failedLoadCallback("Failed to load section data.  Detailed error: " +
+                                          renderData.getErrorMessage(data));
                    }
                });
 
