@@ -43,6 +43,16 @@ public class ThinPlateSplineBuilder extends AbstractWarpTransformBuilder<ThinPla
                 new ThinPlateR2LogRSplineKernelTransform(2, p, q);
         
         tpsKernelTransform.solve();
+
+        final double[][] TPSAffine = tpsKernelTransform.getAffine();
+        for (int j = 0; j < TPSAffine.length; j++) {
+            for (int i = 0; i < TPSAffine[j].length; i++) {
+                if (Double.isNaN(TPSAffine[j][i])) {
+                    throw new IllegalStateException("TPSAffine[" + j + "][" + i +
+                                                    "] is NaN.  Two montage tiles may have the same center point.");
+                }
+            }
+        }
         
         final ThinPlateSplineTransform t = new ThinPlateSplineTransform(tpsKernelTransform);
 

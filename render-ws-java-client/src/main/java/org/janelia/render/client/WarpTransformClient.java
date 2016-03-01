@@ -3,7 +3,9 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import mpicbg.trakem2.transform.CoordinateTransform;
 
@@ -98,6 +100,8 @@ public class WarpTransformClient {
         final ResolvedTileSpecCollection montageTiles = renderDataClient.getResolvedTiles(parameters.montageStack, z);
         final ResolvedTileSpecCollection alignTiles = renderDataClient.getResolvedTiles(parameters.alignStack, z);
 
+        validateMontageTileCentersDiffer(montageTiles);
+
         final TransformSpec mlsTransformSpec = buildTransform(montageTiles.getTileSpecs(),
                                                               alignTiles.getTileSpecs(),
                                                               alpha,
@@ -121,6 +125,12 @@ public class WarpTransformClient {
         renderDataClient.saveResolvedTiles(montageTiles, parameters.mlsStack, z);
 
         LOG.info("generateStackDataForZ: exit, saved tiles and transforms for {}", z);
+    }
+
+    private void validateMontageTileCentersDiffer(final ResolvedTileSpecCollection montageTiles)
+            throws IllegalStateException {
+        final Map<String, TileSpec> centerToTileMap = new HashMap<>(montageTiles.getTileCount());
+
     }
 
     private TransformSpec buildTransform(final Collection<TileSpec> montageTiles,

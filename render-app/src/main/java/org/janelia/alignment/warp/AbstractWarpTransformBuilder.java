@@ -86,8 +86,14 @@ abstract public class AbstractWarpTransformBuilder<T extends CoordinateTransform
 
         final ArrayList<PointMatch> montageToAlignCenterPointMatches = new ArrayList<>(alignTiles.size());
 
+        final Map<String, TileSpec> centerToMontageTileMap = new HashMap<>(montageTiles.size() * 2);
+        TileSpec montageTileWithSameCenter;
+        int duplicateCenterTileCount = 0;
+
         String tileId;
         TileSpec alignTile;
+        double[] montageCenterCoordinates;
+        String montageCenterString;
         Point montageCenterPoint;
         Point alignCenterPoint;
         for (final TileSpec montageTile : montageTiles) {
@@ -96,9 +102,21 @@ abstract public class AbstractWarpTransformBuilder<T extends CoordinateTransform
             alignTile = alignTileIdToSpecMap.get(tileId);
 
             if (alignTile != null) {
-                // create one deformation control point at the center point of
-                // each tile
-                montageCenterPoint = new Point(centerToWorld(montageTile));
+                // create one deformation control point at the center point of each tile
+
+                // first, validate each montage center point is unique
+                montageCenterCoordinates = centerToWorld(montageTile);
+                montageCenterString = deriveString(montageCenterCoordinates);
+                montageTileWithSameCenter = centerToMontageTileMap.put(montageCenterString, montageTile);
+                if (montageTileWithSameCenter != null) {
+                    duplicateCenterTileCount++;
+                    LOG.warn("montage tile {} has the same center ({}) as tile {}",
+                             montageTile.getTileId(), montageCenterString, montageTileWithSameCenter.getTileId());
+                    // restore original tile
+                    centerToMontageTileMap.put(montageCenterString, montageTileWithSameCenter);
+                }
+
+                montageCenterPoint = new Point(montageCenterCoordinates);
                 alignCenterPoint = new Point(centerToWorld(alignTile));
                 montageToAlignCenterPointMatches.add(new PointMatch(
                         montageCenterPoint, alignCenterPoint));
@@ -109,6 +127,11 @@ abstract public class AbstractWarpTransformBuilder<T extends CoordinateTransform
         if (numberOfPointMatches == 0) {
             throw new IllegalArgumentException(
                     "montage and align tile lists do not contain common tile ids");
+        }
+
+        if (duplicateCenterTileCount > 0) {
+            throw new IllegalArgumentException(
+                    duplicateCenterTileCount + " montage tile(s) have the same center coordinates");
         }
 
         p = new double[2][numberOfPointMatches];
@@ -132,6 +155,18 @@ abstract public class AbstractWarpTransformBuilder<T extends CoordinateTransform
         }
 
         LOG.info("readTileSpecs: exit, derived {} point matches", numberOfPointMatches);
+    }
+
+    private String deriveString(final double[] coordinate) {
+        final StringBuilder sb = new StringBuilder(64);
+        if (coordinate.length > 0) {
+            sb.append(coordinate[0]);
+            for (int i = 1; i < coordinate.length; i++) {
+                sb.append(',');
+                sb.append(coordinate[i]);
+            }
+        }
+        return sb.toString();
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractWarpTransformBuilder.class);
