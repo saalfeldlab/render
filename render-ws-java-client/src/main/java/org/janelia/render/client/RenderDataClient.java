@@ -319,7 +319,7 @@ public class RenderDataClient {
                                    final String sectionId)
             throws IOException {
 
-        final URI uri = getUri(getStackUrlString(stack) + "/sectionId/" + sectionId);
+        final URI uri = getUri(getStackUrlString(stack) + "/section/" + sectionId);
         final String requestContext = "DELETE " + uri;
         final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
 
