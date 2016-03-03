@@ -8,23 +8,35 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.janelia.alignment.json.JsonUtils;
 
 /**
- * Base parameters for all render service clients.
+ * Base parameters for all render web service clients.
  *
  * @author Eric Trautman
  */
 @Parameters
 public class RenderDataClientParameters {
 
-    @Parameter(names = "--help", description = "Display this note", help = true)
+    @Parameter(
+            names = "--help",
+            description = "Display this note",
+            help = true)
     protected transient boolean help;
 
-    @Parameter(names = "--baseDataUrl", description = "Base URL for data", required = true)
+    @Parameter(
+            names = "--baseDataUrl",
+            description = "Base web service URL for data (e.g. http://host[:port]/render-ws/v1)",
+            required = true)
     protected String baseDataUrl;
 
-    @Parameter(names = "--owner", description = "Owner for all stacks", required = true)
+    @Parameter(
+            names = "--owner",
+            description = "Owner for all stacks",
+            required = true)
     protected String owner;
 
-    @Parameter(names = "--project", description = "Project for all stacks", required = true)
+    @Parameter(
+            names = "--project",
+            description = "Project for all stacks",
+            required = true)
     protected String project;
 
     private transient JCommander jCommander;
@@ -42,13 +54,16 @@ public class RenderDataClientParameters {
         jCommander = new JCommander(this);
         jCommander.setProgramName("java -cp current-ws-standalone.jar " + this.getClass().getName());
 
+        boolean parseFailed = true;
         try {
             jCommander.parse(args);
+            parseFailed = false;
         } catch (final Throwable t) {
-            throw new IllegalArgumentException("failed to parse command line arguments", t);
+            JCommander.getConsole().println("\nERROR: failed to parse command line arguments\n\n" + t.getMessage());
         }
 
-        if (help) {
+        if (help || parseFailed) {
+            JCommander.getConsole().println("");
             jCommander.usage();
             System.exit(1);
         }
