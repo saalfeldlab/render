@@ -73,6 +73,10 @@ public class RenderDataClientParameters {
         return new RenderDataClient(baseDataUrl, owner, project);
     }
 
+    public RenderDataClient getClient(final String project) {
+        return new RenderDataClient(baseDataUrl, owner, project);
+    }
+
     /**
      * @return string representation of these parameters.
      */

@@ -39,11 +39,14 @@ public class ImportMETClient {
 
         // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
 
-        @Parameter(names = "--acquireStack", description = "Name of source (acquire) stack containing base tile specifications", required = true)
-        private String acquireStack;
+        @Parameter(names = "--stack", description = "Name of source stack containing base tile specifications", required = true)
+        private String stack;
 
-        @Parameter(names = "--alignStack", description = "Name of target (align, montage, etc.) stack that will contain imported transforms", required = true)
-        private String alignStack;
+        @Parameter(names = "--targetProject", description = "Name of target project that will contain imported transforms (default is to reuse source project)", required = false)
+        private String targetProject;
+
+        @Parameter(names = "--targetStack", description = "Name of target (align, montage, etc.) stack that will contain imported transforms", required = true)
+        private String targetStack;
 
         @Parameter(names = "--metFile", description = "MET file for section", required = true)
         private String metFile;
@@ -79,7 +82,8 @@ public class ImportMETClient {
     private final Parameters parameters;
     private final TileSpecValidator tileSpecValidator;
 
-    private final RenderDataClient renderDataClient;
+    private final RenderDataClient sourceRenderDataClient;
+    private final RenderDataClient targetRenderDataClient;
 
     private final Map<String, SectionData> metSectionToDataMap;
 
@@ -92,7 +96,16 @@ public class ImportMETClient {
             this.tileSpecValidator = new TemTileSpecValidator();
         }
 
-        this.renderDataClient = parameters.getClient();
+        this.sourceRenderDataClient = parameters.getClient();
+
+        if ((parameters.targetProject == null) ||
+            (parameters.targetProject.trim().length() == 0) ||
+            (parameters.targetProject.equals(parameters.project))){
+            this.targetRenderDataClient = sourceRenderDataClient;
+        } else {
+            this.targetRenderDataClient = parameters.getClient(parameters.targetProject);
+        }
+
         this.metSectionToDataMap = new HashMap<>();
     }
 
@@ -169,8 +182,8 @@ public class ImportMETClient {
                 sectionData = metSectionToDataMap.get(section);
 
                 if (sectionData == null) {
-                    final TileSpec acquireTileSpec = renderDataClient.getTile(parameters.acquireStack, tileId);
-                    final Double z = acquireTileSpec.getZ();
+                    final TileSpec sourceTileSpec = sourceRenderDataClient.getTile(parameters.stack, tileId);
+                    final Double z = sourceTileSpec.getZ();
                     LOG.info("loadV1MetData: mapped section {} to z value {} using tile {}", section, z, tileId);
                     sectionData = new SectionData(path, z, tileSpecValidator);
                     metSectionToDataMap.put(section, sectionData);
@@ -277,8 +290,8 @@ public class ImportMETClient {
                     sectionData = metSectionToDataMap.get(section);
 
                     if (sectionData == null) {
-                        final TileSpec acquireTileSpec = renderDataClient.getTile(parameters.acquireStack, tileId);
-                        final Double z = acquireTileSpec.getZ();
+                        final TileSpec sourceTileSpec = sourceRenderDataClient.getTile(parameters.stack, tileId);
+                        final Double z = sourceTileSpec.getZ();
                         LOG.info("loadMetData: mapped section {} to z value {} using tile {}", section, z, tileId);
                         sectionData = new SectionData(path, z, tileSpecValidator);
                         metSectionToDataMap.put(section, sectionData);
@@ -364,7 +377,7 @@ public class ImportMETClient {
 
             LOG.info("updateTiles: entry, z={}", z);
 
-            updatedTiles = renderDataClient.getResolvedTiles(parameters.acquireStack, z);
+            updatedTiles = sourceRenderDataClient.getResolvedTiles(parameters.stack, z);
 
             if (tileSpecValidator != null) {
                 updatedTiles.setTileSpecValidator(tileSpecValidator);
@@ -426,7 +439,7 @@ public class ImportMETClient {
 
             LOG.info("saveTiles: entry, z={}", z);
 
-            renderDataClient.saveResolvedTiles(updatedTiles, parameters.alignStack, z);
+            targetRenderDataClient.saveResolvedTiles(updatedTiles, parameters.targetStack, z);
 
             LOG.info("saveTiles: exit, saved tiles and transforms for {}", z);
         }

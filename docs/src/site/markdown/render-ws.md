@@ -56,11 +56,27 @@ echo "deb http://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/3.0 multiverse" 
 # reload local package database
 sudo apt-get update
 
-# install MongoDB packages
+# install MongoDB packages (this should also start the mongod process)
 sudo apt-get install -y mongodb-org=3.0.9 mongodb-org-server=3.0.9 mongodb-org-shell=3.0.9 mongodb-org-mongos=3.0.9 mongodb-org-tools=3.0.9
+```
 
-# start MongoDB (only if install doesn't start it)
+### 7. Start MongoDB
+> The install process should start mongod, but you can be sure by running this.
+
+```bash
 sudo service mongod start
+```
+
+### 8. Start Jetty
+```bash
+# assumes current directory is still the cloned render repository root (./render)
+deploy/jetty_base/jetty_wrapper.sh start
+```
+
+### 9. Create Stack
+```bash
+# assumes current directory is still the cloned render repository root (./render)
+./render-ws-java-client/src/main/scripts/manage_stacks.sh --action CREATE --baseDataUrl http://localhost:8080/render-ws/v1 --owner demo --project test --stack first_stack 
 ```
 
 
