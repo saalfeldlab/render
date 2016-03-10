@@ -1,10 +1,13 @@
 package org.janelia.test;
 
-import com.mongodb.DB;
 import com.mongodb.MongoClient;
+import com.mongodb.client.MongoDatabase;
 
 import java.io.File;
 import java.io.IOException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import de.flapdoodle.embed.mongo.MongoImportExecutable;
 import de.flapdoodle.embed.mongo.MongoImportStarter;
@@ -29,17 +32,17 @@ public class EmbeddedMongoDb {
 
     private static final MongodStarter STARTER = MongodStarter.getDefaultInstance();
 
-    private IFeatureAwareVersion version;
-    private int port;
-    private MongodExecutable mongodExecutable;
-    private MongodProcess mongodProcess;
-    private MongoClient mongoClient;
-    private DB db;
+    private final IFeatureAwareVersion version;
+    private final int port;
+    private final MongodExecutable mongodExecutable;
+    private final MongodProcess mongodProcess;
+    private final MongoClient mongoClient;
+    private final MongoDatabase db;
 
-    public EmbeddedMongoDb(String dbName)
+    public EmbeddedMongoDb(final String dbName)
             throws IOException {
 
-        this.version = Version.Main.V2_6;
+        this.version = Version.Main.V3_2;
         this.port = 12345;
 
         // see MongodForTestsFactory for example verbose startup options
@@ -51,20 +54,20 @@ public class EmbeddedMongoDb {
 
         this.mongoClient = new MongoClient("localhost", port);
 
-        this.db = mongoClient.getDB(dbName);
+        this.db = mongoClient.getDatabase(dbName);
     }
 
     public MongoClient getMongoClient() {
         return mongoClient;
     }
 
-    public void importCollection(String collectionName,
-                                 File jsonFile,
-                                 Boolean jsonArray,
-                                 Boolean upsert,
-                                 Boolean drop) throws IOException {
+    public void importCollection(final String collectionName,
+                                 final File jsonFile,
+                                 final Boolean jsonArray,
+                                 final Boolean upsert,
+                                 final Boolean drop) throws IOException {
 
-        IMongoImportConfig mongoImportConfig = new MongoImportConfigBuilder()
+        final IMongoImportConfig mongoImportConfig = new MongoImportConfigBuilder()
                 .version(version)
                 .net(new Net(port, Network.localhostIsIPv6()))
                 .db(db.getName())
@@ -75,14 +78,22 @@ public class EmbeddedMongoDb {
                 .importFile(jsonFile.getAbsolutePath())
                 .build();
 
-        MongoImportExecutable mongoImportExecutable =
+        final MongoImportExecutable mongoImportExecutable =
                 MongoImportStarter.getDefaultInstance().prepare(mongoImportConfig);
+
         mongoImportExecutable.start();
     }
 
-    public void stop() throws Exception {
-        db.dropDatabase();
-        mongodProcess.stop();
-        mongodExecutable.stop();
+    public void stop() {
+        try {
+            db.drop();
+            mongodProcess.stop();
+            mongodExecutable.stop();
+        } catch (final Throwable t) {
+            LOG.warn("failed to stop embedded mongodb", t);
+        }
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(EmbeddedMongoDb.class);
+
 }
