@@ -6,6 +6,9 @@ import com.mongodb.ServerAddress;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 import org.slf4j.Logger;
@@ -18,7 +21,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DbConfig {
 
-    private final String host;
+    private final List<String> hosts;
     private final Integer port;
     private final String userName;
     private final String authenticationDatabase;
@@ -26,12 +29,12 @@ public class DbConfig {
     private int maxConnectionsPerHost;
     private int maxConnectionIdleTime;
 
-    public DbConfig(final String host,
+    public DbConfig(final List<String> hosts,
                     final Integer port,
                     final String userName,
                     final String authenticationDatabase,
                     final String password) {
-        this.host = host;
+        this.hosts = new ArrayList<>(hosts);
         this.port = port;
         this.userName = userName;
         this.authenticationDatabase = authenticationDatabase;
@@ -40,8 +43,8 @@ public class DbConfig {
         this.maxConnectionIdleTime = 600000; // 10 minutes
     }
 
-    public String getHost() {
-        return host;
+    public List<String> getHosts() {
+        return hosts;
     }
 
     public Integer getPort() {
@@ -85,13 +88,14 @@ public class DbConfig {
             in = new FileInputStream(file);
             properties.load(in);
 
-            final String host = getRequiredProperty("host", properties, path);
+            final String commaSeparatedHosts = getRequiredProperty("host", properties, path);
+            final List<String> hosts = Arrays.asList(commaSeparatedHosts.split(","));
 
             final String userName = properties.getProperty("userName");
             String userNameSource = null;
             String password = null;
             if (userName == null) {
-                LOG.info("fromFile: skipping load of database credentials because no userName is definmed in {}", path);
+                LOG.info("fromFile: skipping load of database credentials because no userName is defined in {}", path);
             } else {
                 userNameSource = getRequiredProperty("authenticationDatabase", properties, path);
                 password = getRequiredProperty("password", properties, path);
@@ -110,7 +114,7 @@ public class DbConfig {
                 }
             }
 
-            dbConfig = new DbConfig(host, port, userName, userNameSource, password);
+            dbConfig = new DbConfig(hosts, port, userName, userNameSource, password);
 
             final String maxConnectionsPerHostStr = properties.getProperty("maxConnectionsPerHost");
             if (maxConnectionsPerHostStr != null) {

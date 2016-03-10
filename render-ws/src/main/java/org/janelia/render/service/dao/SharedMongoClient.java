@@ -6,9 +6,14 @@ import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
 
 import java.io.File;
+import java.io.InputStream;
+import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,13 +50,17 @@ public class SharedMongoClient {
     public SharedMongoClient(final DbConfig dbConfig)
             throws UnknownHostException {
 
-        final ServerAddress serverAddress = new ServerAddress(dbConfig.getHost(), dbConfig.getPort());
+        final List<ServerAddress> serverAddressList = new ArrayList<>();
+        for (final String host : dbConfig.getHosts()) {
+            serverAddressList.add(new ServerAddress(host, dbConfig.getPort()));
+        }
 
         final List<MongoCredential> credentialsList;
         if (dbConfig.hasCredentials()) {
-            final MongoCredential credential = MongoCredential.createMongoCRCredential(dbConfig.getUserName(),
-                                                                                       dbConfig.getAuthenticationDatabase(),
-                                                                                       dbConfig.getPassword());
+            final MongoCredential credential =
+                    MongoCredential.createMongoCRCredential(dbConfig.getUserName(),
+                                                            dbConfig.getAuthenticationDatabase(),
+                                                            dbConfig.getPassword());
             credentialsList = Collections.singletonList(credential);
         } else {
             credentialsList = Collections.emptyList();
@@ -62,9 +71,12 @@ public class SharedMongoClient {
                 .maxConnectionIdleTime(dbConfig.getMaxConnectionIdleTime())
                 .build();
 
-        LOG.info("creating client for {} with {}", serverAddress, options);
+        LOG.info("creating {} client for server(s) {} with {}", getMongoClientVersion(), serverAddressList, options);
 
-        client = new MongoClient(serverAddress, credentialsList, options);
+
+        client = new MongoClient(serverAddressList, credentialsList, options);
+
+        LOG.info("replica set status is: {}", client.getReplicaSetStatus());
     }
 
     private static synchronized void setSharedMongoClient()
@@ -74,6 +86,24 @@ public class SharedMongoClient {
             final DbConfig dbConfig = DbConfig.fromFile(dbConfigFile);
             sharedMongoClient = new SharedMongoClient(dbConfig);
         }
+    }
+
+    private static String getMongoClientVersion() {
+        String versionString = "?";
+        final Class clazz = MongoClient.class;
+        final String className = clazz.getSimpleName() + ".class";
+        final String classPath = clazz.getResource(className).toString();
+        if (classPath.startsWith("jar")) {
+            final String manifestPath = classPath.substring(0, classPath.lastIndexOf("!") + 1) + "/META-INF/MANIFEST.MF";
+            try (final InputStream manifestStream = new URL(manifestPath).openStream()) {
+                final Manifest manifest = new Manifest(manifestStream);
+                final Attributes attr = manifest.getMainAttributes();
+                versionString = attr.getValue("Bundle-Name") + " (" + attr.getValue("Bundle-Version") + ")";
+            } catch (final Throwable t) {
+                LOG.warn("failed to read java mongodb client version from manifest", t);
+            }
+        }
+        return versionString;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(DbConfig.class);
