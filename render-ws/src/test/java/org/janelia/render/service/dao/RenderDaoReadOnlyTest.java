@@ -235,11 +235,15 @@ public class RenderDaoReadOnlyTest {
         Assert.assertNotNull("null list retrieved", list);
         Assert.assertEquals("invalid number of tiles found", 12, list.size());
 
-        final TileBounds firstTileBounds = list.get(0);
+        TileBounds tileBounds = null;
+        for (final TileBounds tb : list) {
+            if ("134".equals(tb.getTileId())) {
+                tileBounds = tb;
+            }
+        }
 
-        Assert.assertNotNull("null bounds for first tile", firstTileBounds);
-        Assert.assertEquals("incorrect id for first tile", "134", firstTileBounds.getTileId());
-        Assert.assertTrue("bound box not defined for first tile", firstTileBounds.isBoundingBoxDefined());
+        Assert.assertNotNull("tile 134 missing from tileBounds list", tileBounds);
+        Assert.assertTrue("bound box not defined tile 134", tileBounds.isBoundingBoxDefined());
     }
 
     @Test
