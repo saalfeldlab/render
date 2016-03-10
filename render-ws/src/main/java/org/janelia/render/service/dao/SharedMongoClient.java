@@ -75,8 +75,6 @@ public class SharedMongoClient {
 
 
         client = new MongoClient(serverAddressList, credentialsList, options);
-
-        LOG.info("replica set status is: {}", client.getReplicaSetStatus());
     }
 
     private static synchronized void setSharedMongoClient()
