@@ -1,11 +1,12 @@
-{
+[
+  {
     "tileId": "140331142443008104",
     "layout": {
-        "sectionId": 2337,
-        "temca": "1",
-        "camera": "0",
-        "imageRow": 104,
-        "imageCol": 8
+      "sectionId": 2337,
+      "temca": "1",
+      "camera": "0",
+      "imageRow": 104,
+      "imageCol": 8
     },
     "z": 2337.0,
     "minX": 80.0,
@@ -17,22 +18,23 @@
     "minIntensity": 0.0,
     "maxIntensity": 255.0,
     "mipmapLevels": {
-        "0": {
-            "imageUrl": "file:/tier2/flyTEM/data/fly_pilot/140331142443_48x152/col0008/col0008_row0104_cam0.tif",
-            "maskUrl": "file:/tier2/flyTEM/eric/json/141217_fly863_pass_06_inlayer_MET/temp_render_masks/temca1_cam0.png"
-        }
+      "0": {
+        "imageUrl": "file:/tier2/flyTEM/data/fly_pilot/140331142443_48x152/col0008/col0008_row0104_cam0.tif",
+        "maskUrl": "file:/tier2/flyTEM/eric/json/141217_fly863_pass_06_inlayer_MET/temp_render_masks/temca1_cam0.png"
+      }
     },
     "transforms": {
-        "specList": [
-            {
-                "refId": "140826_temca1_camera0",
-                "type": "ref"
-            },
-            {
-                "className": "mpicbg.trakem2.transform.AffineModel2D",
-                "dataString": "0.992161000000 -0.024233000000 0.032068000000 0.964234000000 6.174514000000 38404.848693000000"
-            }
-        ],
-        "type": "list"
+      "specList": [
+        {
+          "refId": "140826_temca1_camera0",
+          "type": "ref"
+        },
+        {
+          "className": "mpicbg.trakem2.transform.AffineModel2D",
+          "dataString": "0.992161000000 -0.024233000000 0.032068000000 0.964234000000 6.174514000000 38404.848693000000"
+        }
+      ],
+      "type": "list"
     }
-}
+  }
+]
