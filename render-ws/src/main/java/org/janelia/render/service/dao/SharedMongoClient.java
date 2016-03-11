@@ -3,13 +3,11 @@ package org.janelia.render.service.dao;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientOptions;
 import com.mongodb.MongoCredential;
-import com.mongodb.ServerAddress;
 
 import java.io.File;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.jar.Attributes;
@@ -50,11 +48,6 @@ public class SharedMongoClient {
     public SharedMongoClient(final DbConfig dbConfig)
             throws UnknownHostException {
 
-        final List<ServerAddress> serverAddressList = new ArrayList<>();
-        for (final String host : dbConfig.getHosts()) {
-            serverAddressList.add(new ServerAddress(host, dbConfig.getPort()));
-        }
-
         final List<MongoCredential> credentialsList;
         if (dbConfig.hasCredentials()) {
             final MongoCredential credential =
@@ -71,10 +64,11 @@ public class SharedMongoClient {
                 .maxConnectionIdleTime(dbConfig.getMaxConnectionIdleTime())
                 .build();
 
-        LOG.info("creating {} client for server(s) {} with {}", getMongoClientVersion(), serverAddressList, options);
+        LOG.info("creating {} client for server(s) {} with {}",
+                 getMongoClientVersion(), dbConfig.getServerAddressList(), options);
 
 
-        client = new MongoClient(serverAddressList, credentialsList, options);
+        client = new MongoClient(dbConfig.getServerAddressList(), credentialsList, options);
     }
 
     private static synchronized void setSharedMongoClient()
