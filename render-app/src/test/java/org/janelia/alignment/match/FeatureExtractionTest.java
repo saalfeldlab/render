@@ -16,26 +16,16 @@
  */
 package org.janelia.alignment.match;
 
-import ij.ImagePlus;
-import ij.process.ByteProcessor;
-
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.util.ArrayList;
+import java.io.File;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Formatter;
 import java.util.List;
 
-import mpicbg.ij.SIFT;
 import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
-import mpicbg.util.Timer;
 
-import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.Utils;
-import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -55,10 +45,8 @@ import org.slf4j.LoggerFactory;
 public class FeatureExtractionTest {
 
     private String testResourcePath;
-    private FloatArray2DSIFT.Param siftParameters;
-    private double minScale;
-    private double maxScale;
 
+    private CanvasFeatureExtractor canvasFeatureExtractor;
     private List<Feature> featureList;
 
     private boolean saveTileImage;
@@ -68,28 +56,42 @@ public class FeatureExtractionTest {
     public void setup() throws Exception {
 
         testResourcePath = "src/test/resources/match-test";
-        featureList = new ArrayList<>();
 
-        siftParameters = new FloatArray2DSIFT.Param();
+        final FloatArray2DSIFT.Param coreSiftParameters = new FloatArray2DSIFT.Param();
 
         // tune here ...
-        siftParameters.fdSize = 4;
-        siftParameters.steps = 3;
-        minScale = 0.1;
-        maxScale = 0.4;
+        coreSiftParameters.fdSize = 4;
+        coreSiftParameters.steps = 3;
+        final double minScale = 0.1;
+        final double maxScale = 0.4;
+
+        canvasFeatureExtractor = new CanvasFeatureExtractor(coreSiftParameters,
+                                                            minScale,
+                                                            maxScale,
+                                                            true);
 
         saveTileImage = false;    // set this to true if you want to see the generated tile image
         printFeatureList = false; // set this to true if you want to see list of features
+
+        featureList = null;
     }
 
     @After
     public void tearDown() throws Exception {
-        final FeatureSorter sorter = new FeatureSorter();
-        Collections.sort(featureList, sorter.comparator);
-        if (printFeatureList) {
-            LOG.info(sorter.formatList(featureList));
+
+        if ((featureList != null) && (featureList.size() > 0)) {
+
+            final FeatureSorter sorter = new FeatureSorter();
+            Collections.sort(featureList, sorter.comparator);
+            if (printFeatureList) {
+                LOG.info(sorter.formatList(featureList));
+            }
+            LOG.info("{} out of {} features were the same", sorter.sameCount, featureList.size());
+
+        } else {
+            LOG.warn("features were NOT extracted");
         }
-        LOG.info("{} out of {} features were the same", sorter.sameCount, featureList.size());
+
     }
 
     @Test
@@ -99,9 +101,9 @@ public class FeatureExtractionTest {
 
         final RenderParameters tileRenderParameters = RenderParameters.parseJson(getCenterTileJson());
         tileRenderParameters.initializeDerivedValues();
-        final BufferedImage bufferedImage = loadImage(tileRenderParameters);
 
-        featureList = extractFeatures(bufferedImage, siftParameters, minScale, maxScale);
+        featureList = canvasFeatureExtractor.extractFeatures(tileRenderParameters,
+                                                             getRenderFile(tileRenderParameters));
     }
 
     @Test
@@ -111,109 +113,18 @@ public class FeatureExtractionTest {
 
         final RenderParameters tileRenderParameters = RenderParameters.parseJson(getEdgeTileJson());
         tileRenderParameters.initializeDerivedValues();
-        final BufferedImage bufferedImage = loadImage(tileRenderParameters);
 
-        featureList = extractFeatures(bufferedImage, siftParameters, minScale, maxScale);
+        featureList = canvasFeatureExtractor.extractFeatures(tileRenderParameters,
+                                                             getRenderFile(tileRenderParameters));
     }
 
-    private List<Feature> extractFeatures(final BufferedImage bufferedImage,
-                                          final FloatArray2DSIFT.Param siftParameters,
-                                          final double minScale,
-                                          final double maxScale) throws IllegalStateException {
-
-        LOG.info("extractFeatures: entry");
-
-        final Timer timer = new Timer();
-        timer.start();
-
-        final FloatArray2DSIFT.Param localSiftParameters = siftParameters.clone();
-        final int w = bufferedImage.getWidth();
-        final int h = bufferedImage.getHeight();
-        final int minSize = w < h ? w : h;
-        final int maxSize = w > h ? w : h;
-        localSiftParameters.minOctaveSize = (int)(minScale * minSize - 1.0);
-        localSiftParameters.maxOctaveSize = (int)Math.round(maxScale * maxSize);
-
-        LOG.info("extractFeatures: fdSize={}, steps={}, minScale={}, maxScale={}, minOctaveSize={}, maxOctaveSize={}",
-                 localSiftParameters.fdSize,
-                 localSiftParameters.steps,
-                 minScale,
-                 maxScale,
-                 localSiftParameters.minOctaveSize,
-                 localSiftParameters.maxOctaveSize);
-
-        // Let imagePlus determine correct processor - original use of ColorProcessor resulted in
-        // fewer extracted features when bufferedImage was loaded from disk.
-        final ImagePlus imagePlus = new ImagePlus("", bufferedImage);
-
-        final FloatArray2DSIFT sift = new FloatArray2DSIFT(localSiftParameters);
-        final SIFT ijSIFT = new SIFT(sift);
-
-        final List<Feature> featureList = new ArrayList<>();
-        ijSIFT.extractFeatures(imagePlus.getProcessor(), featureList);
-
-        if (featureList.size() == 0) {
-
-            final StringBuilder sb = new StringBuilder(256);
-            sb.append("no features were extracted");
-
-            if (bufferedImage.getWidth() < siftParameters.minOctaveSize) {
-                sb.append(" because montage image width (").append(bufferedImage.getWidth());
-                sb.append(") is less than SIFT minOctaveSize (").append(siftParameters.minOctaveSize).append(")");
-            } else if (bufferedImage.getHeight() < siftParameters.minOctaveSize) {
-                sb.append(" because montage image height (").append(bufferedImage.getHeight());
-                sb.append(") is less than SIFT minOctaveSize (").append(siftParameters.minOctaveSize).append(")");
-            } else if (bufferedImage.getWidth() > siftParameters.maxOctaveSize) {
-                sb.append(" because montage image width (").append(bufferedImage.getWidth());
-                sb.append(") is greater than SIFT maxOctaveSize (").append(siftParameters.maxOctaveSize).append(")");
-            } else if (bufferedImage.getHeight() > siftParameters.maxOctaveSize) {
-                sb.append(" because montage image height (").append(bufferedImage.getHeight());
-                sb.append(") is greater than SIFT maxOctaveSize (").append(siftParameters.maxOctaveSize).append(")");
-            } else {
-                sb.append(", not sure why, montage image width (").append(bufferedImage.getWidth());
-                sb.append(") or height (").append(bufferedImage.getHeight());
-                sb.append(") may be less than maxKernelSize derived from SIFT steps(");
-                sb.append(siftParameters.steps).append(")");
-            }
-
-            throw new IllegalStateException(sb.toString());
-        }
-
-        LOG.info("extractFeatures: exit, extracted " + featureList.size() +
-                 " features, elapsedTime=" + timer.stop() + "ms");
-
-        return featureList;
-    }
-
-    private BufferedImage loadImage(final RenderParameters tileRenderParameters) {
-
-        LOG.info("loadImage: entry");
-
-        final Timer timer = new Timer();
-        timer.start();
-
-        final BufferedImage bufferedImage = tileRenderParameters.openTargetImage();
-        final ByteProcessor ip = new ByteProcessor(bufferedImage.getWidth(), bufferedImage.getHeight());
-
-        mpicbg.ij.util.Util.fillWithNoise(ip);
-        bufferedImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
-
-        Render.render(tileRenderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
-
+    private File getRenderFile(final RenderParameters renderParameters) {
+        File renderFile = null;
         if (saveTileImage) {
-            final String fileName = tileRenderParameters.getTileSpecs().get(0).getTileId() + ".png";
-            try {
-                Utils.saveImage(bufferedImage, fileName, Utils.PNG_FORMAT, false, 0.85f);
-            } catch (final IOException e) {
-                LOG.error("failed to save " + fileName, e);
-            }
+            renderFile = new File(renderParameters.getTileSpecs().get(0).getTileId() + ".png");
         }
-
-        LOG.info("loadImage: exit, elapsedTime=" + timer.stop() + "ms");
-
-        return bufferedImage;
+        return renderFile;
     }
-
 
     private String getCenterTileJson() {
         return "{\n" +
