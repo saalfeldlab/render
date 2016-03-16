@@ -2,8 +2,12 @@ package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -90,8 +94,8 @@ public class PointMatchClient {
         @Parameter(names = "--numberOfThreads", description = "Number of threads to use for processing (default is 1)", required = false)
         private int numberOfThreads = 1;
 
-        @Parameter(names = "--streamMatches", description = "Write matches to standard out instead of saving to database (default is false)", required = false, arity = 0)
-        private boolean streamMatches = false;
+        @Parameter(names = "--matchStorageFile", description = "File to store matches (default of null indicates macthes should be stored through web service)", required = false)
+        private String matchStorageFile = null;
 
         @Parameter(names = "--matchGroupIdAlgorithm", description = "Algorithm for deriving match group ids (default is FIRST_TILE_Z)", required = false)
         private MatchGroupIdAlgorithm matchGroupIdAlgorithm = MatchGroupIdAlgorithm.FIRST_TILE_Z;
@@ -282,7 +286,7 @@ public class PointMatchClient {
     /**
      * Derive point matches for each canvas pair and write results.
      */
-    public void deriveMatches() throws Exception {
+    public List<CanvasMatches> deriveMatches() throws Exception {
 
         LOG.info("deriveMatches: entry, extracting from {} canvases", canvasUrlToDataMap.size());
 
@@ -329,19 +333,25 @@ public class PointMatchClient {
         }
 
         CanvasMatches canvasMatches;
-        if (parameters.streamMatches) {
+        if (parameters.matchStorageFile != null) {
 
-            System.out.println("[");
+            final Path storagePath = Paths.get(parameters.matchStorageFile);
 
-            for (int i = 0; i < canvasMatchesList.size(); i++) {
-                if (i > 0) {
-                    System.out.println(',');
+            try (BufferedWriter writer = Files.newBufferedWriter(storagePath)) {
+
+                writer.write("[\n");
+
+                for (int i = 0; i < canvasMatchesList.size(); i++) {
+                    if (i > 0) {
+                        writer.write(",\n");
+                    }
+                    canvasMatches = canvasMatchesList.get(i);
+                    writer.write(canvasMatches.toJson());
                 }
-                canvasMatches = canvasMatchesList.get(i);
-                System.out.print(canvasMatches.toJson());
+
+                writer.write("\n]\n");
             }
 
-            System.out.println("\n]");
 
         } else {
 
@@ -350,6 +360,8 @@ public class PointMatchClient {
         }
 
         LOG.info("deriveMatches: exit");
+
+        return canvasMatchesList;
     }
 
     /**

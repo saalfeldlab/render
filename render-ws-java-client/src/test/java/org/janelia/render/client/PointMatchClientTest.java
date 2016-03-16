@@ -1,8 +1,10 @@
 package org.janelia.render.client;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
+import org.janelia.alignment.match.CanvasMatches;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -32,7 +34,7 @@ public class PointMatchClientTest {
                 "--project", "pm_client_test_tiles",
                 "--numberOfThreads", String.valueOf(numberOfThreads),
 //                "--debugDirectory", "/Users/trautmane/Desktop",
-                "--streamMatches",
+//                "--matchStorageFile", "/Users/trautmane/Desktop/matches.json",
                 tile1, tile2,
                 tile1, tile3
         };
@@ -47,8 +49,10 @@ public class PointMatchClientTest {
         Assert.assertEquals("invalid number of distinct canvas URLs", 3, canvasDataMap.size());
 
         final PointMatchClient.CanvasData firstCanvasData = new ArrayList<>(canvasDataMap.values()).get(0);
-        Assert.assertEquals("invalid derived matchGroupId", "99.0", firstCanvasData.getMatchGroupId());
-        Assert.assertEquals("invalid derived matchId", "160102030405111111.99.0", firstCanvasData.getMatchId());
+        final String expectedMatchGroupId = "99.0";
+        final String expectedMatchId = "160102030405111111.99.0";
+        Assert.assertEquals("invalid derived matchGroupId", expectedMatchGroupId, firstCanvasData.getMatchGroupId());
+        Assert.assertEquals("invalid derived matchId", expectedMatchId, firstCanvasData.getMatchId());
 
         client.extractFeatures();
 
@@ -58,7 +62,12 @@ public class PointMatchClientTest {
             Assert.assertTrue("only " + featureCount + " features found for " + canvasData, featureCount > 100);
         }
 
-        client.deriveMatches();
+        final List<CanvasMatches> canvasMatchesList = client.deriveMatches();
+        Assert.assertEquals("invalid number of matches derived", 2, canvasMatchesList.size());
+
+        final CanvasMatches canvasMatches = canvasMatchesList.get(0);
+        Assert.assertEquals("invalid pGroupId", expectedMatchGroupId, canvasMatches.getpGroupId());
+        Assert.assertEquals("invalid pId", expectedMatchId, canvasMatches.getpId());
     }
 
     private String getRenderParameterPath(final String tileName) {
