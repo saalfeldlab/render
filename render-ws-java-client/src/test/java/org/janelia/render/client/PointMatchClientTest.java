@@ -40,7 +40,7 @@ public class PointMatchClientTest {
         };
 
         final PointMatchClient.Parameters clientParameters = new PointMatchClient.Parameters();
-        clientParameters.parse(args);
+        clientParameters.parse(args, PointMatchClient.class);
 
         final PointMatchClient client = new PointMatchClient(clientParameters);
 

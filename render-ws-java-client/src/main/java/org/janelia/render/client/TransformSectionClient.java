@@ -52,7 +52,7 @@ public class TransformSectionClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args);
+                parameters.parse(args, TransformSectionClient.class);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 

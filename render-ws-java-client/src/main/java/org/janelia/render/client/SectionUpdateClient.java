@@ -36,7 +36,7 @@ public class SectionUpdateClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args);
+                parameters.parse(args, SectionUpdateClient.class);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 

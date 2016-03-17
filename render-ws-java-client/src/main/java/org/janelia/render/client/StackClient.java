@@ -84,7 +84,7 @@ public class StackClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args);
+                parameters.parse(args, StackClient.class);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 

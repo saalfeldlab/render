@@ -61,7 +61,7 @@ public class CoordinateClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args);
+                parameters.parse(args, CoordinateClient.class);
 
                 final File fromFile = new File(parameters.fromJson).getAbsoluteFile();
                 if (! fromFile.canRead()) {

@@ -25,10 +25,11 @@ public class CommandLineParameters {
         this.jCommander = null;
     }
 
-    public void parse(final String[] args) throws IllegalArgumentException {
+    public void parse(final String[] args,
+                      final Class programClass) throws IllegalArgumentException {
 
         jCommander = new JCommander(this);
-        jCommander.setProgramName("java -cp current-ws-standalone.jar " + this.getClass().getName());
+        jCommander.setProgramName("java -cp current-ws-standalone.jar " + programClass.getName());
 
         boolean parseFailed = true;
         try {

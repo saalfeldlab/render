@@ -196,7 +196,7 @@ public class PointMatchClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args);
+                parameters.parse(args, PointMatchClient.class);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
