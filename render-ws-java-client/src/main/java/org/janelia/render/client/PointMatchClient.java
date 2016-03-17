@@ -37,8 +37,8 @@ public class PointMatchClient {
         /** Assign match group id based upon the z value of the first rendered tile. */
         FIRST_TILE_Z,
 
-        /** Assign match group id based upon the match project (collection) name. */
-        PROJECT
+        /** Assign match group id based upon the match collection name. */
+        COLLECTION
     }
 
     private enum MatchIdAlgorithm {
@@ -60,57 +60,57 @@ public class PointMatchClient {
     }
 
     @SuppressWarnings("ALL")
-    public static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends MatchDataClientParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        // NOTE: --baseDataUrl, --owner, and --collection parameters defined in MatchDataClientParameters
 
-        @Parameter(names = "--fillWithNoise", description = "Fill each canvas image with noise before rendering to improve point match derivation (default is true)", required = false, arity = 0)
+        @Parameter(names = "--fillWithNoise", description = "Fill each canvas image with noise before rendering to improve point match derivation", required = false, arity = 0)
         private boolean fillWithNoise = true;
 
-        @Parameter(names = "--fdSize", description = "SIFT feature descriptor size: how many samples per row and column (default is 4)", required = false)
+        @Parameter(names = "--SIFTfdSize", description = "SIFT feature descriptor size: how many samples per row and column", required = false)
         private Integer fdSize = 4;
 
-        @Parameter(names = "--minSIFTScale", description = "SIFT minimum scale: minSize * minScale < size < maxSize * maxScale (default is 0.5)", required = false)
+        @Parameter(names = "--SIFTminScale", description = "SIFT minimum scale: minSize * minScale < size < maxSize * maxScale", required = false)
         private Double minScale = 0.5;
 
-        @Parameter(names = "--maxSIFTScale", description = "SIFT maximum scale: minSize * minScale < size < maxSize * maxScale (default is 0.85)", required = false)
+        @Parameter(names = "--SIFTmaxScale", description = "SIFT maximum scale: minSize * minScale < size < maxSize * maxScale", required = false)
         private Double maxScale = 0.85;
 
-        @Parameter(names = "--steps", description = "SIFT steps per scale octave (default is 3)", required = false)
+        @Parameter(names = "--SIFTsteps", description = "SIFT steps per scale octave", required = false)
         private Integer steps = 3;
 
-        @Parameter(names = "--matchRod", description = "Ratio of distances for matches (default is 0.92)", required = false)
+        @Parameter(names = "--matchRod", description = "Ratio of distances for matches", required = false)
         private Float matchRod = 0.92f;
 
-        @Parameter(names = "--matchMaxEpsilon", description = "Minimal allowed transfer error for matches (default is 20.0)", required = false)
+        @Parameter(names = "--matchMaxEpsilon", description = "Minimal allowed transfer error for matches", required = false)
         private Float matchMaxEpsilon = 20.0f;
 
-        @Parameter(names = "--matchMinInlierRatio", description = "Minimal ratio of inliers to candidates for matches (default is 0.0)", required = false)
+        @Parameter(names = "--matchMinInlierRatio", description = "Minimal ratio of inliers to candidates for matches", required = false)
         private Float matchMinInlierRatio = 0.0f;
 
-        @Parameter(names = "--matchMinNumInliers", description = "Minimal absolute number of inliers for matches (default is 10)", required = false)
+        @Parameter(names = "--matchMinNumInliers", description = "Minimal absolute number of inliers for matches", required = false)
         private Integer matchMinNumInliers = 10;
 
-        @Parameter(names = "--numberOfThreads", description = "Number of threads to use for processing (default is 1)", required = false)
+        @Parameter(names = "--numberOfThreads", description = "Number of threads to use for processing", required = false)
         private int numberOfThreads = 1;
 
-        @Parameter(names = "--matchStorageFile", description = "File to store matches (default of null indicates macthes should be stored through web service)", required = false)
+        @Parameter(names = "--matchStorageFile", description = "File to store matches (omit if macthes should be stored through web service)", required = false)
         private String matchStorageFile = null;
 
-        @Parameter(names = "--matchGroupIdAlgorithm", description = "Algorithm for deriving match group ids (default is FIRST_TILE_Z)", required = false)
+        @Parameter(names = "--matchGroupIdAlgorithm", description = "Algorithm for deriving match group ids", required = false)
         private MatchGroupIdAlgorithm matchGroupIdAlgorithm = MatchGroupIdAlgorithm.FIRST_TILE_Z;
 
-        @Parameter(names = "--matchIdAlgorithm", description = "Algorithm for deriving match ids (default is FIRST_TILE_ID)", required = false)
+        @Parameter(names = "--matchIdAlgorithm", description = "Algorithm for deriving match ids", required = false)
         private MatchIdAlgorithm matchIdAlgorithm = MatchIdAlgorithm.FIRST_TILE_ID;
 
-        @Parameter(names = "--debugDirectory", description = "Directory to save rendered canvases for debugging (null default prevents save)", required = false)
+        @Parameter(names = "--debugDirectory", description = "Directory to save rendered canvases for debugging (omit to keep rendered data in memory only)", required = false)
         private String debugDirectory = null;
         private File validatedDebugDirectory = null;
 
-        @Parameter(names = "--renderFileFormat", description = "Format for saved canvases (only relevant if debugDirectory is specified, default is JPG)", required = false)
+        @Parameter(names = "--renderFileFormat", description = "Format for saved canvases (only relevant if debugDirectory is specified)", required = false)
         private RenderFileFormat renderFileFormat = RenderFileFormat.JPG;
 
-        @Parameter(description = "URLs for rendering canvas (e.g. tile) pairs", required = true)
+        @Parameter(description = "canvas_1_URL, canvas_2_URL, [canvas_p_URL, canvas_q_URL], ... (each URL pair identifies render parameters for canvas pairs)", required = true)
         private List<String> renderParameterUrls;
 
         /**
@@ -137,12 +137,12 @@ public class PointMatchClient {
             switch(matchGroupIdAlgorithm) {
                 case FIRST_TILE_Z:
                     if (renderParameters.hasTileSpecs()) {
-                        matchGroupId = getTileZId(renderParameters.getTileSpecs().get(0), project);
+                        matchGroupId = getTileZId(renderParameters.getTileSpecs().get(0), collection);
                     }
                     break;
             }
             if (matchGroupId == null) {
-                matchGroupId = project;
+                matchGroupId = collection;
             }
             return matchGroupId;
         }
@@ -201,8 +201,12 @@ public class PointMatchClient {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final PointMatchClient client = new PointMatchClient(parameters);
+
                 client.extractFeatures();
-                client.deriveMatches();
+
+                final List<CanvasMatches> canvasMatchesList = client.deriveMatches();
+
+                client.saveMatches(canvasMatchesList);
             }
         };
         clientRunner.run();
@@ -332,6 +336,15 @@ public class PointMatchClient {
             canvasMatchesList.add(matcherThread.getMatches());
         }
 
+        LOG.info("deriveMatches: exit");
+
+        return canvasMatchesList;
+    }
+
+    public void saveMatches(final List<CanvasMatches> canvasMatchesList) throws Exception {
+
+        LOG.info("saveMatches: entry, canvasMatchesList.size={}", canvasMatchesList.size());
+
         CanvasMatches canvasMatches;
         if (parameters.matchStorageFile != null) {
 
@@ -359,9 +372,7 @@ public class PointMatchClient {
 
         }
 
-        LOG.info("deriveMatches: exit");
-
-        return canvasMatchesList;
+        LOG.info("saveMatches: exit");
     }
 
     /**

@@ -31,7 +31,7 @@ public class PointMatchClientTest {
         final String[] args = {
                 "--baseDataUrl", "http://renderer-dev:8080/render-ws/v1",
                 "--owner", "trautmane",
-                "--project", "pm_client_test_tiles",
+                "--collection", "pm_client_test_tiles",
                 "--numberOfThreads", String.valueOf(numberOfThreads),
 //                "--debugDirectory", "/Users/trautmane/Desktop",
 //                "--matchStorageFile", "/Users/trautmane/Desktop/matches.json",
