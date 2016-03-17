@@ -4,12 +4,12 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 
 /**
- * Base parameters for all render web service clients.
+ * Base parameters for all match web service clients.
  *
  * @author Eric Trautman
  */
 @Parameters
-public class RenderDataClientParameters
+public class MatchDataClientParameters
         extends CommandLineParameters {
 
     @Parameter(
@@ -20,28 +20,28 @@ public class RenderDataClientParameters
 
     @Parameter(
             names = "--owner",
-            description = "Owner for all stacks",
+            description = "Match collection owner",
             required = true)
     protected String owner;
 
     @Parameter(
-            names = "--project",
-            description = "Project for all stacks",
+            names = "--collection",
+            description = "Match collection name",
             required = true)
-    protected String project;
+    protected String collection;
 
-    public RenderDataClientParameters() {
+    public MatchDataClientParameters() {
         this.baseDataUrl = null;
         this.owner = null;
-        this.project = null;
+        this.collection = null;
     }
 
     public RenderDataClient getClient() {
-        return new RenderDataClient(baseDataUrl, owner, project);
+        return new RenderDataClient(baseDataUrl, owner, collection);
     }
 
-    public RenderDataClient getClient(final String project) {
-        return new RenderDataClient(baseDataUrl, owner, project);
+    public RenderDataClient getClient(final String collection) {
+        return new RenderDataClient(baseDataUrl, owner, collection);
     }
 
 }
