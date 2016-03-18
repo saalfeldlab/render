@@ -244,7 +244,9 @@ public class PointMatchClient {
             }
         }
 
-        this.renderDataClient = clientParameters.getClient();
+        this.renderDataClient = new RenderDataClient(clientParameters.baseDataUrl,
+                                                     clientParameters.owner,
+                                                     clientParameters.collection);
     }
 
     public Map<String, CanvasData> getCanvasUrlToDataMap() {

@@ -36,12 +36,4 @@ public class MatchDataClientParameters
         this.collection = null;
     }
 
-    public RenderDataClient getClient() {
-        return new RenderDataClient(baseDataUrl, owner, collection);
-    }
-
-    public RenderDataClient getClient(final String collection) {
-        return new RenderDataClient(baseDataUrl, owner, collection);
-    }
-
 }
