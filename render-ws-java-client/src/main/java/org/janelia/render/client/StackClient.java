@@ -106,16 +106,18 @@ public class StackClient {
         clientRunner.run();
     }
 
-    private final Parameters params;
+    private final Parameters parameters;
 
     private final String stack;
     private final RenderDataClient renderDataClient;
 
-    public StackClient(final Parameters params) {
+    public StackClient(final Parameters parameters) {
 
-        this.params = params;
-        this.stack = params.stack;
-        this.renderDataClient = params.getClient();
+        this.parameters = parameters;
+        this.stack = parameters.stack;
+        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                     parameters.owner,
+                                                     parameters.project);
     }
 
     public void createStackVersion()
@@ -124,13 +126,13 @@ public class StackClient {
         logMetaData("createStackVersion: before save");
 
         final StackVersion stackVersion = new StackVersion(new Date(),
-                                                           params.versionNotes,
-                                                           params.cycleNumber,
-                                                           params.cycleStepNumber,
-                                                           params.stackResolutionX,
-                                                           params.stackResolutionY,
-                                                           params.stackResolutionZ,
-                                                           params.materializedBoxRootPath,
+                                                           parameters.versionNotes,
+                                                           parameters.cycleNumber,
+                                                           parameters.cycleStepNumber,
+                                                           parameters.stackResolutionX,
+                                                           parameters.stackResolutionY,
+                                                           parameters.stackResolutionZ,
+                                                           parameters.materializedBoxRootPath,
                                                            null);
 
         renderDataClient.saveStackVersion(stack, stackVersion);
@@ -141,48 +143,48 @@ public class StackClient {
     public void cloneStackVersion()
             throws Exception {
 
-        if (params.cloneResultStack == null) {
+        if (parameters.cloneResultStack == null) {
             throw new IllegalArgumentException("missing --cloneResultStack value");
         }
 
         final StackVersion stackVersion = new StackVersion(new Date(),
-                                                           params.versionNotes,
-                                                           params.cycleNumber,
-                                                           params.cycleStepNumber,
-                                                           params.stackResolutionX,
-                                                           params.stackResolutionY,
-                                                           params.stackResolutionZ,
-                                                           params.materializedBoxRootPath,
+                                                           parameters.versionNotes,
+                                                           parameters.cycleNumber,
+                                                           parameters.cycleStepNumber,
+                                                           parameters.stackResolutionX,
+                                                           parameters.stackResolutionY,
+                                                           parameters.stackResolutionZ,
+                                                           parameters.materializedBoxRootPath,
                                                            null);
 
         List<Double> zValues = null;
-        if (params.zValues != null) {
-            zValues = new ArrayList<>(params.zValues.size());
-            for (final String zString : params.zValues) {
+        if (parameters.zValues != null) {
+            zValues = new ArrayList<>(parameters.zValues.size());
+            for (final String zString : parameters.zValues) {
                 zValues.add(new Double(zString));
             }
         }
 
         renderDataClient.cloneStackVersion(stack,
-                                           params.cloneResultProject,
-                                           params.cloneResultStack,
+                                           parameters.cloneResultProject,
+                                           parameters.cloneResultStack,
                                            stackVersion,
-                                           params.skipSharedTransformClone,
+                                           parameters.skipSharedTransformClone,
                                            zValues);
 
-        logMetaData("cloneStackVersion: after clone", params.cloneResultStack);
+        logMetaData("cloneStackVersion: after clone", parameters.cloneResultStack);
     }
 
     public void setStackState()
             throws Exception {
 
-        if (params.stackState == null) {
+        if (parameters.stackState == null) {
             throw new IllegalArgumentException("missing --stackState value");
         }
 
         logMetaData("setStackState: before update");
 
-        renderDataClient.setStackState(stack, params.stackState);
+        renderDataClient.setStackState(stack, parameters.stackState);
 
         logMetaData("setStackState: after update");
     }
@@ -192,20 +194,20 @@ public class StackClient {
 
         logMetaData("deleteStack: before removal");
 
-        if (params.zValues == null) {
-            if (params.sectionId == null) {
+        if (parameters.zValues == null) {
+            if (parameters.sectionId == null) {
                 renderDataClient.deleteStack(stack, null);
             } else {
-                renderDataClient.deleteStackSection(stack, params.sectionId);
+                renderDataClient.deleteStackSection(stack, parameters.sectionId);
             }
         } else {
             Double z;
-            for (final String zString : params.zValues) {
+            for (final String zString : parameters.zValues) {
                 z = new Double(zString);
                 renderDataClient.deleteStack(stack, z);
             }
-            if (params.sectionId != null) {
-                renderDataClient.deleteStackSection(stack, params.sectionId);
+            if (parameters.sectionId != null) {
+                renderDataClient.deleteStackSection(stack, parameters.sectionId);
             }
         }
     }

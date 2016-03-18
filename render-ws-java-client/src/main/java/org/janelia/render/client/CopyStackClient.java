@@ -56,7 +56,9 @@ public class CopyStackClient {
 
     public CopyStackClient(final Parameters parameters) {
         this.parameters = parameters;
-        this.renderDataClient = parameters.getClient();
+        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                     parameters.owner,
+                                                     parameters.project);
     }
 
     public void copySection() throws Exception {

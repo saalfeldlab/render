@@ -64,7 +64,9 @@ public class ImportTileZValuesClient {
     public ImportTileZValuesClient(final Parameters parameters) {
         this.parameters = parameters;
 
-        this.renderDataClient = parameters.getClient();
+        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                     parameters.owner,
+                                                     parameters.project);
         this.zToTileIdMap = new HashMap<>();
     }
 

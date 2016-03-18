@@ -129,7 +129,7 @@ public class BoxClient {
         clientRunner.run();
     }
 
-    private final Parameters params;
+    private final Parameters parameters;
 
     private final String stack;
     private final String format;
@@ -141,26 +141,26 @@ public class BoxClient {
     private final Bounds stackBounds;
     private final RenderDataClient renderDataClient;
 
-    public BoxClient(final Parameters params)
+    public BoxClient(final Parameters parameters)
             throws IOException {
 
-        this.params = params;
-        this.stack = params.stack;
-        this.format = params.format;
-        this.boxWidth = params.width;
-        this.boxHeight = params.height;
+        this.parameters = parameters;
+        this.stack = parameters.stack;
+        this.format = parameters.format;
+        this.boxWidth = parameters.width;
+        this.boxHeight = parameters.height;
 
         String boxName = this.boxWidth + "x" + this.boxHeight;
-        if (params.label) {
+        if (parameters.label) {
             boxName += "-label";
             this.backgroundRGBColor = Color.WHITE.getRGB();
         } else {
             this.backgroundRGBColor = null;
         }
 
-        final Path boxPath = Paths.get(params.rootDirectory,
-                                       params.project,
-                                       params.stack,
+        final Path boxPath = Paths.get(parameters.rootDirectory,
+                                       parameters.project,
+                                       parameters.stack,
                                        boxName).toAbsolutePath();
 
         this.boxDirectory = boxPath.toFile();
@@ -178,29 +178,31 @@ public class BoxClient {
         this.emptyImageFile = new File(boxDirectory.getAbsolutePath(),
                                        "empty." + format.toLowerCase());
 
-        if (params.renderGroup != null) {
+        if (parameters.renderGroup != null) {
 
-            if (params.numberOfRenderGroups == null) {
+            if (parameters.numberOfRenderGroups == null) {
                 throw new IllegalArgumentException(
                         "numberOfRenderGroups must be specified when renderGroup is specified");
             }
 
-            if (params.renderGroup < 1) {
+            if (parameters.renderGroup < 1) {
                 throw new IllegalArgumentException("renderGroup values start at 1");
             }
 
-            if (params.renderGroup > params.numberOfRenderGroups) {
+            if (parameters.renderGroup > parameters.numberOfRenderGroups) {
                 throw new IllegalArgumentException(
-                        "numberOfRenderGroups (" + params.numberOfRenderGroups +
-                        ") must be greater than the renderGroup (" + params.renderGroup + ")");
+                        "numberOfRenderGroups (" + parameters.numberOfRenderGroups +
+                        ") must be greater than the renderGroup (" + parameters.renderGroup + ")");
             }
 
-        } else if (params.numberOfRenderGroups != null) {
+        } else if (parameters.numberOfRenderGroups != null) {
             throw new IllegalArgumentException(
                     "renderGroup (1-n) must be specified when numberOfRenderGroups are specified");
         }
 
-        this.renderDataClient = params.getClient();
+        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                     parameters.owner,
+                                                     parameters.project);
 
         final StackMetaData stackMetaData = this.renderDataClient.getStackMetaData(this.stack);
         this.stackBounds = stackMetaData.getStats().getStackBounds();
@@ -217,7 +219,7 @@ public class BoxClient {
 
             final BufferedImage emptyImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
 
-            if (params.label) {
+            if (parameters.label) {
 
                 final Graphics2D targetGraphics = emptyImage.createGraphics();
                 targetGraphics.setBackground(new Color(backgroundRGBColor));
@@ -253,13 +255,13 @@ public class BoxClient {
         final Bounds layerBounds = renderDataClient.getLayerBounds(stack, z);
         final SectionBoxBounds boxBounds = new SectionBoxBounds(z, boxWidth, boxHeight, layerBounds);
 
-        if (params.renderGroup != null) {
-            boxBounds.setRenderGroup(params.renderGroup, params.numberOfRenderGroups, params.maxLevel);
+        if (parameters.renderGroup != null) {
+            boxBounds.setRenderGroup(parameters.renderGroup, parameters.numberOfRenderGroups, parameters.maxLevel);
         }
 
         final int tileCount;
         final ImageProcessorCache imageProcessorCache;
-        if (params.label) {
+        if (parameters.label) {
 
             // retrieve all tile specs for layer so that imageUrls can be consistently mapped to label colors
             // (this allows label runs to be resumed after failures)
@@ -284,7 +286,7 @@ public class BoxClient {
                  z, layerBounds, boxBounds, tileCount);
 
         BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z.intValue(),
-                                                                       params.label,
+                                                                       parameters.label,
                                                                        format,
                                                                        boxWidth,
                                                                        boxHeight,
@@ -294,9 +296,9 @@ public class BoxClient {
                                                                        boxBounds.getLastRow(),
                                                                        boxBounds.getFirstColumn(),
                                                                        boxBounds.getLastColumn(),
-                                                                       params.forceGeneration);
+                                                                       parameters.forceGeneration);
         final IGridPaths iGridPaths;
-        if (params.createIGrid) {
+        if (parameters.createIGrid) {
             iGridPaths = new IGridPaths(boxBounds.getNumberOfRows(), boxBounds.getNumberOfColumns());
         } else {
             iGridPaths = null;
@@ -317,16 +319,16 @@ public class BoxClient {
         final Path overviewDirPath = Paths.get(boxDirectory.getAbsolutePath(), "small");
         final String overviewFileName = z.intValue() + "." + format.toLowerCase();
         final File overviewFile = new File(overviewDirPath.toFile(), overviewFileName).getAbsoluteFile();
-        boolean isOverviewGenerated = (! params.forceGeneration) && overviewFile.exists();
+        boolean isOverviewGenerated = (! parameters.forceGeneration) && overviewFile.exists();
 
         if (isOverviewGenerated) {
             LOG.info("generateBoxesForZ: {}, overview {} already generated", z, overviewFile.getAbsolutePath());
         }
 
-        for (int level = 0; level < params.maxLevel; level++) {
+        for (int level = 0; level < parameters.maxLevel; level++) {
             boxMipmapGenerator = boxMipmapGenerator.generateNextLevel();
-            if (params.isOverviewNeeded() && (! isOverviewGenerated)) {
-                isOverviewGenerated = boxMipmapGenerator.generateOverview(params.maxOverviewWidthAndHeight,
+            if (parameters.isOverviewNeeded() && (! isOverviewGenerated)) {
+                isOverviewGenerated = boxMipmapGenerator.generateOverview(parameters.maxOverviewWidthAndHeight,
                                                                           stackBounds,
                                                                           overviewFile);
             }
@@ -366,7 +368,7 @@ public class BoxClient {
                                                                     row,
                                                                     column);
 
-                    if (params.forceGeneration || (!levelZeroFile.exists())) {
+                    if (parameters.forceGeneration || (!levelZeroFile.exists())) {
 
                         renderParameters = generateLevelZeroBox(x, y, z,
                                                                 imageProcessorCache,
@@ -456,8 +458,8 @@ public class BoxClient {
         LOG.info("generateLevelZeroBox: loading {}", parametersUrl);
 
         final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
-        renderParameters.setSkipInterpolation(params.skipInterpolation);
-        renderParameters.setBinaryMask(params.binaryMask);
+        renderParameters.setSkipInterpolation(parameters.skipInterpolation);
+        renderParameters.setBinaryMask(parameters.binaryMask);
         renderParameters.setBackgroundRGBColor(backgroundRGBColor);
 
         if (renderParameters.hasTileSpecs()) {
@@ -468,7 +470,7 @@ public class BoxClient {
 
             BoxMipmapGenerator.saveImage(levelZeroImage,
                                          levelZeroFile,
-                                         params.label,
+                                         parameters.label,
                                          format);
 
             boxMipmapGenerator.addSource(row, column, levelZeroFile);

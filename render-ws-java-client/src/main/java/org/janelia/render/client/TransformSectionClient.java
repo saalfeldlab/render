@@ -86,7 +86,9 @@ public class TransformSectionClient {
             this.tileSpecValidator = new TemTileSpecValidator();
         }
 
-        this.renderDataClient = parameters.getClient();
+        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                     parameters.owner,
+                                                     parameters.project);
     }
 
     public void generateStackDataForZ(final Double z)

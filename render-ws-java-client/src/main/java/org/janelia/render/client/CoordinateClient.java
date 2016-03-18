@@ -78,9 +78,13 @@ public class CoordinateClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
+                final RenderDataClient renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                                               parameters.owner,
+                                                                               parameters.project);
+
                 final CoordinateClient client = new CoordinateClient(parameters.stack,
                                                                      parameters.z,
-                                                                     parameters.getClient(),
+                                                                     renderDataClient,
                                                                      parameters.numberOfThreads);
                 final Object coordinatesToSave;
                 if (parameters.localToWorld) {

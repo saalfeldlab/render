@@ -112,19 +112,19 @@ public class MipmapClient {
         clientRunner.run();
     }
 
-    private final Parameters params;
+    private final Parameters parameters;
 
     private final String stack;
     private final MipmapPathBuilder mipmapPathBuilder;
     private final RenderDataClient renderDataClient;
 
-    public MipmapClient(final Parameters params)
+    public MipmapClient(final Parameters parameters)
             throws IOException {
 
-        this.params = params;
-        this.stack = params.stack;
+        this.parameters = parameters;
+        this.stack = parameters.stack;
 
-        final File rootDirectory = new File(params.rootDirectory).getCanonicalFile();
+        final File rootDirectory = new File(parameters.rootDirectory).getCanonicalFile();
         if (! rootDirectory.exists()) {
             throw new IllegalArgumentException("missing root directory " + rootDirectory);
         }
@@ -133,31 +133,33 @@ public class MipmapClient {
             throw new IllegalArgumentException("not allowed to write to root directory " + rootDirectory);
         }
 
-        this.mipmapPathBuilder = new MipmapPathBuilder(rootDirectory.getPath(), params.maxLevel, params.getExtension());
+        this.mipmapPathBuilder = new MipmapPathBuilder(rootDirectory.getPath(), parameters.maxLevel, parameters.getExtension());
 
-        if (params.renderGroup != null) {
+        if (parameters.renderGroup != null) {
 
-            if (params.numberOfRenderGroups == null) {
+            if (parameters.numberOfRenderGroups == null) {
                 throw new IllegalArgumentException(
                         "numberOfRenderGroups must be specified when renderGroup is specified");
             }
 
-            if (params.renderGroup < 1) {
+            if (parameters.renderGroup < 1) {
                 throw new IllegalArgumentException("renderGroup values start at 1");
             }
 
-            if (params.renderGroup > params.numberOfRenderGroups) {
+            if (parameters.renderGroup > parameters.numberOfRenderGroups) {
                 throw new IllegalArgumentException(
-                        "numberOfRenderGroups (" + params.numberOfRenderGroups +
-                        ") must be greater than the renderGroup (" + params.renderGroup + ")");
+                        "numberOfRenderGroups (" + parameters.numberOfRenderGroups +
+                        ") must be greater than the renderGroup (" + parameters.renderGroup + ")");
             }
 
-        } else if (params.numberOfRenderGroups != null) {
+        } else if (parameters.numberOfRenderGroups != null) {
             throw new IllegalArgumentException(
                     "renderGroup (1-n) must be specified when numberOfRenderGroups are specified");
         }
 
-        this.renderDataClient = params.getClient();
+        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                     parameters.owner,
+                                                     parameters.project);
     }
 
     public MipmapPathBuilder getMipmapPathBuilder() {
@@ -172,8 +174,8 @@ public class MipmapClient {
 
         final ResolvedTileSpecCollection tiles = renderDataClient.getResolvedTiles(stack, z);
         final int tileCount = tiles.getTileCount();
-        final int tilesPerGroup = (tileCount / params.numberOfRenderGroups) + 1;
-        final int startTile = (params.renderGroup - 1) * tilesPerGroup;
+        final int tilesPerGroup = (tileCount / parameters.numberOfRenderGroups) + 1;
+        final int startTile = (parameters.renderGroup - 1) * tilesPerGroup;
         final int stopTile = startTile + tilesPerGroup - 1;
 
         int count = 0;
@@ -203,7 +205,7 @@ public class MipmapClient {
                                                tileSpec.getTileId() + "'");
         }
 
-        if (params.forceGeneration || isMissingMipmaps(tileSpec, firstEntry, sourceImageAndMask.hasMask())) {
+        if (parameters.forceGeneration || isMissingMipmaps(tileSpec, firstEntry, sourceImageAndMask.hasMask())) {
 
             ImageProcessor sourceImageProcessor = loadImageProcessor(sourceImageAndMask.getImageUrl());
 
@@ -306,10 +308,10 @@ public class MipmapClient {
 
         final ImageProcessor downSampledProcessor = Downsampler.downsampleImageProcessor(sourceProcessor,
                                                                                          mipmapLevelDelta);
-        if (params.forceGeneration || (! targetMipmapFile.exists())) {
+        if (parameters.forceGeneration || (! targetMipmapFile.exists())) {
             Utils.saveImage(downSampledProcessor.getBufferedImage(),
                             targetMipmapFile.getAbsolutePath(),
-                            params.format,
+                            parameters.format,
                             false,
                             0.85f);
         }

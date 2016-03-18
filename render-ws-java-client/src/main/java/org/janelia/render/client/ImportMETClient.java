@@ -96,14 +96,18 @@ public class ImportMETClient {
             this.tileSpecValidator = new TemTileSpecValidator();
         }
 
-        this.sourceRenderDataClient = parameters.getClient();
+        this.sourceRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                           parameters.owner,
+                                                           parameters.project);
 
         if ((parameters.targetProject == null) ||
             (parameters.targetProject.trim().length() == 0) ||
             (parameters.targetProject.equals(parameters.project))){
             this.targetRenderDataClient = sourceRenderDataClient;
         } else {
-            this.targetRenderDataClient = parameters.getClient(parameters.targetProject);
+            this.targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                               parameters.owner,
+                                                               parameters.targetProject);
         }
 
         this.metSectionToDataMap = new HashMap<>();

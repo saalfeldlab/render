@@ -47,17 +47,19 @@ public class SectionUpdateClient {
         clientRunner.run();
     }
 
-    private final Parameters params;
+    private final Parameters parameters;
     private final RenderDataClient renderDataClient;
 
-    public SectionUpdateClient(final Parameters params) {
-        this.params = params;
-        this.renderDataClient = params.getClient();
+    public SectionUpdateClient(final Parameters parameters) {
+        this.parameters = parameters;
+        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                     parameters.owner,
+                                                     parameters.project);
     }
 
     public void updateZ()
             throws Exception {
-        renderDataClient.updateZForSection(params.stack, params.sectionId, params.z);
+        renderDataClient.updateZForSection(parameters.stack, parameters.sectionId, parameters.z);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(SectionUpdateClient.class);

@@ -58,7 +58,9 @@ public class ImportMatchClient {
     public ImportMatchClient(final Parameters parameters)
             throws IOException {
         this.parameters = parameters;
-        this.renderDataClient = parameters.getClient();
+        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                     parameters.owner,
+                                                     parameters.project);
     }
 
     public void importMatchData(final String dataFile) throws Exception {

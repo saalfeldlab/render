@@ -82,7 +82,9 @@ public class ImportJsonClient {
             this.tileSpecValidator = new TemTileSpecValidator();
         }
 
-        this.renderDataClient = parameters.getClient();
+        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                     parameters.owner,
+                                                     parameters.project);
 
         this.transformSpecs = loadTransformData(parameters.transformFile);
     }

@@ -101,7 +101,9 @@ public class RenderSectionClient {
         final int maxCachedPixels = 50 * 1000000;
         this.imageProcessorCache = new ImageProcessorCache(maxCachedPixels, false, false);
 
-        this.renderDataClient = clientParameters.getClient();
+        this.renderDataClient = new RenderDataClient(clientParameters.baseDataUrl,
+                                                     clientParameters.owner,
+                                                     clientParameters.project);
     }
 
     public void generateImageForZ(final Double z)

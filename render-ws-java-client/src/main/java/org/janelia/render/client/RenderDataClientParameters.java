@@ -36,12 +36,4 @@ public class RenderDataClientParameters
         this.project = null;
     }
 
-    public RenderDataClient getClient() {
-        return new RenderDataClient(baseDataUrl, owner, project);
-    }
-
-    public RenderDataClient getClient(final String project) {
-        return new RenderDataClient(baseDataUrl, owner, project);
-    }
-
 }
