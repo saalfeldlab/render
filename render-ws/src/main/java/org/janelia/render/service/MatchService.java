@@ -288,10 +288,10 @@ public class MatchService {
         return responseBuilder.build();
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/matches")
+    @Path("owner/{owner}/matchCollection/{matchCollection}")
     @DELETE
     @ApiOperation(
-            value = "Delete all matches in the collection",
+            value = "Delete the collection",
             notes = "Use this wisely.")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Match collection not found")
