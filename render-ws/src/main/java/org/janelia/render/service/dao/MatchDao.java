@@ -20,6 +20,7 @@ import java.util.List;
 import org.bson.Document;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
+import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.slf4j.Logger;
@@ -38,6 +39,23 @@ public class MatchDao {
 
     public MatchDao(final MongoClient client) {
         matchDatabase = client.getDatabase(MATCH_DB_NAME);
+    }
+
+    /**
+     * @return list of match collection metadata.
+     */
+    public List<MatchCollectionMetaData> getMatchCollectionMetaData()
+            throws IllegalArgumentException {
+
+        final List<MatchCollectionMetaData> list = new ArrayList<>();
+        for (final String collectionName : matchDatabase.listCollectionNames()) {
+            list.add(
+                    new MatchCollectionMetaData(
+                            MatchCollectionId.fromDbCollectionName(collectionName),
+                            matchDatabase.getCollection(collectionName).count()));
+        }
+
+        return list;
     }
 
     public void writeMatchesWithinGroup(final MatchCollectionId collectionId,

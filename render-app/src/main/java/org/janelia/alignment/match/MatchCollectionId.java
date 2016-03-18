@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
  * @author Eric Trautman
  */
 public class MatchCollectionId
-        implements Serializable {
+        implements Comparable<MatchCollectionId>, Serializable {
 
     private final String owner;
     private final String name;
@@ -57,6 +57,16 @@ public class MatchCollectionId
                "', 'name': '" + name + "'}";
     }
 
+    @SuppressWarnings("NullableProblems")
+    @Override
+    public int compareTo(final MatchCollectionId that) {
+        int v = this.owner.compareTo(that.owner);
+        if (v == 0) {
+            v = this.name.compareTo(that.name);
+        }
+        return v;
+    }
+
     private void validateValue(final String context,
                                final Pattern pattern,
                                final String value)
@@ -78,6 +88,22 @@ public class MatchCollectionId
                                                " characters therefore the length of the owner and/or " +
                                                "match collection names needs to be reduced");
         }
+    }
+
+    public static MatchCollectionId fromDbCollectionName(final String dbCollectionName)
+            throws IllegalArgumentException {
+
+        final int separatorIndex = dbCollectionName.indexOf(FIELD_SEPARATOR);
+        final int nameIndex = separatorIndex + FIELD_SEPARATOR.length();
+
+        if ((separatorIndex < 1) || (dbCollectionName.length() <= nameIndex)) {
+            throw new IllegalArgumentException("invalid match collection name '" + dbCollectionName + "'");
+        }
+
+        final String owner = dbCollectionName.substring(0, separatorIndex);
+        final String name = dbCollectionName.substring(nameIndex);
+
+        return new MatchCollectionId(owner,name);
     }
 
     // use consecutive underscores to separate fields within a scoped name

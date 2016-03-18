@@ -5,7 +5,10 @@ import com.mongodb.MongoClient;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -23,6 +26,7 @@ import javax.ws.rs.core.UriInfo;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
+import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.render.service.dao.MatchDao;
 import org.janelia.render.service.dao.SharedMongoClient;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
@@ -40,7 +44,7 @@ import io.swagger.annotations.ApiResponses;
  *
  * @author Eric Trautman
  */
-@Path("/v1/owner/{owner}/matchCollection")
+@Path("/v1")
 @Api(tags = {"Point Match APIs"})
 public class MatchService {
 
@@ -56,7 +60,47 @@ public class MatchService {
         this.matchDao = matchDao;
     }
 
-    @Path("{matchCollection}/group/{groupId}/matchesWithinGroup")
+    @Path("matchCollectionOwners")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "List of all data owners")
+    public Set<String> getOwners() {
+
+        LOG.info("getOwners: entry");
+
+        final List<MatchCollectionMetaData> metaDataList = matchDao.getMatchCollectionMetaData();
+        final Set<String> owners = new LinkedHashSet<>(metaDataList.size());
+        for (final MatchCollectionMetaData metaData : metaDataList) {
+            owners.add(metaData.getOwner());
+        }
+
+        return owners;
+    }
+
+    @Path("owner/{owner}/matchCollections")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "List of match collection metadata for the specified owner")
+    public List<MatchCollectionMetaData> getMatchCollections(@PathParam("owner") final String owner) {
+
+        LOG.info("getMatchCollections: entry, owner={}", owner);
+
+        if (owner == null) {
+            throw new IllegalArgumentException("owner must be specified");
+        }
+
+        final List<MatchCollectionMetaData> metaDataList = matchDao.getMatchCollectionMetaData();
+        final List<MatchCollectionMetaData> ownerMetaDataList = new ArrayList<>(metaDataList.size());
+        for (final MatchCollectionMetaData metaData : metaDataList) {
+            if (owner.equals(metaData.getOwner())) {
+                ownerMetaDataList.add(metaData);
+            }
+        }
+
+        return ownerMetaDataList;
+    }
+
+    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesWithinGroup")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -86,7 +130,7 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("{matchCollection}/group/{groupId}/matchesOutsideGroup")
+    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -116,7 +160,7 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("{matchCollection}/group/{pGroupId}/matchesWith/{qGroupId}")
+    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/matchesWith/{qGroupId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -147,7 +191,7 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
+    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -180,7 +224,7 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("{matchCollection}/group/{groupId}/matchesOutsideGroup")
+    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
     @DELETE
     @ApiOperation(
             value = "Delete matches outside the specified group",
@@ -207,7 +251,7 @@ public class MatchService {
         return response;
      }
 
-    @Path("{matchCollection}/matches")
+    @Path("owner/{owner}/matchCollection/{matchCollection}/matches")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -244,7 +288,7 @@ public class MatchService {
         return responseBuilder.build();
     }
 
-    @Path("{matchCollection}/matches")
+    @Path("owner/{owner}/matchCollection/{matchCollection}/matches")
     @DELETE
     @ApiOperation(
             value = "Delete all matches in the collection",

@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
+import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.match.Matches;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
@@ -48,6 +49,24 @@ public class MatchDaoTest {
     public static void after() throws Exception {
         embeddedMongoDb.stop();
     }
+
+    @Test
+    public void testGetMatchCollectionMetaData() throws Exception {
+
+        final List<MatchCollectionMetaData> metaDataList = dao.getMatchCollectionMetaData();
+        Assert.assertEquals("invalid number of matche collections returned",
+                            1, metaDataList.size());
+
+        final MatchCollectionMetaData metaData = metaDataList.get(0);
+
+        final MatchCollectionId retrievedCollectionId = metaData.getCollectionId();
+        Assert.assertNotNull("null collection id", retrievedCollectionId);
+        Assert.assertEquals("invalid owner", collectionId.getOwner(), retrievedCollectionId.getOwner());
+        Assert.assertEquals("invalid name", collectionId.getName(), retrievedCollectionId.getName());
+
+        Assert.assertEquals("invalid number of pairs", new Long(4), metaData.getPairCount());
+    }
+
 
     @Test
     public void testWriteMatchesWithinGroup() throws Exception {
