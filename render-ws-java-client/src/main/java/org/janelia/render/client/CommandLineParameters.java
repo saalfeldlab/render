@@ -8,7 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.janelia.alignment.json.JsonUtils;
 
 /**
- * Base parameters for all render web service clients.
+ * Base parameters for all command line tools.
  *
  * @author Eric Trautman
  */
