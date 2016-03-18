@@ -25,6 +25,13 @@
 
     <logger name="org.janelia" level="DEBUG"/>
 
+    <!--
+         Hide mongodb driver cluster log spam until
+         https://jira.mongodb.org/browse/JAVA-2136
+         gets fixed.
+    -->
+    <logger name="org.mongodb.driver.cluster" level="WARN"/>
+
     <root level="INFO">
         <appender-ref ref="FILE" />
     </root>
