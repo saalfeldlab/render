@@ -2,8 +2,6 @@ package org.janelia.alignment.match;
 
 import java.io.Serializable;
 
-import javax.annotation.Nonnull;
-
 import org.janelia.alignment.json.JsonUtils;
 
 /**
@@ -16,7 +14,6 @@ public class MatchCollectionMetaData
 
     private final MatchCollectionId collectionId;
     private final Long pairCount;
-
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
@@ -47,9 +44,9 @@ public class MatchCollectionMetaData
         return owner;
     }
 
-    @SuppressWarnings({"ConstantConditions"})
+    @SuppressWarnings({"ConstantConditions", "NullableProblems"})
     @Override
-    public int compareTo(@Nonnull final MatchCollectionMetaData that) {
+    public int compareTo(final MatchCollectionMetaData that) {
         return this.collectionId.compareTo(that.collectionId);
     }
 

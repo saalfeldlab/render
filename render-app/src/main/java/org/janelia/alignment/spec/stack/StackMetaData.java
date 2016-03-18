@@ -3,8 +3,6 @@ package org.janelia.alignment.spec.stack;
 import java.io.Serializable;
 import java.util.Date;
 
-import javax.annotation.Nonnull;
-
 import org.janelia.alignment.json.JsonUtils;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.*;
@@ -152,9 +150,9 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         return mipmapPathBuilder;
     }
 
-    @SuppressWarnings({"ConstantConditions"})
+    @SuppressWarnings({"ConstantConditions", "NullableProblems"})
     @Override
-    public int compareTo(@Nonnull final StackMetaData that) {
+    public int compareTo(final StackMetaData that) {
         return this.stackId.compareTo(that.stackId);
     }
 
