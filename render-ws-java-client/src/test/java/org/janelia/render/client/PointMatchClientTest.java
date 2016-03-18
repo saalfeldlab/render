@@ -49,10 +49,10 @@ public class PointMatchClientTest {
         Assert.assertEquals("invalid number of distinct canvas URLs", 3, canvasDataMap.size());
 
         final PointMatchClient.CanvasData firstCanvasData = new ArrayList<>(canvasDataMap.values()).get(0);
-        final String expectedMatchGroupId = "99.0";
-        final String expectedMatchId = "160102030405111111.99.0";
-        Assert.assertEquals("invalid derived matchGroupId", expectedMatchGroupId, firstCanvasData.getMatchGroupId());
-        Assert.assertEquals("invalid derived matchId", expectedMatchId, firstCanvasData.getMatchId());
+        final String expectedCanvasGroupId = "99.0";
+        final String expectedCanvasId = "160102030405111111.99.0";
+        Assert.assertEquals("invalid derived canvasGroupId", expectedCanvasGroupId, firstCanvasData.getCanvasGroupId());
+        Assert.assertEquals("invalid derived canvasId", expectedCanvasId, firstCanvasData.getCanvasId());
 
         client.extractFeatures();
 
@@ -66,8 +66,8 @@ public class PointMatchClientTest {
         Assert.assertEquals("invalid number of matches derived", 2, canvasMatchesList.size());
 
         final CanvasMatches canvasMatches = canvasMatchesList.get(0);
-        Assert.assertEquals("invalid pGroupId", expectedMatchGroupId, canvasMatches.getpGroupId());
-        Assert.assertEquals("invalid pId", expectedMatchId, canvasMatches.getpId());
+        Assert.assertEquals("invalid pGroupId", expectedCanvasGroupId, canvasMatches.getpGroupId());
+        Assert.assertEquals("invalid pId", expectedCanvasId, canvasMatches.getpId());
     }
 
     private String getRenderParameterPath(final String tileName) {

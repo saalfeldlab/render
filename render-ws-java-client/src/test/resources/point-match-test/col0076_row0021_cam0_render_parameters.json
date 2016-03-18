@@ -6,7 +6,10 @@
   "tileSpecs" : [
     {
       "tileId" : "160102030405333333.99.0",
-      "z" : 99.0,
+      "layout" : {
+        "sectionId": "99.0"
+      },
+      "z" : 88.0,
       "mipmapLevels": {
         "0": {
           "imageUrl": "src/test/resources/point-match-test/col0076_row0021_cam0.png",
