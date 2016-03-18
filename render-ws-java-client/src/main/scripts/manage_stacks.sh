@@ -15,5 +15,3 @@ echo """
 """
 ${COMMAND}
 exit $?
-
-qqq
