@@ -9,7 +9,7 @@ A collection of Java tools and HTTP services (APIs) for rendering transformed im
   - a set of [Java clients] for processing/rendering data that utilize the [render web services] 
     to retrieve and/or store persisted specifications.
   
-  
+  ![Render Components Diagram](docs/src/site/resources/image/render-components.png)
   
   [data model]: <docs/src/site/markdown/data-model.md>
   [Java clients]: <docs/src/site/markdown/render-ws-java-client.md>
