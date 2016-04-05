@@ -79,6 +79,8 @@ public class CanvasFeatureMatcher {
             LOG.warn("failed to filter outliers", e);
         }
 
+        LOG.info("deriveMatchResult: filtered {} inliers from {} candidates", inliers.size(), candidates.size());
+
         final Double inlierRatio;
         if (modelFound) {
             inlierRatio = (double) inliers.size() / candidates.size();
