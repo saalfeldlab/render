@@ -118,7 +118,7 @@ public class CanvasFeatureMatchResult {
             matches = new Matches(p, q, w);
 
         } else {
-            matches = new Matches(new double[0][0], new double[0][0], new double[0]);
+            matches = new Matches(new double[1][0], new double[1][0], new double[0]);
         }
 
 
