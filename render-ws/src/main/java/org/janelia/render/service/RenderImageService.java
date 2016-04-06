@@ -226,6 +226,28 @@ public class RenderImageService {
         }
     }
 
+    @Path("project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/jpg")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
+    @ApiOperation(
+            tags = {"Bounding Box Image APIs", "DVID Style APIs"},
+            value = "DVID style API to render JPEG image for the specified bounding box")
+    public Response renderJpegImageForDvidBox(@PathParam("owner") final String owner,
+                                              @PathParam("project") final String project,
+                                              @PathParam("stack") final String stack,
+                                              @PathParam("x") final Double x,
+                                              @PathParam("y") final Double y,
+                                              @PathParam("z") final Double z,
+                                              @PathParam("width") final Integer width,
+                                              @PathParam("height") final Integer height,
+                                              @QueryParam("scale") final Double scale,
+                                              @QueryParam("filter") final Boolean filter,
+                                              @QueryParam("binaryMask") final Boolean binaryMask,
+                                              @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
+                                              @Context final Request request) {
+        return renderJpegImageForBox(owner, project, stack, x, y, z, width, height, scale, filter, binaryMask, maxTileSpecsToRender, request);
+    }
+
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
@@ -259,6 +281,28 @@ public class RenderImageService {
         }
     }
 
+    @Path("project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/png")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
+    @ApiOperation(
+            tags = {"Bounding Box Image APIs", "DVID Style APIs"},
+            value = "DVID style API to render PNG image for the specified bounding box")
+    public Response renderPngImageForDvidBox(@PathParam("owner") final String owner,
+                                             @PathParam("project") final String project,
+                                             @PathParam("stack") final String stack,
+                                             @PathParam("x") final Double x,
+                                             @PathParam("y") final Double y,
+                                             @PathParam("z") final Double z,
+                                             @PathParam("width") final Integer width,
+                                             @PathParam("height") final Integer height,
+                                             @QueryParam("scale") final Double scale,
+                                             @QueryParam("filter") final Boolean filter,
+                                             @QueryParam("binaryMask") final Boolean binaryMask,
+                                             @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
+                                             @Context final Request request) {
+        return renderPngImageForBox(owner, project, stack, x, y, z, width, height, scale, filter, binaryMask, maxTileSpecsToRender, request);
+    }
+
     @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
@@ -290,6 +334,28 @@ public class RenderImageService {
         } else {
             return responseHelper.getNotModifiedResponse();
         }
+    }
+
+    @Path("project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/tif")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
+    @ApiOperation(
+            tags = {"Bounding Box Image APIs", "DVID Style APIs"},
+            value = "DVID style API to render TIFF image for the specified bounding box")
+    public Response renderTiffImageForDvidBox(@PathParam("owner") final String owner,
+                                              @PathParam("project") final String project,
+                                              @PathParam("stack") final String stack,
+                                              @PathParam("x") final Double x,
+                                              @PathParam("y") final Double y,
+                                              @PathParam("z") final Double z,
+                                              @PathParam("width") final Integer width,
+                                              @PathParam("height") final Integer height,
+                                              @QueryParam("scale") final Double scale,
+                                              @QueryParam("filter") final Boolean filter,
+                                              @QueryParam("binaryMask") final Boolean binaryMask,
+                                              @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
+                                              @Context final Request request) {
+        return renderTiffImageForBox(owner, project, stack, x, y, z, width, height, scale, filter, binaryMask, maxTileSpecsToRender, request);
     }
 
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
@@ -326,6 +392,29 @@ public class RenderImageService {
         }
     }
 
+    @Path("project/{project}/stack/{stack}/group/{groupId}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/jpg")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
+    @ApiOperation(
+            tags = {"Bounding Box Image APIs", "DVID Style APIs"},
+            value = "DVID style API to render JPEG image for the specified bounding box and groupId")
+    public Response renderJpegImageForDvidGroupBox(@PathParam("owner") final String owner,
+                                                   @PathParam("project") final String project,
+                                                   @PathParam("stack") final String stack,
+                                                   @PathParam("groupId") final String groupId,
+                                                   @PathParam("x") final Double x,
+                                                   @PathParam("y") final Double y,
+                                                   @PathParam("z") final Double z,
+                                                   @PathParam("width") final Integer width,
+                                                   @PathParam("height") final Integer height,
+                                                   @QueryParam("scale") final Double scale,
+                                                   @QueryParam("filter") final Boolean filter,
+                                                   @QueryParam("binaryMask") final Boolean binaryMask,
+                                                   @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
+                                                   @Context final Request request) {
+        return renderJpegImageForGroupBox(owner, project, stack, groupId, x, y, z, width, height, scale, filter, binaryMask, maxTileSpecsToRender, request);
+    }
+
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
@@ -360,6 +449,29 @@ public class RenderImageService {
         }
     }
 
+    @Path("project/{project}/stack/{stack}/group/{groupId}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/png")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
+    @ApiOperation(
+            tags = {"Bounding Box Image APIs", "DVID Style APIs"},
+            value = "DVID style API to render PNG image for the specified bounding box and groupId")
+    public Response renderPngImageForDvidGroupBox(@PathParam("owner") final String owner,
+                                                  @PathParam("project") final String project,
+                                                  @PathParam("stack") final String stack,
+                                                  @PathParam("groupId") final String groupId,
+                                                  @PathParam("x") final Double x,
+                                                  @PathParam("y") final Double y,
+                                                  @PathParam("z") final Double z,
+                                                  @PathParam("width") final Integer width,
+                                                  @PathParam("height") final Integer height,
+                                                  @QueryParam("scale") final Double scale,
+                                                  @QueryParam("filter") final Boolean filter,
+                                                  @QueryParam("binaryMask") final Boolean binaryMask,
+                                                  @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
+                                                  @Context final Request request) {
+        return renderPngImageForGroupBox(owner, project, stack, groupId, x, y, z, width, height, scale, filter, binaryMask, maxTileSpecsToRender, request);
+    }
+
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
@@ -392,6 +504,29 @@ public class RenderImageService {
         } else {
             return responseHelper.getNotModifiedResponse();
         }
+    }
+
+    @Path("project/{project}/stack/{stack}/group/{groupId}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/tif")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
+    @ApiOperation(
+            tags = {"Bounding Box Image APIs", "DVID Style APIs"},
+            value = "DVID style API to render TIFF image for the specified bounding box and groupId")
+    public Response renderTiffImageForDvidGroupBox(@PathParam("owner") final String owner,
+                                                   @PathParam("project") final String project,
+                                                   @PathParam("stack") final String stack,
+                                                   @PathParam("groupId") final String groupId,
+                                                   @PathParam("x") final Double x,
+                                                   @PathParam("y") final Double y,
+                                                   @PathParam("z") final Double z,
+                                                   @PathParam("width") final Integer width,
+                                                   @PathParam("height") final Integer height,
+                                                   @QueryParam("scale") final Double scale,
+                                                   @QueryParam("filter") final Boolean filter,
+                                                   @QueryParam("binaryMask") final Boolean binaryMask,
+                                                   @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
+                                                   @Context final Request request) {
+        return renderTiffImageForGroupBox(owner, project, stack, groupId, x, y, z, width, height, scale, filter, binaryMask, maxTileSpecsToRender, request);
     }
 
     @Path("project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.jpg")

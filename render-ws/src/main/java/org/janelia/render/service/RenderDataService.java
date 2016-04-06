@@ -671,6 +671,27 @@ public class RenderDataService {
     }
 
     /**
+     * @return number of tiles within the specified bounding box.
+     */
+    @Path("project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/tile-count")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Bounding Box Data APIs", "DVID Style APIs"},
+            value = "DVID style API to get number of tiles within box")
+    public Long getTileCountForDvidBox(@PathParam("owner") final String owner,
+                                       @PathParam("project") final String project,
+                                       @PathParam("stack") final String stack,
+                                       @PathParam("x") final Double x,
+                                       @PathParam("y") final Double y,
+                                       @PathParam("z") final Double z,
+                                       @PathParam("width") final Integer width,
+                                       @PathParam("height") final Integer height) {
+
+        return getTileCount(owner, project, stack, x, y, z, width, height);
+    }
+
+    /**
      * @return list of tile specs for specified layer with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */
@@ -771,6 +792,32 @@ public class RenderDataService {
      * @return render parameters for specified bounding box with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */
+    @Path("project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/render-parameters")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Bounding Box Data APIs", "DVID Style APIs"},
+            value = "DVID style API to get parameters to render all tiles within the specified box",
+            notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
+    public RenderParameters getExternalRenderParametersForDvidBox(@PathParam("owner") final String owner,
+                                                                  @PathParam("project") final String project,
+                                                                  @PathParam("stack") final String stack,
+                                                                  @PathParam("x") final Double x,
+                                                                  @PathParam("y") final Double y,
+                                                                  @PathParam("z") final Double z,
+                                                                  @PathParam("width") final Integer width,
+                                                                  @PathParam("height") final Integer height,
+                                                                  @QueryParam("scale") final Double scale,
+                                                                  @QueryParam("filter") final Boolean filter,
+                                                                  @QueryParam("binaryMask") final Boolean binaryMask,
+                                                                  @QueryParam("convertToGray") final Boolean convertToGray) {
+        return getExternalRenderParameters(owner, project, stack, null, x, y, z, width, height, scale, filter, binaryMask, convertToGray);
+    }
+
+    /**
+     * @return render parameters for specified bounding box with flattened (and therefore resolved)
+     *         transform specs suitable for external use.
+     */
     @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -807,6 +854,33 @@ public class RenderDataService {
             RenderServiceUtil.throwServiceException(t);
         }
         return parameters;
+    }
+
+    /**
+     * @return render parameters for specified bounding box with flattened (and therefore resolved)
+     *         transform specs suitable for external use.
+     */
+    @Path("project/{project}/stack/{stack}/group/{groupId}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/render-parameters")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Bounding Box Data APIs", "DVID Style APIs"},
+            value = "DVID style API to get parameters to render all tiles within the specified group and box",
+            notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
+    public RenderParameters getExternalRenderParametersForDvidBox(@PathParam("owner") final String owner,
+                                                                  @PathParam("project") final String project,
+                                                                  @PathParam("stack") final String stack,
+                                                                  @PathParam("groupId") final String groupId,
+                                                                  @PathParam("x") final Double x,
+                                                                  @PathParam("y") final Double y,
+                                                                  @PathParam("z") final Double z,
+                                                                  @PathParam("width") final Integer width,
+                                                                  @PathParam("height") final Integer height,
+                                                                  @QueryParam("scale") final Double scale,
+                                                                  @QueryParam("filter") final Boolean filter,
+                                                                  @QueryParam("binaryMask") final Boolean binaryMask,
+                                                                  @QueryParam("convertToGray") final Boolean convertToGray) {
+        return getExternalRenderParameters(owner, project, stack, groupId, x, y, z, width, height, scale, filter, binaryMask, convertToGray);
     }
 
     /**
