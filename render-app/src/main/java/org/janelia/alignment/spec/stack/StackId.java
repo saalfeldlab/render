@@ -1,8 +1,8 @@
 package org.janelia.alignment.spec.stack;
 
 import java.io.Serializable;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import org.janelia.alignment.util.CollectionNameUtil;
 
 /**
  * Compound identifier for a stack.
@@ -19,8 +19,6 @@ public class StackId implements Comparable<StackId>, Serializable {
     private final String project;
     private final String stack;
 
-    private transient String scopePrefix;
-
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private StackId() {
@@ -34,15 +32,16 @@ public class StackId implements Comparable<StackId>, Serializable {
                    final String stack)
             throws IllegalArgumentException {
 
-        validateValue("owner", VALID_NAME, owner);
-        validateValue("project", VALID_NAME, project);
-        validateValue("stack", VALID_NAME, stack);
-
-        setScopePrefix(owner, project, stack);
+        COLLECTION_NAME_UTIL.validateValue("owner", owner);
+        COLLECTION_NAME_UTIL.validateValue("project", project);
+        COLLECTION_NAME_UTIL.validateValue("stack", stack);
 
         this.owner = owner;
         this.project = project;
         this.stack = stack;
+
+        // validate length of longest collection name
+        getTransformCollectionName();
     }
 
     public String getOwner() {
@@ -55,13 +54,6 @@ public class StackId implements Comparable<StackId>, Serializable {
 
     public String getStack() {
         return stack;
-    }
-
-    public String getScopePrefix() {
-        if (scopePrefix == null) {
-            setScopePrefix(owner, project, stack);
-        }
-        return scopePrefix;
     }
 
     @Override
@@ -98,45 +90,9 @@ public class StackId implements Comparable<StackId>, Serializable {
         return getCollectionName(TRANSFORM_COLLECTION_SUFFIX);
     }
 
-    private void validateValue(final String context,
-                               final Pattern pattern,
-                               final String value)
-            throws IllegalArgumentException {
-
-        final Matcher m = pattern.matcher(value);
-        if (! m.matches()) {
-            throw new IllegalArgumentException("invalid " + context + " '" + value + "' specified, " +
-                                               "names may only contain alphanumeric or underscore '_' characters " +
-                                               "and may not contain consecutive underscores '_'");
-        }
-    }
-
-    private void setScopePrefix(final String owner,
-                                final String project,
-                                final String stack) {
-
-        scopePrefix = owner + FIELD_SEPARATOR + project + FIELD_SEPARATOR + stack + FIELD_SEPARATOR;
-
-        if (scopePrefix.length() > MAX_SCOPE_PREFIX_LENGTH) {
-            throw new IllegalArgumentException("scope prefix '" + scopePrefix + "' must be less than " +
-                                               MAX_SCOPE_PREFIX_LENGTH + " characters therefore the length of " +
-                                               "the owner, project, and/or stack names needs to be reduced");
-        }
-    }
-
     private String getCollectionName(final String suffix) {
-        return getScopePrefix() + suffix;
+        return COLLECTION_NAME_UTIL.getName(owner, project, stack, suffix);
     }
 
-    // use consecutive underscores to separate fields within a scoped name
-    private static final String FIELD_SEPARATOR = "__";
-
-    // valid names are alphanumeric with underscores but no consecutive underscores
-    private static final Pattern VALID_NAME = Pattern.compile("([A-Za-z0-9]+_?)++");
-
-    // From http://docs.mongodb.org/manual/reference/limits/
-    //   mongodb namespace limit is 123
-    //   subtract 6 characters for the database name: "render"
-    //   subtract 9 characters for longest collection type: "transform"
-    private static final int MAX_SCOPE_PREFIX_LENGTH = 123 - 6 - 9;
+    private static final CollectionNameUtil COLLECTION_NAME_UTIL = new CollectionNameUtil("render");
 }

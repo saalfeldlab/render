@@ -1,8 +1,8 @@
 package org.janelia.alignment.match;
 
 import java.io.Serializable;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import org.janelia.alignment.util.CollectionNameUtil;
 
 /**
  * Compound identifier for a match collection.
@@ -28,8 +28,8 @@ public class MatchCollectionId
                              final String name)
             throws IllegalArgumentException {
 
-        validateValue("owner", VALID_NAME, owner);
-        validateValue("name", VALID_NAME, name);
+        COLLECTION_NAME_UTIL.validateValue("owner", owner);
+        COLLECTION_NAME_UTIL.validateValue("name", name);
 
         this.owner = owner;
         this.name = name;
@@ -67,53 +67,21 @@ public class MatchCollectionId
         return v;
     }
 
-    private void validateValue(final String context,
-                               final Pattern pattern,
-                               final String value)
-            throws IllegalArgumentException {
-
-        final Matcher m = pattern.matcher(value);
-        if (! m.matches()) {
-            throw new IllegalArgumentException("invalid " + context + " '" + value + "' specified");
-        }
-    }
-
     private void setDbCollectionName() throws IllegalArgumentException {
-
-        dbCollectionName = owner + FIELD_SEPARATOR + name;
-
-        if (dbCollectionName.length() > MAX_COLLECTION_NAME_LENGTH) {
-            throw new IllegalArgumentException("match db collection name '" + this.dbCollectionName +
-                                               "' must be less than " + MAX_COLLECTION_NAME_LENGTH +
-                                               " characters therefore the length of the owner and/or " +
-                                               "match collection names needs to be reduced");
-        }
+        dbCollectionName = COLLECTION_NAME_UTIL.getName(owner, name);
     }
 
     public static MatchCollectionId fromDbCollectionName(final String dbCollectionName)
             throws IllegalArgumentException {
 
-        final int separatorIndex = dbCollectionName.indexOf(FIELD_SEPARATOR);
-        final int nameIndex = separatorIndex + FIELD_SEPARATOR.length();
+        final String[] fields = COLLECTION_NAME_UTIL.getFields(dbCollectionName);
 
-        if ((separatorIndex < 1) || (dbCollectionName.length() <= nameIndex)) {
+        if (fields.length != 2) {
             throw new IllegalArgumentException("invalid match collection name '" + dbCollectionName + "'");
         }
 
-        final String owner = dbCollectionName.substring(0, separatorIndex);
-        final String name = dbCollectionName.substring(nameIndex);
-
-        return new MatchCollectionId(owner,name);
+        return new MatchCollectionId(fields[0], fields[1]);
     }
 
-    // use consecutive underscores to separate fields within a scoped name
-    private static final String FIELD_SEPARATOR = "__";
-
-    // valid names are alphanumeric with underscores but no consecutive underscores
-    private static final Pattern VALID_NAME = Pattern.compile("([A-Za-z0-9]+(_[A-Za-z0-9])?)++");
-
-    // From http://docs.mongodb.org/manual/reference/limits/
-    //   mongodb namespace limit is 123
-    //   subtract 5 characters for the database name: "match"
-    private static final int MAX_COLLECTION_NAME_LENGTH = 123 - 5;
+    private static final CollectionNameUtil COLLECTION_NAME_UTIL = new CollectionNameUtil("match");
 }
