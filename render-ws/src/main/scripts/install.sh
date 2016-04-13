@@ -1,13 +1,14 @@
 #!/bin/bash
 
 JDK_VERSION="jdk1.8.0_73"
-JETTY_DIST="jetty-distribution-9.3.7.v20160115"
+JETTY_VERSION="9.3.7.v20160115"
+JETTY_DIST="jetty-distribution-${JETTY_VERSION}"
 LOGBACK_VERSION="1.1.5"
 SLF4J_VERSION="1.7.16"
 
 # URLs for JDK 8, Jetty 9, SLF4J 1.7, and Logback 1.1
 JDK_URL="http://download.oracle.com/otn-pub/java/jdk/8u73-b02/jdk-8u73-linux-x64.tar.gz"
-JETTY_URL="http://download.eclipse.org/jetty/stable-9/dist/${JETTY_DIST}.tar.gz"
+JETTY_URL="http://download.eclipse.org/jetty/${JETTY_VERSION}/dist/${JETTY_DIST}.tar.gz"
 SLF4J_URL="http://www.slf4j.org/dist/slf4j-${SLF4J_VERSION}.tar.gz"
 LOGBACK_URL="http://logback.qos.ch/dist/logback-${LOGBACK_VERSION}.tar.gz"
 
@@ -29,7 +30,7 @@ cd ${INSTALL_DIR}
 echo """
 download JDK, Jetty, SLF4J, and Logback ...
 """
-curl -L -b "oraclelicense=a" ${JDK_URL} | tar xz
+curl -j -k -L -H "Cookie: oraclelicense=accept-securebackup-cookie" ${JDK_URL} | tar xz
 curl ${JETTY_URL} | tar xz
 curl ${SLF4J_URL} | tar xz
 curl ${LOGBACK_URL} | tar xz
