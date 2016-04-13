@@ -1,0 +1,64 @@
+{
+  "x" : 24000.0, "y" : 105000.0, "width" : 1000, "height" : 1000, "scale" : 0.05,
+  "tileSpecs" : [
+    {
+      "tileId" : "150311155421012058.3333.0",
+      "z" : 3333.0, "width" : 2560.0, "height" : 2160.0,
+      "mipmapLevels" : {
+        "0" : {
+          "imageUrl" : "file:/data/col0012_row0058_cam2.tif", "maskUrl" : "file:/masks/temca7_cam2.png"
+        }
+      },
+      "transforms" : {
+        "type" : "list",
+        "specList" : [
+          {
+            "type" : "leaf",
+            "className" : "lenscorrection.NonLinearTransform",
+            "dataString" : "5 21 711.4721917133976 -5.589914769754155 ... 2560 2160"
+          },
+          {
+            "type" : "leaf",
+            "className" : "mpicbg.trakem2.transform.AffineModel2D",
+            "dataString" : "0.98033196 -0.011563861 -0.007845614 1.0093758 130.0 30.0"
+          },
+          {
+            "type" : "leaf",
+            "className" : "mpicbg.trakem2.transform.AffineModel2D",
+            "dataString" : "1.0 0.0 0.0 1.0 22500 105900"
+          }
+        ]
+      }
+    },
+    {
+      "tileId" : "150311155421013058.3333.0",
+      "z" : 3333.0, "width" : 2560.0, "height" : 2160.0,
+      "mipmapLevels" : {
+        "0" : {
+          "imageUrl" : "file:/data/col0013_row0058_cam2.tif", "maskUrl" : "file:/masks/temca7_cam2.png"
+        }
+      },
+      "transforms" : {
+        "type" : "list",
+        "specList" : [
+          {
+            "type" : "leaf",
+            "className" : "lenscorrection.NonLinearTransform",
+            "dataString" : "5 21 711.4721917133976 -5.589914769754155 ... 2560 2160"
+          },
+          {
+            "type" : "leaf",
+            "className" : "mpicbg.trakem2.transform.AffineModel2D",
+            "dataString" : "0.98033196 -0.011563861 -0.007845614 1.0093758 130.0 30.0"
+          },
+          {
+            "type" : "leaf",
+            "className" : "mpicbg.trakem2.transform.AffineModel2D",
+            "dataString" : "1.0 0.0 0.0 1.0 24450 105900"
+          }
+        ]
+      }
+    }
+  ]
+}
+

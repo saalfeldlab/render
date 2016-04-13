@@ -1,0 +1,55 @@
+[
+  {
+    "tileId" : "151208120343009119.13.0",
+    "z" : 13,
+    "minX" : -55768, "minY" : 19574, "maxX" : -53109, "maxY" : 21822,
+    "width" : 2560, "height" : 2160,
+    "mipmapLevels" : {
+      "0" : {
+        "imageUrl" : "file:/data/col0009_row0119_cam2.tif",
+        "maskUrl" : "file:/working_sets/masks/temca2_cam2.png"
+      }
+    },
+    "transforms" : {
+      "type" : "list",
+      "specList" : [
+        {
+          "type" : "ref",
+          "refId" : "150921offset_temca2_camera2"
+        },
+        {
+          "type" : "leaf",
+          "className" : "mpicbg.trakem2.transform.AffineModel2D",
+          "dataString" : "1.0 .0 .0 1.0 -55793.524000000005 19547.681799999991"
+        }
+      ]
+    }
+  },
+  {
+    "tileId" : "151208120343010117.13.0",
+    "z" : 13,
+    "minX" : -53802, "minY" : 15871, "maxX" : -51167, "maxY" : 18166,
+    "width" : 2560, "height" : 2160,
+    "mipmapLevels" : {
+      "0" : {
+        "imageUrl" : "file:/data/col0010_row0117_cam1.tif",
+        "maskUrl" : "file:/working_sets/masks/temca2_cam1.png"
+      }
+    },
+    "transforms" : {
+      "type" : "list",
+      "specList" : [
+        {
+          "type" : "ref",
+          "refId" : "150921offset_temca2_camera1"
+        },
+        {
+          "type" : "leaf",
+          "className" : "mpicbg.trakem2.transform.AffineModel2D",
+          "dataString" : "1.0 .0 .0 1.0 -53843.524000000005 15847.681799999991"
+        }
+      ]
+    }
+  }
+]
+

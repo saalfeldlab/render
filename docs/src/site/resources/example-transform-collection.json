@@ -1,0 +1,35 @@
+[
+  {
+    "id" : "150921offset_temca2_camera1",
+    "type" : "list",
+    "specList" : [
+      {
+        "type" : "leaf",
+        "className" : "lenscorrection.NonLinearTransform",
+        "dataString" : "5 21 720.234843752623 5.077567465419297 ... 2560 2160"
+      },
+      {
+        "type" : "leaf",
+        "className" : "mpicbg.trakem2.transform.AffineModel2D",
+        "dataString" : "0.99776417 0.047121227 -0.03594501 1.0060953 130.0 30.0"
+      }
+    ]
+  },
+  {
+    "id" : "150921offset_temca2_camera2",
+    "type" : "list",
+    "specList" : [
+      {
+        "type" : "leaf",
+        "className" : "lenscorrection.NonLinearTransform",
+        "dataString" : "5 21 710.3771582787879 -4.283719940192579 ... 2560 2160"
+      },
+      {
+        "type" : "leaf",
+        "className" : "mpicbg.trakem2.transform.AffineModel2D",
+        "dataString" : "0.99558103 0.03726325 -0.04910201 0.9950345 130.0 30.0"
+      }
+    ]
+  }
+]
+
