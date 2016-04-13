@@ -6,6 +6,8 @@ Each [tile specification] element contains location information for a source ima
 along with zero or more [transform specification] elements that describe how the source image should be
 transformed.
 
+Here is an example of a simple [render parameters specification]:
+
 ![Example Render Specification](../resources/image/example-render-spec.png)
 
 # Render Database
@@ -21,6 +23,8 @@ To reduce the storage footprint, we've introduced an unorthodox relational eleme
 All shared [transform specification] documents (e.g. lens correction transforms) are stored in a separate collection
 and can be referenced by id from individual [tile specification] documents.
 The [render web services] handle resolution of the references before returning specifications to clients.
+
+Here is an example of how the relationships are used:
 
 ![Example Collections Diagram](../resources/image/example-collections.png)
 
