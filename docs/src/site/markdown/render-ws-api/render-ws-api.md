@@ -1,29 +1,36 @@
-# Render Web Services API
+# Render Web Services APIs
+
+The Render Web Services module provides [level 2 REST] APIs to persisted collections of tile and 
+transform specifications (see [data model]).  
+
+# Dynamic API Documentation (Swagger) 
 
 The [render web services] module includes an [OpenAPI specification] resource path 
 ( http://\<server\>:\<port\>/render-ws/swagger.json ) which can be utilized by tools like 
 [Swagger UI] to dynamically generate a view of the available APIs.
 
 The best way to look at the current API documentation is to install the [render web services] components
-and deploy the source code archive from the latest [Swagger UI release] into the Jetty webapps directory.
+along with the source code archive from the latest [Swagger UI release].
+After installation, the APIs can be viewed and tested at http://\<server\>:\<port\>/swagger-ui .
 
-After installation, the APIs can be viewed at http://\<server\>:\<port\>/swagger-ui
-
-
-You can download the [Swagger UI Source code archive] from GitHub, extract it into Fetching the [Swagger UI] components in the ${JETTY_BASE}/webapps directory  
-
-
-The Render Web Services module provides [level 2 REST APIs] to persisted collections of tile and 
-transform specifications (see [data model]).  
-
-A static [API listing] is curated for each release.  The module also exposes an [OpenAPI specification] which 
-can be utilized by tools like [Swagger UI] to dynamically generate a view of the available APIs.     
+The [render web services] basic installation process includes [Swagger UI] installation.  
+For low level details, see the [render web services install script].
 
 
+# Static API Documentation
+
+The following static documentation is periodically generated for those that want to browse the APIs 
+without installing the services:
+* [Static API List]
+* [Static API Definitions]
 
 
+  [data model]: <../data-model.md>
+  [level 2 REST]: <http://martinfowler.com/articles/richardsonMaturityModel.html>
   [OpenAPI specification]: <https://openapis.org/specification>
   [render web services]: <../render-ws.md>
+  [render web services install script]: <../../../../../render-ws/src/main/scripts/install.sh>
+  [Static API Definitions]: <definitions.md>
+  [Static API List]: <paths.md>
   [Swagger UI]: <http://swagger.io/swagger-ui/>
   [Swagger UI release]: <https://github.com/swagger-api/swagger-ui/releases>
-  [war file]: <https://docs.oracle.com/javaee/7/tutorial/packaging003.htm>
