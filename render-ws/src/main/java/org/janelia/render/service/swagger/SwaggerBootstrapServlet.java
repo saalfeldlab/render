@@ -67,8 +67,13 @@ public class SwaggerBootstrapServlet
         }
 
         beanConfig.setTitle(properties.getProperty("title", "Render Web Service APIs"));
+
+        // default to empty contact so that swagger-ui will hide created by line
         beanConfig.setContact(properties.getProperty("contact", ""));
-        beanConfig.setHost(properties.getProperty("host", "localhost:8080"));
+
+        // default to empty host so that swagger-ui will use same host for try-it-out requests
+        beanConfig.setHost(properties.getProperty("host", ""));
+
         beanConfig.setBasePath(properties.getProperty("basePath", "/render-ws"));
 
         return beanConfig;
