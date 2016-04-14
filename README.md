@@ -16,4 +16,4 @@ A collection of Java tools and HTTP services (APIs) for rendering transformed im
   [level 2 REST]: <http://martinfowler.com/articles/richardsonMaturityModel.html>
   [render application]: <docs/src/site/markdown/render-app.md>
   [render web services]: <docs/src/site/markdown/render-ws.md>
-  [RESTful APIs]: <docs/src/site/markdown/render-ws-api/paths.md>
+  [RESTful APIs]: <docs/src/site/markdown/render-ws-api/render-ws-api.md>
