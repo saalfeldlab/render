@@ -66,9 +66,9 @@ public class SwaggerBootstrapServlet
             LOG.warn("{} not found, using default configuration for swagger", path);
         }
 
-        beanConfig.setTitle(properties.getProperty("title", "flyTEM Web Service APIs"));
-        beanConfig.setContact(properties.getProperty("contact", "Eric Trautman"));
-        beanConfig.setHost(properties.getProperty("host", "renderer-dev.int.janelia.org:8080"));
+        beanConfig.setTitle(properties.getProperty("title", "Render Web Service APIs"));
+        beanConfig.setContact(properties.getProperty("contact", ""));
+        beanConfig.setHost(properties.getProperty("host", "localhost:8080"));
         beanConfig.setBasePath(properties.getProperty("basePath", "/render-ws"));
 
         return beanConfig;
