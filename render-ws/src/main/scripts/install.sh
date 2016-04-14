@@ -5,12 +5,14 @@ JETTY_VERSION="9.3.7.v20160115"
 JETTY_DIST="jetty-distribution-${JETTY_VERSION}"
 LOGBACK_VERSION="1.1.5"
 SLF4J_VERSION="1.7.16"
+SWAGGER_UI_VERSION="2.1.4"
 
-# URLs for JDK 8, Jetty 9, SLF4J 1.7, and Logback 1.1
+# URLs for JDK 8, Jetty 9, SLF4J 1.7, Logback 1.1, and Swagger 2.1
 JDK_URL="http://download.oracle.com/otn-pub/java/jdk/8u73-b02/jdk-8u73-linux-x64.tar.gz"
 JETTY_URL="http://download.eclipse.org/jetty/${JETTY_VERSION}/dist/${JETTY_DIST}.tar.gz"
 SLF4J_URL="http://www.slf4j.org/dist/slf4j-${SLF4J_VERSION}.tar.gz"
 LOGBACK_URL="http://logback.qos.ch/dist/logback-${LOGBACK_VERSION}.tar.gz"
+SWAGGER_UI_URL="https://github.com/swagger-api/swagger-ui/archive/v${SWAGGER_UI_VERSION}.tar.gz"
 
 ABSOLUTE_SCRIPT=`readlink -m $0`
 SCRIPTS_DIR=`dirname ${ABSOLUTE_SCRIPT}`
@@ -28,12 +30,13 @@ cd ${INSTALL_DIR}
 
 
 echo """
-download JDK, Jetty, SLF4J, and Logback ...
+download JDK, Jetty, SLF4J, Logback, and Swagger UI ...
 """
 curl -j -k -L -H "Cookie: oraclelicense=accept-securebackup-cookie" ${JDK_URL} | tar xz
 curl ${JETTY_URL} | tar xz
 curl ${SLF4J_URL} | tar xz
 curl ${LOGBACK_URL} | tar xz
+curl -L ${SWAGGER_UI_URL} | tar xz
 
 
 echo """
@@ -79,6 +82,25 @@ sed "
 " ${SCRIPTS_DIR}/jetty/jetty_wrapper.sh > ${JETTY_WRAPPER_SCRIPT}
 
 chmod 755 ${JETTY_WRAPPER_SCRIPT}
+
+# deploy Swagger UI to webapps
+SWAGGER_UI_DEPLOY_DIR="${JETTY_BASE}/webapps/swagger-ui"
+
+cp -r ${INSTALL_DIR}/swagger-ui-${SWAGGER_UI_VERSION}/dist ${SWAGGER_UI_DEPLOY_DIR}
+
+# modify index.html to dynamically derive the swagger.json URL and sort functions by method
+cd ${SWAGGER_UI_DEPLOY_DIR}
+cp index.html index.html.original
+sed '
+  s/url.*petstore.*/url = window.location.href.replace(\/swagger-ui.*\/, "render-ws\/swagger.json");/
+  s/apisSorter: "alpha",/apisSorter: "alpha", validatorUrl: null, operationsSorter: function(a, b) { var methodMap = { 'get': 1, 'put': 2, 'post': 3, 'delete': 4 }; if (a.method in methodMap \&\& b.method in methodMap) { var aMethodValue = methodMap[a.method]; var bMethodValue = methodMap[b.method]; if (aMethodValue == bMethodValue) { return a.path.localeCompare(b.path); } else { return aMethodValue - bMethodValue; } } else { return -1; } },/
+' index.html.original > index.html
+
+# workaround bug in current swagger.json that breaks swagger-ui.js
+cp swagger-ui.js swagger-ui.js.original
+sed '
+  s/var ref = property.\$ref;/if (typeof property === "undefined") { property = ""; console.log("skipping undefined property"); } var ref = property.\$ref;/
+' swagger-ui.js.original > swagger-ui.js
 
 echo """
 completed installation in ${INSTALL_DIR}
