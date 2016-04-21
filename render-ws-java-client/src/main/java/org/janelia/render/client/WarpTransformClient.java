@@ -126,32 +126,23 @@ public class WarpTransformClient {
                                          final Double z)
             throws Exception {
 
+        final String warpType = parameters.deriveMLS ? "MLS" : "TPS";
+
+        LOG.info("buildTransform: deriving {} transform", warpType);
+
         final AbstractWarpTransformBuilder< ? extends CoordinateTransform > transformBuilder;
-        final String transformId;
+        final String transformId = z + "_" + warpType;
         final CoordinateTransform transform;
 
         if (parameters.deriveMLS) {
-
-            LOG.info("buildTransform: deriving MLS transforms");
-
-            transformId = z + "_MLS";
             transformBuilder = new MovingLeastSquaresBuilder(montageTiles, alignTiles, alpha);
-
-            LOG.info("buildTransform: completed MLS transform derivation");
-
         } else {
-
-            LOG.info("buildTransform: deriving TPS transforms");
-
-            transformId = z + "_TPS";
             transformBuilder = new ThinPlateSplineBuilder(montageTiles, alignTiles);
-
-            LOG.info("buildTransform: completed TPS derivation");
-
         }
         
         transform = transformBuilder.call();
 
+        LOG.info("buildTransform: completed {} transform derivation", warpType);
 
         return new LeafTransformSpec(transformId,
                                      null,
