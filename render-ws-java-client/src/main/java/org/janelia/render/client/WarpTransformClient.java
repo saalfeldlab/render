@@ -91,15 +91,15 @@ public class WarpTransformClient {
         final ResolvedTileSpecCollection montageTiles = renderDataClient.getResolvedTiles(parameters.montageStack, z);
         final ResolvedTileSpecCollection alignTiles = renderDataClient.getResolvedTiles(parameters.alignStack, z);
 
-        final TransformSpec mlsTransformSpec = buildTransform(montageTiles.getTileSpecs(),
-                                                              alignTiles.getTileSpecs(),
-                                                              alpha,
-                                                              z);
+        final TransformSpec warpTransformSpec = buildTransform(montageTiles.getTileSpecs(),
+                                                               alignTiles.getTileSpecs(),
+                                                               alpha,
+                                                               z);
 
-        LOG.info("generateStackDataForZ: derived moving least squares transform for {}", z);
+        LOG.info("generateStackDataForZ: derived warp transform for {}", z);
 
-        montageTiles.addTransformSpecToCollection(mlsTransformSpec);
-        montageTiles.addReferenceTransformToAllTiles(mlsTransformSpec.getId(), false);
+        montageTiles.addTransformSpecToCollection(warpTransformSpec);
+        montageTiles.addReferenceTransformToAllTiles(warpTransformSpec.getId(), false);
 
         final int totalNumberOfTiles = montageTiles.getTileCount();
         if (tileSpecValidator != null) {
@@ -110,6 +110,10 @@ public class WarpTransformClient {
 
         LOG.info("generateStackDataForZ: added transform and derived bounding boxes for {} tiles with z of {}, removed {} bad tiles",
                  totalNumberOfTiles, z, numberOfRemovedTiles);
+
+        if (montageTiles.getTileCount() == 0) {
+            throw new IllegalStateException("no tiles left to save after filtering invalid tiles");
+        }
 
         renderDataClient.saveResolvedTiles(montageTiles, parameters.targetStack, z);
 
