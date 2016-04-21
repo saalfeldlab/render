@@ -349,7 +349,7 @@ public class RenderDataClient {
         final JsonUtils.Helper<TileSpec> helper = new JsonUtils.Helper<>(TileSpec.class);
         final JsonResponseHandler<TileSpec> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
-        LOG.info("getResolvedTiles: submitting {}", requestContext);
+        LOG.info("getTile: submitting {}", requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
     }
