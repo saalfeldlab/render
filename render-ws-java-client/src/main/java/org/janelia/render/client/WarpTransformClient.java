@@ -11,7 +11,6 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.alignment.spec.validator.TemTileSpecValidator;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.warp.AbstractWarpTransformBuilder;
 import org.janelia.alignment.warp.MovingLeastSquaresBuilder;
@@ -46,9 +45,6 @@ public class WarpTransformClient {
         @Parameter(names = "--deriveMLS", description = "Derive moving least squares transforms instead of thin plate spline transforms", required = false, arity = 0)
         private boolean deriveMLS;
 
-        @Parameter(names = "--disableValidation", description = "Disable flyTEM tile validation", required = false, arity = 0)
-        private boolean disableValidation;
-
         @Parameter(description = "Z values", required = true)
         private List<String> zValues;
     }
@@ -79,12 +75,7 @@ public class WarpTransformClient {
 
     public WarpTransformClient(final Parameters parameters) {
         this.parameters = parameters;
-
-        if (parameters.disableValidation) {
-            this.tileSpecValidator = null;
-        } else {
-            this.tileSpecValidator = new TemTileSpecValidator();
-        }
+        this.tileSpecValidator = parameters.getValidatorInstance();
 
         this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
                                                      parameters.owner,
