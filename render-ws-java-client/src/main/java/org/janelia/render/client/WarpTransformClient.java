@@ -3,9 +3,7 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import mpicbg.trakem2.transform.CoordinateTransform;
 
@@ -39,14 +37,14 @@ public class WarpTransformClient {
         @Parameter(names = "--montageStack", description = "Montage stack name", required = true)
         private String montageStack;
 
-        @Parameter(names = "--mlsStack", description = "Target stack (tps or mls) name", required = true)
-        private String mlsStack;
+        @Parameter(names = "--targetStack", description = "Target stack (tps or mls) name", required = true)
+        private String targetStack;
 
         @Parameter(names = "--alpha", description = "Alpha value for MLS transform", required = false)
         private Double alpha;
 
-        @Parameter(names = "--deriveTPS", description = "Derive thin plate spline transform instead of MLS transform", required = false, arity = 0)
-        private boolean deriveTPS;
+        @Parameter(names = "--deriveMLS", description = "Derive moving least squares transforms instead of thin plate spline transforms", required = false, arity = 0)
+        private boolean deriveMLS;
 
         @Parameter(names = "--disableValidation", description = "Disable flyTEM tile validation", required = false, arity = 0)
         private boolean disableValidation;
@@ -102,8 +100,6 @@ public class WarpTransformClient {
         final ResolvedTileSpecCollection montageTiles = renderDataClient.getResolvedTiles(parameters.montageStack, z);
         final ResolvedTileSpecCollection alignTiles = renderDataClient.getResolvedTiles(parameters.alignStack, z);
 
-        validateMontageTileCentersDiffer(montageTiles);
-
         final TransformSpec mlsTransformSpec = buildTransform(montageTiles.getTileSpecs(),
                                                               alignTiles.getTileSpecs(),
                                                               alpha,
@@ -124,15 +120,9 @@ public class WarpTransformClient {
         LOG.info("generateStackDataForZ: added transform and derived bounding boxes for {} tiles with z of {}, removed {} bad tiles",
                  totalNumberOfTiles, z, numberOfRemovedTiles);
 
-        renderDataClient.saveResolvedTiles(montageTiles, parameters.mlsStack, z);
+        renderDataClient.saveResolvedTiles(montageTiles, parameters.targetStack, z);
 
         LOG.info("generateStackDataForZ: exit, saved tiles and transforms for {}", z);
-    }
-
-    private void validateMontageTileCentersDiffer(final ResolvedTileSpecCollection montageTiles)
-            throws IllegalStateException {
-        final Map<String, TileSpec> centerToTileMap = new HashMap<>(montageTiles.getTileCount());
-
     }
 
     private TransformSpec buildTransform(final Collection<TileSpec> montageTiles,
@@ -144,19 +134,25 @@ public class WarpTransformClient {
         final AbstractWarpTransformBuilder< ? extends CoordinateTransform > transformBuilder;
         final String transformId;
         final CoordinateTransform transform;
-        
-        if (parameters.deriveTPS) {
-            
-        	LOG.info("buildTransform: deriving thin plate transform");
+
+        if (parameters.deriveMLS) {
+
+            LOG.info("buildTransform: deriving MLS transforms");
+
+            transformId = z + "_MLS";
+            transformBuilder = new MovingLeastSquaresBuilder(montageTiles, alignTiles, alpha);
+
+            LOG.info("buildTransform: completed MLS transform derivation");
+
+        } else {
+
+            LOG.info("buildTransform: deriving TPS transforms");
 
             transformId = z + "_TPS";
             transformBuilder = new ThinPlateSplineBuilder(montageTiles, alignTiles);
 
-            LOG.info("buildTransform: completed thin plate transform derivation");
-            
-        } else {
-            transformId = z + "_MLS";
-            transformBuilder = new MovingLeastSquaresBuilder(montageTiles, alignTiles, alpha);
+            LOG.info("buildTransform: completed TPS derivation");
+
         }
         
         transform = transformBuilder.call();
