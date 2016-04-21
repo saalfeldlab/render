@@ -15,7 +15,6 @@ import java.util.Set;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.alignment.spec.validator.TemTileSpecValidator;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
@@ -38,9 +37,6 @@ public class ImportJsonClient {
 
         @Parameter(names = "--transformFile", description = "file containing shared JSON transform specs (.json, .gz, or .zip)", required = false)
         private String transformFile;
-
-        @Parameter(names = "--disableValidation", description = "Disable flyTEM tile validation", required = false, arity = 0)
-        private boolean disableValidation;
 
         @Parameter(description = "list of tile spec files (.json, .gz, or .zip)", required = true)
         private List<String> tileFiles;
@@ -75,12 +71,7 @@ public class ImportJsonClient {
     public ImportJsonClient(final Parameters parameters)
             throws IOException {
         this.parameters = parameters;
-
-        if (parameters.disableValidation) {
-            this.tileSpecValidator = null;
-        } else {
-            this.tileSpecValidator = new TemTileSpecValidator();
-        }
+        this.tileSpecValidator = parameters.getValidatorInstance();
 
         this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
                                                      parameters.owner,
