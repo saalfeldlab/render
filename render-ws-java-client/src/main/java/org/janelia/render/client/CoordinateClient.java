@@ -41,10 +41,10 @@ public class CoordinateClient {
         @Parameter(names = "--z", description = "Z value for all source coordinates", required = true)
         private Double z;
 
-        @Parameter(names = "--fromJson", description = "JSON file containing coordinates to be mapped", required = true)
+        @Parameter(names = "--fromJson", description = "JSON file containing coordinates to be mapped (.json, .gz, or .zip)", required = true)
         private String fromJson;
 
-        @Parameter(names = "--toJson", description = "JSON file where mapped coordinates are to be stored", required = true)
+        @Parameter(names = "--toJson", description = "JSON file where mapped coordinates are to be stored (.json, .gz, or .zip)", required = true)
         private String toJson;
 
         @Parameter(names = "--localToWorld", description = "Convert from local to world coordinates (default is to convert from world to local)", required = false, arity = 0)
