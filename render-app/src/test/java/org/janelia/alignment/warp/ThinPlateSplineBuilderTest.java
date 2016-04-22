@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.List;
 import mpicbg.trakem2.transform.ThinPlateSplineTransform;
 
 import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.junit.Assert;
@@ -78,6 +80,87 @@ public class ThinPlateSplineBuilderTest {
         }
 
         LOG.info("intersection.size = {}", j);
+    }
+
+    @Test
+    public void testSmallSectionWarping() throws Exception {
+
+        final double acceptableChangePct = 5.0;
+
+        testFilteredSmallSection(9, acceptableChangePct);
+        testFilteredSmallSection(6, acceptableChangePct);
+        testFilteredSmallSection(4, acceptableChangePct);
+
+        // for John B. - two tile test will fail, uncomment to see results
+//        testFilteredSmallSection(2, acceptableChangePct);
+
+    }
+
+    private void testFilteredSmallSection(final int tileCount,
+                                          final double acceptableChangePct) throws Exception {
+
+        final String context = "for " + tileCount + " tile test, ";
+
+        final List<TileSpec> montageTiles = getTiles("small_montage.json").subList(0, tileCount);
+        final List<TileSpec> alignTiles = getTiles("small_align.json").subList(0, tileCount);
+
+        final ThinPlateSplineBuilder builder = new ThinPlateSplineBuilder(montageTiles,
+                                                                          alignTiles);
+        final ThinPlateSplineTransform transform = builder.call();
+
+        final TransformSpec tpsSpec = new LeafTransformSpec("test_tps",
+                                                            null,
+                                                            transform.getClass().getName(),
+                                                            transform.toDataString());
+
+        final List<String> overWarpedTileIds = new ArrayList<>();
+
+        ListTransformSpec listTransformSpec;
+        double originalWidth;
+        double originalHeight;
+        double warpWidth;
+        double warpHeight;
+        double widthChangePct;
+        double heightChangePct;
+        double maxChangePct = 0.0;
+        for (final TileSpec montageTileSpec : montageTiles) {
+
+            montageTileSpec.deriveBoundingBox(montageTileSpec.getMeshCellSize(), true);
+
+            originalWidth = montageTileSpec.getMaxX() - montageTileSpec.getMinX();
+            originalHeight = montageTileSpec.getMaxY() - montageTileSpec.getMinY();
+
+            listTransformSpec = montageTileSpec.getTransforms();
+            listTransformSpec.removeLastSpec();
+            listTransformSpec.addSpec(tpsSpec);
+
+            montageTileSpec.deriveBoundingBox(montageTileSpec.getMeshCellSize(), true);
+
+            warpWidth = montageTileSpec.getMaxX() - montageTileSpec.getMinX();
+            warpHeight = montageTileSpec.getMaxY() - montageTileSpec.getMinY();
+
+            widthChangePct = (Math.abs(originalWidth - warpWidth) / originalWidth) * 100.0;
+            heightChangePct = (Math.abs(originalHeight - warpHeight) / originalHeight) * 100.0;
+
+            maxChangePct = Math.max(maxChangePct, widthChangePct);
+            maxChangePct = Math.max(maxChangePct, heightChangePct);
+
+            LOG.info(context + "tile " + montageTileSpec.getTileId() + " width was warped " + widthChangePct +
+                     " percent from " + originalWidth + " to " + warpWidth);
+            LOG.info(context + "tile " + montageTileSpec.getTileId() + " height was warped " + heightChangePct +
+                     " percent from " + originalHeight + " to " + warpHeight);
+
+            if ((widthChangePct > acceptableChangePct) || (heightChangePct > acceptableChangePct)) {
+                overWarpedTileIds.add(montageTileSpec.getTileId());
+            }
+
+        }
+
+        LOG.info(context + " maximum warp was " + maxChangePct + " percent");
+
+        Assert.assertTrue(context + overWarpedTileIds.size() + " tiles " + overWarpedTileIds +
+                          " were warped more than " + acceptableChangePct + "%",
+                          overWarpedTileIds.size() == 0);
     }
 
     private List<TileSpec> getTiles(final String jsonFileName) throws IOException {
