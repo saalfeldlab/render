@@ -168,7 +168,12 @@ public class BoxClient {
         final File stackDirectory = this.boxDirectory.getParentFile();
 
         if (! stackDirectory.exists()) {
-            throw new IllegalArgumentException("missing stack directory " + stackDirectory);
+            if (! stackDirectory.mkdirs()) {
+                // check for existence again in case another parallel process already created the directory
+                if (! stackDirectory.exists()) {
+                    throw new IOException("failed to create " + stackDirectory.getAbsolutePath());
+                }
+            }
         }
 
         if (! stackDirectory.canWrite()) {
