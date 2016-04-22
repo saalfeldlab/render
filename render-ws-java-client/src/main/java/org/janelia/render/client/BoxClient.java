@@ -42,8 +42,8 @@ import org.slf4j.LoggerFactory;
  * </pre>
  *
  * Details about the CATMAID LargeDataTileSource can be found at
- * <a href="https://github.com/acardona/CATMAID/blob/master/django/applications/catmaid/static/js/tilesource.js">
- *     https://github.com/acardona/CATMAID/blob/master/django/applications/catmaid/static/js/tilesource.js
+ * <a href="https://github.com/catmaid/CATMAID/blob/master/django/applications/catmaid/static/js/tile-source.js">
+ *     https://github.com/catmaid/CATMAID/blob/master/django/applications/catmaid/static/js/tile-source.js
  * </a>).
  *
  * @author Eric Trautman
