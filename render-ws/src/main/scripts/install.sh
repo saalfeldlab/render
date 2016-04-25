@@ -22,6 +22,28 @@ if (( $# > 0 )); then
   INSTALL_DIR=`readlink -m ${1}`
 fi
 
+function exitIfDirectoryHasSpaces {
+
+  CONTEXT="$1"
+  DIR_TO_CHECK="$2"
+
+  if (( `echo "${DIR_TO_CHECK}" | wc -w` > 1 )); then
+    echo """
+The ${CONTEXT} directory
+
+  ${DIR_TO_CHECK}
+
+contains one or more spaces which will break assumptions in this fragile script.
+To run this script, please move the ${CONTEXT} directory into a path without spaces.
+"""
+    exit 1
+  fi
+
+}
+
+exitIfDirectoryHasSpaces "base render clone" "${REPO_DIR}"
+exitIfDirectoryHasSpaces "install" "${INSTALL_DIR}"
+
 echo """
 setup install area ${INSTALL_DIR} ...
 """
@@ -101,6 +123,25 @@ cp swagger-ui.js swagger-ui.js.original
 sed '
   s/var ref = property.\$ref;/if (typeof property === "undefined") { property = ""; console.log("skipping undefined property"); } var ref = property.\$ref;/
 ' swagger-ui.js.original > swagger-ui.js
+
+echo """
+setup example data ...
+"""
+
+# setup example data with install path
+CLIENT_RESOURCES_DIR="${REPO_DIR}/render-ws-java-client/src/main/resources"
+EXAMPLE_1_SOURCE_DIR="${CLIENT_RESOURCES_DIR}/example_1"
+EXAMPLE_1_INSTALL_DIR="${REPO_DIR}/examples/example_1"
+
+mkdir -p ${EXAMPLE_1_INSTALL_DIR}
+
+cd ${EXAMPLE_1_SOURCE_DIR}
+for JSON_FILE in *.json; do
+  sed '
+    s@/tmp@'"${CLIENT_RESOURCES_DIR}"'@
+  ' ${JSON_FILE} > ${EXAMPLE_1_INSTALL_DIR}/${JSON_FILE}
+done
+
 
 echo """
 completed installation in ${INSTALL_DIR}

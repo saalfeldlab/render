@@ -73,12 +73,9 @@ sudo service mongod start
 deploy/jetty_base/jetty_wrapper.sh start
 ```
 
-### 9. Create Stack
-```bash
-# assumes current directory is still the cloned render repository root (./render)
-./render-ws-java-client/src/main/scripts/manage_stacks.sh --action CREATE --baseDataUrl http://localhost:8080/render-ws/v1 --owner demo --project test --stack first_stack 
-```
-
+## Using the Installation
+The [Render Web Services Example] workflow steps demonstrate how this installation can be used for a 
+small example project.
 
 
   [API listing]: <render-ws-api/overview.md>
@@ -87,5 +84,6 @@ deploy/jetty_base/jetty_wrapper.sh start
   [level 2 REST APIs]: <http://martinfowler.com/articles/richardsonMaturityModel.html>
   [MongoDB]: <https://www.mongodb.org/>
   [OpenAPI specification]: <https://openapis.org/specification>
+  [Render Web Services Example]: <render-ws-example.md>
   [Swagger UI]: <http://swagger.io/swagger-ui/>
   [war file]: <https://docs.oracle.com/javaee/7/tutorial/packaging003.htm>
