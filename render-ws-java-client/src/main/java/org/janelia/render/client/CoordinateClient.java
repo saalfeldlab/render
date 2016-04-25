@@ -283,6 +283,8 @@ public class CoordinateClient {
 
         try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(fromPath.toString())) {
             parsedFromJson = TileCoordinates.fromJsonArray(reader);
+        } catch (final Throwable t) {
+            throw new IOException("failed to parse " + fromPath, t);
         }
 
         LOG.info("loadJsonArrayOfCoordinates: parsed {} coordinates from {}", parsedFromJson.size(), fromPath);
@@ -301,6 +303,8 @@ public class CoordinateClient {
 
         try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(fromPath.toString())) {
             parsedFromJson = TileCoordinates.fromJsonArrayOfArrays(reader);
+        } catch (final Throwable t) {
+            throw new IOException("failed to parse " + fromPath, t);
         }
 
         LOG.info("loadJsonArrayOfArraysOfCoordinates: parsed {} coordinates from {}", parsedFromJson.size(), fromPath);
@@ -318,6 +322,8 @@ public class CoordinateClient {
 
         try (final Writer writer = FileUtil.DEFAULT_INSTANCE.getExtensionBasedWriter(toPath.toString())) {
             JsonUtils.MAPPER.writeValue(writer, coordinateData);
+        } catch (final Throwable t) {
+            throw new IOException("failed to write " + toPath, t);
         }
 
         LOG.info("saveJsonFile: exit, wrote coordinate data to {}", toPath);
