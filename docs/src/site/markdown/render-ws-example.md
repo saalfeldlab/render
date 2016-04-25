@@ -4,7 +4,7 @@ The following workflow steps demonstrate how the [render web services] and [Java
 can be used for a small example project.
 
 The example assumes that:
-* you have completed the [render web services basic installation steps](#basic-installation), 
+* you have completed the [render web services basic installation steps], 
 * you are running on the installation server, and 
 * you run the first (Setup Environment) step from the cloned render repository root directory (./render). 
 
@@ -171,4 +171,4 @@ one error for the original coordinate (7777.0, 8888.0) that did not map to any v
   [CATMAID LargeDataTileSource]: <https://github.com/catmaid/CATMAID/blob/master/django/applications/catmaid/static/js/tile-source.js>
   [Java clients]: <render-ws-java-client.md>
   [render web services]: <render-ws.md>
-  [render web services basic installation steps]: <render-ws.md>
+  [render web services basic installation steps]: <render-ws.md#basic-installation>
