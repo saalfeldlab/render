@@ -8,6 +8,11 @@ The example assumes that:
 * you are running on the installation server, and 
 * you run the first (Setup Environment) step from the cloned render repository root directory (./render). 
 
+### URL Note
+
+The 'localhost:8080' URL links below will only work if your browser (or http client) is running on the 
+same host as the web services.  If this is not the case, simply replace 'localhost' with name (or IP address) of 
+your render web services host.
 
 ### 1. Setup Environment
 
@@ -38,8 +43,7 @@ ${CLIENT_SCRIPTS}/manage_stacks.sh ${EXAMPLE_1_PARAMS} --stack v1_acquire --acti
 
 ```
 
-The following URLs can be used to view dynamic renderings of the imported data (if your browser/client isn't 
-running on the same host as the service, you'll need to change the host name in these URLs):
+The following URLs<sup>[**]</sup> can be used to view dynamic renderings of the imported data:
 * <http://localhost:8080/render-ws/v1/owner/demo/project/example_1/stack/v1_acquire/z/3407/box/0,0,5500,5500,0.5/jpeg-image>
 * <http://localhost:8080/render-ws/v1/owner/demo/project/example_1/stack/v1_acquire/z/3408/box/0,0,5500,5500,0.5/jpeg-image>
 
@@ -61,7 +65,7 @@ ${CLIENT_SCRIPTS}/manage_stacks.sh ${EXAMPLE_1_PARAMS} --stack v1_montage --acti
 
 ```
 
-The following URLs can be used to view dynamic renderings of the imported data:
+The following URLs<sup>[**]</sup> can be used to view dynamic renderings of the imported data:
 * <http://localhost:8080/render-ws/v1/owner/demo/project/example_1/stack/v1_montage/z/3407/box/0,0,5500,5500,0.5/jpeg-image>
 * <http://localhost:8080/render-ws/v1/owner/demo/project/example_1/stack/v1_montage/z/3408/box/0,0,5500,5500,0.5/jpeg-image>
 
@@ -83,7 +87,7 @@ ${CLIENT_SCRIPTS}/manage_stacks.sh ${EXAMPLE_1_PARAMS} --stack v1_align --action
 
 ```
 
-The following URLs can be used to view dynamic renderings of the imported data:
+The following URLs<sup>[**]</sup> can be used to view dynamic renderings of the imported data:
 * <http://localhost:8080/render-ws/v1/owner/demo/project/example_1/stack/v1_align/z/3407/box/0,0,5500,5500,0.5/jpeg-image>
 * <http://localhost:8080/render-ws/v1/owner/demo/project/example_1/stack/v1_align/z/3408/box/0,0,5500,5500,0.5/jpeg-image>
 
@@ -107,7 +111,7 @@ ${CLIENT_SCRIPTS}/manage_stacks.sh ${EXAMPLE_1_PARAMS} --stack v1_align_tps --ac
 
 ```
 
-The following URLs can be used to view dynamic renderings of the refined data:
+The following URLs<sup>[**]</sup> can be used to view dynamic renderings of the refined data:
 * <http://localhost:8080/render-ws/v1/owner/demo/project/example_1/stack/v1_align_tps/z/3407/box/0,0,5500,5500,0.5/jpeg-image>
 * <http://localhost:8080/render-ws/v1/owner/demo/project/example_1/stack/v1_align_tps/z/3408/box/0,0,5500,5500,0.5/jpeg-image>
 
@@ -115,7 +119,7 @@ The following URLs can be used to view dynamic renderings of the refined data:
 ### 6. View Data Dashboards
 
 At this point, you've created 4 stacks: one for each major reconstruction step of an acquisition cycle.
-The following URL can be used to view metadata and aggregate statistics about each of these stacks:
+The following URL<sup>[**]</sup> can be used to view metadata and aggregate statistics about each of these stacks:
 * <http://localhost:8080/render-ws/view/stacks.html?owner=demo&project=example_1>
 
 
@@ -172,3 +176,4 @@ one error for the original coordinate (7777.0, 8888.0) that did not map to any v
   [Java clients]: <render-ws-java-client.md>
   [render web services]: <render-ws.md>
   [render web services basic installation steps]: <render-ws.md#basic-installation>
+  [**]: <#url-note>
