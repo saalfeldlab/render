@@ -33,6 +33,57 @@ public class CoordinateClientTest {
         testRoundTripMapping(3);
     }
 
+    @Test
+    public void testMissingCoordinatesErrors() throws Exception {
+        final String stackName = "test-stack";
+        final Double z = 9.9;
+        final CoordinateClient client = new CoordinateClient(stackName, z, null, 1);
+
+        final List<List<TileCoordinates>> worldListOfLists = new ArrayList<>();
+
+        final String nullTileIdForOutOfBoundsCoordinate = null;
+        worldListOfLists.add(
+                Collections.singletonList(TileCoordinates.buildWorldInstance(nullTileIdForOutOfBoundsCoordinate,
+                                                                             new double[]{0, 0})));
+        worldListOfLists.add(
+                Collections.singletonList(TileCoordinates.buildWorldInstance(nullTileIdForOutOfBoundsCoordinate,
+                                                                             new double[]{1, 1})));
+
+        final List<TransformSpec> emptyTransformSpecList = new ArrayList<>();
+        final List<TileSpec> emptyTileSpecList = new ArrayList<>();
+        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(emptyTransformSpecList,
+                                                                                emptyTileSpecList);
+
+        final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
+
+        Assert.assertEquals("invalid number of local lists returned",
+                            worldListOfLists.size(), localListOfLists.size());
+
+        List<TileCoordinates> localList;
+        TileCoordinates localCoordinates;
+        String errorMessage;
+        for (int i = 0; i < 2; i++) {
+
+            localList = localListOfLists.get(i);
+            Assert.assertEquals("invalid number of coordinates in local list " + i,
+                                1, localList.size());
+
+            localCoordinates = localList.get(0);
+            Assert.assertNull("tileId for coordinates in local list " + i + " should be null",
+                              localCoordinates.getTileId());
+            Assert.assertNull("local coordinates in local list " + i + " should be null",
+                              localCoordinates.getLocal());
+
+            errorMessage = localCoordinates.getError();
+            Assert.assertNotNull("local coordinates in local list " + i + " should have error",
+                                 errorMessage);
+            Assert.assertTrue("local coordinates in local list " + i + " has invalid error message '" + errorMessage + "'",
+                              errorMessage.matches("no tile.*" + i + ".0,.*"));
+        }
+
+    }
+
+
     /**
      * This test is "ignored" because of the dependency on a real web server.
      * It can be configured to run as needed in specific environments.

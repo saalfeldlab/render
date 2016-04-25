@@ -76,6 +76,10 @@ public class TileCoordinates implements Serializable {
         return (error != null);
     }
 
+    public String getError() {
+        return error;
+    }
+
     public void setError(final String error) {
         this.error = error;
     }

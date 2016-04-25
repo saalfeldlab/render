@@ -9,6 +9,7 @@ import java.io.Writer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -390,10 +391,11 @@ public class CoordinateClient {
             final ProcessTimer timer = new ProcessTimer();
 
             List<TileCoordinates> coordinatesList;
-            TileCoordinates coordinates = null;
+            TileCoordinates coordinates;
 
             for (int i = startIndex; (i < stopIndex) && (i < worldListOfLists.size()); i++) {
 
+                coordinates = null;
                 coordinatesList = worldListOfLists.get(i);
 
                 try {
@@ -461,7 +463,7 @@ public class CoordinateClient {
 
             if (tileSpecList.size() == 0) {
                 throw new IllegalArgumentException("no tile specifications found in layer " + z + " of stack " + stack +
-                                                   " for " + coordinatesList.get(0));
+                                                   " for " + Arrays.toString(coordinatesList.get(0).getWorld()));
             }
 
             return tileSpecList;
