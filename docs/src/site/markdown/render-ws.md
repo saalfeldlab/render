@@ -1,9 +1,7 @@
 # Render Web Services
 The Render Web Services module provides [level 2 REST APIs] to persisted collections of tile and 
-transform specifications (see [data model]).  
-
-A static [API listing] is curated for each release.  The module also exposes an [OpenAPI specification] which 
-can be utilized by tools like [Swagger UI] to dynamically generate a view of the available APIs.     
+transform specifications (see [data model]).  The [Render Web Services API documentation] identifies 
+the specific supported APIs.     
 
 ## Deployment Architecture
 The Render Web Services module is packaged as a Java web application archive ([war file]) deployed 
@@ -78,12 +76,11 @@ The [Render Web Services Example] workflow steps demonstrate how this installati
 small example project.
 
 
-  [API listing]: <render-ws-api/overview.md>
   [data model]: <data-model.md>
   [Jetty]: <https://eclipse.org/jetty/>
   [level 2 REST APIs]: <http://martinfowler.com/articles/richardsonMaturityModel.html>
   [MongoDB]: <https://www.mongodb.org/>
-  [OpenAPI specification]: <https://openapis.org/specification>
+  [Render Web Services API documentation]: <render-ws-api/render-ws-api.md>
   [Render Web Services Example]: <render-ws-example.md>
   [Swagger UI]: <http://swagger.io/swagger-ui/>
   [war file]: <https://docs.oracle.com/javaee/7/tutorial/packaging003.htm>
