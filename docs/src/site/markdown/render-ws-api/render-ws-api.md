@@ -28,6 +28,7 @@ without installing the services:
   [data model]: <../data-model.md>
   [level 2 REST]: <http://martinfowler.com/articles/richardsonMaturityModel.html>
   [OpenAPI specification]: <https://openapis.org/specification>
+  [render web services]: <../render-ws.md>
   [render web services basic installation]: <../render-ws.md#basic-installation>
   [render web services install script]: <../../../../../render-ws/src/main/scripts/install.sh>
   [Static API Definitions]: <definitions.md>
