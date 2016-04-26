@@ -13,7 +13,7 @@ The best way to look at the current API documentation is to install the [render 
 along with the source code archive from the latest [Swagger UI release].
 After installation, the APIs can be viewed and tested at http://\<server\>:\<port\>/swagger-ui .
 
-The [render web services] basic installation process includes [Swagger UI] installation.  
+The [render web services basic installation] process includes [Swagger UI] installation.  
 For low level details, see the [render web services install script].
 
 
@@ -28,7 +28,7 @@ without installing the services:
   [data model]: <../data-model.md>
   [level 2 REST]: <http://martinfowler.com/articles/richardsonMaturityModel.html>
   [OpenAPI specification]: <https://openapis.org/specification>
-  [render web services]: <../render-ws.md>
+  [render web services basic installation]: <../render-ws.md#basic-installation>
   [render web services install script]: <../../../../../render-ws/src/main/scripts/install.sh>
   [Static API Definitions]: <definitions.md>
   [Static API List]: <paths.md>
