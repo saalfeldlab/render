@@ -1,5 +1,7 @@
 package org.janelia.alignment.match;
 
+import com.google.common.base.Objects;
+
 import java.io.Serializable;
 
 import org.janelia.alignment.util.CollectionNameUtil;
@@ -55,6 +57,26 @@ public class MatchCollectionId
     public String toString() {
         return "{'owner': '" + owner +
                "', 'name': '" + name + "'}";
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        final boolean result;
+        if (this == o) {
+            result = true;
+        } else if (o instanceof MatchCollectionId) {
+            final MatchCollectionId that = (MatchCollectionId) o;
+            result = this.owner.equals(that.owner) &&
+                     this.name.equals(that.name);
+        } else {
+            result = false;
+        }
+        return result;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(owner, name);
     }
 
     @SuppressWarnings("NullableProblems")

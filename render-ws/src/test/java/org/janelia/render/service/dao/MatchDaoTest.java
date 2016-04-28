@@ -3,7 +3,10 @@ package org.janelia.render.service.dao;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
@@ -24,6 +27,10 @@ import org.junit.Test;
 public class MatchDaoTest {
 
     private static MatchCollectionId collectionId;
+    private static MatchCollectionId collectionIdB;
+    private static MatchCollectionId collectionIdC;
+    private static List<MatchCollectionId> collectionIdBList;
+    private static List<MatchCollectionId> collectionIdBandCAndBList;
     private static EmbeddedMongoDb embeddedMongoDb;
     private static MatchDao dao;
 
@@ -32,6 +39,14 @@ public class MatchDaoTest {
     @BeforeClass
     public static void before() throws Exception {
         collectionId = new MatchCollectionId("testOwner", "testCollection");
+        collectionIdB = new MatchCollectionId("testOwner", "testCollectionB");
+        collectionIdC = new MatchCollectionId("testOwner", "testCollectionC");
+
+        collectionIdBList = Collections.singletonList(collectionIdB);
+
+        collectionIdBandCAndBList = new ArrayList<>();
+        Collections.addAll(collectionIdBandCAndBList, collectionIdB, collectionIdC, collectionIdB);
+
         embeddedMongoDb = new EmbeddedMongoDb(MatchDao.MATCH_DB_NAME);
         dao = new MatchDao(embeddedMongoDb.getMongoClient());
     }
@@ -40,6 +55,16 @@ public class MatchDaoTest {
     public void setUp() throws Exception {
         embeddedMongoDb.importCollection(collectionId.getDbCollectionName(),
                                          new File("src/test/resources/mongodb/match.json"),
+                                         true,
+                                         false,
+                                         true);
+        embeddedMongoDb.importCollection(collectionIdB.getDbCollectionName(),
+                                         new File("src/test/resources/mongodb/match_b.json"),
+                                         true,
+                                         false,
+                                         true);
+        embeddedMongoDb.importCollection(collectionIdC.getDbCollectionName(),
+                                         new File("src/test/resources/mongodb/match_c.json"),
                                          true,
                                          false,
                                          true);
@@ -54,26 +79,29 @@ public class MatchDaoTest {
     public void testGetMatchCollectionMetaData() throws Exception {
 
         final List<MatchCollectionMetaData> metaDataList = dao.getMatchCollectionMetaData();
-        Assert.assertEquals("invalid number of matche collections returned",
-                            1, metaDataList.size());
+        Assert.assertEquals("invalid number of match collections returned",
+                            3, metaDataList.size());
 
-        final MatchCollectionMetaData metaData = metaDataList.get(0);
-
-        final MatchCollectionId retrievedCollectionId = metaData.getCollectionId();
-        Assert.assertNotNull("null collection id", retrievedCollectionId);
-        Assert.assertEquals("invalid owner", collectionId.getOwner(), retrievedCollectionId.getOwner());
-        Assert.assertEquals("invalid name", collectionId.getName(), retrievedCollectionId.getName());
-
-        Assert.assertEquals("invalid number of pairs", new Long(4), metaData.getPairCount());
+        boolean foundFirstCollection = false;
+        MatchCollectionId retrievedCollectionId;
+        for (final MatchCollectionMetaData metaData : metaDataList) {
+            retrievedCollectionId = metaData.getCollectionId();
+            Assert.assertNotNull("null collection id", retrievedCollectionId);
+            Assert.assertEquals("invalid owner", collectionId.getOwner(), retrievedCollectionId.getOwner());
+            if (collectionId.getName().equals(retrievedCollectionId.getName())) {
+                foundFirstCollection = true;
+                Assert.assertEquals("invalid number of pairs", new Long(4), metaData.getPairCount());
+            }
+        }
+        Assert.assertTrue("missing first collection", foundFirstCollection);
     }
-
 
     @Test
     public void testWriteMatchesWithinGroup() throws Exception {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesWithinGroup(collectionId, groupId, outputStream);
+        dao.writeMatchesWithinGroup(collectionId, null, groupId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -88,11 +116,32 @@ public class MatchDaoTest {
     }
 
     @Test
+    public void testWriteMergedMatchesWithinGroup() throws Exception {
+
+        final Map<String, Integer> mergedFirstTileIdsToMatchCountMap = new HashMap<>();
+        mergedFirstTileIdsToMatchCountMap.put("tile1.3", 6);
+
+        validateWriteMergedMatchesWithinGroup("two collection merge",
+                                              collectionIdBList,
+                                              4,
+                                              mergedFirstTileIdsToMatchCountMap);
+
+        mergedFirstTileIdsToMatchCountMap.put("tile1.3", 9);
+        mergedFirstTileIdsToMatchCountMap.put("tile1.1b", 6);
+
+        validateWriteMergedMatchesWithinGroup("three collection merge",
+                                              collectionIdBandCAndBList,
+                                              5,
+                                              mergedFirstTileIdsToMatchCountMap);
+
+    }
+
+    @Test
     public void testWriteMatchesOutsideGroup() throws Exception {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideGroup(collectionId, groupId, outputStream);
+        dao.writeMatchesOutsideGroup(collectionId, null, groupId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -112,7 +161,7 @@ public class MatchDaoTest {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
         final String targetGroupId = "section2";
-        dao.writeMatchesBetweenGroups(collectionId, groupId, targetGroupId, outputStream);
+        dao.writeMatchesBetweenGroups(collectionId, null, groupId, targetGroupId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -138,7 +187,7 @@ public class MatchDaoTest {
         final String targetGroupId = "section0";
         final String targetId = "tile0.1";
 
-        dao.writeMatchesBetweenObjects(collectionId, groupId, sourceId, targetGroupId, targetId, outputStream);
+        dao.writeMatchesBetweenObjects(collectionId, null, groupId, sourceId, targetGroupId, targetId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -165,7 +214,7 @@ public class MatchDaoTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideGroup(collectionId, groupId, outputStream);
+        dao.writeMatchesOutsideGroup(collectionId, null, groupId, outputStream);
 
         List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -174,7 +223,7 @@ public class MatchDaoTest {
 
         outputStream.reset();
 
-        dao.writeMatchesWithinGroup(collectionId, groupId, outputStream);
+        dao.writeMatchesWithinGroup(collectionId, null, groupId, outputStream);
 
         canvasMatchesList = getListFromStream(outputStream);
 
@@ -202,7 +251,7 @@ public class MatchDaoTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideGroup(collectionId, groupId, outputStream);
+        dao.writeMatchesOutsideGroup(collectionId, null, groupId, outputStream);
 
         canvasMatchesList = getListFromStream(outputStream);
 
@@ -250,7 +299,7 @@ public class MatchDaoTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideGroup(collectionId, updateGroupA, outputStream);
+        dao.writeMatchesOutsideGroup(collectionId, null, updateGroupA, outputStream);
 
         final List<CanvasMatches> retrievedList = getListFromStream(outputStream);
 
@@ -267,6 +316,44 @@ public class MatchDaoTest {
     private List<CanvasMatches> getListFromStream(final ByteArrayOutputStream outputStream) {
         final String json = outputStream.toString();
         return CanvasMatches.fromJsonArray(json);
+    }
+
+    private void validateWriteMergedMatchesWithinGroup(final String context,
+                                                       final List<MatchCollectionId> mergeCollectionIdList,
+                                                       final int expectedMatchCount,
+                                                       final Map<String, Integer> mergedFirstTileIdsToMatchCountMap)
+            throws Exception {
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        dao.writeMatchesWithinGroup(collectionId, mergeCollectionIdList, groupId, outputStream);
+
+        final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
+
+        Assert.assertEquals(context + " invalid number of matches returned",
+                            expectedMatchCount, canvasMatchesList.size());
+
+        int mergedTileCount = 0;
+        for (final CanvasMatches canvasMatches : canvasMatchesList) {
+            // System.out.println(canvasMatches.toTabSeparatedFormat());
+            Assert.assertEquals(context + " invalid source groupId: " + canvasMatches,
+                                groupId, canvasMatches.getpGroupId());
+            Assert.assertEquals(context + " invalid target groupId: " + canvasMatches,
+                                groupId, canvasMatches.getqGroupId());
+
+            if (mergedFirstTileIdsToMatchCountMap.containsKey(canvasMatches.getpId())) {
+                mergedTileCount++;
+                Assert.assertEquals(context + " invalid number of matches for " + canvasMatches,
+                                    mergedFirstTileIdsToMatchCountMap.get(canvasMatches.getpId()),
+                                    new Integer(canvasMatches.size()));
+            } else {
+                Assert.assertEquals(context + " invalid number of matches for " + canvasMatches,
+                                    3, canvasMatches.size());
+            }
+        }
+
+        Assert.assertEquals(context + " invalid number of merged tile pairs",
+                            mergedFirstTileIdsToMatchCountMap.size(), mergedTileCount);
     }
 
 }

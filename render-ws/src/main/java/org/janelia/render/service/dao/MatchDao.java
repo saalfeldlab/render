@@ -15,7 +15,9 @@ import com.mongodb.client.result.DeleteResult;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.bson.Document;
 import org.janelia.alignment.match.CanvasMatches;
@@ -59,63 +61,67 @@ public class MatchDao {
     }
 
     public void writeMatchesWithinGroup(final MatchCollectionId collectionId,
+                                        final List<MatchCollectionId> mergeCollectionIdList,
                                         final String groupId,
                                         final OutputStream outputStream)
             throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
-        LOG.debug("writeMatchesWithinGroup: entry, collectionId={}, groupId={}",
-                  collectionId, groupId);
+        LOG.debug("writeMatchesWithinGroup: entry, collectionId={}, mergeCollectionIdList={}, groupId={}",
+                  collectionId, mergeCollectionIdList, groupId);
 
-        MongoUtil.validateRequiredParameter("collectionId", collectionId);
+        final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
+                                                                                         mergeCollectionIdList);
         MongoUtil.validateRequiredParameter("groupId", groupId);
 
-        final MongoCollection<Document> collection = getExistingCollection(collectionId);
         final Document query = new Document("pGroupId", groupId).append("qGroupId", groupId);
 
-        writeMatches(collection, query, outputStream);
+        writeMatches(collectionList, query, outputStream);
     }
 
     public void writeMatchesOutsideGroup(final MatchCollectionId collectionId,
+                                         final List<MatchCollectionId> mergeCollectionIdList,
                                          final String groupId,
                                          final OutputStream outputStream)
             throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
-        LOG.debug("writeMatchesOutsideGroup: entry, collectionId={}, groupId={}",
-                  collectionId, groupId);
+        LOG.debug("writeMatchesOutsideGroup: entry, collectionId={}, mergeCollectionIdList={}, groupId={}",
+                  collectionId, mergeCollectionIdList, groupId);
 
-        MongoUtil.validateRequiredParameter("collectionId", collectionId);
+        final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
+                                                                                         mergeCollectionIdList);
         MongoUtil.validateRequiredParameter("groupId", groupId);
 
-        final MongoCollection<Document> collection = getExistingCollection(collectionId);
         final Document query = getOutsideGroupQuery(groupId);
 
-        writeMatches(collection, query, outputStream);
+        writeMatches(collectionList, query, outputStream);
     }
 
     public void writeMatchesBetweenGroups(final MatchCollectionId collectionId,
+                                          final List<MatchCollectionId> mergeCollectionIdList,
                                           final String pGroupId,
                                           final String qGroupId,
                                           final OutputStream outputStream)
             throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
-        LOG.debug("writeMatchesBetweenGroups: entry, collectionId={}, pGroupId={}, pGroupId={}",
-                  collectionId, pGroupId, qGroupId);
+        LOG.debug("writeMatchesBetweenGroups: entry, collectionId={}, mergeCollectionIdList={}, pGroupId={}, pGroupId={}",
+                  collectionId, mergeCollectionIdList, pGroupId, qGroupId);
 
-        MongoUtil.validateRequiredParameter("collectionId", collectionId);
+        final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
+                                                                                         mergeCollectionIdList);
         MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
         MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
 
-        final MongoCollection<Document> collection = getExistingCollection(collectionId);
         final String noTileId = "";
         final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, noTileId, qGroupId, noTileId, null);
         final Document query = new Document(
                 "pGroupId", normalizedCriteria.getpGroupId()).append(
                 "qGroupId", normalizedCriteria.getqGroupId());
 
-        writeMatches(collection, query, outputStream);
+        writeMatches(collectionList, query, outputStream);
     }
 
     public void writeMatchesBetweenObjects(final MatchCollectionId collectionId,
+                                           final List<MatchCollectionId> mergeCollectionIdList,
                                            final String pGroupId,
                                            final String pId,
                                            final String qGroupId,
@@ -123,16 +129,16 @@ public class MatchDao {
                                            final OutputStream outputStream)
             throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
-        LOG.debug("writeMatchesBetweenObjects: entry, collectionId={}, pGroupId={}, pId={}, qGroupId={}, qId={}",
-                  collectionId, pGroupId, pId, qGroupId, qId);
+        LOG.debug("writeMatchesBetweenObjects: entry, collectionId={}, mergeCollectionIdList={}, pGroupId={}, pId={}, qGroupId={}, qId={}",
+                  collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId, qId);
 
-        MongoUtil.validateRequiredParameter("collectionId", collectionId);
+        final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
+                                                                                         mergeCollectionIdList);
         MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
         MongoUtil.validateRequiredParameter("pId", pId);
         MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
         MongoUtil.validateRequiredParameter("qId", qId);
 
-        final MongoCollection<Document> collection = getExistingCollection(collectionId);
         final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, pId, qGroupId, qId, null);
         final Document query = new Document(
                 "pGroupId", normalizedCriteria.getpGroupId()).append(
@@ -140,7 +146,7 @@ public class MatchDao {
                 "qGroupId", normalizedCriteria.getqGroupId()).append(
                 "qId", normalizedCriteria.getqId());
 
-        writeMatches(collection, query, outputStream);
+        writeMatches(collectionList, query, outputStream);
     }
 
     public void removeMatchesOutsideGroup(final MatchCollectionId collectionId,
@@ -218,45 +224,203 @@ public class MatchDao {
         return MongoUtil.getExistingCollection(matchDatabase, collectionId.getDbCollectionName());
     }
 
-    private void writeMatches(final MongoCollection<Document> collection,
-                              final Document query,
-                              final OutputStream outputStream)
-            throws IOException {
+    private List<MongoCollection<Document>> getDistinctCollectionList(final MatchCollectionId collectionId,
+                                                                      final List<MatchCollectionId> mergeCollectionIdList) {
 
-        // exclude mongo id from results
-        final Document keys = new Document("_id", 0);
+        MongoUtil.validateRequiredParameter("collectionId", collectionId);
 
-        final ProcessTimer timer = new ProcessTimer();
-        final byte[] openBracket = "[".getBytes();
-        final byte[] commaWithNewline = ",\n".getBytes();
-        final byte[] closeBracket = "]".getBytes();
+        final Set<MatchCollectionId> collectionIdSet = new HashSet<>();
+        final List<MongoCollection<Document>> collectionList = new ArrayList<>();
 
-        outputStream.write(openBracket);
+        collectionIdSet.add(collectionId);
+        collectionList.add(getExistingCollection(collectionId));
 
-        int count = 0;
-        try (MongoCursor<Document> cursor = collection.find(query).projection(keys).iterator()) {
-
-            Document document;
-            while (cursor.hasNext()) {
-
-                if (count > 0) {
-                    outputStream.write(commaWithNewline);
-                }
-
-                document = cursor.next();
-                outputStream.write(document.toJson().getBytes());
-                count++;
-
-                if (timer.hasIntervalPassed()) {
-                    LOG.debug("writeMatches: data written for {} matches", count);
+        if ((mergeCollectionIdList != null) && (mergeCollectionIdList.size() > 0)) {
+            for (final MatchCollectionId mergeCollectionId : mergeCollectionIdList) {
+                if (collectionIdSet.add(mergeCollectionId)) {
+                    collectionList.add(getExistingCollection(mergeCollectionId));
+                } else {
+                    LOG.warn("filtered duplicate collection id {}", mergeCollectionId);
                 }
             }
         }
 
-        outputStream.write(closeBracket);
+        return collectionList;
+    }
 
-        LOG.debug("writeMatches: wrote data for {} matches returned by {}.find({},{}), elapsedSeconds={}",
-                  count, MongoUtil.fullName(collection), query.toJson(), keys.toJson(), timer.getElapsedSeconds());
+    private void writeMatches(final List<MongoCollection<Document>> collectionList,
+                              final Document query,
+                              final OutputStream outputStream)
+            throws IOException {
+
+        if (collectionList.size() > 1) {
+
+            writeMergedMatches(collectionList, query, outputStream);
+
+        } else {
+
+            final MongoCollection<Document> collection = collectionList.get(0);
+
+            final ProcessTimer timer = new ProcessTimer();
+
+            outputStream.write(OPEN_BRACKET);
+
+            int count = 0;
+            try (MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).iterator()) {
+
+                Document document;
+                while (cursor.hasNext()) {
+
+                    if (count > 0) {
+                        outputStream.write(COMMA_WITH_NEW_LINE);
+                    }
+
+                    document = cursor.next();
+                    outputStream.write(document.toJson().getBytes());
+                    count++;
+
+                    if (timer.hasIntervalPassed()) {
+                        LOG.debug("writeMatches: data written for {} matches", count);
+                    }
+                }
+            }
+
+            outputStream.write(CLOSE_BRACKET);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("writeMatches: wrote data for {} matches returned by {}.find({},{}), elapsedSeconds={}",
+                          count, MongoUtil.fullName(collection), query.toJson(), EXCLUDE_MONGO_ID_KEY_JSON, timer.getElapsedSeconds());
+            }
+        }
+    }
+
+    private void writeMergedMatches(final List<MongoCollection<Document>> collectionList,
+                                    final Document query,
+                                    final OutputStream outputStream)
+            throws IOException {
+
+        // exclude mongo id from results
+        final ProcessTimer timer = new ProcessTimer();
+
+        outputStream.write(OPEN_BRACKET);
+
+        int count = 0;
+
+        final int numberOfCollections = collectionList.size();
+        final List<MongoCursor<Document>> cursorList = new ArrayList<>(numberOfCollections);
+        final List<CanvasMatches> matchesList = new ArrayList<>(numberOfCollections);
+
+        try {
+
+            int numberOfCompletedCursors = 0;
+            MongoCollection<Document> collection;
+            for (int i = 0; i < numberOfCollections; i++) {
+                collection = collectionList.get(i);
+                cursorList.add(collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).sort(MATCH_ORDER_BY).iterator());
+                matchesList.add(null);
+                numberOfCompletedCursors += updateMatches(cursorList, matchesList, i);
+            }
+
+            if (numberOfCompletedCursors > 0) {
+                removeCompletedCursors(cursorList, matchesList);
+            }
+
+            CanvasMatches mergedMatches;
+            while (matchesList.size() > 0) {
+                if (count > 0) {
+                    outputStream.write(COMMA_WITH_NEW_LINE);
+                }
+
+                mergedMatches = getNextMergedMatches(cursorList, matchesList);
+
+                outputStream.write(mergedMatches.toJson().getBytes());
+                count++;
+
+                if (timer.hasIntervalPassed()) {
+                    LOG.debug("writeMergedMatches: data written for {} matches", count);
+                }
+            }
+
+        } finally {
+
+            for (final MongoCursor<Document> cursor : cursorList) {
+                if (cursor != null) {
+                    try {
+                        cursor.close();
+                    } catch (final Throwable t) {
+                        LOG.error("failed to close cursor, ignoring exception", t);
+                    }
+                }
+            }
+
+        }
+
+        outputStream.write(CLOSE_BRACKET);
+
+        if (LOG.isDebugEnabled()) {
+            final StringBuilder collectionNames = new StringBuilder(512);
+            for (int i = 0; i < collectionList.size(); i++) {
+                if (i > 0) {
+                    collectionNames.append('|');
+                }
+                collectionNames.append(MongoUtil.fullName(collectionList.get(i)));
+            }
+            LOG.debug("writeMergedMatches: wrote data for {} matches returned by {}.find({},{}).sort({}), elapsedSeconds={}",
+                      count, collectionNames, query.toJson(), EXCLUDE_MONGO_ID_KEY_JSON, MATCH_ORDER_BY_JSON, timer.getElapsedSeconds());
+        }
+    }
+
+    private CanvasMatches getNextMergedMatches(final List<MongoCursor<Document>> cursorList,
+                                               final List<CanvasMatches> matchesList) {
+
+        int numberOfCompletedCursors = 0;
+        int nextMatchesIndex = 0;
+        CanvasMatches nextMatches = matchesList.get(nextMatchesIndex);
+        CanvasMatches matches;
+        int comparisonResult;
+        for (int i = 1; i < matchesList.size(); i++) {
+            matches = matchesList.get(i);
+            comparisonResult = matches.compareTo(nextMatches);
+            if (comparisonResult == 0) {
+                nextMatches.append(matches.getMatches());
+                numberOfCompletedCursors += updateMatches(cursorList, matchesList, i);
+            } else if (comparisonResult < 0) {
+                nextMatchesIndex = i;
+                nextMatches = matches;
+            }
+        }
+
+        numberOfCompletedCursors += updateMatches(cursorList, matchesList, nextMatchesIndex);
+
+        if (numberOfCompletedCursors > 0) {
+            removeCompletedCursors(cursorList, matchesList);
+        }
+
+        return nextMatches;
+    }
+
+    private void removeCompletedCursors(final List<MongoCursor<Document>> cursorList,
+                                        final List<CanvasMatches> matchesList) {
+        MongoCursor<Document> cursor;
+        for (int i = matchesList.size() - 1; i >=0; i--) {
+            if (matchesList.get(i) == null) {
+                matchesList.remove(i);
+                cursor = cursorList.remove(i);
+                cursor.close();
+            }
+        }
+    }
+
+    private int updateMatches(final List<MongoCursor<Document>> cursorList,
+                              final List<CanvasMatches> matchesList,
+                              final int index) {
+        CanvasMatches canvasMatches = null;
+        final MongoCursor<Document> cursor = cursorList.get(index);
+        if (cursor.hasNext()) {
+            canvasMatches = CanvasMatches.fromJson(cursor.next().toJson());
+        }
+        matchesList.set(index, canvasMatches);
+        return (canvasMatches == null ? 1 : 0);
     }
 
     private Document getOutsideGroupQuery(final String groupId) {
@@ -278,4 +442,13 @@ public class MatchDao {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MatchDao.class);
+
+    private static final Document MATCH_ORDER_BY =
+            new Document("pGroupId", 1).append("qGroupId", 1).append("pId", 1).append("qId", 1);
+    private static final String MATCH_ORDER_BY_JSON = MATCH_ORDER_BY.toJson();
+    private static final Document EXCLUDE_MONGO_ID_KEY = new Document("_id", 0);
+    private static final String EXCLUDE_MONGO_ID_KEY_JSON = EXCLUDE_MONGO_ID_KEY.toJson();
+    private static final byte[] OPEN_BRACKET = "[".getBytes();
+    private static final byte[] COMMA_WITH_NEW_LINE = ",\n".getBytes();
+    private static final byte[] CLOSE_BRACKET = "]".getBytes();
 }
