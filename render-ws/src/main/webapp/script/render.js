@@ -317,8 +317,8 @@ RenderWebServiceData.prototype.getStackSummaryHtml = function(ownerUrl, stackInf
             values.push(this.getDefinedValue(bounds.maxZ));
 
             if (typeof version !== 'undefined') {
-                xp = ((bounds.maxX - bounds.minX) / 2) * version.stackResolutionX;
-                yp = ((bounds.maxY - bounds.minY) / 2) * version.stackResolutionY;
+                xp = (bounds.minX + ((bounds.maxX - bounds.minX) / 2)) * version.stackResolutionX;
+                yp = (bounds.minY + ((bounds.maxY - bounds.minY) / 2)) * version.stackResolutionY;
                 zp = bounds.minZ * version.stackResolutionZ;
             }
         }
