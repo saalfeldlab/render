@@ -146,7 +146,7 @@ RenderWebServiceStackDetails.prototype.getLinksForZ = function(baseDataUrl, base
         var overview = '<a target="_blank" href="' + baseRenderUrl + '/owner/' +
                        owner + '/project/' + project + '/stack/' + stack  +
                        '/largeDataTileSource/2048/2048/small/' + z +
-                       '.jpg?maxOverviewWidthAndHeight=400&maxTileSpecsToRender=1">overview</a>';
+                       '.jpg?maxOverviewWidthAndHeight=400&maxTileSpecsToRender=1&translateOrigin=true">overview</a>';
         links.push(overview);
     }
 

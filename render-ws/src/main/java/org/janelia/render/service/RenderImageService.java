@@ -572,11 +572,12 @@ public class RenderImageService {
                                                 @QueryParam("filter") final Boolean filter,
                                                 @QueryParam("binaryMask") final Boolean binaryMask,
                                                 @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
+                                                @QueryParam("translateOrigin") final Boolean translateOrigin,
                                                 @Context final Request request) {
 
         return renderLargeDataOverview(owner, project, stack, width, height, z,
                                        Utils.JPEG_FORMAT, RenderServiceUtil.IMAGE_JPEG_MIME_TYPE,
-                                       maxOverviewWidthAndHeight, filter, binaryMask, maxTileSpecsToRender,
+                                       maxOverviewWidthAndHeight, filter, binaryMask, maxTileSpecsToRender, translateOrigin,
                                        request);
     }
 
@@ -622,11 +623,12 @@ public class RenderImageService {
                                                @QueryParam("filter") final Boolean filter,
                                                @QueryParam("binaryMask") final Boolean binaryMask,
                                                @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
+                                               @QueryParam("translateOrigin") final Boolean translateOrigin,
                                                @Context final Request request) {
 
         return renderLargeDataOverview(owner, project, stack, width, height, z,
                                        Utils.PNG_FORMAT, RenderServiceUtil.IMAGE_PNG_MIME_TYPE,
-                                       maxOverviewWidthAndHeight, filter, binaryMask, maxTileSpecsToRender,
+                                       maxOverviewWidthAndHeight, filter, binaryMask, maxTileSpecsToRender, translateOrigin,
                                        request);
     }
 
@@ -709,6 +711,7 @@ public class RenderImageService {
                                              final Boolean filter,
                                              final Boolean binaryMask,
                                              Integer maxTileSpecsToRender,
+                                             final Boolean translateOrigin,
                                              final Request request) {
 
         LOG.info("renderLargeDataOverview: entry, stack={}, width={}, height={}, z={}",
@@ -734,10 +737,24 @@ public class RenderImageService {
                 if (stats != null) {
                     final Bounds stackBounds = stats.getStackBounds();
                     if (stackBounds != null) {
-                        stackMinX = stackBounds.getMinX();
-                        stackMinY = stackBounds.getMinY();
-                        stackWidth = stackBounds.getMaxX().intValue() - stackMinX.intValue();
-                        stackHeight = stackBounds.getMaxY().intValue() - stackMinY.intValue();
+
+                        stackWidth = stackBounds.getMaxX().intValue();
+                        stackHeight = stackBounds.getMaxY().intValue();
+
+                        // CATMAID overviews are expected to reflect a (0,0) origin and
+                        // stacks are expected to be entirely in positive space.
+                        // If the request explicitly asks for translation or
+                        // if one dimension of the stack is entirely in negative space,
+                        // render the overview as if the stack's minimum coordinate was (0,0).
+
+                        if (((translateOrigin != null) && translateOrigin) ||
+                            (stackWidth < 1) || (stackHeight < 1)) {
+                            stackMinX = stackBounds.getMinX();
+                            stackMinY = stackBounds.getMinY();
+                            stackWidth = stackBounds.getMaxX().intValue() - stackMinX.intValue();
+                            stackHeight = stackBounds.getMaxY().intValue() - stackMinY.intValue();
+                        }
+
                     }
                 }
 
