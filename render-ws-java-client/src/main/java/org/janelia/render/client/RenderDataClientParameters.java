@@ -40,6 +40,12 @@ public class RenderDataClientParameters
             required = false)
     protected String validatorClass;
 
+    @Parameter(
+            names = "--validatorData",
+            description = "Initialization data for validator instance.",
+            required = false)
+    protected String validatorData;
+
     protected TileSpecValidator getValidatorInstance()
             throws IllegalArgumentException {
 
@@ -76,6 +82,10 @@ public class RenderDataClientParameters
             } else {
                 throw new IllegalArgumentException(context + "does not implement the " +
                                                    TileSpecValidator.class + " interface");
+            }
+
+            if (validatorData != null) {
+                validatorInstance.init(validatorData);
             }
         }
 

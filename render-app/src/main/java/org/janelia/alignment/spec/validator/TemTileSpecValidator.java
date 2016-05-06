@@ -9,14 +9,17 @@ import org.janelia.alignment.spec.TileSpec;
  */
 public class TemTileSpecValidator implements TileSpecValidator {
 
-    final double minCoordinate;
-    final double maxCoordinate;
-    final double minSize;
-    final double maxSize;
+    double minCoordinate;
+    double maxCoordinate;
+    double minSize;
+    double maxSize;
 
+    /**
+     * No-arg constructor that applies default parameters is required for
+     * client instantiation via reflection.
+     */
     public TemTileSpecValidator() {
-        // TODO: confirm default bounding box constraints
-        this (-800000, 800000, 500, 5000);
+        this (0, 400000, 500, 5000);
     }
 
     public TemTileSpecValidator(final double minCoordinate,
@@ -47,12 +50,36 @@ public class TemTileSpecValidator implements TileSpecValidator {
 
     @Override
     public String toString() {
-        return "TemTileSpecValidator{" +
-               "maxCoordinate=" + getMaxCoordinate() +
-               ", minCoordinate=" + getMinCoordinate() +
-               ", minSize=" + getMinSize() +
-               ", maxSize=" + getMaxSize() +
-               '}';
+        return "{ 'class': \"" + getClass() + "\", \"data\": \"" +
+               toDataString() + "\" }";
+    }
+
+    @Override
+    public void init(final String dataString)
+            throws IllegalArgumentException {
+        final String[] names = { "minCoordinate:", "maxCoordinate:", "minSize:", "maxSize:" };
+        final double[] values = new double[] { minCoordinate, maxCoordinate, minSize, maxSize};
+        String trimmedNameAndValue;
+        for (final String stringNameAndValue : dataString.split(",")) {
+            trimmedNameAndValue = stringNameAndValue.trim();
+            for (int i = 0; i < names.length; i++) {
+                if (trimmedNameAndValue.startsWith(names[i])) {
+                    values[i] = Double.parseDouble(trimmedNameAndValue.substring(names[i].length()));
+                }
+            }
+        }
+        minCoordinate = values[0];
+        maxCoordinate = values[1];
+        minSize = values[2];
+        maxSize = values[3];
+    }
+
+    @Override
+    public String toDataString() {
+        return "minCoordinate:" + getMinCoordinate() +
+               ",maxCoordinate:" + getMaxCoordinate() +
+               ",minSize:" + getMinSize() +
+               ",maxSize:" + getMaxSize();
     }
 
     /**
