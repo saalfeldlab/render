@@ -81,9 +81,27 @@ public class RenderDataService {
     public Response getLayoutFile(@PathParam("owner") final String owner,
                                   @PathParam("project") final String project,
                                   @PathParam("stack") final String stack,
+                                  @QueryParam("minZ") final Double minZ,
+                                  @QueryParam("maxZ") final Double maxZ,
                                   @Context final UriInfo uriInfo) {
 
-        return getLayoutFileForZRange(owner, project, stack, null, null, uriInfo);
+        return getLayoutFileForZRange(owner, project, stack, minZ, maxZ, uriInfo);
+    }
+
+    @Path("project/{project}/stack/{stack}/z/{z}/layoutFile")
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    @ApiOperation(
+            tags = "Layout Data APIs",
+            value = "Get layout file text for specified stack layer",
+            produces = MediaType.TEXT_PLAIN)
+    public Response getLayoutFileForZ(@PathParam("owner") final String owner,
+                                      @PathParam("project") final String project,
+                                      @PathParam("stack") final String stack,
+                                      @PathParam("z") final Double z,
+                                      @Context final UriInfo uriInfo) {
+
+        return getLayoutFileForZRange(owner, project, stack, z, z, uriInfo);
     }
 
     @Path("project/{project}/stack/{stack}/zRange/{minZ},{maxZ}/layoutFile")
