@@ -39,6 +39,16 @@ public class ListTransformSpec extends TransformSpec {
         return specList.get(index);
     }
 
+    public TransformSpec getLastSpec() {
+        final TransformSpec lastSpec;
+        if ((specList.size() > 0)) {
+            lastSpec = specList.get(specList.size() - 1);
+        } else {
+            lastSpec = null;
+        }
+        return lastSpec;
+    }
+
     public void addSpec(final TransformSpec spec) {
         specList.add(spec);
     }

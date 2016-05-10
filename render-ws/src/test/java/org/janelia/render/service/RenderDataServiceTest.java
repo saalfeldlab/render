@@ -5,11 +5,13 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 import javax.ws.rs.core.PathSegment;
 import javax.ws.rs.core.UriInfo;
 
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.LastTileTransform;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -86,8 +88,6 @@ public class RenderDataServiceTest {
         Assert.assertNotNull("null parameters returned", renderParameters);
     }
 
-
-
     @Test
     public void testGetAndSaveResolvedTiles() throws Exception {
 
@@ -154,6 +154,23 @@ public class RenderDataServiceTest {
                                                                                        Z);
 
         validateResolvedTiles("after second save", resolvedTest2Tiles, 2, 2);
+    }
+
+    @Test
+    public void testGetLastTileTransforms() throws Exception {
+
+        final List<LastTileTransform> lastTileTransformList =
+                service.getLastTileTransformsForZ(alignStackId.getOwner(),
+                                                  alignStackId.getProject(),
+                                                  alignStackId.getStack(),
+                                                  2337.0);
+
+        Assert.assertNotNull("null list returned", lastTileTransformList);
+        Assert.assertEquals("invalid number of tiles", 1, lastTileTransformList.size());
+        final LastTileTransform firstEntry = lastTileTransformList.get(0);
+        Assert.assertEquals("invalid tileId for first entry", "140331142443008104", firstEntry.getTileId());
+        Assert.assertEquals("invalid last transform class",
+                            LeafTransformSpec.class, firstEntry.getLastTransform().getClass());
     }
 
     private void validateResolvedTiles(final String context,

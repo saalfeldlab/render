@@ -28,6 +28,7 @@ import javax.ws.rs.core.UriInfo;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.LastTileTransform;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
@@ -737,6 +738,41 @@ public class RenderDataService {
         }
 
         return tileSpecList;
+    }
+
+    /**
+     * @return list of tile specs for specified layer with flattened (and therefore resolved)
+     *         transform specs suitable for external use.
+     */
+    @Path("project/{project}/stack/{stack}/z/{z}/last-tile-transforms")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Section Data APIs",
+            value = "Get last transform for each tile spec with the specified z")
+    public List<LastTileTransform> getLastTileTransformsForZ(@PathParam("owner") final String owner,
+                                                             @PathParam("project") final String project,
+                                                             @PathParam("stack") final String stack,
+                                                             @PathParam("z") final Double z) {
+
+        LOG.info("getLastTileTransformsForZ: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
+
+        List<LastTileTransform> lastTileTransformList = null;
+        try {
+            final RenderParameters parameters = getRenderParametersForZ(owner, project, stack, z, 1.0, false);
+            final List<TileSpec> tileSpecList = parameters.getTileSpecs();
+            lastTileTransformList = new ArrayList<>(tileSpecList.size());
+            for (final TileSpec tileSpec : tileSpecList) {
+                lastTileTransformList.add(new LastTileTransform(tileSpec.getTileId(),
+                                                                tileSpec.getLastTransform()));
+            }
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+
+        return lastTileTransformList;
     }
 
     /**

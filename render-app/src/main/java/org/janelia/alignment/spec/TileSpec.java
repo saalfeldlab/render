@@ -414,6 +414,14 @@ public class TileSpec implements Serializable {
         return transforms;
     }
 
+    public TransformSpec getLastTransform() {
+        TransformSpec lastTransform = null;
+        if (hasTransforms()) {
+            lastTransform = transforms.getLastSpec();
+        }
+        return lastTransform;
+    }
+
     public void setTransforms(final ListTransformSpec transforms) {
         this.transforms = transforms;
     }
