@@ -266,7 +266,7 @@ public class MatchDao {
             outputStream.write(OPEN_BRACKET);
 
             int count = 0;
-            try (MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).iterator()) {
+            try (MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).sort(MATCH_ORDER_BY).iterator()) {
 
                 Document document;
                 while (cursor.hasNext()) {
