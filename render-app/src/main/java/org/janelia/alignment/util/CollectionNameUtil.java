@@ -48,7 +48,14 @@ public class CollectionNameUtil {
 
     public String getName(final String... fields) {
 
-        final String name = String.join(fieldSeparator, fields);
+//        final String name = String.join(fieldSeparator, fields);
+        final StringBuilder name = new StringBuilder(maxCollectionNameLength);
+        for (int i = 0; i < fields.length; i++) {
+            if (i > 0) {
+                name.append(fieldSeparator);
+            }
+            name.append(fields[i]);
+        }
 
         if (name.length() > maxCollectionNameLength) {
             throw new IllegalArgumentException(databaseName + " collection name '" + name +
@@ -57,7 +64,7 @@ public class CollectionNameUtil {
                                                "of the collection fields should be reduced");
         }
 
-        return name;
+        return name.toString();
     }
 
     public String[] getFields(final String name) {

@@ -5,6 +5,7 @@ import com.beust.jcommander.Parameter;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -375,7 +376,7 @@ public class PointMatchClient {
 
             final Path storagePath = Paths.get(parameters.matchStorageFile);
 
-            try (BufferedWriter writer = Files.newBufferedWriter(storagePath)) {
+            try (BufferedWriter writer = Files.newBufferedWriter(storagePath, StandardCharsets.UTF_8)) {
 
                 writer.write("[\n");
 
