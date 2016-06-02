@@ -60,6 +60,24 @@ public class MatchDao {
         return list;
     }
 
+    public void writeMatchesWithPGroup(final MatchCollectionId collectionId,
+                                       final List<MatchCollectionId> mergeCollectionIdList,
+                                       final String pGroupId,
+                                       final OutputStream outputStream)
+            throws IllegalArgumentException, IOException, ObjectNotFoundException {
+
+        LOG.debug("writeMatchesWithPGroup: entry, collectionId={}, mergeCollectionIdList={}, pGroupId={}",
+                  collectionId, mergeCollectionIdList, pGroupId);
+
+        final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
+                                                                                         mergeCollectionIdList);
+        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
+
+        final Document query = new Document("pGroupId", pGroupId);
+
+        writeMatches(collectionList, query, outputStream);
+    }
+
     public void writeMatchesWithinGroup(final MatchCollectionId collectionId,
                                         final List<MatchCollectionId> mergeCollectionIdList,
                                         final String groupId,

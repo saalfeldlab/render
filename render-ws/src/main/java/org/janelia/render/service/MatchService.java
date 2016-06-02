@@ -101,6 +101,38 @@ public class MatchService {
         return ownerMetaDataList;
     }
 
+    @Path("owner/{owner}/matchCollection/{matchCollection}/pGroup/{pGroupId}/matches")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Find matches with the specified pGroup",
+            notes = "Find all matches where the first tile is in the specified layer.",
+            response = CanvasMatches.class,
+            responseContainer="List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public Response getMatchesWithPGroup(@PathParam("owner") final String owner,
+                                         @PathParam("matchCollection") final String matchCollection,
+                                         @PathParam("pGroupId") final String pGroupId,
+                                         @QueryParam("mergeCollection") final List<String> mergeCollectionList) {
+
+        LOG.info("getMatchesWithPGroup: entry, owner={}, matchCollection={}, pGroupId={}, mergeCollectionList={}",
+                 owner, matchCollection, pGroupId, mergeCollectionList);
+
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+        final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
+        final StreamingOutput responseOutput = new StreamingOutput() {
+            @Override
+            public void write(final OutputStream output)
+                    throws IOException, WebApplicationException {
+                matchDao.writeMatchesWithPGroup(collectionId, mergeCollectionIdList, pGroupId, output);
+            }
+        };
+
+        return streamResponse(responseOutput);
+    }
+
     @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesWithinGroup")
     @GET
     @Produces(MediaType.APPLICATION_JSON)

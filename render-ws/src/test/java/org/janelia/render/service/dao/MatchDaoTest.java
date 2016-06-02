@@ -97,6 +97,24 @@ public class MatchDaoTest {
     }
 
     @Test
+    public void testWriteMatchesWithPGroup() throws Exception {
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        dao.writeMatchesWithPGroup(collectionId, null, groupId, outputStream);
+
+        final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
+
+        Assert.assertEquals("invalid number of matches returned",
+                            3, canvasMatchesList.size());
+
+        for (final CanvasMatches canvasMatches : canvasMatchesList) {
+//            System.out.println(canvasMatches.toTabSeparatedFormat());
+            Assert.assertEquals("invalid source groupId: " + canvasMatches, groupId, canvasMatches.getpGroupId());
+        }
+    }
+
+    @Test
     public void testWriteMatchesWithinGroup() throws Exception {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
