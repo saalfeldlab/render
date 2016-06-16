@@ -1,0 +1,20 @@
+{
+  "solver_options": {
+    "min_tiles": 3,
+    "degree": 1,
+    "outlier_lambda": 1000,
+    "solver": "backslash",
+    "min_points": 5,
+    "nbrs": 1,
+    "xs_weight": 0.05,
+    "stvec_flag": 0,
+    "conn_comp": 1,
+    "distributed": 0,
+    "lambda": 0.01,
+    "edge_lambda": 0.01,
+    "small_region_lambda": 10,
+    "small_region": 5,
+    "calc_confidence": 1,
+    "translation_fac": 1
+  }
+}

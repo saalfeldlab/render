@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.UnknownHostException;
 import java.util.List;
 
 import org.apache.http.client.methods.HttpDelete;
@@ -17,8 +16,6 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
-import org.apache.http.protocol.HttpContext;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
@@ -29,6 +26,7 @@ import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.render.client.request.WaitingRetryHandler;
 import org.janelia.render.client.response.JsonResponseHandler;
 import org.janelia.render.client.response.ResourceCreatedResponseHandler;
 import org.janelia.render.client.response.TextResponseHandler;
@@ -64,36 +62,7 @@ public class RenderDataClient {
         this.baseDataUrl = baseDataUrl;
         this.owner = owner;
         this.project = project;
-
-        // This retry handler extends the standard one by including a 5 second wait between retries for
-        // unknown host exception cases.  This was introduced to work around a January 2016 DNS issue at Janelia.
-        final StandardHttpRequestRetryHandler retryHandler = new StandardHttpRequestRetryHandler() {
-
-            @Override
-            public boolean retryRequest(final IOException exception,
-                                        final int executionCount,
-                                        final HttpContext context) {
-
-                final boolean retry = super.retryRequest(exception, executionCount, context);
-
-                if (retry && (exception instanceof UnknownHostException)) {
-                    final long retryWaitTime = 5000;
-                    LOG.info("retryHandler: waiting {}ms before retrying request that failed from UnknownHostException",
-                             retryWaitTime);
-                    try {
-                        Thread.sleep(retryWaitTime);
-                    } catch (final InterruptedException ie) {
-                        LOG.warn("retry wait was interrupted", ie);
-                    }
-
-                }
-
-                return retry;
-            }
-        };
-
-        this.httpClient = HttpClientBuilder.create().setRetryHandler(retryHandler).build();
-
+        this.httpClient = HttpClientBuilder.create().setRetryHandler(new WaitingRetryHandler()).build();
     }
 
     @Override

@@ -295,6 +295,24 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     /**
+     * Removes the specified tile spec from this collection if it is invalid.
+     *
+     * @param  tileSpec  tile spec to validate.
+     *
+     * @return true if the spec is invalid; otherwise false.
+     */
+    public boolean removeTileSpecIfInvalid(final TileSpec tileSpec) {
+        boolean isInvalid = false;
+        if (tileSpecValidator != null) {
+            isInvalid = isTileInvalid(tileSpec);
+            if (isInvalid) {
+                tileIdToSpecMap.remove(tileSpec.getTileId());
+            }
+        }
+        return isInvalid;
+    }
+
+    /**
      * Removes any shared transforms that are not referenced by tile specs.
      */
     public void removeUnreferencedTransforms() {
@@ -385,12 +403,6 @@ public class ResolvedTileSpecCollection implements Serializable {
                                                    " requires the following transform ids " +
                                                    transforms.getUnresolvedIds());
             }
-        }
-    }
-
-    private void removeTileIfInvalid(final TileSpec tileSpec) {
-        if (isTileInvalid(tileSpec)) {
-            tileIdToSpecMap.remove(tileSpec.getTileId());
         }
     }
 

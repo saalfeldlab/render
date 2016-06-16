@@ -20,33 +20,33 @@ public class RenderDataClientParameters
             names = "--baseDataUrl",
             description = "Base web service URL for data (e.g. http://host[:port]/render-ws/v1)",
             required = true)
-    protected String baseDataUrl;
+    public String baseDataUrl;
 
     @Parameter(
             names = "--owner",
             description = "Owner for all stacks",
             required = true)
-    protected String owner;
+    public String owner;
 
     @Parameter(
             names = "--project",
             description = "Project for all stacks",
             required = true)
-    protected String project;
+    public String project;
 
     @Parameter(
             names = "--validatorClass",
             description = "Name of validator class (e.g. org.janelia.alignment.spec.validator.TemTileSpecValidator).  Exclude to skip validation.",
             required = false)
-    protected String validatorClass;
+    public String validatorClass;
 
     @Parameter(
             names = "--validatorData",
             description = "Initialization data for validator instance.",
             required = false)
-    protected String validatorData;
+    public String validatorData;
 
-    protected TileSpecValidator getValidatorInstance()
+    public TileSpecValidator getValidatorInstance()
             throws IllegalArgumentException {
 
         TileSpecValidator validatorInstance = null;

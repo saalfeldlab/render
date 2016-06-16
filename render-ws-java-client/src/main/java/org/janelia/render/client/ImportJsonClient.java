@@ -150,7 +150,7 @@ public class ImportJsonClient {
         LOG.info("importStackData: exit, saved tiles and transforms from {}", tileFile);
     }
 
-    private List<TransformSpec> loadTransformData(final String transformFile)
+    public static List<TransformSpec> loadTransformData(final String transformFile)
             throws IOException {
 
         final List<TransformSpec> list;
