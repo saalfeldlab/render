@@ -44,18 +44,30 @@ public class AcquisitionDataClient {
     }
 
     /**
+     * @param  oldState       acquisition tile must be in this state before retrieval
+     * @param  newState       acquisition tile will be in this state after retrieval
+     * @param  acquisitionId  if specified, acquisition tile must be associated with this acquisition
+     *
      * @return the next tile with the specified state from the acquisition server.
      *
      * @throws IOException
      *   if the request fails for any reason.
      */
     public AcquisitionTile getNextTile(final AcquisitionTileState oldState,
-                                       final AcquisitionTileState newState)
+                                       final AcquisitionTileState newState,
+                                       final String acquisitionId)
             throws IOException {
+
+        if (oldState.equals(newState)) {
+            throw new IllegalArgumentException("oldState and newState are both " + oldState);
+        }
 
         final URIBuilder uriBuilder = new URIBuilder(getUri(baseUrl + "/next-tile"));
         uriBuilder.addParameter("oldState", oldState.toString());
         uriBuilder.addParameter("newState", newState.toString());
+        if (acquisitionId != null) {
+            uriBuilder.addParameter("acqid", acquisitionId);
+        }
 
         final URI uri = getUri(uriBuilder);
         final HttpPost httpPost = new HttpPost(uri);

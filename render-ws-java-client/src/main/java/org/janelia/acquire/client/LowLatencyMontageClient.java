@@ -43,6 +43,9 @@ public class LowLatencyMontageClient {
         @Parameter(names = "--baseAcquisitionUrl", description = "Base URL for acquisiiton data (e.g. http://host[:port]/???/v1)", required = true)
         private String baseAcquisitionUrl;
 
+        @Parameter(names = "--acquisitionId", description = "Acquisition identifier for limiting tiles to a known acquisition", required = false)
+        private String acquisitionId;
+
         @Parameter(names = "--waitSeconds", description = "Number of seconds to wait before checking for newly acquired tiles (default 5)", required = false)
         private int waitSeconds = 5;
 
@@ -133,7 +136,8 @@ public class LowLatencyMontageClient {
         while (waitForMoreTiles) {
 
             acquisitionTile = acquisitionDataClient.getNextTile(AcquisitionTileState.READY,
-                                                                AcquisitionTileState.IN_PROGRESS);
+                                                                AcquisitionTileState.IN_PROGRESS,
+                                                                parameters.acquisitionId);
 
             switch (acquisitionTile.getResultType()) {
 
