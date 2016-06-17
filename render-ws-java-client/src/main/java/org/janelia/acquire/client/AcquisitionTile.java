@@ -17,7 +17,7 @@ public class AcquisitionTile {
 
     private final String acqid;
     private final String section;
-    private final TileSpec tileSpec;
+    private final TileSpec tilespec;
     private final ResultType resultType;
 
     private AcquisitionTile() {
@@ -31,11 +31,11 @@ public class AcquisitionTile {
         this.acqid = acqid;
         this.resultType = resultType;
         this.section = section;
-        this.tileSpec = tileSpec;
+        this.tilespec = tileSpec;
     }
 
     public TileSpec getTileSpec() {
-        return tileSpec;
+        return tilespec;
     }
 
     public ResultType getResultType() {
