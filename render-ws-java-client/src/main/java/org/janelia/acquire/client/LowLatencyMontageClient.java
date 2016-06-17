@@ -249,6 +249,11 @@ public class LowLatencyMontageClient {
 
         final TileSpec tileSpec = fromAcquisitionTile.getTileSpec();
 
+        if (tileSpec == null) {
+            throw new IllegalStateException("acquisition tile is missing render tile spec\ntileJSON=" +
+                                            fromAcquisitionTile.toJson());
+        }
+
         // add to collection to resolve any transform references
         toCollection.addTileSpecToCollection(tileSpec);
 
