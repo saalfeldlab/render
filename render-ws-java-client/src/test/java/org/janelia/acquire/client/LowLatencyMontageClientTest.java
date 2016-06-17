@@ -7,6 +7,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -55,6 +56,8 @@ public class LowLatencyMontageClientTest {
 
         mockServer.reset();
         deleteMontageWorkDirectory();
+
+        addRenderStackMetaDataResponse();
 
         for (int i = 0; i < 5; i++) {
             addAcqNextTileResponse(getAcquisitionTile(AcquisitionTile.ResultType.TILE_FOUND, "tile_" + i, 1.0));
@@ -122,9 +125,33 @@ public class LowLatencyMontageClientTest {
         return new AcquisitionTile("ACQ-1", resultType, section, tileSpec);
     }
 
+    private String getRenderStackRequestPath() {
+        return getBaseDataPath() + "/owner/" + acquireStackId.getOwner() + "/project/" +
+               acquireStackId.getProject() + "/stack/" + acquireStackId.getStack();
+    }
+
+    private void addRenderStackMetaDataResponse() {
+        final String requestPath = getRenderStackRequestPath();
+        final StackMetaData stackMetaData = new StackMetaData(acquireStackId, null);
+        stackMetaData.setState(StackMetaData.StackState.LOADING);
+        final JsonBody responseBody = json(stackMetaData.toJson());
+        mockServer
+                .when(
+                        HttpRequest.request()
+                                .withMethod("GET")
+                                .withPath(requestPath),
+                        Times.once()
+                )
+                .respond(
+                        HttpResponse.response()
+                                .withStatusCode(HttpStatus.SC_OK)
+                                .withHeader("Content-Type", responseBody.getContentType())
+                                .withBody(responseBody)
+                );
+    }
+
     private void addRenderResolvedTilesResponse() {
-        final String requestPath = getBaseDataPath() + "/owner/" + acquireStackId.getOwner() + "/project/" +
-                                   acquireStackId.getProject() + "/stack/" + acquireStackId.getStack() + "/resolvedTiles";
+        final String requestPath = getRenderStackRequestPath() + "/resolvedTiles";
         mockServer
                 .when(
                         HttpRequest.request()

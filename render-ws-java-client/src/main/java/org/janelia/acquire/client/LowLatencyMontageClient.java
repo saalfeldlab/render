@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -13,6 +14,8 @@ import java.util.Set;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.ClientRunner;
@@ -85,6 +88,7 @@ public class LowLatencyMontageClient {
                 parameters.validateMontageParameters();
 
                 final LowLatencyMontageClient client = new LowLatencyMontageClient(parameters);
+                client.ensureAcquireStackExists();
                 client.importAcquisitionData();
                 if (parameters.montageParametersFile != null) {
                     client.invokeMontageProcessor();
@@ -115,6 +119,37 @@ public class LowLatencyMontageClient {
 
         this.transformSpecs = ImportJsonClient.loadTransformData(parameters.transformFile);
         this.zValues = new HashSet<>();
+    }
+
+    public void ensureAcquireStackExists() throws Exception {
+        LOG.info("ensureAcquireStackExists: entry");
+
+        StackMetaData stackMetaData;
+        try {
+            stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
+        } catch (final Throwable t) {
+
+            LOG.info("failed to retrieve stack metadata, will attempt to create new stack", t);
+
+            renderDataClient.saveStackVersion(parameters.stack,
+                                              new StackVersion(new Date(),
+                                                               null,
+                                                               null,
+                                                               null,
+                                                               null,
+                                                               null,
+                                                               null,
+                                                               null,
+                                                               null));
+            stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
+        }
+
+        if (! stackMetaData.isLoading()) {
+            throw new IllegalStateException("stack state is " + stackMetaData.getState() +
+                                            " but must be LOADING, stackMetaData=" + stackMetaData);
+        }
+
+        LOG.info("ensureAcquireStackExists: exit, stackMetaData is {}", stackMetaData);
     }
 
     public void importAcquisitionData() throws Exception {
