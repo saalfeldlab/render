@@ -285,7 +285,12 @@ public class LowLatencyMontageClient {
         final TileSpec tileSpec = fromAcquisitionTile.getTileSpec();
 
         if (tileSpec == null) {
-            throw new IllegalStateException("acquisition tile is missing render tile spec\ntileJSON=" +
+            throw new IllegalStateException("acquisition tile is missing render tile spec\ntile=" +
+                                            fromAcquisitionTile.toJson());
+        } else if (toCollection.hasTileSpec(tileSpec.getTileId())) {
+            final TileSpec existingTileSpec = toCollection.getTileSpec(tileSpec.getTileId());
+            throw new IllegalStateException("duplicate tileSpecId \nexisting tileSpec=" +
+                                            existingTileSpec.toJson() + "\nduplicate acquisitionTile=" +
                                             fromAcquisitionTile.toJson());
         }
 

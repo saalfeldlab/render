@@ -72,6 +72,13 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     /**
+     * @return true if the a tile spec with the specified id exits in this collection; otherwise false.
+     */
+    public boolean hasTileSpec(final String tileId) {
+        return tileIdToSpecMap.containsKey(tileId);
+    }
+
+    /**
      * @param  tileId  identifier for the desired tile.
      *
      * @return the tile specification with the specified id (or null if it does not exist).
