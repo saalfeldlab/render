@@ -60,9 +60,10 @@ public class LowLatencyMontageClient {
 
         public void validateMontageParameters()
                 throws IllegalArgumentException {
-            if (((montageScript == null) || (montageParametersFile == null) || (montageWorkDirectory == null)) &&
-                ((montageScript != null) || (montageParametersFile != null) || (montageWorkDirectory != null))) {
-                throw new IllegalArgumentException("montageScript, montageParametersFile, and montageWorkDirectory must all be defined or not");
+            if ((montageParametersFile == null) && (montageWorkDirectory != null)) {
+                throw new IllegalArgumentException("montageParametersFile must be specified when montageWorkDirectory is specified");
+            } else if ((montageParametersFile != null) && (montageWorkDirectory == null)) {
+                throw new IllegalArgumentException("montageWorkDirectory must be specified when montageParametersFile is specified");
             }
         }
 
@@ -213,22 +214,26 @@ public class LowLatencyMontageClient {
 
             montageParameters.setSectionNumber(z);
 
-            final String fileName = String.format("montage_input_%05.1f.json", z);
+            final String fileName = String.format("montage_input_%08.1f.json", z);
             final File montageInputFile = new File(montageWorkStackDir, fileName);
             montageParameters.save(montageInputFile.getAbsolutePath());
 
-            final ProcessBuilder processBuilder = new ProcessBuilder(parameters.montageScript,
-                                                                     montageInputFile.getAbsolutePath());
-
-            LOG.info("invokeMontageProcessor: running {}", processBuilder.command());
-
-            final Process process = processBuilder.start();
-            final int montageReturnCode = process.waitFor();
-
-            if (montageReturnCode != 0) {
-                LOG.error("invokeMontageProcessor: code {} returned", montageReturnCode);
+            if (parameters.montageScript == null) {
+                LOG.info("invokeMontageProcessor: no montageScript to execute");
             } else {
-                LOG.info("invokeMontageProcessor: code {} returned", montageReturnCode);
+                final ProcessBuilder processBuilder = new ProcessBuilder(parameters.montageScript,
+                                                                         montageInputFile.getAbsolutePath());
+
+                LOG.info("invokeMontageProcessor: running {}", processBuilder.command());
+
+                final Process process = processBuilder.start();
+                final int montageReturnCode = process.waitFor();
+
+                if (montageReturnCode != 0) {
+                    LOG.error("invokeMontageProcessor: code {} returned", montageReturnCode);
+                } else {
+                    LOG.info("invokeMontageProcessor: code {} returned", montageReturnCode);
+                }
             }
 
         }
