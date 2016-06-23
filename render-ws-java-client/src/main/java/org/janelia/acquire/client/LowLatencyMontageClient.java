@@ -311,8 +311,9 @@ public class LowLatencyMontageClient {
             if (parameters.montageScript == null) {
                 LOG.info("invokeMontageProcessor: no montageScript to execute");
             } else {
-                final ProcessBuilder processBuilder = new ProcessBuilder(parameters.montageScript,
-                                                                         montageInputFile.getAbsolutePath());
+                final ProcessBuilder processBuilder =
+                        new ProcessBuilder(parameters.montageScript,
+                                           montageInputFile.getAbsolutePath()).inheritIO();
 
                 LOG.info("invokeMontageProcessor: running {}", processBuilder.command());
 
