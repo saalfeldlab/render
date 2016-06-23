@@ -26,7 +26,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Java client for ...
+ * Java client that pulls tile data from an acquisition system, stores it in the render database, and
+ * (optionally) launches another process to montage the data.
  *
  * @author Eric Trautman
  */
@@ -49,6 +50,9 @@ public class LowLatencyMontageClient {
         @Parameter(names = "--acquisitionId", description = "Acquisition identifier for limiting tiles to a known acquisition", required = false)
         private String acquisitionId;
 
+        @Parameter(names = "--acquisitionTileState", description = "Only process acquisition tiles that are in this state (default is READY)", required = false)
+        private AcquisitionTileState acquisitionTileState = AcquisitionTileState.READY;
+
         @Parameter(names = "--waitSeconds", description = "Number of seconds to wait before checking for newly acquired tiles (default 5)", required = false)
         private int waitSeconds = 5;
 
@@ -64,8 +68,13 @@ public class LowLatencyMontageClient {
         @Parameter(names = "--montageWorkDirectory", description = "Parent directory for montage input data files (e.g. /nobackup/flyTEM/montage_work)", required = false)
         private String montageWorkDirectory;
 
-        public void validateMontageParameters()
+        public void validate()
                 throws IllegalArgumentException {
+
+            if (AcquisitionTileState.IN_PROGRESS.equals(acquisitionTileState)) {
+                throw new IllegalArgumentException("acquisitionTileState cannot be " + AcquisitionTileState.IN_PROGRESS);
+            }
+
             if ((montageParametersFile == null) && (montageWorkDirectory != null)) {
                 throw new IllegalArgumentException("montageParametersFile must be specified when montageWorkDirectory is specified");
             } else if ((montageParametersFile != null) && (montageWorkDirectory == null)) {
@@ -85,7 +94,7 @@ public class LowLatencyMontageClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                parameters.validateMontageParameters();
+                parameters.validate();
 
                 final LowLatencyMontageClient client = new LowLatencyMontageClient(parameters);
                 client.ensureAcquireStackExists();
@@ -163,6 +172,11 @@ public class LowLatencyMontageClient {
                                                new ArrayList<TileSpec>(8192));
         resolvedTiles.setTileSpecValidator(tileSpecValidator);
 
+        final AcquisitionTileIdList completedTileIds = new AcquisitionTileIdList(AcquisitionTileState.COMPLETE,
+                                                                                 new ArrayList<String>(8192));
+        final AcquisitionTileIdList failedTileIds = new AcquisitionTileIdList(AcquisitionTileState.FAILED,
+                                                                              new ArrayList<String>());
+
         final ProcessTimer timer = new ProcessTimer();
         AcquisitionTile acquisitionTile;
         int tileFoundCount = 0;
@@ -170,33 +184,42 @@ public class LowLatencyMontageClient {
 
         while (waitForMoreTiles) {
 
-            acquisitionTile = acquisitionDataClient.getNextTile(AcquisitionTileState.READY,
+            acquisitionTile = acquisitionDataClient.getNextTile(parameters.acquisitionTileState,
                                                                 AcquisitionTileState.IN_PROGRESS,
                                                                 parameters.acquisitionId);
+            try {
 
-            switch (acquisitionTile.getResultType()) {
+                switch (acquisitionTile.getResultType()) {
 
-                case NO_TILE_READY:
-                    LOG.info("importAcquisitionData: no tile ready, waiting {}s", parameters.waitSeconds);
-                    Thread.sleep(parameters.waitSeconds * 1000);
-                    break;
+                    case NO_TILE_READY:
+                        LOG.info("importAcquisitionData: no tile ready, waiting {}s", parameters.waitSeconds);
+                        Thread.sleep(parameters.waitSeconds * 1000);
+                        break;
 
-                case TILE_FOUND:
-                    tileFoundCount++;
-                    addTileSpec(acquisitionTile, resolvedTiles);
-                    if (timer.hasIntervalPassed()) {
-                        LOG.info("importAcquisitionData: processed {} tiles", tileFoundCount);
-                    }
-                    break;
+                    case TILE_FOUND:
+                        tileFoundCount++;
+                        addTileSpec(acquisitionTile, resolvedTiles);
+                        if (timer.hasIntervalPassed()) {
+                            LOG.info("importAcquisitionData: processed {} tiles", tileFoundCount);
+                        }
+                        break;
 
-                case SERVED_ALL_ACQ:
-                    waitForMoreTiles = false;
-                    break;
+                    case SERVED_ALL_ACQ:
+                        waitForMoreTiles = false;
+                        break;
 
-                case SERVED_ALL_SECTION:
-                case NO_TILE_READY_IN_SECTION:
-                    throw new IllegalStateException("received invalid resultType, acquisitionTile=" +
-                                                    acquisitionTile);
+                    case SERVED_ALL_SECTION:
+                    case NO_TILE_READY_IN_SECTION:
+                        throw new IllegalStateException("received invalid resultType, acquisitionTile=" +
+                                                        acquisitionTile);
+                }
+
+            } catch (final Throwable t) {
+                LOG.error("failed to process acquisition tile: " + acquisitionTile, t);
+                final String failedTileSpecId = acquisitionTile.getTileSpecId();
+                if (failedTileSpecId != null) {
+                    failedTileIds.addTileSpecId(failedTileSpecId);
+                }
             }
         }
 
@@ -204,17 +227,34 @@ public class LowLatencyMontageClient {
                  tileFoundCount, timer.getElapsedSeconds());
 
         if (resolvedTiles.hasTileSpecs()) {
-            renderDataClient.saveResolvedTiles(resolvedTiles, parameters.stack, null);
+
+            try {
+
+                renderDataClient.saveResolvedTiles(resolvedTiles, parameters.stack, null);
+
+                for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
+                    completedTileIds.addTileSpecId(tileSpec.getTileId());
+                    zValues.add(tileSpec.getZ());
+                }
+
+            } catch (final Throwable t) {
+
+                LOG.error("failed to save tiles to render database", t);
+
+                for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
+                    failedTileIds.addTileSpecId(tileSpec.getTileId());
+                }
+            }
+
         }
 
-        final List<String> tileIds = new ArrayList<>(resolvedTiles.getTileCount());
-        for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
-            tileIds.add(tileSpec.getTileId());
+        if (completedTileIds.size() > 0) {
+            acquisitionDataClient.updateTileStates(completedTileIds);
         }
-        final AcquisitionTileIdList acquisitionTileIdList =
-                new AcquisitionTileIdList(AcquisitionTileState.COMPLETE,
-                                          tileIds);
-        acquisitionDataClient.updateTileStates(acquisitionTileIdList);
+
+        if (failedTileIds.size() > 0) {
+            acquisitionDataClient.updateTileStates(failedTileIds);
+        }
 
         LOG.info("importAcquisitionData: exit");
     }
@@ -300,9 +340,7 @@ public class LowLatencyMontageClient {
         // re-calculate bounding box attributes
         tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
 
-        if ((tileSpecValidator == null) || (! toCollection.removeTileSpecIfInvalid(tileSpec))) {
-            zValues.add(tileSpec.getZ());
-        }
+        toCollection.removeTileSpecIfInvalid(tileSpec);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(LowLatencyMontageClient.class);

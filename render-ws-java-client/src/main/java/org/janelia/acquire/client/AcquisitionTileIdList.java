@@ -9,12 +9,12 @@ import org.janelia.alignment.json.JsonUtils;
  *
  * @author Eric Trautman
  */
-@SuppressWarnings({"FieldCanBeLocal", "unused"})
 public class AcquisitionTileIdList {
 
     private final AcquisitionTileState state;
     private final List<String> tileSpecIds;
 
+    @SuppressWarnings("unused")
     private AcquisitionTileIdList() {
         this(null, null);
     }
@@ -25,8 +25,21 @@ public class AcquisitionTileIdList {
         this.tileSpecIds = tileSpecIds;
     }
 
+    public void addTileSpecId(final String tileSpecId) {
+        tileSpecIds.add(tileSpecId);
+    }
+
     public int size() {
-        return tileSpecIds.size();
+        int size = 0;
+        if (tileSpecIds != null) {
+            size = tileSpecIds.size();
+        }
+        return size;
+    }
+
+    @Override
+    public String toString() {
+        return "{\"state\": \"" + state + "\", \"tileSpecIds\": [ \"" + size() + " values ...\" ] }";
     }
 
     public String toJson() {

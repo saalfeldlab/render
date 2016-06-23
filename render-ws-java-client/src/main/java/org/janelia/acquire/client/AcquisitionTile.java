@@ -38,8 +38,21 @@ public class AcquisitionTile {
         return tilespec;
     }
 
+    public String getTileSpecId() {
+        String tileSpecId = null;
+        if (tilespec != null) {
+            tileSpecId = tilespec.getTileId();
+        }
+        return tileSpecId;
+    }
+
     public ResultType getResultType() {
         return resultType;
+    }
+
+    @Override
+    public String toString() {
+        return toJson();
     }
 
     public String toJson() {

@@ -100,7 +100,7 @@ public class AcquisitionDataClient {
         final HttpPut httpPut = new HttpPut(uri);
         httpPut.setEntity(stringEntity);
 
-        LOG.info("updateTileStates: submitting {} for {} tiles", requestContext, tileIdList.size());
+        LOG.info("updateTileStates: submitting {} with {}", requestContext, tileIdList);
 
         httpClient.execute(httpPut, responseHandler);
     }
