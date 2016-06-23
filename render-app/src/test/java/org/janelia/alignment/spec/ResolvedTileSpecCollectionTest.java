@@ -89,6 +89,7 @@ public class ResolvedTileSpecCollectionTest {
                                  final boolean isBad) {
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setTileId(tileId);
+        tileSpec.setZ(99.0);
 
         final File scaledImagesDir = new File("src/test/resources/mipmap-test/scaled-images");
         tileSpec.putMipmap(0, new ImageAndMask(new File(scaledImagesDir, "col0060_row0140_cam0.tif"),
