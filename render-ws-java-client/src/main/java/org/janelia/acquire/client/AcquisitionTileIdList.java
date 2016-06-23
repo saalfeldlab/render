@@ -39,7 +39,7 @@ public class AcquisitionTileIdList {
 
     @Override
     public String toString() {
-        return "{\"state\": \"" + state + "\", \"tileSpecIds\": [ \"" + size() + " values ...\" ] }";
+        return "{ \"state\": \"" + state + "\", \"tileSpecIds\": [ \"" + size() + " values ...\" ] }";
     }
 
     public String toJson() {
