@@ -99,6 +99,10 @@ public class TemTileSpecValidator implements TileSpecValidator {
                                                "', cause: " + t.getMessage(), t);
         }
 
+        if (tileSpec.getZ() == null) {
+            throw new IllegalArgumentException("z value is missing for tileId '" + tileSpec.getTileId() + "'");
+        }
+
         String errorMessage = null;
 
         if (tileSpec.getMinX() < minCoordinate) {
