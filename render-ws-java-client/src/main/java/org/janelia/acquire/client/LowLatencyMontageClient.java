@@ -41,6 +41,9 @@ public class LowLatencyMontageClient {
         @Parameter(names = "--stack", description = "Name of stack for imported data", required = true)
         private String stack;
 
+        @Parameter(names = "--finalStackState", description = "State render stack should have after import (default is COMPLETE)", required = false)
+        private StackMetaData.StackState finalStackState;
+
         @Parameter(names = "--transformFile", description = "File containing shared JSON transform specs (.json, .gz, or .zip)", required = false)
         private String transformFile;
 
@@ -254,6 +257,14 @@ public class LowLatencyMontageClient {
 
         if (failedTileIds.size() > 0) {
             acquisitionDataClient.updateTileStates(failedTileIds);
+        }
+
+        // "complete" acquire stack so that indexes and meta-data are refreshed
+        renderDataClient.setStackState(parameters.stack, StackMetaData.StackState.COMPLETE);
+
+        if ((parameters.finalStackState != null) &&
+            (! StackMetaData.StackState.COMPLETE.equals(parameters.finalStackState))) {
+            renderDataClient.setStackState(parameters.stack, parameters.finalStackState);
         }
 
         LOG.info("importAcquisitionData: exit");
