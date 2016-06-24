@@ -123,5 +123,44 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- This dependency is needed for JFS when io.swagger is excluded from it. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-xml</artifactId>
+            <version>${jackson-version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.janelia.it</groupId>
+            <artifactId>jfs</artifactId>
+            <version>1.3</version>
+
+            <exclusions>
+
+                <!-- Exclude slf4j because we already have it. -->
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                </exclusion>
+
+                <!-- Exclude jersey because we don't need it. -->
+                <exclusion>
+                    <groupId>org.glassfish.jersey.containers</groupId>
+                    <artifactId>jersey-container-servlet</artifactId>
+                </exclusion>
+
+                <!--
+                     Exclude swagger because it conflicts with the version being used for render-app.
+                     This exclusion exposes a jackson dependency, so that's been added above.
+                 -->
+                <exclusion>
+                    <groupId>io.swagger</groupId>
+                    <artifactId>swagger-jersey2-jaxrs</artifactId>
+                </exclusion>
+
+            </exclusions>
+
+        </dependency>
+
     </dependencies>
 </project>
