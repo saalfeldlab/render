@@ -27,6 +27,9 @@ public class MontageParameters {
     private AlignmentRenderCollection source_collection;
     private AlignmentRenderCollection target_collection;
 
+    private String scratch;
+    private String renderer_client;
+
     /** The z value used for render web service API calls. */
     private Double section_number;
 
