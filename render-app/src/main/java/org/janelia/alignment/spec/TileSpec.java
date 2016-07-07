@@ -562,6 +562,11 @@ public class TileSpec implements Serializable {
                imageCol + '\t' + imageRow + '\t' + camera + '\t' + rawPath + '\t' + temca + '\t' + rotation + '\t' + z;
     }
 
+    @Override
+    public String toString() {
+        return tileId;
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }
