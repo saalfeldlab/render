@@ -123,11 +123,42 @@ public class RenderDataClient {
      * @throws IOException
      *   if the request fails for any reason.
      */
-    @SuppressWarnings("UnusedDeclaration")
     public List<Double> getStackZValues(final String stack)
             throws IOException {
+        return getStackZValues(stack, null, null);
+    }
 
-        final URI uri = getUri(getStackUrlString(stack) + "/zValues");
+    /**
+     * @param  stack  name of stack.
+     * @param  minZ   (optional) minimum value to include in list.
+     * @param  maxZ   (optional) maximum value to include in list.
+     *
+     * @return z values for the specified stack.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<Double> getStackZValues(final String stack,
+                                        final Double minZ,
+                                        final Double maxZ)
+            throws IOException {
+
+        final URIBuilder builder = new URIBuilder(getUri(getStackUrlString(stack) + "/zValues"));
+
+        if (minZ != null) {
+            builder.addParameter("minZ", minZ.toString());
+        }
+        if (maxZ != null) {
+            builder.addParameter("maxZ", maxZ.toString());
+        }
+
+        final URI uri;
+        try {
+            uri = builder.build();
+        } catch (final URISyntaxException e) {
+            throw new IOException(e.getMessage(), e);
+        }
+
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final TypeReference<List<Double>> typeReference = new TypeReference<List<Double>>() {};
