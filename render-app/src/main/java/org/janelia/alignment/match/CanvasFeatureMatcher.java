@@ -5,6 +5,7 @@ import java.util.List;
 
 import mpicbg.ij.FeatureTransform;
 import mpicbg.imagefeatures.Feature;
+import mpicbg.models.Model;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.PointMatch;
 import mpicbg.trakem2.transform.AffineModel2D;
@@ -60,36 +61,21 @@ public class CanvasFeatureMatcher {
         timer.start();
 
         final AffineModel2D model = new AffineModel2D();
-        final ArrayList<PointMatch> inliers = new ArrayList<>();
-
-        final ArrayList<PointMatch> candidates = new ArrayList<>();
+        final List<PointMatch> candidates = new ArrayList<>(canvas1Features.size());
 
         FeatureTransform.matchFeatures(canvas1Features, canvas2Features, candidates, rod);
 
-        boolean modelFound = false;
-        try {
-            modelFound = model.filterRansac(candidates,
-                                            inliers,
-                                            1000,
-                                            maxEpsilon,
-                                            minInlierRatio,
-                                            minNumInliers,
-                                            3);
-        } catch (final NotEnoughDataPointsException e) {
-            LOG.warn("failed to filter outliers", e);
-        }
-
-        LOG.info("deriveMatchResult: filtered {} inliers from {} candidates", inliers.size(), candidates.size());
+        final List<PointMatch> inliers = filterMatches(candidates, model);
 
         final Double inlierRatio;
-        if (modelFound) {
+        if (candidates.size() > 0) {
             inlierRatio = (double) inliers.size() / candidates.size();
         } else {
             inlierRatio = 0.0;
         }
 
         final CanvasFeatureMatchResult result =
-                new CanvasFeatureMatchResult(modelFound,
+                new CanvasFeatureMatchResult(inliers.size() > 0,
                                              model,
                                              inliers,
                                              inlierRatio);
@@ -99,6 +85,29 @@ public class CanvasFeatureMatcher {
         return result;
     }
 
+    public List<PointMatch> filterMatches(final List<PointMatch> candidates,
+                                          final Model model) {
+
+        final ArrayList<PointMatch> inliers = new ArrayList<>(candidates.size());
+
+        if (candidates.size() > 0) {
+            try {
+                model.filterRansac(candidates,
+                                   inliers,
+                                   1000,
+                                   maxEpsilon,
+                                   minInlierRatio,
+                                   minNumInliers,
+                                   3);
+            } catch (final NotEnoughDataPointsException e) {
+                LOG.warn("failed to filter outliers", e);
+            }
+        }
+
+        LOG.info("filterMatches: filtered {} inliers from {} candidates", inliers.size(), candidates.size());
+
+        return inliers;
+    }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureMatcher.class);
 }
