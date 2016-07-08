@@ -11,10 +11,16 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
+
+import org.janelia.alignment.json.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility for reading and writing files.
@@ -31,7 +37,7 @@ public class FileUtil {
         this(DEFAULT_BUFFER_SIZE);
     }
 
-    public FileUtil(int bufferSize) {
+    public FileUtil(final int bufferSize) {
         this.bufferSize = bufferSize;
     }
 
@@ -66,6 +72,25 @@ public class FileUtil {
 
         return new OutputStreamWriter(outputStream);
     }
+
+    public static void saveJsonFile(final String path,
+                                    final Object data)
+            throws IOException {
+
+        final Path toPath = Paths.get(path).toAbsolutePath();
+
+        LOG.info("saveJsonFile: entry");
+
+        try (final Writer writer = DEFAULT_INSTANCE.getExtensionBasedWriter(toPath.toString())) {
+            JsonUtils.MAPPER.writeValue(writer, data);
+        } catch (final Throwable t) {
+            throw new IOException("failed to write " + toPath, t);
+        }
+
+        LOG.info("saveJsonFile: exit, wrote data to {}", toPath);
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(FileUtil.class);
 
     private static final int DEFAULT_BUFFER_SIZE = 65536;
 }

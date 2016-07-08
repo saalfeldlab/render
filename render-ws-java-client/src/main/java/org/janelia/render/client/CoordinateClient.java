@@ -5,7 +5,6 @@ import com.beust.jcommander.Parameter;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
-import java.io.Writer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -13,7 +12,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
@@ -100,7 +98,7 @@ public class CoordinateClient {
                     coordinatesToSave = client.worldToLocal(worldCoordinatesWithTileIds);
                 }
 
-                saveJsonFile(parameters.toJson, coordinatesToSave);
+                FileUtil.saveJsonFile(parameters.toJson, coordinatesToSave);
 
             }
         };
@@ -310,23 +308,6 @@ public class CoordinateClient {
         LOG.info("loadJsonArrayOfArraysOfCoordinates: parsed {} coordinates from {}", parsedFromJson.size(), fromPath);
 
         return parsedFromJson;
-    }
-
-    public static void saveJsonFile(final String path,
-                                    final Object coordinateData)
-            throws IOException {
-
-        final Path toPath = Paths.get(path).toAbsolutePath();
-
-        LOG.info("saveJsonFile: entry");
-
-        try (final Writer writer = FileUtil.DEFAULT_INSTANCE.getExtensionBasedWriter(toPath.toString())) {
-            JsonUtils.MAPPER.writeValue(writer, coordinateData);
-        } catch (final Throwable t) {
-            throw new IOException("failed to write " + toPath, t);
-        }
-
-        LOG.info("saveJsonFile: exit, wrote coordinate data to {}", toPath);
     }
 
     public static List<Integer> getBatchIndexes(final int numberOfThreads,
