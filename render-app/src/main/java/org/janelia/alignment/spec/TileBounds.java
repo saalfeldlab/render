@@ -14,8 +14,18 @@ public class TileBounds extends Bounds {
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private TileBounds() {
-        super(null, null, null, null);
-        this.tileId = null;
+        this(null, null, null, null, null, null, null);
+    }
+
+    public TileBounds(final String tileId,
+                      final Double minX,
+                      final Double minY,
+                      final Double minZ,
+                      final Double maxX,
+                      final Double maxY,
+                      final Double maxZ) {
+        super(minX, minY, minZ, maxX, maxY, maxZ);
+        this.tileId = tileId;
     }
 
     public String getTileId() {
