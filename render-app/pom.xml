@@ -125,5 +125,11 @@
             <version>${swagger-version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.github.davidmoten</groupId>
+            <artifactId>rtree</artifactId>
+            <version>0.7.6</version>
+        </dependency>
+
     </dependencies>
 </project>
