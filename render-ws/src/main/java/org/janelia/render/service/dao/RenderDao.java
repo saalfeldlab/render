@@ -674,7 +674,22 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
-    public List<Double> getZValues(final StackId stackId)
+    public List<Double> getZValues(final StackId stackId) {
+        return getZValues(stackId, null, null);
+    }
+
+    /**
+     * @param  minZ  if specified (not null), only include z values greater than or equal to this minimum.
+     * @param  maxZ  if specified (not null), only include z values less than or equal to this maximum.
+     *
+     * @return list of distinct z values (layers) for the specified stackId.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     */
+    public List<Double> getZValues(final StackId stackId,
+                                   final Double minZ,
+                                   final Double maxZ)
             throws IllegalArgumentException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
@@ -684,11 +699,24 @@ public class RenderDao {
         final List<Double> list = new ArrayList<>();
         for (final Double zValue : tileCollection.distinct("z", Double.class)) {
             if (zValue != null) {
-                list.add(zValue);
+                if (minZ == null) {
+                    if (maxZ == null) {
+                        list.add(zValue);
+                    } else if (zValue <= maxZ) {
+                        list.add(zValue);
+                    }
+                } else if (maxZ == null) {
+                    if (zValue >= minZ) {
+                        list.add(zValue);
+                    }
+                } else if ((zValue >= minZ) && (zValue <= maxZ)) {
+                    list.add(zValue);
+                }
             }
         }
 
-        LOG.debug("getZValues: returning {} values for {}", list.size(), MongoUtil.fullName(tileCollection));
+        LOG.debug("getZValues: returning {} values between {} and {} for {}",
+                  list.size(), minZ, maxZ, MongoUtil.fullName(tileCollection));
 
         return list;
     }

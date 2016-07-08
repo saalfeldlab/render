@@ -201,10 +201,18 @@ public class RenderDaoReadOnlyTest {
 
     @Test
     public void testGetZValues() throws Exception {
-        final List<Double> list = dao.getZValues(stackId);
+        validateZValues("",                      dao.getZValues(stackId), 1);
+        validateZValues("between 3900 and 4000", dao.getZValues(stackId, 3900.0, 4000.0), 1);
+        validateZValues("after 3900",            dao.getZValues(stackId, 3900.0, null),   1);
+        validateZValues("before 4000",           dao.getZValues(stackId, null,   4000.0), 1);
+        validateZValues("between 3811 and 3812", dao.getZValues(stackId, 3811.0, 3812.0), 0);
+    }
 
-        Assert.assertNotNull("null list retrieved", list);
-        Assert.assertEquals("invalid number of layers found", 1, list.size());
+    private void validateZValues(final String context,
+                                 final List<Double> list,
+                                 final int expectedCount) {
+        Assert.assertNotNull("null list retrieved for search " + context, list);
+        Assert.assertEquals("invalid number of sections found " + context, expectedCount, list.size());
     }
 
     @Test

@@ -153,15 +153,17 @@ public class RenderDataService {
             value = "List z values for specified stack")
     public List<Double> getZValues(@PathParam("owner") final String owner,
                                    @PathParam("project") final String project,
-                                   @PathParam("stack") final String stack) {
+                                   @PathParam("stack") final String stack,
+                                   @QueryParam("minZ") final Double minZ,
+                                   @QueryParam("maxZ") final Double maxZ) {
 
-        LOG.info("getZValues: entry, owner={}, project={}, stack={}",
-                 owner, project, stack);
+        LOG.info("getZValues: entry, owner={}, project={}, stack={}, minZ={}, maxZ={}",
+                 owner, project, stack, minZ, maxZ);
 
         List<Double> list = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            list = renderDao.getZValues(stackId);
+            list = renderDao.getZValues(stackId, minZ, maxZ);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -277,12 +279,14 @@ public class RenderDataService {
     })
     public String getMergeableData(@PathParam("owner") final String owner,
                                    @PathParam("project") final String project,
-                                   @PathParam("stack") final String stack) {
+                                   @PathParam("stack") final String stack,
+                                   @QueryParam("minZ") final Double minZ,
+                                   @QueryParam("maxZ") final Double maxZ) {
 
-        LOG.info("getMergeableData: entry, owner={}, project={}, stack={}",
-                 owner, project, stack);
+        LOG.info("getMergeableData: entry, owner={}, project={}, stack={}, minZ={}, maxZ={}",
+                 owner, project, stack, minZ, maxZ);
 
-        final List<Double> list = getZValues(owner, project, stack);
+        final List<Double> list = getZValues(owner, project, stack, minZ, maxZ);
 
         final StringBuilder mergeableData = new StringBuilder(list.size() * 10);
         Double z;
@@ -318,9 +322,11 @@ public class RenderDataService {
     })
     public List<Double> getMergeableZValues(@PathParam("owner") final String owner,
                                             @PathParam("project") final String project,
-                                            @PathParam("stack") final String stack) {
+                                            @PathParam("stack") final String stack,
+                                            @QueryParam("minZ") final Double minZ,
+                                            @QueryParam("maxZ") final Double maxZ) {
 
-        final List<Double> list = getZValues(owner, project, stack);
+        final List<Double> list = getZValues(owner, project, stack, minZ, maxZ);
         final LinkedHashSet<Double> filteredSet = new LinkedHashSet<>(list.size());
         Double lastIntegralZ = -1.0;
         for (final Double z : list) {
