@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
  */
 public class ImportTransformChangesClient {
 
+    public enum ChangeMode { APPEND, REPLACE_LAST, REPLACE_ALL }
+
     @SuppressWarnings("ALL")
     private static class Parameters extends RenderDataClientParameters {
 
@@ -56,11 +58,10 @@ public class ImportTransformChangesClient {
         private String transformFile;
 
         @Parameter(
-                names = "--replaceAll",
-                description = "Replace all transforms with the new transform (default is to only replace the last transform)",
-                required = false,
-                arity = 0)
-        private boolean replaceAll;
+                names = "--changeMode",
+                description = "Specifies how the transforms should be applied to existing data (default is REPLACE_LAST)",
+                required = false)
+        private ChangeMode changeMode = ChangeMode.REPLACE_LAST;
 
     }
 
@@ -240,6 +241,14 @@ public class ImportTransformChangesClient {
 
             LOG.info("updateTiles: after filter, collection is {}", tileSpecs);
 
+            boolean removeExistingTransforms = false;
+            boolean replaceLastTransform = true;
+            if (ChangeMode.APPEND.equals(parameters.changeMode)) {
+                replaceLastTransform = false;
+            } else if (ChangeMode.REPLACE_ALL.equals(parameters.changeMode)) {
+                removeExistingTransforms = true;
+            }
+
             final int transformTileCount = tileIdToLoadedTransformMap.size();
             final ProcessTimer timer = new ProcessTimer();
             int tileSpecCount = 0;
@@ -249,7 +258,7 @@ public class ImportTransformChangesClient {
 
                 tileId = tileTransform.getTileId();
 
-                if (parameters.replaceAll) {
+                if (removeExistingTransforms) {
                     tileSpec = tileSpecs.getTileSpec(tileId);
                     if (tileSpec == null) {
                         throw new IllegalArgumentException("tile spec with id '" + tileId +
@@ -259,7 +268,7 @@ public class ImportTransformChangesClient {
                     tileSpec.setTransforms(new ListTransformSpec());
                 }
 
-                tileSpecs.addTransformSpecToTile(tileId, tileTransform.getTransform(), true);
+                tileSpecs.addTransformSpecToTile(tileId, tileTransform.getTransform(), replaceLastTransform);
                 tileSpecCount++;
 
                 if (timer.hasIntervalPassed()) {

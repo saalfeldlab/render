@@ -24,6 +24,7 @@ import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.validator.TemTileSpecValidator;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.util.ProcessTimer;
+import org.janelia.render.client.ImportTransformChangesClient.ChangeMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,8 +55,11 @@ public class ImportMETClient {
         @Parameter(names = "--formatVersion", description = "MET format version ('v1', v2', 'v3', ...), default is 'v1'", required = false)
         private String formatVersion = "v1";
 
-        @Parameter(names = "--replaceAll", description = "Replace all transforms with the MET transform (default is to only replace the last transform)", required = false, arity = 0)
-        private boolean replaceAll;
+        @Parameter(
+                names = "--changeMode",
+                description = "Specifies how the transforms should be applied to existing data (default is REPLACE_LAST)",
+                required = false)
+        private ChangeMode changeMode = ChangeMode.REPLACE_LAST;
 
         @Parameter(names = "--disableValidation", description = "Disable flyTEM tile validation", required = false, arity = 0)
         private boolean disableValidation;
@@ -402,6 +406,14 @@ public class ImportMETClient {
 
             LOG.info("updateTiles: after filter, collection is {}", updatedTiles);
 
+            boolean removeExistingTransforms = false;
+            boolean replaceLastTransform = true;
+            if (ChangeMode.APPEND.equals(parameters.changeMode)) {
+                replaceLastTransform = false;
+            } else if (ChangeMode.REPLACE_ALL.equals(parameters.changeMode)) {
+                removeExistingTransforms = true;
+            }
+
             final int transformTileCount = tileIdToAlignTransformMap.size();
             final ProcessTimer timer = new ProcessTimer();
             int tileSpecCount = 0;
@@ -410,7 +422,7 @@ public class ImportMETClient {
             for (final String tileId : tileIdToAlignTransformMap.keySet()) {
                 alignTransform = tileIdToAlignTransformMap.get(tileId);
 
-                if (parameters.replaceAll) {
+                if (removeExistingTransforms) {
 
                     tileSpec = updatedTiles.getTileSpec(tileId);
 
@@ -423,7 +435,7 @@ public class ImportMETClient {
                     tileSpec.setTransforms(new ListTransformSpec());
                 }
 
-                updatedTiles.addTransformSpecToTile(tileId, alignTransform, true);
+                updatedTiles.addTransformSpecToTile(tileId, alignTransform, replaceLastTransform);
                 tileSpecCount++;
                 if (timer.hasIntervalPassed()) {
                     LOG.info("updateTiles: updated transforms for {} out of {} tiles",
