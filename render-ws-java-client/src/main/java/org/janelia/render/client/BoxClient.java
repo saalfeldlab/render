@@ -67,10 +67,10 @@ public class BoxClient {
         @Parameter(names = "--height", description = "Height of each box", required = true)
         private Integer height;
 
-        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to generate (default is 0)", required = false)
+        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to generate", required = false)
         private Integer maxLevel = 0;
 
-        @Parameter(names = "--format", description = "Format for rendered boxes (default is PNG)", required = false)
+        @Parameter(names = "--format", description = "Format for rendered boxes", required = false)
         private String format = Utils.PNG_FORMAT;
 
         @Parameter(names = "--maxOverviewWidthAndHeight", description = "Max width and height of layer overview image (omit or set to zero to disable overview generation)", required = false)

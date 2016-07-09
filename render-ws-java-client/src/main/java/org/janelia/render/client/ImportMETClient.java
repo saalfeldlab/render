@@ -52,12 +52,12 @@ public class ImportMETClient {
         @Parameter(names = "--metFile", description = "MET file for section", required = true)
         private String metFile;
 
-        @Parameter(names = "--formatVersion", description = "MET format version ('v1', v2', 'v3', ...), default is 'v1'", required = false)
+        @Parameter(names = "--formatVersion", description = "MET format version ('v1', v2', 'v3', ...)", required = false)
         private String formatVersion = "v1";
 
         @Parameter(
                 names = "--changeMode",
-                description = "Specifies how the transforms should be applied to existing data (default is REPLACE_LAST)",
+                description = "Specifies how the transforms should be applied to existing data",
                 required = false)
         private ChangeMode changeMode = ChangeMode.REPLACE_LAST;
 

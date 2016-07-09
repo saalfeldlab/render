@@ -49,7 +49,7 @@ public class CoordinateClient {
         @Parameter(names = "--localToWorld", description = "Convert from local to world coordinates (default is to convert from world to local)", required = false, arity = 0)
         private boolean localToWorld = false;
 
-        @Parameter(names = "--numberOfThreads", description = "Number of threads to use for conversion (default is 1)", required = false)
+        @Parameter(names = "--numberOfThreads", description = "Number of threads to use for conversion", required = false)
         private int numberOfThreads = 1;
     }
 

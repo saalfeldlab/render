@@ -37,16 +37,16 @@ public class RenderSectionClient {
         @Parameter(names = "--rootDirectory", description = "Root directory for rendered layers (e.g. /tier2/flyTEM/nobackup/rendered_boxes)", required = true)
         private String rootDirectory;
 
-        @Parameter(names = "--scale", description = "Scale for each rendered layer (default is 0.02)", required = false)
+        @Parameter(names = "--scale", description = "Scale for each rendered layer", required = false)
         private Double scale = 0.02;
 
-        @Parameter(names = "--format", description = "Format for rendered boxes (default is PNG)", required = false)
+        @Parameter(names = "--format", description = "Format for rendered boxes", required = false)
         private String format = Utils.PNG_FORMAT;
 
-        @Parameter(names = "--doFilter", description = "Use ad hoc filter to support alignment (default is true)", required = false, arity = 0)
+        @Parameter(names = "--doFilter", description = "Use ad hoc filter to support alignment", required = false, arity = 0)
         private boolean doFilter = true;
 
-        @Parameter(names = "--fillWithNoise", description = "Fill image with noise before rendering to improve point match derivation (default is true)", required = false, arity = 0)
+        @Parameter(names = "--fillWithNoise", description = "Fill image with noise before rendering to improve point match derivation", required = false, arity = 0)
         private boolean fillWithNoise = true;
 
         @Parameter(description = "Z values for sections to render", required = true)

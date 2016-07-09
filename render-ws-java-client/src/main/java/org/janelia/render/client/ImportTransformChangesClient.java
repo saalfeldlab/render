@@ -59,7 +59,7 @@ public class ImportTransformChangesClient {
 
         @Parameter(
                 names = "--changeMode",
-                description = "Specifies how the transforms should be applied to existing data (default is REPLACE_LAST)",
+                description = "Specifies how the transforms should be applied to existing data",
                 required = false)
         private ChangeMode changeMode = ChangeMode.REPLACE_LAST;
 

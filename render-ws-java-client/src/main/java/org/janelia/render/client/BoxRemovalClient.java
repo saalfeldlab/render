@@ -31,10 +31,10 @@ public class BoxRemovalClient {
         @Parameter(names = "--stackDirectory", description = "Stack directory containing boxes to remove (e.g. /tier2/flyTEM/nobackup/rendered_boxes/FAFB00/v7_align_tps/8192x8192)", required = true)
         private String stackDirectory;
 
-        @Parameter(names = "--minLevel", description = "Minimum mipmap level to remove (default is 0)", required = false)
+        @Parameter(names = "--minLevel", description = "Minimum mipmap level to remove", required = false)
         private int minLevel = 0;
 
-        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to remove (default is 9, values > 8 will also delete small overview images)", required = false)
+        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to remove (values > 8 will also delete small overview images)", required = false)
         private int maxLevel = 9;
 
         @Parameter(description = "Z values for layers to remove", required = true)

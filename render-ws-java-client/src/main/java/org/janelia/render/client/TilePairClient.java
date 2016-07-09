@@ -40,13 +40,13 @@ public class TilePairClient {
 
         @Parameter(
                 names = "--xyNeighborFactor",
-                description = "Multiply this by max(width, height) of each tile to determine radius for locating neighbor tiles (default is 1.3)",
+                description = "Multiply this by max(width, height) of each tile to determine radius for locating neighbor tiles",
                 required = false)
         private Double xyNeighborFactor = 1.3;
 
         @Parameter(
                 names = "--zNeighborDistance",
-                description = "Look for neighbor tiles with z values less than or equal to this distance from the current tile's z value (default is 4)",
+                description = "Look for neighbor tiles with z values less than or equal to this distance from the current tile's z value",
                 required = false)
         private Integer zNeighborDistance = 4;
 

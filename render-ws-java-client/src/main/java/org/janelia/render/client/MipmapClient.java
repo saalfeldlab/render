@@ -42,10 +42,10 @@ public class MipmapClient {
         @Parameter(names = "--rootDirectory", description = "Root directory for mipmaps (e.g. /tier2/flyTEM/nobackup/rendered_mipmaps/FAFB00)", required = true)
         private String rootDirectory;
 
-        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to generate (default is 6)", required = false)
+        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to generate", required = false)
         private Integer maxLevel = 6;
 
-        @Parameter(names = "--format", description = "Format for mipmaps (default is TIFF)", required = false)
+        @Parameter(names = "--format", description = "Format for mipmaps", required = false)
         private String format = Utils.TIFF_FORMAT;
 
         @Parameter(names = "--forceGeneration", description = "Regenerate mipmaps even if they already exist", required = false, arity = 0)
