@@ -718,15 +718,15 @@ public class RenderDataClient {
                "/render-parameters";
     }
 
-    private String getOwnerUrlString() {
+    public String getOwnerUrlString() {
         return baseDataUrl + "/owner/" + owner;
     }
 
-    private String getStackUrlString(final String stack) {
+    public String getStackUrlString(final String stack) {
         return getOwnerUrlString() + "/project/" + project + "/stack/" + stack;
     }
 
-    private String getZUrlString(final String stack,
+    public String getZUrlString(final String stack,
                                  final Double z) {
         return getStackUrlString(stack) + "/z/" + z;
     }

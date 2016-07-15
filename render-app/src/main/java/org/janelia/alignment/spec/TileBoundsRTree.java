@@ -12,6 +12,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,18 +89,18 @@ public class TileBoundsRTree {
      *
      * @return set of distinct neighbor pairs between this tree's tiles and the specified neighbor trees' tiles.
      */
-    public Set<TileIdPair> getCircleNeighborTileIdPairs(final List<TileBoundsRTree> neighborTrees,
-                                                        final double neighborRadiusFactor) {
+    public Set<OrderedCanvasIdPair> getCircleNeighbors(final List<TileBoundsRTree> neighborTrees,
+                                                       final double neighborRadiusFactor) {
 
         String firstTileId = null;
         if (tileBoundsList.size() > 0) {
             firstTileId = tileBoundsList.get(0).getTileId();
         }
 
-        LOG.debug("getCircleNeighborTileIdPairs: entry, {} tiles, {} neighborTrees, firstTileId is {}",
+        LOG.debug("getCircleNeighbors: entry, {} tiles, {} neighborTrees, firstTileId is {}",
                   tileBoundsList.size(), neighborTrees.size(), firstTileId);
 
-        final Set<TileIdPair> neighborTileIdPairs = new HashSet<>(50000);
+        final Set<OrderedCanvasIdPair> neighborTileIdPairs = new HashSet<>(50000);
 
         double tileWidth;
         double tileHeight;
@@ -120,17 +122,36 @@ public class TileBoundsRTree {
 
             searchResults = findTilesInCircle(circle);
 
-            neighborTileIdPairs.addAll(TileIdPair.getTileIdPairs(tileBounds, searchResults));
+            neighborTileIdPairs.addAll(getDistinctPairs(tileBounds, searchResults));
 
             for (final TileBoundsRTree neighborTree : neighborTrees) {
                 searchResults = neighborTree.findTilesInCircle(circle);
-                neighborTileIdPairs.addAll(TileIdPair.getTileIdPairs(tileBounds, searchResults));
+                neighborTileIdPairs.addAll(getDistinctPairs(tileBounds, searchResults));
             }
         }
 
-        LOG.debug("getCircleNeighborTileIdPairs: exit, returning {} pairs", neighborTileIdPairs.size());
+        LOG.debug("getCircleNeighbors: exit, returning {} pairs", neighborTileIdPairs.size());
 
         return neighborTileIdPairs;
+    }
+
+    /**
+     * @return distinct set of pairs of the fromTile with each toTile.
+     *         If the fromTile is in the toTiles list, it is ignored (fromTile won't be paired with itself).
+     */
+    public static Set<OrderedCanvasIdPair> getDistinctPairs(final TileBounds fromTile,
+                                                            final List<TileBounds> toTiles) {
+        final Set<OrderedCanvasIdPair> pairs = new HashSet<>(toTiles.size() * 2);
+        final String pTileId = fromTile.getTileId();
+        final CanvasId p = new CanvasId(pTileId);
+        String qTileId;
+        for (final TileBounds toTile : toTiles) {
+            qTileId = toTile.getTileId();
+            if (! pTileId.equals(qTileId)) {
+                pairs.add(new OrderedCanvasIdPair(p, new CanvasId(qTileId)));
+            }
+        }
+        return pairs;
     }
 
     private List<TileBounds> convertResultsToList(final Observable<Entry<TileBounds, Geometry>> searchResults) {

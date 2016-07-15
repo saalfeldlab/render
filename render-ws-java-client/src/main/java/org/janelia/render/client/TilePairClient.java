@@ -11,9 +11,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.janelia.alignment.match.OrderedCanvasIdPair;
+import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
-import org.janelia.alignment.spec.TileIdPair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,8 +142,14 @@ public class TilePairClient {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final TilePairClient client = new TilePairClient(parameters);
-                final Set<TileIdPair> neighborPairs = client.getNeighborPairs();
-                FileUtil.saveJsonFile(parameters.toJson, neighborPairs);
+
+                // TODO: consider splitting up into multiple pair files for large z ranges
+
+                final List<OrderedCanvasIdPair> neighborPairs = client.getSortedNeighborPairs();
+                final RenderableCanvasIdPairs renderableCanvasIdPairs =
+                        new RenderableCanvasIdPairs(client.getRenderParametersUrlTemplate(),
+                                                    neighborPairs);
+                FileUtil.saveJsonFile(parameters.toJson, renderableCanvasIdPairs);
 
             }
         };
@@ -166,10 +173,14 @@ public class TilePairClient {
                                                      parameters.project);
     }
 
-    public Set<TileIdPair> getNeighborPairs()
+    public String getRenderParametersUrlTemplate() {
+        return renderDataClient.getStackUrlString(parameters.stack) + "/tile/{id}/render-parameters";
+    }
+
+    public List<OrderedCanvasIdPair> getSortedNeighborPairs()
             throws IOException, InterruptedException {
 
-        LOG.info("getNeighborPairs: entry");
+        LOG.info("getSortedNeighborPairs: entry");
 
         final List<Double> zValues = renderDataClient.getStackZValues(parameters.stack,
                                                                       parameters.minZ,
@@ -195,9 +206,9 @@ public class TilePairClient {
             totalTileCount += tileBoundsList.size();
         }
 
-        LOG.info("getNeighborPairs: added bounds for {} tiles to {} trees", totalTileCount, zToTreeMap.size());
+        LOG.info("getSortedNeighborPairs: added bounds for {} tiles to {} trees", totalTileCount, zToTreeMap.size());
 
-        final Set<TileIdPair> neighborPairs = new TreeSet<>();
+        final Set<OrderedCanvasIdPair> neighborPairs = new TreeSet<>();
 
         Double z;
         Double neighborZ;
@@ -220,13 +231,13 @@ public class TilePairClient {
                 neighborTreeList.add(zToTreeMap.get(neighborZ));
             }
 
-            neighborPairs.addAll(currentZTree.getCircleNeighborTileIdPairs(neighborTreeList,
-                                                                           parameters.xyNeighborFactor));
+            neighborPairs.addAll(currentZTree.getCircleNeighbors(neighborTreeList,
+                                                                 parameters.xyNeighborFactor));
         }
 
-        LOG.info("getNeighborPairs: exit, returning {} pairs", neighborPairs.size());
+        LOG.info("getSortedNeighborPairs: exit, returning {} pairs", neighborPairs.size());
 
-        return neighborPairs;
+        return new ArrayList<>(neighborPairs);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TilePairClient.class);

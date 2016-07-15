@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,7 +56,7 @@ public class TileBoundsRTreeTest {
     }
 
     @Test
-    public void testGetCircleNeighborTileIdPairs()
+    public void testGetCircleNeighbors()
             throws Exception {
 
         final TileBoundsRTree treeForZ1 = new TileBoundsRTree(Arrays.asList(getTileBounds(0, z, 3, 10),
@@ -64,7 +65,7 @@ public class TileBoundsRTreeTest {
         final TileBoundsRTree treeForZ3 = new TileBoundsRTree(buildListForZ(3.0));
         final List<TileBoundsRTree> neighborTrees = Arrays.asList(treeForZ2, treeForZ3);
 
-        final Set<TileIdPair> tileIdPairs = treeForZ1.getCircleNeighborTileIdPairs(neighborTrees, 1.1);
+        final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(neighborTrees, 1.1);
 
         // these are short-hand names for the pairs to clarify how many pairs are expected
         final String[] expectedPairs = {
@@ -75,9 +76,22 @@ public class TileBoundsRTreeTest {
                         "z1-1,z3-0", "z1-1,z3-1", "z1-1,z3-2", "z1-1,z3-3", "z1-1,z3-4", "z1-1,z3-5"
         };
 
-        Assert.assertEquals("invalid number of pairs found, pairs are " + new TreeSet<>(tileIdPairs),
-                            expectedPairs.length, tileIdPairs.size());
+        Assert.assertEquals("invalid number of pairs found, pairs are " + new TreeSet<>(neighborPairs),
+                            expectedPairs.length, neighborPairs.size());
+    }
 
+    @Test
+    public void testGetCanvasIdPairs() {
+
+        final List<TileBounds> tileBoundsList = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            tileBoundsList.add(new TileBounds("tile-" + i, null, null, null, null));
+        }
+
+        final Set<OrderedCanvasIdPair> pairs =
+                TileBoundsRTree.getDistinctPairs(tileBoundsList.get(0), tileBoundsList);
+        Assert.assertEquals("incorrect number of combinations in " + pairs,
+                            tileBoundsList.size() - 1, pairs.size());
     }
 
     private void validateSearchResults(final String context,
@@ -111,7 +125,7 @@ public class TileBoundsRTreeTest {
         final Double maxX = minX + tileSize;
         final Double minY = row * (tileSize - 1.0);
         final Double maxY = minY + tileSize;
-        return new TileBounds(getTileId(tileIndex, z), minX, minY, z, maxX, maxY, z) ;
+        return new TileBounds(getTileId(tileIndex, z), minX, minY, maxX, maxY) ;
     }
 
     private List<TileBounds> buildListForZ(final double z) {
