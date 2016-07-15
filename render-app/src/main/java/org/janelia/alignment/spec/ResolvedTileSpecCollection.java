@@ -179,6 +179,14 @@ public class ResolvedTileSpecCollection implements Serializable {
         tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
     }
 
+    public void recalculateBoundingBoxes() {
+        for (final TileSpec tileSpec : tileIdToSpecMap.values()) {
+            // re-resolve each tile to pick up any changes
+            resolveTileSpec(tileSpec);
+            tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
+        }
+    }
+
     /**
      * Adds a reference to the specified transform to all tiles in this collection.
      *

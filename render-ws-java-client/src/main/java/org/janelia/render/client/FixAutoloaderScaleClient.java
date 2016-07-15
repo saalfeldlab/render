@@ -145,7 +145,7 @@ public class FixAutoLoaderScaleClient {
 
         if (fixCount > 0) {
 
-            tileData.resolveTileSpecs();
+            tileData.recalculateBoundingBoxes();
             tileData.removeUnreferencedTransforms();
 
             final int tileSpecCount = tileData.getTileCount();
