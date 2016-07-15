@@ -165,6 +165,17 @@ public class Utils {
         }
     }
 
+    public static void saveImage(final BufferedImage image,
+                                 final File toFile,
+                                 final boolean convertToGray,
+                                 final float quality)
+            throws IOException {
+
+        final String fileAbsolutePath = toFile.getAbsolutePath();
+        final String outputFormat = fileAbsolutePath.substring(fileAbsolutePath.lastIndexOf('.') + 1);
+        saveImage(image, fileAbsolutePath, outputFormat, convertToGray, quality);
+    }
+
     /**
      * Open an ImagePlus from a file.
      */
