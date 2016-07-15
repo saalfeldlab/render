@@ -97,14 +97,6 @@ public class Render {
     /**
      * Assemble {@link CoordinateTransform CoordinateTransforms} and add
      * bounding box offset, areaOffset, and scale for a {@link TileSpec}
-     *
-     * @param ts
-     * @param areaOffset
-     * @param scale
-     * @param x
-     * @param y
-     *
-     * @return
      */
     public static CoordinateTransformList<CoordinateTransform> createRenderTransform(
             final TileSpec ts,
@@ -113,7 +105,7 @@ public class Render {
             final double x,
             final double y)
     {
-        final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList<CoordinateTransform>();
+        final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList<>();
         for (final CoordinateTransform t : ts.getTransformList().getList(null))
             ctl.add(t);
         final AffineModel2D scaleAndOffset = new AffineModel2D();
@@ -216,12 +208,8 @@ public class Render {
 
     /**
      * convert to 24bit RGB
-     *
-     * @param tp
-     * @param ts
-     * @return
      */
-    final static private ColorProcessor convertToRGB(
+    static private ColorProcessor convertToRGB(
             final ImageProcessor tp,
             final TileSpec ts) {
         tp.setMinAndMax(ts.getMinIntensity(), ts.getMaxIntensity());
@@ -229,7 +217,7 @@ public class Render {
     }
 
 
-    final static private BufferedImage targetToARGBImage(
+    static private BufferedImage targetToARGBImage(
             final ImageProcessorWithMasks target,
             final TileSpec ts,
             final boolean binaryMask) {
@@ -388,7 +376,7 @@ public class Render {
             loadMaskStop = System.currentTimeMillis();
 
             // attach mipmap transformation
-            final CoordinateTransformList<CoordinateTransform> ctlMipmap = new CoordinateTransformList<CoordinateTransform>();
+            final CoordinateTransformList<CoordinateTransform> ctlMipmap = new CoordinateTransformList<>();
             ctlMipmap.add(Utils.createScaleLevelTransform(mipmapLevel));
             ctlMipmap.add(ctl);
 
@@ -507,6 +495,26 @@ public class Render {
         tileSpec.deriveBoundingBox(meshCellSize, force);
 
         return tileSpec;
+    }
+
+    public static BufferedImage renderWithNoise(final RenderParameters renderParameters,
+                                                final boolean fillWithNoise) {
+
+        LOG.info("renderWithNoise: entry, fillWithNoise={}", fillWithNoise);
+
+        final BufferedImage bufferedImage = renderParameters.openTargetImage();
+        final ByteProcessor ip = new ByteProcessor(bufferedImage.getWidth(), bufferedImage.getHeight());
+
+        if (fillWithNoise) {
+            mpicbg.ij.util.Util.fillWithNoise(ip);
+            bufferedImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
+        }
+
+        Render.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
+
+        LOG.info("renderWithNoise: exit");
+
+        return bufferedImage;
     }
 
     public static void main(final String[] args) {
