@@ -23,7 +23,8 @@ public class OrderedCanvasIdPair
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private OrderedCanvasIdPair() {
-        this(null, null);
+        this.p = null;
+        this.q = null;
     }
 
     /**
@@ -35,8 +36,8 @@ public class OrderedCanvasIdPair
      * @throws IllegalArgumentException
      *   if both identifiers are the same.
      */
-    public OrderedCanvasIdPair(final CanvasId oneId,
-                               final CanvasId anotherId)
+    public OrderedCanvasIdPair(@Nonnull final CanvasId oneId,
+                               @Nonnull final CanvasId anotherId)
             throws IllegalArgumentException {
 
         final int comparisonResult = oneId.compareTo(anotherId);

@@ -27,7 +27,8 @@ public class CanvasId
     @SuppressWarnings("unused")
     private CanvasId() {
         //noinspection ConstantConditions
-        this(null, null);
+        this.groupId = null;
+        this.id = null;
     }
 
     public CanvasId(@Nonnull final String id) {
