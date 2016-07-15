@@ -174,7 +174,10 @@ public class TilePairClient {
     }
 
     public String getRenderParametersUrlTemplate() {
-        return renderDataClient.getStackUrlString(parameters.stack) + "/tile/{id}/render-parameters";
+        final String currentStackUrlString = renderDataClient.getStackUrlString(parameters.stack);
+        final String relativeStackUrlString = currentStackUrlString.substring(parameters.baseDataUrl.length());
+        return RenderableCanvasIdPairs.TEMPLATE_BASE_DATA_URL_TOKEN + relativeStackUrlString +
+               "/tile/" + RenderableCanvasIdPairs. TEMPLATE_ID_TOKEN + "/render-parameters";
     }
 
     public List<OrderedCanvasIdPair> getSortedNeighborPairs()
@@ -192,14 +195,14 @@ public class TilePairClient {
         for (final Double z : zValues) {
 
             List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
-            TileBoundsRTree tree = new TileBoundsRTree(tileBoundsList);
+            TileBoundsRTree tree = new TileBoundsRTree(z, tileBoundsList);
 
             if (filterTilesWithBox) {
                 tileBoundsList = tree.findTilesInBox(parameters.minX,
                                                      parameters.minY,
                                                      parameters.maxX,
                                                      parameters.maxY);
-                tree = new TileBoundsRTree(tileBoundsList);
+                tree = new TileBoundsRTree(z, tileBoundsList);
             }
 
             zToTreeMap.put(z, tree);

@@ -23,7 +23,7 @@ public class OrderedCanvasIdPairTest {
     }
 
     private CanvasId getCanvasId(final int tileIndex) {
-        return new CanvasId("tile-" + tileIndex);
+        return new CanvasId("99.0", "tile-" + tileIndex);
     }
 
 }

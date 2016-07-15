@@ -26,16 +26,20 @@ import rx.Observable;
  */
 public class TileBoundsRTree {
 
+    private final Double z;
     private final List<TileBounds> tileBoundsList;
     private final RTree<TileBounds, Geometry> tree;
 
     /**
      * Construct a tree from the specified list of tile bounds.
      *
+     * @param  z               z value for all tiles.
      * @param  tileBoundsList  list of bounds onjects.
      */
-    public TileBoundsRTree(final List<TileBounds> tileBoundsList) {
+    public TileBoundsRTree(final Double z,
+                           final List<TileBounds> tileBoundsList) {
 
+        this.z = z;
         this.tileBoundsList = tileBoundsList;
 
         RTree<TileBounds, Geometry> tree = RTree.create();
@@ -122,11 +126,11 @@ public class TileBoundsRTree {
 
             searchResults = findTilesInCircle(circle);
 
-            neighborTileIdPairs.addAll(getDistinctPairs(tileBounds, searchResults));
+            neighborTileIdPairs.addAll(getDistinctPairs(z, tileBounds, z, searchResults));
 
             for (final TileBoundsRTree neighborTree : neighborTrees) {
                 searchResults = neighborTree.findTilesInCircle(circle);
-                neighborTileIdPairs.addAll(getDistinctPairs(tileBounds, searchResults));
+                neighborTileIdPairs.addAll(getDistinctPairs(z, tileBounds, neighborTree.z, searchResults));
             }
         }
 
@@ -139,16 +143,18 @@ public class TileBoundsRTree {
      * @return distinct set of pairs of the fromTile with each toTile.
      *         If the fromTile is in the toTiles list, it is ignored (fromTile won't be paired with itself).
      */
-    public static Set<OrderedCanvasIdPair> getDistinctPairs(final TileBounds fromTile,
+    public static Set<OrderedCanvasIdPair> getDistinctPairs(final Double fromTileZ,
+                                                            final TileBounds fromTile,
+                                                            final Double toTileZ,
                                                             final List<TileBounds> toTiles) {
         final Set<OrderedCanvasIdPair> pairs = new HashSet<>(toTiles.size() * 2);
         final String pTileId = fromTile.getTileId();
-        final CanvasId p = new CanvasId(pTileId);
+        final CanvasId p = new CanvasId(fromTileZ.toString(), pTileId);
         String qTileId;
         for (final TileBounds toTile : toTiles) {
             qTileId = toTile.getTileId();
             if (! pTileId.equals(qTileId)) {
-                pairs.add(new OrderedCanvasIdPair(p, new CanvasId(qTileId)));
+                pairs.add(new OrderedCanvasIdPair(p, new CanvasId(toTileZ.toString(), qTileId)));
             }
         }
         return pairs;

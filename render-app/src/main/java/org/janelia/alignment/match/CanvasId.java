@@ -5,7 +5,6 @@ import com.google.common.base.Objects;
 import java.io.Serializable;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 import org.janelia.alignment.json.JsonUtils;
 
@@ -26,13 +25,8 @@ public class CanvasId
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private CanvasId() {
-        //noinspection ConstantConditions
         this.groupId = null;
         this.id = null;
-    }
-
-    public CanvasId(@Nonnull final String id) {
-        this(null, id);
     }
 
     /**
@@ -41,7 +35,7 @@ public class CanvasId
      * @param  groupId  group (e.g. section) identifier.
      * @param  id       canvas (e.g. tile) identifier.
      */
-    public CanvasId(@Nullable final String groupId,
+    public CanvasId(@Nonnull final String groupId,
                     @Nonnull final String id) {
         this.groupId = groupId;
         this.id = id;
@@ -73,19 +67,12 @@ public class CanvasId
         return Objects.hashCode(id, groupId);
     }
 
+    @SuppressWarnings("ConstantConditions")
     @Override
     public int compareTo(@Nonnull final CanvasId that) {
-        int result = this.id.compareTo(that.id);
+        int result = this.groupId.compareTo(that.groupId);
         if (result == 0) {
-            if (this.groupId == null) {
-                if (that.groupId != null) {
-                    result = -1;
-                }
-            } else if (that.groupId == null) {
-                result = 1;
-            } else {
-                result = this.groupId.compareTo(that.groupId);
-            }
+            result = this.id.compareTo(that.id);
         }
         return result;
     }

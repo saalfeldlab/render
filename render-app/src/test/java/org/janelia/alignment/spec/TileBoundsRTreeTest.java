@@ -27,7 +27,7 @@ public class TileBoundsRTreeTest {
     public void setup() throws Exception {
         z = 1.0;
         tileBoundsList = buildListForZ(z);
-        tree = new TileBoundsRTree(tileBoundsList);
+        tree = new TileBoundsRTree(z, tileBoundsList);
     }
 
     @Test
@@ -59,10 +59,13 @@ public class TileBoundsRTreeTest {
     public void testGetCircleNeighbors()
             throws Exception {
 
-        final TileBoundsRTree treeForZ1 = new TileBoundsRTree(Arrays.asList(getTileBounds(0, z, 3, 10),
+        final TileBoundsRTree treeForZ1 = new TileBoundsRTree(z,
+                                                              Arrays.asList(getTileBounds(0, z, 3, 10),
                                                                             getTileBounds(1, z, 3, 10)));
-        final TileBoundsRTree treeForZ2 = new TileBoundsRTree(buildListForZ(2.0));
-        final TileBoundsRTree treeForZ3 = new TileBoundsRTree(buildListForZ(3.0));
+        final TileBoundsRTree treeForZ2 = new TileBoundsRTree(2.0,
+                                                              buildListForZ(2.0));
+        final TileBoundsRTree treeForZ3 = new TileBoundsRTree(3.0,
+                                                              buildListForZ(3.0));
         final List<TileBoundsRTree> neighborTrees = Arrays.asList(treeForZ2, treeForZ3);
 
         final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(neighborTrees, 1.1);
@@ -88,8 +91,9 @@ public class TileBoundsRTreeTest {
             tileBoundsList.add(new TileBounds("tile-" + i, null, null, null, null));
         }
 
+        final Double z = 99.0;
         final Set<OrderedCanvasIdPair> pairs =
-                TileBoundsRTree.getDistinctPairs(tileBoundsList.get(0), tileBoundsList);
+                TileBoundsRTree.getDistinctPairs(z, tileBoundsList.get(0), z, tileBoundsList);
         Assert.assertEquals("incorrect number of combinations in " + pairs,
                             tileBoundsList.size() - 1, pairs.size());
     }
