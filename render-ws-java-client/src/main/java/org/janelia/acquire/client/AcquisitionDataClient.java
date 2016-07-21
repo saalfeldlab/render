@@ -3,7 +3,9 @@ package org.janelia.acquire.client;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
 
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.utils.URIBuilder;
@@ -11,6 +13,13 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.janelia.acquire.client.model.Acquisition;
+import org.janelia.acquire.client.model.AcquisitionList;
+import org.janelia.acquire.client.model.AcquisitionTileIdList;
+import org.janelia.acquire.client.model.AcquisitionTileList;
+import org.janelia.acquire.client.model.AcquisitionTileState;
+import org.janelia.acquire.client.model.Calibration;
+import org.janelia.acquire.client.model.CalibrationList;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.render.client.request.WaitingRetryHandler;
 import org.janelia.render.client.response.EmptyResponseHandler;
@@ -44,18 +53,20 @@ public class AcquisitionDataClient {
     }
 
     /**
-     * @param  oldState       acquisition tile must be in this state before retrieval
-     * @param  newState       acquisition tile will be in this state after retrieval
-     * @param  acquisitionId  if specified, acquisition tile must be associated with this acquisition
+     * @param  oldState       acquisition tiles must be in this state before retrieval.
+     * @param  newState       acquisition tiles will be in this state after retrieval.
+     * @param  acquisitionId  if specified, acquisition tiles must be associated with this acquisition.
+     * @param  maxTileCount   return data for at most this number of tiles (defaults to 1).
      *
      * @return the next tile with the specified state from the acquisition server.
      *
      * @throws IOException
      *   if the request fails for any reason.
      */
-    public AcquisitionTile getNextTile(final AcquisitionTileState oldState,
-                                       final AcquisitionTileState newState,
-                                       final String acquisitionId)
+    public AcquisitionTileList getNextTiles(final AcquisitionTileState oldState,
+                                            final AcquisitionTileState newState,
+                                            final Long acquisitionId,
+                                            final Integer maxTileCount)
             throws IOException {
 
         if (oldState.equals(newState)) {
@@ -65,15 +76,22 @@ public class AcquisitionDataClient {
         final URIBuilder uriBuilder = new URIBuilder(getUri(baseUrl + "/next-tile"));
         uriBuilder.addParameter("oldState", oldState.toString());
         uriBuilder.addParameter("newState", newState.toString());
+
         if (acquisitionId != null) {
-            uriBuilder.addParameter("acqid", acquisitionId);
+            uriBuilder.addParameter("acqid", acquisitionId.toString());
+        }
+
+        if (maxTileCount == null) {
+            uriBuilder.addParameter("ntiles", "1");
+        } else {
+            uriBuilder.addParameter("ntiles", maxTileCount.toString());
         }
 
         final URI uri = getUri(uriBuilder);
         final HttpPost httpPost = new HttpPost(uri);
         final String requestContext = "POST " + uri;
-        final JsonUtils.Helper<AcquisitionTile> helper = new JsonUtils.Helper<>(AcquisitionTile.class);
-        final JsonResponseHandler<AcquisitionTile> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+        final JsonUtils.Helper<AcquisitionTileList> helper = new JsonUtils.Helper<>(AcquisitionTileList.class);
+        final JsonResponseHandler<AcquisitionTileList> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
         LOG.info("getNextTile: submitting {}", requestContext);
 
@@ -104,6 +122,65 @@ public class AcquisitionDataClient {
 
         httpClient.execute(httpPut, responseHandler);
     }
+
+    /**
+     * @return the list of all calibrations (lens correction data) from the acquisition server.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<Calibration> getCalibrations()
+            throws IOException {
+
+        final URIBuilder uriBuilder = new URIBuilder(getUri(baseUrl + "/calibrations"));
+
+        final URI uri = getUri(uriBuilder);
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonUtils.Helper<CalibrationList> helper = new JsonUtils.Helper<>(CalibrationList.class);
+        final JsonResponseHandler<CalibrationList> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getCalibrations: submitting {}", requestContext);
+
+        final CalibrationList calibrationList = httpClient.execute(httpGet, responseHandler);
+
+        return calibrationList.getCalibrations();
+    }
+
+    /**
+     * @param  tileState      (optional) only return acquisitions with tiles in this state.
+     * @param  acquisitionId  (optional) only return the acquisition with this id.
+     *
+     * @return list of acquisitions that match the specified criteria.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<Acquisition> getAcquisitions(final AcquisitionTileState tileState,
+                                             final Long acquisitionId)
+            throws IOException {
+
+        final URIBuilder uriBuilder = new URIBuilder(getUri(baseUrl + "/acquisitions"));
+        if (tileState != null) {
+            uriBuilder.addParameter("exists-tile-in-state", tileState.toString());
+        }
+        if (acquisitionId != null) {
+            uriBuilder.addParameter("acqid", acquisitionId.toString());
+        }
+
+        final URI uri = getUri(uriBuilder);
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonUtils.Helper<AcquisitionList> helper = new JsonUtils.Helper<>(AcquisitionList.class);
+        final JsonResponseHandler<AcquisitionList> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getAcquisitions: submitting {}", requestContext);
+
+        final AcquisitionList acquisitionList = httpClient.execute(httpGet, responseHandler);
+
+        return acquisitionList.getAcquisitions();
+    }
+
 
     private URI getUri(final String forString)
             throws IOException {

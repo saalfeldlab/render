@@ -2,9 +2,12 @@ package org.janelia.acquire.client;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
+import org.janelia.acquire.client.model.AcquisitionTile;
+import org.janelia.acquire.client.model.AcquisitionTileList;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -60,10 +63,10 @@ public class LowLatencyMontageClientTest {
         addRenderStackMetaDataResponse();
 
         for (int i = 0; i < 5; i++) {
-            addAcqNextTileResponse(getAcquisitionTile(AcquisitionTile.ResultType.TILE_FOUND, "tile_" + i, 1.0));
+            addAcqNextTileResponse(getAcquisitionTileList(AcquisitionTileList.ResultType.TILE_FOUND, "tile_" + i, 1.0));
         }
 
-        addAcqNextTileResponse(getAcquisitionTile(AcquisitionTile.ResultType.SERVED_ALL_ACQ, null, null));
+        addAcqNextTileResponse(getAcquisitionTileList(AcquisitionTileList.ResultType.SERVED_ALL_ACQ, null, null));
 
         addRenderResolvedTilesResponse();
 
@@ -109,9 +112,9 @@ public class LowLatencyMontageClientTest {
         return "http://localhost:" + mockServerPort + getBaseAcquisitionPath();
     }
 
-    private AcquisitionTile getAcquisitionTile(final AcquisitionTile.ResultType resultType,
-                                               final String tileId,
-                                               final Double z) {
+    private AcquisitionTileList getAcquisitionTileList(final AcquisitionTileList.ResultType resultType,
+                                                       final String tileId,
+                                                       final Double z) {
         String section = null;
         if (z != null) {
             section = z.toString();
@@ -122,7 +125,8 @@ public class LowLatencyMontageClientTest {
             tileSpec.setTileId(tileId);
             tileSpec.setZ(z);
         }
-        return new AcquisitionTile("ACQ-1", resultType, section, tileSpec);
+        return new AcquisitionTileList(resultType,
+                                       Collections.singletonList(new AcquisitionTile("ACQ-1", section, tileSpec)));
     }
 
     private String getRenderStackRequestPath() {
@@ -166,9 +170,9 @@ public class LowLatencyMontageClientTest {
 
     }
 
-    private void addAcqNextTileResponse(final AcquisitionTile acquisitionTile) {
+    private void addAcqNextTileResponse(final AcquisitionTileList acquisitionTileList) {
 
-        final JsonBody responseBody = json(acquisitionTile.toJson());
+        final JsonBody responseBody = json(acquisitionTileList.toJson());
 
         mockServer
                 .when(

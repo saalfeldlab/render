@@ -1,4 +1,4 @@
-package org.janelia.acquire.client;
+package org.janelia.acquire.client.model;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.TileSpec;
@@ -11,25 +11,18 @@ import org.janelia.alignment.spec.TileSpec;
 @SuppressWarnings({"FieldCanBeLocal", "unused"})
 public class AcquisitionTile {
 
-    public enum ResultType {
-        NO_TILE_READY, TILE_FOUND, SERVED_ALL_ACQ, SERVED_ALL_SECTION, NO_TILE_READY_IN_SECTION
-    }
-
     private final String acqid;
     private final String section;
     private final TileSpec tilespec;
-    private final ResultType resultType;
 
     private AcquisitionTile() {
-        this(null, null, null, null);
+        this(null, null, null);
     }
 
     public AcquisitionTile(final String acqid,
-                           final ResultType resultType,
                            final String section,
                            final TileSpec tileSpec) {
         this.acqid = acqid;
-        this.resultType = resultType;
         this.section = section;
         this.tilespec = tileSpec;
     }
@@ -44,10 +37,6 @@ public class AcquisitionTile {
             tileSpecId = tilespec.getTileId();
         }
         return tileSpecId;
-    }
-
-    public ResultType getResultType() {
-        return resultType;
     }
 
     @Override

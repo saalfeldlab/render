@@ -1,4 +1,4 @@
-package org.janelia.acquire.client;
+package org.janelia.acquire.client.model;
 
 import java.util.List;
 

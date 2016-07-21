@@ -8,9 +8,17 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
+import org.janelia.acquire.client.model.Acquisition;
+import org.janelia.acquire.client.model.AcquisitionTile;
+import org.janelia.acquire.client.model.AcquisitionTileIdList;
+import org.janelia.acquire.client.model.AcquisitionTileList;
+import org.janelia.acquire.client.model.AcquisitionTileState;
+import org.janelia.acquire.client.model.Calibration;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -38,9 +46,6 @@ public class LowLatencyMontageClient {
 
         // NOTE: --baseDataUrl, --owner, --project, --validatorClass, and --validatorData parameters defined in RenderDataClientParameters
 
-        @Parameter(names = "--stack", description = "Name of stack for imported data", required = true)
-        private String stack;
-
         @Parameter(names = "--finalStackState", description = "State render stack should have after import (default is COMPLETE)", required = false)
         private StackMetaData.StackState finalStackState;
 
@@ -51,16 +56,16 @@ public class LowLatencyMontageClient {
         private String baseAcquisitionUrl;
 
         @Parameter(names = "--acquisitionId", description = "Acquisition identifier for limiting tiles to a known acquisition", required = false)
-        private String acquisitionId;
+        private Long acquisitionId;
 
         @Parameter(names = "--acquisitionTileState", description = "Only process acquisition tiles that are in this state (default is READY)", required = false)
         private AcquisitionTileState acquisitionTileState = AcquisitionTileState.READY;
 
+        @Parameter(names = "--acquisitionTileCount", description = "Maximum number of acquisition tiles to retrieve in each request", required = false)
+        private Integer acquisitionTileCount = 1;
+
         @Parameter(names = "--waitSeconds", description = "Number of seconds to wait before checking for newly acquired tiles (default 5)", required = false)
         private int waitSeconds = 5;
-
-        @Parameter(names = "--montageStack", description = "Montage stack name", required = true)
-        private String montageStack;
 
         @Parameter(names = "--montageScript", description = "Full path of the montage generator script (e.g. /groups/flyTEM/.../montage_section_SL)", required = false)
         private String montageScript;
@@ -100,10 +105,20 @@ public class LowLatencyMontageClient {
                 parameters.validate();
 
                 final LowLatencyMontageClient client = new LowLatencyMontageClient(parameters);
-                client.ensureAcquireStackExists();
-                client.importAcquisitionData();
-                if (parameters.montageParametersFile != null) {
-                    client.invokeMontageProcessor();
+
+                if (parameters.acquisitionId == null) {
+                    //noinspection InfiniteLoopStatement
+                    while (true) {
+                        client.processAcquisitions();
+                    }
+                } else {
+                    client.processAcquisition(parameters.acquisitionId);
+                }
+
+                if (client.hasFailedAcquisitions()) {
+                    throw new IllegalStateException(
+                            "run completed but the following acquisitions could not be processed: " +
+                            client.getFailedAcquisitionIds());
                 }
             }
         };
@@ -114,9 +129,8 @@ public class LowLatencyMontageClient {
     private final TileSpecValidator tileSpecValidator;
 
     private final AcquisitionDataClient acquisitionDataClient;
-    private final RenderDataClient renderDataClient;
-    private final List<TransformSpec> transformSpecs;
-    private final Set<Double> zValues;
+    private List<TransformSpec> transformSpecs;
+    private final Set<Long> failedAcquisitionIds;
 
     public LowLatencyMontageClient(final Parameters parameters)
             throws IOException {
@@ -125,35 +139,153 @@ public class LowLatencyMontageClient {
 
         this.acquisitionDataClient = new AcquisitionDataClient(parameters.baseAcquisitionUrl);
 
-        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                     parameters.owner,
-                                                     parameters.project);
+        if (parameters.transformFile != null) {
+            this.transformSpecs = ImportJsonClient.loadTransformData(parameters.transformFile);
+        }
 
-        this.transformSpecs = ImportJsonClient.loadTransformData(parameters.transformFile);
-        this.zValues = new HashSet<>();
+        this.failedAcquisitionIds = new HashSet<>();
     }
 
-    public void ensureAcquireStackExists() throws Exception {
+    public boolean hasFailedAcquisitions() {
+        return failedAcquisitionIds.size() > 0;
+    }
+
+    public Set<Long> getFailedAcquisitionIds() {
+        return failedAcquisitionIds;
+    }
+
+    /**
+     * Retrieves current list of unprocessed acquisitions and processes them sequentially.
+     * The ids of all acquisitions that fail processing are tracked so that we do not
+     * attempt to reprocess them.
+     */
+    public void processAcquisitions()
+            throws Exception {
+
+        final List<Acquisition> unprocessedAcquisitions =
+                acquisitionDataClient.getAcquisitions(parameters.acquisitionTileState, null);
+
+        // filter out any acquisitions that have already failed to process
+        for (final Iterator<Acquisition> i = unprocessedAcquisitions.iterator(); i.hasNext();) {
+            final Acquisition acq = i.next();
+            if (failedAcquisitionIds.contains(acq.getAcqUID())) {
+                i.remove();
+            }
+        }
+
+        if (unprocessedAcquisitions.size() == 0) {
+
+            LOG.info("processAcquisitions: no acquisitions with tiles in state {}, waiting {}s",
+                     parameters.acquisitionTileState, parameters.waitSeconds);
+            Thread.sleep(parameters.waitSeconds * 1000);
+
+        } else {
+
+            // make sure we have the latest lens correction data
+            if (parameters.transformFile == null) {
+                final List<Calibration> calibrations = this.acquisitionDataClient.getCalibrations();
+                this.transformSpecs = new ArrayList<>(calibrations.size());
+                for (final Calibration calibration : calibrations) {
+                    this.transformSpecs.add(calibration.getContent());
+                }
+            }
+
+            for (final Acquisition acquisition : unprocessedAcquisitions) {
+                // Theoretically, each acquisition could be processed concurrently in its own thread.
+                // We've decided to serialize processing for now to maximize the resources
+                // available to the montage tool for point match derivation.
+                processAcquisition(acquisition);
+            }
+
+        }
+
+    }
+
+    /**
+     * Process the specified acquisition.
+     * If processing fails, the problem is logged and the acquisition id is tracked but no exception is thrown.
+     */
+    public void processAcquisition(final Acquisition acquisition) {
+
+        final Long acqId = acquisition.getAcqUID();
+
+        try {
+            final String ownerName = getRequiredValue("ProjectOwner for acquisition " + acqId,
+                                                      acquisition.getProjectOwner());
+            final String projectName = getRequiredValue("ProjectName for acquisition " + acqId,
+                                                        acquisition.getProjectName());
+
+            String baseStackName = acquisition.getStackName();
+            if (baseStackName == null) {
+                baseStackName = acquisition.getAcqUID().toString();
+            }
+            baseStackName = baseStackName.trim();
+            if (baseStackName.length() == 0) {
+                baseStackName = acquisition.getAcqUID().toString();
+            }
+
+            final String acquireStackName = baseStackName + "_acquire";
+            final String montageStackName = baseStackName + "_montage";
+
+            final RenderDataClient renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                                           ownerName,
+                                                                           projectName);
+
+            ensureAcquireStackExists(renderDataClient,
+                                     acquireStackName,
+                                     acquisition);
+
+            final Set<Double> acquisitionZValues = importAcquisitionData(renderDataClient, acqId, acquireStackName);
+            if (parameters.montageParametersFile != null) {
+                invokeMontageProcessor(ownerName, projectName, acquireStackName, acquisitionZValues, montageStackName);
+            }
+
+        } catch (final Throwable t) {
+            LOG.error("failed to process acquisition '" + acqId + "'", t);
+            failedAcquisitionIds.add(acqId);
+        }
+
+    }
+
+    /**
+     * Retrieve data for the specified acquisition and then process it.
+     */
+    public void processAcquisition(final Long acquisitionId)
+            throws IOException {
+
+        final List<Acquisition> unprocessedAcquisitions =
+                acquisitionDataClient.getAcquisitions(parameters.acquisitionTileState, acquisitionId);
+
+        for (final Acquisition acquisition : unprocessedAcquisitions) {
+            processAcquisition(acquisition);
+        }
+
+    }
+
+    public void ensureAcquireStackExists(final RenderDataClient renderDataClient,
+                                         final String acquireStackName,
+                                         final Acquisition acquisition) throws Exception {
         LOG.info("ensureAcquireStackExists: entry");
 
         StackMetaData stackMetaData;
         try {
-            stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
+            stackMetaData = renderDataClient.getStackMetaData(acquireStackName);
         } catch (final Throwable t) {
 
-            LOG.info("failed to retrieve stack metadata, will attempt to create new stack", t);
+            LOG.info("failed to retrieve stack metadata, will attempt to create new stack");
 
-            renderDataClient.saveStackVersion(parameters.stack,
+            renderDataClient.saveStackVersion(acquireStackName,
                                               new StackVersion(new Date(),
                                                                null,
                                                                null,
                                                                null,
-                                                               null,
-                                                               null,
-                                                               null,
+                                                               acquisition.getStackResolutionX(),
+                                                               acquisition.getStackResolutionY(),
+                                                               acquisition.getStackResolutionZ(),
                                                                null,
                                                                null));
-            stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
+
+            stackMetaData = renderDataClient.getStackMetaData(acquireStackName);
         }
 
         if (! stackMetaData.isLoading()) {
@@ -164,9 +296,18 @@ public class LowLatencyMontageClient {
         LOG.info("ensureAcquireStackExists: exit, stackMetaData is {}", stackMetaData);
     }
 
-    public void importAcquisitionData() throws Exception {
+    /**
+     * Pull tile data for the specified acquisition until the Image Catcher indicates that
+     * all tiles have been captured.
+     */
+    public Set<Double> importAcquisitionData(final RenderDataClient renderDataClient,
+                                             final Long acquisitionId,
+                                             final String acquireStackName) throws Exception {
 
-        LOG.info("importAcquisitionData: entry");
+        LOG.info("importAcquisitionData: entry, acquisitionId={}, acquireStackName={}",
+                 acquisitionId, acquireStackName);
+
+        final Set<Double> acquisitionZValues = new TreeSet<>();
 
         final List<TransformSpec> transformSpecsCopy = new ArrayList<>(transformSpecs.size());
         transformSpecsCopy.addAll(transformSpecs);
@@ -181,18 +322,19 @@ public class LowLatencyMontageClient {
                                                                               new ArrayList<String>());
 
         final ProcessTimer timer = new ProcessTimer();
-        AcquisitionTile acquisitionTile;
+        AcquisitionTileList acquisitionTileList;
         int tileFoundCount = 0;
         boolean waitForMoreTiles = true;
 
         while (waitForMoreTiles) {
 
-            acquisitionTile = acquisitionDataClient.getNextTile(parameters.acquisitionTileState,
-                                                                AcquisitionTileState.IN_PROGRESS,
-                                                                parameters.acquisitionId);
+            acquisitionTileList = acquisitionDataClient.getNextTiles(parameters.acquisitionTileState,
+                                                                     AcquisitionTileState.IN_PROGRESS,
+                                                                     acquisitionId,
+                                                                     parameters.acquisitionTileCount);
             try {
 
-                switch (acquisitionTile.getResultType()) {
+                switch (acquisitionTileList.getResultType()) {
 
                     case NO_TILE_READY:
                         LOG.info("importAcquisitionData: no tile ready, waiting {}s", parameters.waitSeconds);
@@ -200,10 +342,24 @@ public class LowLatencyMontageClient {
                         break;
 
                     case TILE_FOUND:
-                        tileFoundCount++;
-                        addTileSpec(acquisitionTile, resolvedTiles);
-                        if (timer.hasIntervalPassed()) {
-                            LOG.info("importAcquisitionData: processed {} tiles", tileFoundCount);
+                        for (final AcquisitionTile acquisitionTile : acquisitionTileList.getResults()) {
+
+                            tileFoundCount++;
+
+                            try {
+                                addTileSpec(acquisitionTile, resolvedTiles);
+                            } catch (final Throwable t) {
+                                LOG.error("failed to process acquisition tile: " + acquisitionTile, t);
+                                final String failedTileSpecId = acquisitionTile.getTileSpecId();
+                                if (failedTileSpecId != null) {
+                                    failedTileIds.addTileSpecId(failedTileSpecId);
+                                }
+                            }
+
+                            if (timer.hasIntervalPassed()) {
+                                LOG.info("importAcquisitionData: processed {} tiles", tileFoundCount);
+                            }
+
                         }
                         break;
 
@@ -213,16 +369,13 @@ public class LowLatencyMontageClient {
 
                     case SERVED_ALL_SECTION:
                     case NO_TILE_READY_IN_SECTION:
-                        throw new IllegalStateException("received invalid resultType, acquisitionTile=" +
-                                                        acquisitionTile);
+                        throw new IllegalStateException("received unexpected resultType " +
+                                                        acquisitionTileList.getResultType() +
+                                                        " for acquisition id " + acquisitionId);
                 }
 
             } catch (final Throwable t) {
-                LOG.error("failed to process acquisition tile: " + acquisitionTile, t);
-                final String failedTileSpecId = acquisitionTile.getTileSpecId();
-                if (failedTileSpecId != null) {
-                    failedTileIds.addTileSpecId(failedTileSpecId);
-                }
+                LOG.error("failed to process acquisition id " + acquisitionId, t);
             }
         }
 
@@ -233,11 +386,11 @@ public class LowLatencyMontageClient {
 
             try {
 
-                renderDataClient.saveResolvedTiles(resolvedTiles, parameters.stack, null);
+                renderDataClient.saveResolvedTiles(resolvedTiles, acquireStackName, null);
 
                 for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
                     completedTileIds.addTileSpecId(tileSpec.getTileId());
-                    zValues.add(tileSpec.getZ());
+                    acquisitionZValues.add(tileSpec.getZ());
                 }
 
             } catch (final Throwable t) {
@@ -260,20 +413,29 @@ public class LowLatencyMontageClient {
         }
 
         // "complete" acquire stack so that indexes and meta-data are refreshed
-        renderDataClient.setStackState(parameters.stack, StackMetaData.StackState.COMPLETE);
+        renderDataClient.setStackState(acquireStackName, StackMetaData.StackState.COMPLETE);
 
         if ((parameters.finalStackState != null) &&
             (! StackMetaData.StackState.COMPLETE.equals(parameters.finalStackState))) {
-            renderDataClient.setStackState(parameters.stack, parameters.finalStackState);
+            renderDataClient.setStackState(acquireStackName, parameters.finalStackState);
         }
 
-        LOG.info("importAcquisitionData: exit");
+        LOG.info("importAcquisitionData: exit, acquired data for {} sections", acquisitionZValues.size());
+
+        return acquisitionZValues;
     }
 
-    public void invokeMontageProcessor()
-            throws IllegalStateException, IOException, InterruptedException {
+    /**
+     * Call montage tool to derive point matches and generate montage stack data for an acquisition.
+     */
+    public void invokeMontageProcessor(final String owner,
+                                       final String project,
+                                       final String acquireStack,
+                                       final Set<Double> acquisitionZValues,
+                                       final String montageStack)
+            throws Exception {
 
-        if (zValues.size() == 0) {
+        if (acquisitionZValues.size() == 0) {
             throw new IllegalStateException("no tiles are available for montage processing");
         }
 
@@ -281,15 +443,15 @@ public class LowLatencyMontageClient {
 
         montageParameters.setSourceCollection(
                 new AlignmentRenderCollection(parameters.baseDataUrl,
-                                              parameters.owner, parameters.project, parameters.stack));
+                                              owner, project, acquireStack));
 
         montageParameters.setTargetCollection(
                 new AlignmentRenderCollection(parameters.baseDataUrl,
-                                              parameters.owner, parameters.project, parameters.montageStack));
+                                              owner, project, montageStack));
 
         final File montageWorkStackDir = Paths.get(parameters.montageWorkDirectory,
-                                                   parameters.project,
-                                                   parameters.montageStack).toAbsolutePath().toFile();
+                                                   project,
+                                                   montageStack).toAbsolutePath().toFile();
 
         if (! montageWorkStackDir.exists()) {
             if (! montageWorkStackDir.mkdirs()) {
@@ -300,7 +462,7 @@ public class LowLatencyMontageClient {
             }
         }
 
-        for (final Double z : zValues) {
+        for (final Double z : acquisitionZValues) {
 
             montageParameters.setSectionNumber(z);
 
@@ -329,6 +491,20 @@ public class LowLatencyMontageClient {
 
         }
 
+    }
+
+    private String getRequiredValue(final String context,
+                                    final String originalValue) {
+        final String value;
+        if (originalValue == null) {
+            throw new IllegalArgumentException(context + " is null");
+        } else {
+            value = originalValue.trim();
+            if (value.length() == 0) {
+                throw new IllegalArgumentException(context + " is empty");
+            }
+        }
+        return value;
     }
 
     private void addTileSpec(final AcquisitionTile fromAcquisitionTile,

@@ -1,4 +1,4 @@
-package org.janelia.acquire.client;
+package org.janelia.acquire.client.model;
 
 /**
  * Possible states for an acquisition system tile.
