@@ -13,6 +13,7 @@
         <module>render-app</module>
         <module>render-ws</module>
         <module>render-ws-java-client</module>
+        <module>render-ws-spark-client</module>
         <module>trakem2-scripts</module>
         <module>docs</module>
     </modules>

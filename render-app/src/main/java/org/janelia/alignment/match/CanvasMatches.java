@@ -228,6 +228,10 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         return JSON_HELPER.fromJson(json);
     }
 
+    public static CanvasMatches fromJson(final Reader json) {
+        return JSON_HELPER.fromJson(json);
+    }
+
     public static List<CanvasMatches> fromJsonArray(final String json) {
         // TODO: verify using Arrays.asList optimization is actually faster
         // return JSON_HELPER.fromJsonArray(json);

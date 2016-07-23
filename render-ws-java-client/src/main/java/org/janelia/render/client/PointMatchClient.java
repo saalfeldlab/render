@@ -325,7 +325,8 @@ public class PointMatchClient {
         final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(parameters.matchRod,
                                                                       parameters.matchMaxEpsilon,
                                                                       parameters.matchMinInlierRatio,
-                                                                      parameters.matchMinNumInliers);
+                                                                      parameters.matchMinNumInliers,
+                                                                      true);
 
         String pUrlString;
         String qUrlString;

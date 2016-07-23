@@ -16,19 +16,19 @@ public class MatchDataClientParameters
             names = "--baseDataUrl",
             description = "Base web service URL for data (e.g. http://host[:port]/render-ws/v1)",
             required = true)
-    protected String baseDataUrl;
+    public String baseDataUrl;
 
     @Parameter(
             names = "--owner",
             description = "Match collection owner",
             required = true)
-    protected String owner;
+    public String owner;
 
     @Parameter(
             names = "--collection",
             description = "Match collection name",
             required = true)
-    protected String collection;
+    public String collection;
 
     public MatchDataClientParameters() {
         this.baseDataUrl = null;

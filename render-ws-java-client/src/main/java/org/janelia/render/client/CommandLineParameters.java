@@ -5,6 +5,8 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
+import java.io.Serializable;
+
 import org.janelia.alignment.json.JsonUtils;
 
 /**
@@ -13,7 +15,7 @@ import org.janelia.alignment.json.JsonUtils;
  * @author Eric Trautman
  */
 @Parameters
-public class CommandLineParameters {
+public class CommandLineParameters implements Serializable {
 
     @Parameter(names = "--help", description = "Display this note", help = true)
     protected transient boolean help;

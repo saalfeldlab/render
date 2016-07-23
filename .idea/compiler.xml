@@ -53,6 +53,13 @@
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="true" />
       </profile>
+      <profile default="false" name="Annotation profile for render-ws-spark-client" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="true" />
+        <module name="render-ws-spark-client" />
+      </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="docs" target="1.7" />
@@ -60,6 +67,7 @@
       <module name="render-app" target="1.7" />
       <module name="render-ws" target="1.7" />
       <module name="render-ws-java-client" target="1.7" />
+      <module name="render-ws-spark-client" target="1.7" />
       <module name="trakem2-scripts" target="1.7" />
     </bytecodeTargetLevel>
   </component>

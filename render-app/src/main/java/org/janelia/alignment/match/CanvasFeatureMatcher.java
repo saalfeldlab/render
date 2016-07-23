@@ -1,5 +1,6 @@
 package org.janelia.alignment.match;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,12 +21,13 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class CanvasFeatureMatcher {
+public class CanvasFeatureMatcher implements Serializable {
 
     private final float rod;
     private final float maxEpsilon;
     private final float minInlierRatio;
     private final int minNumInliers;
+    private final boolean filterMatches;
 
     /**
      * Sets up everything that is needed to derive point matches from the feature lists of two canvases.
@@ -34,15 +36,22 @@ public class CanvasFeatureMatcher {
      * @param  maxEpsilon      minimal allowed transfer error (e.g. 20.0f).
      * @param  minInlierRatio  minimal ratio of inliers to candidates (e.g. 0.0f).
      * @param  minNumInliers   minimal absolute number of inliers for matches (e.g. 10).
+     * @param  filterMatches   indicates whether matches should be filtered.
      */
     public CanvasFeatureMatcher(final float rod,
                                 final float maxEpsilon,
                                 final float minInlierRatio,
-                                final int minNumInliers) {
+                                final int minNumInliers,
+                                final boolean filterMatches) {
         this.rod = rod;
         this.maxEpsilon = maxEpsilon;
         this.minInlierRatio = minInlierRatio;
         this.minNumInliers = minNumInliers;
+        this.filterMatches = filterMatches;
+    }
+
+    public boolean isFilterMatches() {
+        return filterMatches;
     }
 
     /**
@@ -65,7 +74,12 @@ public class CanvasFeatureMatcher {
 
         FeatureTransform.matchFeatures(canvas1Features, canvas2Features, candidates, rod);
 
-        final List<PointMatch> inliers = filterMatches(candidates, model);
+        final List<PointMatch> inliers;
+        if (filterMatches) {
+            inliers = filterMatches(candidates, model);
+        } else {
+            inliers = candidates;
+        }
 
         final Double inlierRatio;
         if (candidates.size() > 0) {
@@ -107,6 +121,15 @@ public class CanvasFeatureMatcher {
         LOG.info("filterMatches: filtered {} inliers from {} candidates", inliers.size(), candidates.size());
 
         return inliers;
+    }
+
+    public Matches filterMatches(final Matches candidates,
+                                 final Model model) {
+
+        final List<PointMatch> candidatesList =
+                CanvasFeatureMatchResult.convertMatchesToPointMatchList(candidates);
+        final List<PointMatch> inliersList = filterMatches(candidatesList, model);
+        return CanvasFeatureMatchResult.convertPointMatchListToMatches(inliersList);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureMatcher.class);

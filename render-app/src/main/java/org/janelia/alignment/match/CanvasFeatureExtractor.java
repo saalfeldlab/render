@@ -1,10 +1,10 @@
 package org.janelia.alignment.match;
 
 import ij.ImagePlus;
-import ij.process.ByteProcessor;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +16,6 @@ import mpicbg.util.Timer;
 import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
-import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +25,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class CanvasFeatureExtractor {
+public class CanvasFeatureExtractor implements Serializable {
 
     private final FloatArray2DSIFT.Param coreSiftParameters;
     private final double minScale;
@@ -76,7 +75,18 @@ public class CanvasFeatureExtractor {
 
         renderParameters.validate();
 
-        final BufferedImage bufferedImage = renderImage(renderParameters, renderFile);
+        final BufferedImage bufferedImage = Render.renderWithNoise(renderParameters, fillWithNoise);
+
+        if (renderFile != null) {
+            try {
+                Utils.saveImage(bufferedImage,
+                                renderFile,
+                                renderParameters.isConvertToGray(),
+                                renderParameters.getQuality());
+            } catch (final Throwable t) {
+                LOG.warn("extractFeatures: failed to save " + renderFile.getAbsolutePath(), t);
+            }
+        }
 
         return extractFeaturesFromImage(bufferedImage);
     }
@@ -154,43 +164,6 @@ public class CanvasFeatureExtractor {
                  " features, elapsedTime=" + timer.stop() + "ms");
 
         return featureList;
-    }
-
-    private BufferedImage renderImage(final RenderParameters renderParameters,
-                                      final File renderFile) {
-
-        final Timer timer = new Timer();
-        timer.start();
-
-        LOG.info("renderImage: entry");
-
-        final BufferedImage bufferedImage = renderParameters.openTargetImage();
-        final ByteProcessor ip = new ByteProcessor(bufferedImage.getWidth(), bufferedImage.getHeight());
-
-        if (fillWithNoise) {
-            mpicbg.ij.util.Util.fillWithNoise(ip);
-            bufferedImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
-        }
-
-        Render.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
-
-        if (renderFile != null) {
-            final String renderAbsolutePath = renderFile.getAbsolutePath();
-            try {
-                final String outputFormat = renderAbsolutePath.substring(renderAbsolutePath.lastIndexOf('.') + 1);
-                Utils.saveImage(bufferedImage,
-                                renderAbsolutePath,
-                                outputFormat,
-                                renderParameters.isConvertToGray(),
-                                renderParameters.getQuality());
-            } catch (final Throwable t) {
-                LOG.warn("renderImage: failed to save " + renderAbsolutePath, t);
-            }
-        }
-
-        LOG.info("renderImage: exit, elapsedTime=" + timer.stop() + "ms");
-
-        return bufferedImage;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureExtractor.class);

@@ -1,5 +1,6 @@
 package org.janelia.alignment.match;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import mpicbg.models.Point;
@@ -125,4 +126,38 @@ public class CanvasFeatureMatchResult {
         return matches;
     }
 
+    /**
+     * @param  matches  point match list in {@link Matches} form.
+     *
+     * @return the corresponding list of {@link PointMatch} objects.
+     */
+    public static List<PointMatch> convertMatchesToPointMatchList(final Matches matches) {
+
+        final double w[] = matches.getWs();
+
+        final int pointMatchCount = w.length;
+        final List<PointMatch> pointMatchList = new ArrayList<>(pointMatchCount);
+
+        if (pointMatchCount > 0) {
+            final double p[][] = matches.getPs();
+            final double q[][] = matches.getQs();
+
+            final int dimensionCount = p.length;
+
+            for (int matchIndex = 0; matchIndex < pointMatchCount; matchIndex++) {
+
+                final double pLocal[] = new double[dimensionCount];
+                final double qLocal[] = new double[dimensionCount];
+
+                for (int dimensionIndex = 0; dimensionIndex < dimensionCount; dimensionIndex++) {
+                    pLocal[dimensionIndex] = p[dimensionIndex][matchIndex];
+                    qLocal[dimensionIndex] = q[dimensionIndex][matchIndex];
+                }
+
+                pointMatchList.add(new PointMatch(new Point(pLocal), new Point(qLocal), w[matchIndex]));
+            }
+        }
+
+        return pointMatchList;
+    }
 }
