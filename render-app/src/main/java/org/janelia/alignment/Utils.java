@@ -17,12 +17,16 @@
 package org.janelia.alignment;
 
 import ij.ImagePlus;
+import ij.io.FileInfo;
 import ij.io.Opener;
+import ij.io.TiffEncoder;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -52,6 +56,7 @@ public class Utils {
     public static final String JPEG_FORMAT = "jpg";
     public static final String PNG_FORMAT = "png";
     public static final String TIFF_FORMAT = "tiff";
+    public static final String TIF_FORMAT = "tif";
 
     private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
 
@@ -125,6 +130,24 @@ public class Utils {
     }
 
     /**
+     * Writes a {@link BufferedImage} to the specified {@link OutputStream} using ImageJ's {@link TiffEncoder}.
+     *
+     * @param  bufferedImage     image to write.
+     * @param  outputStream      target stream.
+     *
+     * @throws IOException
+     *   if any errors occur.
+     */
+    public static void writeTiffImage(final BufferedImage bufferedImage,
+                                      final OutputStream outputStream)
+            throws IOException {
+        final ImagePlus ip = new ImagePlus("", bufferedImage);
+        final FileInfo fileInfo = ip.getFileInfo();
+        final TiffEncoder tiffEncoder = new TiffEncoder(fileInfo);
+        tiffEncoder.write(outputStream);
+    }
+
+    /**
      * Saves the specified image to a file using ImageIO.
      */
     public static void saveImage(final BufferedImage image,
@@ -133,36 +156,35 @@ public class Utils {
                                  final boolean convertToGray,
                                  final float quality)
             throws IOException {
-        FileImageOutputStream outputStream = null;
-        try {
-            final File file = new File(convertPathOrUriStringToUri(pathOrUriString));
 
-            final File parentDirectory = file.getParentFile();
-            if ((parentDirectory != null) && (!parentDirectory.exists())) {
-                if (!parentDirectory.mkdirs()) {
-                    // check for existence again in case another parallel process already created the directory
-                    if (! parentDirectory.exists()) {
-                        throw new IllegalArgumentException("failed to create directory " +
-                                                           parentDirectory.getAbsolutePath());
-                    }
+        final File file = new File(convertPathOrUriStringToUri(pathOrUriString));
+
+        final File parentDirectory = file.getParentFile();
+        if ((parentDirectory != null) && (!parentDirectory.exists())) {
+            if (!parentDirectory.mkdirs()) {
+                // check for existence again in case another parallel process already created the directory
+                if (! parentDirectory.exists()) {
+                    throw new IllegalArgumentException("failed to create directory " +
+                                                       parentDirectory.getAbsolutePath());
                 }
             }
-
-            try {
-                outputStream = new FileImageOutputStream(file);
-            } catch (final IOException e) {
-                throw new IllegalArgumentException("failed to create output stream for " + file.getAbsolutePath(), e);
-            }
-
-            writeImage(image, format, convertToGray, quality, outputStream);
-
-            LOG.info("saveImage: exit, saved {}", file.getAbsolutePath());
-
-        } finally {
-            if (outputStream != null) {
-                outputStream.close();
-            }
         }
+
+        if (TIFF_FORMAT.equals(format) || (TIF_FORMAT.equals(format))) {
+
+            try (final FileOutputStream outputStream = new FileOutputStream(file)) {
+                writeTiffImage(image, outputStream);
+            }
+
+        } else {
+
+            try (final FileImageOutputStream outputStream = new FileImageOutputStream(file)) {
+                writeImage(image, format, convertToGray, quality, outputStream);
+            }
+
+        }
+
+        LOG.info("saveImage: exit, saved {}", file.getAbsolutePath());
     }
 
     public static void saveImage(final BufferedImage image,

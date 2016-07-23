@@ -1,9 +1,5 @@
 package org.janelia.render.service.util;
 
-import ij.ImagePlus;
-import ij.io.FileInfo;
-import ij.io.TiffEncoder;
-
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.awt.image.SinglePixelPackedSampleModel;
@@ -58,7 +54,7 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
         if (Utils.PNG_FORMAT.equals(format)) {
             writePngImage(targetImage, 6, FilterType.FILTER_PAETH, outputStream);
         } else if (Utils.TIFF_FORMAT.equals(format)) {
-            writeTiffImage(targetImage, outputStream);
+            Utils.writeTiffImage(targetImage, outputStream);
         } else {
             final ImageOutputStream imageOutputStream = new MemoryCacheImageOutputStream(outputStream);
             Utils.writeImage(targetImage, format, convertToGray, quality, imageOutputStream);
@@ -123,24 +119,6 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
 //        final ImageLineSetARGBbi lines = new ImageLineSetARGBbi(bufferedImage, imageInfo);
 //        pngWriter.writeRows(lines);
 //        pngWriter.end();
-    }
-
-    /**
-     * Writes a {@link BufferedImage} to the specified {@link OutputStream} using ImageJ's {@link TiffEncoder}.
-     *
-     * @param  bufferedImage     image to write.
-     * @param  outputStream      target stream.
-     *
-     * @throws IOException
-     *   if any errors occur.
-     */
-    public static void writeTiffImage(final BufferedImage bufferedImage,
-                                      final OutputStream outputStream)
-            throws IOException {
-        final ImagePlus ip = new ImagePlus("", bufferedImage);
-        final FileInfo fileInfo = ip.getFileInfo();
-        final TiffEncoder tiffEncoder = new TiffEncoder(fileInfo);
-        tiffEncoder.write(outputStream);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(BufferedImageStreamingOutput.class);
