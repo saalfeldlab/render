@@ -43,13 +43,20 @@ public class TilePairClient {
                 names = "--xyNeighborFactor",
                 description = "Multiply this by max(width, height) of each tile to determine radius for locating neighbor tiles",
                 required = false)
-        private Double xyNeighborFactor = 1.3;
+        private Double xyNeighborFactor = 0.9;
 
         @Parameter(
                 names = "--zNeighborDistance",
                 description = "Look for neighbor tiles with z values less than or equal to this distance from the current tile's z value",
                 required = false)
-        private Integer zNeighborDistance = 4;
+        private Integer zNeighborDistance = 2;
+
+        @Parameter(
+                names = "--filterCornerNeighbors",
+                description = "Remove neighbor tiles whose center x and y is outside the source tile's x and y range respectively",
+                required = false,
+                arity = 1)
+        private boolean filterCornerNeighbors = true;
 
         @Parameter(names = "--toJson", description = "JSON file where tile pairs are to be stored (.json, .gz, or .zip)", required = true)
         private String toJson;
@@ -235,7 +242,8 @@ public class TilePairClient {
             }
 
             neighborPairs.addAll(currentZTree.getCircleNeighbors(neighborTreeList,
-                                                                 parameters.xyNeighborFactor));
+                                                                 parameters.xyNeighborFactor,
+                                                                 parameters.filterCornerNeighbors));
         }
 
         LOG.info("getSortedNeighborPairs: exit, returning {} pairs", neighborPairs.size());

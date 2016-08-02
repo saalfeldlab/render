@@ -68,7 +68,7 @@ public class TileBoundsRTreeTest {
                                                               buildListForZ(3.0));
         final List<TileBoundsRTree> neighborTrees = Arrays.asList(treeForZ2, treeForZ3);
 
-        final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(neighborTrees, 1.1);
+        final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(neighborTrees, 1.1, false);
 
         // these are short-hand names for the pairs to clarify how many pairs are expected
         final String[] expectedPairs = {
@@ -87,15 +87,26 @@ public class TileBoundsRTreeTest {
     public void testGetCanvasIdPairs() {
 
         final List<TileBounds> tileBoundsList = new ArrayList<>();
-        for (int i = 0; i < 4; i++) {
-            tileBoundsList.add(new TileBounds("tile-" + i, null, null, null, null));
+        for (double x = 0; x < 30; x = x + 10) {
+            for (double y = 0; y < 30; y = y + 10) {
+                tileBoundsList.add(new TileBounds("tile-" + tileBoundsList.size(),
+                                                  x, y, (x+12), (y+12)));
+            }
         }
 
+        final TileBounds centerTile = tileBoundsList.get(4);
         final Double z = 99.0;
-        final Set<OrderedCanvasIdPair> pairs =
-                TileBoundsRTree.getDistinctPairs(z, tileBoundsList.get(0), z, tileBoundsList);
-        Assert.assertEquals("incorrect number of combinations in " + pairs,
-                            tileBoundsList.size() - 1, pairs.size());
+
+        Set<OrderedCanvasIdPair> pairs =
+                TileBoundsRTree.getDistinctPairs(z, centerTile, z, tileBoundsList, false);
+        int expectedNumberOfCombinations = tileBoundsList.size() - 1; // all tiles except the center
+        Assert.assertEquals("incorrect number of combinations (with corner neighbors) in " + pairs,
+                            expectedNumberOfCombinations, pairs.size());
+
+        expectedNumberOfCombinations = expectedNumberOfCombinations - 4; // remove the 4 corner tiles
+        pairs = TileBoundsRTree.getDistinctPairs(z, centerTile, z, tileBoundsList, true);
+        Assert.assertEquals("incorrect number of combinations (without corner neighbors) in " + pairs,
+                            expectedNumberOfCombinations, pairs.size());
     }
 
     private void validateSearchResults(final String context,

@@ -91,10 +91,14 @@ public class TileBoundsRTree {
      * @param  neighborRadiusFactor  applied to max(width, height) of each tile
      *                               to determine radius for locating neighbor tiles.
      *
+     * @param  filterCornerNeighbors if true, exclude neighbor tiles whose center x and y is outside the
+     *                               source tile's x and y range respectively.
+     *
      * @return set of distinct neighbor pairs between this tree's tiles and the specified neighbor trees' tiles.
      */
     public Set<OrderedCanvasIdPair> getCircleNeighbors(final List<TileBoundsRTree> neighborTrees,
-                                                       final double neighborRadiusFactor) {
+                                                       final double neighborRadiusFactor,
+                                                       final boolean filterCornerNeighbors) {
 
         String firstTileId = null;
         if (tileBoundsList.size() > 0) {
@@ -126,11 +130,13 @@ public class TileBoundsRTree {
 
             searchResults = findTilesInCircle(circle);
 
-            neighborTileIdPairs.addAll(getDistinctPairs(z, tileBounds, z, searchResults));
+            neighborTileIdPairs.addAll(
+                    getDistinctPairs(z, tileBounds, z, searchResults, filterCornerNeighbors));
 
             for (final TileBoundsRTree neighborTree : neighborTrees) {
                 searchResults = neighborTree.findTilesInCircle(circle);
-                neighborTileIdPairs.addAll(getDistinctPairs(z, tileBounds, neighborTree.z, searchResults));
+                neighborTileIdPairs.addAll(
+                        getDistinctPairs(z, tileBounds, neighborTree.z, searchResults, filterCornerNeighbors));
             }
         }
 
@@ -146,18 +152,41 @@ public class TileBoundsRTree {
     public static Set<OrderedCanvasIdPair> getDistinctPairs(final Double fromTileZ,
                                                             final TileBounds fromTile,
                                                             final Double toTileZ,
-                                                            final List<TileBounds> toTiles) {
+                                                            final List<TileBounds> toTiles,
+                                                            final boolean filterCornerNeighbors) {
         final Set<OrderedCanvasIdPair> pairs = new HashSet<>(toTiles.size() * 2);
         final String pTileId = fromTile.getTileId();
+
+        final double fromMinX = fromTile.getMinX();
+        final double fromMaxX = fromTile.getMaxX();
+        final double fromMinY = fromTile.getMinY();
+        final double fromMaxY = fromTile.getMaxY();
+
         final CanvasId p = new CanvasId(fromTileZ.toString(), pTileId);
         String qTileId;
         for (final TileBounds toTile : toTiles) {
             qTileId = toTile.getTileId();
             if (! pTileId.equals(qTileId)) {
-                pairs.add(new OrderedCanvasIdPair(p, new CanvasId(toTileZ.toString(), qTileId)));
+
+                if ((! filterCornerNeighbors) ||
+                    isNeighborCenterInRange(fromMinX, fromMaxX, toTile.getMinX(), toTile.getMaxX()) ||
+                    isNeighborCenterInRange(fromMinY, fromMaxY, toTile.getMinY(), toTile.getMaxY())) {
+
+                    pairs.add(new OrderedCanvasIdPair(p, new CanvasId(toTileZ.toString(), qTileId)));
+                }
+
             }
         }
+
         return pairs;
+    }
+
+    private static boolean isNeighborCenterInRange(final double min,
+                                                   final double max,
+                                                   final double neighborMin,
+                                                   final double neighborMax) {
+        final double neighborCenter = neighborMin + ((neighborMax - neighborMin) / 2);
+        return ((neighborCenter >= min) && (neighborCenter <= max));
     }
 
     private List<TileBounds> convertResultsToList(final Observable<Entry<TileBounds, Geometry>> searchResults) {
