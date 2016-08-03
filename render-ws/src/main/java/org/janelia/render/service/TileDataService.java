@@ -107,8 +107,8 @@ public class TileDataService {
             parameters = new RenderParameters(null,
                                               tileSpec.getMinX(),
                                               tileSpec.getMinY(),
-                                              tileSpec.getWidth(),
-                                              tileSpec.getHeight(),
+                                              (int) (tileSpec.getMaxX() - tileSpec.getMinX()),
+                                              (int) (tileSpec.getMaxY() - tileSpec.getMinY()),
                                               scale);
             parameters.setDoFilter(filter);
             parameters.setBinaryMask(binaryMask);
