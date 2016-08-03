@@ -106,6 +106,9 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--binary_mask", description = "render only 100% opaque pixels", required = false)
     public boolean binaryMask;
 
+    @Parameter(names = "--exclude_mask", description = "render only 100% opaque pixels", required = false)
+    public boolean excludeMask;
+
     @Parameter(names = "--parameters_url", description = "URL to base JSON parameters file (to be applied to any unspecified or default parameters)", required = false)
     private final String parametersUrl;
 
@@ -179,6 +182,7 @@ public class RenderParameters implements Serializable {
         this.numberOfThreads = DEFAULT_NUMBER_OF_THREADS;
         this.skipInterpolation = false;
         this.binaryMask = false;
+        this.excludeMask = false;
         this.doFilter = false;
         this.backgroundRGBColor = null;
         this.parametersUrl = null;
@@ -475,6 +479,14 @@ public class RenderParameters implements Serializable {
         this.binaryMask = (binaryMask != null) && binaryMask;
     }
 
+    public boolean excludeMask() {
+        return excludeMask;
+    }
+
+    public void setExcludeMask(final Boolean excludeMask) {
+        this.excludeMask = (excludeMask != null) && excludeMask;
+    }
+
     public boolean doFilter() {
         return doFilter;
     }
@@ -656,6 +668,10 @@ public class RenderParameters implements Serializable {
             sb.append("binaryMask=true, ");
         }
 
+        if (excludeMask) {
+            sb.append("excludeMask=true, ");
+        }
+
         if (backgroundRGBColor != null) {
             sb.append("backgroundRGBColor=").append(backgroundRGBColor).append(", ");
         }
@@ -760,6 +776,7 @@ public class RenderParameters implements Serializable {
             numberOfThreads = mergedValue(numberOfThreads, baseParameters.numberOfThreads, DEFAULT_NUMBER_OF_THREADS);
             skipInterpolation = mergedValue(skipInterpolation, baseParameters.skipInterpolation, false);
             binaryMask = mergedValue(binaryMask, baseParameters.binaryMask, false);
+            excludeMask = mergedValue(excludeMask, baseParameters.excludeMask, false);
             quality = mergedValue(quality, baseParameters.quality, DEFAULT_QUALITY);
             doFilter = mergedValue(doFilter, baseParameters.doFilter, false);
             backgroundRGBColor = mergedValue(backgroundRGBColor, baseParameters.backgroundRGBColor);

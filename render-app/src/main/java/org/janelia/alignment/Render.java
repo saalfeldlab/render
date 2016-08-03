@@ -147,6 +147,7 @@ public class Render {
                params.skipInterpolation(),
                params.doFilter(),
                params.binaryMask(),
+               params.excludeMask(),
                imageProcessorCache,
                params.getBackgroundRGBColor());
     }
@@ -201,6 +202,7 @@ public class Render {
                numberOfThreads,
                skipInterpolation,
                doFilter,
+               false,
                false,
                imageProcessorCache,
                backgroundRGBColor);
@@ -266,6 +268,7 @@ public class Render {
                               final boolean skipInterpolation,
                               final boolean doFilter,
                               final boolean binaryMask,
+                              final boolean excludeMask,
                               final ImageProcessorCache imageProcessorCache,
                               final Integer backgroundRGBColor)
             throws IllegalArgumentException {
@@ -368,10 +371,11 @@ public class Render {
             // open mask
             final ImageProcessor maskSourceProcessor;
             final String maskUrl = imageAndMask.getMaskUrl();
-            if (maskUrl != null)
+            if ((maskUrl != null) && (! excludeMask)) {
                 maskSourceProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true);
-            else
+            } else {
                 maskSourceProcessor = null;
+            }
 
             loadMaskStop = System.currentTimeMillis();
 

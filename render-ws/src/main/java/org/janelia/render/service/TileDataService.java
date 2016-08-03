@@ -80,8 +80,7 @@ public class TileDataService {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            value = "Get parameters for rendering 'uniform' tile",
-            notes = "The returned x, y, width, and height parameters are uniform for all tiles in the stack.")
+            value = "Get parameters for rendering the tile")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "tile not found"),
     })
@@ -91,9 +90,10 @@ public class TileDataService {
                                                 @PathParam("tileId") final String tileId,
                                                 @QueryParam("scale") final Double scale,
                                                 @QueryParam("filter") final Boolean filter,
-                                                @QueryParam("binaryMask") final Boolean binaryMask) {
+                                                @QueryParam("binaryMask") final Boolean binaryMask,
+                                                @QueryParam("excludeMask") final Boolean excludeMask) {
 
-        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}",
+        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}, excludeMask={}",
                  owner, project, stack, tileId, scale, filter, binaryMask);
 
         RenderParameters parameters = null;
@@ -112,6 +112,7 @@ public class TileDataService {
                                               scale);
             parameters.setDoFilter(filter);
             parameters.setBinaryMask(binaryMask);
+            parameters.setExcludeMask(excludeMask);
             parameters.addTileSpec(tileSpec);
             parameters.setMipmapPathBuilder(stackMetaData.getCurrentMipmapPathBuilder());
 
