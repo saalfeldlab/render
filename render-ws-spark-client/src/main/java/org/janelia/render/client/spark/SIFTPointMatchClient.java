@@ -48,13 +48,21 @@ public class SIFTPointMatchClient
         @Parameter(names = "--pairJson", description = "JSON file where tile pairs are stored (.json, .gz, or .zip)", required = true)
         private String pairJson;
 
-        @Parameter(names = "--renderWithFilter", description = "Render tiles using a filter for intensity correction", required = false)
+        @Parameter(
+                names = "--renderWithFilter",
+                description = "Render tiles using a filter for intensity correction",
+                required = false,
+                arity = 1)
         private boolean renderWithFilter = true;
 
         @Parameter(names = "--renderScale", description = "Render tiles at this scale", required = false)
         private Double renderScale = 1.0;
 
-        @Parameter(names = "--fillWithNoise", description = "Fill each canvas image with noise before rendering to improve point match derivation", required = false)
+        @Parameter(
+                names = "--fillWithNoise",
+                description = "Fill each canvas image with noise before rendering to improve point match derivation",
+                required = false,
+                arity = 1)
         private boolean fillWithNoise = true;
 
         @Parameter(names = "--SIFTfdSize", description = "SIFT feature descriptor size: how many samples per row and column", required = false)

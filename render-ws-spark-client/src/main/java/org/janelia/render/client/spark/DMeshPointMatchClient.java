@@ -54,7 +54,11 @@ public class DMeshPointMatchClient
         @Parameter(names = "--renderScale", description = "Render tiles at this scale", required = false)
         private Double renderScale = 1.0;
 
-        @Parameter(names = "--fillWithNoise", description = "Fill each canvas image with noise before rendering to improve point match derivation", required = false)
+        @Parameter(
+                names = "--fillWithNoise",
+                description = "Fill each canvas image with noise before rendering to improve point match derivation",
+                required = false,
+                arity = 1)
         private boolean fillWithNoise = true;
 
         @Parameter(names = "--format", description = "Format for rendered canvases ('jpg', 'png', 'tif')", required = false)
@@ -66,7 +70,11 @@ public class DMeshPointMatchClient
         @Parameter(names = "--dMeshParameters", description = "", required = false)
         private String dMeshParameters = "/groups/flyTEM/flyTEM/match/dmesh/matchparams.txt";
 
-        @Parameter(names = "--filterMatches", description = "Use RANSAC to filter matches", required = false)
+        @Parameter(
+                names = "--filterMatches",
+                description = "Use RANSAC to filter matches",
+                required = false,
+                arity = 1)
         private boolean filterMatches = false;
 
         @Parameter(names = "--matchRod", description = "Ratio of distances for matches", required = false)
