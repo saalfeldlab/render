@@ -300,6 +300,8 @@ public class RenderParameters implements Serializable {
 
         final URI uri = Utils.convertPathOrUriStringToUri(url);
 
+        LOG.info("loadFromUrl: loading {}", uri);
+
         final URL urlObject;
         try {
             urlObject = uri.toURL();
