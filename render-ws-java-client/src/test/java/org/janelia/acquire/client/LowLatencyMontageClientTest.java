@@ -14,6 +14,7 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.matchers.Times;
@@ -29,6 +30,7 @@ import static org.mockserver.model.JsonBody.json;
  *
  * @author Eric Trautman
  */
+@Ignore
 public class LowLatencyMontageClientTest {
 
     private static int mockServerPort;
@@ -83,9 +85,7 @@ public class LowLatencyMontageClientTest {
                 "--baseDataUrl", getBaseDataUrl(),
                 "--owner", acquireStackId.getOwner(),
                 "--project", acquireStackId.getProject(),
-                "--stack", acquireStackId.getStack(),
                 "--baseAcquisitionUrl", getBaseAcquisitionUrl(),
-                "--montageStack", "testMontage",
                 "--montageScript", montageScript,
                 "--montageParametersFile", "src/test/resources/montage-test/montage-parameters.json",
                 "--montageWorkDirectory", montageWorkDirectory.getAbsolutePath()
