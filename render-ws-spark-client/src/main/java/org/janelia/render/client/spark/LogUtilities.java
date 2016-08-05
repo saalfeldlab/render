@@ -1,7 +1,14 @@
 package org.janelia.render.client.spark;
 
+import com.google.common.io.CharStreams;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.Enumeration;
 
+import org.apache.commons.compress.utils.IOUtils;
 import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Layout;
@@ -44,6 +51,18 @@ public class LogUtilities {
         MDC.put("context", context);
 
         logger.setLevel(Level.DEBUG);
+    }
+
+    public static String getExecutorsApiJson(final String appId) throws IOException {
+
+        final String json;
+
+        final URL url = new URL("http://localhost:4040/api/v1/applications/" + appId + "/executors");
+        try (final BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream())))  {
+            json = CharStreams.toString(in);
+        }
+
+        return json;
     }
 
 }
