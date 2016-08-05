@@ -63,15 +63,16 @@ public class TileImageService {
                                            @QueryParam("scale") final Double scale,
                                            @QueryParam("filter") final Boolean filter,
                                            @QueryParam("excludeMask") final Boolean excludeMask,
+                                           @QueryParam("evenSize") final Boolean evenSize,
                                            @Context final Request request) {
 
-        LOG.info("renderJpegImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, excludeMask={}",
-                 owner, project, stack, tileId, scale, filter, excludeMask);
+        LOG.info("renderJpegImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, excludeMask={}, evenSize={}",
+                 owner, project, stack, tileId, scale, filter, excludeMask, evenSize);
 
         final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
-                    tileDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false, excludeMask);
+                    tileDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false, excludeMask, evenSize);
             return RenderServiceUtil.renderJpegImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -92,15 +93,16 @@ public class TileImageService {
                                           @QueryParam("scale") final Double scale,
                                           @QueryParam("filter") final Boolean filter,
                                           @QueryParam("excludeMask") final Boolean excludeMask,
+                                          @QueryParam("evenSize") final Boolean evenSize,
                                           @Context final Request request) {
 
-        LOG.info("renderPngImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, excludeMask={}",
-                 owner, project, stack, tileId, scale, filter, excludeMask);
+        LOG.info("renderPngImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, excludeMask={}, evenSize={}",
+                 owner, project, stack, tileId, scale, filter, excludeMask, evenSize);
 
         final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
-                    tileDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false, excludeMask);
+                    tileDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false, excludeMask, evenSize);
             return RenderServiceUtil.renderPngImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -121,15 +123,16 @@ public class TileImageService {
                                            @QueryParam("scale") final Double scale,
                                            @QueryParam("filter") final Boolean filter,
                                            @QueryParam("excludeMask") final Boolean excludeMask,
+                                           @QueryParam("evenSize") final Boolean evenSize,
                                            @Context final Request request) {
 
-        LOG.info("renderTiffImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, excludeMask={}",
-                 owner, project, stack, tileId, scale, filter, excludeMask);
+        LOG.info("renderTiffImageForTile: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, excludeMask={}, evenSize={}",
+                 owner, project, stack, tileId, scale, filter, excludeMask, evenSize);
 
         final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
-                    tileDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false, excludeMask);
+                    tileDataService.getRenderParameters(owner, project, stack, tileId, scale, filter, false, excludeMask, evenSize);
             return RenderServiceUtil.renderTiffImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();

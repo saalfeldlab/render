@@ -91,7 +91,8 @@ public class TileDataService {
                                                 @QueryParam("scale") final Double scale,
                                                 @QueryParam("filter") final Boolean filter,
                                                 @QueryParam("binaryMask") final Boolean binaryMask,
-                                                @QueryParam("excludeMask") final Boolean excludeMask) {
+                                                @QueryParam("excludeMask") final Boolean excludeMask,
+                                                @QueryParam("evenSize") final Boolean evenSize) {
 
         LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}, excludeMask={}",
                  owner, project, stack, tileId, scale, filter, binaryMask);
@@ -104,8 +105,17 @@ public class TileDataService {
             final StackId stackId = new StackId(owner, project, stack);
             final StackMetaData stackMetaData = getStackMetaData(stackId);
 
-            final int tileWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX()) + 1;
-            final int tileHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY()) + 1;
+            int tileWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX());
+            int tileHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY());
+
+            if ((evenSize != null) && evenSize) {
+                if ((tileWidth % 2) == 1) {
+                    tileWidth++;
+                }
+                if ((tileHeight % 2) == 1) {
+                    tileHeight++;
+                }
+            }
 
             parameters = new RenderParameters(null,
                                               tileSpec.getMinX(),
