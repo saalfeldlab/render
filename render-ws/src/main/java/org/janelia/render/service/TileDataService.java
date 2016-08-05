@@ -104,11 +104,14 @@ public class TileDataService {
             final StackId stackId = new StackId(owner, project, stack);
             final StackMetaData stackMetaData = getStackMetaData(stackId);
 
+            final int tileWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX()) + 1;
+            final int tileHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY()) + 1;
+
             parameters = new RenderParameters(null,
                                               tileSpec.getMinX(),
                                               tileSpec.getMinY(),
-                                              (int) (tileSpec.getMaxX() - tileSpec.getMinX()),
-                                              (int) (tileSpec.getMaxY() - tileSpec.getMinY()),
+                                              tileWidth,
+                                              tileHeight,
                                               scale);
             parameters.setDoFilter(filter);
             parameters.setBinaryMask(binaryMask);
