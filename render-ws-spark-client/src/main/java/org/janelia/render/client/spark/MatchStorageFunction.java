@@ -44,12 +44,10 @@ public class MatchStorageFunction implements Function2<Integer, Iterator<CanvasM
             }
         }
 
-        if (matchesList.size() > 0) {
-            final RenderDataClient matchStorageClient = new RenderDataClient(baseDataUrl,
-                                                                             owner,
-                                                                             collection);
-            matchStorageClient.saveMatches(matchesList);
-        }
+        final RenderDataClient matchStorageClient = new RenderDataClient(baseDataUrl,
+                                                                         owner,
+                                                                         collection);
+        matchStorageClient.saveMatches(matchesList);
 
         return Collections.singletonList(matchesList.size()).iterator();
     }

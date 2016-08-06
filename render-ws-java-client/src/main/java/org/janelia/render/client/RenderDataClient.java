@@ -599,18 +599,24 @@ public class RenderDataClient {
     public void saveMatches(final List<CanvasMatches> canvasMatches)
             throws IOException {
 
-        final String json = JsonUtils.MAPPER.writeValueAsString(canvasMatches);
-        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
-        final URI uri = getUri(getOwnerUrlString() + "/matchCollection/" + project + "/matches");
-        final String requestContext = "PUT " + uri;
-        final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
+        if (canvasMatches.size() > 0) {
 
-        final HttpPut httpPut = new HttpPut(uri);
-        httpPut.setEntity(stringEntity);
+            final String json = JsonUtils.MAPPER.writeValueAsString(canvasMatches);
+            final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+            final URI uri = getUri(getOwnerUrlString() + "/matchCollection/" + project + "/matches");
+            final String requestContext = "PUT " + uri;
+            final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
 
-        LOG.info("saveMatches: submitting {} for {} matches", requestContext, canvasMatches.size());
+            final HttpPut httpPut = new HttpPut(uri);
+            httpPut.setEntity(stringEntity);
 
-        httpClient.execute(httpPut, responseHandler);
+            LOG.info("saveMatches: submitting {} for {} pair(s)", requestContext, canvasMatches.size());
+
+            httpClient.execute(httpPut, responseHandler);
+
+        } else {
+            LOG.info("saveMatches: no matches to save");
+        }
     }
 
     /**
