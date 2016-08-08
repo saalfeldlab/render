@@ -18,6 +18,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.broadcast.Broadcast;
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
@@ -48,8 +49,19 @@ public class DMeshPointMatchClient
         @Parameter(names = "--pairJson", description = "JSON file where tile pairs are stored (.json, .gz, or .zip)", required = true)
         private String pairJson;
 
-        @Parameter(names = "--renderWithFilter", description = "Render tiles using a filter for intensity correction", required = false)
+        @Parameter(
+                names = "--renderWithFilter",
+                description = "Render tiles using a filter for intensity correction",
+                required = false,
+                arity = 1)
         private boolean renderWithFilter = true;
+
+        @Parameter(
+                names = "--renderWithoutMask",
+                description = "Render tiles without a mask",
+                required = false,
+                arity = 1)
+        private boolean renderWithoutMask = true;
 
         @Parameter(names = "--renderScale", description = "Render tiles at this scale", required = false)
         private Double renderScale = 1.0;
@@ -59,7 +71,7 @@ public class DMeshPointMatchClient
                 description = "Fill each canvas image with noise before rendering to improve point match derivation",
                 required = false,
                 arity = 1)
-        private boolean fillWithNoise = true;
+        private boolean fillWithNoise = false;
 
         @Parameter(names = "--format", description = "Format for rendered canvases ('jpg', 'png', 'tif')", required = false)
         private String format = Utils.PNG_FORMAT;
@@ -69,6 +81,13 @@ public class DMeshPointMatchClient
 
         @Parameter(names = "--dMeshParameters", description = "", required = false)
         private String dMeshParameters = "/groups/flyTEM/flyTEM/match/dmesh/matchparams.txt";
+
+        @Parameter(
+                names = "--dMeshLogToolOutput",
+                description = "Log DMesh tool output even when processing is successful",
+                required = false,
+                arity = 1)
+        private boolean dMeshLogToolOutput = false;
 
         @Parameter(
                 names = "--filterMatches",
@@ -127,10 +146,13 @@ public class DMeshPointMatchClient
     public void run()
             throws IOException, URISyntaxException {
 
-        LOG.info("run: entry");
-
-        final SparkConf conf = new SparkConf().setAppName("SIFTPointMatchClient");
+        final SparkConf conf = new SparkConf().setAppName("DMeshPointMatchClient");
         final JavaSparkContext sparkContext = new JavaSparkContext(conf);
+
+        final String sparkAppId = sparkContext.getConf().getAppId();
+        final String executorsJson = LogUtilities.getExecutorsApiJson(sparkAppId);
+
+        LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
         // TODO: see if it's worth the trouble to use the faster KryoSerializer
 //        conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
@@ -145,7 +167,9 @@ public class DMeshPointMatchClient
                         renderableCanvasIdPairs,
                         parameters.baseDataUrl,
                         parameters.renderScale,
-                        parameters.renderWithFilter);
+                        parameters.renderWithFilter,
+                        parameters.renderWithoutMask,
+                        true);
 
         final long cacheMaxKilobytes = parameters.maxImageCacheGb * 1000000;
 
@@ -157,7 +181,8 @@ public class DMeshPointMatchClient
                         new File(parameters.imageCacheParentDirectory));
 
         final DMeshTool dMeshTool = new DMeshTool(new File(parameters.dMeshScript),
-                                                  new File(parameters.dMeshParameters));
+                                                  new File(parameters.dMeshParameters),
+                                                  parameters.dMeshLogToolOutput);
 
         final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(parameters.matchRod,
                                                                              parameters.matchMaxEpsilon,
@@ -179,12 +204,6 @@ public class DMeshPointMatchClient
         final JavaRDD<CanvasMatches> rddMatches = rddCanvasIdPairs.mapPartitionsWithIndex(
                 new Function2<Integer, Iterator<OrderedCanvasIdPair>, Iterator<CanvasMatches>>() {
 
-                    private String getCanvasDataUrl(final CanvasFileLoader fileLoader,
-                                                    final CanvasId canvasId) {
-                        final String renderParametersUrl = fileLoader.getRenderParametersUrl(canvasId);
-                        return renderParametersUrl.substring(0, renderParametersUrl.indexOf("/render-parameters"));
-                    }
-
                     @Override
                     public Iterator<CanvasMatches> call(final Integer partitionIndex,
                                                         final Iterator<OrderedCanvasIdPair> pairIterator)
@@ -205,15 +224,13 @@ public class DMeshPointMatchClient
                         final List<CanvasMatches> matchList = new ArrayList<>();
                         int pairCount = 0;
 
-                        // TODO: replace dataUrl refs with affine parameters from cached render parameters
-
                         OrderedCanvasIdPair pair;
                         CanvasId p;
                         CanvasId q;
                         File pFile;
-                        String pDataUrl;
+                        RenderParameters pRenderParameters;
                         File qFile;
-                        String qDataUrl;
+                        RenderParameters qRenderParameters;
                         CanvasMatches pairMatches;
                         Matches inlierMatches;
                         while (pairIterator.hasNext()) {
@@ -225,12 +242,12 @@ public class DMeshPointMatchClient
                             q = pair.getQ();
 
                             pFile = dataCache.getRenderedImage(p);
-                            pDataUrl = getCanvasDataUrl(fileLoader, p);
+                            pRenderParameters = dataCache.getRenderParameters(p);
 
                             qFile = dataCache.getRenderedImage(q);
-                            qDataUrl = getCanvasDataUrl(fileLoader, q);
+                            qRenderParameters = dataCache.getRenderParameters(q);
 
-                            pairMatches = dMeshTool.run(p, pFile, pDataUrl, q, qFile, qDataUrl);
+                            pairMatches = dMeshTool.run(p, pFile, pRenderParameters, q, qFile, qRenderParameters);
 
                             if (pairMatches.size() > 0) {
 

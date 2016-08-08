@@ -58,6 +58,12 @@ public class RenderableCanvasIdPairsUtilities {
      * @param  renderWithFilter         indicates whether intensity filtering should be performed
      *                                  when rendering canvases for the current run.
      *
+     * @param  renderWithoutMask        indicates whether masks should be excluded
+     *                                  when rendering canvases for the current run.
+     *
+     * @param  evenSize                 indicates whether each canvas must have an even width and height
+     *                                  (e.g. for DMesh usage).
+     *
      * @return render parameters URL template with specifics for the current run.
      *
      * @throws URISyntaxException
@@ -66,7 +72,9 @@ public class RenderableCanvasIdPairsUtilities {
     public static String getRenderParametersUrlTemplateForRun(final RenderableCanvasIdPairs renderableCanvasIdPairs,
                                                               final String baseDataUrl,
                                                               final Double renderScale,
-                                                              final Boolean renderWithFilter)
+                                                              final Boolean renderWithFilter,
+                                                              final Boolean renderWithoutMask,
+                                                              final Boolean evenSize)
             throws URISyntaxException {
 
 
@@ -92,6 +100,14 @@ public class RenderableCanvasIdPairsUtilities {
 
         if ((renderWithFilter != null) && renderWithFilter) {
             uriBuilder.addParameter("filter", "true");
+        }
+
+        if ((renderWithoutMask != null) && renderWithoutMask) {
+            uriBuilder.addParameter("excludeMask", "true");
+        }
+
+        if ((evenSize != null) && evenSize) {
+            uriBuilder.addParameter("evenSize", "true");
         }
 
         final String populatedRunTemplate = uriBuilder.build().toString();

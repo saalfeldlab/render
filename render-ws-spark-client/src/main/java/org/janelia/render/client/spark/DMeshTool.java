@@ -4,13 +4,17 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
+import java.util.List;
 
 import mpicbg.util.Timer;
 
 import org.apache.commons.io.IOUtils;
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
+import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,13 +27,16 @@ public class DMeshTool implements Serializable {
 
     private final String script;
     private final String matchParametersPath;
+    private final boolean logToolOutput;
 
     public DMeshTool(final File scriptFile,
-                     final File matchParametersFile)
+                     final File matchParametersFile,
+                     final boolean logToolOutput)
             throws IllegalArgumentException {
 
         this.script = scriptFile.getAbsolutePath();
         this.matchParametersPath = matchParametersFile.getAbsolutePath();
+        this.logToolOutput = logToolOutput;
 
         if (! scriptFile.canExecute()) {
             throw new IllegalArgumentException(this.script + " is not executable");
@@ -42,11 +49,16 @@ public class DMeshTool implements Serializable {
 
     public CanvasMatches run(final CanvasId p,
                              final File pTileImage,
-                             final String pTileDataUrl,
+                             final RenderParameters pRenderParameters,
                              final CanvasId q,
                              final File qTileImage,
-                             final String qTileDataUrl)
+                             final RenderParameters qRenderParameters)
             throws IOException, InterruptedException, IllegalStateException {
+
+        validateEvenSize("width", p, pRenderParameters.getWidth());
+        validateEvenSize("height", p, pRenderParameters.getHeight());
+        validateEvenSize("width", q, qRenderParameters.getWidth());
+        validateEvenSize("height", q, qRenderParameters.getHeight());
 
         final Timer timer = new Timer();
         timer.start();
@@ -57,8 +69,8 @@ public class DMeshTool implements Serializable {
                                    qTileImage.getAbsolutePath(),
                                    "-z=" + p.getGroupId() + "," + q.getGroupId(),
                                    "-matchparams_file=" + matchParametersPath,
-                                   "-Ta=" + pTileDataUrl,
-                                   "-Tb=" + qTileDataUrl,
+                                   "-Ta=" + getAffineCoefficientsString(pRenderParameters),
+                                   "-Tb=" + getAffineCoefficientsString(qRenderParameters),
                                    "-pts_file=stdout").
                         redirectOutput(ProcessBuilder.Redirect.PIPE).
                         redirectError(ProcessBuilder.Redirect.PIPE);
@@ -80,6 +92,11 @@ public class DMeshTool implements Serializable {
             final int returnCode = process.waitFor();
 
             if (returnCode == 0) {
+
+                if (logToolOutput) {
+                    LOG.info("tool returned successfully, log is:\n{}", toolLog);
+                }
+
                 if ((json != null) && (json.length() > 0)) {
                     toolMatches = CanvasMatches.fromJson(json);
                 } else {
@@ -107,10 +124,41 @@ public class DMeshTool implements Serializable {
                                  toolMatches.getMatches());
     }
 
+    private void validateEvenSize(final String context,
+                                  final CanvasId canvasId,
+                                  final int value)
+            throws IllegalStateException {
+        if ((value % 2) == 1) {
+            throw new IllegalStateException("canvas " + canvasId + " has odd " + context + " of " + value);
+        }
+    }
+
+    private String getAffineCoefficientsString(final RenderParameters renderParameters)
+            throws IllegalArgumentException {
+
+        final List<TileSpec> tileSpecs = renderParameters.getTileSpecs();
+        final TileSpec theOnlyTileSpec;
+        if (tileSpecs.size() == 1) {
+            theOnlyTileSpec = tileSpecs.get(0);
+        } else {
+            throw new IllegalArgumentException(
+                    "To derive affine coefficients, the render parameters must contain one and only one tile spec.");
+        }
+
+        final LayoutData layout = theOnlyTileSpec.getLayout();
+        if (layout == null) {
+            throw new IllegalArgumentException(
+                    "To derive affine coefficients, the spec for tile '" + theOnlyTileSpec.getTileId() +
+                    "' must contain layout data.");
+        }
+
+        return  "1.0,0.0," + layout.getStageX() + ",0.0,1.0," + layout.getStageY();
+    }
+
     public static void main(final String[] args) {
 
         if (args.length != 10) {
-            throw new IllegalArgumentException("Expected parameters are: script matchParametersPath pGroupId pId pImage pDataUrl qGroupId qId qImage qDataUrl");
+            throw new IllegalArgumentException("Expected parameters are: script matchParametersPath pGroupId pId pImage pRenderParametersUrl qGroupId qId qImage qRenderParametersUrl");
         }
 
         final String script = args[0];
@@ -118,15 +166,18 @@ public class DMeshTool implements Serializable {
 
         final CanvasId p = new CanvasId(args[2], args[3]);
         final File pTileImage = new File(args[4]);
-        final String pTileDataUrl = args[5];
+        final String pRenderParametersUrl = args[5];
 
         final CanvasId q = new CanvasId(args[6], args[7]);
         final File qTileImage = new File(args[8]);
-        final String qTileDataUrl = args[9];
+        final String qRenderParametersUrl = args[9];
 
-        final DMeshTool tool = new DMeshTool(new File(script), new File(matchParametersPath));
+        final RenderParameters pRenderParameters = RenderParameters.loadFromUrl(pRenderParametersUrl);
+        final RenderParameters qRenderParameters = RenderParameters.loadFromUrl(qRenderParametersUrl);
+
+        final DMeshTool tool = new DMeshTool(new File(script), new File(matchParametersPath), true);
         try {
-            final CanvasMatches canvasMatches = tool.run(p, pTileImage, pTileDataUrl, q, qTileImage, qTileDataUrl);
+            final CanvasMatches canvasMatches = tool.run(p, pTileImage, pRenderParameters, q, qTileImage, qRenderParameters);
             LOG.info("result is:\n{}", canvasMatches.toJson());
         } catch (final Throwable t) {
             LOG.error("caught exception", t);

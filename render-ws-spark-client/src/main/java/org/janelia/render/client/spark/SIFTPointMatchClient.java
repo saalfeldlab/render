@@ -55,6 +55,13 @@ public class SIFTPointMatchClient
                 arity = 1)
         private boolean renderWithFilter = true;
 
+        @Parameter(
+                names = "--renderWithoutMask",
+                description = "Render tiles without a mask",
+                required = false,
+                arity = 1)
+        private boolean renderWithoutMask = true;
+
         @Parameter(names = "--renderScale", description = "Render tiles at this scale", required = false)
         private Double renderScale = 1.0;
 
@@ -122,10 +129,13 @@ public class SIFTPointMatchClient
 
     public void run() throws IOException, URISyntaxException {
 
-        LOG.info("run: entry");
-
         final SparkConf conf = new SparkConf().setAppName("SIFTPointMatchClient");
         final JavaSparkContext sparkContext = new JavaSparkContext(conf);
+
+        final String sparkAppId = sparkContext.getConf().getAppId();
+        final String executorsJson = LogUtilities.getExecutorsApiJson(sparkAppId);
+
+        LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
         // TODO: see if it's worth the trouble to use the faster KryoSerializer
 //        conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
@@ -140,7 +150,9 @@ public class SIFTPointMatchClient
                         renderableCanvasIdPairs,
                         parameters.baseDataUrl,
                         parameters.renderScale,
-                        parameters.renderWithFilter);
+                        parameters.renderWithFilter,
+                        parameters.renderWithoutMask,
+                        false);
 
         final long cacheMaxKilobytes = parameters.maxFeatureCacheGb * 1000000;
         final CanvasFeatureListLoader featureLoader =
