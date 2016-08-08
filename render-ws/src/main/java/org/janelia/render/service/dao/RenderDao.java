@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1227,7 +1228,7 @@ public class RenderDao {
     }
 
     public void removeTilesWithZ(final StackId stackId,
-                                    final Double z)
+                                 final Double z)
             throws IllegalArgumentException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
@@ -1238,6 +1239,42 @@ public class RenderDao {
         final DeleteResult removeResult = tileCollection.deleteMany(tileQuery);
 
         LOG.debug("removeTilesWithZ: {}.remove({}) deleted {} document(s)",
+                  MongoUtil.fullName(tileCollection), tileQuery.toJson(), removeResult.getDeletedCount());
+    }
+
+    public void removeTilesWithIds(final StackId stackId,
+                                   final List<String> tileIds)
+            throws IllegalArgumentException {
+
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("tileIds", tileIds);
+
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+        final Document tileQuery = new Document("tileId",
+                                                new Document(QueryOperators.IN,
+                                                             tileIds));
+        final Document tileQueryForLog = new Document("tileId",
+                                                      new Document(QueryOperators.IN,
+                                                                   Arrays.asList("list of",
+                                                                                 tileIds.size() + " tileIds")));
+        final DeleteResult removeResult = tileCollection.deleteMany(tileQuery);
+
+        LOG.debug("removeTilesWithIds: {}.remove({}) deleted {} document(s)",
+                  MongoUtil.fullName(tileCollection), tileQueryForLog.toJson(), removeResult.getDeletedCount());
+    }
+
+    public void removeTile(final StackId stackId,
+                           final String tileId)
+            throws IllegalArgumentException {
+
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("tileId", tileId);
+
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+        final Document tileQuery = new Document("tileId", tileId);
+        final DeleteResult removeResult = tileCollection.deleteOne(tileQuery);
+
+        LOG.debug("removeTile: {}.remove({}) deleted {} document(s)",
                   MongoUtil.fullName(tileCollection), tileQuery.toJson(), removeResult.getDeletedCount());
     }
 

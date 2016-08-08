@@ -3,12 +3,14 @@ package org.janelia.render.service;
 import java.net.UnknownHostException;
 import java.util.Map;
 
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
@@ -74,6 +76,43 @@ public class TileDataService {
         }
 
         return tileSpec;
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}")
+    @DELETE
+    @ApiOperation(
+            value = "Deletes specified tile.",
+            notes = "This operation can only be performed against stacks in the LOADING state")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack state is not LOADING"),
+            @ApiResponse(code = 404, message = "stack not found"),
+    })
+    public Response deleteTile(@PathParam("owner") final String owner,
+                               @PathParam("project") final String project,
+                               @PathParam("stack") final String stack,
+                               @PathParam("tileId") final String tileId) {
+
+        LOG.info("deleteTile: entry, owner={}, project={}, stack={}, tileId={}",
+                 owner, project, stack, tileId);
+
+        Response response = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = getStackMetaData(stackId);
+
+            if (! stackMetaData.isLoading()) {
+                throw new IllegalArgumentException("stack state is " + stackMetaData.getState() +
+                                                   " but must be LOADING to delete data");
+            }
+
+            renderDao.removeTile(stackMetaData.getStackId(), tileId);
+
+            response = Response.ok().build();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return response;
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}/render-parameters")
@@ -245,7 +284,7 @@ public class TileDataService {
         return parameters;
     }
 
-    public StackMetaData getStackMetaData(final StackId stackId)
+    private StackMetaData getStackMetaData(final StackId stackId)
             throws ObjectNotFoundException {
 
         final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);

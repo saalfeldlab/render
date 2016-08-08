@@ -213,6 +213,34 @@ public class RenderDaoTest {
     }
 
     @Test
+    public void testRemoveTilesWithIds() throws Exception {
+
+        final Double z = 3903.0;
+        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBounds(stackId, z);
+
+        dao.removeTilesWithIds(stackId, Arrays.asList("134", "135", "136"));
+
+        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBounds(stackId, z);
+
+        Assert.assertEquals("invalid tile count after tile list removal",
+                            (tileBoundsBeforeRemove.size() - 3), tileBoundsAfterRemove.size());
+    }
+
+    @Test
+    public void testRemoveTile() throws Exception {
+
+        final Double z = 3903.0;
+        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBounds(stackId, z);
+
+        dao.removeTile(stackId, "134");
+
+        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBounds(stackId, z);
+
+        Assert.assertEquals("invalid tile count after tile removal",
+                            (tileBoundsBeforeRemove.size() - 1), tileBoundsAfterRemove.size());
+    }
+
+    @Test
     public void testRemoveTilesWithZ() throws Exception {
 
         final TileSpec tileSpec = new TileSpec();

@@ -331,6 +331,30 @@ public class RenderDataClient {
     }
 
     /**
+     * Deletes specified tile.
+     *
+     * @param  stack   stack containing tile to delete.
+     * @param  tileId  id of tile to delete.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void deleteStackTile(final String stack,
+                                final String tileId)
+            throws IOException {
+
+        final URI uri = getUri(getStackUrlString(stack) + "/tile/" + tileId);
+        final String requestContext = "DELETE " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpDelete httpDelete = new HttpDelete(uri);
+
+        LOG.info("deleteStackTile: submitting {}", requestContext);
+
+        httpClient.execute(httpDelete, responseHandler);
+    }
+
+    /**
      * @param  stack   stack containing tile.
      * @param  tileId  identifies tile.
      *
