@@ -26,9 +26,10 @@ import org.slf4j.LoggerFactory;
 public class WarpTransformClient {
 
     @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    private static class Parameters extends RenderDataClientParametersWithValidator {
 
         // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
 
         @Parameter(names = "--alignStack", description = "Align stack name", required = true)
         private String alignStack;

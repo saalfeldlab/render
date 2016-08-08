@@ -29,9 +29,10 @@ public class ImportTransformChangesClient {
     public enum ChangeMode { APPEND, REPLACE_LAST, REPLACE_ALL }
 
     @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    private static class Parameters extends RenderDataClientParametersWithValidator {
 
         // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
 
         @Parameter(
                 names = "--stack",

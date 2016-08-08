@@ -28,9 +28,10 @@ import org.slf4j.LoggerFactory;
 public class ImportJsonClient {
 
     @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    private static class Parameters extends RenderDataClientParametersWithValidator {
 
         // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
 
         @Parameter(names = "--stack", description = "Name of stack for imported data", required = true)
         private String stack;

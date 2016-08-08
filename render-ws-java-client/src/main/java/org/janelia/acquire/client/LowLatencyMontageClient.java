@@ -29,7 +29,7 @@ import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.ImportJsonClient;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.RenderDataClientParameters;
+import org.janelia.render.client.RenderDataClientParametersWithValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,9 +42,10 @@ import org.slf4j.LoggerFactory;
 public class LowLatencyMontageClient {
 
     @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    private static class Parameters extends RenderDataClientParametersWithValidator {
 
         // NOTE: --baseDataUrl, --owner, --project, --validatorClass, and --validatorData parameters defined in RenderDataClientParameters
+        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
 
         @Parameter(names = "--finalStackState", description = "State render stack should have after import (default is COMPLETE)", required = false)
         private StackMetaData.StackState finalStackState;

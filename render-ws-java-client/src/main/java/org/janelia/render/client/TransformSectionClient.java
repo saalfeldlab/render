@@ -18,9 +18,10 @@ import org.slf4j.LoggerFactory;
 public class TransformSectionClient {
 
     @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    private static class Parameters extends RenderDataClientParametersWithValidator {
 
         // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
 
         @Parameter(names = "--stack", description = "Stack name", required = true)
         private String stack;
