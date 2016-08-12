@@ -33,6 +33,18 @@ public class TilePairClient {
         @Parameter(names = "--stack", description = "Stack name", required = true)
         private String stack;
 
+        @Parameter(names =
+                "--baseProject",
+                description = "Name of base/parent project from which the render stack was derived (default assumes same project as render stack)",
+                required = false)
+        private String baseProject;
+
+        @Parameter(names =
+                "--baseStack",
+                description = "Name of base/parent stack from which the render stack was derived (default assumes same as render stack)",
+                required = false)
+        private String baseStack;
+
         @Parameter(names = "--minZ", description = "Minimum Z value for all tiles", required = true)
         private Double minZ;
 
@@ -100,6 +112,20 @@ public class TilePairClient {
             this.maxX = maxX;
             this.minY = minY;
             this.maxY = maxY;
+        }
+
+        public String getBaseProject() {
+            if (baseProject == null) {
+                baseProject = project;
+            }
+            return baseProject;
+        }
+
+        public String getBaseStack() {
+            if (baseStack == null) {
+                baseStack = stack;
+            }
+            return baseStack;
         }
 
         public void validateStackBounds() throws IllegalArgumentException {
@@ -181,7 +207,10 @@ public class TilePairClient {
     }
 
     public String getRenderParametersUrlTemplate() {
-        final String currentStackUrlString = renderDataClient.getStackUrlString(parameters.stack);
+        final RenderWebServiceUrls urls = new RenderWebServiceUrls(parameters.baseDataUrl,
+                                                                   parameters.owner,
+                                                                   parameters.getBaseProject());
+        final String currentStackUrlString = urls.getStackUrlString(parameters.getBaseStack());
         final String relativeStackUrlString = currentStackUrlString.substring(parameters.baseDataUrl.length());
         return RenderableCanvasIdPairs.TEMPLATE_BASE_DATA_URL_TOKEN + relativeStackUrlString +
                "/tile/" + RenderableCanvasIdPairs. TEMPLATE_ID_TOKEN + "/render-parameters";

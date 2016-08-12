@@ -16,7 +16,6 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.Bounds;
@@ -42,10 +41,7 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
  */
 public class RenderDataClient {
 
-    private final String baseDataUrl;
-    private final String owner;
-    private final String project;
-
+    private final RenderWebServiceUrls urls;
     private final CloseableHttpClient httpClient;
 
     /**
@@ -58,19 +54,13 @@ public class RenderDataClient {
     public RenderDataClient(final String baseDataUrl,
                             final String owner,
                             final String project) {
-
-        this.baseDataUrl = baseDataUrl;
-        this.owner = owner;
-        this.project = project;
+        this.urls = new RenderWebServiceUrls(baseDataUrl, owner, project);
         this.httpClient = HttpClientBuilder.create().setRetryHandler(new WaitingRetryHandler()).build();
     }
 
     @Override
     public String toString() {
-        return "{baseDataUrl='" + baseDataUrl + '\'' +
-               ", owner='" + owner + '\'' +
-               ", project='" + project + '\'' +
-               '}';
+        return String.valueOf(urls);
     }
 
     /**
@@ -83,7 +73,7 @@ public class RenderDataClient {
     public String getLikelyUniqueId()
             throws IOException {
 
-        final URI uri = getUri(baseDataUrl + "/likelyUniqueId");
+        final URI uri = getUri(urls.getLikelyUniqueIdUrlString());
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
@@ -143,7 +133,7 @@ public class RenderDataClient {
                                         final Double maxZ)
             throws IOException {
 
-        final URIBuilder builder = new URIBuilder(getUri(getStackUrlString(stack) + "/zValues"));
+        final URIBuilder builder = new URIBuilder(getUri(urls.getStackUrlString(stack) + "/zValues"));
 
         if (minZ != null) {
             builder.addParameter("minZ", minZ.toString());
@@ -219,7 +209,7 @@ public class RenderDataClient {
         final String json = toStackVersion.toJson();
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
 
-        final URIBuilder builder = new URIBuilder(getUri(getStackUrlString(fromStack) + "/cloneTo/" + toStack));
+        final URIBuilder builder = new URIBuilder(getUri(urls.getCloneToUrlString(fromStack, toStack)));
 
         if (zValues != null) {
             for (final Double z : zValues) {
@@ -266,7 +256,7 @@ public class RenderDataClient {
                               final StackState stackState)
             throws IOException {
 
-        final URI uri = getUri(getStackUrlString(stack) + "/state/" + stackState);
+        final URI uri = getUri(urls.getStackStateUrlString(stack, stackState));
         final String requestContext = "PUT " + uri;
         final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
 
@@ -294,7 +284,7 @@ public class RenderDataClient {
         if (z == null) {
             uri = getStackUri(stack);
         } else {
-            uri = getUri(getZUrlString(stack, z));
+            uri = getUri(urls.getZUrlString(stack, z));
         }
         final String requestContext = "DELETE " + uri;
         final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
@@ -319,7 +309,7 @@ public class RenderDataClient {
                                    final String sectionId)
             throws IOException {
 
-        final URI uri = getUri(getStackUrlString(stack) + "/section/" + sectionId);
+        final URI uri = getUri(urls.getSectionUrlString(stack, sectionId));
         final String requestContext = "DELETE " + uri;
         final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
 
@@ -343,7 +333,7 @@ public class RenderDataClient {
                                 final String tileId)
             throws IOException {
 
-        final URI uri = getUri(getStackUrlString(stack) + "/tile/" + tileId);
+        final URI uri = getUri(urls.getTileUrlString(stack, tileId));
         final String requestContext = "DELETE " + uri;
         final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
 
@@ -367,7 +357,7 @@ public class RenderDataClient {
                             final String tileId)
             throws IOException {
 
-        final URI uri = getUri(getStackUrlString(stack) + "/tile/" + tileId);
+        final URI uri = getUri(urls.getTileUrlString(stack, tileId));
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final JsonUtils.Helper<TileSpec> helper = new JsonUtils.Helper<>(TileSpec.class);
@@ -391,7 +381,7 @@ public class RenderDataClient {
                                  final Double z)
             throws IOException {
 
-        final URI uri = getUri(getZUrlString(stack, z) + "/bounds");
+        final URI uri = getUri(urls.getBoundsUrlString(stack, z));
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final JsonUtils.Helper<Bounds> helper = new JsonUtils.Helper<>(Bounds.class);
@@ -415,7 +405,7 @@ public class RenderDataClient {
                                           final Double z)
             throws IOException {
 
-        final URI uri = getUri(getZUrlString(stack, z) + "/tileBounds");
+        final URI uri = getUri(urls.getTileBoundsUrlString(stack, z));
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final TypeReference<List<TileBounds>> typeReference = new TypeReference<List<TileBounds>>() {};
@@ -444,7 +434,7 @@ public class RenderDataClient {
 
         final String json = JsonUtils.FAST_MAPPER.writeValueAsString(tileIds);
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
-        final URI uri = getUri(getZUrlString(stack, z) + "/tileIds");
+        final URI uri = getUri(urls.getTileIdsUrlString(stack, z));
         final String requestContext = "PUT " + uri;
         final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
 
@@ -577,7 +567,7 @@ public class RenderDataClient {
 
         final String json = z.toString();
         final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
-        final URI uri = getUri(getStackUrlString(stack) + "/section/" + sectionId + "/z");
+        final URI uri = getUri(urls.getSectionZUrlString(stack, sectionId));
         final String requestContext = "PUT " + uri;
         final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
 
@@ -587,29 +577,6 @@ public class RenderDataClient {
         LOG.info("updateZForSection: submitting {}", requestContext);
 
         httpClient.execute(httpPut, responseHandler);
-    }
-
-    /**
-     * @param  z      z value for layer.
-     *
-     * @return list of canvas matches with a pGroupId for the specified layer.
-     *
-     * @throws IOException
-     *   if the request fails for any reason.
-     */
-    public List<CanvasMatches> getMatches(final Double z)
-            throws IOException {
-
-        final URI uri = getUri(getOwnerUrlString() + "/matchCollection/" + project + "/pGroup/" + z + "/matches");
-        final HttpGet httpGet = new HttpGet(uri);
-        final String requestContext = "GET " + uri;
-        final TypeReference<List<CanvasMatches>> typeReference = new TypeReference<List<CanvasMatches>>() {};
-        final JsonUtils.GenericHelper<List<CanvasMatches>> helper = new JsonUtils.GenericHelper<>(typeReference);
-        final JsonResponseHandler<List<CanvasMatches>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
-
-        LOG.info("getMatches: submitting {}", requestContext);
-
-        return httpClient.execute(httpGet, responseHandler);
     }
 
     /**
@@ -627,7 +594,7 @@ public class RenderDataClient {
 
             final String json = JsonUtils.MAPPER.writeValueAsString(canvasMatches);
             final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
-            final URI uri = getUri(getOwnerUrlString() + "/matchCollection/" + project + "/matches");
+            final URI uri = getUri(urls.getMatchesUrlString());
             final String requestContext = "PUT " + uri;
             final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
 
@@ -673,7 +640,7 @@ public class RenderDataClient {
 
         final String worldCoordinatesJson = JsonUtils.MAPPER.writeValueAsString(worldCoordinates);
         final StringEntity stringEntity = new StringEntity(worldCoordinatesJson, ContentType.APPLICATION_JSON);
-        final URI uri = getUri(getZUrlString(stack, z) + "/tileIdsForCoordinates");
+        final URI uri = getUri(urls.getTileIdsForCoordinatesUrlString(stack, z));
         final String requestContext = "PUT " + uri;
 
         final HttpPut httpPut = new HttpPut(uri);
@@ -692,48 +659,6 @@ public class RenderDataClient {
     }
 
     /**
-     * @param  stack   name of stack.
-     * @param  x       x value for box.
-     * @param  y       y value for box.
-     * @param  z       z value for box.
-     * @param  width   width of box.
-     * @param  height  height of box.
-     * @param  scale   scale of target image.
-     *
-     * @return a render parameters result for the specified values.
-     *
-     * @throws IOException
-     *   if the request fails for any reason.
-     */
-    public RenderParameters getRenderParameters(final String stack,
-                                                final double x,
-                                                final double y,
-                                                final double z,
-                                                final int width,
-                                                final int height,
-                                                final double scale)
-            throws IOException {
-
-        final URI uri = getUri(getRenderParametersUrlString(stack, x, y, z, width, height, scale));
-        final HttpGet httpGet = new HttpGet(uri);
-        final String requestContext = "GET " + uri;
-        final JsonUtils.Helper<RenderParameters> helper = new JsonUtils.Helper<>(RenderParameters.class);
-        final JsonResponseHandler<RenderParameters> responseHandler = new JsonResponseHandler<>(requestContext, helper);
-
-        LOG.info("getRenderParameters: submitting {}", requestContext);
-
-        return httpClient.execute(httpGet, responseHandler);
-    }
-
-    /**
-     * @param  stack   name of stack.
-     * @param  x       x value for box.
-     * @param  y       y value for box.
-     * @param  z       z value for box.
-     * @param  width   width of box.
-     * @param  height  height of box.
-     * @param  scale   scale of target image.
-     *
      * @return a render parameters URL string composed from the specified values.
      */
     public String getRenderParametersUrlString(final String stack,
@@ -743,27 +668,12 @@ public class RenderDataClient {
                                                final int width,
                                                final int height,
                                                final double scale) {
-        return getZUrlString(stack, z) + "/box/" +
-               x + ',' + y + ',' + width + ',' + height + ',' + scale +
-               "/render-parameters";
-    }
-
-    public String getOwnerUrlString() {
-        return baseDataUrl + "/owner/" + owner;
-    }
-
-    public String getStackUrlString(final String stack) {
-        return getOwnerUrlString() + "/project/" + project + "/stack/" + stack;
-    }
-
-    public String getZUrlString(final String stack,
-                                 final Double z) {
-        return getStackUrlString(stack) + "/z/" + z;
+        return urls.getRenderParametersUrlString(stack, x, y, z, width, height, scale);
     }
 
     private URI getStackUri(final String stack)
             throws IOException {
-        return getUri(getStackUrlString(stack));
+        return getUri(urls.getStackUrlString(stack));
     }
 
     private URI getResolvedTilesUri(final String stack,
@@ -771,9 +681,9 @@ public class RenderDataClient {
             throws IOException {
         final String baseUrlString;
         if (z == null) {
-            baseUrlString = getStackUrlString(stack);
+            baseUrlString = urls.getStackUrlString(stack);
         } else {
-            baseUrlString = getZUrlString(stack, z);
+            baseUrlString = urls.getZUrlString(stack, z);
         }
         return getUri(baseUrlString + "/resolvedTiles");
     }
