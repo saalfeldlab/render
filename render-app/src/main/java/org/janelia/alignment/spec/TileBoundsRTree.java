@@ -7,6 +7,8 @@ import com.github.davidmoten.rtree.geometry.Geometries;
 import com.github.davidmoten.rtree.geometry.Geometry;
 import com.github.davidmoten.rtree.geometry.Rectangle;
 
+import java.awt.geom.Area;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -28,31 +30,39 @@ public class TileBoundsRTree {
 
     private final Double z;
     private final List<TileBounds> tileBoundsList;
-    private final RTree<TileBounds, Geometry> tree;
+    private RTree<TileBounds, Geometry> tree;
 
     /**
      * Construct a tree from the specified list of tile bounds.
      *
      * @param  z               z value for all tiles.
-     * @param  tileBoundsList  list of bounds onjects.
+     * @param  tileBoundsList  list of bounds objects.
      */
     public TileBoundsRTree(final Double z,
                            final List<TileBounds> tileBoundsList) {
 
         this.z = z;
-        this.tileBoundsList = tileBoundsList;
-
-        RTree<TileBounds, Geometry> tree = RTree.create();
+        this.tileBoundsList = new ArrayList<>(tileBoundsList.size());
+        this.tree = RTree.create();
         for (final TileBounds tileBounds : tileBoundsList) {
-            tree = tree.add(tileBounds,
-                            Geometries.rectangle(tileBounds.getMinX(),
-                                                 tileBounds.getMinY(),
-                                                 tileBounds.getMaxX(),
-                                                 tileBounds.getMaxY()));
+            addTile(tileBounds);
         }
-        this.tree = tree;
 
         LOG.debug("constructed tree for {} tiles", tileBoundsList.size());
+    }
+
+    /**
+     * Add a tile to this tree.
+     *
+     * @param  tileBounds  bounds for the tile.
+     */
+    public void addTile(final TileBounds tileBounds) {
+        tileBoundsList.add(tileBounds);
+        tree = tree.add(tileBounds,
+                        Geometries.rectangle(tileBounds.getMinX(),
+                                             tileBounds.getMinY(),
+                                             tileBounds.getMaxX(),
+                                             tileBounds.getMaxY()));
     }
 
     /**
@@ -83,6 +93,40 @@ public class TileBoundsRTree {
     public List<TileBounds> findTilesInCircle(final Circle circle) {
         final Observable<Entry<TileBounds, Geometry>> searchResults = tree.search(circle);
         return convertResultsToList(searchResults);
+    }
+
+    /**
+     * @return list of tiles that are completely obscured by other tiles.
+     *         Assumes tiles with lexicographically greater tileId values are drawn on top.
+     */
+    public List<TileBounds> findCompletelyObscuredTiles() {
+        final List<TileBounds> completelyObscuredTiles = new ArrayList<>(tileBoundsList.size());
+        List<TileBounds> intersectingTiles;
+        for (final TileBounds tile : tileBoundsList) {
+            intersectingTiles = findTilesInBox(tile.getMinX(), tile.getMinY(),
+                                               tile.getMaxX(), tile.getMaxY());
+            if (isCompletelyObscured(tile, intersectingTiles)) {
+                completelyObscuredTiles.add(tile);
+            }
+        }
+        return completelyObscuredTiles;
+    }
+
+    /**
+     * @return list of tiles that are at least partially visible.
+     *         Assumes tiles with lexicographically greater tileId values are drawn on top.
+     */
+    public List<TileBounds> findVisibleTiles() {
+        final List<TileBounds> visibleTiles = new ArrayList<>(tileBoundsList.size());
+        List<TileBounds> intersectingTiles;
+        for (final TileBounds tile : tileBoundsList) {
+            intersectingTiles = findTilesInBox(tile.getMinX(), tile.getMinY(),
+                                               tile.getMaxX(), tile.getMaxY());
+            if (! isCompletelyObscured(tile, intersectingTiles)) {
+                visibleTiles.add(tile);
+            }
+        }
+        return visibleTiles;
     }
 
     /**
@@ -143,6 +187,31 @@ public class TileBoundsRTree {
         LOG.debug("getCircleNeighbors: exit, returning {} pairs", neighborTileIdPairs.size());
 
         return neighborTileIdPairs;
+    }
+
+    /**
+     * @param  tile               core tile for comparison.
+     * @param  intersectingTiles  list of tiles that intersect with the core tile.
+     *
+     * @return true if the core tile is completely obscured by other tiles; otherwise false.
+     *         Assumes tiles with lexicographically greater tileId values are drawn on top.
+     */
+    public static boolean isCompletelyObscured(final TileBounds tile,
+                                               final List<TileBounds> intersectingTiles) {
+        final String tileId = tile.getTileId();
+        final Area tileArea = new Area(new Rectangle2D.Double(tile.getMinX(), tile.getMinY(),
+                                                              tile.getDeltaX(), tile.getDeltaY()));
+
+        for (final TileBounds intersectingTile : intersectingTiles) {
+            if (tileId.compareTo(intersectingTile.getTileId()) < 0) {
+                tileArea.subtract(new Area(
+                        new Rectangle2D.Double(
+                                intersectingTile.getMinX(), intersectingTile.getMinY(),
+                                intersectingTile.getDeltaX(), intersectingTile.getDeltaY())));
+            }
+        }
+
+        return tileArea.isEmpty();
     }
 
     /**

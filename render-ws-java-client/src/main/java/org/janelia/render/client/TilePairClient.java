@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import javax.annotation.Nonnull;
+
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.spec.TileBounds;
@@ -69,6 +71,13 @@ public class TilePairClient {
                 required = false,
                 arity = 1)
         private boolean filterCornerNeighbors = true;
+
+        @Parameter(
+                names = "--filterCompletelyObscuredTiles",
+                description = "Remove tiles that are completely obscured by reacquired tiles",
+                required = false,
+                arity = 1)
+        private boolean filterCompletelyObscuredTiles = true;
 
         @Parameter(names = "--toJson", description = "JSON file where tile pairs are to be stored (.json, .gz, or .zip)", required = true)
         private String toJson;
@@ -225,27 +234,7 @@ public class TilePairClient {
                                                                       parameters.minZ,
                                                                       parameters.maxZ);
 
-        final Map<Double, TileBoundsRTree> zToTreeMap = new LinkedHashMap<>();
-
-        long totalTileCount = 0;
-        for (final Double z : zValues) {
-
-            List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
-            TileBoundsRTree tree = new TileBoundsRTree(z, tileBoundsList);
-
-            if (filterTilesWithBox) {
-                tileBoundsList = tree.findTilesInBox(parameters.minX,
-                                                     parameters.minY,
-                                                     parameters.maxX,
-                                                     parameters.maxY);
-                tree = new TileBoundsRTree(z, tileBoundsList);
-            }
-
-            zToTreeMap.put(z, tree);
-            totalTileCount += tileBoundsList.size();
-        }
-
-        LOG.info("getSortedNeighborPairs: added bounds for {} tiles to {} trees", totalTileCount, zToTreeMap.size());
+        final Map<Double, TileBoundsRTree> zToTreeMap = buildRTrees(zValues);
 
         final Set<OrderedCanvasIdPair> neighborPairs = new TreeSet<>();
 
@@ -278,6 +267,64 @@ public class TilePairClient {
         LOG.info("getSortedNeighborPairs: exit, returning {} pairs", neighborPairs.size());
 
         return new ArrayList<>(neighborPairs);
+    }
+
+    @Nonnull
+    private Map<Double, TileBoundsRTree> buildRTrees(final List<Double> zValues)
+            throws IOException {
+
+        final Map<Double, TileBoundsRTree> zToTreeMap = new LinkedHashMap<>();
+
+        long totalTileCount = 0;
+        long filteredTileCount = 0;
+
+        for (final Double z : zValues) {
+
+            List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
+            TileBoundsRTree tree = new TileBoundsRTree(z, tileBoundsList);
+
+            totalTileCount += tileBoundsList.size();
+
+            if (filterTilesWithBox) {
+
+                final int unfilteredCount = tileBoundsList.size();
+
+                tileBoundsList = tree.findTilesInBox(parameters.minX, parameters.minY,
+                                                     parameters.maxX, parameters.maxY);
+
+                if (unfilteredCount > tileBoundsList.size()) {
+
+                    LOG.info("buildRTrees: removed {} tiles outside of bounding box",
+                             (unfilteredCount - tileBoundsList.size()));
+
+                    tree = new TileBoundsRTree(z, tileBoundsList);
+                }
+            }
+
+            if (parameters.filterCompletelyObscuredTiles) {
+
+                final int unfilteredCount = tileBoundsList.size();
+
+                tileBoundsList = tree.findVisibleTiles();
+
+                if (unfilteredCount > tileBoundsList.size()) {
+
+                    LOG.info("buildRTrees: removed {} completely obscured tiles",
+                             (unfilteredCount - tileBoundsList.size()));
+
+                    tree = new TileBoundsRTree(z, tileBoundsList);
+                }
+            }
+
+            zToTreeMap.put(z, tree);
+
+            filteredTileCount += tileBoundsList.size();
+        }
+
+        LOG.info("buildRTrees: added bounds for {} out of {} tiles to {} trees",
+                 filteredTileCount, totalTileCount, zToTreeMap.size());
+
+        return zToTreeMap;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TilePairClient.class);

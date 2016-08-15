@@ -109,6 +109,40 @@ public class TileBoundsRTreeTest {
                             expectedNumberOfCombinations, pairs.size());
     }
 
+    @Test
+    public void testFindCompletelyObscuredTiles()
+            throws Exception {
+
+        List<TileBounds> completelyObscuredTiles = tree.findCompletelyObscuredTiles();
+        Assert.assertEquals("incorrect number of obscured tiles found in default tree",
+                            0, completelyObscuredTiles.size());
+
+        tree.addTile(new TileBounds("zzz-1",   5.0,  5.0, 25.0, 25.0));
+        tree.addTile(new TileBounds("zzz-2",   0.0,  0.0, 15.0, 15.0));
+        tree.addTile(new TileBounds("aaa-3", -10.0, 12.0, 15.0, 25.0));
+
+        completelyObscuredTiles = tree.findCompletelyObscuredTiles();
+        Assert.assertEquals("incorrect number of obscured tiles found in modified tree",
+                            2, completelyObscuredTiles.size());
+    }
+
+    @Test
+    public void testFindVisibleTiles()
+            throws Exception {
+
+        List<TileBounds> visibleTiles = tree.findVisibleTiles();
+        Assert.assertEquals("incorrect number of visible tiles found in default tree",
+                            tileBoundsList.size(), visibleTiles.size());
+
+        final TileBounds reacquiredTile = new TileBounds("zzz-1",   5.0,  5.0, 25.0, 25.0);
+        tileBoundsList.add(reacquiredTile);
+        tree.addTile(reacquiredTile);
+
+        visibleTiles = tree.findVisibleTiles();
+        Assert.assertEquals("incorrect number of visible tiles found in modified tree",
+                            (tileBoundsList.size() - 1), visibleTiles.size());
+    }
+
     private void validateSearchResults(final String context,
                                        final List<TileBounds> searchResults,
                                        final Set<String> expectedTileIds)
