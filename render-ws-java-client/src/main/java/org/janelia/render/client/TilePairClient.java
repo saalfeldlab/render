@@ -5,6 +5,7 @@ import com.beust.jcommander.Parameter;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,8 @@ import java.util.TreeSet;
 
 import javax.annotation.Nonnull;
 
+import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.spec.TileBounds;
@@ -78,6 +81,12 @@ public class TilePairClient {
                 required = false,
                 arity = 1)
         private boolean filterCompletelyObscuredTiles = true;
+
+        @Parameter(
+                names = "--excludePairsInMatchCollection",
+                description = "Name of match collection whose existing pairs should be excluded from the generated list (default is to include all pairs)",
+                required = false)
+        private String excludePairsInMatchCollection;
 
         @Parameter(names = "--toJson", description = "JSON file where tile pairs are to be stored (.json, .gz, or .zip)", required = true)
         private String toJson;
@@ -236,12 +245,14 @@ public class TilePairClient {
 
         final Map<Double, TileBoundsRTree> zToTreeMap = buildRTrees(zValues);
 
+        final Set<OrderedCanvasIdPair> existingPairs = getExistingPairs(zValues);
         final Set<OrderedCanvasIdPair> neighborPairs = new TreeSet<>();
 
         Double z;
         Double neighborZ;
         TileBoundsRTree currentZTree;
         List<TileBoundsRTree> neighborTreeList;
+        Set<OrderedCanvasIdPair> currentNeighborPairs;
         for (int zIndex = 0; zIndex < zValues.size(); zIndex++) {
 
             z = zValues.get(zIndex);
@@ -259,9 +270,17 @@ public class TilePairClient {
                 neighborTreeList.add(zToTreeMap.get(neighborZ));
             }
 
-            neighborPairs.addAll(currentZTree.getCircleNeighbors(neighborTreeList,
-                                                                 parameters.xyNeighborFactor,
-                                                                 parameters.filterCornerNeighbors));
+            currentNeighborPairs = currentZTree.getCircleNeighbors(neighborTreeList,
+                                                                   parameters.xyNeighborFactor,
+                                                                   parameters.filterCornerNeighbors);
+            if (existingPairs.size() > 0) {
+                final int beforeSize = currentNeighborPairs.size();
+                currentNeighborPairs.removeAll(existingPairs);
+                final int afterSize = currentNeighborPairs.size();
+                LOG.info("removed {} existing pairs for z {}", (beforeSize - afterSize), z);
+            }
+
+            neighborPairs.addAll(currentNeighborPairs);
         }
 
         LOG.info("getSortedNeighborPairs: exit, returning {} pairs", neighborPairs.size());
@@ -325,6 +344,32 @@ public class TilePairClient {
                  filteredTileCount, totalTileCount, zToTreeMap.size());
 
         return zToTreeMap;
+    }
+
+    private Set<OrderedCanvasIdPair> getExistingPairs(final List<Double> zValues)
+            throws IOException {
+
+        final Set<OrderedCanvasIdPair> existingPairs = new HashSet<>(8192);
+
+        if (parameters.excludePairsInMatchCollection != null) {
+
+            final RenderDataClient matchDataClient =
+                    new RenderDataClient(parameters.baseDataUrl,
+                                         parameters.owner,
+                                         parameters.excludePairsInMatchCollection);
+
+            for (final Double z : zValues) {
+                for (final CanvasMatches canvasMatches : matchDataClient.getMatches(z)) {
+                    existingPairs.add(
+                            new OrderedCanvasIdPair(
+                                    new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),
+                                    new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId())));
+                }
+            }
+
+        }
+
+        return existingPairs;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TilePairClient.class);

@@ -580,6 +580,29 @@ public class RenderDataClient {
     }
 
     /**
+     * @param  z      z value for layer.
+     *
+     * @return list of canvas matches with a pGroupId for the specified layer.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<CanvasMatches> getMatches(final Double z)
+            throws IOException {
+
+        final URI uri = getUri(urls.getGroupMatchesUrlString(z.toString()));
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final TypeReference<List<CanvasMatches>> typeReference = new TypeReference<List<CanvasMatches>>() {};
+        final JsonUtils.GenericHelper<List<CanvasMatches>> helper = new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<CanvasMatches>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getMatches: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
      * Saves the specified matches.
      *
      * @param  canvasMatches  matches to save.
