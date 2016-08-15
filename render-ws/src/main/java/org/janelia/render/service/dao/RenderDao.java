@@ -1867,29 +1867,29 @@ public class RenderDao {
     private void ensureCoreTransformIndex(final MongoCollection<Document> transformCollection) {
         MongoUtil.createIndex(transformCollection,
                               new Document("id", 1),
-                              new IndexOptions().unique(true).background(true));
+                              TRANSFORM_A_OPTIONS);
         LOG.debug("ensureCoreTransformIndex: exit");
     }
 
     private void ensureCoreTileIndexes(final MongoCollection<Document> tileCollection) {
         MongoUtil.createIndex(tileCollection,
                               new Document("tileId", 1),
-                              new IndexOptions().unique(true).background(true));
-        MongoUtil.createIndex(tileCollection, new Document("z", 1), MongoUtil.BACKGROUND_OPTION);
+                              TILE_A_OPTIONS);
+        MongoUtil.createIndex(tileCollection, new Document("z", 1), TILE_B_OPTIONS);
         LOG.debug("ensureCoreTileIndex: exit");
     }
 
     private void ensureSupplementaryTileIndexes(final MongoCollection<Document> tileCollection) {
 
         // compound index used for bulk (e.g. resolvedTile) queries that sort by tileId
-        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("tileId", 1), MongoUtil.BACKGROUND_OPTION);
+        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("tileId", 1), TILE_C_OPTIONS);
 
-        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("minX", 1), MongoUtil.BACKGROUND_OPTION);
-        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("minY", 1), MongoUtil.BACKGROUND_OPTION);
-        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("maxX", 1), MongoUtil.BACKGROUND_OPTION);
-        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("maxY", 1), MongoUtil.BACKGROUND_OPTION);
+        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("minX", 1), TILE_D_OPTIONS);
+        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("minY", 1), TILE_E_OPTIONS);
+        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("maxX", 1), TILE_F_OPTIONS);
+        MongoUtil.createIndex(tileCollection, new Document("z", 1).append("maxY", 1), TILE_G_OPTIONS);
 
-        MongoUtil.createIndex(tileCollection, new Document("layout.sectionId", 1), MongoUtil.BACKGROUND_OPTION);
+        MongoUtil.createIndex(tileCollection, new Document("layout.sectionId", 1), TILE_H_OPTIONS);
 
         // compound index used for most box intersection queries
         // - z, minY, minX order used to match layout file sorting needs
@@ -1897,17 +1897,29 @@ public class RenderDao {
         MongoUtil.createIndex(tileCollection,
                               new Document("z", 1).append("minY", 1).append("minX", 1).append(
                                       "maxY", 1).append("maxX", 1).append("tileId", 1),
-                              MongoUtil.BACKGROUND_OPTION);
+                              TILE_I_OPTIONS);
 
         // compound index used for group queries
         MongoUtil.createIndex(tileCollection,
                               new Document("z", 1).append("groupId", 1).append("minY", 1).append("minX", 1).append(
                                       "maxY", 1).append("maxX", 1),
-                              MongoUtil.BACKGROUND_OPTION);
+                              TILE_J_OPTIONS);
 
         LOG.debug("ensureSupplementaryTileIndexes: exit");
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDao.class);
 
+    /** Explicitly named index options allow a little more namespace room for stack id components. */
+    private static final IndexOptions TRANSFORM_A_OPTIONS = new IndexOptions().unique(true).background(true).name("A");
+    private static final IndexOptions TILE_A_OPTIONS = new IndexOptions().unique(true).background(true).name("A");
+    private static final IndexOptions TILE_B_OPTIONS = new IndexOptions().background(true).name("B");
+    private static final IndexOptions TILE_C_OPTIONS = new IndexOptions().background(true).name("C");
+    private static final IndexOptions TILE_D_OPTIONS = new IndexOptions().background(true).name("D");
+    private static final IndexOptions TILE_E_OPTIONS = new IndexOptions().background(true).name("E");
+    private static final IndexOptions TILE_F_OPTIONS = new IndexOptions().background(true).name("F");
+    private static final IndexOptions TILE_G_OPTIONS = new IndexOptions().background(true).name("G");
+    private static final IndexOptions TILE_H_OPTIONS = new IndexOptions().background(true).name("H");
+    private static final IndexOptions TILE_I_OPTIONS = new IndexOptions().background(true).name("I");
+    private static final IndexOptions TILE_J_OPTIONS = new IndexOptions().background(true).name("J");
 }

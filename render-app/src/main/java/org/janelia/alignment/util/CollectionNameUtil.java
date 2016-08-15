@@ -31,7 +31,7 @@ public class CollectionNameUtil {
         // From https://docs.mongodb.org/manual/reference/limits/#namespaces
         //   The maximum length of the collection namespace, which includes the database name,
         //   the dot (.) separator, and the collection name (i.e. <database>.<collection>), is 120 bytes.
-        this.maxCollectionNameLength = 120 - databaseName.length() - 1;
+        this.maxCollectionNameLength = 120 - databaseName.length() - 1 - LONGEST_INDEX_NAME.length();
     }
 
     public void validateValue(final String context,
@@ -70,4 +70,10 @@ public class CollectionNameUtil {
     public String[] getFields(final String name) {
         return fieldSeparatorPattern.split(name);
     }
+
+    /**
+     * Database index names factor into namespace length constraints.
+     * Indexes are currently named with single letters to reduce impact on the namespace.
+     */
+    private static final String LONGEST_INDEX_NAME = ".A";
 }

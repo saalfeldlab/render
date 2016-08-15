@@ -1,6 +1,5 @@
 package org.janelia.render.service.dao;
 
-import com.mongodb.DBCollection;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -23,7 +22,6 @@ import org.slf4j.LoggerFactory;
  */
 public class MongoUtil {
 
-    public static final IndexOptions BACKGROUND_OPTION = new IndexOptions().background(true);
     public static final UpdateOptions UPSERT_OPTION = new UpdateOptions().upsert(true);
     public static final BulkWriteOptions UNORDERED_OPTION = new BulkWriteOptions().ordered(false);
 
@@ -100,19 +98,23 @@ public class MongoUtil {
 
     public static String toJson(final IndexOptions options) {
 
-        @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
-        final Document document = new Document();
+        final StringBuilder sb = new StringBuilder(128);
+
+        sb.append("{ \"name\": \"").append(options.getName()).append("\"");
+
+        if (options.isUnique()) {
+            sb.append(", \"unique\": true");
+        }
 
         if (options.isBackground()) {
-            document.append("background", true);
-        }
-        if (options.isUnique()) {
-            document.append("unique", true);
+            sb.append(", \"background\": true");
         }
 
         // add other options if/when they are used
 
-        return document.toJson();
+        sb.append(" }");
+
+        return sb.toString();
     }
 
     public static String toJson(final List<Document> list) {

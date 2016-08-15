@@ -456,7 +456,7 @@ public class MatchDao {
                                       "qGroupId", 1).append(
                                       "pId", 1).append(
                                       "qId", 1),
-                              new IndexOptions().unique(true).background(true));
+                              MATCH_A_OPTIONS);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MatchDao.class);
@@ -469,4 +469,7 @@ public class MatchDao {
     private static final byte[] OPEN_BRACKET = "[".getBytes();
     private static final byte[] COMMA_WITH_NEW_LINE = ",\n".getBytes();
     private static final byte[] CLOSE_BRACKET = "]".getBytes();
+
+    private static final IndexOptions MATCH_A_OPTIONS = new IndexOptions().unique(true).background(true).name("A");
+
 }
