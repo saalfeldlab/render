@@ -68,7 +68,7 @@ public class TileBoundsRTreeTest {
                                                               buildListForZ(3.0));
         final List<TileBoundsRTree> neighborTrees = Arrays.asList(treeForZ2, treeForZ3);
 
-        final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(neighborTrees, 1.1, false);
+        final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(neighborTrees, 1.1, false, false);
 
         // these are short-hand names for the pairs to clarify how many pairs are expected
         final String[] expectedPairs = {

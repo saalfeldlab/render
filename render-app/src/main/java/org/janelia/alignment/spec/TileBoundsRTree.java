@@ -138,11 +138,14 @@ public class TileBoundsRTree {
      * @param  filterCornerNeighbors if true, exclude neighbor tiles whose center x and y is outside the
      *                               source tile's x and y range respectively.
      *
+     * @param  filterSameLayerNeighbors  if true, exclude neighbor tiles in the same layer (z) as the source tile.
+     *
      * @return set of distinct neighbor pairs between this tree's tiles and the specified neighbor trees' tiles.
      */
     public Set<OrderedCanvasIdPair> getCircleNeighbors(final List<TileBoundsRTree> neighborTrees,
                                                        final double neighborRadiusFactor,
-                                                       final boolean filterCornerNeighbors) {
+                                                       final boolean filterCornerNeighbors,
+                                                       final boolean filterSameLayerNeighbors) {
 
         String firstTileId = null;
         if (tileBoundsList.size() > 0) {
@@ -172,10 +175,12 @@ public class TileBoundsRTree {
 
             circle = Geometries.circle(centerX, centerY, radius);
 
-            searchResults = findTilesInCircle(circle);
+            if (! filterSameLayerNeighbors) {
+                searchResults = findTilesInCircle(circle);
 
-            neighborTileIdPairs.addAll(
-                    getDistinctPairs(z, tileBounds, z, searchResults, filterCornerNeighbors));
+                neighborTileIdPairs.addAll(
+                        getDistinctPairs(z, tileBounds, z, searchResults, filterCornerNeighbors));
+            }
 
             for (final TileBoundsRTree neighborTree : neighborTrees) {
                 searchResults = neighborTree.findTilesInCircle(circle);

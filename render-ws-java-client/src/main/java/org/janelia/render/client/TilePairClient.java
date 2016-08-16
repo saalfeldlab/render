@@ -70,17 +70,24 @@ public class TilePairClient {
 
         @Parameter(
                 names = "--filterCornerNeighbors",
-                description = "Remove neighbor tiles whose center x and y is outside the source tile's x and y range respectively",
+                description = "Exclude neighbor tiles whose center x and y is outside the source tile's x and y range respectively",
                 required = false,
                 arity = 1)
         private boolean filterCornerNeighbors = true;
 
         @Parameter(
                 names = "--filterCompletelyObscuredTiles",
-                description = "Remove tiles that are completely obscured by reacquired tiles",
+                description = "Exclude tiles that are completely obscured by reacquired tiles",
                 required = false,
                 arity = 1)
         private boolean filterCompletelyObscuredTiles = true;
+
+        @Parameter(
+                names = "--filterSameLayerNeighbors",
+                description = "Exclude neighbor tiles in the same layer (z) as the source tile",
+                required = false,
+                arity = 1)
+        private boolean filterSameLayerNeighbors = false;
 
         @Parameter(
                 names = "--excludePairsInMatchCollection",
@@ -272,7 +279,8 @@ public class TilePairClient {
 
             currentNeighborPairs = currentZTree.getCircleNeighbors(neighborTreeList,
                                                                    parameters.xyNeighborFactor,
-                                                                   parameters.filterCornerNeighbors);
+                                                                   parameters.filterCornerNeighbors,
+                                                                   parameters.filterSameLayerNeighbors);
             if (existingPairs.size() > 0) {
                 final int beforeSize = currentNeighborPairs.size();
                 currentNeighborPairs.removeAll(existingPairs);
