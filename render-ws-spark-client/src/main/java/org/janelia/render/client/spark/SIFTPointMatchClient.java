@@ -207,6 +207,8 @@ public class SIFTPointMatchClient
                             pFeatures = dataCache.getFeatureList(p);
                             qFeatures = dataCache.getFeatureList(q);
 
+                            log.info("derive matches between {} and {}", p, q);
+
                             matchResult = featureMatcher.deriveMatchResult(pFeatures, qFeatures);
 
                             inlierMatches = matchResult.getInlierMatches();
