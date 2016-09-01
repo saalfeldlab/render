@@ -1,0 +1,44 @@
+.header_div {
+    margin: 10px 0 0 10px;
+    clear: both;
+}
+
+.tile_div {
+    margin: 10px 50px 10px 10px;
+    /*width: 1100px; /*500px;*/
+    float: left;
+}
+
+.data_table {
+    margin: 0 0 10px 0;
+}
+
+table.data_table td {
+    padding: 0 10px 10px 0;
+    vertical-align: top;
+}
+
+table.data_table td select {
+    margin-right: 10px;
+}
+
+table.data_table td input[type=text] {
+    margin-right: 10px;
+    /* width: 25em; */
+}
+
+table.data_table td label {
+    margin-right: 5px;
+}
+
+.group_id_field {
+    width: 5em;
+}
+
+.tile_id_field {
+    width: 20em;
+}
+
+.error {
+    color: red;
+}
