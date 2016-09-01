@@ -16,11 +16,6 @@
  */
 package org.janelia.alignment;
 
-import ij.ImagePlus;
-import ij.io.FileInfo;
-import ij.io.Opener;
-import ij.io.TiffEncoder;
-
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -38,15 +33,20 @@ import javax.imageio.ImageWriter;
 import javax.imageio.stream.FileImageOutputStream;
 import javax.imageio.stream.ImageOutputStream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import ij.ImagePlus;
+import ij.io.FileInfo;
+import ij.io.Opener;
+import ij.io.TiffEncoder;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
+import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.SimilarityModel2D;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author Stephan Saalfeld <saalfeld@janelia.hhmi.org>
@@ -315,17 +315,17 @@ public class Utils {
                 samples.add(new PointMatch(p, p));
             }
         }
-        final SimilarityModel2D model = new SimilarityModel2D();
+        final AffineModel2D model = new AffineModel2D();
         try {
             model.fit(samples);
-        } catch (final NotEnoughDataPointsException e) {
+        } catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
             LOG.warn("failed to fit samples, returning scale factor of 1", e);
             return 1;
         }
         final double[] data = new double[6];
         model.toArray(data);
         // return 1;
-        return Math.sqrt(data[0] * data[0] + data[1] * data[1]);
+        return Math.sqrt(Math.max(data[0] * data[0] + data[1] * data[1], data[2] * data[2] + data[3] * data[3]));
     }
 
 
