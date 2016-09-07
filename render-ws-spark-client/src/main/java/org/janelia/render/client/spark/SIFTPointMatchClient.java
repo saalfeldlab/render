@@ -160,6 +160,8 @@ public class SIFTPointMatchClient
                         renderParametersUrlTemplateForRun,
                         getCanvasFeatureExtractor());
 
+        final double renderScale = parameters.renderScale;
+
         // broadcast to all nodes
         final Broadcast<Long> broadcastCacheMaxKilobytes = sparkContext.broadcast(cacheMaxKilobytes);
         final Broadcast<CanvasFeatureListLoader> broadcastFeatureLoader = sparkContext.broadcast(featureLoader);
@@ -214,9 +216,16 @@ public class SIFTPointMatchClient
                             inlierMatches = matchResult.getInlierMatches();
 
                             if (inlierMatches.getWs().length > 0) {
+
+                                // point matches must be stored in full scale coordinates
+                                if (renderScale != 1.0) {
+                                    scalePoints(inlierMatches.getPs(), renderScale);
+                                    scalePoints(inlierMatches.getQs(), renderScale);
+                                }
+
                                 matchList.add(new CanvasMatches(p.getGroupId(), p.getId(),
                                                                 q.getGroupId(), q.getId(),
-                                                                matchResult.getInlierMatches()));
+                                                                inlierMatches));
                             }
                         }
 
@@ -252,6 +261,15 @@ public class SIFTPointMatchClient
 
         sparkContext.stop();
 
+    }
+
+    private static void scalePoints(final double[][] points,
+                                    final double renderScale) {
+        for (int i = 0; i < points.length; i++) {
+            for (int j = 0; j < points[i].length; j++) {
+                points[i][j] = points[i][j] / renderScale;
+            }
+        }
     }
 
     private CanvasFeatureExtractor getCanvasFeatureExtractor() {
