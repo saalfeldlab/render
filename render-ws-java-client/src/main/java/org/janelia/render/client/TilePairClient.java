@@ -39,6 +39,12 @@ public class TilePairClient {
         private String stack;
 
         @Parameter(names =
+                "--baseOwner",
+                description = "Name of base/parent owner from which the render stack was derived (default assumes same owner as render stack)",
+                required = false)
+        private String baseOwner;
+
+        @Parameter(names =
                 "--baseProject",
                 description = "Name of base/parent project from which the render stack was derived (default assumes same project as render stack)",
                 required = false)
@@ -139,6 +145,13 @@ public class TilePairClient {
             this.maxY = maxY;
         }
 
+        public String getBaseOwner() {
+            if (baseOwner == null) {
+                baseOwner = owner;
+            }
+            return baseProject;
+        }
+
         public String getBaseProject() {
             if (baseProject == null) {
                 baseProject = project;
@@ -233,7 +246,7 @@ public class TilePairClient {
 
     public String getRenderParametersUrlTemplate() {
         final RenderWebServiceUrls urls = new RenderWebServiceUrls(parameters.baseDataUrl,
-                                                                   parameters.owner,
+                                                                   parameters.getBaseOwner(),
                                                                    parameters.getBaseProject());
         final String currentStackUrlString = urls.getStackUrlString(parameters.getBaseStack());
         final String relativeStackUrlString = currentStackUrlString.substring(parameters.baseDataUrl.length());
