@@ -14,7 +14,7 @@
         $( document ).ready(function() {
             janeliaTilePairControls = new JaneliaTilePairControls(
                     'renderStackOwner', 'renderStackProject', 'renderStack',
-                    'matchOwner', 'matchCollection',
+                    'matchOwner', 'matchCollection', 'matchCollectionPairCount',
                     'groupId', 'tileDate', 'tileColumn', 'tileSuffix', 'otherGroupId', 'otherTileId',
                     'message', 'urlToView', 'matchLoadMessage', 'otherGroupMessage');
         });
@@ -39,6 +39,9 @@
             <td>
                 <label for="matchCollection">Collection:</label>
                 <select id="matchCollection"></select>
+            </td>
+            <td>
+                <span id="matchCollectionPairCount"></span>
             </td>
         </tr>
         <tr>

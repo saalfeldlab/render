@@ -30,6 +30,7 @@ var JaneliaMatchServiceData = function(owner, collection) {
 
     this.ownerList = [];
     this.collectionList = [];
+    this.collectionPairCounts = {};
 };
 
 JaneliaMatchServiceData.prototype.loadOwnerList = function (loadCallbacks) {
@@ -77,6 +78,7 @@ JaneliaMatchServiceData.prototype.loadCollectionList = function (loadCallbacks) 
 JaneliaMatchServiceData.prototype.setCollectionList = function(data) {
 
     this.collectionList = [];
+    this.collectionPairCounts = {};
 
     if (data.length > 0) {
 
@@ -87,6 +89,7 @@ JaneliaMatchServiceData.prototype.setCollectionList = function(data) {
                 isCollectionValid = true;
             }
             this.collectionList.push(data[index].collectionId.name);
+            this.collectionPairCounts[data[index].collectionId.name] = data[index].pairCount;
         }
 
         this.collectionList.sort();
@@ -155,11 +158,12 @@ JaneliaMatchServiceData.prototype.loadMatchesForGroup = function(groupId, loadCa
  * @param {JaneliaQueryParameters} queryParameters
  * @param {String} ownerSelectId
  * @param {String} collectionSelectId
+ * @param {String} collectionPairCountId
  * @param {String} messageId
  * @param {String} urlToViewId
  * @constructor
  */
-var JaneliaMatchServiceDataUI = function(queryParameters, ownerSelectId, collectionSelectId, messageId, urlToViewId) {
+var JaneliaMatchServiceDataUI = function(queryParameters, ownerSelectId, collectionSelectId, collectionPairCountId, messageId, urlToViewId) {
 
     this.util = new JaneliaScriptUtilities();
 
@@ -173,6 +177,9 @@ var JaneliaMatchServiceDataUI = function(queryParameters, ownerSelectId, collect
     var setCollection = function(selectedCollection) {
         self.matchServiceData.collection = selectedCollection;
         self.queryParameters.updateParameterAndLink(collectionSelectId, selectedCollection, urlToViewId);
+        var formattedPairCount =
+                self.util.numberWithCommas(self.matchServiceData.collectionPairCounts[selectedCollection]);
+        $('#' + collectionPairCountId).text(formattedPairCount + ' pairs');
     };
 
     this.util.addOnChangeCallbackForSelect(collectionSelectId, setCollection);
@@ -421,6 +428,7 @@ JaneliaMatchPairData.prototype.setOtherTileId = function(selectedOtherTileId) {
  * @param stackSelectId
  * @param matchOwnerSelectId
  * @param matchCollectionSelectId
+ * @param matchCollectionPairCountId
  * @param groupInputId
  * @param tileDateSelectId
  * @param tileColumnSelectId
@@ -433,7 +441,8 @@ JaneliaMatchPairData.prototype.setOtherTileId = function(selectedOtherTileId) {
  * @param otherGroupMessageId
  * @constructor
  */
-var JaneliaTilePairControls = function(ownerSelectId, projectSelectId, stackSelectId, matchOwnerSelectId, matchCollectionSelectId,
+var JaneliaTilePairControls = function(ownerSelectId, projectSelectId, stackSelectId,
+                                       matchOwnerSelectId, matchCollectionSelectId, matchCollectionPairCountId,
                                        groupInputId, tileDateSelectId, tileColumnSelectId, tileSuffixSelectId, otherGroupSelectId, otherTileSelectId,
                                        messageId, urlToViewId, matchesLoadMessageId, otherGroupMessageId) {
 
@@ -443,7 +452,7 @@ var JaneliaTilePairControls = function(ownerSelectId, projectSelectId, stackSele
     this.baseUrl = this.util.getServicesBaseUrl();
 
     this.renderUI = new JaneliaRenderServiceDataUI(this.queryParameters, ownerSelectId, projectSelectId, stackSelectId, messageId, urlToViewId);
-    this.matchUI = new JaneliaMatchServiceDataUI(this.queryParameters, matchOwnerSelectId, matchCollectionSelectId, messageId, urlToViewId);
+    this.matchUI = new JaneliaMatchServiceDataUI(this.queryParameters, matchOwnerSelectId, matchCollectionSelectId, matchCollectionPairCountId, messageId, urlToViewId);
 
     var self = this;
 

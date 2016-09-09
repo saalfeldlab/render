@@ -16,6 +16,8 @@
  */
 package org.janelia.alignment.match;
 
+import com.beust.jcommander.Parameter;
+
 import java.io.File;
 import java.util.Collections;
 import java.util.Comparator;
@@ -116,6 +118,102 @@ public class FeatureExtractionTest {
 
         featureList = canvasFeatureExtractor.extractFeatures(tileRenderParameters,
                                                              getRenderFile(tileRenderParameters));
+    }
+
+    @Test
+    public void testMatch() throws Exception {
+
+        LOG.info("\n\n***** Test Match *****\n");
+
+        final FloatArray2DSIFT.Param coreSiftParameters = new FloatArray2DSIFT.Param();
+
+        // tune here ...
+        coreSiftParameters.fdSize = 8;
+        coreSiftParameters.steps = 3;
+        final double minScale = 0.1;
+        final double maxScale = 0.1;
+
+        // 0.1 - 0.1,     [3s 454ms], extracted 49 features, elapsedTime=650ms,     extracted 117 features, elapsedTime=420ms,     filtered 0 inliers from 6 candidates, elapsedTime=0s
+
+        // 0.2 - 0.2,     [4s 831ms], extracted 235 features, elapsedTime=1136ms,   extracted 492 features, elapsedTime=839ms,     filtered 12 inliers from 26 candidates, elapsedTime=0s
+        // 0.3 - 0.3,     [6s 382ms], extracted 729 features, elapsedTime=1729ms,   extracted 1349 features, elapsedTime=1643ms,   filtered 34 inliers from 60 candidates, elapsedTime=0s
+
+        // 0.5 - 0.5,    [18s 826ms], extracted 2300 features, elapsedTime=4830ms,  extracted 4501 features, elapsedTime=4562ms,   filtered 100 inliers from 158 candidates, elapsedTime=7s
+        // 0.5 - 0.55,   [24s 065ms], extracted 2817 features, elapsedTime=5073ms,  extracted 5449 features, elapsedTime=5684ms,   filtered 128 inliers from 191 candidates, elapsedTime=10s
+        // 0.5 - 0.65,   [36s 702ms], extracted 3774 features, elapsedTime=7980ms,  extracted 7494 features, elapsedTime=7779ms,   filtered 170 inliers from 256 candidates, elapsedTime=18s
+
+        // 0.75 - 0.75,  [51s 703ms], extracted 4611 features, elapsedTime=10500ms, extracted 9407 features, elapsedTime=10495ms,  filtered 208 inliers from 290 candidates, elapsedTime=28s
+
+        // 0.5 - 0.85,   [70s 693ms], extracted 5586 features, elapsedTime=13216ms, extracted 11104 features, elapsedTime=13618ms, filtered 242 inliers from 329 candidates, elapsedTime=41s
+
+        // 1.0 - 1.0,   [104s 312ms], extracted 7095 features, elapsedTime=17888ms, extracted 14073 features, elapsedTime=18532ms, filtered 304 inliers from 414 candidates, elapsedTime=65s
+
+        final CanvasFeatureExtractor featureExtractor = new CanvasFeatureExtractor(coreSiftParameters,
+                                                                                   minScale,
+                                                                                   maxScale,
+                                                                                   true);
+
+        // edge pair:   151215050312010004.12.0 151215050312010005.12.0
+        // center pair: 151215050312008005.12.0 151215050312007005.12.0
+
+        final RenderParameters pTileRenderParameters = RenderParameters.loadFromUrl("http://tem-services:8080/render-ws/v1/owner/flyTEM/project/test2/stack/PROD_ROUGH_MP1_RR_1_35/tile/151215050312008005.12.0/render-parameters?excludeMask=true?filter=true");
+        pTileRenderParameters.initializeDerivedValues();
+
+        final List<Feature> pFeatureList = featureExtractor.extractFeatures(pTileRenderParameters,
+                                                                            getRenderFile(pTileRenderParameters));
+        final RenderParameters qTileRenderParameters = RenderParameters.loadFromUrl("http://tem-services:8080/render-ws/v1/owner/flyTEM/project/test2/stack/PROD_ROUGH_MP1_RR_1_35/tile/151215050312007005.12.0/render-parameters?excludeMask=true?filter=true");
+        qTileRenderParameters.initializeDerivedValues();
+
+        final List<Feature> qFeatureList = featureExtractor.extractFeatures(qTileRenderParameters,
+                                                                            getRenderFile(qTileRenderParameters));
+
+        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(0.92f, 20.0f, 0.0f, 10, true);
+        matcher.deriveMatchResult(pFeatureList, qFeatureList);
+
+
+    }
+
+    @Test
+    public void testMatch2() throws Exception {
+
+        LOG.info("\n\n***** Test Match 2 *****\n");
+
+        final FloatArray2DSIFT.Param coreSiftParameters = new FloatArray2DSIFT.Param();
+
+        // tune here ...
+        coreSiftParameters.fdSize = 8;
+        coreSiftParameters.steps = 3;
+        final double minScale = 0.4;
+        final double maxScale = 0.4;
+
+        // 0.3 - 0.3,     [9s 765ms], extracted 2729 features, elapsedTime=1661ms,   extracted 2821 features, elapsedTime=1364ms,   filtered 0 inliers from 46 candidates, elapsedTime=4s
+
+        // 0.5 - 0.5,     [57s 786ms], extracted 8712 features, elapsedTime=4052ms,   extracted 8568 features, elapsedTime=3583ms,   filtered 51 inliers from 155 candidates, elapsedTime=47s
+
+        final CanvasFeatureExtractor featureExtractor = new CanvasFeatureExtractor(coreSiftParameters,
+                                                                                   minScale,
+                                                                                   maxScale,
+                                                                                   true);
+
+        final String stackUrl = "http://tem-services:8080/render-ws/v1/owner/flyTEM/project/FAFB00/stack/v10_acquire";
+        final String urlSuffix = "/render-parameters?excludeMask=true?filter=true";
+
+        final RenderParameters pTileRenderParameters = RenderParameters.loadFromUrl(stackUrl + "/tile/151029153413044085.1196.0" + urlSuffix);
+        pTileRenderParameters.initializeDerivedValues();
+
+        final List<Feature> pFeatureList = featureExtractor.extractFeatures(pTileRenderParameters,
+                                                                            getRenderFile(pTileRenderParameters));
+        final RenderParameters qTileRenderParameters = RenderParameters.loadFromUrl(stackUrl + "/tile/151029153413044086.1196.0" + urlSuffix);
+        qTileRenderParameters.initializeDerivedValues();
+
+        final List<Feature> qFeatureList = featureExtractor.extractFeatures(qTileRenderParameters,
+                                                                            getRenderFile(qTileRenderParameters));
+
+        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(0.92f, 20.0f, 0.0f, 10, true);
+        final CanvasFeatureMatchResult result = matcher.deriveMatchResult(pFeatureList, qFeatureList);
+
+        System.out.println(result.toString());
+
     }
 
     private File getRenderFile(final RenderParameters renderParameters) {
