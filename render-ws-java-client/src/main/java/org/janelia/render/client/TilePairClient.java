@@ -149,7 +149,7 @@ public class TilePairClient {
             if (baseOwner == null) {
                 baseOwner = owner;
             }
-            return baseProject;
+            return baseOwner;
         }
 
         public String getBaseProject() {
