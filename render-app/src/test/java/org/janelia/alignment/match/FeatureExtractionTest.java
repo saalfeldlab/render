@@ -16,8 +16,6 @@
  */
 package org.janelia.alignment.match;
 
-import com.beust.jcommander.Parameter;
-
 import java.io.File;
 import java.util.Collections;
 import java.util.Comparator;
