@@ -40,9 +40,15 @@ public class ImportTransformChangesClient {
                 required = true)
         private String stack;
 
+        @Parameter(names =
+                "--targetOwner",
+                description = "Name of owner for target stack that will contain imported transforms (default is to reuse source owner)",
+                required = false)
+        private String targetOwner;
+
         @Parameter(
                 names = "--targetProject",
-                description = "Name of target project that will contain imported transforms (default is to reuse source project)",
+                description = "Name of project for target stack that will contain imported transforms (default is to reuse source project)",
                 required = false)
         private String targetProject;
 
@@ -63,6 +69,20 @@ public class ImportTransformChangesClient {
                 description = "Specifies how the transforms should be applied to existing data",
                 required = false)
         private ChangeMode changeMode = ChangeMode.REPLACE_LAST;
+
+        public String getTargetOwner() {
+            if (targetOwner == null) {
+                targetOwner = owner;
+            }
+            return targetOwner;
+        }
+
+        public String getTargetProject() {
+            if (targetProject == null) {
+                targetProject = project;
+            }
+            return targetProject;
+        }
 
     }
 
@@ -101,15 +121,9 @@ public class ImportTransformChangesClient {
                                                            parameters.owner,
                                                            parameters.project);
 
-        if ((parameters.targetProject == null) ||
-            (parameters.targetProject.trim().length() == 0) ||
-            (parameters.targetProject.equals(parameters.project))){
-            this.targetRenderDataClient = sourceRenderDataClient;
-        } else {
-            this.targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                               parameters.owner,
-                                                               parameters.targetProject);
-        }
+        this.targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                           parameters.getTargetOwner(),
+                                                           parameters.getTargetProject());
 
         this.zToDataMap = new HashMap<>();
     }

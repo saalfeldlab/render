@@ -43,7 +43,16 @@ public class ImportMETClient {
         @Parameter(names = "--stack", description = "Name of source stack containing base tile specifications", required = true)
         private String stack;
 
-        @Parameter(names = "--targetProject", description = "Name of target project that will contain imported transforms (default is to reuse source project)", required = false)
+        @Parameter(
+                names = "--targetOwner",
+                description = "Name of owner for target stack that will contain imported transforms (default is to reuse source owner)",
+                required = false)
+        private String targetOwner;
+
+        @Parameter(
+                names = "--targetProject",
+                description = "Name of project for target stack that will contain imported transforms (default is to reuse source project)",
+                required = false)
         private String targetProject;
 
         @Parameter(names = "--targetStack", description = "Name of target (align, montage, etc.) stack that will contain imported transforms", required = true)
@@ -63,6 +72,21 @@ public class ImportMETClient {
 
         @Parameter(names = "--disableValidation", description = "Disable flyTEM tile validation", required = false, arity = 0)
         private boolean disableValidation;
+
+        public String getTargetOwner() {
+            if (targetOwner == null) {
+                targetOwner = owner;
+            }
+            return targetOwner;
+        }
+
+        public String getTargetProject() {
+            if (targetProject == null) {
+                targetProject = project;
+            }
+            return targetProject;
+        }
+
     }
 
     public static void main(final String[] args) {
@@ -104,15 +128,9 @@ public class ImportMETClient {
                                                            parameters.owner,
                                                            parameters.project);
 
-        if ((parameters.targetProject == null) ||
-            (parameters.targetProject.trim().length() == 0) ||
-            (parameters.targetProject.equals(parameters.project))){
-            this.targetRenderDataClient = sourceRenderDataClient;
-        } else {
-            this.targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                               parameters.owner,
-                                                               parameters.targetProject);
-        }
+        this.targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                           parameters.getTargetOwner(),
+                                                           parameters.getTargetProject());
 
         this.metSectionToDataMap = new HashMap<>();
     }
