@@ -1327,16 +1327,33 @@ public class RenderDao {
         // INDEX:     z_1_minY_1_minX_1_maxY_1_maxX_1_tileId_1
         final Document tileQuery = new Document("z", z);
         final Document tileKeys =
-                new Document("tileId", 1).append(
+                new Document("tileId", 1).append("layout", 1).append("z", 1).append(
                         "minX", 1).append("minY", 1).append("maxX", 1).append("maxY", 1).append("_id", 0);
 
         final List<TileBounds> list = new ArrayList<>();
 
         try (MongoCursor<Document> cursor = tileCollection.find(tileQuery).projection(tileKeys).iterator()) {
             Document document;
+            Document layoutDocument;
+            String sectionId;
             while (cursor.hasNext()) {
+
                 document = cursor.next();
-                list.add(TileBounds.fromJson(document.toJson()));
+
+                layoutDocument = (Document) document.get("layout");
+                if (layoutDocument == null) {
+                    sectionId = null;
+                } else {
+                    sectionId = layoutDocument.getString("sectionId");
+                }
+
+                list.add(new TileBounds(document.getString("tileId"),
+                                        sectionId,
+                                        document.getDouble("z"),
+                                        document.getDouble("minX"),
+                                        document.getDouble("minY"),
+                                        document.getDouble("maxX"),
+                                        document.getDouble("maxY")));
             }
         }
 

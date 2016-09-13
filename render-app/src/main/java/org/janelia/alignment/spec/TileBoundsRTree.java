@@ -152,8 +152,8 @@ public class TileBoundsRTree {
             firstTileId = tileBoundsList.get(0).getTileId();
         }
 
-        LOG.debug("getCircleNeighbors: entry, {} tiles, {} neighborTrees, firstTileId is {}",
-                  tileBoundsList.size(), neighborTrees.size(), firstTileId);
+        LOG.debug("getCircleNeighbors: entry, {} tiles with z {}, {} neighborTrees, firstTileId is {}",
+                  tileBoundsList.size(), z, neighborTrees.size(), firstTileId);
 
         final Set<OrderedCanvasIdPair> neighborTileIdPairs = new HashSet<>(50000);
 
@@ -179,13 +179,13 @@ public class TileBoundsRTree {
                 searchResults = findTilesInCircle(circle);
 
                 neighborTileIdPairs.addAll(
-                        getDistinctPairs(z, tileBounds, z, searchResults, filterCornerNeighbors));
+                        getDistinctPairs(tileBounds, searchResults, filterCornerNeighbors));
             }
 
             for (final TileBoundsRTree neighborTree : neighborTrees) {
                 searchResults = neighborTree.findTilesInCircle(circle);
                 neighborTileIdPairs.addAll(
-                        getDistinctPairs(z, tileBounds, neighborTree.z, searchResults, filterCornerNeighbors));
+                        getDistinctPairs(tileBounds, searchResults, filterCornerNeighbors));
             }
         }
 
@@ -223,9 +223,7 @@ public class TileBoundsRTree {
      * @return distinct set of pairs of the fromTile with each toTile.
      *         If the fromTile is in the toTiles list, it is ignored (fromTile won't be paired with itself).
      */
-    public static Set<OrderedCanvasIdPair> getDistinctPairs(final Double fromTileZ,
-                                                            final TileBounds fromTile,
-                                                            final Double toTileZ,
+    public static Set<OrderedCanvasIdPair> getDistinctPairs(final TileBounds fromTile,
                                                             final List<TileBounds> toTiles,
                                                             final boolean filterCornerNeighbors) {
         final Set<OrderedCanvasIdPair> pairs = new HashSet<>(toTiles.size() * 2);
@@ -236,7 +234,7 @@ public class TileBoundsRTree {
         final double fromMinY = fromTile.getMinY();
         final double fromMaxY = fromTile.getMaxY();
 
-        final CanvasId p = new CanvasId(fromTileZ.toString(), pTileId);
+        final CanvasId p = new CanvasId(fromTile.getSectionId(), pTileId);
         String qTileId;
         for (final TileBounds toTile : toTiles) {
             qTileId = toTile.getTileId();
@@ -246,7 +244,7 @@ public class TileBoundsRTree {
                     isNeighborCenterInRange(fromMinX, fromMaxX, toTile.getMinX(), toTile.getMaxX()) ||
                     isNeighborCenterInRange(fromMinY, fromMaxY, toTile.getMinY(), toTile.getMaxY())) {
 
-                    pairs.add(new OrderedCanvasIdPair(p, new CanvasId(toTileZ.toString(), qTileId)));
+                    pairs.add(new OrderedCanvasIdPair(p, new CanvasId(toTile.getSectionId(), qTileId)));
                 }
 
             }

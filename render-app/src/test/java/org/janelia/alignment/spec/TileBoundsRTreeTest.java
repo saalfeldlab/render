@@ -86,25 +86,26 @@ public class TileBoundsRTreeTest {
     @Test
     public void testGetCanvasIdPairs() {
 
+        final Double z = 99.0;
         final List<TileBounds> tileBoundsList = new ArrayList<>();
         for (double x = 0; x < 30; x = x + 10) {
             for (double y = 0; y < 30; y = y + 10) {
                 tileBoundsList.add(new TileBounds("tile-" + tileBoundsList.size(),
+                                                  String.valueOf(z), z,
                                                   x, y, (x+12), (y+12)));
             }
         }
 
         final TileBounds centerTile = tileBoundsList.get(4);
-        final Double z = 99.0;
 
         Set<OrderedCanvasIdPair> pairs =
-                TileBoundsRTree.getDistinctPairs(z, centerTile, z, tileBoundsList, false);
+                TileBoundsRTree.getDistinctPairs(centerTile, tileBoundsList, false);
         int expectedNumberOfCombinations = tileBoundsList.size() - 1; // all tiles except the center
         Assert.assertEquals("incorrect number of combinations (with corner neighbors) in " + pairs,
                             expectedNumberOfCombinations, pairs.size());
 
         expectedNumberOfCombinations = expectedNumberOfCombinations - 4; // remove the 4 corner tiles
-        pairs = TileBoundsRTree.getDistinctPairs(z, centerTile, z, tileBoundsList, true);
+        pairs = TileBoundsRTree.getDistinctPairs(centerTile, tileBoundsList, true);
         Assert.assertEquals("incorrect number of combinations (without corner neighbors) in " + pairs,
                             expectedNumberOfCombinations, pairs.size());
     }
@@ -117,9 +118,9 @@ public class TileBoundsRTreeTest {
         Assert.assertEquals("incorrect number of obscured tiles found in default tree",
                             0, completelyObscuredTiles.size());
 
-        tree.addTile(new TileBounds("zzz-1",   5.0,  5.0, 25.0, 25.0));
-        tree.addTile(new TileBounds("zzz-2",   0.0,  0.0, 15.0, 15.0));
-        tree.addTile(new TileBounds("aaa-3", -10.0, 12.0, 15.0, 25.0));
+        tree.addTile(new TileBounds("zzz-1", "1", 1.0,   5.0,  5.0, 25.0, 25.0));
+        tree.addTile(new TileBounds("zzz-2", "1", 1.0,   0.0,  0.0, 15.0, 15.0));
+        tree.addTile(new TileBounds("aaa-3", "1", 1.0, -10.0, 12.0, 15.0, 25.0));
 
         completelyObscuredTiles = tree.findCompletelyObscuredTiles();
         Assert.assertEquals("incorrect number of obscured tiles found in modified tree",
@@ -134,7 +135,7 @@ public class TileBoundsRTreeTest {
         Assert.assertEquals("incorrect number of visible tiles found in default tree",
                             tileBoundsList.size(), visibleTiles.size());
 
-        final TileBounds reacquiredTile = new TileBounds("zzz-1",   5.0,  5.0, 25.0, 25.0);
+        final TileBounds reacquiredTile = new TileBounds("zzz-1", "1", 1.0, 5.0, 5.0, 25.0, 25.0);
         tileBoundsList.add(reacquiredTile);
         tree.addTile(reacquiredTile);
 
@@ -174,7 +175,7 @@ public class TileBoundsRTreeTest {
         final Double maxX = minX + tileSize;
         final Double minY = row * (tileSize - 1.0);
         final Double maxY = minY + tileSize;
-        return new TileBounds(getTileId(tileIndex, z), minX, minY, maxX, maxY) ;
+        return new TileBounds(getTileId(tileIndex, z), String.valueOf(z), z, minX, minY, maxX, maxY) ;
     }
 
     private List<TileBounds> buildListForZ(final double z) {
