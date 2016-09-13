@@ -86,13 +86,13 @@ public class WarpTransformClient
 
         @Parameter(
                 names = "--minZ",
-                description = "Minimum Z value for sections to be copied",
+                description = "Minimum Z value for sections to be processed",
                 required = false)
         private Double minZ;
 
         @Parameter(
                 names = "--maxZ",
-                description = "Maximum Z value for sections to be copied",
+                description = "Maximum Z value for sections to be processed",
                 required = false)
         private Double maxZ;
 
