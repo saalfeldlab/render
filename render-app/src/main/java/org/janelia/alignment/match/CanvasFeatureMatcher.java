@@ -124,12 +124,13 @@ public class CanvasFeatureMatcher implements Serializable {
     }
 
     public Matches filterMatches(final Matches candidates,
-                                 final Model model) {
+                                 final Model model,
+                                 final double renderScale) {
 
         final List<PointMatch> candidatesList =
                 CanvasFeatureMatchResult.convertMatchesToPointMatchList(candidates);
         final List<PointMatch> inliersList = filterMatches(candidatesList, model);
-        return CanvasFeatureMatchResult.convertPointMatchListToMatches(inliersList);
+        return CanvasFeatureMatchResult.convertPointMatchListToMatches(inliersList, renderScale);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureMatcher.class);

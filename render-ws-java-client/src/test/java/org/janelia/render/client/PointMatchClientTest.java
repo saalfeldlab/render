@@ -33,6 +33,7 @@ public class PointMatchClientTest {
                 "--owner", "trautmane",
                 "--collection", "pm_client_test_tiles",
                 "--numberOfThreads", String.valueOf(numberOfThreads),
+                "--renderScale", "0.3",
 //                "--debugDirectory", "/Users/trautmane/Desktop",
 //                "--matchStorageFile", "/Users/trautmane/Desktop/matches.json",
                 tile1, tile2,

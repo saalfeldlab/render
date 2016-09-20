@@ -115,6 +115,9 @@ public class PointMatchClient {
         @Parameter(names = "--renderFileFormat", description = "Format for saved canvases (only relevant if debugDirectory is specified)", required = false)
         private RenderFileFormat renderFileFormat = RenderFileFormat.JPG;
 
+        @Parameter(names = "--renderScale", description = "Render canvases at this scale", required = false)
+        private Double renderScale = 1.0;
+
         @Parameter(description = "canvas_1_URL canvas_2_URL [canvas_p_URL canvas_q_URL] ... (each URL pair identifies render parameters for canvas pairs)", required = true)
         private List<String> renderParameterUrls;
 
@@ -263,6 +266,7 @@ public class PointMatchClient {
         for (final String canvasUrlString : clientParameters.renderParameterUrls) {
             if (! this.canvasUrlToDataMap.containsKey(canvasUrlString)) {
                 this.canvasUrlToDataMap.put(canvasUrlString, new CanvasData(canvasUrlString,
+                                                                            parameters.renderScale,
                                                                             canvasUrlToDataMap.size(),
                                                                             clientParameters));
             }
@@ -372,31 +376,50 @@ public class PointMatchClient {
 
         LOG.info("saveMatches: entry, canvasMatchesList.size={}", canvasMatchesList.size());
 
-        CanvasMatches canvasMatches;
-        if (parameters.matchStorageFile != null) {
+        final List<CanvasMatches> filteredCanvasMatchesList = new ArrayList<>(canvasMatchesList.size());
+        for (final CanvasMatches canvasMatches : canvasMatchesList) {
+            if (canvasMatches.size() > 0) {
+                filteredCanvasMatchesList.add(canvasMatches);
+            }
+        }
 
-            final Path storagePath = Paths.get(parameters.matchStorageFile);
+        final int numberOfPairsWithoutMatches = canvasMatchesList.size() - filteredCanvasMatchesList.size();
 
-            try (BufferedWriter writer = Files.newBufferedWriter(storagePath, StandardCharsets.UTF_8)) {
+        if (numberOfPairsWithoutMatches > 0) {
+            LOG.info("saveMatches: filtered out {} pairs with no matches", numberOfPairsWithoutMatches);
+        }
 
-                writer.write("[\n");
+        if (filteredCanvasMatchesList.size() > 0) {
 
-                for (int i = 0; i < canvasMatchesList.size(); i++) {
-                    if (i > 0) {
-                        writer.write(",\n");
+            CanvasMatches canvasMatches;
+            if (parameters.matchStorageFile != null) {
+
+                final Path storagePath = Paths.get(parameters.matchStorageFile);
+
+                try (BufferedWriter writer = Files.newBufferedWriter(storagePath, StandardCharsets.UTF_8)) {
+
+                    writer.write("[\n");
+
+                    for (int i = 0; i < filteredCanvasMatchesList.size(); i++) {
+                        if (i > 0) {
+                            writer.write(",\n");
+                        }
+                        canvasMatches = filteredCanvasMatchesList.get(i);
+                        writer.write(canvasMatches.toJson());
                     }
-                    canvasMatches = canvasMatchesList.get(i);
-                    writer.write(canvasMatches.toJson());
+
+                    writer.write("\n]\n");
                 }
 
-                writer.write("\n]\n");
+
+            } else {
+
+                renderDataClient.saveMatches(filteredCanvasMatchesList);
+
             }
 
-
         } else {
-
-            renderDataClient.saveMatches(canvasMatchesList);
-
+            LOG.info("saveMatches: no pairs have matches so there is nothing to save");
         }
 
         LOG.info("saveMatches: exit");
@@ -408,15 +431,19 @@ public class PointMatchClient {
     public static class CanvasData {
 
         private final RenderParameters renderParameters;
+        private final double renderScale;
         private final String canvasGroupId;
         private final String canvasId;
         private List<Feature> featureList;
 
         public CanvasData(final String canvasUrl,
+                          final double renderScale,
                           final int canvasIndex,
                           final Parameters clientParameters) {
 
             this.renderParameters = RenderParameters.loadFromUrl(canvasUrl);
+            this.renderParameters.setScale(renderScale);
+            this.renderScale = renderScale;
             this.canvasGroupId = clientParameters.getCanvasGroupId(this.renderParameters);
             final String canvasName = "c_" + String.format("%05d", canvasIndex);
             this.canvasId = clientParameters.getCanvasId(this.renderParameters, canvasName);
@@ -513,7 +540,7 @@ public class PointMatchClient {
                                      pCanvasData.canvasId,
                                      qCanvasData.canvasGroupId,
                                      qCanvasData.canvasId,
-                                     matchResult.getInlierMatches());
+                                     matchResult.getInlierMatches(pCanvasData.renderScale));
         }
 
         @Override

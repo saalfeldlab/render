@@ -1,7 +1,6 @@
 {
   "width" : 2560,
   "height" : 2160,
-  "scale" : 0.3,
   "doFilter" : true,
   "tileSpecs" : [
     {

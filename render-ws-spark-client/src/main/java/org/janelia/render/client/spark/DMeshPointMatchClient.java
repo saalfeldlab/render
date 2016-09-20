@@ -190,6 +190,8 @@ public class DMeshPointMatchClient
                                                                              parameters.matchMinNumInliers,
                                                                              parameters.filterMatches);
 
+        final double renderScale = parameters.renderScale;
+
         // broadcast to all nodes
         final Broadcast<Long> broadcastCacheMaxKilobytes = sparkContext.broadcast(cacheMaxKilobytes);
         final Broadcast<CanvasFileLoader> broadcastFileLoader = sparkContext.broadcast(fileLoader);
@@ -253,9 +255,16 @@ public class DMeshPointMatchClient
 
                                 if (featureMatcher.isFilterMatches()) {
                                     inlierMatches = featureMatcher.filterMatches(pairMatches.getMatches(),
-                                                                                 new AffineModel2D());
+                                                                                 new AffineModel2D(),
+                                                                                 renderScale);
                                 } else {
                                     inlierMatches = pairMatches.getMatches();
+
+                                    // point matches must be stored in full scale coordinates
+                                    if (renderScale != 1.0) {
+                                        scalePoints(inlierMatches.getPs(), renderScale);
+                                        scalePoints(inlierMatches.getQs(), renderScale);
+                                    }
                                 }
 
                                 if (inlierMatches.getWs().length > 0) {
@@ -326,6 +335,16 @@ public class DMeshPointMatchClient
         sparkContext.stop();
 
     }
+
+    private static void scalePoints(final double[][] points,
+                                    final double renderScale) {
+        for (int i = 0; i < points.length; i++) {
+            for (int j = 0; j < points[i].length; j++) {
+                points[i][j] = points[i][j] / renderScale;
+            }
+        }
+    }
+
 
     private static final Logger LOG = LoggerFactory.getLogger(DMeshPointMatchClient.class);
 }

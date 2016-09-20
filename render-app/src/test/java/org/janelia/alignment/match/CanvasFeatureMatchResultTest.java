@@ -41,7 +41,7 @@ public class CanvasFeatureMatchResultTest {
             originalList.add(new PointMatch(new Point(new double[]{i,i*2}), new Point(new double[]{i*10,i*20}), i*0.1));
         }
 
-        final Matches matches = CanvasFeatureMatchResult.convertPointMatchListToMatches(originalList);
+        final Matches matches = CanvasFeatureMatchResult.convertPointMatchListToMatches(originalList, 1.0);
 
         Assert.assertEquals("incorrect number of matches weights", originalList.size(), matches.getWs().length);
 

@@ -51,10 +51,12 @@ public class CanvasFeatureMatchResult {
     }
 
     /**
+     * @param renderScale     scale of rendered canvases (needed to return matches in full scale coordinates).
+     *
      * @return collection of inlier matches.
      */
-    public Matches getInlierMatches() {
-        return convertPointMatchListToMatches(inliers);
+    public Matches getInlierMatches(final Double renderScale) {
+        return convertPointMatchListToMatches(inliers, renderScale);
     }
 
     /**
@@ -75,10 +77,12 @@ public class CanvasFeatureMatchResult {
 
     /**
      * @param  pointMatchList  list of point matches to convert.
+     * @param  renderScale     scale of rendered canvases (needed to return matches in full scale coordinates).
      *
      * @return the specified point match list in {@link Matches} form.
      */
-    public static Matches convertPointMatchListToMatches(final List<PointMatch> pointMatchList) {
+    public static Matches convertPointMatchListToMatches(final List<PointMatch> pointMatchList,
+                                                         final double renderScale) {
 
         final Matches matches;
 
@@ -108,8 +112,14 @@ public class CanvasFeatureMatchResult {
                 local2 = p2.getL();
 
                 for (int j = 0; j < dimensionCount; j++) {
-                    p[j][i] = local1[j];
-                    q[j][i] = local2[j];
+                    if (renderScale == 1.0) {
+                        p[j][i] = local1[j];
+                        q[j][i] = local2[j];
+                    } else {
+                        // point matches must be stored in full scale coordinates
+                        p[j][i] = local1[j] / renderScale;
+                        q[j][i] = local2[j] / renderScale;
+                    }
                 }
 
                 w[i] = pointMatch.getWeight();
