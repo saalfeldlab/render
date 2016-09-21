@@ -369,7 +369,7 @@ public class Render {
             filterStop = System.currentTimeMillis();
 
             // open mask
-            final ImageProcessor maskSourceProcessor;
+            ImageProcessor maskSourceProcessor;
             final String maskUrl = imageAndMask.getMaskUrl();
             if ((maskUrl != null) && (! excludeMask)) {
                 maskSourceProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true);
@@ -421,6 +421,7 @@ public class Render {
                 LOG.warn("render: removing mask because ipMipmap and maskSourceProcessor differ in size, ipMipmap: " +
                          ipMipmap.getWidth() + "x" + ipMipmap.getHeight() + ", maskSourceProcessor: " +
                          maskSourceProcessor.getWidth() + "x" + maskSourceProcessor.getHeight());
+                maskSourceProcessor = null;
             }
 
             sourceCreationStop = System.currentTimeMillis();
