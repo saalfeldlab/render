@@ -168,8 +168,7 @@ public class DMeshPointMatchClient
                         parameters.baseDataUrl,
                         parameters.renderScale,
                         parameters.renderWithFilter,
-                        parameters.renderWithoutMask,
-                        true);
+                        parameters.renderWithoutMask);
 
         final long cacheMaxKilobytes = parameters.maxImageCacheGb * 1000000;
 

@@ -61,9 +61,6 @@ public class RenderableCanvasIdPairsUtilities {
      * @param  renderWithoutMask        indicates whether masks should be excluded
      *                                  when rendering canvases for the current run.
      *
-     * @param  evenSize                 indicates whether each canvas must have an even width and height
-     *                                  (e.g. for DMesh usage).
-     *
      * @return render parameters URL template with specifics for the current run.
      *
      * @throws URISyntaxException
@@ -73,8 +70,7 @@ public class RenderableCanvasIdPairsUtilities {
                                                               final String baseDataUrl,
                                                               final Double renderScale,
                                                               final Boolean renderWithFilter,
-                                                              final Boolean renderWithoutMask,
-                                                              final Boolean evenSize)
+                                                              final Boolean renderWithoutMask)
             throws URISyntaxException {
 
 
@@ -106,9 +102,8 @@ public class RenderableCanvasIdPairsUtilities {
             uriBuilder.addParameter("excludeMask", "true");
         }
 
-        if ((evenSize != null) && evenSize) {
-            uriBuilder.addParameter("evenSize", "true");
-        }
+        // assume all canvases should be normalized for matching
+        uriBuilder.addParameter("normalizeForMatching", "true");
 
         final String populatedRunTemplate = uriBuilder.build().toString();
         String runTemplate = populatedRunTemplate.replaceAll("canavsGroupIdToken",

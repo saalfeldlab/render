@@ -16,7 +16,10 @@ var JaneliaTile = function(label, tileId, tilePair, onloadCallback) {
 
     this.isLoaded = false;
     this.specUrl = this.stackUrl + "/tile/" + tileId;
-    this.imageUrl = this.specUrl + "/jpeg-image?excludeMask=true&filter=true&scale=" + this.scale;
+
+    var queryParameters = "?excludeMask=true&normalizeForMatching=true&filter=true";
+    this.renderUrl = this.specUrl + "/render-parameters" + queryParameters;
+    this.imageUrl = this.specUrl + "/jpeg-image" + queryParameters + "&scale=" + this.scale;
 
     this.image = new Image();
 
@@ -125,7 +128,8 @@ JaneliaTilePair.prototype.drawTile = function(janeliaTile) {
     var tileImageElement = $("#" + janeliaTile.label + "TileImage");
     tileImageElement.attr("src", janeliaTile.imageUrl);
 
-    var tileIdHtml = '<a href=\"' + janeliaTile.specUrl + '" target="_blank"">' + janeliaTile.tileId + '</a>';
+    var tileIdHtml = '<a href=\"' + janeliaTile.specUrl + '" target="_blank"">' + janeliaTile.tileId + '</a>' +
+                     '<br/>(<a href=\"' + janeliaTile.renderUrl + '" target="_blank"">normalized render parameters</a>)';
     $("#" + janeliaTile.label + "TileId").html(tileIdHtml);
     $("#" + janeliaTile.label + "FullScaleSize").html(fullScaleWidth + " x " + fullScaleHeight);
 };

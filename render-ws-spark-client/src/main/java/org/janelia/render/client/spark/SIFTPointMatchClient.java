@@ -151,8 +151,7 @@ public class SIFTPointMatchClient
                         parameters.baseDataUrl,
                         parameters.renderScale,
                         parameters.renderWithFilter,
-                        parameters.renderWithoutMask,
-                        false);
+                        parameters.renderWithoutMask);
 
         final long cacheMaxKilobytes = parameters.maxFeatureCacheGb * 1000000;
         final CanvasFeatureListLoader featureLoader =

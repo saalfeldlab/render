@@ -131,36 +131,57 @@ public class TileDataService {
                                                 @QueryParam("filter") final Boolean filter,
                                                 @QueryParam("binaryMask") final Boolean binaryMask,
                                                 @QueryParam("excludeMask") final Boolean excludeMask,
-                                                @QueryParam("evenSize") final Boolean evenSize) {
+                                                @QueryParam("normalizeForMatching") final Boolean normalizeForMatching) {
 
-        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}, excludeMask={}",
-                 owner, project, stack, tileId, scale, filter, binaryMask);
+        LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}",
+                 owner, project, stack, tileId);
 
         RenderParameters parameters = null;
         try {
             final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
             tileSpec.flattenTransforms();
 
-            final StackId stackId = new StackId(owner, project, stack);
-            final StackMetaData stackMetaData = getStackMetaData(stackId);
+            double tileRenderX = tileSpec.getMinX();
+            double tileRenderY = tileSpec.getMinY();
 
-            int tileWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX());
-            int tileHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY());
+            int tileRenderWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX());
+            int tileRenderHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY());
 
-            if ((evenSize != null) && evenSize) {
-                if ((tileWidth % 2) == 1) {
-                    tileWidth++;
+            if ((normalizeForMatching != null) && normalizeForMatching) {
+
+                // When deriving point matches for a tile pair in which each tile has different lens correction
+                // transformations, the bounding box for each rendered tile needs to be normalized.
+                // Normalization is achieved by removing the last transform spec (assumed to be an affine that
+                // positions the tile in the world), setting the render start coordinate to (0,0),
+                // padding the width and height of the rendered box so that rotated/skewed tiles are not clipped,
+                // and further padding the width and/or height by 1 pixel to make the rendered width and height even.
+
+                tileSpec.removeLastTransformSpec();
+
+                tileRenderX = 0;
+                tileRenderY = 0;
+
+                final double maxDimension = Math.max(tileRenderWidth, tileRenderHeight);
+                final int renderMargin = (int) (maxDimension * 0.05);
+                tileRenderWidth += renderMargin;
+                tileRenderHeight += renderMargin;
+
+                if ((tileRenderWidth % 2) == 1) {
+                    tileRenderWidth++;
                 }
-                if ((tileHeight % 2) == 1) {
-                    tileHeight++;
+                if ((tileRenderHeight % 2) == 1) {
+                    tileRenderHeight++;
                 }
             }
 
+            final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = getStackMetaData(stackId);
+
             parameters = new RenderParameters(null,
-                                              tileSpec.getMinX(),
-                                              tileSpec.getMinY(),
-                                              tileWidth,
-                                              tileHeight,
+                                              tileRenderX,
+                                              tileRenderY,
+                                              tileRenderWidth,
+                                              tileRenderHeight,
                                               scale);
             parameters.setDoFilter(filter);
             parameters.setBinaryMask(binaryMask);

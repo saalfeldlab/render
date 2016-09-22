@@ -27,10 +27,9 @@ public class RenderableCanvasIdPairsUtilitiesTest {
                                                                                       baseDataUrl,
                                                                                       1.0,
                                                                                       false,
-                                                                                      false,
                                                                                       false);
         Assert.assertEquals("invalid template derived for basic run",
-                            baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters",
+                            baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters?normalizeForMatching=true",
                             templateForRun);
 
         templateForRun =
@@ -38,10 +37,9 @@ public class RenderableCanvasIdPairsUtilitiesTest {
                                                                                       baseDataUrl,
                                                                                       0.8,
                                                                                       true,
-                                                                                      true,
                                                                                       true);
         Assert.assertEquals("invalid template derived for scaled run",
-                            baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters?scale=0.8&filter=true&excludeMask=true&evenSize=true",
+                            baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters?scale=0.8&filter=true&excludeMask=true&normalizeForMatching=true",
                             templateForRun);
     }
 
