@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.bson.Document;
 import org.janelia.alignment.match.CanvasMatches;
@@ -58,6 +59,33 @@ public class MatchDao {
         }
 
         return list;
+    }
+
+    /**
+     * @return list of distinct pGroupIds in the specified collection.
+     */
+    public List<String> getDistinctPGroupIds(final MatchCollectionId collectionId)
+            throws IllegalArgumentException {
+        return getDistinctIdsForField(collectionId, "pGroupId");
+    }
+
+    /**
+     * @return list of distinct qGroupIds in the specified collection.
+     */
+    public List<String> getDistinctQGroupIds(final MatchCollectionId collectionId)
+            throws IllegalArgumentException {
+        return getDistinctIdsForField(collectionId, "qGroupId");
+    }
+
+    /**
+     * @return list of distinct p and q groupIds in the specified collection.
+     */
+    public List<String> getDistinctGroupIds(final MatchCollectionId collectionId)
+            throws IllegalArgumentException {
+        final Set<String> groupIds = new TreeSet<>();
+        groupIds.addAll(getDistinctPGroupIds(collectionId));
+        groupIds.addAll(getDistinctQGroupIds(collectionId));
+        return new ArrayList<>(groupIds);
     }
 
     public void writeMatchesWithPGroup(final MatchCollectionId collectionId,
@@ -266,6 +294,24 @@ public class MatchDao {
         return collectionList;
     }
 
+    private List<String> getDistinctIdsForField(final MatchCollectionId collectionId,
+                                                final String fieldName) {
+
+        MongoUtil.validateRequiredParameter("collectionId", collectionId);
+
+        final List<String> distinctIds = new ArrayList<>(8096);
+
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+
+        try (MongoCursor<String> cursor = collection.distinct(fieldName, String.class).iterator()) {
+            while (cursor.hasNext()) {
+                distinctIds.add(cursor.next());
+            }
+        }
+
+        return distinctIds;
+    }
+
     private void writeMatches(final List<MongoCollection<Document>> collectionList,
                               final Document query,
                               final OutputStream outputStream)
@@ -457,6 +503,9 @@ public class MatchDao {
                                       "pId", 1).append(
                                       "qId", 1),
                               MATCH_A_OPTIONS);
+        MongoUtil.createIndex(collection,
+                              new Document("qGroupId", 1),
+                              MATCH_B_OPTIONS);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MatchDao.class);
@@ -471,5 +520,6 @@ public class MatchDao {
     private static final byte[] CLOSE_BRACKET = "]".getBytes();
 
     private static final IndexOptions MATCH_A_OPTIONS = new IndexOptions().unique(true).background(true).name("A");
+    private static final IndexOptions MATCH_B_OPTIONS = new IndexOptions().background(true).name("B");
 
 }

@@ -101,6 +101,66 @@ public class MatchService {
         return ownerMetaDataList;
     }
 
+    @Path("owner/{owner}/matchCollection/{matchCollection}/pGroupIds")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "List distinct pGroup identifiers",
+            response = CanvasMatches.class,
+            responseContainer="List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public List<String> getDistinctPGroupIds(@PathParam("owner") final String owner,
+                                             @PathParam("matchCollection") final String matchCollection) {
+
+        LOG.info("getDistinctPGroupIds: entry, owner={}, matchCollection={}",
+                 owner, matchCollection);
+
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+        return matchDao.getDistinctPGroupIds(collectionId);
+    }
+
+    @Path("owner/{owner}/matchCollection/{matchCollection}/qGroupIds")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "List distinct qGroup identifiers",
+            response = CanvasMatches.class,
+            responseContainer="List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public List<String> getDistinctQGroupIds(@PathParam("owner") final String owner,
+                                             @PathParam("matchCollection") final String matchCollection) {
+
+        LOG.info("getDistinctQGroupIds: entry, owner={}, matchCollection={}",
+                 owner, matchCollection);
+
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+        return matchDao.getDistinctQGroupIds(collectionId);
+    }
+
+    @Path("owner/{owner}/matchCollection/{matchCollection}/groupIds")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "List distinct group (p and q) identifiers",
+            response = CanvasMatches.class,
+            responseContainer="List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public List<String> getDistinctGroupIds(@PathParam("owner") final String owner,
+                                            @PathParam("matchCollection") final String matchCollection) {
+
+        LOG.info("getDistinctGroupIds: entry, owner={}, matchCollection={}",
+                 owner, matchCollection);
+
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+        return matchDao.getDistinctGroupIds(collectionId);
+    }
+
     @Path("owner/{owner}/matchCollection/{matchCollection}/pGroup/{pGroupId}/matches")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
