@@ -789,7 +789,9 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
-    public List<SectionData> getSectionData(final StackId stackId)
+    public List<SectionData> getSectionData(final StackId stackId,
+                                            final Double minZ,
+                                            final Double maxZ)
             throws IllegalArgumentException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
@@ -804,6 +806,12 @@ public class RenderDao {
         final MongoCollection<Document> sectionCollection = getSectionCollection(stackId);
 
         final Document query = new Document();
+        if (minZ != null) {
+            query.append("_id.z", new Document(QueryOperators.GTE, minZ));
+        }
+        if (maxZ != null) {
+            query.append("_id.z", new Document(QueryOperators.LTE, maxZ));
+        }
 
         try (MongoCursor<Document> cursor = sectionCollection.find(query).iterator()) {
             Document document;

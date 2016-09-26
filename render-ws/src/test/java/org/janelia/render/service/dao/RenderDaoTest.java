@@ -159,7 +159,7 @@ public class RenderDaoTest {
         Assert.assertEquals("invalid tile count", new Long(12), stats.getTileCount());
 
         // test getSectionData after section collection was created by call to ensureIndexesAndDeriveStats
-        final List<SectionData> list = dao.getSectionData(stackId);
+        final List<SectionData> list = dao.getSectionData(stackId, null, null);
 
         Assert.assertNotNull("null list retrieved", list);
         Assert.assertEquals("invalid number of sections found", 2, list.size());
@@ -167,6 +167,11 @@ public class RenderDaoTest {
         Assert.assertEquals("invalid sectionId for first section", "3903.0", sectionData.getSectionId());
         Assert.assertEquals("invalid z for section 3903.0", 3903, sectionData.getZ(), 0.01);
         Assert.assertEquals("invalid tileCount for section 3903.0", new Long(2), sectionData.getTileCount());
+
+        final List<SectionData> filteredList = dao.getSectionData(stackId, 3903.0, 3904.0);
+
+        Assert.assertNotNull("null filtered list retrieved", filteredList);
+        Assert.assertEquals("invalid number of sections found for filtered list", 2, filteredList.size());
     }
 
     @Test

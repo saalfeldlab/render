@@ -157,8 +157,8 @@ public class RenderDataService {
                                    @QueryParam("minZ") final Double minZ,
                                    @QueryParam("maxZ") final Double maxZ) {
 
-        LOG.info("getZValues: entry, owner={}, project={}, stack={}, minZ={}, maxZ={}",
-                 owner, project, stack, minZ, maxZ);
+        LOG.info("getZValues: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
 
         List<Double> list = null;
         try {
@@ -181,7 +181,9 @@ public class RenderDataService {
     })
     public List<SectionData> getSectionData(@PathParam("owner") final String owner,
                                             @PathParam("project") final String project,
-                                            @PathParam("stack") final String stack) {
+                                            @PathParam("stack") final String stack,
+                                            @QueryParam("minZ") final Double minZ,
+                                            @QueryParam("maxZ") final Double maxZ) {
 
         LOG.info("getSectionData: entry, owner={}, project={}, stack={}",
                  owner, project, stack);
@@ -189,7 +191,7 @@ public class RenderDataService {
         List<SectionData> list = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            list = renderDao.getSectionData(stackId);
+            list = renderDao.getSectionData(stackId, minZ, maxZ);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -207,12 +209,14 @@ public class RenderDataService {
     })
     public List<SectionData> getReorderedSectionData(@PathParam("owner") final String owner,
                                                      @PathParam("project") final String project,
-                                                     @PathParam("stack") final String stack) {
+                                                     @PathParam("stack") final String stack,
+                                                     @QueryParam("minZ") final Double minZ,
+                                                     @QueryParam("maxZ") final Double maxZ) {
 
         LOG.info("getReorderedSectionData: entry, owner={}, project={}, stack={}",
                  owner, project, stack);
 
-        final List<SectionData> list = getSectionData(owner, project, stack);
+        final List<SectionData> list = getSectionData(owner, project, stack, minZ, maxZ);
         final List<SectionData> filteredList = new ArrayList<>(list.size());
         int sectionIdInt;
         int zInt;
@@ -244,12 +248,14 @@ public class RenderDataService {
     })
     public List<Double> getMergedZValues(@PathParam("owner") final String owner,
                                          @PathParam("project") final String project,
-                                         @PathParam("stack") final String stack) {
+                                         @PathParam("stack") final String stack,
+                                         @QueryParam("minZ") final Double minZ,
+                                         @QueryParam("maxZ") final Double maxZ) {
 
         LOG.info("getMergedZValues: entry, owner={}, project={}, stack={}",
                  owner, project, stack);
 
-        final List<SectionData> sectionDataList = getSectionData(owner, project, stack);
+        final List<SectionData> sectionDataList = getSectionData(owner, project, stack, minZ, maxZ);
         final Map<Double, String> zToSectionIdMap = new HashMap<>(sectionDataList.size() * 2);
         final Set<Double> mergedZValues = new HashSet<>();
 

@@ -46,7 +46,7 @@ public class RenderWebServiceUrls {
         return getMatchCollectionUrlString() + "/matches";
     }
 
-    public String getGroupMatchesUrlString(final String pGroupId) {
+    public String getMatchesWithPGroupIdUrlString(final String pGroupId) {
         return getMatchCollectionUrlString() + "/pGroup/" + pGroupId + "/matches";
     }
 

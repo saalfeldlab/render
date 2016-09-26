@@ -18,6 +18,7 @@ import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
 import org.slf4j.Logger;
@@ -265,7 +266,7 @@ public class TilePairClient {
 
         final Map<Double, TileBoundsRTree> zToTreeMap = buildRTrees(zValues);
 
-        final Set<OrderedCanvasIdPair> existingPairs = getExistingPairs(zValues);
+        final Set<OrderedCanvasIdPair> existingPairs = getExistingPairs();
         final Set<OrderedCanvasIdPair> neighborPairs = new TreeSet<>();
 
         Double z;
@@ -367,20 +368,27 @@ public class TilePairClient {
         return zToTreeMap;
     }
 
-    private Set<OrderedCanvasIdPair> getExistingPairs(final List<Double> zValues)
+    private Set<OrderedCanvasIdPair> getExistingPairs()
             throws IOException {
 
         final Set<OrderedCanvasIdPair> existingPairs = new HashSet<>(8192);
 
         if (parameters.excludePairsInMatchCollection != null) {
 
+            final List<SectionData> stackSectionDataList =
+                    renderDataClient.getStackSectionData(parameters.stack,
+                                                         parameters.minZ,
+                                                         parameters.maxZ);
+
             final RenderDataClient matchDataClient =
                     new RenderDataClient(parameters.baseDataUrl,
                                          parameters.owner,
                                          parameters.excludePairsInMatchCollection);
 
-            for (final Double z : zValues) {
-                for (final CanvasMatches canvasMatches : matchDataClient.getMatches(z)) {
+            String pGroupId;
+            for (final SectionData sectionData: stackSectionDataList) {
+                pGroupId = sectionData.getSectionId();
+                for (final CanvasMatches canvasMatches : matchDataClient.getMatchesWithPGroupId(pGroupId)) {
                     existingPairs.add(
                             new OrderedCanvasIdPair(
                                     new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),

@@ -20,6 +20,7 @@ import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
@@ -156,6 +157,48 @@ public class RenderDataClient {
         final JsonResponseHandler<List<Double>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
         LOG.info("getStackZValues: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
+     * @param  stack  name of stack.
+     * @param  minZ   (optional) only include layers with z values greater than or equal to this minimum.
+     * @param  maxZ   (optional) only include layers with z values less than or equal to this maximum.
+     *
+     * @return section data for all layers in the specified stack.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<SectionData> getStackSectionData(final String stack,
+                                                 final Double minZ,
+                                                 final Double maxZ)
+            throws IOException {
+
+        final URIBuilder builder = new URIBuilder(getUri(urls.getStackUrlString(stack) + "/sectionData"));
+
+        if (minZ != null) {
+            builder.addParameter("minZ", minZ.toString());
+        }
+        if (maxZ != null) {
+            builder.addParameter("maxZ", maxZ.toString());
+        }
+
+        final URI uri;
+        try {
+            uri = builder.build();
+        } catch (final URISyntaxException e) {
+            throw new IOException(e.getMessage(), e);
+        }
+
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final TypeReference<List<SectionData>> typeReference = new TypeReference<List<SectionData>>() {};
+        final JsonUtils.GenericHelper<List<SectionData>> helper = new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<SectionData>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getStackSectionData: submitting {}", requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
     }
@@ -580,17 +623,17 @@ public class RenderDataClient {
     }
 
     /**
-     * @param  z      z value for layer.
+     * @param  pGroupId      pGroupId (usually the section id).
      *
-     * @return list of canvas matches with a pGroupId for the specified layer.
+     * @return list of canvas matches with the specified pGroupId.
      *
      * @throws IOException
      *   if the request fails for any reason.
      */
-    public List<CanvasMatches> getMatches(final Double z)
+    public List<CanvasMatches> getMatchesWithPGroupId(final String pGroupId)
             throws IOException {
 
-        final URI uri = getUri(urls.getGroupMatchesUrlString(z.toString()));
+        final URI uri = getUri(urls.getMatchesWithPGroupIdUrlString(pGroupId));
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final TypeReference<List<CanvasMatches>> typeReference = new TypeReference<List<CanvasMatches>>() {};
