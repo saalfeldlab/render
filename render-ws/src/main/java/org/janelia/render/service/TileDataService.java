@@ -162,7 +162,7 @@ public class TileDataService {
                 tileRenderY = 0;
 
                 final double maxDimension = Math.max(tileRenderWidth, tileRenderHeight);
-                final int renderMargin = (int) (maxDimension * 0.05);
+                final int renderMargin = (int) (maxDimension * 0.2);
                 tileRenderWidth += renderMargin;
                 tileRenderHeight += renderMargin;
 
