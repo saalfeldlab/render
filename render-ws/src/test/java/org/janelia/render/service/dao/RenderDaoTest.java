@@ -202,14 +202,14 @@ public class RenderDaoTest {
     public void testRemoveTilesWithSectionId() throws Exception {
 
         final Double z = 3903.0;
-        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBounds(stackId, z);
+        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBoundsForZ(stackId, z);
 
         Assert.assertNotNull("tileBoundsBeforeRemove null for " + stackId + " before removal",
                              tileBoundsBeforeRemove);
 
         dao.removeTilesWithSectionId(stackId, "mis-ordered-section");
 
-        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBounds(stackId, z);
+        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBoundsForZ(stackId, z);
 
         Assert.assertNotNull("tileBoundsAfterRemove null for " + stackId + " after removal",
                              tileBoundsAfterRemove);
@@ -221,11 +221,11 @@ public class RenderDaoTest {
     public void testRemoveTilesWithIds() throws Exception {
 
         final Double z = 3903.0;
-        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBounds(stackId, z);
+        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBoundsForZ(stackId, z);
 
         dao.removeTilesWithIds(stackId, Arrays.asList("134", "135", "136"));
 
-        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBounds(stackId, z);
+        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBoundsForZ(stackId, z);
 
         Assert.assertEquals("invalid tile count after tile list removal",
                             (tileBoundsBeforeRemove.size() - 3), tileBoundsAfterRemove.size());
@@ -235,11 +235,11 @@ public class RenderDaoTest {
     public void testRemoveTile() throws Exception {
 
         final Double z = 3903.0;
-        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBounds(stackId, z);
+        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBoundsForZ(stackId, z);
 
         dao.removeTile(stackId, "134");
 
-        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBounds(stackId, z);
+        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBoundsForZ(stackId, z);
 
         Assert.assertEquals("invalid tile count after tile removal",
                             (tileBoundsBeforeRemove.size() - 1), tileBoundsAfterRemove.size());

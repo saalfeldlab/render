@@ -236,9 +236,9 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetTileBounds() throws Exception {
+    public void testGetTileBoundsForZ() throws Exception {
         final Double z = 3903.0;
-        final List<TileBounds> list = dao.getTileBounds(stackId, z);
+        final List<TileBounds> list = dao.getTileBoundsForZ(stackId, z);
 
         Assert.assertNotNull("null list retrieved", list);
         Assert.assertEquals("invalid number of tiles found", 12, list.size());
@@ -252,6 +252,15 @@ public class RenderDaoReadOnlyTest {
 
         Assert.assertNotNull("tile 134 missing from tileBounds list", tileBounds);
         Assert.assertTrue("bound box not defined tile 134", tileBounds.isBoundingBoxDefined());
+    }
+
+    @Test
+    public void testGetTileBoundsForSection() throws Exception {
+        final String sectionId = "3903.0";
+        final List<TileBounds> list = dao.getTileBoundsForSection(stackId, sectionId);
+
+        Assert.assertNotNull("null list retrieved", list);
+        Assert.assertEquals("invalid number of tiles found", 2, list.size());
     }
 
     @Test

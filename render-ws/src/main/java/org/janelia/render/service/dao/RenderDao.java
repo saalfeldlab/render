@@ -1317,58 +1317,37 @@ public class RenderDao {
     }
 
     /**
-     * @return spatial data for all tiles in the specified stack layer.
+     * @return spatial data for all tiles with the specified z.
      *
      * @throws IllegalArgumentException
      *   if any required parameters are missing or the stack cannot be found.
      */
-    public List<TileBounds> getTileBounds(final StackId stackId,
-                                          final Double z)
+    public List<TileBounds> getTileBoundsForZ(final StackId stackId,
+                                              final Double z)
             throws IllegalArgumentException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
         MongoUtil.validateRequiredParameter("z", z);
 
-        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
-
-        // EXAMPLE:   find({"z" : 3466.0},{"tileId": 1, "minX": 1, "minY": 1, "maxX": 1, "maxY": 1, "_id": 0})
-        // INDEX:     z_1_minY_1_minX_1_maxY_1_maxX_1_tileId_1
         final Document tileQuery = new Document("z", z);
-        final Document tileKeys =
-                new Document("tileId", 1).append("layout", 1).append("z", 1).append(
-                        "minX", 1).append("minY", 1).append("maxX", 1).append("maxY", 1).append("_id", 0);
+        return getTileBounds(stackId, tileQuery);
+    }
 
-        final List<TileBounds> list = new ArrayList<>();
+    /**
+     * @return spatial data for all tiles with the specified z.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     */
+    public List<TileBounds> getTileBoundsForSection(final StackId stackId,
+                                                    final String sectionId)
+            throws IllegalArgumentException {
 
-        try (MongoCursor<Document> cursor = tileCollection.find(tileQuery).projection(tileKeys).iterator()) {
-            Document document;
-            Document layoutDocument;
-            String sectionId;
-            while (cursor.hasNext()) {
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+        MongoUtil.validateRequiredParameter("sectionId", sectionId);
 
-                document = cursor.next();
-
-                layoutDocument = (Document) document.get("layout");
-                if (layoutDocument == null) {
-                    sectionId = null;
-                } else {
-                    sectionId = layoutDocument.getString("sectionId");
-                }
-
-                list.add(new TileBounds(document.getString("tileId"),
-                                        sectionId,
-                                        document.getDouble("z"),
-                                        document.getDouble("minX"),
-                                        document.getDouble("minY"),
-                                        document.getDouble("maxX"),
-                                        document.getDouble("maxY")));
-            }
-        }
-
-        LOG.debug("getTileBounds: found {} tile spec(s) for {}.find({},{})",
-                  list.size(), MongoUtil.fullName(tileCollection), tileQuery.toJson(), tileKeys.toJson());
-
-        return list;
+        final Document tileQuery = new Document("layout.sectionId", sectionId);
+        return getTileBounds(stackId, tileQuery);
     }
 
     public void cloneStack(final StackId fromStackId,
@@ -1554,6 +1533,57 @@ public class RenderDao {
         LOG.debug("writeTileIds: wrote IDs for {} tile spec(s) returned by {}.find({},{}).sort({}), elapsedSeconds={}",
                   tileSpecCount, MongoUtil.fullName(tileCollection),
                   tileQuery.toJson(), tileKeys.toJson(), orderBy.toJson(), timer.getElapsedSeconds());
+    }
+
+    /**
+     * @return spatial data for all tiles in the specified stack layer.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or the stack cannot be found.
+     */
+    private List<TileBounds> getTileBounds(final StackId stackId,
+                                           final Document tileQuery)
+            throws IllegalArgumentException {
+
+        final MongoCollection<Document> tileCollection = getTileCollection(stackId);
+
+        // EXAMPLE:   find({"z" : 3466.0},{"tileId": 1, "minX": 1, "minY": 1, "maxX": 1, "maxY": 1, "_id": 0})
+        // INDEX:     z_1_minY_1_minX_1_maxY_1_maxX_1_tileId_1
+        final Document tileKeys =
+                new Document("tileId", 1).append("layout", 1).append("z", 1).append(
+                        "minX", 1).append("minY", 1).append("maxX", 1).append("maxY", 1).append("_id", 0);
+
+        final List<TileBounds> list = new ArrayList<>();
+
+        try (MongoCursor<Document> cursor = tileCollection.find(tileQuery).projection(tileKeys).iterator()) {
+            Document document;
+            Document layoutDocument;
+            String sectionId;
+            while (cursor.hasNext()) {
+
+                document = cursor.next();
+
+                layoutDocument = (Document) document.get("layout");
+                if (layoutDocument == null) {
+                    sectionId = null;
+                } else {
+                    sectionId = layoutDocument.getString("sectionId");
+                }
+
+                list.add(new TileBounds(document.getString("tileId"),
+                                        sectionId,
+                                        document.getDouble("z"),
+                                        document.getDouble("minX"),
+                                        document.getDouble("minY"),
+                                        document.getDouble("maxX"),
+                                        document.getDouble("maxY")));
+            }
+        }
+
+        LOG.debug("getTileBounds: found {} tile spec(s) for {}.find({},{})",
+                  list.size(), MongoUtil.fullName(tileCollection), tileQuery.toJson(), tileKeys.toJson());
+
+        return list;
     }
 
     private List<TransformSpec> getTransformSpecs(final MongoCollection<Document> transformCollection,
@@ -1918,7 +1948,7 @@ public class RenderDao {
 
         // compound index used for most box intersection queries
         // - z, minY, minX order used to match layout file sorting needs
-        // - appended tileId so that getTileBounds query can be index only (must not sort)
+        // - appended tileId so that getTileBoundsForZ query can be index only (must not sort)
         MongoUtil.createIndex(tileCollection,
                               new Document("z", 1).append("minY", 1).append("minX", 1).append(
                                       "maxY", 1).append("maxX", 1).append("tileId", 1),

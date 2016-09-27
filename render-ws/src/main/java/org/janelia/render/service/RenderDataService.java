@@ -383,18 +383,18 @@ public class RenderDataService {
     @ApiOperation(
             tags = "Section Data APIs",
             value = "Get bounds for each tile with specified z")
-    public List<TileBounds> getTileBounds(@PathParam("owner") final String owner,
-                                          @PathParam("project") final String project,
-                                          @PathParam("stack") final String stack,
-                                          @PathParam("z") final Double z) {
+    public List<TileBounds> getTileBoundsForZ(@PathParam("owner") final String owner,
+                                              @PathParam("project") final String project,
+                                              @PathParam("stack") final String stack,
+                                              @PathParam("z") final Double z) {
 
-        LOG.info("getTileBounds: entry, owner={}, project={}, stack={}, z={}",
+        LOG.info("getTileBoundsForZ: entry, owner={}, project={}, stack={}, z={}",
                  owner, project, stack, z);
 
         List<TileBounds> list = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            list = renderDao.getTileBounds(stackId, z);
+            list = renderDao.getTileBoundsForZ(stackId, z);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -640,6 +640,30 @@ public class RenderDataService {
         LOG.info("updateZForSection: exit");
 
         return responseBuilder.build();
+    }
+
+    @Path("project/{project}/stack/{stack}/section/{sectionId}/tileBounds")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Section Data APIs",
+            value = "Get bounds for each tile with specified sectionId")
+    public List<TileBounds> getTileBoundsForSection(@PathParam("owner") final String owner,
+                                                    @PathParam("project") final String project,
+                                                    @PathParam("stack") final String stack,
+                                                    @PathParam("sectionId") final String sectionId) {
+
+        LOG.info("getTileBoundsForSection: entry, owner={}, project={}, stack={}, sectionId={}",
+                 owner, project, stack, sectionId);
+
+        List<TileBounds> list = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            list = renderDao.getTileBoundsForSection(stackId, sectionId);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+        return list;
     }
 
     @Path("project/{project}/stack/{stack}/transform/{transformId}")
