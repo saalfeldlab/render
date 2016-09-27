@@ -1,14 +1,12 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
-import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
-import org.janelia.alignment.json.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,13 +18,10 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class BoxRemovalClient {
+public class BoxRemovalClient implements Serializable {
 
     @SuppressWarnings("ALL")
-    private static class Parameters {
-
-        @Parameter(names = "--help", description = "Display this note", help = true)
-        private transient boolean help;
+    private static class Parameters extends CommandLineParameters {
 
         @Parameter(names = "--stackDirectory", description = "Stack directory containing boxes to remove (e.g. /tier2/flyTEM/nobackup/rendered_boxes/FAFB00/v7_align_tps/8192x8192)", required = true)
         private String stackDirectory;
@@ -40,32 +35,6 @@ public class BoxRemovalClient {
         @Parameter(description = "Z values for layers to remove", required = true)
         private List<Double> zValues;
 
-        private transient JCommander jCommander;
-
-        public String toString() {
-            try {
-                return JsonUtils.MAPPER.writeValueAsString(this);
-            } catch (final JsonProcessingException e) {
-                throw new IllegalArgumentException(e);
-            }
-        }
-
-        public void parse(final String[] args) throws IllegalArgumentException {
-
-            jCommander = new JCommander(this);
-            jCommander.setProgramName("java -cp current-ws-standalone.jar " + this.getClass().getName());
-
-            try {
-                jCommander.parse(args);
-            } catch (final Throwable t) {
-                throw new IllegalArgumentException("failed to parse command line arguments", t);
-            }
-
-            if (help) {
-                jCommander.usage();
-                System.exit(1);
-            }
-        }
     }
 
     /**
@@ -77,11 +46,13 @@ public class BoxRemovalClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args);
+                parameters.parse(args, BoxRemovalClient.class);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final BoxRemovalClient client = new BoxRemovalClient(parameters);
+                final BoxRemovalClient client = new BoxRemovalClient(parameters.stackDirectory,
+                                                                     parameters.minLevel,
+                                                                     parameters.maxLevel);
                 for (final Double z : parameters.zValues) {
                     client.removeBoxesForZ(z);
                 }
@@ -94,13 +65,15 @@ public class BoxRemovalClient {
     private final int minLevel;
     private final int maxLevel;
 
-    public BoxRemovalClient(final Parameters params) {
-        this.boxDirectory = new File(params.stackDirectory).getAbsoluteFile();
+    public BoxRemovalClient(final String stackDirectory,
+                            final int minLevel,
+                            final int maxLevel) {
+        this.boxDirectory = new File(stackDirectory).getAbsoluteFile();
         if (! boxDirectory.exists()) {
             throw new IllegalArgumentException("missing stack directory " + boxDirectory);
         }
-        this.minLevel = params.minLevel;
-        this.maxLevel = params.maxLevel;
+        this.minLevel = minLevel;
+        this.maxLevel = maxLevel;
         if ((minLevel < 0) || (minLevel > maxLevel)) {
             throw new IllegalArgumentException("minLevel of " + minLevel +
                                                " must be > 0 and <= maxLevel of " + maxLevel);
