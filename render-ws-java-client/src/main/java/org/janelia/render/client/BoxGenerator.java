@@ -446,7 +446,7 @@ public class BoxGenerator implements Serializable {
         // was only partially written.  Note that we only bother with this for level 0 data since
         // other (derivative) level data is not as critical.
         if (lastAlreadyGeneratedBox != null) {
-            regenerateLevelZeroBox(z, imageProcessorCache, boxMipmapGenerator, iGridPaths, lastAlreadyGeneratedBox);
+            regenerateLevelZeroBox(z, imageProcessorCache, boxMipmapGenerator, lastAlreadyGeneratedBox);
         }
 
     }
@@ -454,7 +454,6 @@ public class BoxGenerator implements Serializable {
     private void regenerateLevelZeroBox(final Double z,
                                         final ImageProcessorCache imageProcessorCache,
                                         final BoxMipmapGenerator boxMipmapGenerator,
-                                        final IGridPaths iGridPaths,
                                         final AlreadyGeneratedState lastAlreadyGeneratedBox)
             throws IOException {
 
@@ -473,7 +472,7 @@ public class BoxGenerator implements Serializable {
                              z,
                              imageProcessorCache,
                              boxMipmapGenerator,
-                             iGridPaths,
+                             null, // always exclude iGridPaths since path was already added during generateLevelZero loop
                              levelZeroFile,
                              lastAlreadyGeneratedBox.row,
                              lastAlreadyGeneratedBox.column);
