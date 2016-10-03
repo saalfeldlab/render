@@ -135,17 +135,20 @@ public class TileBoundsRTree {
      * @param  neighborRadiusFactor  applied to max(width, height) of each tile
      *                               to determine radius for locating neighbor tiles.
      *
-     * @param  filterCornerNeighbors if true, exclude neighbor tiles whose center x and y is outside the
+     * @param  excludeCornerNeighbors if true, exclude neighbor tiles whose center x and y is outside the
      *                               source tile's x and y range respectively.
      *
-     * @param  filterSameLayerNeighbors  if true, exclude neighbor tiles in the same layer (z) as the source tile.
+     * @param  excludeSameLayerNeighbors  if true, exclude neighbor tiles in the same layer (z) as the source tile.
+     *
+     * @param  excludeSameSectionNeighbors  if true, exclude neighbor tiles with the same sectionId as the source tile.
      *
      * @return set of distinct neighbor pairs between this tree's tiles and the specified neighbor trees' tiles.
      */
     public Set<OrderedCanvasIdPair> getCircleNeighbors(final List<TileBoundsRTree> neighborTrees,
                                                        final double neighborRadiusFactor,
-                                                       final boolean filterCornerNeighbors,
-                                                       final boolean filterSameLayerNeighbors) {
+                                                       final boolean excludeCornerNeighbors,
+                                                       final boolean excludeSameLayerNeighbors,
+                                                       final boolean excludeSameSectionNeighbors) {
 
         String firstTileId = null;
         if (tileBoundsList.size() > 0) {
@@ -175,17 +178,17 @@ public class TileBoundsRTree {
 
             circle = Geometries.circle(centerX, centerY, radius);
 
-            if (! filterSameLayerNeighbors) {
+            if (! excludeSameLayerNeighbors) {
                 searchResults = findTilesInCircle(circle);
 
                 neighborTileIdPairs.addAll(
-                        getDistinctPairs(tileBounds, searchResults, filterCornerNeighbors));
+                        getDistinctPairs(tileBounds, searchResults, excludeCornerNeighbors, excludeSameSectionNeighbors));
             }
 
             for (final TileBoundsRTree neighborTree : neighborTrees) {
                 searchResults = neighborTree.findTilesInCircle(circle);
                 neighborTileIdPairs.addAll(
-                        getDistinctPairs(tileBounds, searchResults, filterCornerNeighbors));
+                        getDistinctPairs(tileBounds, searchResults, excludeCornerNeighbors, excludeSameSectionNeighbors));
             }
         }
 
@@ -225,7 +228,8 @@ public class TileBoundsRTree {
      */
     public static Set<OrderedCanvasIdPair> getDistinctPairs(final TileBounds fromTile,
                                                             final List<TileBounds> toTiles,
-                                                            final boolean filterCornerNeighbors) {
+                                                            final boolean excludeCornerNeighbors,
+                                                            final boolean excludeSameSectionNeighbors) {
         final Set<OrderedCanvasIdPair> pairs = new HashSet<>(toTiles.size() * 2);
         final String pTileId = fromTile.getTileId();
 
@@ -240,11 +244,15 @@ public class TileBoundsRTree {
             qTileId = toTile.getTileId();
             if (! pTileId.equals(qTileId)) {
 
-                if ((! filterCornerNeighbors) ||
-                    isNeighborCenterInRange(fromMinX, fromMaxX, toTile.getMinX(), toTile.getMaxX()) ||
-                    isNeighborCenterInRange(fromMinY, fromMaxY, toTile.getMinY(), toTile.getMaxY())) {
+                if (! excludeSameSectionNeighbors || (! fromTile.getSectionId().equals(toTile.getSectionId()))) {
 
-                    pairs.add(new OrderedCanvasIdPair(p, new CanvasId(toTile.getSectionId(), qTileId)));
+                    if ((! excludeCornerNeighbors) ||
+                        isNeighborCenterInRange(fromMinX, fromMaxX, toTile.getMinX(), toTile.getMaxX()) ||
+                        isNeighborCenterInRange(fromMinY, fromMaxY, toTile.getMinY(), toTile.getMaxY())) {
+
+                        pairs.add(new OrderedCanvasIdPair(p, new CanvasId(toTile.getSectionId(), qTileId)));
+                    }
+
                 }
 
             }

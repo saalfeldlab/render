@@ -68,7 +68,7 @@ public class TileBoundsRTreeTest {
                                                               buildListForZ(3.0));
         final List<TileBoundsRTree> neighborTrees = Arrays.asList(treeForZ2, treeForZ3);
 
-        final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(neighborTrees, 1.1, false, false);
+        final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(neighborTrees, 1.1, false, false, false);
 
         // these are short-hand names for the pairs to clarify how many pairs are expected
         final String[] expectedPairs = {
@@ -99,13 +99,13 @@ public class TileBoundsRTreeTest {
         final TileBounds centerTile = tileBoundsList.get(4);
 
         Set<OrderedCanvasIdPair> pairs =
-                TileBoundsRTree.getDistinctPairs(centerTile, tileBoundsList, false);
+                TileBoundsRTree.getDistinctPairs(centerTile, tileBoundsList, false, false);
         int expectedNumberOfCombinations = tileBoundsList.size() - 1; // all tiles except the center
         Assert.assertEquals("incorrect number of combinations (with corner neighbors) in " + pairs,
                             expectedNumberOfCombinations, pairs.size());
 
         expectedNumberOfCombinations = expectedNumberOfCombinations - 4; // remove the 4 corner tiles
-        pairs = TileBoundsRTree.getDistinctPairs(centerTile, tileBoundsList, true);
+        pairs = TileBoundsRTree.getDistinctPairs(centerTile, tileBoundsList, true, false);
         Assert.assertEquals("incorrect number of combinations (without corner neighbors) in " + pairs,
                             expectedNumberOfCombinations, pairs.size());
     }

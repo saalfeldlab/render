@@ -76,25 +76,32 @@ public class TilePairClient {
         private Integer zNeighborDistance = 2;
 
         @Parameter(
-                names = "--filterCornerNeighbors",
+                names = "--excludeCornerNeighbors",
                 description = "Exclude neighbor tiles whose center x and y is outside the source tile's x and y range respectively",
                 required = false,
                 arity = 1)
-        private boolean filterCornerNeighbors = true;
+        private boolean excludeCornerNeighbors = true;
 
         @Parameter(
-                names = "--filterCompletelyObscuredTiles",
+                names = "--excludeCompletelyObscuredTiles",
                 description = "Exclude tiles that are completely obscured by reacquired tiles",
                 required = false,
                 arity = 1)
-        private boolean filterCompletelyObscuredTiles = true;
+        private boolean excludeCompletelyObscuredTiles = true;
 
         @Parameter(
-                names = "--filterSameLayerNeighbors",
+                names = "--excludeSameLayerNeighbors",
                 description = "Exclude neighbor tiles in the same layer (z) as the source tile",
                 required = false,
                 arity = 1)
-        private boolean filterSameLayerNeighbors = false;
+        private boolean excludeSameLayerNeighbors = false;
+
+        @Parameter(
+                names = "--excludeSameSectionNeighbors",
+                description = "Exclude neighbor tiles with the same sectionId as the source tile",
+                required = false,
+                arity = 1)
+        private boolean excludeSameSectionNeighbors = false;
 
         @Parameter(
                 names = "--excludePairsInMatchCollection",
@@ -293,8 +300,9 @@ public class TilePairClient {
 
             currentNeighborPairs = currentZTree.getCircleNeighbors(neighborTreeList,
                                                                    parameters.xyNeighborFactor,
-                                                                   parameters.filterCornerNeighbors,
-                                                                   parameters.filterSameLayerNeighbors);
+                                                                   parameters.excludeCornerNeighbors,
+                                                                   parameters.excludeSameLayerNeighbors,
+                                                                   parameters.excludeSameSectionNeighbors);
             if (existingPairs.size() > 0) {
                 final int beforeSize = currentNeighborPairs.size();
                 currentNeighborPairs.removeAll(existingPairs);
@@ -342,7 +350,7 @@ public class TilePairClient {
                 }
             }
 
-            if (parameters.filterCompletelyObscuredTiles) {
+            if (parameters.excludeCompletelyObscuredTiles) {
 
                 final int unfilteredCount = tileBoundsList.size();
 
