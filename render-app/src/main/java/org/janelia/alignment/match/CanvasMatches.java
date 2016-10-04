@@ -174,7 +174,14 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
     }
 
     public int size() {
-        return (matches == null) ? 0 : matches.getWs().length;
+        int size = 0;
+        if (matches != null) {
+            final double[] w = matches.getWs();
+            if (w != null) {
+                size = w.length;
+            }
+        }
+        return size;
     }
 
     public String getpGroupId() {
