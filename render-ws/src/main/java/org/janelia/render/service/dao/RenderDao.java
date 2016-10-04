@@ -807,9 +807,12 @@ public class RenderDao {
 
         final Document query = new Document();
         if (minZ != null) {
-            query.append("_id.z", new Document(QueryOperators.GTE, minZ));
-        }
-        if (maxZ != null) {
+            if (maxZ != null) {
+                query.append("_id.z", new Document(QueryOperators.GTE, minZ).append(QueryOperators.LTE, maxZ));
+            } else {
+                query.append("_id.z", new Document(QueryOperators.GTE, minZ));
+            }
+        } else if (maxZ != null) {
             query.append("_id.z", new Document(QueryOperators.LTE, maxZ));
         }
 
