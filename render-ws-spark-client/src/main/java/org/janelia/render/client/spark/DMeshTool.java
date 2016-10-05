@@ -1,5 +1,6 @@
 package org.janelia.render.client.spark;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,12 +10,15 @@ import java.util.List;
 import mpicbg.util.Timer;
 
 import org.apache.commons.io.IOUtils;
+import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Utils;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,15 +67,22 @@ public class DMeshTool implements Serializable {
         final Timer timer = new Timer();
         timer.start();
 
+        // Build the unusual "z-tileId" parameter for the tool that has the following format:
+        //   <pZ>.<pTileId>^<qZ>.<qTileId>
+
+        // The z values are used to distinguish intra-layer tiles from inter-layer tiles.
+        // A tileId value of -1 is used to identify special Janelia processing.
+        final String zAndIdParameters = getTileZAndId(pRenderParameters) + "^" + getTileZAndId(qRenderParameters);
+
         final ProcessBuilder processBuilder =
                 new ProcessBuilder(script,
-                                   pTileImage.getAbsolutePath(),
-                                   qTileImage.getAbsolutePath(),
-                                   "-z=" + p.getGroupId() + "," + q.getGroupId(),
-                                   "-matchparams_file=" + matchParametersPath,
+                                   zAndIdParameters,
+                                   "-ima=" + pTileImage.getAbsolutePath(),
+                                   "-imb=" + qTileImage.getAbsolutePath(),
+                                   "-prm=" + matchParametersPath,
                                    "-Ta=" + getAffineCoefficientsString(pRenderParameters),
                                    "-Tb=" + getAffineCoefficientsString(qRenderParameters),
-                                   "-pts_file=stdout").
+                                   "-json").
                         redirectOutput(ProcessBuilder.Redirect.PIPE).
                         redirectError(ProcessBuilder.Redirect.PIPE);
 
@@ -133,6 +144,21 @@ public class DMeshTool implements Serializable {
         }
     }
 
+    private String getTileZAndId(final RenderParameters renderParameters)
+            throws IllegalStateException {
+        final int integralZ;
+        final List<TileSpec> tileSpecs = renderParameters.getTileSpecs();
+        if (tileSpecs.size() == 1) {
+            integralZ = tileSpecs.get(0).getZ().intValue();
+        } else {
+            throw new IllegalStateException("Render parameters must have one and only one tile spec.  " +
+                                            "Render parameters are " + renderParameters);
+        }
+
+        final String magicTileIdForJaneliaProcessing = ".-1";
+        return integralZ + magicTileIdForJaneliaProcessing;
+    }
+
     private String getAffineCoefficientsString(final RenderParameters renderParameters)
             throws IllegalArgumentException {
 
@@ -155,29 +181,53 @@ public class DMeshTool implements Serializable {
         return  "1.0,0.0," + layout.getStageX() + ",0.0,1.0," + layout.getStageY();
     }
 
-    public static void main(final String[] args) {
+    public static void main(final String[] args) throws Exception {
 
-        if (args.length != 10) {
-            throw new IllegalArgumentException("Expected parameters are: script matchParametersPath pGroupId pId pImage pRenderParametersUrl qGroupId qId qImage qRenderParametersUrl");
+        if (args.length != 4) {
+            throw new IllegalArgumentException("Expected parameters are: script matchParametersPath pRenderParametersUrl qRenderParametersUrl");
         }
 
         final String script = args[0];
         final String matchParametersPath = args[1];
 
-        final CanvasId p = new CanvasId(args[2], args[3]);
-        final File pTileImage = new File(args[4]);
-        final String pRenderParametersUrl = args[5];
+        RenderParameters pRenderParameters = null;
+        CanvasId pCanvasId = null;
+        File pImageFile = null;
 
-        final CanvasId q = new CanvasId(args[6], args[7]);
-        final File qTileImage = new File(args[8]);
-        final String qRenderParametersUrl = args[9];
+        RenderParameters qRenderParameters = null;
+        CanvasId qCanvasId = null;
+        File qImageFile = null;
 
-        final RenderParameters pRenderParameters = RenderParameters.loadFromUrl(pRenderParametersUrl);
-        final RenderParameters qRenderParameters = RenderParameters.loadFromUrl(qRenderParametersUrl);
+        for (int i = 2; i < 4; i++) {
+
+            final RenderParameters renderParameters = RenderParameters.loadFromUrl(args[i]);
+            final TileSpec tileSpec = renderParameters.getTileSpecs().get(0);
+            final CanvasId canvasId = new CanvasId(tileSpec.getLayout().getSectionId(), tileSpec.getTileId());
+
+            final File renderedTileFile = new File(tileSpec.getTileId() + ".png");
+            final BufferedImage targetImage = renderParameters.openTargetImage();
+            Render.render(renderParameters, targetImage, ImageProcessorCache.DISABLED_CACHE);
+            Utils.saveImage(targetImage,
+                            renderedTileFile.getAbsolutePath(),
+                            Utils.PNG_FORMAT,
+                            false,
+                            0.85f);
+
+            if (i == 2) {
+                pRenderParameters = renderParameters;
+                pCanvasId = canvasId;
+                pImageFile = renderedTileFile;
+            } else {
+                qRenderParameters = renderParameters;
+                qCanvasId = canvasId;
+                qImageFile = renderedTileFile;
+            }
+        }
 
         final DMeshTool tool = new DMeshTool(new File(script), new File(matchParametersPath), true);
         try {
-            final CanvasMatches canvasMatches = tool.run(p, pTileImage, pRenderParameters, q, qTileImage, qRenderParameters);
+            final CanvasMatches canvasMatches = tool.run(pCanvasId, pImageFile, pRenderParameters,
+                                                         qCanvasId, qImageFile, qRenderParameters);
             LOG.info("result is:\n{}", canvasMatches.toJson());
         } catch (final Throwable t) {
             LOG.error("caught exception", t);
