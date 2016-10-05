@@ -59,10 +59,7 @@ public class DMeshTool implements Serializable {
                              final RenderParameters qRenderParameters)
             throws IOException, InterruptedException, IllegalStateException {
 
-        validateEvenSize("width", p, pRenderParameters.getWidth());
-        validateEvenSize("height", p, pRenderParameters.getHeight());
-        validateEvenSize("width", q, qRenderParameters.getWidth());
-        validateEvenSize("height", q, qRenderParameters.getHeight());
+        validateSizes(p, pRenderParameters, q, qRenderParameters);
 
         final Timer timer = new Timer();
         timer.start();
@@ -135,13 +132,34 @@ public class DMeshTool implements Serializable {
                                  toolMatches.getMatches());
     }
 
-    private void validateEvenSize(final String context,
-                                  final CanvasId canvasId,
-                                  final int value)
+    private void validateSizes(final CanvasId pCanvasId,
+                               final RenderParameters pRenderParameters,
+                               final CanvasId qCanvasId,
+                               final RenderParameters qRenderParameters)
             throws IllegalStateException {
-        if ((value % 2) == 1) {
-            throw new IllegalStateException("canvas " + canvasId + " has odd " + context + " of " + value);
+
+        final int pWidth = pRenderParameters.getWidth();
+        if ((pWidth % 2) == 1) {
+            throw new IllegalStateException("canvas " + pCanvasId + " has odd width " + pWidth);
         }
+
+        final int pHeight = pRenderParameters.getHeight();
+        if ((pHeight % 2) == 1) {
+            throw new IllegalStateException("canvas " + pCanvasId + " has odd height " + pHeight);
+        }
+
+        final int qWidth = qRenderParameters.getWidth();
+        if (pWidth != qWidth) {
+            throw new IllegalStateException("canvas " + pCanvasId + " width (" + pWidth +
+                                            ") differs from canvas " + qCanvasId + " width (" + qWidth + ")");
+        }
+
+        final int qHeight = qRenderParameters.getHeight();
+        if (pHeight != qHeight) {
+            throw new IllegalStateException("canvas " + pCanvasId + " height (" + pHeight +
+                                            ") differs from canvas " + qCanvasId + " height (" + qHeight + ")");
+        }
+
     }
 
     private String getTileZAndId(final RenderParameters renderParameters)
