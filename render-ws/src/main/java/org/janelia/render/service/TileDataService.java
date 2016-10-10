@@ -127,6 +127,8 @@ public class TileDataService {
                                                 @PathParam("project") final String project,
                                                 @PathParam("stack") final String stack,
                                                 @PathParam("tileId") final String tileId,
+                                                @QueryParam("width") final Integer width,   // full scale width
+                                                @QueryParam("height") final Integer height, // full scale height
                                                 @QueryParam("scale") final Double scale,
                                                 @QueryParam("filter") final Boolean filter,
                                                 @QueryParam("binaryMask") final Boolean binaryMask,
@@ -144,27 +146,51 @@ public class TileDataService {
             double tileRenderX = tileSpec.getMinX();
             double tileRenderY = tileSpec.getMinY();
 
-            int tileRenderWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX());
-            int tileRenderHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY());
+            int tileRenderWidth;
+            if (width == null) {
+                tileRenderWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX());
+            } else {
+                tileRenderWidth = width;
+            }
+
+            int tileRenderHeight;
+            if (height == null) {
+                tileRenderHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY());
+            } else {
+                tileRenderHeight = height;
+            }
+
+            final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = getStackMetaData(stackId);
 
             if ((normalizeForMatching != null) && normalizeForMatching) {
 
                 // When deriving point matches for a tile pair in which each tile has different lens correction
                 // transformations, the bounding box for each rendered tile needs to be normalized.
-                // Normalization is achieved by removing the last transform spec (assumed to be an affine that
-                // positions the tile in the world), setting the render start coordinate to (0,0),
-                // padding the width and height of the rendered box so that rotated/skewed tiles are not clipped,
-                // and further padding the width and/or height by 1 pixel to make the rendered width and height even.
+                //
+                // Normalization is achieved by:
+                // (1) Removing the last transform spec (assumed to be an affine that positions the tile in the world).
+                // (2) Setting the render start coordinate to (0,0).
+                // (3) Padding the raw tile width and height by multiplying a normalization factor (1.05).
+                //     Assuming that all tiles in a stack have the same raw width and height, this ensures
+                //     that normalized tiles also have the same width and height with a little extra room
+                //     for edges that are rotated/skewed by lens correction.
+                // (4) Ensuring that the normalized width and height are even by adding a pixel as needed.
+                //
+                // Consistent and even tile sizes are currently a requirement for generating DMesh point matches.
+
+                final double normalizationFactor = 1.05;
+                if (width == null) {
+                    tileRenderWidth = (int) (tileSpec.getWidth() * normalizationFactor);
+                }
+                if (height == null) {
+                    tileRenderHeight = (int) (tileSpec.getHeight() * normalizationFactor);
+                }
 
                 tileSpec.removeLastTransformSpec();
 
                 tileRenderX = 0;
                 tileRenderY = 0;
-
-                final double maxDimension = Math.max(tileRenderWidth, tileRenderHeight);
-                final int renderMargin = (int) (maxDimension * 0.2);
-                tileRenderWidth += renderMargin;
-                tileRenderHeight += renderMargin;
 
                 if ((tileRenderWidth % 2) == 1) {
                     tileRenderWidth++;
@@ -173,9 +199,6 @@ public class TileDataService {
                     tileRenderHeight++;
                 }
             }
-
-            final StackId stackId = new StackId(owner, project, stack);
-            final StackMetaData stackMetaData = getStackMetaData(stackId);
 
             parameters = new RenderParameters(null,
                                               tileRenderX,

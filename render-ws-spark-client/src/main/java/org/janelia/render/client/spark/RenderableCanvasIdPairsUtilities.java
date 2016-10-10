@@ -53,6 +53,10 @@ public class RenderableCanvasIdPairsUtilities {
      *
      * @param  baseDataUrl              base data URL for the current run.
      *
+     * @param  renderFullScaleWidth     full scale width for all rendered canvases.
+     *
+     * @param  renderFullScaleHeight    full scale height for all rendered canvases.
+     *
      * @param  renderScale              scale to use when rendering canvases for the current run.
      *
      * @param  renderWithFilter         indicates whether intensity filtering should be performed
@@ -68,6 +72,8 @@ public class RenderableCanvasIdPairsUtilities {
      */
     public static String getRenderParametersUrlTemplateForRun(final RenderableCanvasIdPairs renderableCanvasIdPairs,
                                                               final String baseDataUrl,
+                                                              final Integer renderFullScaleWidth,
+                                                              final Integer renderFullScaleHeight,
                                                               final Double renderScale,
                                                               final Boolean renderWithFilter,
                                                               final Boolean renderWithoutMask)
@@ -89,6 +95,14 @@ public class RenderableCanvasIdPairsUtilities {
         final String populatedTemplate = canvasDataLoader.getRenderParametersUrl(canvasId);
 
         final URIBuilder uriBuilder = new URIBuilder(populatedTemplate);
+
+        if (renderFullScaleWidth != null) {
+            uriBuilder.addParameter("width", renderFullScaleWidth.toString());
+        }
+
+        if (renderFullScaleHeight != null) {
+            uriBuilder.addParameter("height", renderFullScaleHeight.toString());
+        }
 
         if ((renderScale != null) && (renderScale != 1.0)) {
             uriBuilder.addParameter("scale", renderScale.toString());

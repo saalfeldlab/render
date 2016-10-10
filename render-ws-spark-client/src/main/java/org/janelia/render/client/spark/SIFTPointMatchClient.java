@@ -62,6 +62,12 @@ public class SIFTPointMatchClient
                 arity = 1)
         private boolean renderWithoutMask = true;
 
+        @Parameter(names = "--renderFullScaleWidth", description = "Full scale width for all rendered tiles", required = false)
+        private Integer renderFullScaleWidth;
+
+        @Parameter(names = "--renderFullScaleHeight", description = "Full scale height for all rendered tiles", required = false)
+        private Integer renderFullScaleHeight;
+
         @Parameter(names = "--renderScale", description = "Render tiles at this scale", required = false)
         private Double renderScale = 1.0;
 
@@ -149,6 +155,8 @@ public class SIFTPointMatchClient
                 RenderableCanvasIdPairsUtilities.getRenderParametersUrlTemplateForRun(
                         renderableCanvasIdPairs,
                         parameters.baseDataUrl,
+                        parameters.renderFullScaleWidth,
+                        parameters.renderFullScaleHeight,
                         parameters.renderScale,
                         parameters.renderWithFilter,
                         parameters.renderWithoutMask);

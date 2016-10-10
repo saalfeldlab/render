@@ -50,18 +50,17 @@ public class DMeshPointMatchClient
         private String pairJson;
 
         @Parameter(
-                names = "--renderWithFilter",
-                description = "Render tiles using a filter for intensity correction",
-                required = false,
-                arity = 1)
-        private boolean renderWithFilter = true;
-
-        @Parameter(
                 names = "--renderWithoutMask",
                 description = "Render tiles without a mask",
                 required = false,
                 arity = 1)
         private boolean renderWithoutMask = true;
+
+        @Parameter(names = "--renderFullScaleWidth", description = "Full scale width for all rendered tiles", required = false)
+        private Integer renderFullScaleWidth;
+
+        @Parameter(names = "--renderFullScaleHeight", description = "Full scale height for all rendered tiles", required = false)
+        private Integer renderFullScaleHeight;
 
         @Parameter(names = "--renderScale", description = "Render tiles at this scale", required = false)
         private Double renderScale = 1.0;
@@ -154,11 +153,6 @@ public class DMeshPointMatchClient
 
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
-        // TODO: see if it's worth the trouble to use the faster KryoSerializer
-//        conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
-//        conf.set("spark.kryo.registrationRequired", "true");
-//        conf.registerKryoClasses(new Class[] { LayerFeatures.class, LayerSimilarity.class });
-
         final RenderableCanvasIdPairs renderableCanvasIdPairs =
                 RenderableCanvasIdPairsUtilities.load(parameters.pairJson);
 
@@ -166,8 +160,10 @@ public class DMeshPointMatchClient
                 RenderableCanvasIdPairsUtilities.getRenderParametersUrlTemplateForRun(
                         renderableCanvasIdPairs,
                         parameters.baseDataUrl,
+                        parameters.renderFullScaleWidth,
+                        parameters.renderFullScaleHeight,
                         parameters.renderScale,
-                        parameters.renderWithFilter,
+                        false,
                         parameters.renderWithoutMask);
 
         final long cacheMaxKilobytes = parameters.maxImageCacheGb * 1000000;
