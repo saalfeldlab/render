@@ -4,9 +4,12 @@ import com.beust.jcommander.Parameter;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileBoundsRTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,14 +42,45 @@ public class TileRemovalClient {
                 required = false)
         private List<String> tileIdList;
 
-        public void loadTileIds()
+        @Parameter(
+                names = "--hiddenTilesWithZ",
+                description = "",
+                required = false)
+        private Double hiddenTilesWithZ;
+
+        public void loadTileIds(final RenderDataClient renderDataClient)
                 throws IllegalStateException, IOException {
 
-            if (tileIdList == null) {
+            if (hiddenTilesWithZ != null) {
 
-                if (tileIdJson == null) {
+                if (tileIdList != null) {
                     throw new IllegalStateException(
-                            "--tileIdJson file must be specified when no tileIds are specified");
+                            "--tileIdList should not be specified when --hiddenTilesWithZ is specified");
+                }
+
+                if (tileIdJson != null) {
+                    throw new IllegalStateException(
+                            "--tileIdJson should not be specified when --hiddenTilesWithZ is specified");
+                }
+
+                final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, hiddenTilesWithZ);
+                TileBoundsRTree tree = new TileBoundsRTree(hiddenTilesWithZ, tileBoundsList);
+
+                final List<TileBounds> hiddenTileBoundsList = tree.findCompletelyObscuredTiles();
+                tileIdList = new ArrayList<>(hiddenTileBoundsList.size());
+
+                for (final TileBounds hiddenTileBounds : hiddenTileBoundsList) {
+                    tileIdList.add(hiddenTileBounds.getTileId());
+                }
+
+                LOG.info("loadTileIds: found {} hidden tile ids to remove from z {}",
+                         tileIdList.size(), hiddenTilesWithZ);
+
+            } else if (tileIdJson != null) {
+
+                if (tileIdList != null) {
+                    throw new IllegalStateException(
+                            "--tileIdList should not be specified when --tileIdJson is specified");
                 }
 
                 final JsonUtils.Helper<String> jsonHelper = new JsonUtils.Helper<>(String.class);
@@ -54,10 +88,9 @@ public class TileRemovalClient {
                     tileIdList = jsonHelper.fromJsonArray(reader);
                 }
 
-            } else if (tileIdJson != null) {
-                throw new IllegalStateException(
-                        "--tileIdJson file should not be specified when explicit tileIds are specified");
-            }
+                LOG.info("loadTileIds: loaded {} tile ids from {}", tileIdList.size(), tileIdJson);
+
+            } // else tileIdList was explictly specified on command line
 
         }
     }
@@ -75,26 +108,25 @@ public class TileRemovalClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                parameters.loadTileIds();
+                final RenderDataClient renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                                               parameters.owner,
+                                                                               parameters.project);
+                parameters.loadTileIds(renderDataClient);
 
                 final TileRemovalClient client = new TileRemovalClient(parameters);
-                client.removeTiles();
+                client.removeTiles(renderDataClient);
             }
         };
         clientRunner.run();
     }
 
     private final Parameters parameters;
-    private final RenderDataClient renderDataClient;
 
     public TileRemovalClient(final Parameters parameters) {
         this.parameters = parameters;
-        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                     parameters.owner,
-                                                     parameters.project);
     }
 
-    public void removeTiles()
+    public void removeTiles(final RenderDataClient renderDataClient)
             throws Exception {
         for (final String tileId : parameters.tileIdList) {
             renderDataClient.deleteStackTile(parameters.stack, tileId);
