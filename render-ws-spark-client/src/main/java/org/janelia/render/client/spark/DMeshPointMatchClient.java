@@ -107,6 +107,9 @@ public class DMeshPointMatchClient
         @Parameter(names = "--matchMinNumInliers", description = "Minimal absolute number of inliers for matches", required = false)
         private Integer matchMinNumInliers = 10;
 
+        @Parameter(names = "--matchMaxNumInliers", description = "Maximum number of inliers for matches", required = false)
+        private Integer matchMaxNumInliers;
+
         @Parameter(names = "--maxImageCacheGb", description = "Maximum number of gigabytes of canvas images to cache", required = false)
         private Integer maxImageCacheGb = 20;
 
@@ -183,6 +186,7 @@ public class DMeshPointMatchClient
                                                                              parameters.matchMaxEpsilon,
                                                                              parameters.matchMinInlierRatio,
                                                                              parameters.matchMinNumInliers,
+                                                                             parameters.matchMaxNumInliers,
                                                                              parameters.filterMatches);
 
         final double renderScale = parameters.renderScale;

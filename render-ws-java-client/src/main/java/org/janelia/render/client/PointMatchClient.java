@@ -94,7 +94,10 @@ public class PointMatchClient {
         private Float matchMinInlierRatio = 0.0f;
 
         @Parameter(names = "--matchMinNumInliers", description = "Minimal absolute number of inliers for matches", required = false)
-        private Integer matchMinNumInliers = 10;
+        private Integer matchMinNumInliers = 4;
+
+        @Parameter(names = "--matchMaxNumInliers", description = "Maximum number of inliers for matches", required = false)
+        private Integer matchMaxNumInliers;
 
         @Parameter(names = "--numberOfThreads", description = "Number of threads to use for processing", required = false)
         private int numberOfThreads = 1;
@@ -330,6 +333,7 @@ public class PointMatchClient {
                                                                       parameters.matchMaxEpsilon,
                                                                       parameters.matchMinInlierRatio,
                                                                       parameters.matchMinNumInliers,
+                                                                      parameters.matchMaxNumInliers,
                                                                       true);
 
         String pUrlString;

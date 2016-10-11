@@ -2,6 +2,7 @@ package org.janelia.alignment.match;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import mpicbg.ij.FeatureTransform;
@@ -27,6 +28,7 @@ public class CanvasFeatureMatcher implements Serializable {
     private final float maxEpsilon;
     private final float minInlierRatio;
     private final int minNumInliers;
+    private final Integer maxNumInliers;
     private final boolean filterMatches;
 
     /**
@@ -36,17 +38,20 @@ public class CanvasFeatureMatcher implements Serializable {
      * @param  maxEpsilon      minimal allowed transfer error (e.g. 20.0f).
      * @param  minInlierRatio  minimal ratio of inliers to candidates (e.g. 0.0f).
      * @param  minNumInliers   minimal absolute number of inliers for matches (e.g. 10).
+     * @param  maxNumInliers   (optional) maximum number of inliers for matches; null indicates no maximum.
      * @param  filterMatches   indicates whether matches should be filtered.
      */
     public CanvasFeatureMatcher(final float rod,
                                 final float maxEpsilon,
                                 final float minInlierRatio,
                                 final int minNumInliers,
+                                final Integer maxNumInliers,
                                 final boolean filterMatches) {
         this.rod = rod;
         this.maxEpsilon = maxEpsilon;
         this.minInlierRatio = minInlierRatio;
         this.minNumInliers = minNumInliers;
+        this.maxNumInliers = maxNumInliers;
         this.filterMatches = filterMatches;
     }
 
@@ -116,6 +121,14 @@ public class CanvasFeatureMatcher implements Serializable {
             } catch (final NotEnoughDataPointsException e) {
                 LOG.warn("failed to filter outliers", e);
             }
+
+            if ((maxNumInliers != null) && (maxNumInliers > 0) && (inliers.size() > maxNumInliers)) {
+                LOG.info("filterMatches: randomly selecting {} of {} inliers", maxNumInliers, inliers.size());
+                // randomly select maxNumInliers elements by shuffling and then remove excess elements
+                Collections.shuffle(inliers);
+                inliers.subList(maxNumInliers, inliers.size()).clear();
+            }
+
         }
 
         LOG.info("filterMatches: filtered {} inliers from {} candidates", inliers.size(), candidates.size());

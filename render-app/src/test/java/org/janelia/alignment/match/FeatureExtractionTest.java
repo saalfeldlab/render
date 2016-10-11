@@ -165,7 +165,7 @@ public class FeatureExtractionTest {
         final List<Feature> qFeatureList = featureExtractor.extractFeatures(qTileRenderParameters,
                                                                             getRenderFile(qTileRenderParameters));
 
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(0.92f, 20.0f, 0.0f, 10, true);
+        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(0.92f, 20.0f, 0.0f, 10, null, true);
         matcher.deriveMatchResult(pFeatureList, qFeatureList);
 
 
@@ -207,7 +207,7 @@ public class FeatureExtractionTest {
         final List<Feature> qFeatureList = featureExtractor.extractFeatures(qTileRenderParameters,
                                                                             getRenderFile(qTileRenderParameters));
 
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(0.92f, 20.0f, 0.0f, 10, true);
+        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(0.92f, 20.0f, 0.0f, 10, null, true);
         final CanvasFeatureMatchResult result = matcher.deriveMatchResult(pFeatureList, qFeatureList);
 
         System.out.println(result.toString());

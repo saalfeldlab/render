@@ -100,7 +100,10 @@ public class SIFTPointMatchClient
         private Float matchMinInlierRatio = 0.0f;
 
         @Parameter(names = "--matchMinNumInliers", description = "Minimal absolute number of inliers for matches", required = false)
-        private Integer matchMinNumInliers = 10;
+        private Integer matchMinNumInliers = 4;
+
+        @Parameter(names = "--matchMaxNumInliers", description = "Maximum number of inliers for matches", required = false)
+        private Integer matchMaxNumInliers;
 
         @Parameter(names = "--maxFeatureCacheGb", description = "Maximum number of gigabytes of features to cache", required = false)
         private Integer maxFeatureCacheGb = 2;
@@ -280,6 +283,7 @@ public class SIFTPointMatchClient
                                         parameters.matchMaxEpsilon,
                                         parameters.matchMinInlierRatio,
                                         parameters.matchMinNumInliers,
+                                        parameters.matchMaxNumInliers,
                                         true);
     }
 
