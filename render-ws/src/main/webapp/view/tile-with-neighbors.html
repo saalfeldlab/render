@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tile Neighbors</title>
+
+    <link rel="stylesheet" href="../css/match.css">
+
+    <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
+    <script type="text/javascript" src="../script/janelia-render.js"></script>
+    <script type="text/javascript" src="../script/janelia-tile-neighbors.js"></script>
+    <script type="text/javascript">
+
+        var tileWithNeighbors;
+
+        var clearSelectedTileInfo = function() {
+            $("#selectedTileId").html('');
+            $("#selectedTileRenderParameters").html('');
+        };
+
+        $( document ).ready(function() {
+
+            var util = new JaneliaScriptUtilities();
+            var queryParameters = new JaneliaQueryParameters();
+
+            var baseUrl = util.getServicesBaseUrl();
+
+            // TODO: remove this when done debugging on localhost
+            //var baseUrl = "http://renderer-dev:8080/render-ws/v1";
+
+            var owner = queryParameters.get('renderStackOwner');
+            var project = queryParameters.get('renderStackProject');
+            var stack = queryParameters.get('renderStack');
+            var tileId = queryParameters.get('tileId');
+
+            var matchOwner = queryParameters.get('matchOwner');
+            var matchCollection = queryParameters.get('matchCollection');
+
+            var defaultRenderScale = 0.15;
+            var renderQueryParameters = "?excludeMask=true&normalizeForMatching=true&width=2760&height=2330";
+            // TODO: remove this hack for spc!
+            if (project == 'spc') {
+                defaultRenderScale = 0.08;
+                renderQueryParameters = "?normalizeForMatching=true&filter=true";
+            }
+
+            var renderScale = queryParameters.get('renderScale', defaultRenderScale);
+
+            var canvas = document.getElementById("theCanvas");
+
+            tileWithNeighbors = new JaneliaTileWithNeighbors(
+                    baseUrl, owner, project, stack,
+                    matchOwner, matchCollection,
+                    tileId, renderQueryParameters, renderScale, canvas);
+
+            var sep = '&nbsp;&nbsp;&nbsp;&nbsp;';
+
+            $("#tileId").html(tileWithNeighbors.tileId);
+            $("#renderStack").html(tileWithNeighbors.owner + sep + tileWithNeighbors.project + sep + tileWithNeighbors.stack);
+
+            var stackLinkHtml = '(<a href="' + tileWithNeighbors.stackUrl + '" target="_blank">stack metadata</a>)';
+            $("#renderStackLink").html(stackLinkHtml);
+            $("#matchCollection").html(tileWithNeighbors.matchOwner + sep + tileWithNeighbors.matchCollection);
+
+            $('#theCanvas').click(function (e) {
+                var canvasX = e.pageX - this.offsetLeft;
+                var canvasY = e.pageY - this.offsetTop;
+                var selectedTile = tileWithNeighbors.selectTile(canvasX, canvasY);
+
+                if (typeof selectedTile == "undefined") {
+                    clearSelectedTileInfo();
+                } else {
+                    var tileIdHtml = '<a href=\"' + selectedTile.specUrl + '" target="_blank"">' +
+                                     selectedTile.tileSpec.tileId + '</a>';
+                    $("#selectedTileId").html(tileIdHtml);
+
+                    var renderHtml = '(<a href=\"' + selectedTile.renderUrl +
+                                     '" target="_blank"">normalized render parameters</a>)';
+                    $("#selectedTileRenderParameters").html(renderHtml);
+                }
+
+            });
+
+            $(document).keydown(function(e) {
+                switch(e.which) {
+                    case 37: // left
+                        tileWithNeighbors.move(0, -1);
+                        clearSelectedTileInfo();
+                        break;
+
+                    case 38: // up
+                        tileWithNeighbors.move(-1, 0);
+                        clearSelectedTileInfo();
+                        break;
+
+                    case 39: // right
+                        tileWithNeighbors.move(0, 1);
+                        clearSelectedTileInfo();
+                        break;
+
+                    case 40: // down
+                        tileWithNeighbors.move(1, 0);
+                        clearSelectedTileInfo();
+                        break;
+
+                    default: return; // exit this handler for other keys
+                }
+                e.preventDefault(); // prevent the default action (scroll / move caret)
+            });
+
+        });
+
+    </script>
+
+</head>
+<body>
+
+<h3>Neighbor Matches for <span id="tileId"></span></h3>
+
+<span id="message" class="error"></span>
+
+<div id="headerDiv" class="header_div">
+    <table class="data_table">
+        <tr>
+            <td>Render Stack:</td>
+            <td id="renderStack"></td>
+            <td id="renderStackLink"></td>
+        </tr>
+        <tr>
+            <td>Match Collection:</td>
+            <td id="matchCollection"></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Selected Tile:</td>
+            <td id="selectedTileId">(click tile below to select)</td>
+            <td id="selectedTileRenderParameters"></td>
+        </tr>
+    </table>
+</div>
+
+<div id="tileDiv">
+    <canvas id="theCanvas" width="3000" height="3000"></canvas>
+</div>
+
+</body>
+</html>
