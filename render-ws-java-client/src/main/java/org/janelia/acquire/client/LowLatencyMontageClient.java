@@ -212,15 +212,15 @@ public class LowLatencyMontageClient {
 
         try {
             final String ownerName = getRequiredValue("ProjectOwner for acquisition " + acqId,
-                                                      acquisition.getProjectOwner());
+                                                      acquisition.getProjectOwner()).replaceAll("-","_");
             final String projectName = getRequiredValue("ProjectName for acquisition " + acqId,
-                                                        acquisition.getProjectName());
+                                                        acquisition.getProjectName()).replaceAll("-","_");
 
             String baseStackName = acquisition.getStackName();
             if (baseStackName == null) {
                 baseStackName = acquisition.getAcqUID().toString();
             }
-            baseStackName = baseStackName.trim();
+            baseStackName = baseStackName.trim().replaceAll("-","_");
             if (baseStackName.length() == 0) {
                 baseStackName = acquisition.getAcqUID().toString();
             }
