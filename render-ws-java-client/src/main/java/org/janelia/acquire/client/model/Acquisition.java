@@ -11,12 +11,21 @@ public class Acquisition {
     private Long AcqUID;
     private String ProjectName;
     private String ProjectOwner;
+    private String MosaicType;
     private String StackName;
     private Double stackResolutionX = 4.0;
     private Double stackResolutionY = 4.0;
     private Double stackResolutionZ = 35.0;
 
     public Acquisition() {
+    }
+
+    public Acquisition(Long acqUID, String projectName, String projectOwner, String mosaicType, String stackName) {
+        AcqUID = acqUID;
+        ProjectName = projectName;
+        ProjectOwner = projectOwner;
+        MosaicType = mosaicType;
+        StackName = stackName;
     }
 
     public Long getAcqUID() {
@@ -34,6 +43,8 @@ public class Acquisition {
     public String getStackName() {
         return StackName;
     }
+
+    public String getMosaicType() { return MosaicType; }
 
     public Double getStackResolutionX() {
         return stackResolutionX;
