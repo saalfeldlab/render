@@ -63,6 +63,12 @@ public class MontageAcquisitionClient {
 
         @Parameter(names = "--waitSeconds", description = "Number of seconds to wait before checking for newly acquired tiles (default 5)", required = false)
         private int waitSeconds = 5;
+        @Parameter(names = "--doNotAggregateSources", arity = 0, description = "If the parameter is true it leaves the source collection as is and it will not aggregate it into a bigger collection", required = false)
+        Boolean doNotAggregateSources;
+
+        Boolean aggregateSources() {
+            return !doNotAggregateSources;
+        }
 
         public void validate()
                 throws IllegalArgumentException {
@@ -221,24 +227,24 @@ public class MontageAcquisitionClient {
 
                 if (montageReturnCode != 0) {
                     LOG.error("invokeMontageProcessor: code {} returned", montageReturnCode);
+                    throw new IllegalStateException("Montage error");
                 } else {
                     LOG.info("invokeMontageProcessor: code {} returned", montageReturnCode);
                 }
-
-                // move the source stack into the aggregated stack
-                LOG.info("Retrieve tiles from {} for z {}", stackId, z);
-                ResolvedTileSpecCollection sourceTiles = renderDataClient.getResolvedTiles(stackId.getStack(), z);
-                LOG.info("Copy tiles from {} for z {} to {}", stackId, z, parameters.aggregatedAcquireStack);
-                ensureAcquireStackExists(renderDataClient, parameters.aggregatedAcquireStack);
-                renderDataClient.saveResolvedTiles(sourceTiles, parameters.aggregatedAcquireStack, z);
-                LOG.info("Retrieve tiles from {} for z {}", stackId, z);
-
+                if (parameters.aggregateSources()) {
+                    // move the source stack into the aggregated stack
+                    LOG.info("Retrieve tiles from {} for z {}", stackId, z);
+                    ResolvedTileSpecCollection sourceTiles = renderDataClient.getResolvedTiles(stackId.getStack(), z);
+                    LOG.info("Copy tiles from {} for z {} to {}", stackId, z, parameters.aggregatedAcquireStack);
+                    ensureAcquireStackExists(renderDataClient, parameters.aggregatedAcquireStack);
+                    renderDataClient.saveResolvedTiles(sourceTiles, parameters.aggregatedAcquireStack, z);
+                }
             } catch (Exception e) {
                 LOG.error("Error while saving the montage parameters for {}:{}", stackId, z, e);
                 failedStackIds.add(stackId.getStack());
             }
         });
-        if (!failedStackIds.contains(stackId.getStack())) {
+        if (parameters.aggregateSources() && !failedStackIds.contains(stackId.getStack())) {
             // remove the source stack now
             renderDataClient.deleteStack(stackId.getStack(), null);
             // complete the aggregated acquire stack
