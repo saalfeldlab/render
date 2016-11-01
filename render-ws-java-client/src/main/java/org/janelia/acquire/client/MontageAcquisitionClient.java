@@ -95,6 +95,10 @@ public class MontageAcquisitionClient {
                         if (client.hasFailedProcesses()) {
                             LOG.error("There are failed montages: {}", client.failedStackIds);
                         }
+                        if (parameters.stackId != null && parameters.stackId.trim().length() > 0) {
+                            // break if a single stack needed to be processed
+                            break;
+                        }
                         Thread.sleep(parameters.waitSeconds * 1000);
                     } catch (Exception e) {
                         LOG.error("Process stacks failure", e);
