@@ -93,13 +93,17 @@ public class AcquisitionDataImportClient {
 
                 final AcquisitionDataImportClient client = new AcquisitionDataImportClient(parameters);
                 while (true) {
-                    client.processAcquisitions();
-                    if (client.hasFailedAcquisitions()) {
-                        LOG.error("There are failed acquisitions: {}", client.getFailedAcquisitionIds());
-                    }
-                    if (parameters.acquisitionId != null && parameters.acquisitionId != 0) {
-                        // if this import was for a specific acquisition then stop
-                        break;
+                    try {
+                        client.processAcquisitions();
+                        if (client.hasFailedAcquisitions()) {
+                            LOG.error("There are failed acquisitions: {}", client.getFailedAcquisitionIds());
+                        }
+                        if (parameters.acquisitionId != null && parameters.acquisitionId != 0) {
+                            // if this import was for a specific acquisition then stop
+                            break;
+                        }
+                    } catch (Exception e) {
+                        LOG.error("Process acquisitions failure", e);
                     }
                 }
             }

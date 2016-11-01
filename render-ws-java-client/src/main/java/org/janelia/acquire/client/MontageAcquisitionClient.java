@@ -89,21 +89,18 @@ public class MontageAcquisitionClient {
 
                 final MontageAcquisitionClient client = new MontageAcquisitionClient(parameters);
 
-                if (parameters.stackId == null || parameters.stackId.trim().length() == 0) {
-                    // noinspection InfiniteLoopStatement
-                    while (true) {
+                while (true) {
+                    try {
                         client.processStacks();
+                        if (client.hasFailedProcesses()) {
+                            LOG.error("There are failed montages: {}", client.failedStackIds);
+                        }
+                        Thread.sleep(parameters.waitSeconds * 1000);
+                    } catch (Exception e) {
+                        LOG.error("Process stacks failure", e);
                     }
-                } else {
-                    StackId stack = new StackId(parameters.owner, parameters.project, parameters.stackId);
-                    client.processStack(stack);
                 }
 
-                if (client.hasFailedProcesses()) {
-                    throw new IllegalStateException(
-                            "run completed but the following acquisitions could not be processed: " +
-                            client.getFailedProcesses());
-                }
             }
         };
         clientRunner.run();
@@ -152,6 +149,10 @@ public class MontageAcquisitionClient {
         List<StackId> stackIds = renderDataClient.getOwnerStacks();
         return stackIds.stream()
                 .filter(s -> s.getProject().equals(stackFilter.project) && s.getStack().matches(stackFilter.stackFilter))
+                .filter(s -> {
+                    if (stackFilter.stackId != null) return s.getStack().equals(stackFilter.stackId);
+                    else return true;
+                })
                 .collect(Collectors.toList());
     }
 
