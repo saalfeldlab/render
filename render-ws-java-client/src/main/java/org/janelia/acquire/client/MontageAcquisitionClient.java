@@ -219,12 +219,14 @@ public class MontageAcquisitionClient {
                 } else {
                     LOG.info("invokeMontageProcessor: code {} returned", montageReturnCode);
                 }
+
                 // move the source stack into the aggregated stack
-                LOG.info("Retrieve tiles from {0} for z {1}", stackId, z);
+                LOG.info("Retrieve tiles from {} for z {}", stackId, z);
                 ResolvedTileSpecCollection sourceTiles = renderDataClient.getResolvedTiles(stackId.getStack(), z);
-                LOG.info("Copy tiles from {0} for z {1} to {2}", stackId, z, parameters.aggregatedAcquireStack);
+                LOG.info("Copy tiles from {} for z {} to {}", stackId, z, parameters.aggregatedAcquireStack);
+                ensureAcquireStackExists(renderDataClient, parameters.aggregatedAcquireStack);
                 renderDataClient.saveResolvedTiles(sourceTiles, parameters.aggregatedAcquireStack, z);
-                LOG.info("Retrieve tiles from {0} for z {1}", stackId, z);
+                LOG.info("Retrieve tiles from {} for z {}", stackId, z);
 
             } catch (Exception e) {
                 LOG.error("Error while saving the montage parameters for {}:{}", stackId, z, e);
@@ -234,7 +236,42 @@ public class MontageAcquisitionClient {
         if (!failedStackIds.contains(stackId.getStack())) {
             // remove the source stack now
             renderDataClient.deleteStack(stackId.getStack(), null);
+            // complete the aggregated acquire stack
+            renderDataClient.setStackState(parameters.aggregatedAcquireStack, StackMetaData.StackState.COMPLETE);
         }
+    }
+
+    public void ensureAcquireStackExists(final RenderDataClient renderDataClient, final String acquireStackName)
+            throws Exception {
+        LOG.info("ensureAcquireStackExists: entry {}", acquireStackName);
+
+        StackMetaData stackMetaData;
+        try {
+            stackMetaData = renderDataClient.getStackMetaData(acquireStackName);
+            if (!stackMetaData.isLoading()) {
+                renderDataClient.setStackState(acquireStackName, StackMetaData.StackState.LOADING);
+                stackMetaData.setState(StackMetaData.StackState.LOADING);
+            }
+        } catch (final Throwable t) {
+            LOG.info("failed to retrieve stack metadata for {}, will attempt to create new stack", acquireStackName);
+            renderDataClient.saveStackVersion(acquireStackName,
+                    new StackVersion(new Date(),
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null));
+            stackMetaData = renderDataClient.getStackMetaData(acquireStackName);
+        }
+
+        if (!stackMetaData.isLoading()) {
+            throw new IllegalStateException("stack state is " + stackMetaData.getState() +
+                    " but must be LOADING, stackMetaData=" + stackMetaData);
+        }
+        LOG.info("ensureAcquireStackExists: exit, stackMetaData is {}", stackMetaData);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MontageAcquisitionClient.class);
