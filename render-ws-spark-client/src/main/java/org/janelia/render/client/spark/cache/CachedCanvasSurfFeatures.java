@@ -1,6 +1,8 @@
 package org.janelia.render.client.spark.cache;
 
 import org.janelia.alignment.match.SurfFeatures;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Cache container for a canvas' list of SURF features.
@@ -31,6 +33,7 @@ public class CachedCanvasSurfFeatures
 
     /** Since feature lists are only in-memory, this method is a no-op. */
     public void remove() {
+        LOG.info("removed list with {} features", featureList.size());
     }
 
     /**
@@ -39,4 +42,5 @@ public class CachedCanvasSurfFeatures
      */
     private static final double AVERAGE_KILOBYTES_PER_FEATURE = 0.6; // 600 bytes
 
+    private static final Logger LOG = LoggerFactory.getLogger(CachedCanvasSurfFeatures.class);
 }
