@@ -131,5 +131,11 @@
             <version>0.7.6</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.boofcv</groupId>
+            <artifactId>core</artifactId>
+            <version>0.24.1</version>
+        </dependency>
+
     </dependencies>
 </project>

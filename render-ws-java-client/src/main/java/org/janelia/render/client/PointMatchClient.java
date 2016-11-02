@@ -18,14 +18,21 @@ import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.match.CanvasFeatureExtractor;
+import org.janelia.alignment.match.CanvasMatchFilter;
+import org.janelia.alignment.match.CanvasSiftFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatchResult;
-import org.janelia.alignment.match.CanvasFeatureMatcher;
+import org.janelia.alignment.match.CanvasSiftFeatureMatcher;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.CanvasSurfFeatureExtractor;
+import org.janelia.alignment.match.CanvasSurfFeatureMatcher;
+import org.janelia.alignment.match.SurfFeatures;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import boofcv.abst.feature.detect.interest.ConfigFastHessian;
+import boofcv.struct.image.GrayF32;
 
 /**
  * Java client for generating SIFT point matches for one or more canvas (e.g. tile) pairs.
@@ -121,8 +128,46 @@ public class PointMatchClient {
         @Parameter(names = "--renderScale", description = "Render canvases at this scale", required = false)
         private Double renderScale = 1.0;
 
+        @Parameter(
+                names = "--useSURF",
+                description = "Use SURF feature detection (instead of SIFT)",
+                required = false,
+                arity = 0)
+        private boolean useSurf = false;
+
+        @Parameter(names = "--SURFDetectThreshold", description = "SURF minimum feature intensity", required = false)
+        private Float surfDetectThreshold = CanvasSurfFeatureExtractor.DEFAULT_CONFIG.detectThreshold;
+
+        @Parameter(names = "--SURFExtractRadius", description = "SURF radius used for non-max-suppression", required = false)
+        private Integer surfExtractRadius = CanvasSurfFeatureExtractor.DEFAULT_CONFIG.extractRadius;
+
+        @Parameter(names = "--SURFMaxFeaturesPerScale", description = "Number of SURF features to find (less than 0 indicates all features)", required = false)
+        private Integer surfMaxFeaturesPerScale = CanvasSurfFeatureExtractor.DEFAULT_CONFIG.maxFeaturesPerScale;
+
+        @Parameter(names = "--SURFInitialSampleSize", description = "How often pixels are sampled in the first octave for SURF", required = false)
+        private Integer surfInitialSampleSize = CanvasSurfFeatureExtractor.DEFAULT_CONFIG.initialSampleSize;
+
+        @Parameter(names = "--SURFInitialSize", description = "How often pixels are sampled in the first octave for SURF", required = false)
+        private Integer surfInitialSize = CanvasSurfFeatureExtractor.DEFAULT_CONFIG.initialSize;
+
+        @Parameter(names = "--SURFNumberScalesPerOctave", description = "SURF number of scales per octave", required = false)
+        private Integer surfNumberScalesPerOctave = CanvasSurfFeatureExtractor.DEFAULT_CONFIG.numberScalesPerOctave;
+
+        @Parameter(names = "--SURFNumberOfOctaves", description = "SURF number of octaves", required = false)
+        private Integer surfNumberOfOctaves = CanvasSurfFeatureExtractor.DEFAULT_CONFIG.numberOfOctaves;
+
         @Parameter(description = "canvas_1_URL canvas_2_URL [canvas_p_URL canvas_q_URL] ... (each URL pair identifies render parameters for canvas pairs)", required = true)
         private List<String> renderParameterUrls;
+
+        public ConfigFastHessian getSurfConfig() {
+            return new ConfigFastHessian(surfDetectThreshold,
+                                         surfExtractRadius,
+                                         surfMaxFeaturesPerScale,
+                                         surfInitialSampleSize,
+                                         surfInitialSize,
+                                         surfNumberScalesPerOctave,
+                                         surfNumberOfOctaves);
+        }
 
         /**
          * @param  matchId  derived match id for canvas.
@@ -329,13 +374,6 @@ public class PointMatchClient {
 
         final List<CanvasFeatureMatcherThread> matcherList = new ArrayList<>(parameters.renderParameterUrls.size());
 
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(parameters.matchRod,
-                                                                      parameters.matchMaxEpsilon,
-                                                                      parameters.matchMinInlierRatio,
-                                                                      parameters.matchMinNumInliers,
-                                                                      parameters.matchMaxNumInliers,
-                                                                      true);
-
         String pUrlString;
         String qUrlString;
         for (int i = 1; i < parameters.renderParameterUrls.size(); i = i + 2) {
@@ -343,7 +381,7 @@ public class PointMatchClient {
             qUrlString = parameters.renderParameterUrls.get(i);
             matcherList.add(new CanvasFeatureMatcherThread(canvasUrlToDataMap.get(pUrlString),
                                                            canvasUrlToDataMap.get(qUrlString),
-                                                           matcher));
+                                                           parameters));
         }
 
 
@@ -438,7 +476,8 @@ public class PointMatchClient {
         private final double renderScale;
         private final String canvasGroupId;
         private final String canvasId;
-        private List<Feature> featureList;
+        private List<Feature> siftFeatureList;
+        private SurfFeatures surfFeatures;
 
         public CanvasData(final String canvasUrl,
                           final double renderScale,
@@ -451,11 +490,23 @@ public class PointMatchClient {
             this.canvasGroupId = clientParameters.getCanvasGroupId(this.renderParameters);
             final String canvasName = "c_" + String.format("%05d", canvasIndex);
             this.canvasId = clientParameters.getCanvasId(this.renderParameters, canvasName);
-            this.featureList = null;
+            this.siftFeatureList = null;
         }
 
-        public void setFeatureList(final List<Feature> featureList) {
-            this.featureList = featureList;
+        public List<Feature> getSiftFeatureList() {
+            return siftFeatureList;
+        }
+
+        public void setSiftFeatureList(final List<Feature> featureList) {
+            this.siftFeatureList = featureList;
+        }
+
+        public SurfFeatures getSurfFeatures() {
+            return surfFeatures;
+        }
+
+        public void setSurfFeatures(final SurfFeatures surfFeatures) {
+            this.surfFeatures = surfFeatures;
         }
 
         public String getCanvasGroupId() {
@@ -467,7 +518,15 @@ public class PointMatchClient {
         }
 
         public int getNumberOfFeatures() {
-            return (featureList == null) ? 0 : featureList.size();
+            int count = 0;
+            if (siftFeatureList == null) {
+                if (surfFeatures != null) {
+                    count = surfFeatures.size();
+                }
+            } else {
+                count = siftFeatureList.size();
+            }
+            return count;
         }
 
         @Override
@@ -483,29 +542,44 @@ public class PointMatchClient {
 
         private final CanvasData canvasData;
         private final File renderFile;
-        private final CanvasFeatureExtractor extractor;
+        private final Parameters clientParameters;
 
         public CanvasFeatureExtractorThread(final CanvasData canvasData,
                                             final Parameters clientParameters) {
 
             this.canvasData = canvasData;
             this.renderFile = clientParameters.getCanvasFile(canvasData.canvasId);
+            this.clientParameters = clientParameters;
 
-            final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
-            siftParameters.fdSize = clientParameters.fdSize;
-            siftParameters.steps = clientParameters.steps;
-
-            this.extractor = new CanvasFeatureExtractor(siftParameters,
-                                                        clientParameters.minScale,
-                                                        clientParameters.maxScale,
-                                                        clientParameters.fillWithNoise);
         }
 
         @Override
         public void run() {
-            canvasData.setFeatureList(
-                    extractor.extractFeatures(canvasData.renderParameters,
-                                              renderFile));
+
+            if (clientParameters.useSurf) {
+
+                final CanvasSurfFeatureExtractor extractor =
+                        new CanvasSurfFeatureExtractor<>(clientParameters.getSurfConfig(),
+                                                         clientParameters.fillWithNoise,
+                                                         GrayF32.class);
+                canvasData.setSurfFeatures(extractor.extractFeatures(canvasData.renderParameters,
+                                                                     renderFile));
+
+            } else {
+
+                final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
+                siftParameters.fdSize = clientParameters.fdSize;
+                siftParameters.steps = clientParameters.steps;
+
+                final CanvasSiftFeatureExtractor extractor =
+                        new CanvasSiftFeatureExtractor(siftParameters,
+                                                       clientParameters.minScale,
+                                                       clientParameters.maxScale,
+                                                       clientParameters.fillWithNoise);
+                canvasData.setSiftFeatureList(
+                        extractor.extractFeatures(canvasData.renderParameters,
+                                                  renderFile));
+            }
         }
 
         @Override
@@ -521,22 +595,40 @@ public class PointMatchClient {
 
         private final CanvasData pCanvasData;
         private final CanvasData qCanvasData;
-
-        private final CanvasFeatureMatcher matcher;
+        private final Parameters clientParameters;
 
         private CanvasFeatureMatchResult matchResult;
 
         public CanvasFeatureMatcherThread(final CanvasData pCanvasData,
                                           final CanvasData qCanvasData,
-                                          final CanvasFeatureMatcher matcher) {
+                                          final Parameters clientParameters) {
             this.pCanvasData = pCanvasData;
             this.qCanvasData = qCanvasData;
-            this.matcher = matcher;
+            this.clientParameters = clientParameters;
         }
 
         @Override
         public void run() {
-            matchResult = matcher.deriveMatchResult(pCanvasData.featureList, qCanvasData.featureList);
+
+
+            final CanvasMatchFilter matchFilter = new CanvasMatchFilter(clientParameters.matchMaxEpsilon,
+                                                                        clientParameters.matchMinInlierRatio,
+                                                                        clientParameters.matchMinNumInliers,
+                                                                        clientParameters.matchMaxNumInliers,
+                                                                        true);
+
+            if (clientParameters.useSurf) {
+                final CanvasSurfFeatureMatcher matcher = new CanvasSurfFeatureMatcher();
+                matchResult = matcher.deriveMatchResult(pCanvasData.getSurfFeatures(),
+                                                        qCanvasData.getSurfFeatures(),
+                                                        matchFilter);
+            } else {
+
+                final CanvasSiftFeatureMatcher matcher = new CanvasSiftFeatureMatcher(clientParameters.matchRod);
+                matchResult = matcher.deriveMatchResult(pCanvasData.getSiftFeatureList(),
+                                                        qCanvasData.getSiftFeatureList(),
+                                                        matchFilter);
+            }
         }
 
         public CanvasMatches getMatches() {

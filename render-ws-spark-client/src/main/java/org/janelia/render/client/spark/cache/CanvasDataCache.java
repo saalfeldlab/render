@@ -20,6 +20,7 @@ import mpicbg.imagefeatures.Feature;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.SurfFeatures;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -225,12 +226,27 @@ public class CanvasDataCache {
      *   if the feature list cannot be cached locally.
      *
      * @throws ClassCastException
-     *   if this cache is not managing {@link CachedCanvasFeatures} data.
+     *   if this cache is not managing {@link CachedCanvasSiftFeatures} data.
      */
     public List<Feature> getFeatureList(final CanvasId canvasId)
             throws IllegalStateException, ClassCastException {
-        final CachedCanvasFeatures cachedCanvasFeatures = (CachedCanvasFeatures) getData(canvasId);
-        return cachedCanvasFeatures.getFeatureList();
+        final CachedCanvasSiftFeatures cachedCanvasSiftFeatures = (CachedCanvasSiftFeatures) getData(canvasId);
+        return cachedCanvasSiftFeatures.getFeatureList();
+    }
+
+    /**
+     * @return the SURF feature list for the specified canvas.
+     *
+     * @throws IllegalStateException
+     *   if the feature list cannot be cached locally.
+     *
+     * @throws ClassCastException
+     *   if this cache is not managing {@link CachedCanvasSurfFeatures} data.
+     */
+    public SurfFeatures getSurfFeatureList(final CanvasId canvasId)
+            throws IllegalStateException, ClassCastException {
+        final CachedCanvasSurfFeatures cachedCanvasSurfFeatures = (CachedCanvasSurfFeatures) getData(canvasId);
+        return cachedCanvasSurfFeatures.getFeatureList();
     }
 
     @Override

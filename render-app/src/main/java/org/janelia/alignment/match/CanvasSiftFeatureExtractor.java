@@ -25,7 +25,8 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class CanvasFeatureExtractor implements Serializable {
+public class CanvasSiftFeatureExtractor
+        implements Serializable {
 
     private final FloatArray2DSIFT.Param coreSiftParameters;
     private final double minScale;
@@ -41,10 +42,10 @@ public class CanvasFeatureExtractor implements Serializable {
      * @param  fillWithNoise       indicates whether the rendered canvas image should be filled with
      *                             noise before rendering to improve point match derivation.
      */
-    public CanvasFeatureExtractor(final FloatArray2DSIFT.Param coreSiftParameters,
-                                  final double minScale,
-                                  final double maxScale,
-                                  final boolean fillWithNoise) {
+    public CanvasSiftFeatureExtractor(final FloatArray2DSIFT.Param coreSiftParameters,
+                                      final double minScale,
+                                      final double maxScale,
+                                      final boolean fillWithNoise) {
 
         // clone provided parameters since they get modified during feature extraction
         this.coreSiftParameters = coreSiftParameters.clone();
@@ -166,5 +167,5 @@ public class CanvasFeatureExtractor implements Serializable {
         return featureList;
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureExtractor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CanvasSiftFeatureExtractor.class);
 }

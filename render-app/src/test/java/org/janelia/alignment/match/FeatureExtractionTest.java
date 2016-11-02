@@ -46,7 +46,7 @@ public class FeatureExtractionTest {
 
     private String testResourcePath;
 
-    private CanvasFeatureExtractor canvasFeatureExtractor;
+    private CanvasSiftFeatureExtractor canvasFeatureExtractor;
     private List<Feature> featureList;
 
     private boolean saveTileImage;
@@ -65,10 +65,10 @@ public class FeatureExtractionTest {
         final double minScale = 0.1;
         final double maxScale = 0.4;
 
-        canvasFeatureExtractor = new CanvasFeatureExtractor(coreSiftParameters,
-                                                            minScale,
-                                                            maxScale,
-                                                            true);
+        canvasFeatureExtractor = new CanvasSiftFeatureExtractor(coreSiftParameters,
+                                                                minScale,
+                                                                maxScale,
+                                                                true);
 
         saveTileImage = false;    // set this to true if you want to see the generated tile image
         printFeatureList = false; // set this to true if you want to see list of features
@@ -146,10 +146,10 @@ public class FeatureExtractionTest {
 
         // 1.0 - 1.0,   [104s 312ms], extracted 7095 features, elapsedTime=17888ms, extracted 14073 features, elapsedTime=18532ms, filtered 304 inliers from 414 candidates, elapsedTime=65s
 
-        final CanvasFeatureExtractor featureExtractor = new CanvasFeatureExtractor(coreSiftParameters,
-                                                                                   minScale,
-                                                                                   maxScale,
-                                                                                   true);
+        final CanvasSiftFeatureExtractor featureExtractor = new CanvasSiftFeatureExtractor(coreSiftParameters,
+                                                                                           minScale,
+                                                                                           maxScale,
+                                                                                           true);
 
         // edge pair:   151215050312010004.12.0 151215050312010005.12.0
         // center pair: 151215050312008005.12.0 151215050312007005.12.0
@@ -165,10 +165,9 @@ public class FeatureExtractionTest {
         final List<Feature> qFeatureList = featureExtractor.extractFeatures(qTileRenderParameters,
                                                                             getRenderFile(qTileRenderParameters));
 
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(0.92f, 20.0f, 0.0f, 10, null, true);
-        matcher.deriveMatchResult(pFeatureList, qFeatureList);
-
-
+        final CanvasMatchFilter matchFilter = new CanvasMatchFilter(20.0f, 0.0f, 10, null, true);
+        final CanvasSiftFeatureMatcher matcher = new CanvasSiftFeatureMatcher(0.92f);
+        matcher.deriveMatchResult(pFeatureList, qFeatureList, matchFilter);
     }
 
     @Test
@@ -188,10 +187,10 @@ public class FeatureExtractionTest {
 
         // 0.5 - 0.5,     [57s 786ms], extracted 8712 features, elapsedTime=4052ms,   extracted 8568 features, elapsedTime=3583ms,   filtered 51 inliers from 155 candidates, elapsedTime=47s
 
-        final CanvasFeatureExtractor featureExtractor = new CanvasFeatureExtractor(coreSiftParameters,
-                                                                                   minScale,
-                                                                                   maxScale,
-                                                                                   true);
+        final CanvasSiftFeatureExtractor featureExtractor = new CanvasSiftFeatureExtractor(coreSiftParameters,
+                                                                                           minScale,
+                                                                                           maxScale,
+                                                                                           true);
 
         final String stackUrl = "http://tem-services:8080/render-ws/v1/owner/flyTEM/project/FAFB00/stack/v10_acquire";
         final String urlSuffix = "/render-parameters?excludeMask=true?filter=true";
@@ -207,8 +206,9 @@ public class FeatureExtractionTest {
         final List<Feature> qFeatureList = featureExtractor.extractFeatures(qTileRenderParameters,
                                                                             getRenderFile(qTileRenderParameters));
 
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(0.92f, 20.0f, 0.0f, 10, null, true);
-        final CanvasFeatureMatchResult result = matcher.deriveMatchResult(pFeatureList, qFeatureList);
+        final CanvasMatchFilter matchFilter = new CanvasMatchFilter(20.0f, 0.0f, 10, null, true);
+        final CanvasSiftFeatureMatcher matcher = new CanvasSiftFeatureMatcher(0.92f);
+        final CanvasFeatureMatchResult result = matcher.deriveMatchResult(pFeatureList, qFeatureList, matchFilter);
 
         System.out.println(result.toString());
 

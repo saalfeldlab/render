@@ -11,9 +11,10 @@ import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.match.CanvasFeatureExtractor;
+import org.janelia.alignment.match.CanvasMatchFilter;
+import org.janelia.alignment.match.CanvasSiftFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatchResult;
-import org.janelia.alignment.match.CanvasFeatureMatcher;
+import org.janelia.alignment.match.CanvasSiftFeatureMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +24,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class PointMatchOptimizerClient {
+public class SiftPointMatchOptimizerClient {
 
     @SuppressWarnings("ALL")
     public static class Parameters extends CommandLineParameters {
@@ -117,11 +118,11 @@ public class PointMatchOptimizerClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, PointMatchOptimizerClient.class);
+                parameters.parse(args, SiftPointMatchOptimizerClient.class);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final PointMatchOptimizerClient client = new PointMatchOptimizerClient(parameters);
+                final SiftPointMatchOptimizerClient client = new SiftPointMatchOptimizerClient(parameters);
                 client.run();
 
             }
@@ -136,7 +137,7 @@ public class PointMatchOptimizerClient {
     private final Map<Double, List<Feature>> scaleToPFeatureListMap;
     private final Map<Double, List<Feature>> scaleToQFeatureListMap;
 
-    public PointMatchOptimizerClient(final Parameters clientParameters)
+    public SiftPointMatchOptimizerClient(final Parameters clientParameters)
             throws IllegalArgumentException {
 
         this.parameters = clientParameters;
@@ -192,6 +193,12 @@ public class PointMatchOptimizerClient {
         final List<Feature> pFeatureList = scaleToPFeatureListMap.get(optimalRenderScale);
         final List<Feature> qFeatureList = scaleToQFeatureListMap.get(optimalRenderScale);
 
+        final CanvasMatchFilter matchFilter = new CanvasMatchFilter(parameters.matchMaxEpsilon,
+                                                                    parameters.matchMinInlierRatio,
+                                                                    parameters.matchMinNumInliers,
+                                                                    parameters.matchMaxNumInliers,
+                                                                    true);
+
         Float optimalRod = null;
 
         float rod = 0.5f;
@@ -199,19 +206,15 @@ public class PointMatchOptimizerClient {
         int previousInlierCount = 0;
         int inlierCount = 0;
 
-        CanvasFeatureMatcher matcher;
+        CanvasSiftFeatureMatcher matcher;
         CanvasFeatureMatchResult matchResult;
         while ((optimalRod == null) && (rod > 0f) && (rod < 1.1f)) {
 
             LOG.info("run: testing match rod {}", rod);
 
-            matcher = new CanvasFeatureMatcher(rod,
-                                               parameters.matchMaxEpsilon,
-                                               parameters.matchMinInlierRatio,
-                                               parameters.matchMinNumInliers,
-                                               null,
-                                               true);
-            matchResult = matcher.deriveMatchResult(pFeatureList, qFeatureList);
+            matcher = new CanvasSiftFeatureMatcher(rod);
+
+            matchResult = matcher.deriveMatchResult(pFeatureList, qFeatureList, matchFilter);
 
             inlierCount = matchResult.getInlierPointMatchList().size();
 
@@ -258,10 +261,10 @@ public class PointMatchOptimizerClient {
         siftParameters.fdSize = parameters.fdSize;
         siftParameters.steps = parameters.steps;
 
-        final CanvasFeatureExtractor extractor = new CanvasFeatureExtractor(siftParameters,
+        final CanvasSiftFeatureExtractor extractor = new CanvasSiftFeatureExtractor(siftParameters,
                                                                             renderScale - 0.02,
                                                                             renderScale + 0.02,
-                                                                            true);
+                                                                                    true);
 
         final RenderParameters pRenderParameters = loadRenderParameters(pRenderParametersUrl, renderScale);
 
@@ -299,5 +302,5 @@ public class PointMatchOptimizerClient {
         return renderParameters;
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(PointMatchOptimizerClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SiftPointMatchOptimizerClient.class);
 }

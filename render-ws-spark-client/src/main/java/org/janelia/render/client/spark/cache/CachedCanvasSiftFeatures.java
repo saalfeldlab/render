@@ -5,15 +5,16 @@ import java.util.List;
 import mpicbg.imagefeatures.Feature;
 
 /**
- * Cache container for a canvas' list of features.
+ * Cache container for a canvas' list of SIFT features.
  *
  * @author Eric Trautman
  */
-public class CachedCanvasFeatures implements CachedCanvasData {
+public class CachedCanvasSiftFeatures
+        implements CachedCanvasData {
 
     private final List<Feature> featureList;
 
-    public CachedCanvasFeatures(final List<Feature> featureList) {
+    public CachedCanvasSiftFeatures(final List<Feature> featureList) {
         this.featureList = featureList;
     }
 
