@@ -85,7 +85,7 @@ public class TransformMeshTest {
 
     }
 
-//    @Test
+    @Test
     public void testRenderMeshOperations() throws Exception {
 
         for (int i = 0; i < 10; ++i) {
@@ -106,7 +106,7 @@ public class TransformMeshTest {
                     maskTargetProcessor, null);
 
             final RenderTransformMeshMappingWithMasks mapping = new RenderTransformMeshMappingWithMasks(mesh);
-            mapping.mapInterpolated(source, target, 1);
+            mapping.map(new ChannelPairs("A", source, target, true), 1);
 
             final long mapInterpolatedStop = System.currentTimeMillis();
 
@@ -136,7 +136,7 @@ public class TransformMeshTest {
         }
     }
 
-//    @Test
+    @Test
     public void testMeshOperations() throws Exception {
 
         for (int i = 0; i < 10; ++i) {

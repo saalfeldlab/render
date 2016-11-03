@@ -441,14 +441,8 @@ public class Render {
 
             final RenderTransformMeshMappingWithMasks mapping = new RenderTransformMeshMappingWithMasks(mesh);
 
-            final String mapType;
-            if (skipInterpolation) {
-                mapType = "";
-                mapping.map(source, target, numberOfThreads);
-            } else {
-                mapType = " interpolated";
-                mapping.mapInterpolated(source, target, numberOfThreads);
-            }
+            final String mapType = skipInterpolation ? "" : " interpolated";
+            mapping.map(new ChannelPairs("A", source, target, (! skipInterpolation)), numberOfThreads);
 
             mapInterpolatedStop = System.currentTimeMillis();
 
