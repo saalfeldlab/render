@@ -71,7 +71,7 @@ public class RenderTest {
                 "--scale", "0.05"
         };
 
-        Render.main(args);
+        Render.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
 
@@ -96,7 +96,7 @@ public class RenderTest {
                 "--scale", "0.05"
         };
 
-        Render.main(args);
+        Render.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
 
@@ -123,7 +123,7 @@ public class RenderTest {
                 "--scale", "0.125"
         };
 
-        Render.main(args);
+        Render.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("rendered file " + outputFile.getAbsolutePath() + " not created",
                           outputFile.exists());
@@ -172,7 +172,7 @@ public class RenderTest {
                 "--scale", "0.0001"
         };
 
-        Render.main(args);
+        Render.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("rendered file " + outputFile.getAbsolutePath() + " not created",
                           outputFile.exists());

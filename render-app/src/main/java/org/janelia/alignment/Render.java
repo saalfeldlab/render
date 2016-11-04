@@ -516,64 +516,70 @@ public class Render {
         return bufferedImage;
     }
 
+    public static void renderUsingCommandLineArguments(final String[] args)
+            throws Exception {
+
+        final long mainStart = System.currentTimeMillis();
+        long parseStop = mainStart;
+        long targetOpenStop = mainStart;
+        long saveStart = mainStart;
+        long saveStop = mainStart;
+
+        final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
+
+        if (params.displayHelp()) {
+
+            params.showUsage();
+
+        } else {
+
+            LOG.info("renderUsingCommandLineArguments: entry, params={}", params);
+
+            params.validate();
+
+            parseStop = System.currentTimeMillis();
+
+            final BufferedImage targetImage = params.openTargetImage();
+
+            targetOpenStop = System.currentTimeMillis();
+
+            final ImageProcessorCache imageProcessorCache = new ImageProcessorCache();
+            render(params,
+                   targetImage,
+                   imageProcessorCache);
+
+            saveStart = System.currentTimeMillis();
+
+            // save the modified image
+            final String outputPathOrUri = params.getOut();
+            final String outputFormat = outputPathOrUri.substring(outputPathOrUri.lastIndexOf('.') + 1);
+            Utils.saveImage(targetImage,
+                            outputPathOrUri,
+                            outputFormat,
+                            params.isConvertToGray(),
+                            params.getQuality());
+
+            saveStop = System.currentTimeMillis();
+        }
+
+        LOG.debug("renderUsingCommandLineArguments: processing took {} milliseconds (parse command:{}, open target:{}, render tiles:{}, save target:{})",
+                  saveStop - mainStart,
+                  parseStop - mainStart,
+                  targetOpenStop - parseStop,
+                  saveStart - targetOpenStop,
+                  saveStop - saveStart);
+
+    }
+
     public static void main(final String[] args) {
 
         try {
-
-            final long mainStart = System.currentTimeMillis();
-            long parseStop = mainStart;
-            long targetOpenStop = mainStart;
-            long saveStart = mainStart;
-            long saveStop = mainStart;
-
-            final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
-
-            if (params.displayHelp()) {
-
-                params.showUsage();
-
-            } else {
-
-                LOG.info("main: entry, params={}", params);
-
-                params.validate();
-
-                parseStop = System.currentTimeMillis();
-
-                final BufferedImage targetImage = params.openTargetImage();
-
-                targetOpenStop = System.currentTimeMillis();
-
-                final ImageProcessorCache imageProcessorCache = new ImageProcessorCache();
-                render(params,
-                       targetImage,
-                       imageProcessorCache);
-
-                saveStart = System.currentTimeMillis();
-
-                // save the modified image
-                final String outputPathOrUri = params.getOut();
-                final String outputFormat = outputPathOrUri.substring(outputPathOrUri.lastIndexOf('.') + 1);
-                Utils.saveImage(targetImage,
-                                outputPathOrUri,
-                                outputFormat,
-                                params.isConvertToGray(),
-                                params.getQuality());
-
-                saveStop = System.currentTimeMillis();
-            }
-
-            LOG.debug("main: processing took {} milliseconds (parse command:{}, open target:{}, render tiles:{}, save target:{})",
-                      saveStop - mainStart,
-                      parseStop - mainStart,
-                      targetOpenStop - parseStop,
-                      saveStart - targetOpenStop,
-                      saveStop - saveStart);
-
+            renderUsingCommandLineArguments(args);
         } catch (final Throwable t) {
             LOG.error("main: caught exception", t);
             System.exit(1);
         }
 
     }
+
 }
