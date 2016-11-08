@@ -139,6 +139,14 @@ JaneliaQueryParameters.prototype.getSearch = function() {
     return '?' + $.param(this.map);
 };
 
+JaneliaQueryParameters.prototype.get = function(key, defaultValue) {
+    var value = this.map[key];
+    if ((typeof value == 'undefined') && (typeof defaultValue != 'undefined')){
+        value = defaultValue;
+    }
+    return value;
+};
+
 JaneliaQueryParameters.prototype.updateParameter = function (key, value) {
 
     if (typeof key != 'undefined') {

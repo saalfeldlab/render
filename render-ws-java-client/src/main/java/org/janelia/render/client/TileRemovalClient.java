@@ -5,7 +5,9 @@ import com.beust.jcommander.Parameter;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.TileBounds;
@@ -48,6 +50,41 @@ public class TileRemovalClient {
                 required = false)
         private Double hiddenTilesWithZ;
 
+        @Parameter(
+                names = "--keepOrRemoveZ",
+                description = "Z value for all tiles to be kept or removed",
+                required = false)
+        private Double keepOrRemoveZ;
+
+        @Parameter(
+                names = "--keepMinX",
+                description = "Minimum X value for all tiles to be kept",
+                required = false)
+        private Double keepMinX;
+
+        @Parameter(
+                names = "--keepMinY",
+                description = "Minimum Y value for all tiles to be kept",
+                required = false)
+        private Double keepMinY;
+
+        @Parameter(
+                names = "--keepMaxX",
+                description = "Maximum X value for all tiles to be kept",
+                required = false)
+        private Double keepMaxX;
+
+        @Parameter(
+                names = "--keepMaxY",
+                description = "Maximum Y value for all tiles to be kept",
+                required = false)
+        private Double keepMaxY;
+
+        private boolean isKeepBoxSpecified() {
+            return ((keepOrRemoveZ != null) && (keepMinX != null) && (keepMaxX != null) &&
+                    (keepMinY != null) && (keepMaxY != null));
+        }
+
         public void loadTileIds(final RenderDataClient renderDataClient)
                 throws IllegalStateException, IOException {
 
@@ -63,8 +100,13 @@ public class TileRemovalClient {
                             "--tileIdJson should not be specified when --hiddenTilesWithZ is specified");
                 }
 
+                if (isKeepBoxSpecified()) {
+                    throw new IllegalStateException(
+                            "--keep parameters should not be specified when --hiddenTilesWithZ is specified");
+                }
+
                 final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, hiddenTilesWithZ);
-                TileBoundsRTree tree = new TileBoundsRTree(hiddenTilesWithZ, tileBoundsList);
+                final TileBoundsRTree tree = new TileBoundsRTree(hiddenTilesWithZ, tileBoundsList);
 
                 final List<TileBounds> hiddenTileBoundsList = tree.findCompletelyObscuredTiles();
                 tileIdList = new ArrayList<>(hiddenTileBoundsList.size());
@@ -73,7 +115,7 @@ public class TileRemovalClient {
                     tileIdList.add(hiddenTileBounds.getTileId());
                 }
 
-                LOG.info("loadTileIds: found {} hidden tile ids to remove from z {}",
+                LOG.info("loadTileIds: found {} hidden tiles to remove from z {}",
                          tileIdList.size(), hiddenTilesWithZ);
 
             } else if (tileIdJson != null) {
@@ -83,12 +125,41 @@ public class TileRemovalClient {
                             "--tileIdList should not be specified when --tileIdJson is specified");
                 }
 
+                if (isKeepBoxSpecified()) {
+                    throw new IllegalStateException(
+                            "--keep parameters should not be specified when --tileIdJson is specified");
+                }
+
                 final JsonUtils.Helper<String> jsonHelper = new JsonUtils.Helper<>(String.class);
                 try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(tileIdJson)) {
                     tileIdList = jsonHelper.fromJsonArray(reader);
                 }
 
                 LOG.info("loadTileIds: loaded {} tile ids from {}", tileIdList.size(), tileIdJson);
+
+            } else if (isKeepBoxSpecified()) {
+
+                if (tileIdList != null) {
+                    throw new IllegalStateException(
+                            "--tileIdList should not be specified when --keep parameters are specified");
+                }
+
+                final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, keepOrRemoveZ);
+                final TileBoundsRTree tree = new TileBoundsRTree(keepOrRemoveZ, tileBoundsList);
+                final Set<String> keeperTileIds = new HashSet<>(tileBoundsList.size() * 2);
+                for (final TileBounds keeper : tree.findTilesInBox(keepMinX, keepMinY, keepMaxX, keepMaxY)) {
+                    keeperTileIds.add(keeper.getTileId());
+                }
+
+                tileIdList = new ArrayList<>(tileBoundsList.size());
+                for (final TileBounds tileBounds : tileBoundsList) {
+                    if (! keeperTileIds.contains(tileBounds.getTileId())) {
+                        tileIdList.add(tileBounds.getTileId());
+                    }
+                }
+
+                LOG.info("loadTileIds: found {} tiles outside the box to remove from z {}",
+                         tileIdList.size(), keepOrRemoveZ);
 
             } // else tileIdList was explictly specified on command line
 
