@@ -1,6 +1,7 @@
 package org.janelia.alignment;
 
 import ij.process.ByteProcessor;
+import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
 
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import mpicbg.util.Timer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +27,8 @@ public class ChannelPairs {
     private final List<ImageProcessorWithMasks> sourceList;
     private final List<ImageProcessorWithMasks> targetList;
     private final boolean isInterpolated;
+    private final int targetOffsetX;
+    private final int targetOffsetY;
     private final int targetWidth;
     private final int targetHeight;
 
@@ -43,9 +47,13 @@ public class ChannelPairs {
     public ChannelPairs(final String channelName,
                         final ImageProcessorWithMasks source,
                         final ImageProcessorWithMasks target,
+                        final int targetOffsetX,
+                        final int targetOffsetY,
                         final boolean isInterpolated) {
         this(Collections.singletonMap(channelName, source),
              Collections.singletonMap(channelName, target),
+             targetOffsetX,
+             targetOffsetY,
              isInterpolated);
     }
 
@@ -65,12 +73,16 @@ public class ChannelPairs {
      */
     public ChannelPairs(final Map<String, ImageProcessorWithMasks> sourceChannels,
                         final Map<String, ImageProcessorWithMasks> targetChannels,
+                        final int targetOffsetX,
+                        final int targetOffsetY,
                         final boolean isInterpolated)
             throws IllegalArgumentException {
 
         this.sourceList = new ArrayList<>(sourceChannels.size());
         this.targetList = new ArrayList<>(sourceChannels.size());
         this.isInterpolated = isInterpolated;
+        this.targetOffsetX = targetOffsetX;
+        this.targetOffsetY = targetOffsetY;
 
         Integer commonTargetWidth = null;
         int commonTargetHeight = -1;
@@ -98,8 +110,6 @@ public class ChannelPairs {
                             sourceChannel.mask.setInterpolationMethod(ImageProcessor.BILINEAR);
                         }
                     }
-
-                    targetChannel.outside = new ByteProcessor(commonTargetWidth, commonTargetHeight);
 
                     sourceList.add(sourceChannel);
                     targetList.add(targetChannel);
@@ -161,14 +171,6 @@ public class ChannelPairs {
                 target.ip.set(targetX, targetY,
                               source.ip.getPixelInterpolated(sourceX, sourceY));
 
-                // TODO: find out if short alpha channels need to be supported
-
-                // final int is = source.ip.getPixelInterpolated(t[0], t[1]);
-                // final int it = target.ip.get(x, y);
-                // final double f = alpha.getPixelInterpolated(t[0], t[1]) / 255.0;
-                // final double v = it + f * (is - it);
-                // target.ip.set(x, y, (int) Math.max(0, Math.min(65535, Math.round(v))));
-
                 if (source.mask != null) {
                     target.mask.set(targetX, targetY,
                                     source.mask.getPixelInterpolated(sourceX, sourceY));
@@ -186,9 +188,91 @@ public class ChannelPairs {
 
             }
 
-            target.outside.set(targetX, targetY, 0xff);
         }
     }
 
+    public static ImageProcessor blendChannels(final List<ChannelPairs> channelPairsList,
+                                               final int targetWidth,
+                                               final int targetHeight,
+                                               final boolean isBinaryMask) {
+
+        final Timer timer = new Timer();
+        timer.start();
+
+        final ByteProcessor worldTarget = new ByteProcessor(targetWidth, targetHeight);
+
+        double sourceAlpha;
+
+        for (final ChannelPairs channelPairs : channelPairsList) {
+
+            final int w = channelPairs.getTargetWidth();
+            final int h = channelPairs.getTargetHeight();
+
+            for (int y = 0; y <= h; ++y) {
+                for (int x = 0; x <= w; ++x) {
+
+                    final int worldTargetX = channelPairs.targetOffsetX + x;
+                    final int worldTargetY = channelPairs.targetOffsetY + y;
+
+                    for (final ImageProcessorWithMasks localTarget : channelPairs.targetList) {
+
+                        if (localTarget.mask == null) {
+                            sourceAlpha = 1.0;
+                        } else {
+                            sourceAlpha = localTarget.mask.getPixel(x, y) / 255.0; // TODO: do we need to divide by mask maskIntensity instead?
+                            if (isBinaryMask && (sourceAlpha > 0.0)) {
+                                sourceAlpha = 1.0;
+                            }
+                        }
+
+                        final int sourceIntensity = localTarget.ip.getPixel(x, y);
+                        final int targetIntensity = worldTarget.get(worldTargetX, worldTargetY);
+                        final double targetAlpha = 1.0; // TODO: verify this is right
+                        final int blendedIntensity = getBlendedIntensity(sourceIntensity, sourceAlpha,
+                                                                         targetIntensity, targetAlpha);
+
+                        worldTarget.set(worldTargetX, worldTargetY, blendedIntensity);
+                    }
+
+                }
+            }
+
+        }
+
+        LOG.info("blendChannels: {} channel pairs took {} milliseconds to blend",
+                 channelPairsList.size(), timer.stop());
+
+        return worldTarget;
+    }
+
+    public static int getBlendedIntensity(final int sourceIntensity,
+                                          final double sourceAlpha,
+                                          final int targetIntensity,
+                                          final double targetAlpha) {
+
+        final int blendedIntensity;
+
+        if (targetIntensity == 0) {
+
+            blendedIntensity = (int) ((sourceIntensity * sourceAlpha) + 0.5);
+
+        } else {
+
+            final double blendedAlpha = sourceAlpha + (targetAlpha * (1 - sourceAlpha));
+
+            if (blendedAlpha == 0) {
+                blendedIntensity = 0;
+            } else {
+                blendedIntensity = (int) (
+                        (((sourceIntensity * sourceAlpha) + (targetIntensity * targetAlpha * (1 - sourceAlpha))) /
+                         blendedAlpha)
+                        + 0.5);
+            }
+        }
+
+        return blendedIntensity;
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(ChannelPairs.class);
+
 }

@@ -106,7 +106,7 @@ public class TransformMeshTest {
                     maskTargetProcessor, null);
 
             final RenderTransformMeshMappingWithMasks mapping = new RenderTransformMeshMappingWithMasks(mesh);
-            mapping.map(new ChannelPairs("A", source, target, true), 1);
+            mapping.map(new ChannelPairs("A", source, target, 0, 0, true), 1);
 
             final long mapInterpolatedStop = System.currentTimeMillis();
 

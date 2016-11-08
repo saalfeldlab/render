@@ -24,6 +24,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -221,11 +222,14 @@ public class Render {
 
     static private BufferedImage targetToARGBImage(
             final ImageProcessorWithMasks target,
-            final TileSpec ts,
+            final double minIntensity,
+            final double maxIntensity,
             final boolean binaryMask) {
 
+        target.ip.setMinAndMax(minIntensity, maxIntensity);
+
         // convert to 24bit RGB
-        final ColorProcessor cp = convertToRGB(target.ip, ts);
+        final ColorProcessor cp = target.ip.convertToColorProcessor();
 
         // set alpha channel
         final int[] cpPixels = (int[]) cp.getPixels();
@@ -273,11 +277,26 @@ public class Render {
                               final Integer backgroundRGBColor)
             throws IllegalArgumentException {
 
+        final long tileLoopStart = System.currentTimeMillis();
+
+        LOG.debug("render: entry, processing {} tile specifications, numberOfThreads={}",
+                  tileSpecs.size(), numberOfThreads);
+
         final int targetWidth = targetImage.getWidth();
         final int targetHeight = targetImage.getHeight();
 
-        final double[] min = new double[ 2 ];
-        final double[] max = new double[ 2 ];
+        final List<ChannelPairs> channelPairsList =
+                render(tileSpecs,
+                       targetWidth, targetHeight,
+                       x, y,
+                       meshCellSize, scale, areaOffset,
+                       numberOfThreads,
+                       skipInterpolation, doFilter, excludeMask, imageProcessorCache);
+
+        final long drawImageStart = System.currentTimeMillis();
+
+        final ImageProcessor worldTarget =
+                ChannelPairs.blendChannels(channelPairsList, targetWidth, targetHeight, binaryMask);
 
         final Graphics2D targetGraphics = targetImage.createGraphics();
 
@@ -286,11 +305,46 @@ public class Render {
             targetGraphics.clearRect(0, 0, targetWidth, targetHeight);
         }
 
-        LOG.debug("render: entry, processing {} tile specifications, numberOfThreads={}",
-                  tileSpecs.size(), numberOfThreads);
+        final BufferedImage image = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_BYTE_GRAY);
+        final WritableRaster raster = image.getRaster();
+        raster.setDataElements(0, 0, targetWidth, targetHeight, worldTarget.getPixels());
 
-        final long tileLoopStart = System.currentTimeMillis();
+        targetGraphics.drawImage(image, 0, 0, null);
+
+        targetGraphics.dispose();
+
+        final long drawImageStop = System.currentTimeMillis();
+
+        LOG.debug("render: exit, {} tiles processed in {} milliseconds, draw image:{}",
+                  tileSpecs.size(),
+                  System.currentTimeMillis() - tileLoopStart,
+                  drawImageStop - drawImageStart);
+
+
+    }
+
+    public static List<ChannelPairs> render(final List<TileSpec> tileSpecs,
+                                            final int targetWidth,
+                                            final int targetHeight,
+                                            final double x,
+                                            final double y,
+                                            final double meshCellSize,
+                                            final double scale,
+                                            final boolean areaOffset,
+                                            final int numberOfThreads,
+                                            final boolean skipInterpolation,
+                                            final boolean doFilter,
+                                            final boolean excludeMask,
+                                            final ImageProcessorCache imageProcessorCache)
+            throws IllegalArgumentException {
+
+        final double[] min = new double[ 2 ];
+        final double[] max = new double[ 2 ];
+
+        final List<ChannelPairs> channelPairsList = new ArrayList<>(tileSpecs.size());
+
         int tileSpecIndex = 0;
+        ChannelPairs tileChannelPairs;
         long tileSpecStart;
         long loadMipStop;
         long filterStop;
@@ -300,7 +354,6 @@ public class Render {
         long sourceCreationStop;
         long targetCreationStop;
         long mapInterpolatedStop;
-        long drawImageStop;
 
         for (final TileSpec ts : tileSpecs) {
             tileSpecStart = System.currentTimeMillis();
@@ -437,24 +490,21 @@ public class Render {
 
             final ImageProcessorWithMasks target = new ImageProcessorWithMasks(tp, maskTargetProcessor, null);
 
+            tileChannelPairs = new ChannelPairs("A", source, target, tx, ty, (! skipInterpolation));
+            channelPairsList.add(tileChannelPairs);
+
             targetCreationStop = System.currentTimeMillis();
 
             final RenderTransformMeshMappingWithMasks mapping = new RenderTransformMeshMappingWithMasks(mesh);
 
             final String mapType = skipInterpolation ? "" : " interpolated";
-            mapping.map(new ChannelPairs("A", source, target, (! skipInterpolation)), numberOfThreads);
+            mapping.map(tileChannelPairs, numberOfThreads);
 
             mapInterpolatedStop = System.currentTimeMillis();
 
-            final BufferedImage image = targetToARGBImage(target, ts, binaryMask);
-
-            targetGraphics.drawImage(image, tx, ty, null);
-
-            drawImageStop = System.currentTimeMillis();
-
-            LOG.debug("render: tile {} took {} milliseconds to process (load mip:{}, downSampleLevels:{}, filter:{}, load mask:{}, ctList:{}, mesh:{}, source:{}, target:{}, map{}:{}, draw image:{}), cacheSize:{}",
+            LOG.debug("render: tile {} took {} milliseconds to process (load mip:{}, downSampleLevels:{}, filter:{}, load mask:{}, ctList:{}, mesh:{}, source:{}, target:{}, map{}:{}), cacheSize:{}",
                       tileSpecIndex,
-                      drawImageStop - tileSpecStart,
+                      mapInterpolatedStop - tileSpecStart,
                       loadMipStop - tileSpecStart,
                       downSampleLevels,
                       filterStop - loadMipStop,
@@ -465,17 +515,13 @@ public class Render {
                       targetCreationStop - sourceCreationStop,
                       mapType,
                       mapInterpolatedStop - targetCreationStop,
-                      drawImageStop - mapInterpolatedStop,
                       imageProcessorCache.size());
 
             tileSpecIndex++;
         }
 
-        targetGraphics.dispose();
+        return channelPairsList;
 
-        LOG.debug("render: exit, {} tiles processed in {} milliseconds",
-                  tileSpecs.size(),
-                  System.currentTimeMillis() - tileLoopStart);
     }
 
     public static TileSpec deriveBoundingBox(
