@@ -71,6 +71,16 @@ public class RenderTest {
                 "--scale", "0.05"
         };
 
+//        final String[] args = {
+//                "--tile_spec_url", "src/test/resources/stitch-test/test_4_tiles.json",
+//                "--out", outputFile.getAbsolutePath(),
+//                "--x", "1200",
+//                "--y", "0",
+//                "--width", "1076",
+//                "--height", "4173",
+//                "--scale", "0.1"
+//        };
+
         Render.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());

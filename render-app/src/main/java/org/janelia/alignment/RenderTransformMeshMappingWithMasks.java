@@ -24,11 +24,12 @@ import mpicbg.models.AffineModel2D;
 import mpicbg.trakem2.util.Pair;
 import mpicbg.util.Util;
 
+import org.janelia.alignment.mapper.PixelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Specialized {@link mpicbg.ij.TransformMapping} for {@link ChannelPairs},
+ * Specialized {@link mpicbg.ij.TransformMapping} for {@link PixelMapper} instances
  * that calculates transforms once and then applies them to all channels and masks in one go.
  */
 public class RenderTransformMeshMappingWithMasks {
@@ -39,11 +40,11 @@ public class RenderTransformMeshMappingWithMasks {
         this.transform = transform;
     }
 
-    public final void map(final ChannelPairs channelPairs) {
-        map(channelPairs, Runtime.getRuntime().availableProcessors());
+    public final void map(final PixelMapper pixelMapper) {
+        map(pixelMapper, Runtime.getRuntime().availableProcessors());
     }
 
-    public final void map(final ChannelPairs channelPairs,
+    public final void map(final PixelMapper pixelMapper,
                           final int numThreads) {
 
         final ArrayList<Pair<AffineModel2D, double[][]>> av = transform.getAV();
@@ -51,7 +52,7 @@ public class RenderTransformMeshMappingWithMasks {
             final AtomicInteger i = new AtomicInteger(0);
             final ArrayList<Thread> threads = new ArrayList<>(numThreads);
             for (int k = 0; k < numThreads; ++k) {
-                final Thread mtt = new MapTriangleThread(i, av, channelPairs);
+                final Thread mtt = new MapTriangleThread(i, av, pixelMapper);
                 threads.add(mtt);
                 mtt.start();
             }
@@ -64,7 +65,7 @@ public class RenderTransformMeshMappingWithMasks {
             }
         } else {
             for (final Pair<AffineModel2D, double[][]> triangle : av) {
-                mapTriangle(triangle, channelPairs);
+                mapTriangle(triangle, pixelMapper);
             }
         }
     }
@@ -72,31 +73,31 @@ public class RenderTransformMeshMappingWithMasks {
     private static final class MapTriangleThread extends Thread {
         private final AtomicInteger i;
         private final List<Pair<AffineModel2D, double[][]>> triangles;
-        private final ChannelPairs channelPairs;
+        private final PixelMapper pixelMapper;
 
         MapTriangleThread(final AtomicInteger i,
                           final List<Pair<AffineModel2D, double[][]>> triangles,
-                          final ChannelPairs channelPairs) {
+                          final PixelMapper pixelMapper) {
             this.i = i;
             this.triangles = triangles;
-            this.channelPairs = channelPairs;
+            this.pixelMapper = pixelMapper;
         }
 
         @Override
         final public void run() {
             int k = i.getAndIncrement();
             while (!isInterrupted() && k < triangles.size()) {
-                mapTriangle(triangles.get(k), channelPairs);
+                mapTriangle(triangles.get(k), pixelMapper);
                 k = i.getAndIncrement();
             }
         }
     }
 
     private static void mapTriangle(final Pair<AffineModel2D, double[][]> ai,
-                                    final ChannelPairs channelPairs) {
+                                    final PixelMapper pixelMapper) {
 
-        final int w = channelPairs.getTargetWidth() - 1;
-        final int h = channelPairs.getTargetHeight() - 1;
+        final int w = pixelMapper.getTargetWidth() - 1;
+        final int h = pixelMapper.getTargetHeight() - 1;
 
         final double[][] pq = ai.b;
 
@@ -110,24 +111,51 @@ public class RenderTransformMeshMappingWithMasks {
         final int maxY = Math.min(h, Util.roundPos(max[1]));
 
         final double[] source = new double[2];
-        for (int targetY = minY; targetY <= maxY; ++targetY) {
-            for (int targetX = minX; targetX <= maxX; ++targetX) {
 
-                if (RenderTransformMesh.isInTargetTriangle(pq, targetX, targetY)) {
+        if (pixelMapper.isMappingInterpolated()) {
 
-                    source[0] = targetX;
-                    source[1] = targetY;
+            for (int targetY = minY; targetY <= maxY; ++targetY) {
+                for (int targetX = minX; targetX <= maxX; ++targetX) {
 
-                    try {
-                        ai.a.applyInverseInPlace(source);
-                    } catch (final Exception e) {
-                        LOG.warn("ignoring exception", e);
-                        continue;
+                    if (RenderTransformMesh.isInTargetTriangle(pq, targetX, targetY)) {
+
+                        source[0] = targetX;
+                        source[1] = targetY;
+
+                        try {
+                            ai.a.applyInverseInPlace(source);
+                        } catch (final Exception e) {
+                            LOG.warn("ignoring exception", e);
+                            continue;
+                        }
+
+                        pixelMapper.mapInterpolated(source[0], source[1], targetX, targetY);
                     }
-
-                    channelPairs.mapPixel(source[0], source[1], targetX, targetY);
                 }
             }
+
+        } else {
+
+            for (int targetY = minY; targetY <= maxY; ++targetY) {
+                for (int targetX = minX; targetX <= maxX; ++targetX) {
+
+                    if (RenderTransformMesh.isInTargetTriangle(pq, targetX, targetY)) {
+
+                        source[0] = targetX;
+                        source[1] = targetY;
+
+                        try {
+                            ai.a.applyInverseInPlace(source);
+                        } catch (final Exception e) {
+                            LOG.warn("ignoring exception", e);
+                            continue;
+                        }
+
+                        pixelMapper.map(source[0], source[1], targetX, targetY);
+                    }
+                }
+            }
+
         }
     }
 

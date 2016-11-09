@@ -24,7 +24,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +33,10 @@ import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
+import org.janelia.alignment.mapper.PixelMapper;
+import org.janelia.alignment.mapper.SingleChannelMapper;
+import org.janelia.alignment.mapper.SingleChannelWithAlphaMapper;
+import org.janelia.alignment.mapper.SingleChannelWithBinaryMaskMapper;
 import org.janelia.alignment.filter.NormalizeLocalContrast;
 import org.janelia.alignment.filter.ValueToNoise;
 import org.janelia.alignment.spec.TileSpec;
@@ -285,18 +289,17 @@ public class Render {
         final int targetWidth = targetImage.getWidth();
         final int targetHeight = targetImage.getHeight();
 
-        final List<ChannelPairs> channelPairsList =
-                render(tileSpecs,
-                       targetWidth, targetHeight,
-                       x, y,
-                       meshCellSize, scale, areaOffset,
-                       numberOfThreads,
-                       skipInterpolation, doFilter, excludeMask, imageProcessorCache);
+        final ImageProcessor worldTarget = new ColorProcessor(targetWidth, targetHeight);
+        final Map<String, ? extends ImageProcessor> worldTargetChannels = Collections.singletonMap("A", worldTarget);
+
+        render(tileSpecs,
+               worldTargetChannels,
+               x, y,
+               meshCellSize, scale, areaOffset,
+               numberOfThreads,
+               skipInterpolation, doFilter, binaryMask, excludeMask, imageProcessorCache);
 
         final long drawImageStart = System.currentTimeMillis();
-
-        final ImageProcessor worldTarget =
-                ChannelPairs.blendChannels(channelPairsList, targetWidth, targetHeight, binaryMask);
 
         final Graphics2D targetGraphics = targetImage.createGraphics();
 
@@ -305,7 +308,7 @@ public class Render {
             targetGraphics.clearRect(0, 0, targetWidth, targetHeight);
         }
 
-        final BufferedImage image = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_BYTE_GRAY);
+        final BufferedImage image = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
         final WritableRaster raster = image.getRaster();
         raster.setDataElements(0, 0, targetWidth, targetHeight, worldTarget.getPixels());
 
@@ -323,28 +326,30 @@ public class Render {
 
     }
 
-    public static List<ChannelPairs> render(final List<TileSpec> tileSpecs,
-                                            final int targetWidth,
-                                            final int targetHeight,
-                                            final double x,
-                                            final double y,
-                                            final double meshCellSize,
-                                            final double scale,
-                                            final boolean areaOffset,
-                                            final int numberOfThreads,
-                                            final boolean skipInterpolation,
-                                            final boolean doFilter,
-                                            final boolean excludeMask,
-                                            final ImageProcessorCache imageProcessorCache)
+    public static void render(final List<TileSpec> tileSpecs,
+                              final Map<String, ? extends ImageProcessor> worldTargetChannels,
+                              final double x,
+                              final double y,
+                              final double meshCellSize,
+                              final double scale,
+                              final boolean areaOffset,
+                              final int numberOfThreads,
+                              final boolean skipInterpolation,
+                              final boolean doFilter,
+                              final boolean binaryMask,
+                              final boolean excludeMask,
+                              final ImageProcessorCache imageProcessorCache)
             throws IllegalArgumentException {
 
         final double[] min = new double[ 2 ];
         final double[] max = new double[ 2 ];
 
-        final List<ChannelPairs> channelPairsList = new ArrayList<>(tileSpecs.size());
+        final ImageProcessor worldTarget = worldTargetChannels.get("A"); // TODO: fix this hack
+        final int targetWidth = worldTarget.getWidth();
+        final int targetHeight = worldTarget.getHeight();
 
         int tileSpecIndex = 0;
-        ChannelPairs tileChannelPairs;
+        PixelMapper tilePixelMapper;
         long tileSpecStart;
         long loadMipStop;
         long filterStop;
@@ -479,26 +484,38 @@ public class Render {
 
             sourceCreationStop = System.currentTimeMillis();
 
-            // create a target
-            final ImageProcessor tp = ipMipmap.createProcessor(w, h);
+            final int targetOffsetX = tx; //- (int) ((s * x) + 0.5);
+            final int targetOffsetY = ty; //- (int) ((s * y) + 0.5);
 
-            final ImageProcessor maskTargetProcessor;
-            if (maskSourceProcessor != null)
-                maskTargetProcessor = new ByteProcessor(w, h);
-            else
-                maskTargetProcessor = null;
-
-            final ImageProcessorWithMasks target = new ImageProcessorWithMasks(tp, maskTargetProcessor, null);
-
-            tileChannelPairs = new ChannelPairs("A", source, target, tx, ty, (! skipInterpolation));
-            channelPairsList.add(tileChannelPairs);
+            if (maskSourceProcessor != null) {
+                if (binaryMask) {
+                    tilePixelMapper = new SingleChannelWithBinaryMaskMapper(source,
+                                                                            worldTarget,
+                                                                            targetOffsetX,
+                                                                            targetOffsetY,
+                                                                            (!skipInterpolation));
+                } else {
+                    tilePixelMapper =
+                            new SingleChannelWithAlphaMapper(source,
+                                                             worldTarget,
+                                                             targetOffsetX,
+                                                             targetOffsetY,
+                                                             (!skipInterpolation));
+                }
+            } else {
+                tilePixelMapper = new SingleChannelMapper(source,
+                                                          worldTarget,
+                                                          targetOffsetX,
+                                                          targetOffsetY,
+                                                          (!skipInterpolation));
+            }
 
             targetCreationStop = System.currentTimeMillis();
 
             final RenderTransformMeshMappingWithMasks mapping = new RenderTransformMeshMappingWithMasks(mesh);
 
             final String mapType = skipInterpolation ? "" : " interpolated";
-            mapping.map(tileChannelPairs, numberOfThreads);
+            mapping.map(tilePixelMapper, numberOfThreads);
 
             mapInterpolatedStop = System.currentTimeMillis();
 
@@ -519,8 +536,6 @@ public class Render {
 
             tileSpecIndex++;
         }
-
-        return channelPairsList;
 
     }
 
