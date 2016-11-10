@@ -74,10 +74,10 @@ public class RenderTest {
 //        final String[] args = {
 //                "--tile_spec_url", "src/test/resources/stitch-test/test_4_tiles.json",
 //                "--out", outputFile.getAbsolutePath(),
-//                "--x", "1200",
-//                "--y", "0",
-//                "--width", "1076",
-//                "--height", "4173",
+//                "--x", "1800",
+//                "--y", "1850",
+//                "--width", "100",
+//                "--height", "20",
 //                "--scale", "0.1"
 //        };
 

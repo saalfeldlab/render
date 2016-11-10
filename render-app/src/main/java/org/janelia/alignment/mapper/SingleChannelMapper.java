@@ -1,7 +1,6 @@
 package org.janelia.alignment.mapper;
 
 import ij.process.ByteProcessor;
-import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import ij.process.ShortProcessor;
@@ -17,20 +16,15 @@ public class SingleChannelMapper
         implements PixelMapper {
 
     protected final ImageProcessorWithMasks normalizedSource;
-    protected final ImageProcessor target;
-    protected final int targetOffsetX;
-    protected final int targetOffsetY;
+    protected final ImageProcessorWithMasks target;
     protected final boolean isMappingInterpolated;
 
     public SingleChannelMapper(final ImageProcessorWithMasks source,
-                               final ImageProcessor target,
-                               final int targetOffsetX,
-                               final int targetOffsetY,
+                               final ImageProcessorWithMasks target,
                                final boolean isMappingInterpolated) {
-        this.normalizedSource = normalizeSourceForTarget(source, target);
+
+        this.normalizedSource = normalizeSourceForTarget(source, target.ip);
         this.target = target;
-        this.targetOffsetX = targetOffsetX;
-        this.targetOffsetY = targetOffsetY;
         this.isMappingInterpolated = isMappingInterpolated;
 
         if (isMappingInterpolated) {
@@ -59,12 +53,10 @@ public class SingleChannelMapper
                     final int targetX,
                     final int targetY) {
 
-        final int roundedSourceX = (int) (sourceX + 0.5f);
-        final int roundedSourceY = (int) (sourceY + 0.5f);
-        final int worldTargetX = targetOffsetX + targetX;
-        final int worldTargetY = targetOffsetY + targetY;
+        final int roundedSourceX = (int) Math.round(sourceX);
+        final int roundedSourceY = (int) Math.round(sourceY);
 
-        target.set(worldTargetX, worldTargetY, normalizedSource.ip.getPixel(roundedSourceX, roundedSourceY));
+        target.ip.setf(targetX, targetY, normalizedSource.ip.getf(roundedSourceX, roundedSourceY));
     }
 
     @Override
@@ -73,10 +65,7 @@ public class SingleChannelMapper
                                 final int targetX,
                                 final int targetY) {
 
-        final int worldTargetX = targetOffsetX + targetX;
-        final int worldTargetY = targetOffsetY + targetY;
-
-        target.set(worldTargetX, worldTargetY, normalizedSource.ip.getPixelInterpolated(sourceX, sourceY));
+        target.ip.setf(targetX, targetY, (float) normalizedSource.ip.getInterpolatedPixel(sourceX, sourceY));
     }
 
     public static ImageProcessorWithMasks normalizeSourceForTarget(final ImageProcessorWithMasks source,
@@ -95,18 +84,13 @@ public class SingleChannelMapper
                     new ImageProcessorWithMasks(source.ip.convertToShortProcessor(),
                                                 source.mask,
                                                 null);
-        } else if (target instanceof ColorProcessor) {
-            normalizedSource =
-                    new ImageProcessorWithMasks(source.ip.convertToColorProcessor(),
-                                                source.mask,
-                                                null);
         } else if (target instanceof FloatProcessor) {
             normalizedSource =
                     new ImageProcessorWithMasks(source.ip.convertToFloatProcessor(),
                                                 source.mask,
                                                 null);
         } else {
-            throw new IllegalArgumentException("conversion to " + target.getClass() + " is not currently supported");
+            throw new IllegalArgumentException("conversion to " + target.getClass() + " is not supported");
         }
 
         return normalizedSource;

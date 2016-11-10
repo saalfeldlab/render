@@ -16,22 +16,28 @@ import static mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProces
 public class MultiChannelWithAlphaMapper
         extends MultiChannelMapper {
 
-    protected final List<Double> maxMaskIntensityList;
+    protected final List<Double> sourceMaxMaskIntensityList;
+    protected final List<Double> targetMaxMaskIntensityList;
 
     public MultiChannelWithAlphaMapper(final Map<String, ImageProcessorWithMasks> sourceChannelMap,
-                                       final Map<String, ImageProcessor> targetChannelMap,
-                                       final int targetOffsetX,
-                                       final int targetOffsetY,
+                                       final Map<String, ImageProcessorWithMasks> targetChannelMap,
                                        final boolean isMappingInterpolated) {
 
-        super(sourceChannelMap, targetChannelMap, targetOffsetX, targetOffsetY, isMappingInterpolated);
+        super(sourceChannelMap, targetChannelMap, isMappingInterpolated);
 
-        this.maxMaskIntensityList = new ArrayList<>(normalizedSourceList.size());
+        this.sourceMaxMaskIntensityList = new ArrayList<>(normalizedSourceList.size());
+        for (final ImageProcessorWithMasks normalizedSource : normalizedSourceList) {
+            this.sourceMaxMaskIntensityList.add(normalizedSource.mask.getMax());
+        }
+
+        this.targetMaxMaskIntensityList = new ArrayList<>(targetList.size());
+        for (final ImageProcessorWithMasks target : targetList) {
+            this.targetMaxMaskIntensityList.add(target.mask.getMax());
+        }
 
         if (isMappingInterpolated) {
             for (final ImageProcessorWithMasks normalizedSource : normalizedSourceList) {
                 normalizedSource.mask.setInterpolationMethod(ImageProcessor.BILINEAR);
-                this.maxMaskIntensityList.add(normalizedSource.mask.getMax());
             }
         }
 
@@ -43,20 +49,19 @@ public class MultiChannelWithAlphaMapper
                     final int targetX,
                     final int targetY) {
 
-        final int roundedSourceX = (int) (sourceX + 0.5f);
-        final int roundedSourceY = (int) (sourceY + 0.5f);
-        final int worldTargetX = targetOffsetX + targetX;
-        final int worldTargetY = targetOffsetY + targetY;
+        final int roundedSourceX = (int) Math.round(sourceX);
+        final int roundedSourceY = (int) Math.round(sourceY);
 
         ImageProcessorWithMasks normalizedSource;
         for (int i = 0; i < normalizedSourceList.size(); i++) {
             normalizedSource = normalizedSourceList.get(i);
-            setBlendedIntensity(worldTargetX,
-                                worldTargetY,
+            setBlendedIntensity(targetX,
+                                targetY,
                                 targetList.get(i),
-                                normalizedSource.ip.getPixel(roundedSourceX, roundedSourceY),
-                                normalizedSource.mask.getPixel(roundedSourceX, roundedSourceY),
-                                maxMaskIntensityList.get(i));
+                                targetMaxMaskIntensityList.get(i),
+                                normalizedSource.ip.getf(roundedSourceX, roundedSourceY),
+                                normalizedSource.mask.getf(roundedSourceX, roundedSourceY),
+                                sourceMaxMaskIntensityList.get(i));
         }
 
     }
@@ -67,36 +72,39 @@ public class MultiChannelWithAlphaMapper
                                 final int targetX,
                                 final int targetY) {
 
-        final int worldTargetX = targetOffsetX + targetX;
-        final int worldTargetY = targetOffsetY + targetY;
-
         ImageProcessorWithMasks normalizedSource;
         for (int i = 0; i < normalizedSourceList.size(); i++) {
             normalizedSource = normalizedSourceList.get(i);
-            setBlendedIntensity(worldTargetX,
-                                worldTargetY,
+            setBlendedIntensity(targetX,
+                                targetY,
                                 targetList.get(i),
-                                normalizedSource.ip.getPixelInterpolated(sourceX, sourceY),
-                                normalizedSource.mask.getPixelInterpolated(sourceX, sourceY),
-                                maxMaskIntensityList.get(i));
+                                targetMaxMaskIntensityList.get(i),
+                                normalizedSource.ip.getInterpolatedPixel(sourceX, sourceY),
+                                normalizedSource.mask.getInterpolatedPixel(sourceX, sourceY),
+                                sourceMaxMaskIntensityList.get(i));
         }
     }
 
-    public void setBlendedIntensity(final int worldTargetX,
-                                    final int worldTargetY,
-                                    final ImageProcessor target,
-                                    final int sourceIntensity,
-                                    final int sourceMaskIntensity,
+    public void setBlendedIntensity(final int targetX,
+                                    final int targetY,
+                                    final ImageProcessorWithMasks target,
+                                    final double targetMaxMaskIntensity,
+                                    final double sourceIntensity,
+                                    final double sourceMaskIntensity,
                                     final double sourceMaxMaskIntensity) {
 
         final double sourceAlpha = sourceMaskIntensity / sourceMaxMaskIntensity;
-        final int targetIntensity = target.getPixel(worldTargetX, worldTargetY);
-        final double targetAlpha = 1.0; // TODO: verify this is okay
-        final int blendedIntensity = SingleChannelWithAlphaMapper.getBlendedIntensity(sourceIntensity,
-                                                                                      sourceAlpha,
-                                                                                      targetIntensity,
-                                                                                      targetAlpha);
-        target.set(worldTargetX, worldTargetY, blendedIntensity);
+        final double targetIntensity = target.ip.getf(targetX, targetY);
+        final double targetAlpha = target.mask.getf(targetX, targetY) / targetMaxMaskIntensity;
+
+        final double[] blendedIntensityAndAlpha =
+                SingleChannelWithAlphaMapper.getBlendedIntensityAndAlpha(sourceIntensity,
+                                                                         sourceAlpha,
+                                                                         targetIntensity,
+                                                                         targetAlpha);
+
+        target.ip.setf(targetX, targetY, (float) blendedIntensityAndAlpha[0]);
+        target.mask.setf(targetX, targetY, (float) (blendedIntensityAndAlpha[1] * targetMaxMaskIntensity));
     }
 
 

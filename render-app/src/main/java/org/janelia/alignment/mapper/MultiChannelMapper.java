@@ -20,21 +20,15 @@ public class MultiChannelMapper
         implements PixelMapper {
 
     protected final List<ImageProcessorWithMasks> normalizedSourceList;
-    protected final List<ImageProcessor> targetList;
-    protected final int targetOffsetX;
-    protected final int targetOffsetY;
+    protected final List<ImageProcessorWithMasks> targetList;
     protected final boolean isMappingInterpolated;
     protected final int targetWidth;
     protected final int targetHeight;
 
     public MultiChannelMapper(final Map<String, ImageProcessorWithMasks> sourceChannelMap,
-                              final Map<String, ImageProcessor> targetChannelMap,
-                              final int targetOffsetX,
-                              final int targetOffsetY,
+                              final Map<String, ImageProcessorWithMasks> targetChannelMap,
                               final boolean isMappingInterpolated) {
 
-        this.targetOffsetX = targetOffsetX;
-        this.targetOffsetY = targetOffsetY;
         this.isMappingInterpolated = isMappingInterpolated;
 
         this.normalizedSourceList = new ArrayList<>(sourceChannelMap.size());
@@ -44,7 +38,7 @@ public class MultiChannelMapper
         int commonTargetHeight = -1;
 
         ImageProcessorWithMasks normalizedSource;
-        ImageProcessor targetChannel;
+        ImageProcessorWithMasks targetChannel;
         for (final String channelId : sourceChannelMap.keySet()) {
             targetChannel = targetChannelMap.get(channelId);
             if (targetChannel == null) {
@@ -52,7 +46,7 @@ public class MultiChannelMapper
             } else {
 
                 normalizedSource = SingleChannelMapper.normalizeSourceForTarget(sourceChannelMap.get(channelId),
-                                                                                targetChannel);
+                                                                                targetChannel.ip);
 
                 if (commonTargetWidth == null) {
                     commonTargetWidth = targetChannel.getWidth();
@@ -109,17 +103,15 @@ public class MultiChannelMapper
                     final int targetX,
                     final int targetY) {
 
-        final int roundedSourceX = (int) (sourceX + 0.5f);
-        final int roundedSourceY = (int) (sourceY + 0.5f);
-        final int worldTargetX = targetOffsetX + targetX;
-        final int worldTargetY = targetOffsetY + targetY;
+        final int roundedSourceX = (int) Math.round(sourceX);
+        final int roundedSourceY = (int) Math.round(sourceY);
 
         ImageProcessorWithMasks normalizedSource;
-        ImageProcessor target;
+        ImageProcessorWithMasks target;
         for (int i = 0; i < normalizedSourceList.size(); i++) {
             normalizedSource = normalizedSourceList.get(i);
             target = targetList.get(i);
-            target.set(worldTargetX, worldTargetY, normalizedSource.ip.getPixel(roundedSourceX, roundedSourceY));
+            target.ip.setf(targetX, targetY, normalizedSource.ip.getf(roundedSourceX, roundedSourceY));
         }
     }
 
@@ -129,15 +121,12 @@ public class MultiChannelMapper
                                 final int targetX,
                                 final int targetY) {
 
-        final int worldTargetX = targetOffsetX + targetX;
-        final int worldTargetY = targetOffsetY + targetY;
-
         ImageProcessorWithMasks normalizedSource;
-        ImageProcessor target;
+        ImageProcessorWithMasks target;
         for (int i = 0; i < normalizedSourceList.size(); i++) {
             normalizedSource = normalizedSourceList.get(i);
             target = targetList.get(i);
-            target.set(worldTargetX, worldTargetY, normalizedSource.ip.getPixelInterpolated(sourceX, sourceY));
+            target.ip.setf(targetX, targetY, (float) normalizedSource.ip.getInterpolatedPixel(sourceX, sourceY));
         }
     }
 

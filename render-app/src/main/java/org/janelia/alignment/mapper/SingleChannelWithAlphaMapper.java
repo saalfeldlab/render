@@ -12,21 +12,21 @@ import static mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProces
 public class SingleChannelWithAlphaMapper
         extends SingleChannelMapper {
 
-    protected final double maxMaskIntensity;
+    protected final double sourceMaxMaskIntensity;
+    protected final double targetMaxMaskIntensity;
 
     public SingleChannelWithAlphaMapper(final ImageProcessorWithMasks source,
-                                        final ImageProcessor target,
-                                        final int targetOffsetX,
-                                        final int targetOffsetY,
+                                        final ImageProcessorWithMasks target,
                                         final boolean isMappingInterpolated) {
 
-        super(source, target, targetOffsetX, targetOffsetY, isMappingInterpolated);
+        super(source, target, isMappingInterpolated);
 
         if (isMappingInterpolated) {
             this.normalizedSource.mask.setInterpolationMethod(ImageProcessor.BILINEAR);
         }
 
-        this.maxMaskIntensity = this.normalizedSource.mask.getMax();
+        this.sourceMaxMaskIntensity = this.normalizedSource.mask.getMax();
+        this.targetMaxMaskIntensity = this.target.mask.getMax();
     }
 
     @Override
@@ -35,15 +35,13 @@ public class SingleChannelWithAlphaMapper
                     final int targetX,
                     final int targetY) {
 
-        final int roundedSourceX = (int) (sourceX + 0.5f);
-        final int roundedSourceY = (int) (sourceY + 0.5f);
-        final int worldTargetX = targetOffsetX + targetX;
-        final int worldTargetY = targetOffsetY + targetY;
+        final int roundedSourceX = (int) Math.round(sourceX);
+        final int roundedSourceY = (int) Math.round(sourceY);
 
-        setBlendedIntensity(worldTargetX,
-                            worldTargetY,
-                            normalizedSource.ip.getPixel(roundedSourceX, roundedSourceY),
-                            normalizedSource.mask.getPixel(roundedSourceX, roundedSourceY));
+        setBlendedIntensity(targetX,
+                            targetY,
+                            normalizedSource.ip.getf(roundedSourceX, roundedSourceY),
+                            normalizedSource.mask.getf(roundedSourceX, roundedSourceY));
     }
 
     @Override
@@ -52,53 +50,55 @@ public class SingleChannelWithAlphaMapper
                                 final int targetX,
                                 final int targetY) {
 
-        final int worldTargetX = targetOffsetX + targetX;
-        final int worldTargetY = targetOffsetY + targetY;
-
-        setBlendedIntensity(worldTargetX,
-                            worldTargetY,
-                            normalizedSource.ip.getPixelInterpolated(sourceX, sourceY),
-                            normalizedSource.mask.getPixelInterpolated(sourceX, sourceY));
+        setBlendedIntensity(targetX,
+                            targetY,
+                            normalizedSource.ip.getInterpolatedPixel(sourceX, sourceY),
+                            normalizedSource.mask.getInterpolatedPixel(sourceX, sourceY));
     }
 
-    public void setBlendedIntensity(final int worldTargetX,
-                                    final int worldTargetY,
-                                    final int sourceIntensity,
-                                    final int sourceMaskIntensity) {
+    public void setBlendedIntensity(final int targetX,
+                                    final int targetY,
+                                    final double sourceIntensity,
+                                    final double sourceMaskIntensity) {
 
-        final double sourceAlpha = sourceMaskIntensity / maxMaskIntensity;
-        final int targetIntensity = target.getPixel(worldTargetX, worldTargetY);
-        final double targetAlpha = 1.0; // TODO: verify this is okay
-        final int blendedIntensity = getBlendedIntensity(sourceIntensity, sourceAlpha, targetIntensity, targetAlpha);
-        target.set(worldTargetX, worldTargetY, blendedIntensity);
+        final double sourceAlpha = sourceMaskIntensity / sourceMaxMaskIntensity;
+        final double targetIntensity = target.ip.getf(targetX, targetY);
+        final double targetAlpha = target.mask.getf(targetX, targetY) / targetMaxMaskIntensity;
+
+        final double[] blendedIntensityAndAlpha =
+                getBlendedIntensityAndAlpha(sourceIntensity, sourceAlpha, targetIntensity, targetAlpha);
+
+        target.ip.setf(targetX, targetY, (float) blendedIntensityAndAlpha[0]);
+        target.mask.setf(targetX, targetY, (float) (blendedIntensityAndAlpha[1] * targetMaxMaskIntensity));
     }
 
-    public static int getBlendedIntensity(final int sourceIntensity,
-                                          final double sourceAlpha,
-                                          final int targetIntensity,
-                                          final double targetAlpha) {
+    public static double[] getBlendedIntensityAndAlpha(final double sourceIntensity,
+                                                       final double sourceAlpha,
+                                                       final double targetIntensity,
+                                                       final double targetAlpha) {
 
-        final int blendedIntensity;
+        final double blendedIntensity;
+        final double blendedAlpha;
 
         if (targetIntensity == 0) {
 
-            blendedIntensity = (int) ((sourceIntensity * sourceAlpha) + 0.5);
+            blendedIntensity = sourceIntensity * sourceAlpha;
+            blendedAlpha = sourceAlpha;
 
         } else {
 
-            final double blendedAlpha = sourceAlpha + (targetAlpha * (1 - sourceAlpha));
+            blendedAlpha = sourceAlpha + (targetAlpha * (1 - sourceAlpha));
 
             if (blendedAlpha == 0) {
                 blendedIntensity = 0;
             } else {
-                blendedIntensity = (int) (
-                        (((sourceIntensity * sourceAlpha) + (targetIntensity * targetAlpha * (1 - sourceAlpha))) /
-                         blendedAlpha)
-                        + 0.5);
+                blendedIntensity =
+                        ((sourceIntensity * sourceAlpha) + (targetIntensity * targetAlpha * (1 - sourceAlpha))) /
+                        blendedAlpha;
             }
         }
 
-        return blendedIntensity;
+        return new double[] { blendedIntensity, blendedAlpha };
     }
 
 }

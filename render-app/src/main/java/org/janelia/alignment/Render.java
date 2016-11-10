@@ -18,6 +18,7 @@ package org.janelia.alignment;
 
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
+import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
 import java.awt.Color;
@@ -213,17 +214,6 @@ public class Render {
                backgroundRGBColor);
     }
 
-    /**
-     * convert to 24bit RGB
-     */
-    static private ColorProcessor convertToRGB(
-            final ImageProcessor tp,
-            final TileSpec ts) {
-        tp.setMinAndMax(ts.getMinIntensity(), ts.getMaxIntensity());
-        return tp.convertToColorProcessor();
-    }
-
-
     static private BufferedImage targetToARGBImage(
             final ImageProcessorWithMasks target,
             final double minIntensity,
@@ -289,8 +279,13 @@ public class Render {
         final int targetWidth = targetImage.getWidth();
         final int targetHeight = targetImage.getHeight();
 
-        final ImageProcessor worldTarget = new ColorProcessor(targetWidth, targetHeight);
-        final Map<String, ? extends ImageProcessor> worldTargetChannels = Collections.singletonMap("A", worldTarget);
+        final ImageProcessorWithMasks worldTarget =
+                new ImageProcessorWithMasks(
+                        new FloatProcessor(targetWidth, targetHeight),
+                        new ByteProcessor(targetWidth, targetHeight),
+                        null);
+
+        final Map<String, ImageProcessorWithMasks> worldTargetChannels = Collections.singletonMap("A", worldTarget);
 
         render(tileSpecs,
                worldTargetChannels,
@@ -308,9 +303,7 @@ public class Render {
             targetGraphics.clearRect(0, 0, targetWidth, targetHeight);
         }
 
-        final BufferedImage image = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
-        final WritableRaster raster = image.getRaster();
-        raster.setDataElements(0, 0, targetWidth, targetHeight, worldTarget.getPixels());
+        final BufferedImage image = targetToARGBImage(worldTarget, 0, 255, binaryMask);
 
         targetGraphics.drawImage(image, 0, 0, null);
 
@@ -327,7 +320,7 @@ public class Render {
     }
 
     public static void render(final List<TileSpec> tileSpecs,
-                              final Map<String, ? extends ImageProcessor> worldTargetChannels,
+                              final Map<String, ImageProcessorWithMasks> targetChannels,
                               final double x,
                               final double y,
                               final double meshCellSize,
@@ -341,12 +334,7 @@ public class Render {
                               final ImageProcessorCache imageProcessorCache)
             throws IllegalArgumentException {
 
-        final double[] min = new double[ 2 ];
-        final double[] max = new double[ 2 ];
-
-        final ImageProcessor worldTarget = worldTargetChannels.get("A"); // TODO: fix this hack
-        final int targetWidth = worldTarget.getWidth();
-        final int targetHeight = worldTarget.getHeight();
+        final ImageProcessorWithMasks target = targetChannels.entrySet().iterator().next().getValue();
 
         int tileSpecIndex = 0;
         PixelMapper tilePixelMapper;
@@ -451,23 +439,6 @@ public class Render {
                     ipMipmap.getWidth(),
                     ipMipmap.getHeight());
 
-            // get bounding box
-            mesh.bounds(min, max);
-            final int tx = (int)Math.max(0, Math.min(targetWidth, min[0]));
-            final int ty = (int)Math.max(0, Math.min(targetHeight, min[1]));
-            final int w = (int)(Math.min(targetWidth, max[0]) - tx) + 1;
-            final int h = (int)(Math.min(targetHeight, max[1]) - ty) + 1;
-
-            // skip if bounding box is not in target
-            if (w <=0 || h <= 0) {
-                LOG.debug("Skipping tile {} which is outside the FOV.", ts);
-                continue;
-            }
-
-//            LOG.debug("Bounding box is {}x{}+{}+{} from min = {} and max = {}", w, h, tx, ty, min, max);
-
-            mesh.translateTarget(-tx, -ty);
-
             mesh.updateAffines();
 
             meshCreationStop = System.currentTimeMillis();
@@ -484,30 +455,15 @@ public class Render {
 
             sourceCreationStop = System.currentTimeMillis();
 
-            final int targetOffsetX = tx; //- (int) ((s * x) + 0.5);
-            final int targetOffsetY = ty; //- (int) ((s * y) + 0.5);
-
             if (maskSourceProcessor != null) {
                 if (binaryMask) {
-                    tilePixelMapper = new SingleChannelWithBinaryMaskMapper(source,
-                                                                            worldTarget,
-                                                                            targetOffsetX,
-                                                                            targetOffsetY,
-                                                                            (!skipInterpolation));
+                    tilePixelMapper = new SingleChannelWithBinaryMaskMapper(source, target, (!skipInterpolation));
                 } else {
                     tilePixelMapper =
-                            new SingleChannelWithAlphaMapper(source,
-                                                             worldTarget,
-                                                             targetOffsetX,
-                                                             targetOffsetY,
-                                                             (!skipInterpolation));
+                            new SingleChannelWithAlphaMapper(source, target, (!skipInterpolation));
                 }
             } else {
-                tilePixelMapper = new SingleChannelMapper(source,
-                                                          worldTarget,
-                                                          targetOffsetX,
-                                                          targetOffsetY,
-                                                          (!skipInterpolation));
+                tilePixelMapper = new SingleChannelMapper(source, target, (!skipInterpolation));
             }
 
             targetCreationStop = System.currentTimeMillis();
