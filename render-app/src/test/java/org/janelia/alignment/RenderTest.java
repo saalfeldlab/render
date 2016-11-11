@@ -16,6 +16,11 @@
  */
 package org.janelia.alignment;
 
+import com.google.common.cache.CacheStats;
+
+import ij.process.ByteProcessor;
+import ij.process.FloatProcessor;
+
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
@@ -23,6 +28,10 @@ import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.After;
@@ -31,8 +40,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.cache.CacheStats;
 
 /**
  * Tests the {@link Render} class.
@@ -90,6 +97,68 @@ public class RenderTest {
 
         Assert.assertEquals("stitched file MD5 hash differs from expected result",
                             expectedDigestString, actualDigestString);
+    }
+
+    @Test
+    public void testMultichannelStitching() throws Exception {
+
+        final String[] args = {
+                "--tile_spec_url", "src/test/resources/multichannel-test/test_2_channels.json",
+                "--out", outputFile.getAbsolutePath(),
+                "--x", "650",
+                "--y", "1600",
+                "--width", "4000",
+                "--height", "2200",
+                "--scale", "0.25"
+        };
+
+        final String channel1Name = "DAPI";
+        final String channel2Name = "TdTomato";
+
+        final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
+        params.validate();
+
+        final BufferedImage targetImage = params.openTargetImage();
+        final int targetWidth = targetImage.getWidth();
+        final int targetHeight = targetImage.getHeight();
+
+        final Map<String, ImageProcessorWithMasks> worldTargetChannels = new HashMap<>();
+
+        worldTargetChannels.put(channel1Name, new ImageProcessorWithMasks(new FloatProcessor(targetWidth, targetHeight),
+                                                                          new ByteProcessor(targetWidth, targetHeight),
+                                                                          null));
+        worldTargetChannels.put(channel2Name, new ImageProcessorWithMasks(new FloatProcessor(targetWidth, targetHeight),
+                                                                          new ByteProcessor(targetWidth, targetHeight),
+                                                                          null));
+
+        final ImageProcessorCache imageProcessorCache = new ImageProcessorCache();
+
+        Render.render(params.getTileSpecs(),
+                      worldTargetChannels,
+                      params.getX(),
+                      params.getY(),
+                      params.getRes(params.getScale()),
+                      params.getScale(),
+                      params.isAreaOffset(),
+                      params.getNumberOfThreads(),
+                      params.skipInterpolation(),
+                      params.doFilter(),
+                      params.binaryMask(),
+                      params.excludeMask(),
+                      imageProcessorCache);
+
+        final ImageProcessorWithMasks channel1 = worldTargetChannels.get(channel1Name);
+        channel1.ip.setMinAndMax(100, 6000);
+
+        final BufferedImage channel1Image = Utils.toARGBImage(channel1.ip);
+
+        final ImageProcessorWithMasks channel2 = worldTargetChannels.get(channel2Name);
+        channel2.ip.setMinAndMax(0, 10000);
+
+        final BufferedImage channel2Image = Utils.toARGBImage(channel2.ip);
+
+        Assert.assertNotNull("null channel 1 image", channel1Image);
+        Assert.assertNotNull("null channel 2 image", channel2Image);
     }
 
     @Test

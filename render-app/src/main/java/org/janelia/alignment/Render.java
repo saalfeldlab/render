@@ -26,6 +26,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,12 +35,16 @@ import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
+import org.janelia.alignment.filter.NormalizeLocalContrast;
+import org.janelia.alignment.filter.ValueToNoise;
+import org.janelia.alignment.mapper.MultiChannelMapper;
+import org.janelia.alignment.mapper.MultiChannelWithAlphaMapper;
+import org.janelia.alignment.mapper.MultiChannelWithBinaryMaskMapper;
 import org.janelia.alignment.mapper.PixelMapper;
 import org.janelia.alignment.mapper.SingleChannelMapper;
 import org.janelia.alignment.mapper.SingleChannelWithAlphaMapper;
 import org.janelia.alignment.mapper.SingleChannelWithBinaryMaskMapper;
-import org.janelia.alignment.filter.NormalizeLocalContrast;
-import org.janelia.alignment.filter.ValueToNoise;
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
@@ -285,7 +290,7 @@ public class Render {
                         new ByteProcessor(targetWidth, targetHeight),
                         null);
 
-        final Map<String, ImageProcessorWithMasks> worldTargetChannels = Collections.singletonMap("A", worldTarget);
+        final Map<String, ImageProcessorWithMasks> worldTargetChannels = Collections.singletonMap(null, worldTarget);
 
         render(tileSpecs,
                worldTargetChannels,
@@ -334,8 +339,6 @@ public class Render {
                               final ImageProcessorCache imageProcessorCache)
             throws IllegalArgumentException {
 
-        final ImageProcessorWithMasks target = targetChannels.entrySet().iterator().next().getValue();
-
         int tileSpecIndex = 0;
         PixelMapper tilePixelMapper;
         long tileSpecStart;
@@ -350,6 +353,16 @@ public class Render {
 
         for (final TileSpec ts : tileSpecs) {
             tileSpecStart = System.currentTimeMillis();
+
+            final ImageProcessorWithMasks target = targetChannels.get(ts.getPrimaryChannelName());
+
+            if (target == null) {
+                LOG.debug("skipping tile '{}' with primary channel '{}' not in target list {}",
+                          ts.getTileId(),
+                          ts.getPrimaryChannelName(),
+                          targetChannels.keySet());
+                continue;
+            }
 
             final CoordinateTransformList<CoordinateTransform> ctl = createRenderTransform(ts, areaOffset, scale, x, y);
 
@@ -455,15 +468,50 @@ public class Render {
 
             sourceCreationStop = System.currentTimeMillis();
 
-            if (maskSourceProcessor != null) {
-                if (binaryMask) {
-                    tilePixelMapper = new SingleChannelWithBinaryMaskMapper(source, target, (!skipInterpolation));
+            if (ts.hasSecondaryChannels())  {
+
+                final Map<String, ImageProcessorWithMasks> sourceChannels = new HashMap<>(targetChannels.size());
+                sourceChannels.put(ts.getPrimaryChannelName(), source);
+
+                loadSourceSecondaryChannels(sourceChannels,
+                                            targetChannels,
+                                            ts,
+                                            ipMipmap.getWidth(),
+                                            ipMipmap.getHeight(),
+                                            mipmapLevel,
+                                            excludeMask,
+                                            imageProcessorCache);
+
+                if (maskSourceProcessor != null) {
+                    if (binaryMask) {
+                        tilePixelMapper = new MultiChannelWithBinaryMaskMapper(sourceChannels,
+                                                                               targetChannels,
+                                                                               (! skipInterpolation));
+                    } else {
+                        tilePixelMapper = new MultiChannelWithAlphaMapper(sourceChannels,
+                                                                          targetChannels,
+                                                                          (! skipInterpolation));
+                    }
                 } else {
-                    tilePixelMapper =
-                            new SingleChannelWithAlphaMapper(source, target, (!skipInterpolation));
+                    tilePixelMapper = new MultiChannelMapper(sourceChannels,
+                                                             targetChannels,
+                                                             (! skipInterpolation));
                 }
+
+
             } else {
-                tilePixelMapper = new SingleChannelMapper(source, target, (!skipInterpolation));
+
+                if (maskSourceProcessor != null) {
+                    if (binaryMask) {
+                        tilePixelMapper = new SingleChannelWithBinaryMaskMapper(source, target, (!skipInterpolation));
+                    } else {
+                        tilePixelMapper =
+                                new SingleChannelWithAlphaMapper(source, target, (!skipInterpolation));
+                    }
+                } else {
+                    tilePixelMapper = new SingleChannelMapper(source, target, (!skipInterpolation));
+                }
+
             }
 
             targetCreationStop = System.currentTimeMillis();
@@ -491,6 +539,62 @@ public class Render {
                       imageProcessorCache.size());
 
             tileSpecIndex++;
+        }
+
+    }
+
+    private static void loadSourceSecondaryChannels(final Map<String, ImageProcessorWithMasks> sourceChannels,
+                                                    final Map<String, ImageProcessorWithMasks> targetChannels,
+                                                    final TileSpec tileSpec,
+                                                    final int scaledWidth,
+                                                    final int scaledHeight,
+                                                    final int mipmapLevel,
+                                                    final boolean excludeMask,
+                                                    final ImageProcessorCache imageProcessorCache) {
+
+        // TODO: need to figure out how to handle different min/max intensity per channel
+
+        for (final String channelName : tileSpec.getSecondaryChannelNames()) {
+
+            if (targetChannels.containsKey(channelName)) {
+
+                final ChannelSpec channelSpec = tileSpec.getSecondaryChannel(channelName);
+                final Map.Entry<Integer, ImageAndMask> mipmapEntry =
+                        tileSpec.getFloorMipmapEntry(mipmapLevel, channelSpec.getMipmapLevels());
+                final ImageAndMask imageAndMask = mipmapEntry.getValue();
+
+                int downSampleLevels = 0;
+                final int currentMipmapLevel = mipmapEntry.getKey();
+                if (currentMipmapLevel < mipmapLevel) {
+                    downSampleLevels = mipmapLevel - currentMipmapLevel;
+                }
+
+                final ImageProcessor ip = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels, false);
+
+                if (ip.getWidth() == scaledWidth && ip.getWidth() == scaledHeight) {
+
+                    // TODO: does it make sense to support the canned filter for secondary channels?
+
+                    // open mask
+                    final ImageProcessor mask;
+                    final String maskUrl = imageAndMask.getMaskUrl();
+                    if ((maskUrl != null) && (!excludeMask)) {
+                        mask = imageProcessorCache.get(maskUrl, downSampleLevels, true);
+                    } else {
+                        mask = null;
+                    }
+
+                    sourceChannels.put(channelName, new ImageProcessorWithMasks(ip, mask, null));
+
+                } else {
+
+                    LOG.debug("skipping mipmap because level {} dimensions ({}x{}) differ from primary channel ({}x{}) for {}",
+                              mipmapLevel,
+                              ip.getWidth(), ip.getHeight(),
+                              scaledWidth, scaledHeight,
+                              imageAndMask.getImageUrl());
+                }
+            }
         }
 
     }

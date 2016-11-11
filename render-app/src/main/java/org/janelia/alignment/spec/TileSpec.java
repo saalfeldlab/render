@@ -24,6 +24,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 
@@ -59,6 +60,8 @@ public class TileSpec implements Serializable {
     private Double minIntensity;
     private Double maxIntensity;
     private final TreeMap<Integer, ImageAndMask> mipmapLevels;
+    private String primaryChannelName;
+    private Map<String, ChannelSpec> secondaryChannels;
     private MipmapPathBuilder mipmapPathBuilder;
     private ListTransformSpec transforms;
     private double meshCellSize = RenderParameters.DEFAULT_MESH_CELL_SIZE;
@@ -388,18 +391,47 @@ public class TileSpec implements Serializable {
     }
 
     public Map.Entry<Integer, ImageAndMask> getFloorMipmapEntry(final Integer mipmapLevel) {
+        return getFloorMipmapEntry(mipmapLevel, mipmapLevels);
+    }
 
-        Map.Entry<Integer, ImageAndMask> floorEntry = mipmapLevels.floorEntry(mipmapLevel);
+    public Map.Entry<Integer, ImageAndMask> getFloorMipmapEntry(final Integer mipmapLevel,
+                                                                final TreeMap<Integer, ImageAndMask> levelToImageMap) {
+
+        Map.Entry<Integer, ImageAndMask> floorEntry = levelToImageMap.floorEntry(mipmapLevel);
 
         if (floorEntry == null) {
-            floorEntry = mipmapLevels.firstEntry();
+            floorEntry = levelToImageMap.firstEntry();
         } else if ((floorEntry.getKey() < mipmapLevel) && (mipmapPathBuilder != null)) {
             floorEntry = mipmapPathBuilder.deriveImageAndMask(mipmapLevel,
-                                                              mipmapLevels.firstEntry(),
+                                                              levelToImageMap.firstEntry(),
                                                               true);
         }
 
         return floorEntry;
+    }
+
+    public String getPrimaryChannelName() {
+        return primaryChannelName;
+    }
+
+    public void setPrimaryChannelName(final String primaryChannelName) {
+        this.primaryChannelName = primaryChannelName;
+    }
+
+    public boolean hasSecondaryChannels() {
+        return (secondaryChannels != null) && (secondaryChannels.size() > 0);
+    }
+
+    public Set<String> getSecondaryChannelNames() {
+        return secondaryChannels.keySet();
+    }
+
+    public ChannelSpec getSecondaryChannel(final String name) {
+        return secondaryChannels.get(name);
+    }
+
+    public void setSecondaryChannels(final Map<String, ChannelSpec> secondaryChannels) {
+        this.secondaryChannels = secondaryChannels;
     }
 
     public void setMipmapPathBuilder(final MipmapPathBuilder mipmapPathBuilder) {
