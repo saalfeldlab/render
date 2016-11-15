@@ -27,8 +27,10 @@ import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
@@ -148,7 +150,7 @@ public class Render {
             throws IllegalArgumentException {
 
         render(params.getTileSpecs(),
-               targetImage,
+               params.getChannelNames(),
                params.getX(),
                params.getY(),
                params.getRes(params.getScale()),
@@ -160,63 +162,8 @@ public class Render {
                params.binaryMask(),
                params.excludeMask(),
                imageProcessorCache,
-               params.getBackgroundRGBColor());
-    }
-
-    public static void render(final List<TileSpec> tileSpecs,
-                              final BufferedImage targetImage,
-                              final double x,
-                              final double y,
-                              final double meshCellSize,
-                              final double scale,
-                              final boolean areaOffset,
-                              final int numberOfThreads,
-                              final boolean skipInterpolation,
-                              final boolean doFilter)
-            throws IllegalArgumentException {
-
-        render(tileSpecs,
-               targetImage,
-               x,
-               y,
-               meshCellSize,
-               scale,
-               areaOffset,
-               numberOfThreads,
-               skipInterpolation,
-               doFilter,
-               ImageProcessorCache.DISABLED_CACHE,
-               null);
-    }
-
-    public static void render(final List<TileSpec> tileSpecs,
-                              final BufferedImage targetImage,
-                              final double x,
-                              final double y,
-                              final double meshCellSize,
-                              final double scale,
-                              final boolean areaOffset,
-                              final int numberOfThreads,
-                              final boolean skipInterpolation,
-                              final boolean doFilter,
-                              final ImageProcessorCache imageProcessorCache,
-                              final Integer backgroundRGBColor)
-            throws IllegalArgumentException {
-
-        render(tileSpecs,
-               targetImage,
-               x,
-               y,
-               meshCellSize,
-               scale,
-               areaOffset,
-               numberOfThreads,
-               skipInterpolation,
-               doFilter,
-               false,
-               false,
-               imageProcessorCache,
-               backgroundRGBColor);
+               params.getBackgroundRGBColor(),
+               targetImage);
     }
 
     static private BufferedImage targetToARGBImage(
@@ -261,7 +208,7 @@ public class Render {
     }
 
     public static void render(final List<TileSpec> tileSpecs,
-                              final BufferedImage targetImage,
+                              final List<String> channelNames,
                               final double x,
                               final double y,
                               final double meshCellSize,
@@ -273,7 +220,8 @@ public class Render {
                               final boolean binaryMask,
                               final boolean excludeMask,
                               final ImageProcessorCache imageProcessorCache,
-                              final Integer backgroundRGBColor)
+                              final Integer backgroundRGBColor,
+                              final BufferedImage targetImage)
             throws IllegalArgumentException {
 
         final long tileLoopStart = System.currentTimeMillis();
@@ -284,13 +232,14 @@ public class Render {
         final int targetWidth = targetImage.getWidth();
         final int targetHeight = targetImage.getHeight();
 
-        final ImageProcessorWithMasks worldTarget =
-                new ImageProcessorWithMasks(
-                        new FloatProcessor(targetWidth, targetHeight),
-                        new ByteProcessor(targetWidth, targetHeight),
-                        null);
-
-        final Map<String, ImageProcessorWithMasks> worldTargetChannels = Collections.singletonMap(null, worldTarget);
+        final Map<String, ImageProcessorWithMasks> worldTargetChannels = new HashMap<>(channelNames.size());
+        for (final String channelName : channelNames) {
+            worldTargetChannels.put(channelName,
+                                    new ImageProcessorWithMasks(
+                                            new FloatProcessor(targetWidth, targetHeight),
+                                            new ByteProcessor(targetWidth, targetHeight),
+                                            null));
+        }
 
         render(tileSpecs,
                worldTargetChannels,
@@ -308,9 +257,21 @@ public class Render {
             targetGraphics.clearRect(0, 0, targetWidth, targetHeight);
         }
 
-        final BufferedImage image = targetToARGBImage(worldTarget, 0, 255, binaryMask);
+        if (tileSpecs.size() > 0) {
 
-        targetGraphics.drawImage(image, 0, 0, null);
+            // TODO: handle targetImage generation for multiple channels
+            // This hack only generates the first channel even though all channels are rendered.
+
+            final String channelName = channelNames.get(0);
+            final Set<String> channelNameSet = new HashSet<>(Collections.singletonList(channelName));
+            final ChannelSpec channelSpec = tileSpecs.get(0).getChannels(channelNameSet).get(0);
+            final ImageProcessorWithMasks worldTarget = worldTargetChannels.get(channelName);
+            final BufferedImage image = targetToARGBImage(worldTarget,
+                                                          channelSpec.getMinIntensity(),
+                                                          channelSpec.getMaxIntensity(),
+                                                          binaryMask);
+            targetGraphics.drawImage(image, 0, 0, null);
+        }
 
         targetGraphics.dispose();
 

@@ -34,8 +34,8 @@ public class ChannelSpec {
                        final TreeMap<Integer, ImageAndMask> mipmapLevels,
                        final MipmapPathBuilder mipmapPathBuilder) {
         this.name = name;
-        this.maxIntensity = maxIntensity;
-        this.minIntensity = minIntensity;
+        this.minIntensity = minIntensity == null ? 0 : minIntensity;
+        this.maxIntensity = maxIntensity == null ? 255 : maxIntensity;
         this.mipmapLevels = mipmapLevels;
         this.mipmapPathBuilder = mipmapPathBuilder;
     }

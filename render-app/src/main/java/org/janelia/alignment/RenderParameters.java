@@ -37,6 +37,7 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
@@ -117,6 +118,9 @@ public class RenderParameters implements Serializable {
 
     @Parameter(names = "--background_color", description = "RGB int color for background (default is 0: black)", required = false)
     private Integer backgroundRGBColor;
+
+    @Parameter(names = "--channel", description = "Channel to render", required = false)
+    private List<String> channelNames;
 
     private MipmapPathBuilder mipmapPathBuilder;
 
@@ -503,6 +507,16 @@ public class RenderParameters implements Serializable {
 
     public void setBackgroundRGBColor(final Integer backgroundRGBColor) {
         this.backgroundRGBColor = backgroundRGBColor;
+    }
+
+    public List<String> getChannelNames() {
+        final List<String> channelNameList;
+        if ((channelNames == null) || (channelNames.size() == 0)) {
+            channelNameList = Collections.singletonList(null);
+        } else {
+            channelNameList = channelNames;
+        }
+        return channelNameList;
     }
 
     public boolean hasTileSpecs() {
