@@ -189,6 +189,14 @@ public class TileDataService {
 
                 tileSpec.removeLastTransformSpec();
 
+                // If the tile still has more than 2 transforms, remove all but the last 2.
+                // This assumes that the last 2 transforms are for lens correction.
+                // Hopefully at some point we'll label transforms so that it is possible to
+                // explicitly include only lens correction transforms.
+                while (tileSpec.getTransforms().size() > 2) {
+                    tileSpec.removeLastTransformSpec();
+                }
+
                 tileRenderX = 0;
                 tileRenderY = 0;
 
