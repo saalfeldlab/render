@@ -45,19 +45,11 @@ public class ChannelSpec {
     }
 
     public double getMinIntensity() {
-        double value = 0;
-        if (minIntensity != null) {
-            value = minIntensity;
-        }
-        return value;
+        return minIntensity;
     }
 
     public double getMaxIntensity() {
-        double value = 255;
-        if (maxIntensity != null) {
-            value = maxIntensity;
-        }
-        return value;
+        return maxIntensity;
     }
 
     /**
