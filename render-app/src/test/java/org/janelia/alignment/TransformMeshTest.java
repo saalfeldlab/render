@@ -46,6 +46,9 @@ import org.slf4j.LoggerFactory;
  */
 public class TransformMeshTest {
 
+    // increase this to 10 (or more) to see average times
+    private static final int NUMBER_OF_RUNS_PER_TEST = 1;
+
     private TileSpec tileSpec;
     private CoordinateTransformList<CoordinateTransform> ctlMipmap;
     private ImageProcessor ipMipmap;
@@ -90,7 +93,7 @@ public class TransformMeshTest {
     @Test
     public void testRenderMeshOperations() throws Exception {
 
-        for (int i = 0; i < 10; ++i) {
+        for (int i = 0; i < NUMBER_OF_RUNS_PER_TEST; ++i) {
 
             final long start = System.currentTimeMillis();
 
@@ -137,7 +140,7 @@ public class TransformMeshTest {
     @Test
     public void testMeshOperations() throws Exception {
 
-        for (int i = 0; i < 10; ++i) {
+        for (int i = 0; i < NUMBER_OF_RUNS_PER_TEST; ++i) {
             final long start = System.currentTimeMillis();
 
             // create mesh

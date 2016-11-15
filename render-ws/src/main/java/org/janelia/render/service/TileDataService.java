@@ -14,6 +14,7 @@ import javax.ws.rs.core.Response;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -366,12 +367,14 @@ public class TileDataService {
         final Map.Entry<Integer, ImageAndMask> firstEntry = tileSpec.getFirstMipmapEntry();
         final ImageAndMask imageAndMask = firstEntry.getValue();
         final TileSpec simpleTileSpec = new TileSpec();
+        final ChannelSpec channelSpec = new ChannelSpec();
+        simpleTileSpec.addChannel(channelSpec);
         if (isSource) {
             final ImageAndMask imageWithoutMask = new ImageAndMask(imageAndMask.getImageUrl(), null);
-            simpleTileSpec.putMipmap(firstEntry.getKey(), imageWithoutMask);
+            channelSpec.putMipmap(firstEntry.getKey(), imageWithoutMask);
         } else {
             final ImageAndMask maskAsImage = new ImageAndMask(imageAndMask.getMaskUrl(), null);
-            simpleTileSpec.putMipmap(firstEntry.getKey(), maskAsImage);
+            channelSpec.putMipmap(firstEntry.getKey(), maskAsImage);
         }
         tileRenderParameters.addTileSpec(simpleTileSpec);
         tileRenderParameters.setDoFilter(filter);

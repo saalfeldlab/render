@@ -50,12 +50,14 @@ public class TileSpecTest {
         Assert.assertEquals("mipmap sorting failed, unexpected first entry returned",
                             new Integer(0), firstMipMap.getKey());
 
-        Map.Entry<Integer, ImageAndMask> floorMipMap = tileSpec.getFloorMipmapEntry(3);
+        final ChannelSpec channelSpec = tileSpec.getAllChannels().get(0);
+
+        Map.Entry<Integer, ImageAndMask> floorMipMap = channelSpec.getFloorMipmapEntry(3);
         Assert.assertNotNull("floor 3 mipmap entry is null", floorMipMap);
         Assert.assertEquals("invalid key for floor 3 mipmap entry",
                             new Integer(3), floorMipMap.getKey());
 
-        floorMipMap = tileSpec.getFloorMipmapEntry(4);
+        floorMipMap = channelSpec.getFloorMipmapEntry(4);
         Assert.assertNotNull("floor 4 mipmap entry is null", floorMipMap);
         Assert.assertEquals("invalid key for floor 3 mipmap entry",
                             new Integer(3), floorMipMap.getKey());
@@ -90,8 +92,9 @@ public class TileSpecTest {
         Assert.assertEquals("bad rotation value", layoutData.getRotation(), parsedLayoutData.getRotation());
 
         parsedSpec.setBoundingBox(new Rectangle(11, 12, 21, 22), parsedSpec.getMeshCellSize());
+        final ChannelSpec channelSpec = parsedSpec.getAllChannels().get(0);
         final ImageAndMask imageAndMask = new ImageAndMask("src/test/resources/stitch-test/coll0075_row0021_cam1.png", null);
-        parsedSpec.putMipmap(0, imageAndMask);
+        channelSpec.putMipmap(0, imageAndMask);
         String layoutFileFormat = parsedSpec.toLayoutFileFormat();
         String hackedFileFormat = layoutFileFormat.replaceFirst("\t[^\t]+coll0075_row0021_cam1.png",
                                                                       "\timage.png");

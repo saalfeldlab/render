@@ -16,6 +16,7 @@ import java.util.Random;
 
 import mpicbg.trakem2.util.Downsampler;
 
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -183,9 +184,11 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         }
 
         int tileIndex = 0;
+        ChannelSpec firstChannelSpec;
         String imageUrl;
         for (final TileSpec tileSpec : tileSpecs) {
-            imageUrl = tileSpec.getFloorMipmapEntry(0).getValue().getImageUrl();
+            firstChannelSpec = tileSpec.getAllChannels().get(0);
+            imageUrl = firstChannelSpec.getFloorMipmapEntry(0).getValue().getImageUrl();
             urlToTileSpec.put(imageUrl, tileSpec);
             urlToColor.put(imageUrl, colorList.get(tileIndex));
             tileIndex++;

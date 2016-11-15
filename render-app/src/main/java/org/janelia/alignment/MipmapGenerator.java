@@ -26,6 +26,7 @@ import javax.imageio.stream.MemoryCacheImageOutputStream;
 
 import mpicbg.trakem2.util.Downsampler;
 
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -178,51 +179,53 @@ public class MipmapGenerator {
                                            final int greatestMipmapLevel)
             throws IllegalArgumentException, IOException {
 
-        ImageAndMask imageAndMask = tileSpec.getMipmap(0);
+        for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
+            ImageAndMask imageAndMask = channelSpec.getMipmap(0);
 
-        if ((imageAndMask == null) || (! imageAndMask.hasImage())) {
-            throw new IllegalArgumentException("level 0 mipmap is missing from " + tileSpec);
-        }
-
-        final File imageMipmapBaseFile = getMipmapBaseFile(imageAndMask.getImageUrl(), true);
-
-        File maskMipmapBaseFile = null;
-        final boolean hasMask = imageAndMask.hasMask();
-        if (hasMask) {
-
-            maskMipmapBaseFile = getMipmapBaseFile(imageAndMask.getMaskUrl(), true);
-
-            if (consolidateMasks) {
-                final File sourceMaskFile = getFileForUrlString(imageAndMask.getMaskUrl());
-                final String sourceDigest = getDigest(sourceMaskFile);
-                if (sourceDigestToMaskMipmapBaseFileMap.containsKey(sourceDigest)) {
-                    maskMipmapBaseFile = sourceDigestToMaskMipmapBaseFileMap.get(sourceDigest);
-                } else {
-                    sourceDigestToMaskMipmapBaseFileMap.put(sourceDigest, maskMipmapBaseFile);
-                }
+            if ((imageAndMask == null) || (!imageAndMask.hasImage())) {
+                throw new IllegalArgumentException("level 0 mipmap is missing from " + tileSpec);
             }
 
-        }
+            final File imageMipmapBaseFile = getMipmapBaseFile(imageAndMask.getImageUrl(), true);
 
-        File imageMipmapFile;
-        File maskMipmapFile;
-        for (int mipmapLevel = 1; mipmapLevel <= greatestMipmapLevel; mipmapLevel++) {
-            if (! tileSpec.hasMipmap(mipmapLevel)) {
-                imageMipmapFile = getMipmapFile(imageMipmapBaseFile, mipmapLevel);
-                generateMipmapFile(imageAndMask.getImageUrl(), imageMipmapFile, 1);
+            File maskMipmapBaseFile = null;
+            final boolean hasMask = imageAndMask.hasMask();
+            if (hasMask) {
 
-                if (hasMask) {
-                    maskMipmapFile = getMipmapFile(maskMipmapBaseFile, mipmapLevel);
-                    generateMipmapFile(imageAndMask.getMaskUrl(), maskMipmapFile, 1);
-                } else {
-                    maskMipmapFile = null;
+                maskMipmapBaseFile = getMipmapBaseFile(imageAndMask.getMaskUrl(), true);
+
+                if (consolidateMasks) {
+                    final File sourceMaskFile = getFileForUrlString(imageAndMask.getMaskUrl());
+                    final String sourceDigest = getDigest(sourceMaskFile);
+                    if (sourceDigestToMaskMipmapBaseFileMap.containsKey(sourceDigest)) {
+                        maskMipmapBaseFile = sourceDigestToMaskMipmapBaseFileMap.get(sourceDigest);
+                    } else {
+                        sourceDigestToMaskMipmapBaseFileMap.put(sourceDigest, maskMipmapBaseFile);
+                    }
                 }
 
-                imageAndMask = new ImageAndMask(imageMipmapFile, maskMipmapFile);
-                tileSpec.putMipmap(mipmapLevel, imageAndMask);
+            }
 
-            } else {
-                imageAndMask = tileSpec.getMipmap(mipmapLevel);
+            File imageMipmapFile;
+            File maskMipmapFile;
+            for (int mipmapLevel = 1; mipmapLevel <= greatestMipmapLevel; mipmapLevel++) {
+                if (! channelSpec.hasMipmap(mipmapLevel)) {
+                    imageMipmapFile = getMipmapFile(imageMipmapBaseFile, mipmapLevel);
+                    generateMipmapFile(imageAndMask.getImageUrl(), imageMipmapFile, 1);
+
+                    if (hasMask) {
+                        maskMipmapFile = getMipmapFile(maskMipmapBaseFile, mipmapLevel);
+                        generateMipmapFile(imageAndMask.getMaskUrl(), maskMipmapFile, 1);
+                    } else {
+                        maskMipmapFile = null;
+                    }
+
+                    imageAndMask = new ImageAndMask(imageMipmapFile, maskMipmapFile);
+                    channelSpec.putMipmap(mipmapLevel, imageAndMask);
+
+                } else {
+                    imageAndMask = channelSpec.getMipmap(mipmapLevel);
+                }
             }
         }
     }

@@ -8,19 +8,22 @@
     "maxY": 3707.0,
     "width": 2048.0,
     "height": 2048.0,
-    "minIntensity":100.0,
-    "maxIntensity":6000.0,
-    "primaryChannelName":"DAPI",
-    "mipmapLevels": {
-      "0": {
-        "imageUrl": "src/test/resources/multichannel-test/DAPI_1_S0001_F0003_Z00.tif",
-        "maskUrl": "src/test/resources/multichannel-test/fullcmos.tif"
-      }
-    },
-    "secondaryChannels": {
-      "TdTomato": {
-        "minIntensity":0.0,
-        "maxIntensity":10000.0,
+    "channels": [
+      {
+        "name": "DAPI",
+        "minIntensity":100.0,
+        "maxIntensity":6000.0,
+        "mipmapLevels": {
+          "0": {
+            "imageUrl": "src/test/resources/multichannel-test/DAPI_1_S0001_F0003_Z00.tif",
+            "maskUrl": "src/test/resources/multichannel-test/fullcmos.tif"
+          }
+        }
+      },
+      {
+        "name": "TdTomato",
+        "minIntensity": 0.0,
+        "maxIntensity": 10000.0,
         "mipmapLevels": {
           "0": {
             "imageUrl": "src/test/resources/multichannel-test/TdTomato_S0001_F0003_Z00.tif",
@@ -28,7 +31,7 @@
           }
         }
       }
-    },
+    ],
     "transforms": {
       "type": "list",
       "specList": [
@@ -50,19 +53,22 @@
     "maxY":3695.0,
     "width": 2048.0,
     "height": 2048.0,
-    "minIntensity":100.0,
-    "maxIntensity":6000.0,
-    "primaryChannelName":"DAPI",
-    "mipmapLevels": {
-      "0": {
-        "imageUrl": "src/test/resources/multichannel-test/DAPI_1_S0001_F0004_Z00.tif",
-        "maskUrl": "src/test/resources/multichannel-test/fullcmos.tif"
-      }
-    },
-    "secondaryChannels": {
-      "TdTomato": {
-        "minIntensity":0.0,
-        "maxIntensity":10000.0,
+    "channels": [
+      {
+        "name": "DAPI",
+        "minIntensity":100.0,
+        "maxIntensity":6000.0,
+        "mipmapLevels": {
+          "0": {
+            "imageUrl": "src/test/resources/multichannel-test/DAPI_1_S0001_F0004_Z00.tif",
+            "maskUrl": "src/test/resources/multichannel-test/fullcmos.tif"
+          }
+        }
+      },
+      {
+        "name": "TdTomato",
+        "minIntensity": 0.0,
+        "maxIntensity": 10000.0,
         "mipmapLevels": {
           "0": {
             "imageUrl": "src/test/resources/multichannel-test/TdTomato_S0001_F0004_Z00.tif",
@@ -70,7 +76,7 @@
           }
         }
       }
-    },
+    ],
     "transforms": {
       "type": "list",
       "specList": [

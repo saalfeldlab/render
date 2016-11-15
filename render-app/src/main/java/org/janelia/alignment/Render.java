@@ -354,15 +354,17 @@ public class Render {
         for (final TileSpec ts : tileSpecs) {
             tileSpecStart = System.currentTimeMillis();
 
-            final ImageProcessorWithMasks target = targetChannels.get(ts.getPrimaryChannelName());
+            final List<ChannelSpec> channelSpecList = ts.getChannels(targetChannels.keySet());
 
-            if (target == null) {
-                LOG.debug("skipping tile '{}' with primary channel '{}' not in target list {}",
+            if (channelSpecList.size() == 0) {
+                LOG.debug("skipping tile '{}' because it does not have any channels with the names {}",
                           ts.getTileId(),
-                          ts.getPrimaryChannelName(),
                           targetChannels.keySet());
                 continue;
             }
+
+            final ChannelSpec firstChannel = channelSpecList.get(0);
+            final ImageProcessorWithMasks target = targetChannels.get(firstChannel.getName());
 
             final CoordinateTransformList<CoordinateTransform> ctl = createRenderTransform(ts, areaOffset, scale, x, y);
 
@@ -373,7 +375,7 @@ public class Render {
             int height = ts.getHeight();
             // if width and height were not set, figure width and height
             if ((width < 0) || (height < 0)) {
-                mipmapEntry = ts.getFirstMipmapEntry();
+                mipmapEntry = firstChannel.getFirstMipmapEntry();
                 imageAndMask = mipmapEntry.getValue();
                 widthAndHeightProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(), 0, false);
                 width = widthAndHeightProcessor.getWidth();
@@ -388,7 +390,7 @@ public class Render {
             final ImageProcessor ipMipmap;
             if (widthAndHeightProcessor == null) { // width and height were explicitly specified as parameters
 
-                mipmapEntry = ts.getFloorMipmapEntry(mipmapLevel);
+                mipmapEntry = firstChannel.getFloorMipmapEntry(mipmapLevel);
                 imageAndMask = mipmapEntry.getValue();
 
                 final int currentMipmapLevel = mipmapEntry.getKey();
@@ -468,19 +470,18 @@ public class Render {
 
             sourceCreationStop = System.currentTimeMillis();
 
-            if (ts.hasSecondaryChannels())  {
+            if (channelSpecList.size() > 1)  {
 
                 final Map<String, ImageProcessorWithMasks> sourceChannels = new HashMap<>(targetChannels.size());
-                sourceChannels.put(ts.getPrimaryChannelName(), source);
+                sourceChannels.put(firstChannel.getName(), source);
 
-                loadSourceSecondaryChannels(sourceChannels,
-                                            targetChannels,
-                                            ts,
-                                            ipMipmap.getWidth(),
-                                            ipMipmap.getHeight(),
-                                            mipmapLevel,
-                                            excludeMask,
-                                            imageProcessorCache);
+                loadAdditionalSourceChannels(channelSpecList,
+                                             sourceChannels,
+                                             ipMipmap.getWidth(),
+                                             ipMipmap.getHeight(),
+                                             mipmapLevel,
+                                             excludeMask,
+                                             imageProcessorCache);
 
                 if (maskSourceProcessor != null) {
                     if (binaryMask) {
@@ -543,57 +544,53 @@ public class Render {
 
     }
 
-    private static void loadSourceSecondaryChannels(final Map<String, ImageProcessorWithMasks> sourceChannels,
-                                                    final Map<String, ImageProcessorWithMasks> targetChannels,
-                                                    final TileSpec tileSpec,
-                                                    final int scaledWidth,
-                                                    final int scaledHeight,
-                                                    final int mipmapLevel,
-                                                    final boolean excludeMask,
-                                                    final ImageProcessorCache imageProcessorCache) {
+    private static void loadAdditionalSourceChannels(final List<ChannelSpec> channelSpecList,
+                                                     final Map<String, ImageProcessorWithMasks> sourceChannels,
+                                                     final int scaledWidth,
+                                                     final int scaledHeight,
+                                                     final int mipmapLevel,
+                                                     final boolean excludeMask,
+                                                     final ImageProcessorCache imageProcessorCache) {
 
         // TODO: need to figure out how to handle different min/max intensity per channel
 
-        for (final String channelName : tileSpec.getSecondaryChannelNames()) {
+        for (int i = 1; i < channelSpecList.size(); i++) {
 
-            if (targetChannels.containsKey(channelName)) {
+            final ChannelSpec channelSpec = channelSpecList.get(i);
+            final Map.Entry<Integer, ImageAndMask> mipmapEntry =
+                    channelSpec.getFloorMipmapEntry(mipmapLevel);
+            final ImageAndMask imageAndMask = mipmapEntry.getValue();
 
-                final ChannelSpec channelSpec = tileSpec.getSecondaryChannel(channelName);
-                final Map.Entry<Integer, ImageAndMask> mipmapEntry =
-                        tileSpec.getFloorMipmapEntry(mipmapLevel, channelSpec.getMipmapLevels());
-                final ImageAndMask imageAndMask = mipmapEntry.getValue();
+            int downSampleLevels = 0;
+            final int currentMipmapLevel = mipmapEntry.getKey();
+            if (currentMipmapLevel < mipmapLevel) {
+                downSampleLevels = mipmapLevel - currentMipmapLevel;
+            }
 
-                int downSampleLevels = 0;
-                final int currentMipmapLevel = mipmapEntry.getKey();
-                if (currentMipmapLevel < mipmapLevel) {
-                    downSampleLevels = mipmapLevel - currentMipmapLevel;
-                }
+            final ImageProcessor ip = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels, false);
 
-                final ImageProcessor ip = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels, false);
+            if (ip.getWidth() == scaledWidth && ip.getWidth() == scaledHeight) {
 
-                if (ip.getWidth() == scaledWidth && ip.getWidth() == scaledHeight) {
+                // TODO: does it make sense to support the canned filter for secondary channels?
 
-                    // TODO: does it make sense to support the canned filter for secondary channels?
-
-                    // open mask
-                    final ImageProcessor mask;
-                    final String maskUrl = imageAndMask.getMaskUrl();
-                    if ((maskUrl != null) && (!excludeMask)) {
-                        mask = imageProcessorCache.get(maskUrl, downSampleLevels, true);
-                    } else {
-                        mask = null;
-                    }
-
-                    sourceChannels.put(channelName, new ImageProcessorWithMasks(ip, mask, null));
-
+                // open mask
+                final ImageProcessor mask;
+                final String maskUrl = imageAndMask.getMaskUrl();
+                if ((maskUrl != null) && (!excludeMask)) {
+                    mask = imageProcessorCache.get(maskUrl, downSampleLevels, true);
                 } else {
-
-                    LOG.debug("skipping mipmap because level {} dimensions ({}x{}) differ from primary channel ({}x{}) for {}",
-                              mipmapLevel,
-                              ip.getWidth(), ip.getHeight(),
-                              scaledWidth, scaledHeight,
-                              imageAndMask.getImageUrl());
+                    mask = null;
                 }
+
+                sourceChannels.put(channelSpec.getName(), new ImageProcessorWithMasks(ip, mask, null));
+
+            } else {
+
+                LOG.debug("skipping mipmap because level {} dimensions ({}x{}) differ from primary channel ({}x{}) for {}",
+                          mipmapLevel,
+                          ip.getWidth(), ip.getHeight(),
+                          scaledWidth, scaledHeight,
+                          imageAndMask.getImageUrl());
             }
         }
 

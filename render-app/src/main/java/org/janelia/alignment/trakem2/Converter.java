@@ -29,6 +29,7 @@ import mpicbg.trakem2.transform.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMesh;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -388,10 +389,13 @@ public class Converter {
             tileSpec.setHeight(oHeight);
 
             // TODO: determine why these min and max values differ from what beanshell script pulls
-            tileSpec.setMinIntensity(min); // xml: 48.0, beanshell: 0.0
-            tileSpec.setMaxIntensity(max); // xml: 207.0, beanshell: 255.0
+            final ChannelSpec channelSpec =
+                    new ChannelSpec(min,     // xml: 48.0, beanshell: 0.0
+                                    max);    // xml: 207.0, beanshell: 255.0
 
-            tileSpec.putMipmap(0, new ImageAndMask(imageUrl, maskUrl));
+            channelSpec.putMipmap(0, new ImageAndMask(imageUrl, maskUrl));
+            tileSpec.addChannel(channelSpec);
+
             tileSpec.addTransformSpecs(transformList);
 
             tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
