@@ -10,7 +10,6 @@ import mpicbg.imagefeatures.Feature;
 import mpicbg.models.Model;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.PointMatch;
-import mpicbg.trakem2.transform.AffineModel2D;
 import mpicbg.util.Timer;
 
 import org.slf4j.Logger;
@@ -25,8 +24,12 @@ import org.slf4j.LoggerFactory;
 public class CanvasFeatureMatcher implements Serializable {
 
     private final float rod;
+
+    private final ModelType modelType;
+    private final int iterations;
     private final float maxEpsilon;
     private final float minInlierRatio;
+    private final double maxTrust;
     private final int minNumInliers;
     private final Integer maxNumInliers;
     private final boolean filterMatches;
@@ -35,22 +38,33 @@ public class CanvasFeatureMatcher implements Serializable {
      * Sets up everything that is needed to derive point matches from the feature lists of two canvases.
      *
      * @param  rod             ratio of distances (e.g. 0.92f).
+     *
+     * @param  modelType       type of model to use for filter.
+     * @param  iterations      filter iterations (e.g. 1000).
      * @param  maxEpsilon      minimal allowed transfer error (e.g. 20.0f).
      * @param  minInlierRatio  minimal ratio of inliers to candidates (e.g. 0.0f).
      * @param  minNumInliers   minimal absolute number of inliers for matches (e.g. 10).
+     * @param  maxTrust        reject candidates with a cost larger than maxTrust * median cost (e.g. 3).
      * @param  maxNumInliers   (optional) maximum number of inliers for matches; null indicates no maximum.
      * @param  filterMatches   indicates whether matches should be filtered.
      */
     public CanvasFeatureMatcher(final float rod,
+                                final ModelType modelType,
+                                final int iterations,
                                 final float maxEpsilon,
                                 final float minInlierRatio,
                                 final int minNumInliers,
+                                final double maxTrust,
                                 final Integer maxNumInliers,
                                 final boolean filterMatches) {
         this.rod = rod;
+
+        this.modelType = modelType;
+        this.iterations = iterations;
         this.maxEpsilon = maxEpsilon;
         this.minInlierRatio = minInlierRatio;
         this.minNumInliers = minNumInliers;
+        this.maxTrust = maxTrust;
         this.maxNumInliers = maxNumInliers;
         this.filterMatches = filterMatches;
     }
@@ -74,7 +88,7 @@ public class CanvasFeatureMatcher implements Serializable {
         final Timer timer = new Timer();
         timer.start();
 
-        final AffineModel2D model = new AffineModel2D();
+        final Model model = modelType.getInstance();
         final List<PointMatch> candidates = new ArrayList<>(canvas1Features.size());
 
         FeatureTransform.matchFeatures(canvas1Features, canvas2Features, candidates, rod);
@@ -113,11 +127,11 @@ public class CanvasFeatureMatcher implements Serializable {
             try {
                 model.filterRansac(candidates,
                                    inliers,
-                                   1000,
+                                   iterations,
                                    maxEpsilon,
                                    minInlierRatio,
                                    minNumInliers,
-                                   3);
+                                   maxTrust);
             } catch (final NotEnoughDataPointsException e) {
                 LOG.warn("failed to filter outliers", e);
             }
