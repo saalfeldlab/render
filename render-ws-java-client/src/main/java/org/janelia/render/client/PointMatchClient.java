@@ -22,6 +22,7 @@ import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
@@ -87,16 +88,25 @@ public class PointMatchClient {
         @Parameter(names = "--matchRod", description = "Ratio of distances for matches", required = false)
         private Float matchRod = 0.92f;
 
-        @Parameter(names = "--matchMaxEpsilon", description = "Minimal allowed transfer error for matches", required = false)
+        @Parameter(names = "--matchModelType", description = "Type of model for match filtering", required = false)
+        private ModelType matchModelType = ModelType.AFFINE;
+
+        @Parameter(names = "--matchIterations", description = "Match filter iterations", required = false)
+        private Integer matchIterations = 1000;
+
+        @Parameter(names = "--matchMaxEpsilon", description = "Minimal allowed transfer error for match filtering", required = false)
         private Float matchMaxEpsilon = 20.0f;
 
-        @Parameter(names = "--matchMinInlierRatio", description = "Minimal ratio of inliers to candidates for matches", required = false)
+        @Parameter(names = "--matchMinInlierRatio", description = "Minimal ratio of inliers to candidates for match filtering", required = false)
         private Float matchMinInlierRatio = 0.0f;
 
-        @Parameter(names = "--matchMinNumInliers", description = "Minimal absolute number of inliers for matches", required = false)
+        @Parameter(names = "--matchMinNumInliers", description = "Minimal absolute number of inliers for match filtering", required = false)
         private Integer matchMinNumInliers = 4;
 
-        @Parameter(names = "--matchMaxNumInliers", description = "Maximum number of inliers for matches", required = false)
+        @Parameter(names = "--matchMaxTrust", description = "Reject match candidates with a cost larger than maxTrust * median cost", required = false)
+        private Double matchMaxTrust = 3.0;
+
+        @Parameter(names = "--matchMaxNumInliers", description = "Maximum number of inliers for match filtering", required = false)
         private Integer matchMaxNumInliers;
 
         @Parameter(names = "--numberOfThreads", description = "Number of threads to use for processing", required = false)
@@ -330,9 +340,12 @@ public class PointMatchClient {
         final List<CanvasFeatureMatcherThread> matcherList = new ArrayList<>(parameters.renderParameterUrls.size());
 
         final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(parameters.matchRod,
+                                                                      parameters.matchModelType,
+                                                                      parameters.matchIterations,
                                                                       parameters.matchMaxEpsilon,
                                                                       parameters.matchMinInlierRatio,
                                                                       parameters.matchMinNumInliers,
+                                                                      parameters.matchMaxTrust,
                                                                       parameters.matchMaxNumInliers,
                                                                       true);
 

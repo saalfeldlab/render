@@ -3,9 +3,9 @@ package org.janelia.alignment.match;
 import java.util.ArrayList;
 import java.util.List;
 
+import mpicbg.models.Model;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import mpicbg.trakem2.transform.AffineModel2D;
 
 /**
  * Encapsulates key data elements from canvas feature match derivation.
@@ -15,12 +15,12 @@ import mpicbg.trakem2.transform.AffineModel2D;
 public class CanvasFeatureMatchResult {
 
     private final boolean modelFound;
-    private final AffineModel2D model;
+    private final Model model;
     private final List<PointMatch> inliers;
     private final Double inlierRatio;
 
     public CanvasFeatureMatchResult(final boolean modelFound,
-                                    final AffineModel2D model,
+                                    final Model model,
                                     final List<PointMatch> inliers,
                                     final Double inlierRatio) {
         this.inlierRatio = inlierRatio;
@@ -39,7 +39,7 @@ public class CanvasFeatureMatchResult {
     /**
      * @return estimated filter model.
      */
-    public AffineModel2D getModel() {
+    public Model getModel() {
         return model;
     }
 
@@ -69,7 +69,6 @@ public class CanvasFeatureMatchResult {
     @Override
     public String toString() {
         return "{modelFound: " + isModelFound() +
-               ", modelDataString: '" + model.toDataString() +
                "', inlierCount: " + getInlierPointMatchList().size() +
                ", inlierRatio: " + getInlierRatio() +
                '}';
