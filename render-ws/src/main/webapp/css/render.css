@@ -50,6 +50,10 @@ ul {
     margin-right: 20px;
 }
 
+.selectSpan {
+    margin: 0 5px 0 10px;
+}
+
 .m20 {
     margin: 20px;
 }

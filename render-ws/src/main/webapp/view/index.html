@@ -4,14 +4,59 @@
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     <title>Render Web Service</title>
     <link type="text/css" href="../css/render.css" rel="stylesheet" />
-    <script type="text/javascript" src="js/render.js?v=20160504_001"></script>
+    <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
+    <script type="text/javascript" src="../script/janelia-render.js"></script>
+    <script type="text/javascript" src="../script/janelia-match.js"></script>
+    <script type="text/javascript">
+
+      var janeliaQueryParameters;
+      var janeliaRenderServiceDataUserInterface;
+      var janeliaMatchServiceDataUserInterface;
+
+      var setPmeLinkHref = function() {
+        var linkSelector = $('#pmeLink');
+        var oldHref = linkSelector.attr('href');
+        var newHref = oldHref.replace(/\?.*/, janeliaQueryParameters.getSearch());
+        linkSelector.attr('href', newHref);
+      };
+
+      $( document ).ready(function() {
+        janeliaQueryParameters = new JaneliaQueryParameters();
+        janeliaRenderServiceDataUserInterface = new JaneliaRenderServiceDataUI(
+                janeliaQueryParameters, 'renderStackOwner', 'renderStackProject', 'renderStack', 'message', 'urlToView');
+        janeliaMatchServiceDataUserInterface = new JaneliaMatchServiceDataUI(
+                janeliaQueryParameters, 'matchOwner', 'matchCollection', undefined, 'message', 'urlToView');
+      });
+
+    </script>
   </head>
   <body>
-    <h1>Render Web Service Views</h1>
-    <ul>
-      <li><a href="stacks.html" target="_blank">Stack Dashboard</a></li>
-      <li><a href="point-match-explorer.html" target="_blank">Point Match Explorer</a></li>
-    </ul>
+    <h3>Render Web Service Views</h3>
+
+    <span id="message" class="error"></span>
+
+    <table>
+
+      <tr>
+        <td><a href="stacks.html" target="_blank">Render Stack Dashboard</a></td>
+      </tr>
+
+      <tr>
+        <td>
+          <a id="pmeLink" href="point-match-explorer.html?" target="_blank" onclick="setPmeLinkHref()">Point Match Explorer</a>
+          <a id="urlToView" target="_blank" style="display:none">URL for current selections</a>
+        </td>
+        <td>
+          <span class="selectSpan">render owner:</span> <select id="renderStackOwner" title="renderStackOwner" ></select>
+          <span class="selectSpan">project:</span>      <select id="renderStackProject" title="renderStackProject"></select>
+          <span class="selectSpan">stack:</span>        <select id="renderStack" title="renderStack"></select>
+          <span class="selectSpan">match owner:</span>  <select id="matchOwner" title="matchOwner"></select>
+          <span class="selectSpan">collection:</span>   <select id="matchCollection" title="matchCollection"></select>
+        </td>
+      </tr>
+
+    </table>
+
   </body>
 </html>
 

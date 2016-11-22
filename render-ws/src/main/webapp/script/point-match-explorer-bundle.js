@@ -23319,13 +23319,14 @@
 		data: {}
 	};
 
-	var userInputInitialState = {
-		selectedProject: null,
-		selectedStack: null,
-		selectedMatchCollection: null,
-		startZ: null,
-		endZ: null
-	};
+		var janeliaQueryParameters = new JaneliaQueryParameters();
+		var userInputInitialState = {
+			selectedProject: janeliaQueryParameters.get("renderStackProject"),
+			selectedStack: janeliaQueryParameters.get("renderStack"),
+			selectedMatchCollection: janeliaQueryParameters.get("matchCollection"),
+			startZ: null,
+			endZ: null
+		};
 
 	var PMEVariablesInitialState = {
 		minWeight: null,
@@ -23631,17 +23632,23 @@
 	}
 
 	function mapDataTypeToURL(state, dataType, params) {
-	  var BASE_URL = 'http://renderer.int.janelia.org:8080/render-ws/v1/owner/flyTEM';
-	  var _state$UserInput2 = state.UserInput;
-	  var selectedProject = _state$UserInput2.selectedProject;
-	  var selectedStack = _state$UserInput2.selectedStack;
-	  var selectedMatchCollection = _state$UserInput2.selectedMatchCollection;
+
+		var janeliaScriptUtilities = new JaneliaScriptUtilities();
+		var janeliaQueryParameters = new JaneliaQueryParameters();
+
+		var selectedProject = janeliaQueryParameters.get("renderStackProject");
+		var selectedStack = janeliaQueryParameters.get("renderStack");
+		var selectedMatchCollection = janeliaQueryParameters.get("matchCollection");
+
+		var OWNER_URL = janeliaScriptUtilities.getServicesBaseUrl() + '/owner/';
+		var BASE_URL = OWNER_URL + janeliaQueryParameters.get("renderStackOwner");
+		var MBASE_URL = OWNER_URL + janeliaQueryParameters.get("matchOwner");
 
 	  switch (dataType) {
 	    case "StackIds":
 	      return BASE_URL + '/stackIds';
 	    case "MatchCollections":
-	      return BASE_URL + '/matchCollections';
+	      return MBASE_URL + '/matchCollections';
 	    case "StackResolution":
 	      return BASE_URL + '/project/FAFB00/stack/v12_align';
 	    case "StackMetadata":
@@ -23653,9 +23660,9 @@
 	    case "SectionBounds":
 	      return BASE_URL + '/project/' + selectedProject + '/stack/' + selectedStack + '/z/' + params.z + '/bounds';
 	    case "MatchesWithinGroup":
-	      return BASE_URL + '/matchCollection/' + selectedMatchCollection + '/group/' + params.groupId + '/matchesWithinGroup';
+	      return MBASE_URL + '/matchCollection/' + selectedMatchCollection + '/group/' + params.groupId + '/matchesWithinGroup';
 	    case "MatchesOutsideGroup":
-	      return BASE_URL + '/matchCollection/' + selectedMatchCollection + '/group/' + params.groupId + '/matchesOutsideGroup';
+	      return MBASE_URL + '/matchCollection/' + selectedMatchCollection + '/group/' + params.groupId + '/matchesOutsideGroup';
 	    default:
 	      return null;
 	  }
@@ -24208,15 +24215,20 @@
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 	var SpecsInput = exports.SpecsInput = function SpecsInput(props) {
-	  return _react2.default.createElement(
-	    "div",
-	    { className: "specsInput" },
-	    _react2.default.createElement(Dropdown, { className: "specsInput", dropdownName: "Select Project", onChange: props.onProjectSelect, values: props.projects }),
-	    _react2.default.createElement("br", null),
-	    _react2.default.createElement(Dropdown, { className: "specsInput", dropdownName: "Select Stack", onChange: props.onStackSelect, values: props.stacks }),
-	    _react2.default.createElement("br", null),
-	    _react2.default.createElement(Dropdown, { className: "specsInput", dropdownName: "Select Match Collection", onChange: props.onMatchCollectionSelect, values: props.match_collections })
-	  );
+
+		var qp = new JaneliaQueryParameters();
+		var spacer = " | ";
+		var renderText = "Render: " + qp.get("renderStackOwner") + spacer + qp.get("renderStackProject") + spacer + qp.get("renderStack");
+		var matchText = "Match: " + qp.get("matchOwner") + spacer + qp.get("matchCollection");
+
+		return _react2.default.createElement(
+				"div",
+				{ className: "specsInput" },
+				_react2.default.createElement("span", null, renderText),
+				_react2.default.createElement("br", null),
+				_react2.default.createElement("span", null, matchText),
+				_react2.default.createElement("br", null)
+		);
 	};
 
 	var LayerInput = exports.LayerInput = function LayerInput(props) {
@@ -27297,12 +27309,23 @@
 	  return metadataValues;
 	};
 
-	var openTileImageWithNeighbors = function openTileImageWithNeighbors(faceIndex, userInput) {
+	var openTileImageWithNeighborsV1 = function openTileImageWithNeighbors(faceIndex, userInput) {
 	  var url = "http://tem-services.int.janelia.org:8080/render-ws/v1/owner/flyTEM";
 	  url += "/project/" + userInput.selectedProject;
 	  url += "/stack/" + userInput.selectedStack;
 	  url += "/tile/" + faceIndexToTileInfo[faceIndex].tileId;
 	  url += "/withNeighbors/jpeg-image?scale=0.5&filter=true";
+	  window.open(url);
+	};
+
+	var openTileImageWithNeighbors = function openTileImageWithNeighbors(faceIndex, userInput) {
+	  var url = "http://renderer-dev:8080/render-ws/view/tile-with-neighbors.html?tileId=" +
+                    faceIndexToTileInfo[faceIndex].tileId + 
+                    "&renderStackOwner=" + userInput.renderStackOwner +
+                    "&renderStackProject=" + userInput.selectedProject + 
+                    "&renderStack=" + userInput.selectedStack +
+                    "&matchOwner=" + userInput.matchOwner +
+                    "&matchCollection=" + userInput.selectedMatchCollection;
 	  window.open(url);
 	};
 
