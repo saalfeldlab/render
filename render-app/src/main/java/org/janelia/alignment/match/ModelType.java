@@ -1,5 +1,6 @@
 package org.janelia.alignment.match;
 
+import mpicbg.models.Affine2D;
 import mpicbg.trakem2.transform.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.trakem2.transform.RigidModel2D;
@@ -15,29 +16,33 @@ public enum ModelType {
 
     TRANSLATION(
             new ModelFactory() {
+                @SuppressWarnings("unchecked")
                 @Override
-                public Model getInstance() {
+                public TranslationModel2D getInstance() {
                     return new TranslationModel2D();
                 }
             }),
     RIGID(
             new ModelFactory() {
+                @SuppressWarnings("unchecked")
                 @Override
-                public Model getInstance() {
+                public RigidModel2D getInstance() {
                     return new RigidModel2D();
                 }
             }),
     SIMILARITY(
             new ModelFactory() {
+                @SuppressWarnings("unchecked")
                 @Override
-                public Model getInstance() {
+                public SimilarityModel2D getInstance() {
                     return new SimilarityModel2D();
                 }
             }),
     AFFINE(
             new ModelFactory() {
+                @SuppressWarnings("unchecked")
                 @Override
-                public Model getInstance() {
+                public AffineModel2D getInstance() {
                     return new AffineModel2D();
                 }
             });
@@ -49,11 +54,11 @@ public enum ModelType {
         this.modelFactory = modelFactory;
     }
 
-    public Model getInstance() {
+    public <T extends Model & Affine2D> T getInstance() {
         return modelFactory.getInstance();
     }
 
     private interface ModelFactory {
-        Model getInstance();
+        <T extends Model & Affine2D> T getInstance();
     }
 }
