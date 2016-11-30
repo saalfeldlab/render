@@ -148,7 +148,16 @@ public class CopyStackClient implements Serializable {
                                                                        parameters.getTargetOwner(),
                                                                        parameters.getTargetProject());
 
-        final StackMetaData targetStackMetaData = targetDataClient.getStackMetaData(parameters.targetStack);
+        StackMetaData targetStackMetaData;
+        try {
+            targetStackMetaData = targetDataClient.getStackMetaData(parameters.targetStack);
+        } catch (final Throwable t) {
+            LOG.info("target stack does not exist, creating it ...");
+            final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
+            targetDataClient.saveStackVersion(parameters.targetStack, sourceStackMetaData.getCurrentVersion());
+            targetStackMetaData = targetDataClient.getStackMetaData(parameters.targetStack);
+        }
+
         if (! targetStackMetaData.isLoading()) {
             throw new IllegalArgumentException("target stack must be in the loading state, meta data is " +
                                                targetStackMetaData);
