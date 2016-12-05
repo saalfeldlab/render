@@ -5,6 +5,7 @@ import com.beust.jcommander.Parameter;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.spark.SparkConf;
@@ -16,6 +17,8 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import scala.Tuple2;
 
 /**
  * Spark client for rendering uniform (but arbitrarily sized) boxes (derived tiles) to disk for one or more layers.
@@ -84,7 +87,7 @@ public class BoxClient
                                                                        parameters.owner,
                                                                        parameters.project);
 
-        final List<Double> zValues = sourceDataClient.getStackZValues(parameters.getStack(),
+        final List<Double> zValues = sourceDataClient.getStackZValues(parameters.stack,
                                                                       parameters.minZ,
                                                                       parameters.maxZ);
 
@@ -92,20 +95,46 @@ public class BoxClient
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 
+        if (parameters.numberOfRenderGroups > 1) {
+            parameters.renderGroup = 1;
+        }
 
-        final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
+        // create the emtpy image file up-front
+        final BoxGenerator boxGenerator = new BoxGenerator(parameters);
+        boxGenerator.createEmptyImageFile();
 
-        final Function<Double, Integer> generateBoxesFunction = new Function<Double, Integer>() {
+        final List<Tuple2<Double, BoxGenerator.Parameters>> zWithParametersList = new ArrayList<>(zValues.size());
+
+        for (final Double z : zValues) {
+            if (parameters.numberOfRenderGroups < 2) {
+                zWithParametersList.add(new Tuple2<>(z, (BoxGenerator.Parameters) parameters));
+            } else {
+                for (int i = 1; i <= parameters.numberOfRenderGroups; i++) {
+                    final BoxGenerator.Parameters p = parameters.getInstanceForRenderGroup(i, parameters.numberOfRenderGroups);
+                    zWithParametersList.add(new Tuple2<>(z, p));
+                }
+            }
+        }
+
+        final JavaRDD<Tuple2<Double, BoxGenerator.Parameters>> rddZValues = sparkContext.parallelize(zWithParametersList);
+
+        final Function<Tuple2<Double, BoxGenerator.Parameters>, Integer> generateBoxesFunction = new Function<Tuple2<Double, BoxGenerator.Parameters>, Integer>() {
 
             final
             @Override
-            public Integer call(final Double z)
+            public Integer call(final Tuple2<Double, BoxGenerator.Parameters> zWithParameters)
                     throws Exception {
 
-                LogUtilities.setupExecutorLog4j("z " + z);
+                final Double z = zWithParameters._1;
+                final BoxGenerator.Parameters p = zWithParameters._2;
 
-                final BoxGenerator boxGenerator = new BoxGenerator(parameters);
-                boxGenerator.createEmptyImageFile();
+                if (p.renderGroup == null) {
+                    LogUtilities.setupExecutorLog4j("z " + z);
+                } else {
+                    LogUtilities.setupExecutorLog4j("z " + z + " (" + p.renderGroup + "/" + p.numberOfRenderGroups + ")");
+                }
+
+                final BoxGenerator boxGenerator = new BoxGenerator(p);
                 boxGenerator.generateBoxesForZ(z);
                 return 1;
             }

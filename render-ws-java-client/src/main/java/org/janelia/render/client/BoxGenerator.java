@@ -61,7 +61,7 @@ public class BoxGenerator implements Serializable {
                 names = "--stack",
                 description = "Stack name",
                 required = true)
-        private String stack;
+        public String stack;
 
         @Parameter(
                 names = "--rootDirectory",
@@ -138,21 +138,44 @@ public class BoxGenerator implements Serializable {
                 names = "--renderGroup",
                 description = "Index (1-n) that identifies portion of layer to render (omit if only one job is being used)",
                 required = false)
-        private Integer renderGroup;
+        public Integer renderGroup;
 
         @Parameter(
                 names = "--numberOfRenderGroups",
                 description = "Total number of parallel jobs being used to render this layer (omit if only one job is being used)",
                 required = false)
-        private Integer numberOfRenderGroups;
-
-        public String getStack() {
-            return stack;
-        }
+        public Integer numberOfRenderGroups;
 
         public boolean isOverviewNeeded() {
             return ((maxOverviewWidthAndHeight != null) && (maxOverviewWidthAndHeight > 0));
         }
+
+        public Parameters getInstanceForRenderGroup(final int group,
+                                                    final int numberOfGroups) {
+            Parameters p = new Parameters();
+
+            p.baseDataUrl = this.baseDataUrl;
+            p.owner = this.owner;
+            p.project = this.project;
+            p.stack = this.stack;
+            p.rootDirectory = this.rootDirectory;
+            p.width = this.width;
+            p.height = this.height;
+            p.maxLevel = this.maxLevel;
+            p.format = this.format;
+            p.maxOverviewWidthAndHeight = this.maxOverviewWidthAndHeight;
+            p.skipInterpolation = this.skipInterpolation;
+            p.binaryMask = this.binaryMask;
+            p.label = this.label;
+            p.createIGrid = this.createIGrid;
+            p.forceGeneration = this.forceGeneration;
+
+            p.renderGroup = group;
+            p.numberOfRenderGroups = numberOfGroups;
+
+            return p;
+        }
+
     }
 
     private final Parameters parameters;
