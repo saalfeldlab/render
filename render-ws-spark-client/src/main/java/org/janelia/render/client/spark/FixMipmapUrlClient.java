@@ -5,6 +5,9 @@ import com.beust.jcommander.Parameter;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.URISyntaxException;
+import java.nio.charset.Charset;
+import java.nio.file.Paths;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -75,16 +78,10 @@ public class FixMipmapUrlClient
         private Double maxZ;
 
         @Parameter(
-                names = "--replacePattern",
-                description = "Source pattern identifying what needs to be replaced",
+                names = "--replacementDataFile",
+                description = "File containing tab separated patterns and replacement values",
                 required = true)
-        private String replacePattern;
-
-        @Parameter(
-                names = "--replaceWith",
-                description = "Replacement value",
-                required = true)
-        private String replaceWith;
+        private String replacementDataFile;
 
         @Parameter(
                 names = "--urlType",
@@ -138,6 +135,28 @@ public class FixMipmapUrlClient
         this.parameters = parameters;
     }
 
+    private static LinkedHashMap<Pattern, String> loadReplacementData(final String replacementDataFileName)
+            throws IOException {
+
+        // order is important, use linked map
+        final LinkedHashMap<Pattern, String> replacementData = new LinkedHashMap<>();
+
+        final Pattern pattern = Pattern.compile("[^\\t]++");
+        for (final String line : java.nio.file.Files.readAllLines(Paths.get(replacementDataFileName),
+                                                                  Charset.defaultCharset())) {
+            final Matcher m = pattern.matcher(line);
+            if (m.find()) {
+                final String replacementPatternString = line.substring(m.start(), m.end());
+                if (m.find()) {
+                    final String replaceWith = line.substring(m.start(), m.end());
+                    replacementData.put(Pattern.compile(replacementPatternString), replaceWith);
+                }
+            }
+        }
+
+        return replacementData;
+    }
+
     public void run()
             throws IOException, URISyntaxException {
 
@@ -172,6 +191,8 @@ public class FixMipmapUrlClient
                                                targetStackMetaData);
         }
 
+        final LinkedHashMap<Pattern, String> replacementData = loadReplacementData(parameters.replacementDataFile);
+
         final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
 
         final Function<Double, Integer> transformFunction = new Function<Double, Integer>() {
@@ -194,7 +215,6 @@ public class FixMipmapUrlClient
                 final ResolvedTileSpecCollection sourceCollection =
                         sourceDataClient.getResolvedTiles(parameters.stack, z);
 
-                final Pattern pattern = Pattern.compile(parameters.replacePattern);
                 final boolean fixImage = UrlType.BOTH.equals(parameters.urlType) ||
                                          UrlType.IMAGE.equals(parameters.urlType);
                 final boolean fixMask = UrlType.BOTH.equals(parameters.urlType) ||
@@ -212,13 +232,19 @@ public class FixMipmapUrlClient
                             if (imageAndMask != null) {
 
                                 if (fixImage) {
-                                    imageUrl = fixUrl(pattern, imageAndMask.getImageUrl(), parameters.replaceWith);
+                                    imageUrl = imageAndMask.getImageUrl();
+                                    for (final Pattern p : replacementData.keySet()){
+                                        imageUrl = fixUrl(p, imageUrl, replacementData.get(p));
+                                    }
                                 } else {
                                     imageUrl = imageAndMask.getImageUrl();
                                 }
 
                                 if (fixMask) {
-                                    maskUrl = fixUrl(pattern, imageAndMask.getMaskUrl(), parameters.replaceWith);
+                                    maskUrl = imageAndMask.getMaskUrl();
+                                    for (final Pattern p : replacementData.keySet()) {
+                                        maskUrl = fixUrl(p, maskUrl, replacementData.get(p));
+                                    }
                                 } else {
                                     maskUrl = imageAndMask.getMaskUrl();
                                 }
