@@ -220,6 +220,7 @@ public class FixMipmapUrlClient
                 final boolean fixMask = UrlType.BOTH.equals(parameters.urlType) ||
                                         UrlType.MASK.equals(parameters.urlType);
 
+                boolean fixedAtLeastOneSpec = false;
                 ImageAndMask imageAndMask;
                 ImageAndMask fixedImageAndMask;
                 String imageUrl;
@@ -251,7 +252,15 @@ public class FixMipmapUrlClient
 
                                 fixedImageAndMask = new ImageAndMask(imageUrl, maskUrl);
                                 fixedImageAndMask.validate();
-                                tileSpec.putMipmap(level, fixedImageAndMask);
+
+                                final boolean imagePathChanged = fixImage &&
+                                                                 (! imageUrl.equals(imageAndMask.getImageUrl()));
+                                final boolean maskPathChanged = fixMask &&
+                                                                (! maskUrl.equals(imageAndMask.getMaskUrl()));
+                                if (imagePathChanged || maskPathChanged) {
+                                    fixedAtLeastOneSpec = true;
+                                    tileSpec.putMipmap(level, fixedImageAndMask);
+                                }
                             }
 
                         }
@@ -259,7 +268,11 @@ public class FixMipmapUrlClient
 
                 }
 
-                targetDataClient.saveResolvedTiles(sourceCollection, parameters.getTargetStack(), z);
+                if (fixedAtLeastOneSpec) {
+                    targetDataClient.saveResolvedTiles(sourceCollection, parameters.getTargetStack(), z);
+                } else {
+                    LOG.info("no changes necessary for z {}", z);
+                }
 
                 return sourceCollection.getTileCount();
             }
