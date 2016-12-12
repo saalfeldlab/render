@@ -576,7 +576,6 @@ public class BoxGenerator implements Serializable {
         private final long startTime;
         private final SimpleDateFormat sdf;
         private int currentRowY;
-        private double currentRowPartialTileSum;
 
         public Progress(final int numberOfLayerTiles) {
             this.numberOfLayerTiles = numberOfLayerTiles;
@@ -584,7 +583,6 @@ public class BoxGenerator implements Serializable {
             this.startTime = System.currentTimeMillis();
             this.sdf = new SimpleDateFormat("HH:mm:ss");
             this.currentRowY = -1;
-            this.currentRowPartialTileSum = 0;
         }
 
         public void markProcessedTilesForRow(final int rowY,
@@ -592,7 +590,6 @@ public class BoxGenerator implements Serializable {
             final int rowMaxY = rowY + boxHeight;
             if (rowY > currentRowY) {
                 currentRowY = rowY;
-                currentRowPartialTileSum = 0;
             }
 
             if (renderParameters != null) {
@@ -600,8 +597,6 @@ public class BoxGenerator implements Serializable {
                     // only add tiles that are completely above the row's max Y value
                     if (tileSpec.getMaxY() <= rowMaxY) {
                         processedTileIds.add(tileSpec.getTileId());
-                    } else {
-                        currentRowPartialTileSum += (rowMaxY - tileSpec.getMinY()) / (double) tileSpec.getHeight();
                     }
                 }
             }
@@ -610,14 +605,14 @@ public class BoxGenerator implements Serializable {
         @Override
         public String toString() {
             final StringBuilder sb = new StringBuilder();
-            final double numberOfProcessedTiles = processedTileIds.size() + currentRowPartialTileSum;
+            final double numberOfProcessedTiles = processedTileIds.size();
             final int percentComplete = (int) (numberOfProcessedTiles * 100 / numberOfLayerTiles);
             sb.append(percentComplete).append("% source tiles processed");
-            if (numberOfProcessedTiles > 0) {
+            if (percentComplete > 0) {
                 final double msPerTile = (System.currentTimeMillis() - startTime) / numberOfProcessedTiles;
                 final long remainingMs = (long) (msPerTile * (numberOfLayerTiles - numberOfProcessedTiles));
                 final Date eta = new Date((new Date().getTime()) + remainingMs);
-                sb.append(", ETA is ").append(sdf.format(eta));
+                sb.append(", level 0 ETA is ").append(sdf.format(eta));
             }
             return sb.toString();
         }
