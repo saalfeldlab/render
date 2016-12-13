@@ -23,6 +23,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
+import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.RenderDataClientParameters;
@@ -164,7 +165,17 @@ public class CopyStackClient implements Serializable {
         } catch (final Throwable t) {
             LOG.info("target stack does not exist, creating it ...");
             final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
-            targetDataClient.saveStackVersion(parameters.targetStack, sourceStackMetaData.getCurrentVersion());
+            final StackVersion sourceVersion = sourceStackMetaData.getCurrentVersion();
+            final StackVersion targetVerison = new StackVersion(new Date(),
+                                                                "copied from " + sourceStackMetaData.getStackId(),
+                                                                null,
+                                                                null,
+                                                                sourceVersion.getStackResolutionX(),
+                                                                sourceVersion.getStackResolutionY(),
+                                                                sourceVersion.getStackResolutionZ(),
+                                                                null,
+                                                                sourceVersion.getMipmapPathBuilder());
+            targetDataClient.saveStackVersion(parameters.targetStack, targetVerison);
             targetStackMetaData = targetDataClient.getStackMetaData(parameters.targetStack);
         }
 
