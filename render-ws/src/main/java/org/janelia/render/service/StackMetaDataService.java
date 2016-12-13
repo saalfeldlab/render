@@ -288,6 +288,87 @@ public class StackMetaDataService {
         return response;
     }
 
+    @Path("owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "The materializedBoxRootPath for the specified stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Stack not found")
+    })
+    public String getMaterializedBoxRootPath(@PathParam("owner") final String owner,
+                                             @PathParam("project") final String project,
+                                             @PathParam("stack") final String stack) {
+
+        LOG.info("getMaterializedBoxRootPath: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        String materializedBoxRootPath = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
+            if (stackMetaData == null) {
+                throw getStackNotFoundException(owner, project, stack);
+            } else {
+                materializedBoxRootPath = stackMetaData.getCurrentMaterializedBoxRootPath();
+            }
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return materializedBoxRootPath;
+    }
+
+    @Path("owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
+    @PUT
+    @Consumes(MediaType.TEXT_PLAIN)
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs"},
+            value = "Saves materializedBoxRootPath for stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "materializedBoxRootPath successfully saved"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response saveMaterializedBoxRootPath(@PathParam("owner") final String owner,
+                                                @PathParam("project") final String project,
+                                                @PathParam("stack") final String stack,
+                                                final String materializedBoxRootPath) {
+
+        LOG.info("saveMaterializedBoxRootPath: entry, owner={}, project={}, stack={}, materializedBoxRootPath={}",
+                 owner, project, stack, materializedBoxRootPath);
+
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
+            if (stackMetaData == null) {
+                throw getStackNotFoundException(owner, project, stack);
+            } else {
+                stackMetaData.setCurrentMaterializedBoxRootPath(materializedBoxRootPath);
+                renderDao.saveStackMetaData(stackMetaData);
+            }
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return Response.ok().build();
+    }
+
+    @Path("owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
+    @DELETE
+    @ApiOperation(
+            tags = {"Section Data APIs", "Stack Management APIs"},
+            value = "Deletes materializedBoxRootPath for stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack not found"),
+    })
+    public Response deleteMaterializedBoxRootPath(@PathParam("owner") final String owner,
+                                                  @PathParam("project") final String project,
+                                                  @PathParam("stack") final String stack) {
+        return saveMaterializedBoxRootPath(owner, project, stack, null);
+    }
+
     @Path("owner/{owner}/project/{project}/stack/{stack}/section/{sectionId}")
     @DELETE
     @ApiOperation(
