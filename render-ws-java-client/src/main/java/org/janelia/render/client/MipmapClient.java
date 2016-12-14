@@ -6,6 +6,8 @@ import ij.ImagePlus;
 import ij.io.Opener;
 import ij.process.ImageProcessor;
 
+import java.awt.image.BufferedImage;
+import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -41,6 +43,9 @@ public class MipmapClient {
 
         @Parameter(names = "--rootDirectory", description = "Root directory for mipmaps (e.g. /tier2/flyTEM/nobackup/rendered_mipmaps/FAFB00)", required = true)
         private String rootDirectory;
+
+        @Parameter(names = "--minLevel", description = "Minimum mipmap level to generate", required = false)
+        private Integer minLevel = 1;
 
         @Parameter(names = "--maxLevel", description = "Maximum mipmap level to generate", required = false)
         private Integer maxLevel = 6;
@@ -225,15 +230,27 @@ public class MipmapClient {
 
                 if (! tileSpec.hasMipmap(mipmapLevel)) {
 
-                    createMissingDirectories(derivedImageAndMask.getImageUrl());
+                    final boolean isMipmapLevelInRange = mipmapLevel >= parameters.minLevel;
+
+                    if (isMipmapLevelInRange) {
+                        createMissingDirectories(derivedImageAndMask.getImageUrl());
+                    }
 
                     imageMipmapFile = getFileForUrlString(derivedImageAndMask.getImageUrl());
-                    sourceImageProcessor = generateMipmapFile(sourceImageProcessor, imageMipmapFile, 1);
+                    sourceImageProcessor = generateMipmapFile(sourceImageProcessor, imageMipmapFile, 1,
+                                                              tileSpec.getMinIntensity(),
+                                                              tileSpec.getMaxIntensity(),
+                                                              isMipmapLevelInRange);
 
                     if (sourceImageAndMask.hasMask()) {
-                        createMissingDirectories(derivedImageAndMask.getMaskUrl());
+                        if (isMipmapLevelInRange) {
+                            createMissingDirectories(derivedImageAndMask.getMaskUrl());
+                        }
                         maskMipmapFile = getFileForUrlString(derivedImageAndMask.getMaskUrl());
-                        sourceMaskProcessor = generateMipmapFile(sourceMaskProcessor, maskMipmapFile, 1);
+                        sourceMaskProcessor = generateMipmapFile(sourceMaskProcessor, maskMipmapFile, 1,
+                                                                 tileSpec.getMinIntensity(),
+                                                                 tileSpec.getMaxIntensity(),
+                                                                 isMipmapLevelInRange);
                     }
 
                 }
@@ -303,13 +320,17 @@ public class MipmapClient {
 
     private ImageProcessor generateMipmapFile(final ImageProcessor sourceProcessor,
                                               final File targetMipmapFile,
-                                              final int mipmapLevelDelta)
+                                              final int mipmapLevelDelta,
+                                              final double minIntensity,
+                                              final double maxIntensity,
+                                              final boolean isMipmapLevelInRange)
             throws IOException {
 
         final ImageProcessor downSampledProcessor = Downsampler.downsampleImageProcessor(sourceProcessor,
                                                                                          mipmapLevelDelta);
-        if (parameters.forceGeneration || (! targetMipmapFile.exists())) {
-            Utils.saveImage(downSampledProcessor.getBufferedImage(),
+        if (isMipmapLevelInRange && (parameters.forceGeneration || (! targetMipmapFile.exists()))) {
+            final BufferedImage image = getGrayBufferedImage(downSampledProcessor, minIntensity, maxIntensity);
+            Utils.saveImage(image,
                             targetMipmapFile.getAbsolutePath(),
                             parameters.format,
                             false,
@@ -317,6 +338,28 @@ public class MipmapClient {
         }
 
         return downSampledProcessor;
+    }
+
+    public static BufferedImage getGrayBufferedImage(final ImageProcessor downSampledProcessor,
+                                                     final double minIntensity,
+                                                     final double maxIntensity) {
+
+        downSampledProcessor.setMinAndMax(minIntensity, maxIntensity);
+
+        final BufferedImage image;
+        final ImageProcessor p;
+        if (maxIntensity < 256) {
+            p = downSampledProcessor.convertToByteProcessor();
+            image = new BufferedImage(p.getWidth(), p.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
+        } else {
+            p = downSampledProcessor.convertToShortProcessor();
+            image = new BufferedImage(p.getWidth(), p.getHeight(), BufferedImage.TYPE_USHORT_GRAY);
+        }
+
+        final WritableRaster raster = image.getRaster();
+        raster.setDataElements(0, 0, p.getWidth(), p.getHeight(), p.getPixels());
+
+        return image;
     }
 
     public static ImageProcessor loadImageProcessor(final String url)
