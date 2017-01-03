@@ -95,26 +95,25 @@ public class BoxClient
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 
-        if (parameters.numberOfRenderGroups > 1) {
-            parameters.renderGroup = 1;
-        }
-
-        // create the emtpy image file up-front
-        final BoxGenerator boxGenerator = new BoxGenerator(parameters);
-        boxGenerator.createEmptyImageFile();
-
         final List<Tuple2<Double, BoxGenerator.Parameters>> zWithParametersList = new ArrayList<>(zValues.size());
 
+        BoxGenerator.Parameters lastGroupParameters = parameters;
+
         for (final Double z : zValues) {
-            if (parameters.numberOfRenderGroups < 2) {
+            if (parameters.numberOfRenderGroups == null) {
                 zWithParametersList.add(new Tuple2<>(z, (BoxGenerator.Parameters) parameters));
             } else {
-                for (int i = 1; i <= parameters.numberOfRenderGroups; i++) {
-                    final BoxGenerator.Parameters p = parameters.getInstanceForRenderGroup(i, parameters.numberOfRenderGroups);
+                for (int i = 0; i < parameters.numberOfRenderGroups; i++) {
+                    final BoxGenerator.Parameters p = parameters.getInstanceForRenderGroup(i+1, parameters.numberOfRenderGroups);
                     zWithParametersList.add(new Tuple2<>(z, p));
+                    lastGroupParameters = p;
                 }
             }
         }
+
+        // create the emtpy image file up-front
+        final BoxGenerator boxGenerator = new BoxGenerator(lastGroupParameters);
+        boxGenerator.createEmptyImageFile();
 
         final JavaRDD<Tuple2<Double, BoxGenerator.Parameters>> rddZValues = sparkContext.parallelize(zWithParametersList);
 
@@ -131,7 +130,7 @@ public class BoxClient
                 if (p.renderGroup == null) {
                     LogUtilities.setupExecutorLog4j("z " + z);
                 } else {
-                    LogUtilities.setupExecutorLog4j("z " + z + " (" + p.renderGroup + "/" + p.numberOfRenderGroups + ")");
+                    LogUtilities.setupExecutorLog4j("z " + z + " (" + p.renderGroup + " of " + p.numberOfRenderGroups + ")");
                 }
 
                 final BoxGenerator boxGenerator = new BoxGenerator(p);
@@ -149,7 +148,8 @@ public class BoxClient
         }
 
         LOG.info("run: collected stats");
-        LOG.info("run: generated boxes for {} layers", total);
+        final String renderGroupsName = parameters.numberOfRenderGroups == null ? "layers" : "render groups";
+        LOG.info("run: generated boxes for {} {}", total, renderGroupsName);
 
         sparkContext.stop();
     }
