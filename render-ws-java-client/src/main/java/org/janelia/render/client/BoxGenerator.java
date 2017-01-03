@@ -540,7 +540,7 @@ public class BoxGenerator implements Serializable {
             }
 
         } else {
-            LOG.info("generateLevelZeroBox: skipping empty box for row {}, column {})", row, column);
+            LOG.info("generateLevelZeroBox: skipping empty box for row {}, column {}", row, column);
         }
         return renderParameters;
     }
