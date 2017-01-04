@@ -13,14 +13,16 @@ body {
   z-index:99;
 }
 .layerInput {
-  top: 80px;
-  margin: 10px 10px 0 0;
-  text-align:right;
+    position: absolute;
+    top: 80px; width: 100%;
+    padding-right: 50px;
+    text-align:right;
 }
 .specsInput {
-  top: 0;
-  margin-right: 10px;
-  text-align:right;
+    position: absolute;
+    top: 0; width: 100%;
+    padding-right: 50px;
+    text-align:right;
 }
 
 .gradient {
