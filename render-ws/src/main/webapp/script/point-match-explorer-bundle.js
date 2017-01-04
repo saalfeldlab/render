@@ -27117,7 +27117,26 @@
 	};
 
 	var drawPMLines = function drawPMLines(tileData) {
-	  var merged_line_geometry = new _three2.default.Geometry();
+
+		var isMissingData = false;
+		var layersWithMissingData = [];
+		_.forEach(tileData, function (layer) {
+			if (!(layer.pointMatches &&
+				  layer.pointMatches.matchesOutsideGroup &&
+				  layer.pointMatches.matchesWithinGroup)) {
+				isMissingData = true;
+				layersWithMissingData.push(layer.z);
+			}
+		});
+
+		if (isMissingData) {
+			alert("Missing point match data for z value(s) " + layersWithMissingData.join() + ".\n\n" +
+				  "If you click the Render Layers button again, this problem should go away.\n\n" +
+				  "Someday this should get fixed properly.");
+			return false;
+		}
+
+		var merged_line_geometry = new _three2.default.Geometry();
 	  var merged_line_material = new _three2.default.LineBasicMaterial({
 	    color: line_color,
 	    linewidth: line_width
@@ -27499,8 +27518,10 @@
 
 	var disposeThreeScene = exports.disposeThreeScene = function disposeThreeScene() {
 	  function disposeMesh(mesh) {
-	    mesh.geometry.dispose();
-	    mesh.material.dispose();
+	    if (mesh) {
+	      mesh.geometry.dispose();
+	      mesh.material.dispose();
+	    }
 	  }
 	  // function empty(elem){
 	  //   while (elem.lastChild) elem.removeChild(elem.lastChild);
