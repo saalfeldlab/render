@@ -27319,13 +27319,15 @@
 	};
 
 	var openTileImageWithNeighbors = function openTileImageWithNeighbors(faceIndex, userInput) {
-	  var url = "http://renderer-dev:8080/render-ws/view/tile-with-neighbors.html?tileId=" +
+
+		var qp = new JaneliaQueryParameters();
+		var url = "tile-with-neighbors.html?tileId=" +
                     faceIndexToTileInfo[faceIndex].tileId + 
-                    "&renderStackOwner=" + userInput.renderStackOwner +
-                    "&renderStackProject=" + userInput.selectedProject + 
-                    "&renderStack=" + userInput.selectedStack +
-                    "&matchOwner=" + userInput.matchOwner +
-                    "&matchCollection=" + userInput.selectedMatchCollection;
+                    "&renderStackOwner=" + qp.get("renderStackOwner") +
+                    "&renderStackProject=" + qp.get("renderStackProject") +
+                    "&renderStack=" + qp.get("renderStack") +
+                    "&matchOwner=" + qp.get("matchOwner") +
+                    "&matchCollection=" + qp.get("matchCollection");
 	  window.open(url);
 	};
 
