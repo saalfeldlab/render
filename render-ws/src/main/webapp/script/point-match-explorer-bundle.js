@@ -27434,6 +27434,9 @@
 
 	var getMouseoverMetadata = function getMouseoverMetadata(faceIndex) {
 	  var tile = faceIndexToTileInfo[faceIndex];
+	  if (! tile.PMList) {
+	    tile.PMList = [];
+	  }
 	  var md = [{
 	    keyname: "Tile Z",
 	    valuename: tile.tileZ
@@ -27458,6 +27461,9 @@
 	    _.forEach(faceIndexToTileInfo, function (tile) {
 	      if (tile.tileZ == zLayer) {
 	        tileCount++;
+			  if (! tile.PMList) {
+				  tile.PMList = [];
+			  }
 	        pointMatchSetsCount += tile.PMList.length;
 	      }
 	    });
@@ -27474,6 +27480,9 @@
 	      valuename: pointMatchSetsCount
 	    }];
 	  } else {
+		  if (! selected.PMList) {
+			  selected.PMList = [];
+		  }
 	    md = [{
 	      keyname: "Selected Tile Z",
 	      valuename: selected.tileZ
