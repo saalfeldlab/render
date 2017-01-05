@@ -13,7 +13,7 @@
         parameters : new JaneliaQueryParameters(),
         util : new JaneliaScriptUtilities(),
         updateParameter : function (key, value) {
-          renderWebServiceViews.parameters.updateParameter(key, value);
+          renderWebServiceViews.parameters.updateParameterAndLink(key, value, 'urlToView');
         },
         setLinkHref : function(linkId) {
           var linkSelector = $('#' + linkId);
