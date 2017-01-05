@@ -335,32 +335,7 @@ JaneliaTileWithNeighbors.prototype.move = function(rowDelta, columnDelta) {
 
 };
 
-JaneliaTileWithNeighbors.prototype.selectTile = function(tileId) {
-
-    var selectedTile = undefined;
-
-    if ((typeof this.tileId !== 'undefined') && (this.tileId.length > 0)) {
-
-        for (var neighborTileId in this.janeliaTileMap) {
-            if (this.janeliaTileMap.hasOwnProperty(neighborTileId)) {
-                var neighbor = this.janeliaTileMap[neighborTileId];
-                if (neighbor.imagePositioned) {
-                    if (neighbor.tileSpec.tileId == tileId) {
-                        neighbor.setSelected(true);
-                        selectedTile = neighbor;
-                    } else {
-                        neighbor.setSelected(true);
-                    }
-                }
-            }
-        }
-
-    }
-
-    return selectedTile;
-};
-
-JaneliaTileWithNeighbors.prototype.selectTile = function(canvasClickX, canvasClickY) {
+JaneliaTileWithNeighbors.prototype.selectTile = function(canvasClickX, canvasClickY, shiftKey) {
 
     var selectedTile = undefined;
 
@@ -374,13 +349,26 @@ JaneliaTileWithNeighbors.prototype.selectTile = function(canvasClickX, canvasCli
                         var maxX = neighbor.x + neighbor.image.naturalWidth;
                         var maxY = neighbor.y + neighbor.image.naturalHeight;
                         if ((maxX >= canvasClickX) && (maxY >= canvasClickY)) {
-                            neighbor.setSelected(true);
+
+                            if (! shiftKey) {
+                                neighbor.setSelected(true);
+                            }
+
                             selectedTile = neighbor;
+
                         } else {
-                            neighbor.setSelected(false);
+
+                            if (! shiftKey) {
+                                neighbor.setSelected(false);
+                            }
+
                         }
                     } else {
-                        neighbor.setSelected(false);
+
+                        if (! shiftKey) {
+                            neighbor.setSelected(false);
+                        }
+
                     }
                 }
             }
@@ -389,4 +377,40 @@ JaneliaTileWithNeighbors.prototype.selectTile = function(canvasClickX, canvasCli
     }
 
     return selectedTile;
+};
+
+JaneliaTileWithNeighbors.prototype.viewTilePair = function(tileA, tileB, renderScale) {
+
+    var pGroupId = tileA.tileSpec.layout.sectionId;
+    var pId = tileA.tileSpec.tileId;
+
+    var qGroupId = tileB.tileSpec.layout.sectionId;
+    var qId = tileB.tileSpec.tileId;
+
+    if ((pGroupId > qGroupId) || ((pGroupId == qGroupId) && (pId > qId))) {
+        var swapGroupId = pGroupId;
+        var swapId = pId;
+        pGroupId = qGroupId;
+        pId = qId;
+        qGroupId = swapGroupId;
+        qId = swapId;
+    }
+
+    var parameters = {
+        'renderStackOwner': this.owner, 'renderStackProject': this.project, 'renderStack': this.stack,
+        'renderScale': renderScale,
+        'matchOwner': this.matchOwner, 'matchCollection': this.matchCollection,
+        'pGroupId': pGroupId, 'pId': pId,
+        'qGroupId': qGroupId, 'qId': qId
+    };
+
+    var tilePairUrl = "tile-pair.html?" + $.param(parameters);
+
+    var win = window.open(tilePairUrl);
+    if (win) {
+        win.focus();
+    } else {
+        alert('Please allow popups for this website');
+    }
+
 };

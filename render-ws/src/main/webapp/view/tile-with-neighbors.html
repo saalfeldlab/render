@@ -62,21 +62,35 @@
             $("#renderStackLink").html(stackLinkHtml);
             $("#matchCollection").html(tileWithNeighbors.matchOwner + sep + tileWithNeighbors.matchCollection);
 
+            var originalSelectedTile = undefined;
+
             $('#theCanvas').click(function (e) {
                 var canvasX = e.pageX - this.offsetLeft;
                 var canvasY = e.pageY - this.offsetTop;
-                var selectedTile = tileWithNeighbors.selectTile(canvasX, canvasY);
+                var selectedTile = tileWithNeighbors.selectTile(canvasX, canvasY, e.shiftKey);
 
-                if (typeof selectedTile == "undefined") {
-                    clearSelectedTileInfo();
+                if (e.shiftKey) {
+
+                    if (typeof originalSelectedTile != 'undefined' && typeof selectedTile != "undefined") {
+                        tileWithNeighbors.viewTilePair(originalSelectedTile, selectedTile, renderScale * 1.5);
+                    }
+
                 } else {
-                    var tileIdHtml = '<a href=\"' + selectedTile.specUrl + '" target="_blank"">' +
-                                     selectedTile.tileSpec.tileId + '</a>';
-                    $("#selectedTileId").html(tileIdHtml);
 
-                    var renderHtml = '(<a href=\"' + selectedTile.renderUrl +
-                                     '" target="_blank"">normalized render parameters</a>)';
-                    $("#selectedTileRenderParameters").html(renderHtml);
+                    originalSelectedTile = selectedTile;
+
+                    if (typeof selectedTile == "undefined") {
+                        clearSelectedTileInfo();
+                    } else {
+                        var tileIdHtml = '<a href=\"' + selectedTile.specUrl + '" target="_blank"">' +
+                                         selectedTile.tileSpec.tileId + '</a>';
+                        $("#selectedTileId").html(tileIdHtml);
+
+                        var renderHtml = '(<a href=\"' + selectedTile.renderUrl +
+                                         '" target="_blank"">normalized render parameters</a>)';
+                        $("#selectedTileRenderParameters").html(renderHtml);
+                    }
+
                 }
 
             });
