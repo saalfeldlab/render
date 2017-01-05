@@ -29,17 +29,6 @@ var RenderWebServiceProjectStacks = function(ownerSelectId, projectSelectId, mes
             stackInfoSelect.find('tr:last').after(summaryHtml);
         }
 
-        // change API link to reference Swagger UI if it is deployed on server
-        var swaggerUiUrl = renderData.baseUrl + '/../../swagger-ui/';
-        $.ajax({
-                   url: swaggerUiUrl,
-                   cache: false,
-                   type: "HEAD",
-                   success: function() {
-                       $('#apiLink').attr("href", swaggerUiUrl).text('Web Service APIs');
-                   }
-               });
-
     };
 
     renderDataUi.addProjectChangeCallback(projectChangeCallback);

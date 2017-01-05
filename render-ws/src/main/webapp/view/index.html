@@ -11,6 +11,7 @@
 
       var renderWebServiceViews = {
         parameters : new JaneliaQueryParameters(),
+        util : new JaneliaScriptUtilities(),
         updateParameter : function (key, value) {
           renderWebServiceViews.parameters.updateParameter(key, value);
         },
@@ -21,8 +22,7 @@
           linkSelector.attr('href', newHref);
         },
         setUpHostData : function(inputId) {
-          var util = new JaneliaScriptUtilities();
-          util.addOnChangeCallbackForInput(
+          renderWebServiceViews.util.addOnChangeCallbackForInput(
                   inputId,
                   function(changedValue) { renderWebServiceViews.updateParameter(inputId, changedValue) });
           $('#' + inputId).val(renderWebServiceViews.parameters.get(inputId));
@@ -41,6 +41,18 @@
 
         new JaneliaMatchServiceDataUI(
                 renderWebServiceViews.parameters, 'matchOwner', 'matchCollection', 'matchCollectionPairCount', 'message', 'urlToView');
+
+        // change API link to reference Swagger UI if it is deployed on server
+        var swaggerUiUrl = renderWebServiceViews.util.getServicesBaseUrl() + '/../../swagger-ui/';
+        $.ajax({
+                 url: swaggerUiUrl,
+                 cache: false,
+                 type: "HEAD",
+                 success: function() {
+                   $('#apiLink').attr("href", swaggerUiUrl).text('Web Service APIs');
+                 }
+               });
+
       });
 
     </script>
@@ -49,6 +61,8 @@
     <h3>Render Web Service Views</h3>
 
     <span id="message" class="error"></span>
+
+    <a id="urlToView" class="floatRight" target="_blank">URL to this view</a>
 
     <table>
 
@@ -106,7 +120,7 @@
 
       <tr>
         <td style="margin-top: 50px">
-          Views:
+          View Links:
         </td>
         <td>
           <a id="stacksLink" href="stacks.html?" target="_blank"
@@ -120,6 +134,14 @@
         <td>
           <a id="pmeLink" href="point-match-explorer.html?" target="_blank"
              onclick="renderWebServiceViews.setLinkHref('pmeLink')">Point Match Explorer</a>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+        </td>
+        <td>
+          <a id="apiLink" target="_blank" href="../swagger.json/">Web Service API Spec</a>
         </td>
       </tr>
 
