@@ -2,30 +2,45 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>Render Web Service</title>
+    <title>Render Web Service Views</title>
     <link type="text/css" href="../css/render.css" rel="stylesheet" />
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
-    <script type="text/javascript" src="../script/janelia-render.js"></script>
-    <script type="text/javascript" src="../script/janelia-match.js"></script>
+    <script type="text/javascript" src="../script/janelia-render.js?v=20170105_001"></script>
+    <script type="text/javascript" src="../script/janelia-match.js?v=20170105_001"></script>
     <script type="text/javascript">
 
-      var janeliaQueryParameters;
-      var janeliaRenderServiceDataUserInterface;
-      var janeliaMatchServiceDataUserInterface;
+      var renderWebServiceViews = {
+        parameters : new JaneliaQueryParameters(),
+        updateParameter : function (key, value) {
+          renderWebServiceViews.parameters.updateParameter(key, value);
+        },
+        setLinkHref : function(linkId) {
+          var linkSelector = $('#' + linkId);
+          var oldHref = linkSelector.attr('href');
+          var newHref = oldHref.replace(/\?.*/, renderWebServiceViews.parameters.getSearch());
+          linkSelector.attr('href', newHref);
+        },
+        setUpHostData : function(inputId) {
+          var util = new JaneliaScriptUtilities();
+          util.addOnChangeCallbackForInput(
+                  inputId,
+                  function(changedValue) { renderWebServiceViews.updateParameter(inputId, changedValue) });
+          $('#' + inputId).val(renderWebServiceViews.parameters.get(inputId));
+        }
 
-      var setPmeLinkHref = function() {
-        var linkSelector = $('#pmeLink');
-        var oldHref = linkSelector.attr('href');
-        var newHref = oldHref.replace(/\?.*/, janeliaQueryParameters.getSearch());
-        linkSelector.attr('href', newHref);
       };
 
       $( document ).ready(function() {
-        janeliaQueryParameters = new JaneliaQueryParameters();
-        janeliaRenderServiceDataUserInterface = new JaneliaRenderServiceDataUI(
-                janeliaQueryParameters, 'renderStackOwner', 'renderStackProject', 'renderStack', 'message', 'urlToView');
-        janeliaMatchServiceDataUserInterface = new JaneliaMatchServiceDataUI(
-                janeliaQueryParameters, 'matchOwner', 'matchCollection', undefined, 'message', 'urlToView');
+        var renderUi = new JaneliaRenderServiceDataUI(renderWebServiceViews.parameters,
+                                                      'renderStackOwner', 'renderStackProject', 'renderStack',
+                                                      'message', 'urlToView');
+        renderUi.loadData();
+
+        renderWebServiceViews.setUpHostData('dynamicRenderHost');
+        renderWebServiceViews.setUpHostData('catmaidHost');
+
+        new JaneliaMatchServiceDataUI(
+                renderWebServiceViews.parameters, 'matchOwner', 'matchCollection', 'matchCollectionPairCount', 'message', 'urlToView');
       });
 
     </script>
@@ -38,24 +53,78 @@
     <table>
 
       <tr>
-        <td><a href="stacks.html" target="_blank">Render Stack Dashboard</a></td>
+        <td>
+          Render Context:
+        </td>
+        <td>
+          <span class="selectSpan">Owner:</span> <select id="renderStackOwner" title="renderStackOwner"></select>
+          <span class="selectSpan">Project:</span> <select id="renderStackProject" title="renderStackProject"></select>
+          <span class="selectSpan">Stack:</span> <select id="renderStack" title="renderStack"></select>
+        </td>
       </tr>
 
       <tr>
         <td>
-          <a id="pmeLink" href="point-match-explorer.html?" target="_blank" onclick="setPmeLinkHref()">Point Match Explorer</a>
-          <a id="urlToView" target="_blank" style="display:none">URL for current selections</a>
         </td>
         <td>
-          <span class="selectSpan">render owner:</span> <select id="renderStackOwner" title="renderStackOwner" ></select>
-          <span class="selectSpan">project:</span>      <select id="renderStackProject" title="renderStackProject"></select>
-          <span class="selectSpan">stack:</span>        <select id="renderStack" title="renderStack"></select>
-          <span class="selectSpan">match owner:</span>  <select id="matchOwner" title="matchOwner"></select>
-          <span class="selectSpan">collection:</span>   <select id="matchCollection" title="matchCollection"></select>
+          <span class="selectSpan">Dynamic Render Host (e.g. 'renderer:8080'):</span>
+          <input id="dynamicRenderHost" title="dynamicRenderHost" type="text" style="width:30em"
+                 onchange="renderWebServiceViews.updateParameter('dynamicRenderHost', this.value)">
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+        </td>
+        <td>
+          <span class="selectSpan">CATMAID Host (e.g. 'renderer-catmaid:8000'):</span>
+          <input id="catmaidHost" title="catmaidHost" type="text" style="width:30em"
+                 onchange="renderWebServiceViews.updateParameter('catmaidHost', this.value)">
+        </td>
+      </tr>
+
+      <tr style="line-height: 50px">
+        <td>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          Match Context:
+        </td>
+        <td>
+          <span class="selectSpan">Owner:</span> <select id="matchOwner" title="matchOwner"></select>
+          <span class="selectSpan">Collection:</span> <select id="matchCollection" title="matchCollection"></select>
+          <span style="margin-left:10px;">(</span><span id="matchCollectionPairCount"></span><span>)</span>
+        </td>
+      </tr>
+
+      <tr style="line-height: 50px">
+        <td>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="margin-top: 50px">
+          Views:
+        </td>
+        <td>
+          <a id="stacksLink" href="stacks.html?" target="_blank"
+             onclick="renderWebServiceViews.setLinkHref('stacksLink')">Render Stack Dashboard</a>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+        </td>
+        <td>
+          <a id="pmeLink" href="point-match-explorer.html?" target="_blank"
+             onclick="renderWebServiceViews.setLinkHref('pmeLink')">Point Match Explorer</a>
         </td>
       </tr>
 
     </table>
+
 
   </body>
 </html>
