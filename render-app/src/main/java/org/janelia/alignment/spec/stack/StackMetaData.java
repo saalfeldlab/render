@@ -142,6 +142,12 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         return path;
     }
 
+    public void setCurrentMaterializedBoxRootPath(final String materializedBoxRootPath) {
+        if (currentVersion != null) {
+            currentVersion.setMaterializedBoxRootPath(materializedBoxRootPath);
+        }
+    }
+
     public MipmapPathBuilder getCurrentMipmapPathBuilder() {
         MipmapPathBuilder mipmapPathBuilder = null;
         if (currentVersion != null) {

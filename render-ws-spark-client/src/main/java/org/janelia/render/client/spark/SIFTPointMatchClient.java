@@ -47,7 +47,7 @@ public class SIFTPointMatchClient
         // NOTE: --baseDataUrl, --owner, and --collection parameters defined in MatchDataClientParameters
 
         @Parameter(names = "--pairJson", description = "JSON file where tile pairs are stored (.json, .gz, or .zip)", required = true)
-        private String pairJson;
+        private List<String> pairJson;
 
         @Parameter(
                 names = "--renderWithFilter",
@@ -156,13 +156,21 @@ public class SIFTPointMatchClient
 
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
-        // TODO: see if it's worth the trouble to use the faster KryoSerializer
-//        conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
-//        conf.set("spark.kryo.registrationRequired", "true");
-//        conf.registerKryoClasses(new Class[] { LayerFeatures.class, LayerSimilarity.class });
+        for (final String pairJsonFileName : parameters.pairJson) {
+            generateMatchesForPairFile(sparkContext, pairJsonFileName);
+        }
+
+        sparkContext.stop();
+    }
+
+    private void generateMatchesForPairFile(final JavaSparkContext sparkContext,
+                                            final String pairJsonFileName)
+            throws IOException, URISyntaxException {
+
+        LOG.info("generateMatchesForPairFile: pairJsonFileName is {}", pairJsonFileName);
 
         final RenderableCanvasIdPairs renderableCanvasIdPairs =
-                RenderableCanvasIdPairsUtilities.load(parameters.pairJson);
+                RenderableCanvasIdPairsUtilities.load(pairJsonFileName);
 
         final String renderParametersUrlTemplateForRun =
                 RenderableCanvasIdPairsUtilities.getRenderParametersUrlTemplateForRun(
@@ -264,16 +272,19 @@ public class SIFTPointMatchClient
                  numPartitions, rddSavedMatchPairCounts.toDebugString());
 
         final List<Integer> matchPairCountList = rddSavedMatchPairCounts.collect();
-        long total = 0;
-        for (final Integer matchCount : matchPairCountList) {
-            total += matchCount;
-        }
 
         LOG.info("run: collected stats");
-        LOG.info("run: saved {} match pairs on {} partitions", total, matchPairCountList.size());
 
-        sparkContext.stop();
+        long totalSaved = 0;
+        for (final Integer matchCount : matchPairCountList) {
+            totalSaved += matchCount;
+        }
 
+        final long totalProcessed = renderableCanvasIdPairs.size();
+        final int percentSaved = (int) ((totalSaved / (double) totalProcessed) * 100);
+
+        LOG.info("run: saved matches for {} out of {} pairs ({}%) on {} partitions",
+                 totalSaved, totalProcessed, percentSaved, matchPairCountList.size());
     }
 
     private CanvasFeatureExtractor getCanvasFeatureExtractor() {

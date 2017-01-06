@@ -1,25 +1,12 @@
-var RenderWebServiceProjectStacks = function() {
+var RenderWebServiceProjectStacks = function(ownerSelectId, projectSelectId, messageId, urlToViewId) {
 
-    var self = this;
+    var queryParameters = new JaneliaQueryParameters();
 
-    var updateStackInfoForProject = function() {
+    var renderDataUi = new JaneliaRenderServiceDataUI(queryParameters, ownerSelectId, projectSelectId, undefined, messageId, urlToViewId);
 
-        var renderData = self.renderData;
-        var stackInfoSelect = $('#stackInfo');
-        stackInfoSelect.find("tr:gt(0)").remove();
+    var projectChangeCallback = function () {
 
-        var projectStackMetaDataList = renderData.getProjectStackMetaDataList();
-        var summaryHtml;
-        for (var index = 0; index < projectStackMetaDataList.length; index++) {
-            summaryHtml = renderData.getStackSummaryHtml(renderData.getOwnerUrl(),
-                                                         projectStackMetaDataList[index]);
-            stackInfoSelect.find('tr:last').after(summaryHtml);
-        }
-    };
-
-    var successfulLoadCallback = function () {
-
-        var renderData = self.renderData;
+        var renderData = renderDataUi.renderServiceData;
         var ownerAndProject = renderData.owner + ' ' + renderData.project;
 
         document.title = ownerAndProject + ' Stacks';
@@ -31,57 +18,20 @@ var RenderWebServiceProjectStacks = function() {
         }
         $('#bodyHeaderDetails').text('(' + renderData.stackCount + stackSuffix);
 
-        var ownerSelect = $('#owner');
-        var index;
-        var owner;
-        var isSelected;
-        for (index = 0; index < renderData.ownerList.length; index++) {
-            owner = renderData.ownerList[index];
-            isSelected = (owner == renderData.owner);
-            ownerSelect.append($('<option/>').val(owner).text(owner).prop('selected', isSelected));
+        var stackInfoSelect = $('#stackInfo');
+        stackInfoSelect.find("tr:gt(0)").remove();
+
+        var projectStackMetaDataList = renderData.getProjectStackMetaDataList();
+        var summaryHtml;
+        for (var index = 0; index < projectStackMetaDataList.length; index++) {
+            summaryHtml = renderDataUi.getStackSummaryHtml(renderData.getOwnerUrl(),
+                                                           projectStackMetaDataList[index]);
+            stackInfoSelect.find('tr:last').after(summaryHtml);
         }
-
-        ownerSelect.change(function () {
-            var selectedOwner = renderData.getSelectedValue("owner");
-            renderData.changeOwnerAndProject(selectedOwner, undefined);
-        });
-
-        var projectSelect = $('#project');
-        var project;
-        for (index = 0; index < renderData.distinctProjects.length; index++) {
-            project = renderData.distinctProjects[index];
-            isSelected = (project == renderData.project);
-            projectSelect.append($('<option/>').val(project).text(project).prop('selected', isSelected));
-        }
-
-        projectSelect.change(function () {
-            renderData.changeOwnerAndProject(renderData.owner,
-                                             renderData.getSelectedValue("project"));
-        });
-
-        updateStackInfoForProject();
-
-        // change API link to reference Swagger UI if it is deployed on server
-        var swaggerUiUrl = renderData.baseUrl + '/../swagger-ui/';
-        $.ajax({
-                   url: swaggerUiUrl,
-                   cache: false,
-                   type: "HEAD",
-                   success: function() {
-                       $('#apiLink').attr("href", swaggerUiUrl).text('Web Service APIs');
-                   }
-               });
 
     };
 
-    var failedLoadCallback = function (message) {
-        var messageSelect = $('#message');
-        messageSelect.text(message);
-        messageSelect.addClass("error");
-    };
-
-    // load data and update page
-    self.renderData = new RenderWebServiceData(successfulLoadCallback, failedLoadCallback);
-
+    renderDataUi.addProjectChangeCallback(projectChangeCallback);
+    renderDataUi.loadData();
 };
 

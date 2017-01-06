@@ -7,7 +7,9 @@ import java.io.Serializable;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
@@ -18,8 +20,10 @@ import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
+import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.RenderDataClientParameters;
@@ -80,6 +84,13 @@ public class CopyStackClient implements Serializable {
                 required = false,
                 arity = 0)
         private boolean moveToOrigin = false;
+
+        @Parameter(
+                names = "--excludeTileIdsMissingFromStacks",
+                description = "Name(s) of stack(s) that contain ids of tiles to be included in target stack (assumes owner and project are same as source stack).",
+                variableArity = true,
+                required = false)
+        private List<String> excludeTileIdsMissingFromStacks;
 
         public String getTargetOwner() {
             if (targetOwner == null) {
@@ -148,7 +159,26 @@ public class CopyStackClient implements Serializable {
                                                                        parameters.getTargetOwner(),
                                                                        parameters.getTargetProject());
 
-        final StackMetaData targetStackMetaData = targetDataClient.getStackMetaData(parameters.targetStack);
+        StackMetaData targetStackMetaData;
+        try {
+            targetStackMetaData = targetDataClient.getStackMetaData(parameters.targetStack);
+        } catch (final Throwable t) {
+            LOG.info("target stack does not exist, creating it ...");
+            final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
+            final StackVersion sourceVersion = sourceStackMetaData.getCurrentVersion();
+            final StackVersion targetVerison = new StackVersion(new Date(),
+                                                                "copied from " + sourceStackMetaData.getStackId(),
+                                                                null,
+                                                                null,
+                                                                sourceVersion.getStackResolutionX(),
+                                                                sourceVersion.getStackResolutionY(),
+                                                                sourceVersion.getStackResolutionZ(),
+                                                                null,
+                                                                sourceVersion.getMipmapPathBuilder());
+            targetDataClient.saveStackVersion(parameters.targetStack, targetVerison);
+            targetStackMetaData = targetDataClient.getStackMetaData(parameters.targetStack);
+        }
+
         if (! targetStackMetaData.isLoading()) {
             throw new IllegalArgumentException("target stack must be in the loading state, meta data is " +
                                                targetStackMetaData);
@@ -203,6 +233,32 @@ public class CopyStackClient implements Serializable {
 
                 final ResolvedTileSpecCollection sourceCollection =
                         sourceDataClient.getResolvedTiles(parameters.stack, z);
+
+                final Set<String> tileIdsToKeep = new HashSet<>();
+                String filterStack = null;
+                if (parameters.excludeTileIdsMissingFromStacks != null) {
+
+                    for (final String tileIdStack : parameters.excludeTileIdsMissingFromStacks) {
+
+                        for (final TileBounds tileBounds : sourceDataClient.getTileBounds(tileIdStack, z)) {
+                            tileIdsToKeep.add(tileBounds.getTileId());
+                        }
+
+                        // once a stack with tiles for the current z is found, use that as the filter
+                        if (tileIdsToKeep.size() > 0) {
+                            filterStack = tileIdStack;
+                            break;
+                        }
+                    }
+
+                }
+
+                if (tileIdsToKeep.size() > 0) {
+                    final int numberOfTilesBeforeFilter = sourceCollection.getTileCount();
+                    sourceCollection.filterSpecs(tileIdsToKeep);
+                    final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();
+                    LOG.info("removed {} tiles not found in {}", numberOfTilesRemoved, filterStack);
+                }
 
                 if (moveStackTransform != null) {
                     sourceCollection.addTransformSpecToCollection(moveStackTransform);

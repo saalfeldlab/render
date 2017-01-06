@@ -219,14 +219,10 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
     var sectionMap = {};
     var tileSpecs = data["tileSpecs"];
 
-    // tile specs are ordered by tileId which has format <acquisition date><column><row>.<section>
-
-    var compareNumbers = function(a, b) {
-        return a - b;
-    };
-
     var tileSpec;
     var sectionData;
+    var originalTileWidth;
+    var originalTileHeight;
 
     for (var index = 0; index < tileSpecs.length; index++) {
 
@@ -234,27 +230,45 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
 
         if (! sectionMap.hasOwnProperty(tileSpec.layout.sectionId)) {
             sectionMap[tileSpec.layout.sectionId] = {
-                rows: [],
-                columns: [],
+                minXList: [],
+                minYList: [],
                 janeliaTiles: {}
             };
         }
 
         sectionData = sectionMap[tileSpec.layout.sectionId];
 
-        if (sectionData.rows.indexOf(tileSpec.layout.imageRow) == -1) {
-            sectionData.rows.push(tileSpec.layout.imageRow);
-            sectionData.rows.sort(compareNumbers)
-        }
+        sectionData.minXList.push({"tileId": tileSpec.tileId, "value": tileSpec.minX});
+        sectionData.minYList.push({"tileId": tileSpec.tileId, "value": tileSpec.minY});
 
-        if (sectionData.columns.indexOf(tileSpec.layout.imageCol) == -1) {
-            sectionData.columns.push(tileSpec.layout.imageCol);
-            sectionData.columns.sort(compareNumbers)
+        if (this.tileId == tileSpec.tileId) {
+            originalTileWidth = tileSpec.width;
+            originalTileHeight = tileSpec.height;
         }
 
         sectionData.janeliaTiles[tileSpec.tileId] =
                 new JaneliaTile2(tileSpec, this.stackUrl, this.matchCollectionUrl, this.renderQueryParameters, this.scale, this.canvas, this.janeliaTileMap);
     }
+
+    var compareValues = function(a, b) {
+        return a.value - b.value;
+    };
+
+    var deriveRowOrColumn = function(forTileId, list, size) {
+        var rowOrColumn = 0;
+        if ((list.length > 0) && (forTileId != list[0].tileId)) {
+            for (var index = 1; index < list.length; index++) {
+                var prevDelta = list[index].value - list[index - 1].value;
+                if ((prevDelta / size) > 0.5) {
+                    rowOrColumn = rowOrColumn + 1;
+                }
+                if (forTileId == list[index].tileId) {
+                    break;
+                }
+            }
+        }
+        return rowOrColumn;
+    };
 
     var firstColumnForSection = 0;
     var tileId;
@@ -263,6 +277,10 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
     for (var sectionId in sectionMap) {
         if (sectionMap.hasOwnProperty(sectionId)) {
             sectionData = sectionMap[sectionId];
+
+            sectionData.minXList.sort(compareValues);
+            sectionData.minYList.sort(compareValues);
+
             for (tileId in sectionData.janeliaTiles) {
                 if (sectionData.janeliaTiles.hasOwnProperty(tileId)) {
 
@@ -273,11 +291,11 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
                     tileSpec = janeliaTile2.tileSpec;
 
                     janeliaTile2.setRowAndColumn(
-                            sectionData.rows.indexOf(tileSpec.layout.imageRow),
-                            firstColumnForSection + sectionData.columns.indexOf(tileSpec.layout.imageCol));
+                            deriveRowOrColumn(tileId, sectionData.minYList, originalTileHeight),
+                            firstColumnForSection + deriveRowOrColumn(tileId, sectionData.minXList, originalTileWidth));
                 }
             }
-            firstColumnForSection = firstColumnForSection + sectionData.columns.length;
+            firstColumnForSection = firstColumnForSection + sectionData.minXList[sectionData.minXList.length - 1].value;
         }
     }
 
@@ -317,32 +335,7 @@ JaneliaTileWithNeighbors.prototype.move = function(rowDelta, columnDelta) {
 
 };
 
-JaneliaTileWithNeighbors.prototype.selectTile = function(tileId) {
-
-    var selectedTile = undefined;
-
-    if ((typeof this.tileId !== 'undefined') && (this.tileId.length > 0)) {
-
-        for (var neighborTileId in this.janeliaTileMap) {
-            if (this.janeliaTileMap.hasOwnProperty(neighborTileId)) {
-                var neighbor = this.janeliaTileMap[neighborTileId];
-                if (neighbor.imagePositioned) {
-                    if (neighbor.tileSpec.tileId == tileId) {
-                        neighbor.setSelected(true);
-                        selectedTile = neighbor;
-                    } else {
-                        neighbor.setSelected(true);
-                    }
-                }
-            }
-        }
-
-    }
-
-    return selectedTile;
-};
-
-JaneliaTileWithNeighbors.prototype.selectTile = function(canvasClickX, canvasClickY) {
+JaneliaTileWithNeighbors.prototype.selectTile = function(canvasClickX, canvasClickY, shiftKey) {
 
     var selectedTile = undefined;
 
@@ -356,13 +349,26 @@ JaneliaTileWithNeighbors.prototype.selectTile = function(canvasClickX, canvasCli
                         var maxX = neighbor.x + neighbor.image.naturalWidth;
                         var maxY = neighbor.y + neighbor.image.naturalHeight;
                         if ((maxX >= canvasClickX) && (maxY >= canvasClickY)) {
-                            neighbor.setSelected(true);
+
+                            if (! shiftKey) {
+                                neighbor.setSelected(true);
+                            }
+
                             selectedTile = neighbor;
+
                         } else {
-                            neighbor.setSelected(false);
+
+                            if (! shiftKey) {
+                                neighbor.setSelected(false);
+                            }
+
                         }
                     } else {
-                        neighbor.setSelected(false);
+
+                        if (! shiftKey) {
+                            neighbor.setSelected(false);
+                        }
+
                     }
                 }
             }
@@ -371,4 +377,40 @@ JaneliaTileWithNeighbors.prototype.selectTile = function(canvasClickX, canvasCli
     }
 
     return selectedTile;
+};
+
+JaneliaTileWithNeighbors.prototype.viewTilePair = function(tileA, tileB, renderScale) {
+
+    var pGroupId = tileA.tileSpec.layout.sectionId;
+    var pId = tileA.tileSpec.tileId;
+
+    var qGroupId = tileB.tileSpec.layout.sectionId;
+    var qId = tileB.tileSpec.tileId;
+
+    if ((pGroupId > qGroupId) || ((pGroupId == qGroupId) && (pId > qId))) {
+        var swapGroupId = pGroupId;
+        var swapId = pId;
+        pGroupId = qGroupId;
+        pId = qId;
+        qGroupId = swapGroupId;
+        qId = swapId;
+    }
+
+    var parameters = {
+        'renderStackOwner': this.owner, 'renderStackProject': this.project, 'renderStack': this.stack,
+        'renderScale': renderScale,
+        'matchOwner': this.matchOwner, 'matchCollection': this.matchCollection,
+        'pGroupId': pGroupId, 'pId': pId,
+        'qGroupId': qGroupId, 'qId': qId
+    };
+
+    var tilePairUrl = "tile-pair.html?" + $.param(parameters);
+
+    var win = window.open(tilePairUrl);
+    if (win) {
+        win.focus();
+    } else {
+        alert('Please allow popups for this website');
+    }
+
 };

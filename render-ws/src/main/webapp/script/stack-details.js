@@ -1,17 +1,16 @@
-var RenderWebServiceStackDetails = function() {
+var RenderWebServiceStackDetails = function(ownerSelectId, projectSelectId, stackSelectId, messageId, urlToViewId) {
 
+    var queryParameters = new JaneliaQueryParameters();
+
+    this.renderDataUi = new JaneliaRenderServiceDataUI(queryParameters, ownerSelectId, projectSelectId, stackSelectId, messageId, urlToViewId);
+
+    this.renderData = this.renderDataUi.renderServiceData;
     this.sectionData = [];
     this.zToSectionDataMap = {};
     this.sectionFloatToZMap = {};
     this.minZForStack = undefined;
 
     var self = this;
-
-    var failedLoadCallback = function (message) {
-        var sectionDataStatusSelect = $('#sectionDataStatus');
-        sectionDataStatusSelect.text(message);
-        sectionDataStatusSelect.addClass("error");
-    };
 
     var successfulLoadCallback = function () {
 
@@ -20,15 +19,14 @@ var RenderWebServiceStackDetails = function() {
         document.title = renderData.stack;
         $('#owner').text(renderData.owner + ' > ');
 
-        var projectHref = 'stacks.html?' +
-                          renderData.buildQueryParameters(renderData.owner, renderData.project, undefined);
+        var projectHref = 'stacks.html' + self.renderDataUi.queryParameters.getSearch();
         $('#bodyHeaderLink').attr("href", projectHref).text(renderData.owner + ' ' + renderData.project);
 
         $('#bodyHeader').text(renderData.stack);
 
         var stackInfoSelect = $('#stackInfo');
-        var summaryHtml = renderData.getStackSummaryHtml(renderData.getOwnerUrl(),
-                                                         renderData.getStackMetaData());
+        var summaryHtml = self.renderDataUi.getStackSummaryHtml(renderData.getOwnerUrl(),
+                                                                renderData.getStackMetaData());
         stackInfoSelect.find('tr:last').after(summaryHtml);
 
         var sectionDataUrl = renderData.getProjectUrl() + "stack/" + renderData.stack + "/sectionData";
@@ -40,16 +38,17 @@ var RenderWebServiceStackDetails = function() {
                    success: function(data) {
                        self.drawSectionDataCharts(data, renderData.owner, renderData.project, renderData.stack);
                    },
-                   error: function(data, textStatus, xhr) {
-                       console.error(xhr);
-                       failedLoadCallback("Failed to load section data.  Detailed error: " +
-                                          renderData.getErrorMessage(data));
+                   error: function(data, text, xhr) {
+                       renderData.handleAjaxError(data, text, xhr);
                    }
                });
 
     };
 
-    this.renderData = new RenderWebServiceData(successfulLoadCallback, failedLoadCallback);
+    // hack to trigger section data load when initial project data loads
+    this.renderDataUi.addProjectChangeCallback(successfulLoadCallback);
+
+    this.renderDataUi.loadData();
 
 };
 
@@ -305,7 +304,7 @@ RenderWebServiceStackDetails.prototype.drawSectionDataCharts = function(data, ow
         }
     });
 
-    var baseRenderUrl = this.renderData.getDynamicRenderBaseUrl();
+    var baseRenderUrl = self.renderDataUi.getDynamicRenderBaseUrl();
     var baseDataUrl = '../v1';
 
     var sectionOrderingTooltipFormatter = function() {

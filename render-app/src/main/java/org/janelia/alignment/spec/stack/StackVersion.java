@@ -23,7 +23,7 @@ public class StackVersion
     private final Double stackResolutionY;
     private final Double stackResolutionZ;
 
-    private final String materializedBoxRootPath;
+    private String materializedBoxRootPath;
     private final MipmapPathBuilder mipmapPathBuilder;
 
     // no-arg constructor needed for JSON deserialization
@@ -82,6 +82,17 @@ public class StackVersion
 
     public String getMaterializedBoxRootPath() {
         return materializedBoxRootPath;
+    }
+
+    public void setMaterializedBoxRootPath(final String materializedBoxRootPath) {
+        String trimmedPath = null;
+        if (materializedBoxRootPath != null) {
+            trimmedPath = materializedBoxRootPath.trim();
+            if (trimmedPath.length() == 0) {
+                trimmedPath = null;
+            }
+        }
+        this.materializedBoxRootPath = trimmedPath;
     }
 
     public MipmapPathBuilder getMipmapPathBuilder() {

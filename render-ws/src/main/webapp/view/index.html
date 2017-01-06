@@ -2,12 +2,161 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>Render Web Service</title>
+    <title>Render Web Service Views</title>
     <link type="text/css" href="../css/render.css" rel="stylesheet" />
-    <script type="text/javascript" src="js/render.js?v=20160504_001"></script>
+    <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
+    <script type="text/javascript" src="../script/janelia-render.js?v=20170105_001"></script>
+    <script type="text/javascript" src="../script/janelia-match.js?v=20170105_001"></script>
+    <script type="text/javascript">
+
+      var renderWebServiceViews = {
+        parameters : new JaneliaQueryParameters(),
+        util : new JaneliaScriptUtilities(),
+        updateParameter : function (key, value) {
+          renderWebServiceViews.parameters.updateParameterAndLink(key, value, 'urlToView');
+        },
+        setLinkHref : function(linkId) {
+          var linkSelector = $('#' + linkId);
+          var oldHref = linkSelector.attr('href');
+          var newHref = oldHref.replace(/\?.*/, renderWebServiceViews.parameters.getSearch());
+          linkSelector.attr('href', newHref);
+        },
+        setUpHostData : function(inputId) {
+          renderWebServiceViews.util.addOnChangeCallbackForInput(
+                  inputId,
+                  function(changedValue) { renderWebServiceViews.updateParameter(inputId, changedValue) });
+          $('#' + inputId).val(renderWebServiceViews.parameters.get(inputId));
+        }
+
+      };
+
+      $( document ).ready(function() {
+        var renderUi = new JaneliaRenderServiceDataUI(renderWebServiceViews.parameters,
+                                                      'renderStackOwner', 'renderStackProject', 'renderStack',
+                                                      'message', 'urlToView');
+        renderUi.loadData();
+
+        renderWebServiceViews.setUpHostData('dynamicRenderHost');
+        renderWebServiceViews.setUpHostData('catmaidHost');
+
+        new JaneliaMatchServiceDataUI(
+                renderWebServiceViews.parameters, 'matchOwner', 'matchCollection', 'matchCollectionPairCount', 'message', 'urlToView');
+
+        // change API link to reference Swagger UI if it is deployed on server
+        var swaggerUiUrl = renderWebServiceViews.util.getServicesBaseUrl() + '/../../swagger-ui/';
+        $.ajax({
+                 url: swaggerUiUrl,
+                 cache: false,
+                 type: "HEAD",
+                 success: function() {
+                   $('#apiLink').attr("href", swaggerUiUrl).text('Web Service APIs');
+                 }
+               });
+
+      });
+
+    </script>
   </head>
   <body>
-    <h1>Render Web Service</h1>
+    <h3>Render Web Service Views</h3>
+
+    <span id="message" class="error"></span>
+
+    <a id="urlToView" class="floatRight" target="_blank">URL to this view</a>
+
+    <table>
+
+      <tr>
+        <td>
+          Render Context:
+        </td>
+        <td>
+          <span class="selectSpan">Owner:</span> <select id="renderStackOwner" title="renderStackOwner"></select>
+          <span class="selectSpan">Project:</span> <select id="renderStackProject" title="renderStackProject"></select>
+          <span class="selectSpan">Stack:</span> <select id="renderStack" title="renderStack"></select>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+        </td>
+        <td>
+          <span class="selectSpan">Dynamic Render Host (e.g. 'renderer:8080'):</span>
+          <input id="dynamicRenderHost" title="dynamicRenderHost" type="text" style="width:30em"
+                 onchange="renderWebServiceViews.updateParameter('dynamicRenderHost', this.value)">
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+        </td>
+        <td>
+          <span class="selectSpan">CATMAID Host (e.g. 'renderer-catmaid:8000'):</span>
+          <input id="catmaidHost" title="catmaidHost" type="text" style="width:30em"
+                 onchange="renderWebServiceViews.updateParameter('catmaidHost', this.value)">
+        </td>
+      </tr>
+
+      <tr style="line-height: 50px">
+        <td>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          Match Context:
+        </td>
+        <td>
+          <span class="selectSpan">Owner:</span> <select id="matchOwner" title="matchOwner"></select>
+          <span class="selectSpan">Collection:</span> <select id="matchCollection" title="matchCollection"></select>
+          <span style="margin-left:10px;">(</span><span id="matchCollectionPairCount"></span><span>)</span>
+        </td>
+      </tr>
+
+      <tr style="line-height: 50px">
+        <td>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="margin-top: 50px">
+          View Links:
+        </td>
+        <td>
+          <a id="stacksLink" href="stacks.html?" target="_blank"
+             onclick="renderWebServiceViews.setLinkHref('stacksLink')">Render Project Dashboard</a>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+        </td>
+        <td>
+          <a id="stackDetailsLink" href="stack-details.html?" target="_blank"
+             onclick="renderWebServiceViews.setLinkHref('stackDetailsLink')">Render Stack Details</a>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+        </td>
+        <td>
+          <a id="pmeLink" href="point-match-explorer.html?" target="_blank"
+             onclick="renderWebServiceViews.setLinkHref('pmeLink')">Point Match Explorer</a>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+        </td>
+        <td>
+          <a id="apiLink" target="_blank" href="../swagger.json/">Web Service API Spec</a>
+        </td>
+      </tr>
+
+    </table>
+
+
   </body>
 </html>
 

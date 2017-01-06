@@ -151,7 +151,7 @@ JaneliaQueryParameters.prototype.updateParameter = function (key, value) {
 
     if (typeof key != 'undefined') {
 
-        if (typeof value == 'undefined') {
+        if (typeof value == 'undefined' || value == '') {
             delete this.map[key];
         } else {
             this.map[key] = value;
@@ -171,14 +171,6 @@ JaneliaQueryParameters.prototype.updateLink = function(urlToViewId) {
 JaneliaQueryParameters.prototype.updateParameterAndLink = function (key, value, urlToViewId) {
 
     this.updateParameter(key, value);
-    this.updateLink(urlToViewId);
-};
-
-JaneliaQueryParameters.prototype.updateParametersAndLink = function (keyValueList, urlToViewId) {
-
-    for (var i = 0; i < keyValueList.length; i++) {
-        this.updateParameter(keyValueList[i].key, keyValueList[i].value);
-    }
     this.updateLink(urlToViewId);
 };
 
@@ -211,10 +203,6 @@ JaneliaRenderServiceData.prototype.getOwnerUrl = function () {
 
 JaneliaRenderServiceData.prototype.getProjectUrl = function() {
     return this.getOwnerUrl() + 'project/' + this.project + '/';
-};
-
-JaneliaRenderServiceData.prototype.getStackUrl = function() {
-    return this.getProjectUrl() + 'stack/' + this.stack + '/';
 };
 
 JaneliaRenderServiceData.prototype.loadOwnerList = function (loadCallbacks) {
@@ -383,6 +371,9 @@ var JaneliaRenderServiceDataUI = function(queryParameters, ownerSelectId, projec
     this.renderServiceData = new JaneliaRenderServiceData(queryParameters.map[ownerSelectId],
                                                           queryParameters.map[projectSelectId],
                                                           queryParameters.map[stackSelectId]);
+
+    this.projectChangeCallbacks = [];
+
     var self = this;
 
     var setStack = function(selectedStack) {
@@ -405,6 +396,9 @@ var JaneliaRenderServiceDataUI = function(queryParameters, ownerSelectId, projec
                                           self.renderServiceData.stack);
         }
         setStack(self.renderServiceData.stack);
+        for (var i = 0; i < self.projectChangeCallbacks.length; i++) {
+            self.projectChangeCallbacks[i]();
+        }
     };
 
     this.util.addOnChangeCallbackForSelect(projectSelectId, setProjectAndUpdateStackList);
@@ -427,7 +421,7 @@ var JaneliaRenderServiceDataUI = function(queryParameters, ownerSelectId, projec
 
     this.util.addOnChangeCallbackForSelect(ownerSelectId, setOwnerAndUpdateStackMetaData);
 
-    var ownerLoadCallbacks = {
+    this.ownerLoadCallbacks = {
         success: function() {
             self.util.updateSelectOptions(ownerSelectId,
                                           self.renderServiceData.ownerList,
@@ -437,7 +431,14 @@ var JaneliaRenderServiceDataUI = function(queryParameters, ownerSelectId, projec
         error: new JaneliaMessageUI(messageId, 'Failed to load render stack owners.').displayError
     };
 
-    this.renderServiceData.loadOwnerList(ownerLoadCallbacks);
+};
+
+JaneliaRenderServiceDataUI.prototype.addProjectChangeCallback = function(callback) {
+    this.projectChangeCallbacks.push(callback);
+};
+
+JaneliaRenderServiceDataUI.prototype.loadData = function() {
+    this.renderServiceData.loadOwnerList(this.ownerLoadCallbacks);
 };
 
 JaneliaRenderServiceDataUI.prototype.isDynamicRenderHostDefined = function() {
@@ -454,6 +455,31 @@ JaneliaRenderServiceDataUI.prototype.getDynamicRenderBaseUrl = function() {
 
 JaneliaRenderServiceDataUI.prototype.isCatmaidHostDefined = function() {
     return typeof this.catmaidHost != 'undefined';
+};
+
+JaneliaRenderServiceDataUI.prototype.buildStackQueryParameters = function(owner, project, stack) {
+
+    var parameters = {};
+
+    var keyValueList = [
+        ['renderStackOwner', owner],
+        ['renderStackProject', project],
+        ['renderStack', stack],
+        ['dynamicRenderHost', this.dynamicRenderHost],
+        ['catmaidHost', this.catmaidHost]
+    ];
+
+    var key;
+    var value;
+    for (var i = 0; i < keyValueList.length; i++) {
+        key = keyValueList[i][0];
+        value = keyValueList[i][1];
+        if (typeof value != 'undefined') {
+            parameters[key] = value;
+        }
+    }
+
+    return $.param(parameters);
 };
 
 /**
@@ -538,9 +564,9 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
         linksHtml = '';
     }
 
-    var detailsQueryString = this.queryParameters.getSearch();
+    var detailsQueryString = '?' + this.buildStackQueryParameters(stackId.owner, stackId.project, stackId.stack);
     //noinspection HtmlUnknownTarget
-    var detailsLink = '<a href="stack-details.html' + detailsQueryString + '">' + stackId.stack  +'</a>';
+    var detailsLink = '<a target="_blank" href="stack-details.html' + detailsQueryString + '">' + stackId.stack  +'</a>';
 
     return '<tr class="' + stackInfo.state + '">\n' +
            '  <td class="number">' + values[0] + '</td>\n' +

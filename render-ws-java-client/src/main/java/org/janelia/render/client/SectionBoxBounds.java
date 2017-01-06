@@ -52,10 +52,11 @@ public class SectionBoxBounds implements Serializable {
         this.boxWidth = boxWidth;
         this.boxHeight = boxHeight;
 
-        this.firstColumn = (int) (layerBounds.getMinX() / boxWidth);
+        this.firstColumn = layerBounds.getMinX() > 0 ? (int) (layerBounds.getMinX() / boxWidth) : 0;
         this.lastColumn = (int) (layerBounds.getMaxX() / boxWidth);
 
-        this.firstRow = (int) (layerBounds.getMinY() / boxHeight);
+
+        this.firstRow = layerBounds.getMinY() > 0 ? (int) (layerBounds.getMinY() / boxHeight) : 0;
         this.lastRow = (int) (layerBounds.getMaxY() / boxHeight);
 
         setDerivedValues();

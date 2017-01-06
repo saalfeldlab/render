@@ -107,7 +107,7 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--binary_mask", description = "render only 100% opaque pixels", required = false)
     public boolean binaryMask;
 
-    @Parameter(names = "--exclude_mask", description = "render only 100% opaque pixels", required = false)
+    @Parameter(names = "--exclude_mask", description = "exclude mask when rendering", required = false)
     public boolean excludeMask;
 
     @Parameter(names = "--parameters_url", description = "URL to base JSON parameters file (to be applied to any unspecified or default parameters)", required = false)

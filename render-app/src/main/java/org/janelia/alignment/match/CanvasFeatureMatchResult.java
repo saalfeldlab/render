@@ -1,5 +1,6 @@
 package org.janelia.alignment.match;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,7 +13,7 @@ import mpicbg.models.PointMatch;
  *
  * @author Eric Trautman
  */
-public class CanvasFeatureMatchResult {
+public class CanvasFeatureMatchResult implements Serializable {
 
     private final boolean modelFound;
     private final Model model;
