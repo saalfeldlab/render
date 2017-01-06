@@ -18,6 +18,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -226,43 +227,47 @@ public class FixMipmapUrlClient
                 String imageUrl;
                 String maskUrl;
                 for (final TileSpec tileSpec : sourceCollection.getTileSpecs()) {
-                    final Map.Entry<Integer, ImageAndMask> maxEntry = tileSpec.getFloorMipmapEntry(Integer.MAX_VALUE);
-                    if (maxEntry != null) {
-                        for (int level = maxEntry.getKey(); level >= 0; level--) {
-                            imageAndMask = tileSpec.getMipmap(level);
-                            if (imageAndMask != null) {
 
-                                if (fixImage) {
-                                    imageUrl = imageAndMask.getImageUrl();
-                                    for (final Pattern p : replacementData.keySet()){
-                                        imageUrl = fixUrl(p, imageUrl, replacementData.get(p));
+                    for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
+
+                        final Map.Entry<Integer, ImageAndMask> maxEntry = channelSpec.getFloorMipmapEntry(Integer.MAX_VALUE);
+                        if (maxEntry != null) {
+                            for (int level = maxEntry.getKey(); level >= 0; level--) {
+                                imageAndMask = channelSpec.getMipmap(level);
+                                if (imageAndMask != null) {
+
+                                    if (fixImage) {
+                                        imageUrl = imageAndMask.getImageUrl();
+                                        for (final Pattern p : replacementData.keySet()) {
+                                            imageUrl = fixUrl(p, imageUrl, replacementData.get(p));
+                                        }
+                                    } else {
+                                        imageUrl = imageAndMask.getImageUrl();
                                     }
-                                } else {
-                                    imageUrl = imageAndMask.getImageUrl();
-                                }
 
-                                if (fixMask) {
-                                    maskUrl = imageAndMask.getMaskUrl();
-                                    for (final Pattern p : replacementData.keySet()) {
-                                        maskUrl = fixUrl(p, maskUrl, replacementData.get(p));
+                                    if (fixMask) {
+                                        maskUrl = imageAndMask.getMaskUrl();
+                                        for (final Pattern p : replacementData.keySet()) {
+                                            maskUrl = fixUrl(p, maskUrl, replacementData.get(p));
+                                        }
+                                    } else {
+                                        maskUrl = imageAndMask.getMaskUrl();
                                     }
-                                } else {
-                                    maskUrl = imageAndMask.getMaskUrl();
+
+                                    fixedImageAndMask = new ImageAndMask(imageUrl, maskUrl);
+                                    fixedImageAndMask.validate();
+
+                                    final boolean imagePathChanged = fixImage &&
+                                                                     (!imageUrl.equals(imageAndMask.getImageUrl()));
+                                    final boolean maskPathChanged = fixMask &&
+                                                                    (!maskUrl.equals(imageAndMask.getMaskUrl()));
+                                    if (imagePathChanged || maskPathChanged) {
+                                        fixedAtLeastOneSpec = true;
+                                        channelSpec.putMipmap(level, fixedImageAndMask);
+                                    }
                                 }
 
-                                fixedImageAndMask = new ImageAndMask(imageUrl, maskUrl);
-                                fixedImageAndMask.validate();
-
-                                final boolean imagePathChanged = fixImage &&
-                                                                 (! imageUrl.equals(imageAndMask.getImageUrl()));
-                                final boolean maskPathChanged = fixMask &&
-                                                                (! maskUrl.equals(imageAndMask.getMaskUrl()));
-                                if (imagePathChanged || maskPathChanged) {
-                                    fixedAtLeastOneSpec = true;
-                                    tileSpec.putMipmap(level, fixedImageAndMask);
-                                }
                             }
-
                         }
                     }
 

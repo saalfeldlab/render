@@ -239,30 +239,28 @@ public class MipmapClient {
 
                     if (! channelSpec.hasMipmap(mipmapLevel)) {
 
-                    final boolean isMipmapLevelInRange = mipmapLevel >= parameters.minLevel;
+                        final boolean isMipmapLevelInRange = mipmapLevel >= parameters.minLevel;
 
-                    if (isMipmapLevelInRange) {
-                        createMissingDirectories(derivedImageAndMask.getImageUrl());
-                    }
-
-                    imageMipmapFile = getFileForUrlString(derivedImageAndMask.getImageUrl());
-                    sourceImageProcessor = generateMipmapFile(sourceImageProcessor, imageMipmapFile, 1,
-                                                              channelSpec.getMinIntensity(),
-                                                              channelSpec.getMaxIntensity(),
-                                                              isMipmapLevelInRange);
-                        imageMipmapFile = getFileForUrlString(derivedImageAndMask.getImageUrl());
-                        sourceImageProcessor = generateMipmapFile(sourceImageProcessor, imageMipmapFile, 1);
-
-                    if (sourceImageAndMask.hasMask()) {
                         if (isMipmapLevelInRange) {
-                            createMissingDirectories(derivedImageAndMask.getMaskUrl());
+                            createMissingDirectories(derivedImageAndMask.getImageUrl());
                         }
-                        maskMipmapFile = getFileForUrlString(derivedImageAndMask.getMaskUrl());
-                        sourceMaskProcessor = generateMipmapFile(sourceMaskProcessor, maskMipmapFile, 1,
-                                                                 channelSpec.getMinIntensity(),
-                                                                 channelSpec.getMaxIntensity(),
-                                                                 isMipmapLevelInRange);
-                    }
+
+                        imageMipmapFile = getFileForUrlString(derivedImageAndMask.getImageUrl());
+                        sourceImageProcessor = generateMipmapFile(sourceImageProcessor, imageMipmapFile, 1,
+                                                                  channelSpec.getMinIntensity(),
+                                                                  channelSpec.getMaxIntensity(),
+                                                                  isMipmapLevelInRange);
+
+                        if (sourceImageAndMask.hasMask()) {
+                            if (isMipmapLevelInRange) {
+                                createMissingDirectories(derivedImageAndMask.getMaskUrl());
+                            }
+                            maskMipmapFile = getFileForUrlString(derivedImageAndMask.getMaskUrl());
+                            sourceMaskProcessor = generateMipmapFile(sourceMaskProcessor, maskMipmapFile, 1,
+                                                                     channelSpec.getMinIntensity(),
+                                                                     channelSpec.getMaxIntensity(),
+                                                                     isMipmapLevelInRange);
+                        }
 
                     }
                 }
