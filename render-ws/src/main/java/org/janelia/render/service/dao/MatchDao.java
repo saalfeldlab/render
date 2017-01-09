@@ -52,10 +52,12 @@ public class MatchDao {
 
         final List<MatchCollectionMetaData> list = new ArrayList<>();
         for (final String collectionName : matchDatabase.listCollectionNames()) {
-            list.add(
-                    new MatchCollectionMetaData(
-                            MatchCollectionId.fromDbCollectionName(collectionName),
-                            matchDatabase.getCollection(collectionName).count()));
+            if (! collectionName.startsWith("system.")) {
+                list.add(
+                        new MatchCollectionMetaData(
+                                MatchCollectionId.fromDbCollectionName(collectionName),
+                                matchDatabase.getCollection(collectionName).count()));
+            }
         }
 
         return list;
