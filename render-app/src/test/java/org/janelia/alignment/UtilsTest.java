@@ -94,7 +94,7 @@ public class UtilsTest {
         final double meshCellSize = 64.0;
 
         final CoordinateTransformList<CoordinateTransform> coordinateTransformList =
-                Render.createRenderTransform(tileSpec, areaOffset, scale, x, y);
+                CanvasRenderer.createRenderTransformList(tileSpec.getTransformList(), areaOffset, scale, x, y);
 
         final double sampleAverageScale =
                 Utils.sampleAverageScale(coordinateTransformList, width, height, meshCellSize);

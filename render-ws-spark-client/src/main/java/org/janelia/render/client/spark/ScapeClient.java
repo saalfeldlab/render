@@ -18,7 +18,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
-import org.janelia.alignment.Render;
+import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
@@ -243,7 +243,7 @@ public class ScapeClient
                 final ImageProcessorCache imageProcessorCache =
                         new ImageProcessorCache(maxCachedPixels, false, false);
 
-                Render.render(renderParameters, sectionImage, imageProcessorCache);
+                ArgbRenderer.render(renderParameters, sectionImage, imageProcessorCache);
 
                 Utils.saveImage(sectionImage, sectionFile.getAbsolutePath(), parameters.format, true, 0.85f);
 

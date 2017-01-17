@@ -35,11 +35,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Tests the {@link Render} class.
+ * Tests the {@link ArgbRenderer} class.
  *
  * @author Eric Trautman
  */
-public class RenderTest {
+public class ArgbRendererTest {
 
     private String modulePath;
     private File outputFile;
@@ -81,7 +81,7 @@ public class RenderTest {
 //                "--scale", "0.1"
 //        };
 
-        Render.renderUsingCommandLineArguments(args);
+        ArgbRenderer.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
 
@@ -110,7 +110,7 @@ public class RenderTest {
                 "--scale", "0.25"
         };
 
-        Render.renderUsingCommandLineArguments(args);
+        ArgbRenderer.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
 
@@ -135,7 +135,7 @@ public class RenderTest {
                 "--scale", "0.05"
         };
 
-        Render.renderUsingCommandLineArguments(args);
+        ArgbRenderer.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
 
@@ -162,7 +162,7 @@ public class RenderTest {
                 "--scale", "0.125"
         };
 
-        Render.renderUsingCommandLineArguments(args);
+        ArgbRenderer.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("rendered file " + outputFile.getAbsolutePath() + " not created",
                           outputFile.exists());
@@ -211,7 +211,7 @@ public class RenderTest {
                 "--scale", "0.0001"
         };
 
-        Render.renderUsingCommandLineArguments(args);
+        ArgbRenderer.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("rendered file " + outputFile.getAbsolutePath() + " not created",
                           outputFile.exists());
@@ -228,7 +228,7 @@ public class RenderTest {
 
         final BufferedImage targetImage = params.openTargetImage();
 
-        Render.render(params, targetImage, imageProcessorCache);
+        ArgbRenderer.render(params, targetImage, imageProcessorCache);
 
         Assert.assertEquals(context + ": invalid number of items in cache",
                             expectedCacheSize, imageProcessorCache.size());
@@ -279,5 +279,5 @@ public class RenderTest {
         }
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(RenderTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ArgbRendererTest.class);
 }

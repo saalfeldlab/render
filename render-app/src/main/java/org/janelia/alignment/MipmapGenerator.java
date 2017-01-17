@@ -28,6 +28,7 @@ import mpicbg.trakem2.util.Downsampler;
 
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,9 +93,9 @@ public class MipmapGenerator {
                         mipmapGenerator.generateMissingMipmapFiles(tileSpec, mipmapLevel);
                     }
 
-                    updatedTileSpec = Render.deriveBoundingBox(tileSpec,
-                                                               tileSpec.getMeshCellSize(),
-                                                               forceBoxCalculation);
+                    updatedTileSpec = deriveBoundingBox(tileSpec,
+                                                        tileSpec.getMeshCellSize(),
+                                                        forceBoxCalculation);
 
                     if (tileCount != 0) {
                         outputStream.write(",\n".getBytes());
@@ -400,6 +401,25 @@ public class MipmapGenerator {
         final ImageOutputStream imageOutputStream = new MemoryCacheImageOutputStream(outputStream);
 
         Utils.writeImage(downSampledImage, format, false, jpegQuality, imageOutputStream);
+    }
+
+    private static TileSpec deriveBoundingBox(final TileSpec tileSpec,
+                                              final double meshCellSize,
+                                              final boolean force) {
+
+        if (! tileSpec.hasWidthAndHeightDefined()) {
+            final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
+            final ImageAndMask imageAndMask = mipmapEntry.getValue();
+            final ImageProcessor imageProcessor = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(),
+                                                                                        0,
+                                                                                        false);
+            tileSpec.setWidth((double) imageProcessor.getWidth());
+            tileSpec.setHeight((double) imageProcessor.getHeight());
+        }
+
+        tileSpec.deriveBoundingBox(meshCellSize, force);
+
+        return tileSpec;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MipmapGenerator.class);

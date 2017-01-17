@@ -8,7 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.janelia.alignment.Render;
+import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -133,21 +133,11 @@ public class RenderPerformanceTest {
         // *** Start Clock ***
         testData.setStartTime();
 
-        Render.render(params.getTileSpecs(),
-                      params.getChannelNames(),
-                      params.getX(),
-                      params.getY(),
-                      params.getRes(params.getScale()),
-                      params.getScale(),
-                      params.isAreaOffset(),
-                      testData.threads,
-                      params.skipInterpolation(),
-                      params.doFilter(),
-                      false,
-                      false,
-                      ImageProcessorCache.DISABLED_CACHE,
-                      null,
-                      targetImage);
+        params.setNumberOfThreads(testData.threads);
+
+        ArgbRenderer.render(params,
+                            targetImage,
+                            ImageProcessorCache.DISABLED_CACHE);
 
         // *** Stop Clock ***
         testData.calculateElapsedTime();

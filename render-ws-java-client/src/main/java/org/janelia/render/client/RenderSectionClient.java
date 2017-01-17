@@ -10,7 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-import org.janelia.alignment.Render;
+import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
@@ -137,7 +137,7 @@ public class RenderSectionClient {
             sectionImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
         }
 
-        Render.render(renderParameters, sectionImage, imageProcessorCache);
+        ArgbRenderer.render(renderParameters, sectionImage, imageProcessorCache);
 
         Utils.saveImage(sectionImage, sectionFile.getAbsolutePath(), clientParameters.format, true, 0.85f);
 
