@@ -6,6 +6,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.net.MalformedURLException;
 import java.util.Enumeration;
 
 import org.apache.log4j.Appender;
@@ -51,7 +52,32 @@ public class LogUtilities {
 
         logger.setLevel(Level.DEBUG);
     }
+    public static String getExecutorsApiJson(final String appId, final String apiUrl){
+    	// TODO: find more robust way to determine execution context
 
+        String json;
+
+        try{
+        	final URL url = new URL(apiUrl+ "/api/v1/applications/" + appId + "/executors");
+        	final BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
+        	json = CharStreams.toString(in);
+        }
+        catch (final MalformedURLException e){
+        	  json = "[ {\n" +
+                   "  \"error\": \"mallformed url \",\n" +
+                   "  \"exception_message\": \"" + e.getMessage() + "\"\n" +
+                   "} ]";
+        }           
+        catch (final Throwable t) {
+            json = "[ {\n" +
+                   "  \"error\": \"failed to retrieve executors data\",\n" +
+                   "  \"exception_message\": \"" + t.getMessage() + "\"\n" +
+                   "} ]";
+        }
+
+        return json;
+
+    }
     public static String getExecutorsApiJson(final String appId) throws IOException {
 
         // TODO: find more robust way to determine execution context
