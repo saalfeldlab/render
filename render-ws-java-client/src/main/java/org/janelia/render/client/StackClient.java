@@ -31,10 +31,10 @@ public class StackClient {
         @Parameter(names = "--stack", description = "Stack name", required = true)
         private String stack;
 
-        @Parameter(names = "--action", description = "CREATE, CLONE, SET_STATE, or DELETE", required = true)
+        @Parameter(names = "--action", description = "Management action to perform", required = true)
         private Action action;
 
-        @Parameter(names = "--stackState", description = "LOADING, COMPLETE, or OFFLINE", required = false)
+        @Parameter(names = "--stackState", description = "New state for stack", required = false)
         private StackState stackState;
 
         @Parameter(names = "--versionNotes", description = "Notes about the version being created", required = false)

@@ -43,6 +43,7 @@ import io.swagger.annotations.ApiResponses;
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.COMPLETE;
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.OFFLINE;
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState.READ_ONLY;
 
 /**
  * APIs for accessing stack meta data stored in the Render service database.
@@ -448,7 +449,12 @@ public class StackMetaDataService {
     @ApiOperation(
             tags = {"Stack Data APIs", "Stack Management APIs"},
             value = "Sets the stack's current state",
-            notes = "Transitions stack from LOADING to COMPLETE to OFFLINE.  Transitioning to COMPLETE is a potentially long running operation since it creates indexes and aggregates meta data.")
+            notes = "Normal progression is LOADING to COMPLETE to READ_ONLY to OFFLINE.  " +
+                    "Transitioning to COMPLETE is a potentially long running operation " +
+                    "since it creates indexes and aggregates meta data.  " +
+                    "Transitioning to OFFLINE assumes that the stack data has been persisted elsewhere " +
+                    "(e.g. a database dump file) and will remove the stack tile and transform collections, " +
+                    "so BE CAREFUL when transitioning to OFFLINE!")
     @ApiResponses(value = {
             @ApiResponse(code = 201, message = "state successfully changed"),
             @ApiResponse(code = 400, message = "stack state cannot be changed because of current state"),
@@ -465,17 +471,20 @@ public class StackMetaDataService {
 
         try {
             final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            final StackState currentState = stackMetaData.getState();
+
+            stackMetaData.validateStateChange(state);
 
             if (COMPLETE.equals(state)) {
 
-                renderDao.ensureIndexesAndDeriveStats(stackMetaData); // also sets state to COMPLETE
+                if (READ_ONLY.equals(currentState)) {
+                    stackMetaData.setState(state);
+                    renderDao.saveStackMetaData(stackMetaData);
+                } else {
+                    renderDao.ensureIndexesAndDeriveStats(stackMetaData); // also sets state to COMPLETE
+                }
 
             } else if (OFFLINE.equals(state)) {
-
-                if (! COMPLETE.equals(stackMetaData.getState())) {
-                    throw new IllegalArgumentException("The stack state is currently " + stackMetaData.getState() +
-                                                       " but must be COMPLETE before transitioning to OFFLINE.");
-                }
 
                 stackMetaData.setState(state);
                 renderDao.saveStackMetaData(stackMetaData);
