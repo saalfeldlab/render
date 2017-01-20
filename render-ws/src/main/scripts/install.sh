@@ -10,7 +10,7 @@ SWAGGER_UI_VERSION="2.1.4"
 # URLs for JDK 8, Jetty 9, SLF4J 1.7, Logback 1.1, and Swagger 2.1
 JDK_URL="http://download.oracle.com/otn-pub/java/jdk/8u73-b02/jdk-8u73-linux-x64.tar.gz"
 JETTY_URL="http://central.maven.org/maven2/org/eclipse/jetty/jetty-distribution/${JETTY_VERSION}/${JETTY_DIST}.tar.gz"
-SLF4J_URL="http://www.slf4j.org/dist/slf4j-${SLF4J_VERSION}.tar.gz"
+SLF4J_URL="https://www.slf4j.org/dist/slf4j-${SLF4J_VERSION}.tar.gz"
 LOGBACK_URL="http://logback.qos.ch/dist/logback-${LOGBACK_VERSION}.tar.gz"
 SWAGGER_UI_URL="https://github.com/swagger-api/swagger-ui/archive/v${SWAGGER_UI_VERSION}.tar.gz"
 
