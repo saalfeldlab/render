@@ -1,7 +1,10 @@
-package org.janelia.alignment;
+package org.janelia.alignment.mipmap;
+
+import ij.process.ByteProcessor;
+import ij.process.FloatProcessor;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -12,9 +15,11 @@ import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
-import org.janelia.alignment.filter.Filter;
-import org.janelia.alignment.filter.NormalizeLocalContrast;
-import org.janelia.alignment.filter.ValueToNoise;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.RenderTransformMesh;
+import org.janelia.alignment.RenderTransformMeshMappingWithMasks;
+import org.janelia.alignment.TransformableCanvas;
+import org.janelia.alignment.Utils;
 import org.janelia.alignment.mapper.MultiChannelMapper;
 import org.janelia.alignment.mapper.MultiChannelWithAlphaMapper;
 import org.janelia.alignment.mapper.MultiChannelWithBinaryMaskMapper;
@@ -22,51 +27,143 @@ import org.janelia.alignment.mapper.PixelMapper;
 import org.janelia.alignment.mapper.SingleChannelMapper;
 import org.janelia.alignment.mapper.SingleChannelWithAlphaMapper;
 import org.janelia.alignment.mapper.SingleChannelWithBinaryMaskMapper;
-import org.janelia.alignment.mipmap.FilteredMipmapSource;
-import org.janelia.alignment.mipmap.MipmapSource;
-import org.janelia.alignment.mipmap.UrlMipmapSource;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Utilities to render {@link TransformableCanvas canvas(es)} to a {@link MipmapSource target}.
+ * A {@link MipmapSource} implementation that renders a canvas composed from
+ * a list of other {@link TransformableCanvas transformed sources}.
  *
  * @author Stephan Saalfeld
  * @author Eric Trautman
  */
-public class CanvasRenderer {
+public class CanvasMipmapSource
+        implements MipmapSource {
+
+    private final String canvasName;
+    private final List<String> channelNames;
+    private final List<TransformableCanvas> canvasList;
+    private final double x;
+    private final double y;
+    private final int fullScaleWidth;
+    private final int fullScaleHeight;
+    private final double meshCellSize;
+    private final double levelZeroScale;
+    private final boolean areaOffset;
+    private final int numberOfMappingThreads;
+    private final boolean skipInterpolation;
+    private final boolean binaryMask;
 
     /**
-     * Renders specified canvases (in order) to the specified target.
+     * Constructs a canvas based upon {@link RenderParameters} that is dynamically
+     * rendered when {@link #getChannels} is called.
      *
-     * @param  canvasList              list of canvases to render.
-     * @param  x                       target image left coordinate.
-     * @param  y                       target image top coordinate.
+     * @param  renderParameters     parameters specifying tiles, transformations, and render context.
+     * @param  imageProcessorCache  cache of previously loaded pixel data (or null if caching is not desired).
+     */
+    public CanvasMipmapSource(final RenderParameters renderParameters,
+                              final ImageProcessorCache imageProcessorCache) {
+
+        this("canvas",
+             renderParameters.getChannelNames(),
+             buildCanvasList(renderParameters, imageProcessorCache),
+             renderParameters.getX(),
+             renderParameters.getY(),
+             renderParameters.getWidth(),
+             renderParameters.getHeight(),
+             renderParameters.getRes(renderParameters.getScale()),
+             renderParameters.getScale(),
+             renderParameters.isAreaOffset(),
+             renderParameters.getNumberOfThreads(),
+             renderParameters.skipInterpolation(),
+             renderParameters.binaryMask());
+    }
+
+    /**
+     * Constructs a canvas composed of {@link TransformableCanvas transformed sources}
+     * that is dynamically rendered when {@link #getChannels} is called.
+     *
+     * @param  canvasName              name of this canvas.
+     * @param  channelNames            names of channels to include in this canvas.
+     * @param  canvasList              list of transformed components to render.
+     * @param  x                       left coordinate for this canvas.
+     * @param  y                       top coordinate for this canvas.
+     * @param  fullScaleWidth          canvas width at mipmap level 0.
+     * @param  fullScaleHeight         canvas height at mipmap level 0.
      * @param  meshCellSize            desired size of a mesh cell (triangle) in pixels.
-     * @param  scale                   scale factor applied to the target image.
+     * @param  levelZeroScale          scale factor for transformed components at mipmap level 0 of this canvas.
      * @param  areaOffset              add bounding box offset.
      * @param  numberOfMappingThreads  number of threads to use for pixel mapping.
      * @param  skipInterpolation       enable sloppy but fast rendering by skipping interpolation.
      * @param  binaryMask              render only 100% opaque pixels.
-     * @param  target                  target for rendered results.
      */
-    public static void render(final List<TransformableCanvas> canvasList,
+    public CanvasMipmapSource(final String canvasName,
+                              final List<String> channelNames,
+                              final List<TransformableCanvas> canvasList,
                               final double x,
                               final double y,
+                              final int fullScaleWidth,
+                              final int fullScaleHeight,
                               final double meshCellSize,
-                              final double scale,
+                              final double levelZeroScale,
                               final boolean areaOffset,
                               final int numberOfMappingThreads,
                               final boolean skipInterpolation,
-                              final boolean binaryMask,
-                              final MipmapSource target) {
+                              final boolean binaryMask) {
+        this.canvasName = canvasName;
+        this.channelNames = channelNames;
+        this.canvasList = canvasList;
+        this.x = x;
+        this.y = y;
+        this.fullScaleWidth = fullScaleWidth;
+        this.fullScaleHeight = fullScaleHeight;
+        this.meshCellSize = meshCellSize;
+        this.levelZeroScale = levelZeroScale;
+        this.areaOffset = areaOffset;
+        this.numberOfMappingThreads = numberOfMappingThreads;
+        this.skipInterpolation = skipInterpolation;
+        this.binaryMask = binaryMask;
+    }
+
+    @Override
+    public String getSourceName() {
+        return canvasName;
+    }
+
+    @Override
+    public int getFullScaleWidth() {
+        return fullScaleWidth;
+    }
+
+    @Override
+    public int getFullScaleHeight() {
+        return fullScaleHeight;
+    }
+
+    @Override
+    public Map<String, ImageProcessorWithMasks> getChannels(final int mipmapLevel)
+            throws IllegalArgumentException {
+
+        final Map<String, ImageProcessorWithMasks> targetChannels = new HashMap<>(channelNames.size());
+
+        final double levelScale = (1.0 / Math.pow(2.0, mipmapLevel)) * levelZeroScale;
+        final int levelWidth = (int) ((fullScaleWidth * levelScale) + 0.5);
+        final int levelHeight = (int) ((fullScaleHeight * levelScale) + 0.5);
+
+        for (final String channelName : channelNames) {
+            targetChannels.put(channelName,
+                               new ImageProcessorWithMasks(
+                                       new FloatProcessor(levelWidth, levelHeight),
+                                       new ByteProcessor(levelWidth, levelHeight),
+                                       null));
+        }
 
         for (final TransformableCanvas canvas : canvasList) {
 
             final CoordinateTransformList<CoordinateTransform> renderTransformList =
-                    createRenderTransformList(canvas.getTransformList(), areaOffset, scale, x, y);
+                    createRenderTransformList(canvas.getTransformList(), areaOffset, levelScale, x, y);
 
             final MipmapSource source = canvas.getSource();
 
@@ -75,31 +172,26 @@ public class CanvasRenderer {
                                                                  source.getFullScaleHeight(),
                                                                  meshCellSize);
 
-            final int mipmapLevel = Utils.bestMipmapLevel(averageScale);
+            final int componentMipmapLevel = Utils.bestMipmapLevel(averageScale);
 
             mapPixels(source,
-                      mipmapLevel,
+                      componentMipmapLevel,
                       renderTransformList,
                       meshCellSize,
                       binaryMask,
                       numberOfMappingThreads,
                       skipInterpolation,
-                      target);
+                      targetChannels);
         }
 
+        return targetChannels;
     }
 
     /**
-     * Renders tiles identified in specified {@link RenderParameters} to the specified target.
-     *
-     * @param  renderParameters     parameters specifying render context.
-     * @param  imageProcessorCache  cache of previously loaded pixel data (or null if caching is not desired).
-     * @param  target               target for rendered results.
+     * @return a list of {@link TransformableCanvas} objects for the specified parameters.
      */
-    public static void render(final RenderParameters renderParameters,
-                              final ImageProcessorCache imageProcessorCache,
-                              final MipmapSource target) {
-
+    public static List<TransformableCanvas> buildCanvasList(final RenderParameters renderParameters,
+                                                            final ImageProcessorCache imageProcessorCache) {
         final Set<String> channelNames = new HashSet<>(renderParameters.getChannelNames());
 
         final List<TransformableCanvas> canvasList = new ArrayList<>(renderParameters.numberOfTileSpecs());
@@ -117,22 +209,13 @@ public class CanvasRenderer {
             if (renderParameters.doFilter()) {
                 source = new FilteredMipmapSource("filtered " + source.getSourceName(),
                                                   source,
-                                                  DEFAULT_FILTERS);
+                                                  FilteredMipmapSource.getDefaultFilters());
             }
 
             canvasList.add(new TransformableCanvas(source, tileSpec.getTransforms().getNewInstanceAsList()));
         }
 
-        render(canvasList,
-               renderParameters.getX(),
-               renderParameters.getY(),
-               renderParameters.getRes(renderParameters.getScale()),
-               renderParameters.getScale(),
-               renderParameters.isAreaOffset(),
-               renderParameters.getNumberOfThreads(),
-               renderParameters.skipInterpolation(),
-               renderParameters.binaryMask(),
-               target);
+        return canvasList;
     }
 
     /**
@@ -235,7 +318,7 @@ public class CanvasRenderer {
      * @param  binaryMask              render only 100% opaque pixels.
      * @param  numberOfMappingThreads  number of threads to use for pixel mapping.
      * @param  skipInterpolation       enable sloppy but fast rendering by skipping interpolation.
-     * @param  target                  target for mapped results.
+     * @param  targetChannels          target channels for mapped results.
      */
     public static void mapPixels(final MipmapSource source,
                                  final int mipmapLevel,
@@ -244,11 +327,9 @@ public class CanvasRenderer {
                                  final boolean binaryMask,
                                  final int numberOfMappingThreads,
                                  final boolean skipInterpolation,
-                                 final MipmapSource target) {
+                                 final Map<String, ImageProcessorWithMasks> targetChannels) {
 
         final Map<String, ImageProcessorWithMasks> sourceChannels = source.getChannels(mipmapLevel);
-        // TODO: is it okay to assume target mipmap level is zero?
-        final Map<String, ImageProcessorWithMasks> targetChannels = target.getChannels(0);
 
         if (sourceChannels.size() > 0) {
 
@@ -372,14 +453,6 @@ public class CanvasRenderer {
         return tilePixelMapper;
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(CanvasRenderer.class);
-
-    // TODO: this is an ad-hoc filter bank for temporary use in alignment
-    private static final ValueToNoise vtnf1 = new ValueToNoise(0, 64, 191);
-    private static final ValueToNoise vtnf2 = new ValueToNoise(255, 64, 191);
-    private static final NormalizeLocalContrast nlcf = new NormalizeLocalContrast(500, 500, 3, true, true);
-//    private static final CLAHE clahe = new CLAHE(true, 250, 256, 2);
-
-    private static final List<Filter> DEFAULT_FILTERS = Arrays.asList(vtnf1, vtnf2, nlcf);
+    private static final Logger LOG = LoggerFactory.getLogger(CanvasMipmapSource.class);
 
 }

@@ -22,6 +22,7 @@ import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.trakem2.transform.AffineModel2D;
 
+import org.janelia.alignment.mipmap.CanvasMipmapSource;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -94,7 +95,7 @@ public class UtilsTest {
         final double meshCellSize = 64.0;
 
         final CoordinateTransformList<CoordinateTransform> coordinateTransformList =
-                CanvasRenderer.createRenderTransformList(tileSpec.getTransformList(), areaOffset, scale, x, y);
+                CanvasMipmapSource.createRenderTransformList(tileSpec.getTransformList(), areaOffset, scale, x, y);
 
         final double sampleAverageScale =
                 Utils.sampleAverageScale(coordinateTransformList, width, height, meshCellSize);

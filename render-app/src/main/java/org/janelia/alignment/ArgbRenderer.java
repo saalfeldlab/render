@@ -18,14 +18,12 @@ package org.janelia.alignment;
 
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
-import ij.process.FloatProcessor;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +31,7 @@ import java.util.Set;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
-import org.janelia.alignment.mipmap.SimpleMipmapSource;
+import org.janelia.alignment.mipmap.CanvasMipmapSource;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -105,18 +103,8 @@ public class ArgbRenderer {
         final int targetHeight = targetImage.getHeight();
 
         final List<String> channelNames = params.getChannelNames();
-        final Map<String, ImageProcessorWithMasks> worldTargetChannels = new HashMap<>(channelNames.size());
-        for (final String channelName : channelNames) {
-            worldTargetChannels.put(channelName,
-                                    new ImageProcessorWithMasks(
-                                            new FloatProcessor(targetWidth, targetHeight),
-                                            new ByteProcessor(targetWidth, targetHeight),
-                                            null));
-        }
-
-        final SimpleMipmapSource target = new SimpleMipmapSource("scape", worldTargetChannels);
-
-        CanvasRenderer.render(params, imageProcessorCache, target);
+        final CanvasMipmapSource canvas = new CanvasMipmapSource(params, imageProcessorCache);
+        final Map<String, ImageProcessorWithMasks> canvasChannels = canvas.getChannels(0);
 
         final long drawImageStart = System.currentTimeMillis();
 
@@ -136,7 +124,7 @@ public class ArgbRenderer {
             final String channelName = channelNames.get(0);
             final Set<String> channelNameSet = new HashSet<>(Collections.singletonList(channelName));
             final ChannelSpec channelSpec = tileSpecs.get(0).getChannels(channelNameSet).get(0);
-            final ImageProcessorWithMasks worldTarget = worldTargetChannels.get(channelName);
+            final ImageProcessorWithMasks worldTarget = canvasChannels.get(channelName);
             final BufferedImage image = targetToARGBImage(worldTarget,
                                                           channelSpec.getMinIntensity(),
                                                           channelSpec.getMaxIntensity(),
