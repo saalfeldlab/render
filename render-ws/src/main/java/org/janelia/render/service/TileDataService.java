@@ -133,7 +133,9 @@ public class TileDataService {
                                                 @QueryParam("filter") final Boolean filter,
                                                 @QueryParam("binaryMask") final Boolean binaryMask,
                                                 @QueryParam("excludeMask") final Boolean excludeMask,
-                                                @QueryParam("normalizeForMatching") final Boolean normalizeForMatching) {
+                                                @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
+						@QueryParam("minVal") final Integer minVal,
+						@QueryParam("maxVal") final Integer maxVal) {
 
         LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
@@ -160,6 +162,12 @@ public class TileDataService {
                 tileRenderHeight = height;
             }
 
+            if (minVal != null){
+		tileSpec.setMinIntensity((double) minVal);
+	    }
+	    if (maxVal != null){
+		tileSpec.setMaxIntensity((double) maxVal);
+            }
             final StackId stackId = new StackId(owner, project, stack);
             final StackMetaData stackMetaData = getStackMetaData(stackId);
 

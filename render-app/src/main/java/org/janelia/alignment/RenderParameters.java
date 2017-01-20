@@ -91,6 +91,12 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--area_offset", description = "add bounding box offset", required = false)
     public boolean areaOffset;
 
+    @Parameter(names = "--minVal", description = "minimum intensity value to set for all tilespecs", required = false)
+    public double minVal;
+
+    @Parameter(names = "--maxVal", description = "maximum intensity value to set for all tilespecs", required = false)
+    public double maxVal;
+
     @Parameter(names = "--gray", description = "convert output to gray scale image", required = false)
     public boolean convertToGray;
 
@@ -193,6 +199,8 @@ public class RenderParameters implements Serializable {
         this.jCommander = null;
         this.outUri = null;
         this.initialized = false;
+        this.minVal = -1;
+        this.maxVal = -1;
     }
 
     /**
@@ -436,7 +444,18 @@ public class RenderParameters implements Serializable {
     public double getScale() {
         return scale;
     }
-
+    public double getMinVal(){
+    	return minVal;
+    }
+    public double getMaxVal(){
+        return maxVal;
+    }
+    public void setMinVal(final double minVal){
+        this.minVal = minVal;
+    }
+    public void setMaxVal(final double maxVal){
+        this.maxVal = maxVal;
+    }
     public void setScale(final double scale) {
         this.scale = scale;
     }
@@ -518,7 +537,17 @@ public class RenderParameters implements Serializable {
     }
 
     public List<TileSpec> getTileSpecs() {
-        return tileSpecs;
+        if ((minVal>=0)||(maxVal>=0)){
+		for (TileSpec ts : tileSpecs){
+                    	if (minVal>=0){
+			   ts.setMinIntensity(minVal);
+			}
+			if (maxVal>=0){
+			   ts.setMaxIntensity(maxVal);
+			}
+        	}
+	}
+	return tileSpecs;
     }
 
     public void addTileSpec(final TileSpec tileSpec) {
