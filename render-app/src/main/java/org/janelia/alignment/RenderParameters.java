@@ -91,11 +91,11 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--area_offset", description = "add bounding box offset", required = false)
     public boolean areaOffset;
 
-    @Parameter(names = "--minVal", description = "minimum intensity value to set for all tilespecs", required = false)
-    public double minVal;
+    @Parameter(names = "--minIntensity", description = "minimum intensity value to set for all tilespecs", required = false)
+    public double minIntensity;
 
-    @Parameter(names = "--maxVal", description = "maximum intensity value to set for all tilespecs", required = false)
-    public double maxVal;
+    @Parameter(names = "--maxIntensity", description = "maximum intensity value to set for all tilespecs", required = false)
+    public double maxIntensity;
 
     @Parameter(names = "--gray", description = "convert output to gray scale image", required = false)
     public boolean convertToGray;
@@ -199,8 +199,8 @@ public class RenderParameters implements Serializable {
         this.jCommander = null;
         this.outUri = null;
         this.initialized = false;
-        this.minVal = -1;
-        this.maxVal = -1;
+        this.minIntensity = -1;
+        this.maxIntensity = -1;
     }
 
     /**
@@ -444,17 +444,17 @@ public class RenderParameters implements Serializable {
     public double getScale() {
         return scale;
     }
-    public double getMinVal(){
-    	return minVal;
+    public double getMinIntensity(){
+    	return minIntensity;
     }
-    public double getMaxVal(){
-        return maxVal;
+    public double getMaxIntensity(){
+        return maxIntensity;
     }
-    public void setMinVal(final double minVal){
-        this.minVal = minVal;
+    public void setMinIntensity(final double minIntensity){
+        this.minIntensity = minIntensity;
     }
-    public void setMaxVal(final double maxVal){
-        this.maxVal = maxVal;
+    public void setMaxIntensity(final double maxIntensity){
+        this.maxIntensity = maxIntensity;
     }
     public void setScale(final double scale) {
         this.scale = scale;
@@ -537,13 +537,13 @@ public class RenderParameters implements Serializable {
     }
 
     public List<TileSpec> getTileSpecs() {
-        if ((minVal>=0)||(maxVal>=0)){
+        if ((this.minIntensity>=0)||(this.maxIntensity>=0)){
 		for (TileSpec ts : tileSpecs){
-                    	if (minVal>=0){
-			   ts.setMinIntensity(minVal);
+                    	if (this.minIntensity>=0){
+			   ts.setMinIntensity(this.minIntensity);
 			}
-			if (maxVal>=0){
-			   ts.setMaxIntensity(maxVal);
+			if (this.maxIntensity>=0){
+			   ts.setMaxIntensity(this.maxIntensity);
 			}
         	}
 	}
