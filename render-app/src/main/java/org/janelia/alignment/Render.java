@@ -26,7 +26,6 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -232,7 +231,7 @@ public class Render {
         final int targetWidth = targetImage.getWidth();
         final int targetHeight = targetImage.getHeight();
 
-        final Map<String, ImageProcessorWithMasks> worldTargetChannels = new HashMap<>(channelNames.size());
+        final ChannelMap worldTargetChannels = new ChannelMap();
         for (final String channelName : channelNames) {
             worldTargetChannels.put(channelName,
                                     new ImageProcessorWithMasks(
@@ -286,7 +285,7 @@ public class Render {
     }
 
     public static void render(final List<TileSpec> tileSpecs,
-                              final Map<String, ImageProcessorWithMasks> targetChannels,
+                              final ChannelMap targetChannels,
                               final double x,
                               final double y,
                               final double meshCellSize,
@@ -315,12 +314,12 @@ public class Render {
         for (final TileSpec ts : tileSpecs) {
             tileSpecStart = System.currentTimeMillis();
 
-            final List<ChannelSpec> channelSpecList = ts.getChannels(targetChannels.keySet());
+            final List<ChannelSpec> channelSpecList = ts.getChannels(targetChannels.names());
 
             if (channelSpecList.size() == 0) {
                 LOG.debug("skipping tile '{}' because it does not have any channels with the names {}",
                           ts.getTileId(),
-                          targetChannels.keySet());
+                          targetChannels.names());
                 continue;
             }
 
@@ -433,7 +432,7 @@ public class Render {
 
             if (channelSpecList.size() > 1)  {
 
-                final Map<String, ImageProcessorWithMasks> sourceChannels = new HashMap<>(targetChannels.size());
+                final ChannelMap sourceChannels = new ChannelMap();
                 sourceChannels.put(firstChannel.getName(), source);
 
                 loadAdditionalSourceChannels(channelSpecList,
@@ -506,7 +505,7 @@ public class Render {
     }
 
     private static void loadAdditionalSourceChannels(final List<ChannelSpec> channelSpecList,
-                                                     final Map<String, ImageProcessorWithMasks> sourceChannels,
+                                                     final ChannelMap sourceChannels,
                                                      final int scaledWidth,
                                                      final int scaledHeight,
                                                      final int mipmapLevel,
@@ -555,44 +554,6 @@ public class Render {
             }
         }
 
-    }
-
-    public static TileSpec deriveBoundingBox(
-            final TileSpec tileSpec,
-            final double meshCellSize,
-            final boolean force) {
-
-        if (! tileSpec.hasWidthAndHeightDefined()) {
-            final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
-            final ImageAndMask imageAndMask = mipmapEntry.getValue();
-            final ImageProcessor imageProcessor = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(), 0, false);
-            tileSpec.setWidth((double) imageProcessor.getWidth());
-            tileSpec.setHeight((double) imageProcessor.getHeight());
-        }
-
-        tileSpec.deriveBoundingBox(meshCellSize, force);
-
-        return tileSpec;
-    }
-
-    public static BufferedImage renderWithNoise(final RenderParameters renderParameters,
-                                                final boolean fillWithNoise) {
-
-        LOG.info("renderWithNoise: entry, fillWithNoise={}", fillWithNoise);
-
-        final BufferedImage bufferedImage = renderParameters.openTargetImage();
-        final ByteProcessor ip = new ByteProcessor(bufferedImage.getWidth(), bufferedImage.getHeight());
-
-        if (fillWithNoise) {
-            mpicbg.ij.util.Util.fillWithNoise(ip);
-            bufferedImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
-        }
-
-        Render.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
-
-        LOG.info("renderWithNoise: exit");
-
-        return bufferedImage;
     }
 
     public static void renderUsingCommandLineArguments(final String[] args)

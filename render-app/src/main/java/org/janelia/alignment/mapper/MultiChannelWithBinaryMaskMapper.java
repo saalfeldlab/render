@@ -1,6 +1,6 @@
 package org.janelia.alignment.mapper;
 
-import java.util.Map;
+import org.janelia.alignment.ChannelMap;
 
 import static mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
@@ -12,11 +12,11 @@ import static mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProces
 public class MultiChannelWithBinaryMaskMapper
         extends MultiChannelWithAlphaMapper {
 
-    public MultiChannelWithBinaryMaskMapper(final Map<String, ImageProcessorWithMasks> sourceChannelMap,
-                                            final Map<String, ImageProcessorWithMasks> targetChannelMap,
+    public MultiChannelWithBinaryMaskMapper(final ChannelMap sourceChannels,
+                                            final ChannelMap targetChannels,
                                             final boolean isMappingInterpolated) {
 
-        super(sourceChannelMap, targetChannelMap, isMappingInterpolated);
+        super(sourceChannels, targetChannels, isMappingInterpolated);
     }
 
     @Override

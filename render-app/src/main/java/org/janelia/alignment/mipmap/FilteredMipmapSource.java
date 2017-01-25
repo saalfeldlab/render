@@ -2,10 +2,10 @@ package org.janelia.alignment.mipmap;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
+import org.janelia.alignment.ChannelMap;
 import org.janelia.alignment.filter.Filter;
 import org.janelia.alignment.filter.NormalizeLocalContrast;
 import org.janelia.alignment.filter.ValueToNoise;
@@ -49,14 +49,14 @@ public class FilteredMipmapSource
     }
 
     @Override
-    public Map<String, ImageProcessorWithMasks> getChannels(final int mipmapLevel)
+    public ChannelMap getChannels(final int mipmapLevel)
             throws IllegalArgumentException {
 
         // TODO: filtering changes the source pixels (in-place) making multiple calls for the same level unsafe, is that okay?
 
         final double mipmapScale = 1.0 / (1 << mipmapLevel);
 
-        final Map<String, ImageProcessorWithMasks> channels = source.getChannels(mipmapLevel);
+        final ChannelMap channels = source.getChannels(mipmapLevel);
 
         final long filterStart = System.currentTimeMillis();
 

@@ -4,8 +4,8 @@ import ij.process.ImageProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
+import org.janelia.alignment.ChannelMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,27 +25,27 @@ public class MultiChannelMapper
     protected final int targetWidth;
     protected final int targetHeight;
 
-    public MultiChannelMapper(final Map<String, ImageProcessorWithMasks> sourceChannelMap,
-                              final Map<String, ImageProcessorWithMasks> targetChannelMap,
+    public MultiChannelMapper(final ChannelMap sourceChannels,
+                              final ChannelMap targetChannels,
                               final boolean isMappingInterpolated) {
 
         this.isMappingInterpolated = isMappingInterpolated;
 
-        this.normalizedSourceList = new ArrayList<>(sourceChannelMap.size());
-        this.targetList = new ArrayList<>(sourceChannelMap.size());
+        this.normalizedSourceList = new ArrayList<>(sourceChannels.size());
+        this.targetList = new ArrayList<>(sourceChannels.size());
 
         Integer commonTargetWidth = null;
         int commonTargetHeight = -1;
 
         ImageProcessorWithMasks normalizedSource;
         ImageProcessorWithMasks targetChannel;
-        for (final String channelId : sourceChannelMap.keySet()) {
-            targetChannel = targetChannelMap.get(channelId);
+        for (final String channelName : sourceChannels.names()) {
+            targetChannel = targetChannels.get(channelName);
             if (targetChannel == null) {
-                LOG.warn("skipping channel '{}' because it is missing from target", channelId);
+                LOG.warn("skipping channel '{}' because it is missing from target", channelName);
             } else {
 
-                normalizedSource = SingleChannelMapper.normalizeSourceForTarget(sourceChannelMap.get(channelId),
+                normalizedSource = SingleChannelMapper.normalizeSourceForTarget(sourceChannels.get(channelName),
                                                                                 targetChannel.ip);
 
                 if (commonTargetWidth == null) {
@@ -65,7 +65,7 @@ public class MultiChannelMapper
 
                 } else {
                     throw new IllegalArgumentException(
-                            "All target channels must have the same dimensions.  Channel '" + channelId +
+                            "All target channels must have the same dimensions.  Channel '" + channelName +
                             "' is " + targetChannel.getWidth() + "x" + targetChannel.getHeight() +
                             " but other channel(s) are " + commonTargetWidth + "x" + commonTargetHeight);
                 }
@@ -74,8 +74,8 @@ public class MultiChannelMapper
         }
 
         if (commonTargetWidth == null) {
-            throw new IllegalArgumentException("None of the source channels (" + sourceChannelMap.keySet() +
-                                               ") map to target channels (" + targetChannelMap.keySet() + ").");
+            throw new IllegalArgumentException("None of the source channels (" + sourceChannels +
+                                               ") map to target channels (" + targetChannels + ").");
         }
 
         this.targetWidth = commonTargetWidth;

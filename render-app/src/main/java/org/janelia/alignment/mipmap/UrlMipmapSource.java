@@ -2,12 +2,12 @@ package org.janelia.alignment.mipmap;
 
 import ij.process.ImageProcessor;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
+import org.janelia.alignment.ChannelMap;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -80,7 +80,7 @@ public class UrlMipmapSource
     }
 
     @Override
-    public Map<String, ImageProcessorWithMasks> getChannels(final int mipmapLevel)
+    public ChannelMap getChannels(final int mipmapLevel)
             throws IllegalArgumentException {
 
         final long loadMipStart = System.currentTimeMillis();
@@ -103,7 +103,7 @@ public class UrlMipmapSource
 
         final long loadMipStop = System.currentTimeMillis();
 
-        final Map<String, ImageProcessorWithMasks> channels = new HashMap<>();
+        final ChannelMap channels = new ChannelMap();
 
         if (imageProcessor.getWidth() == 0 || imageProcessor.getHeight() == 0) {
 
@@ -174,7 +174,7 @@ public class UrlMipmapSource
                                         final int firstChannelHeight,
                                         final boolean firstChannelHasMask,
                                         final int mipmapLevel,
-                                        final Map<String, ImageProcessorWithMasks> channels) {
+                                        final ChannelMap channels) {
 
         // TODO: need to figure out how to handle different min/max intensity per channel
 

@@ -4,7 +4,8 @@ import ij.process.ImageProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+
+import org.janelia.alignment.ChannelMap;
 
 import static mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
@@ -19,11 +20,11 @@ public class MultiChannelWithAlphaMapper
     protected final List<Double> sourceMaxMaskIntensityList;
     protected final List<Double> targetMaxMaskIntensityList;
 
-    public MultiChannelWithAlphaMapper(final Map<String, ImageProcessorWithMasks> sourceChannelMap,
-                                       final Map<String, ImageProcessorWithMasks> targetChannelMap,
+    public MultiChannelWithAlphaMapper(final ChannelMap sourceChannels,
+                                       final ChannelMap targetChannels,
                                        final boolean isMappingInterpolated) {
 
-        super(sourceChannelMap, targetChannelMap, isMappingInterpolated);
+        super(sourceChannels, targetChannels, isMappingInterpolated);
 
         this.sourceMaxMaskIntensityList = new ArrayList<>(normalizedSourceList.size());
         for (final ImageProcessorWithMasks normalizedSource : normalizedSourceList) {

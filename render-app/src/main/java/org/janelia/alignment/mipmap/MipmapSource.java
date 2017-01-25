@@ -1,9 +1,8 @@
 package org.janelia.alignment.mipmap;
 
 import java.io.Serializable;
-import java.util.Map;
 
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import org.janelia.alignment.ChannelMap;
 
 /**
  * Common interface for multi-channel image sources.
@@ -27,8 +26,6 @@ public interface MipmapSource extends Serializable {
      */
     int getFullScaleHeight();
 
-    // TODO: consider defining MipmapChannels? object that encapsulates channel map
-
     /**
      * @param  mipmapLevel  level in a power of 2 scale pyramid.
      *
@@ -37,7 +34,7 @@ public interface MipmapSource extends Serializable {
      * @throws IllegalArgumentException
      *   if channels for the specified level cannot be loaded or retrieved.
      */
-    Map<String, ImageProcessorWithMasks> getChannels(final int mipmapLevel)
+    ChannelMap getChannels(final int mipmapLevel)
             throws IllegalArgumentException;
 
 }

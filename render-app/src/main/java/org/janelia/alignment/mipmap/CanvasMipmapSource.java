@@ -4,10 +4,8 @@ import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import mpicbg.models.AffineModel2D;
@@ -15,6 +13,7 @@ import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
+import org.janelia.alignment.ChannelMap;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.RenderTransformMesh;
 import org.janelia.alignment.RenderTransformMeshMappingWithMasks;
@@ -143,10 +142,10 @@ public class CanvasMipmapSource
     }
 
     @Override
-    public Map<String, ImageProcessorWithMasks> getChannels(final int mipmapLevel)
+    public ChannelMap getChannels(final int mipmapLevel)
             throws IllegalArgumentException {
 
-        final Map<String, ImageProcessorWithMasks> targetChannels = new HashMap<>(channelNames.size());
+        final ChannelMap targetChannels = new ChannelMap();
 
         final double levelScale = (1.0 / Math.pow(2.0, mipmapLevel)) * levelZeroScale;
         final int levelWidth = (int) ((fullScaleWidth * levelScale) + 0.5);
@@ -327,24 +326,19 @@ public class CanvasMipmapSource
                                  final boolean binaryMask,
                                  final int numberOfMappingThreads,
                                  final boolean skipInterpolation,
-                                 final Map<String, ImageProcessorWithMasks> targetChannels) {
+                                 final ChannelMap targetChannels) {
 
-        final Map<String, ImageProcessorWithMasks> sourceChannels = source.getChannels(mipmapLevel);
+        final ChannelMap sourceChannels = source.getChannels(mipmapLevel);
 
         if (sourceChannels.size() > 0) {
 
             final long mapStart = System.currentTimeMillis();
 
-            boolean hasMask = false;
-            int mipmapWidth = 0;
-            int mipmapHeight = 0;
-            //noinspection LoopStatementThatDoesntLoop
-            for (final ImageProcessorWithMasks sourceChannel : sourceChannels.values()) {
-                hasMask = (sourceChannel.mask != null);
-                mipmapWidth = sourceChannel.ip.getWidth();
-                mipmapHeight = sourceChannel.ip.getHeight();
-                break; // all channels should have same size, so we only need to look at the first channel
-            }
+            // all channels should have same size, so we only need to look at the first channel
+            final ImageProcessorWithMasks firstChannel = sourceChannels.getFirstChannel();
+            final boolean hasMask = (firstChannel.mask != null);
+            final int mipmapWidth = firstChannel.ip.getWidth();
+            final int mipmapHeight = firstChannel.ip.getHeight();
 
             final PixelMapper tilePixelMapper = getPixelMapper(sourceChannels,
                                                                hasMask,
@@ -387,13 +381,13 @@ public class CanvasMipmapSource
      * @return {@link PixelMapper} instance "optimized" for mapping source channel(s) for
      *         a specific render context.
      */
-    private static PixelMapper getPixelMapper(final Map<String, ImageProcessorWithMasks> sourceChannels,
+    private static PixelMapper getPixelMapper(final ChannelMap sourceChannels,
                                               final boolean hasMask,
                                               final boolean binaryMask,
                                               final boolean skipInterpolation,
-                                              final Map<String, ImageProcessorWithMasks> targetChannels) {
+                                              final ChannelMap targetChannels) {
 
-        PixelMapper tilePixelMapper = null;
+        final PixelMapper tilePixelMapper;
 
         if (sourceChannels.size() > 1) {
 
@@ -415,41 +409,38 @@ public class CanvasMipmapSource
 
         } else {
 
-            //noinspection LoopStatementThatDoesntLoop
-            for (final String channelName : sourceChannels.keySet()) {
+            final String channelName = sourceChannels.getFirstChannelName();
 
-                final ImageProcessorWithMasks sourceChannel = sourceChannels.get(channelName);
-                final ImageProcessorWithMasks targetChannel = targetChannels.get(channelName);
+            final ImageProcessorWithMasks sourceChannel = sourceChannels.get(channelName);
+            final ImageProcessorWithMasks targetChannel = targetChannels.get(channelName);
 
-                if (targetChannel != null) {
+            if (targetChannel != null) {
 
-                    if (hasMask) {
-                        if (binaryMask) {
-                            tilePixelMapper = new SingleChannelWithBinaryMaskMapper(sourceChannel,
-                                                                                    targetChannel,
-                                                                                    (! skipInterpolation));
-                        } else {
-                            tilePixelMapper = new SingleChannelWithAlphaMapper(sourceChannel,
-                                                                               targetChannel,
-                                                                               (! skipInterpolation));
-                        }
+                if (hasMask) {
+                    if (binaryMask) {
+                        tilePixelMapper = new SingleChannelWithBinaryMaskMapper(sourceChannel,
+                                                                                targetChannel,
+                                                                                (! skipInterpolation));
                     } else {
-                        tilePixelMapper = new SingleChannelMapper(sourceChannel,
-                                                                  targetChannel,
-                                                                  (! skipInterpolation));
+                        tilePixelMapper = new SingleChannelWithAlphaMapper(sourceChannel,
+                                                                           targetChannel,
+                                                                           (! skipInterpolation));
                     }
-
                 } else {
-
-                    throw new IllegalArgumentException("The sole source channel (" + channelName +
-                                                       ") is missing from specified target channels (" +
-                                                       targetChannels.keySet() + ").");
+                    tilePixelMapper = new SingleChannelMapper(sourceChannel,
+                                                              targetChannel,
+                                                              (! skipInterpolation));
                 }
 
-                break; // should only be one channel
+            } else {
+
+                throw new IllegalArgumentException("The sole source channel (" + channelName +
+                                                   ") is missing from specified target channels (" +
+                                                   targetChannels + ").");
             }
 
         }
+
         return tilePixelMapper;
     }
 

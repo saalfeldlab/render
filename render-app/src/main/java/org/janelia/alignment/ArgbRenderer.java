@@ -26,7 +26,6 @@ import java.awt.image.WritableRaster;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
@@ -104,7 +103,7 @@ public class ArgbRenderer {
 
         final List<String> channelNames = params.getChannelNames();
         final CanvasMipmapSource canvas = new CanvasMipmapSource(params, imageProcessorCache);
-        final Map<String, ImageProcessorWithMasks> canvasChannels = canvas.getChannels(0);
+        final ChannelMap canvasChannels = canvas.getChannels(0);
 
         final long drawImageStart = System.currentTimeMillis();
 
