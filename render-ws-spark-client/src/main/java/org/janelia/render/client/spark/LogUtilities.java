@@ -8,7 +8,6 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.Enumeration;
 
-import org.apache.commons.compress.utils.IOUtils;
 import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Layout;
@@ -55,11 +54,18 @@ public class LogUtilities {
 
     public static String getExecutorsApiJson(final String appId) throws IOException {
 
-        final String json;
+        // TODO: find more robust way to determine execution context
+
+        String json;
 
         final URL url = new URL("http://localhost:4040/api/v1/applications/" + appId + "/executors");
         try (final BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream())))  {
             json = CharStreams.toString(in);
+        } catch (final Throwable t) {
+            json = "[ {\n" +
+                   "  \"error\": \"failed to retrieve executors data\",\n" +
+                   "  \"exception_message\": \"" + t.getMessage() + "\"\n" +
+                   "} ]";
         }
 
         return json;

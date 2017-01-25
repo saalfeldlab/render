@@ -14,7 +14,7 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState.*;
  */
 public class StackMetaData implements Comparable<StackMetaData>, Serializable {
 
-    public enum StackState { LOADING, COMPLETE, OFFLINE }
+    public enum StackState { LOADING, COMPLETE, READ_ONLY, OFFLINE }
 
     private final StackId stackId;
 
@@ -28,7 +28,7 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
     @SuppressWarnings("unused")
     private StackMetaData() {
         this.stackId = null;
-        this.state = null;
+        this.state = LOADING;
         this.lastModifiedTimestamp = null;
         this.currentVersionNumber = null;
         this.currentVersion = null;
@@ -55,6 +55,10 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
 
     public boolean isLoading() {
         return LOADING.equals(state);
+    }
+
+    public boolean isReadOnly() {
+        return READ_ONLY.equals(state);
     }
 
     public Date getLastModifiedTimestamp() {
@@ -95,25 +99,100 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         return metaData;
     }
 
-    public void setState(final StackState state) throws IllegalArgumentException {
+    /**
+     * Validates the specified stack state change.
+     *
+     * Permitted state transitions are:
+     * <pre>
+     *         LOADING -> COMPLETE
+     *
+     *         COMPLETE -> LOADING
+     *         COMPLETE -> READ_ONLY
+     *         COMPLETE -> OFFLINE
+     *
+     *         READ_ONLY -> COMPLETE
+     *         READ_ONLY -> OFFLINE
+     *
+     *         OFFLINE -> COMPLETE
+     * </pre>
+     *
+     * @param  toState  potential new state for this stack.
+     *
+     * @throws IllegalArgumentException
+     *   if the state change is invalid.
+     */
+    public void validateStateChange(final StackState toState)
+            throws IllegalArgumentException {
 
-        if (state == null) {
+        if (toState == null) {
+
             throw new IllegalArgumentException("null state specified");
+
+        } else if (! state.equals(toState)) {
+
+            if (LOADING.equals(state) || OFFLINE.equals(state)) {
+
+                if (! COMPLETE.equals(toState)) {
+                    throwStackMustBeCompleteException(toState);
+                }
+
+            } else if (READ_ONLY.equals(state)) {
+
+                if (! (COMPLETE.equals(toState) || OFFLINE.equals(toState))) {
+                    throwStackMustBeCompleteException(toState);
+                }
+
+            } // else current state is COMPLETE so all transitions are allowed
         }
 
-        if (! this.state.equals(state)) {
+    }
 
-            if (COMPLETE.equals(state)) {
+    private String throwStackMustBeCompleteException(final StackState toState) throws IllegalArgumentException {
+        final String stackName = stackId == null ? "" : stackId.getStack() + " ";
+        throw new IllegalArgumentException(
+                "The " + stackName + "stack's state is currently " + state +
+                " and must first be transitioned to " + COMPLETE +
+                " before transitioning it to " + toState + ".");
+    }
+
+    public void setState(final StackState toState) throws IllegalArgumentException {
+
+        final StackState fromState = this.state;
+
+        validateStateChange(toState);
+
+        if (! fromState.equals(toState)) {
+
+            boolean updateModifiedTimestamp = true; // update timestamp for most state transitions
+
+            if (COMPLETE.equals(toState)) {
+
                 if (this.stats == null) {
                     throw new IllegalArgumentException("stack can not be complete without stats");
                 }
-            } else if (LOADING.equals(state)) {
+
+                if (READ_ONLY.equals(fromState)) {
+                    updateModifiedTimestamp = false; // do not change timestamp when going to COMPLETE from READ_ONLY
+                }
+
+            } else if (LOADING.equals(toState)) {
+
                 this.stats = null;
                 this.currentVersionNumber++;
+
+            } else if (READ_ONLY.equals(toState)) {
+
+                if (COMPLETE.equals(fromState)) {
+                    updateModifiedTimestamp = false; // do not change timestamp when going to READ_ONLY from COMPLETE
+                }
+
             }
 
-            this.state = state;
-            this.lastModifiedTimestamp = new Date();
+            this.state = toState;
+
+            if (updateModifiedTimestamp) {
+                this.lastModifiedTimestamp = new Date();
+            }
 
         }
 

@@ -120,7 +120,7 @@ The following URLs<sup>[**]</sup> can be used to view dynamic renderings of the 
 
 At this point, you've created 4 stacks: one for each major reconstruction step of an acquisition cycle.
 The following URL<sup>[**]</sup> can be used to view metadata and aggregate statistics about each of these stacks:
-* <http://localhost:8080/render-ws/view/stacks.html?owner=demo&project=example_1>
+* <http://localhost:8080/render-ws/view/stacks.html?renderStackOwner=demo&renderStackProject=example_1>
 
 
 ### 7. Render Results to Disk for Review
