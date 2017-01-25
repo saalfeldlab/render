@@ -158,7 +158,7 @@ public class StackMetaDataService {
             notes = "This operation copies all fromStack tiles and transformations to a new stack with the specified metadata.  This is a potentially long running operation (depending upon the size of the fromStack).")
     @ApiResponses(value = {
             @ApiResponse(code = 201, message = "stack successfully cloned"),
-            @ApiResponse(code = 400, message = "toStack already exists"),
+            @ApiResponse(code = 400, message = "toStack is not in LOADING state"),
             @ApiResponse(code = 404, message = "fromStack not found")
     })
     public Response cloneStackVersion(@PathParam("owner") final String owner,
@@ -217,7 +217,7 @@ public class StackMetaDataService {
             value = "Saves new version of stack metadata")
     @ApiResponses(value = {
             @ApiResponse(code = 201, message = "stackVersion successfully created"),
-            @ApiResponse(code = 400, message = "stackVersion not specified")
+            @ApiResponse(code = 400, message = "stackVersion not specified or stack is READ_ONLY")
     })
     public Response saveStackVersion(@PathParam("owner") final String owner,
                                      @PathParam("project") final String project,
@@ -239,6 +239,7 @@ public class StackMetaDataService {
             if (stackMetaData == null) {
                 stackMetaData = new StackMetaData(stackId, stackVersion);
             } else {
+                validateStackIsModifiable(stackMetaData);
                 stackMetaData = stackMetaData.getNextVersion(stackVersion);
             }
 
@@ -261,6 +262,9 @@ public class StackMetaDataService {
             tags = {"Stack Data APIs", "Stack Management APIs"},
             value = "Deletes specified stack",
             notes = "Deletes all tiles, transformations, meta data, and unsaved snapshot data for the stack.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack is READ_ONLY")
+    })
     public Response deleteStack(@PathParam("owner") final String owner,
                                 @PathParam("project") final String project,
                                 @PathParam("stack") final String stack) {
@@ -278,7 +282,10 @@ public class StackMetaDataService {
                 LOG.info("deleteStack: {} is already gone, nothing to do", stackId);
 
             } else {
+
+                validateStackIsModifiable(stackMetaData);
                 renderDao.removeStack(stackId, true);
+
             }
 
             response = Response.ok().build();
@@ -329,6 +336,7 @@ public class StackMetaDataService {
             value = "Saves materializedBoxRootPath for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "materializedBoxRootPath successfully saved"),
+            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
             @ApiResponse(code = 404, message = "stack not found")
     })
     public Response saveMaterializedBoxRootPath(@PathParam("owner") final String owner,
@@ -345,6 +353,7 @@ public class StackMetaDataService {
             if (stackMetaData == null) {
                 throw getStackNotFoundException(owner, project, stack);
             } else {
+                validateStackIsModifiable(stackMetaData);
                 stackMetaData.setCurrentMaterializedBoxRootPath(materializedBoxRootPath);
                 renderDao.saveStackMetaData(stackMetaData);
             }
@@ -362,7 +371,8 @@ public class StackMetaDataService {
             tags = {"Section Data APIs", "Stack Management APIs"},
             value = "Deletes materializedBoxRootPath for stack")
     @ApiResponses(value = {
-            @ApiResponse(code = 404, message = "stack not found"),
+            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
+            @ApiResponse(code = 404, message = "stack not found")
     })
     public Response deleteMaterializedBoxRootPath(@PathParam("owner") final String owner,
                                                   @PathParam("project") final String project,
@@ -592,6 +602,13 @@ public class StackMetaDataService {
                                                                     final String stack) {
         return new ObjectNotFoundException("stack with owner '" + owner + "', project '" + project +
                                             "', and name '" + stack + "' does not exist");
+    }
+
+    public static void validateStackIsModifiable(final StackMetaData stackMetaData) {
+        if (stackMetaData.isReadOnly()) {
+            throw new IllegalStateException("Data for stack " + stackMetaData.getStackId().getStack() +
+                                            " cannot be modified because it is " + stackMetaData.getState() + ".");
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(StackMetaDataService.class);

@@ -57,6 +57,10 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         return LOADING.equals(state);
     }
 
+    public boolean isReadOnly() {
+        return READ_ONLY.equals(state);
+    }
+
     public Date getLastModifiedTimestamp() {
         return lastModifiedTimestamp;
     }
