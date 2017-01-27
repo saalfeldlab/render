@@ -30,7 +30,7 @@ import java.util.Set;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
-import org.janelia.alignment.mipmap.CanvasMipmapSource;
+import org.janelia.alignment.mipmap.RenderedCanvasMipmapSource;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -102,7 +102,7 @@ public class ArgbRenderer {
         final int targetHeight = targetImage.getHeight();
 
         final List<String> channelNames = params.getChannelNames();
-        final CanvasMipmapSource canvas = new CanvasMipmapSource(params, imageProcessorCache);
+        final RenderedCanvasMipmapSource canvas = new RenderedCanvasMipmapSource(params, imageProcessorCache);
         final ChannelMap canvasChannels = canvas.getChannels(0);
 
         final long drawImageStart = System.currentTimeMillis();

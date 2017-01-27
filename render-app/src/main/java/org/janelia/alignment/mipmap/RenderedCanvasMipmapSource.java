@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
  * @author Stephan Saalfeld
  * @author Eric Trautman
  */
-public class CanvasMipmapSource
+public class RenderedCanvasMipmapSource
         implements MipmapSource {
 
     private final String canvasName;
@@ -50,7 +50,6 @@ public class CanvasMipmapSource
     private final int fullScaleHeight;
     private final double meshCellSize;
     private final double levelZeroScale;
-    private final boolean areaOffset;
     private final int numberOfMappingThreads;
     private final boolean skipInterpolation;
     private final boolean binaryMask;
@@ -62,8 +61,8 @@ public class CanvasMipmapSource
      * @param  renderParameters     parameters specifying tiles, transformations, and render context.
      * @param  imageProcessorCache  cache of previously loaded pixel data (or null if caching is not desired).
      */
-    public CanvasMipmapSource(final RenderParameters renderParameters,
-                              final ImageProcessorCache imageProcessorCache) {
+    public RenderedCanvasMipmapSource(final RenderParameters renderParameters,
+                                      final ImageProcessorCache imageProcessorCache) {
 
         this("canvas",
              renderParameters.getChannelNames(),
@@ -74,7 +73,6 @@ public class CanvasMipmapSource
              renderParameters.getHeight(),
              renderParameters.getRes(renderParameters.getScale()),
              renderParameters.getScale(),
-             renderParameters.isAreaOffset(),
              renderParameters.getNumberOfThreads(),
              renderParameters.skipInterpolation(),
              renderParameters.binaryMask());
@@ -93,24 +91,22 @@ public class CanvasMipmapSource
      * @param  fullScaleHeight         canvas height at mipmap level 0.
      * @param  meshCellSize            desired size of a mesh cell (triangle) in pixels.
      * @param  levelZeroScale          scale factor for transformed components at mipmap level 0 of this canvas.
-     * @param  areaOffset              add bounding box offset.
      * @param  numberOfMappingThreads  number of threads to use for pixel mapping.
      * @param  skipInterpolation       enable sloppy but fast rendering by skipping interpolation.
      * @param  binaryMask              render only 100% opaque pixels.
      */
-    public CanvasMipmapSource(final String canvasName,
-                              final List<String> channelNames,
-                              final List<TransformableCanvas> canvasList,
-                              final double x,
-                              final double y,
-                              final int fullScaleWidth,
-                              final int fullScaleHeight,
-                              final double meshCellSize,
-                              final double levelZeroScale,
-                              final boolean areaOffset,
-                              final int numberOfMappingThreads,
-                              final boolean skipInterpolation,
-                              final boolean binaryMask) {
+    public RenderedCanvasMipmapSource(final String canvasName,
+                                      final List<String> channelNames,
+                                      final List<TransformableCanvas> canvasList,
+                                      final double x,
+                                      final double y,
+                                      final int fullScaleWidth,
+                                      final int fullScaleHeight,
+                                      final double meshCellSize,
+                                      final double levelZeroScale,
+                                      final int numberOfMappingThreads,
+                                      final boolean skipInterpolation,
+                                      final boolean binaryMask) {
         this.canvasName = canvasName;
         this.channelNames = channelNames;
         this.canvasList = canvasList;
@@ -120,7 +116,6 @@ public class CanvasMipmapSource
         this.fullScaleHeight = fullScaleHeight;
         this.meshCellSize = meshCellSize;
         this.levelZeroScale = levelZeroScale;
-        this.areaOffset = areaOffset;
         this.numberOfMappingThreads = numberOfMappingThreads;
         this.skipInterpolation = skipInterpolation;
         this.binaryMask = binaryMask;
@@ -162,7 +157,7 @@ public class CanvasMipmapSource
         for (final TransformableCanvas canvas : canvasList) {
 
             final CoordinateTransformList<CoordinateTransform> renderTransformList =
-                    createRenderTransformList(canvas.getTransformList(), areaOffset, levelScale, x, y);
+                    createMipmapTransformList(canvas.getTransformList(), levelZeroScale, levelScale, x, y);
 
             final MipmapSource source = canvas.getSource();
 
@@ -219,20 +214,20 @@ public class CanvasMipmapSource
 
     /**
      * Creates a transform list that includes all transforms for a canvas plus an additional render context
-     * transform for bounding box offset, scale, and (optionally) an area offset.
+     * transform for bounding box offset, scale, and an area offset (for scaled mipmaps).
      *
      * @param  canvasTransformList  list of transforms for full scale (and un-clipped) canvas.
-     * @param  areaOffset           add bounding box offset.
-     * @param  scale                scale factor applied to the target image.
+     * @param  levelZeroScale       scale factor for transformed components at mipmap level 0.
+     * @param  actualMipmapScale    scale factor for transformed components at desired mipmap level.
      * @param  x                    target image left coordinate.
      * @param  y                    target image top coordinate.
      *
      * @return transform list for a specific render context.
      */
-    public static CoordinateTransformList<CoordinateTransform> createRenderTransformList(
+    public static CoordinateTransformList<CoordinateTransform> createMipmapTransformList(
             final CoordinateTransformList<CoordinateTransform> canvasTransformList,
-            final boolean areaOffset,
-            final double scale,
+            final double levelZeroScale,
+            final double actualMipmapScale,
             final double x,
             final double y) {
 
@@ -244,28 +239,16 @@ public class CanvasMipmapSource
 
         final AffineModel2D scaleAndOffset = new AffineModel2D();
 
-        if (areaOffset) {
+        // always calculate areaOffset for mipmaps
+        final double areaOffset = (1 - (actualMipmapScale / levelZeroScale)) * 0.5;
 
-            final double offset = (1 - scale) * 0.5;
-            scaleAndOffset.set(scale,
-                               0,
-                               0,
-                               scale,
-                               -(x * scale + offset),
-                               -(y * scale + offset));
-            renderTransformList.add(scaleAndOffset);
-
-        } else {
-
-            scaleAndOffset.set(scale,
-                               0,
-                               0,
-                               scale,
-                               -(x * scale),
-                               -(y * scale));
-            renderTransformList.add(scaleAndOffset);
-
-        }
+        scaleAndOffset.set(actualMipmapScale,
+                           0,
+                           0,
+                           actualMipmapScale,
+                           -(x * actualMipmapScale + areaOffset),
+                           -(y * actualMipmapScale + areaOffset));
+        renderTransformList.add(scaleAndOffset);
 
         return renderTransformList;
     }
@@ -444,6 +427,6 @@ public class CanvasMipmapSource
         return tilePixelMapper;
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(CanvasMipmapSource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RenderedCanvasMipmapSource.class);
 
 }
