@@ -222,7 +222,7 @@ public class MatchDao {
         
         for (MongoCollection<Document> collection : collectionList){
         	final DeleteResult result = collection.deleteMany(query);
-        	 LOG.debug("removeMatchesOutsideGroup: removed {} matches using {}.delete({})",
+        	 LOG.debug("removeMatchesBetweenTiles: removed {} matches using {}.delete({})",
                      result.getDeletedCount(), MongoUtil.fullName(collection), query.toJson());
         }
 
