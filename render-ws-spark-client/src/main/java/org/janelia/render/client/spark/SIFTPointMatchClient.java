@@ -154,7 +154,7 @@ public class SIFTPointMatchClient
 
         final String sparkAppId = sparkContext.getConf().getAppId();
         final SparkContext sc = sparkContext.sc();
-        final String executorsJson = LogUtilities.getExecutorsApiJson(sparkAppId,sc.uiWebUrl().get());
+        final String executorsJson = LogUtilities.getExecutorsApiJson(sparkAppId);
 
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
