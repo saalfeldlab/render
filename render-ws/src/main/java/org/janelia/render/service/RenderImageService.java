@@ -364,7 +364,7 @@ public class RenderImageService {
                                               @QueryParam("filter") final Boolean filter,
                                               @QueryParam("binaryMask") final Boolean binaryMask,
                                               @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-   					      @QueryParam("minIntensity") final Double minIntensity,
+                                              @QueryParam("minIntensity") final Double minIntensity,
                                               @QueryParam("maxIntensity") final Double maxIntensity,
                                               @Context final Request request) {
         return renderTiffImageForBox(owner, project, stack, x, y, z, width, height, scale, filter, binaryMask, maxTileSpecsToRender, minIntensity, maxIntensity,request);

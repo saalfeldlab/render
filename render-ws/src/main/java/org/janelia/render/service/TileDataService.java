@@ -115,6 +115,7 @@ public class TileDataService {
         return response;
     }
 
+    
     @Path("project/{project}/stack/{stack}/tile/{tileId}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -133,7 +134,9 @@ public class TileDataService {
                                                 @QueryParam("filter") final Boolean filter,
                                                 @QueryParam("binaryMask") final Boolean binaryMask,
                                                 @QueryParam("excludeMask") final Boolean excludeMask,
-                                                @QueryParam("normalizeForMatching") final Boolean normalizeForMatching) {
+                                                @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
+                                                @QueryParam("minIntensity") final Double minIntensity,
+                                                @QueryParam("maxIntensity") final Double maxIntensity) {
 
         LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
@@ -219,6 +222,8 @@ public class TileDataService {
             parameters.setExcludeMask(excludeMask);
             parameters.addTileSpec(tileSpec);
             parameters.setMipmapPathBuilder(stackMetaData.getCurrentMipmapPathBuilder());
+            if (minIntensity!= null) parameters.setMinIntensity(minIntensity);
+            if (maxIntensity!= null) parameters.setMaxIntensity(maxIntensity);
 
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -226,7 +231,20 @@ public class TileDataService {
 
         return parameters;
     }
-
+    public RenderParameters getRenderParameters(@PathParam("owner") final String owner,
+            @PathParam("project") final String project,
+            @PathParam("stack") final String stack,
+            @PathParam("tileId") final String tileId,
+            @QueryParam("width") final Integer width,   // full scale width
+            @QueryParam("height") final Integer height, // full scale height
+            @QueryParam("scale") final Double scale,
+            @QueryParam("filter") final Boolean filter,
+            @QueryParam("binaryMask") final Boolean binaryMask,
+            @QueryParam("excludeMask") final Boolean excludeMask,
+            @QueryParam("normalizeForMatching") final Boolean normalizeForMatching){
+    	return getRenderParameters(owner,project,stack,tileId,width,height,scale,filter,binaryMask,excludeMask,normalizeForMatching,null,null);	
+    }
+    
     @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
