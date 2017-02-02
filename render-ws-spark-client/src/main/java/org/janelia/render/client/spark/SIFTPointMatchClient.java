@@ -15,7 +15,6 @@ import mpicbg.imagefeatures.FloatArray2DSIFT;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
@@ -153,7 +152,6 @@ public class SIFTPointMatchClient
         final JavaSparkContext sparkContext = new JavaSparkContext(conf);
 
         final String sparkAppId = sparkContext.getConf().getAppId();
-        final SparkContext sc = sparkContext.sc();
         final String executorsJson = LogUtilities.getExecutorsApiJson(sparkAppId);
 
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);

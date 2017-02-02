@@ -3,10 +3,9 @@ package org.janelia.render.client.spark;
 import com.google.common.io.CharStreams;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.URL;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Enumeration;
 
 import org.apache.log4j.Appender;
@@ -52,64 +51,59 @@ public class LogUtilities {
 
         logger.setLevel(Level.DEBUG);
     }
-/**    public static String getExecutorsApiJson(final String appId, final String apiUrl){
-*      NOTE: this is an alternative that works with spark 2.0 but is not backward compatible 
-*
-*        String json;
-*
-*        try{
-*                final URL url = new URL(apiUrl+ "/api/v1/applications/" + appId + "/executors");
-*                final BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
-*                json = CharStreams.toString(in);
-*        }
-*        catch (final MalformedURLException e){
-*                  json = "[ {\n" +
-*                   "  \"error\": \"mallformed url \",\n" +
-*                   "  \"exception_message\": \"" + e.getMessage() + "\"\n" +
-*                   "} ]";
-*        }           
-*        catch (final Throwable t) {
-*            json = "[ {\n" +
-*                   "  \"error\": \"failed to retrieve executors data\",\n" +
-*                   "  \"exception_message\": \"" + t.getMessage() + "\"\n" +
-*                   "} ]";
-*        }
-*
-*        return json;
-* 
-*   }
-**/
 
-    public static String getExecutorsApiJson(final String appId) throws IOException {
+    /**
+     * Tries to retrieve executors data from endpoints with ports 4040 - 4060.
+     * This hack works with older Spark versions (e.g. 1.6.2).
+     *
+     * @param  appId  application ID.
+     *
+     * @return information about the executors in the current Spark context in JSON format.
+     */
+    public static String getExecutorsApiJson(final String appId) {
 
-        // TODO: find more robust way to determine execution context
+        String json = "";
+        for (int port = 4040; port < 4060; port++) {
 
-        String json="";
-	for (int i=4040;i<4060;i++){
+            json = getExecutorsApiJson(appId, "http://localhost:" + port);
 
-		String apiUrl;
-		apiUrl= String.format("http://localhost:%d",i);
-        	try{
-                	final URL url = new URL(apiUrl+ "/api/v1/applications/" + appId + "/executors");
-                	final BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
-                	json = CharStreams.toString(in);
-			break;
-        	}
-        	catch (final MalformedURLException e){
-                  json = "[ {\n" +
-                   "  \"error\": \"mallformed url \",\n" +
-                   "  \"exception_message\": \"" + e.getMessage() + "\"\n" +
-                   "} ]";
-        	}
-		catch (final Throwable t) {
-            	json = "[ {\n" +
-                   	"  \"error\": \"failed to retrieve executors data\",\n" +
-                  	 "  \"exception_message\": \"" + t.getMessage() + "\"\n" +
-                	   "} ]";
-        	}
-	}
+            if (! json.startsWith(JSON_ERROR_PREFIX)) {
+                break;
+            }
+        }
+
         return json;
-
     }
 
+    /**
+     * @return JSON formatted executors information for the specified app and URL.
+     */
+    public static String getExecutorsApiJson(final String appId,
+                                             final String apiUrl) {
+
+        String json;
+
+        final URL url;
+        try {
+            url = new URL(apiUrl + "/api/v1/applications/" + appId + "/executors");
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()))) {
+                json = CharStreams.toString(in);
+            } catch (final Throwable t) {
+                json = getErrorJson("failed to retrieve executors data", t);
+            }
+
+        } catch (final MalformedURLException e) {
+            json = getErrorJson("bad executors URL", e);
+        }
+
+        return json;
+    }
+
+    private static String getErrorJson(final String errorMessage,
+                                       final Throwable cause) {
+        return JSON_ERROR_PREFIX + errorMessage + "\", \"exception_message\": \"" + cause.getMessage() + "\" } ]";
+    }
+
+    private static final String JSON_ERROR_PREFIX = "[ { \"error\": \"";
 }

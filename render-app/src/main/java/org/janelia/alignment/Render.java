@@ -149,33 +149,9 @@ public class Render {
                params.binaryMask(),
                params.excludeMask(),
                imageProcessorCache,
-               params.getBackgroundRGBColor());
-    }
-
-    public static void render(final List<TileSpec> tileSpecs,
-                              final BufferedImage targetImage,
-                              final double x,
-                              final double y,
-                              final double meshCellSize,
-                              final double scale,
-                              final boolean areaOffset,
-                              final int numberOfThreads,
-                              final boolean skipInterpolation,
-                              final boolean doFilter)
-            throws IllegalArgumentException {
-
-        render(tileSpecs,
-               targetImage,
-               x,
-               y,
-               meshCellSize,
-               scale,
-               areaOffset,
-               numberOfThreads,
-               skipInterpolation,
-               doFilter,
-               ImageProcessorCache.DISABLED_CACHE,
-               null);
+               params.getBackgroundRGBColor(),
+               params.getMinIntensity(),
+               params.getMaxIntensity());
     }
 
     public static void render(final List<TileSpec> tileSpecs,
@@ -205,7 +181,9 @@ public class Render {
                false,
                false,
                imageProcessorCache,
-               backgroundRGBColor);
+               backgroundRGBColor,
+               null,
+               null);
     }
 
     /**
@@ -213,8 +191,15 @@ public class Render {
      */
     static private ColorProcessor convertToRGB(
             final ImageProcessor tp,
-            final TileSpec ts) {
-        tp.setMinAndMax(ts.getMinIntensity(), ts.getMaxIntensity());
+            final TileSpec ts,
+            final Double renderMinIntensity,
+            final Double renderMaxIntensity) {
+
+        // TODO: should render intensities only be applied if they constrain more than the tile spec (e.g. renderMin > tileMin) ?
+
+        final double minIntensity = (renderMinIntensity == null) ? ts.getMinIntensity() : renderMinIntensity;
+        final double maxIntensity = (renderMaxIntensity == null) ? ts.getMaxIntensity() : renderMaxIntensity;
+        tp.setMinAndMax(minIntensity, maxIntensity);
         return tp.convertToColorProcessor();
     }
 
@@ -222,10 +207,12 @@ public class Render {
     static private BufferedImage targetToARGBImage(
             final ImageProcessorWithMasks target,
             final TileSpec ts,
-            final boolean binaryMask) {
+            final boolean binaryMask,
+            final Double renderMinIntensity,
+            final Double renderMaxIntensity) {
 
         // convert to 24bit RGB
-        final ColorProcessor cp = convertToRGB(target.ip, ts);
+        final ColorProcessor cp = convertToRGB(target.ip, ts, renderMinIntensity, renderMaxIntensity);
 
         // set alpha channel
         final int[] cpPixels = (int[]) cp.getPixels();
@@ -270,7 +257,9 @@ public class Render {
                               final boolean binaryMask,
                               final boolean excludeMask,
                               final ImageProcessorCache imageProcessorCache,
-                              final Integer backgroundRGBColor)
+                              final Integer backgroundRGBColor,
+                              final Double renderMinIntensity,
+                              final Double renderMaxIntensity)
             throws IllegalArgumentException {
 
         final int targetWidth = targetImage.getWidth();
@@ -452,7 +441,7 @@ public class Render {
 
             mapInterpolatedStop = System.currentTimeMillis();
 
-            final BufferedImage image = targetToARGBImage(target, ts, binaryMask);
+            final BufferedImage image = targetToARGBImage(target, ts, binaryMask, renderMinIntensity, renderMaxIntensity);
 
             targetGraphics.drawImage(image, tx, ty, null);
 
