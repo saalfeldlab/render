@@ -91,6 +91,12 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--area_offset", description = "add bounding box offset", required = false)
     public boolean areaOffset;
 
+    @Parameter(names = "--minIntensity", description = "minimum intensity value for all tile specs", required = false)
+    public Double minIntensity;
+
+    @Parameter(names = "--maxIntensity", description = "maximum intensity value for all tile specs", required = false)
+    public Double maxIntensity;
+
     @Parameter(names = "--gray", description = "convert output to gray scale image", required = false)
     public boolean convertToGray;
 
@@ -193,6 +199,8 @@ public class RenderParameters implements Serializable {
         this.jCommander = null;
         this.outUri = null;
         this.initialized = false;
+        this.minIntensity = null;
+        this.maxIntensity = null;
     }
 
     /**
@@ -435,6 +443,22 @@ public class RenderParameters implements Serializable {
 
     public double getScale() {
         return scale;
+    }
+
+    public Double getMinIntensity(){
+        return minIntensity;
+    }
+
+    public Double getMaxIntensity(){
+        return maxIntensity;
+    }
+
+    public void setMinIntensity(final Double minIntensity){
+        this.minIntensity = minIntensity;
+    }
+
+    public void setMaxIntensity(final Double maxIntensity){
+        this.maxIntensity = maxIntensity;
     }
 
     public void setScale(final double scale) {

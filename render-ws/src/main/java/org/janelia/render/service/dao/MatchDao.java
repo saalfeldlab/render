@@ -197,6 +197,61 @@ public class MatchDao {
         writeMatches(collectionList, query, outputStream);
     }
 
+    public void removeMatchesBetweenTiles(final MatchCollectionId collectionId,
+                                          final String pGroupId,
+                                          final String pId,
+                                          final String qGroupId,
+                                          final String qId)
+            throws IllegalArgumentException, ObjectNotFoundException {
+
+        LOG.debug("removeMatchesBetweenTiles: entry, collectionId={}, pGroupId={}, pId={}, qGroupId={}, qId={}",
+                  collectionId, pGroupId, pId, qGroupId, qId);
+
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+
+        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
+        MongoUtil.validateRequiredParameter("pId", pId);
+        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
+        MongoUtil.validateRequiredParameter("qId", qId);
+
+        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, pId, qGroupId, qId, null);
+        final Document query = new Document(
+                "pGroupId", normalizedCriteria.getpGroupId()).append(
+                "pId", normalizedCriteria.getpId()).append(
+                "qGroupId", normalizedCriteria.getqGroupId()).append(
+                "qId", normalizedCriteria.getqId());
+
+        final DeleteResult result = collection.deleteMany(query);
+
+        LOG.debug("removeMatchesBetweenTiles: removed {} matches using {}.delete({})",
+                  result.getDeletedCount(), MongoUtil.fullName(collection), query.toJson());
+    }
+
+    public void removeMatchesBetweenGroups(final MatchCollectionId collectionId,
+                                           final String pGroupId,
+                                           final String qGroupId)
+            throws IllegalArgumentException, ObjectNotFoundException {
+
+        LOG.debug("removeMatchesBetweenGroups: entry, collectionId={}, pGroupId={}, qGroupId={}",
+                  collectionId, pGroupId,  qGroupId);
+
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+
+        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
+        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
+
+        final String noTileId = "";
+        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, noTileId, qGroupId, noTileId, null);
+        final Document query = new Document(
+                "pGroupId", normalizedCriteria.getpGroupId()).append(
+                "qGroupId", normalizedCriteria.getqGroupId());
+
+        final DeleteResult result = collection.deleteMany(query);
+
+        LOG.debug("removeMatchesBetweenGroups: removed {} matches using {}.delete({})",
+                  result.getDeletedCount(), MongoUtil.fullName(collection), query.toJson());
+    }
+
     public void removeMatchesOutsideGroup(final MatchCollectionId collectionId,
                                           final String groupId)
             throws IllegalArgumentException, ObjectNotFoundException {

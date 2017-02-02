@@ -133,7 +133,9 @@ public class TileDataService {
                                                 @QueryParam("filter") final Boolean filter,
                                                 @QueryParam("binaryMask") final Boolean binaryMask,
                                                 @QueryParam("excludeMask") final Boolean excludeMask,
-                                                @QueryParam("normalizeForMatching") final Boolean normalizeForMatching) {
+                                                @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
+                                                @QueryParam("minIntensity") final Double minIntensity,
+                                                @QueryParam("maxIntensity") final Double maxIntensity) {
 
         LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
@@ -219,6 +221,8 @@ public class TileDataService {
             parameters.setExcludeMask(excludeMask);
             parameters.addTileSpec(tileSpec);
             parameters.setMipmapPathBuilder(stackMetaData.getCurrentMipmapPathBuilder());
+            parameters.setMinIntensity(minIntensity);
+            parameters.setMaxIntensity(maxIntensity);
 
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
