@@ -325,6 +325,69 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
+    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
+    @DELETE
+    @ApiOperation(
+            value = "Delete matches between the specified tiles",
+            notes = "Delete all matches between two specific tiles.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public Response deleteMatchesBetweenTiles(@PathParam("owner") final String owner,
+            @PathParam("matchCollection") final String matchCollection,
+            @PathParam("pGroupId") final String pGroupId,
+            @PathParam("pId") final String pId,
+            @PathParam("qGroupId") final String qGroupId,
+            @PathParam("qId") final String qId,
+            @QueryParam("mergeCollection") final List<String> mergeCollectionList) {
+    	
+    	LOG.info("deleteMatchesBetweenTiles: entry, owner={}, matchCollection={}, pGroupId={}, pId={}, qGroupId={}, qId={}, mergeCollectionList={}",
+                 owner, matchCollection, pGroupId, pId, qGroupId, qId, mergeCollectionList);
+    	 
+    	final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+        final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
+        
+    	 Response response = null;
+         try {
+             matchDao.removeMatchesBetweenTiles(collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId, qId);
+             response = Response.ok().build();
+         } catch (final Throwable t) {
+             RenderServiceUtil.throwServiceException(t);
+         }
+         return response;
+    }
+    
+    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/matchesWith/{qGroupId}")
+    @DELETE
+    @ApiOperation(
+            value = "Delete matches between the specified groups",
+            notes = "Delete all matches between two groups.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public Response deleteMatchesBetweenGroups(@PathParam("owner") final String owner,
+    @PathParam("matchCollection") final String matchCollection,
+    @PathParam("pGroupId") final String pGroupId,
+    @PathParam("qGroupId") final String qGroupId,
+    @QueryParam("mergeCollection") final List<String> mergeCollectionList) {
+
+		LOG.info("deleteMatchesBetweenGroups: entry, owner={}, matchCollection={}, pGroupId={}, qGroupId={}, mergeCollectionList={}",
+		owner, matchCollection, pGroupId, qGroupId, mergeCollectionList);
+		
+		final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+		final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
+		Response response = null;
+		  try {
+	            matchDao.removeMatchesBetweenGroups(collectionId, mergeCollectionIdList, pGroupId, qGroupId);;
+	            response = Response.ok().build();
+	        } catch (final Throwable t) {
+	            RenderServiceUtil.throwServiceException(t);
+	        }
+		
+		return response;
+		
+    }
+    
     @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
     @DELETE
     @ApiOperation(
