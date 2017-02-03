@@ -43,10 +43,10 @@ public class RenderSectionClient {
         @Parameter(names = "--format", description = "Format for rendered boxes", required = false)
         private String format = Utils.PNG_FORMAT;
 
-        @Parameter(names = "--doFilter", description = "Use ad hoc filter to support alignment", required = false, arity = 0)
+        @Parameter(names = "--doFilter", description = "Use ad hoc filter to support alignment", required = false, arity = 1)
         private boolean doFilter = true;
 
-        @Parameter(names = "--fillWithNoise", description = "Fill image with noise before rendering to improve point match derivation", required = false, arity = 0)
+        @Parameter(names = "--fillWithNoise", description = "Fill image with noise before rendering to improve point match derivation", required = false, arity = 1)
         private boolean fillWithNoise = true;
 
         @Parameter(description = "Z values for sections to render", required = true)
