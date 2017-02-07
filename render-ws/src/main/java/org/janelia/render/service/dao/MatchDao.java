@@ -196,7 +196,25 @@ public class MatchDao {
 
         writeMatches(collectionList, query, outputStream);
     }
-
+    public void writeMatchesInvolvingObject(final MatchCollectionId collectionId,
+								           final List<MatchCollectionId> mergeCollectionIdList,
+								           final String groupId,
+								           final String id,
+								           final OutputStream outputStream)
+			throws IllegalArgumentException, IOException, ObjectNotFoundException {
+			
+			LOG.debug("writeMatchesInvolvingObject: entry, collectionId={}, mergeCollectionIdList={}, groupId={}, id={}",
+			collectionId, mergeCollectionIdList, groupId, id);
+			
+			final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
+			                                                          mergeCollectionIdList);
+			MongoUtil.validateRequiredParameter("groupId", groupId);
+			MongoUtil.validateRequiredParameter("id", id);
+					
+			final Document query = getInvolvingObjectQuery(groupId,id);	
+			
+			writeMatches(collectionList, query, outputStream);
+	}
     public void removeMatchesBetweenTiles(final MatchCollectionId collectionId,
                                           final String pGroupId,
                                           final String pId,
@@ -551,6 +569,15 @@ public class MatchDao {
         queryList.add(new Document("qGroupId", groupId).append(
                 "pGroupId", new Document(QueryOperators.NE, groupId)));
         return new Document(QueryOperators.OR, queryList);
+    }
+    
+    private Document getInvolvingObjectQuery(final String groupId,final String Id){
+    	 final List<Document> queryList = new ArrayList<>();
+         queryList.add(new Document("pGroupId", groupId).append(
+                 "pId", Id));
+         queryList.add(new Document("qGroupId", groupId).append(
+                 "qId", Id));
+         return new Document(QueryOperators.OR, queryList);
     }
 
     private void ensureMatchIndexes(final MongoCollection<Document> collection) {
