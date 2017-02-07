@@ -324,7 +324,40 @@ public class MatchService {
 
         return streamResponse(responseOutput);
     }
+    
+    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/id/{id}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Find matches from or to a specific object",
+            notes = "Find all matches that either come from or to a specific tile.",
+            response = CanvasMatches.class,
+            responseContainer="List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public Response getMatchesInvolvingObject(@PathParam("owner") final String owner,
+                                             @PathParam("matchCollection") final String matchCollection,
+                                             @PathParam("groupId") final String groupId,
+                                             @PathParam("id") final String id,
+                                             @QueryParam("mergeCollection") final List<String> mergeCollectionList) {
 
+        LOG.info("getMatchesInvolvingObject: entry, owner={}, matchCollection={}, groupId={}, id={}, mergeCollectionList={}",
+                 owner, matchCollection, groupId, id, mergeCollectionList);
+
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+        final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
+        final StreamingOutput responseOutput = new StreamingOutput() {
+            @Override
+            public void write(final OutputStream output)
+                    throws IOException, WebApplicationException {
+                matchDao.writeMatchesInvolvingObject(collectionId, mergeCollectionIdList, groupId, id, output);
+            }
+        };
+
+        return streamResponse(responseOutput);
+    }
+    
     @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
     @DELETE
     @ApiOperation(
