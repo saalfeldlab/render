@@ -226,6 +226,32 @@ public class MatchDaoTest {
     }
 
     @Test
+    public void testWriteMatchesInvolvingObject() throws Exception {
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        // "pGroupId": "section0", "pId": "tile0.1", "qGroupId": "section1", "qId": "tile1.1",
+        final String sourceId = "tile1.1";
+
+        dao.writeMatchesInvolvingObject(collectionId, null, groupId, sourceId, outputStream);
+
+        final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
+
+        Assert.assertEquals("invalid number of matches returned",
+                            3, canvasMatchesList.size());
+
+        for (final CanvasMatches canvasMatches : canvasMatchesList) {
+//            System.out.println(canvasMatches.toTabSeparatedFormat());
+            Assert.assertTrue("groupId '" + groupId + "' not found in " + canvasMatches,
+                              groupId.equals(canvasMatches.getpGroupId()) ||
+                              groupId.equals(canvasMatches.getqGroupId()) );
+            Assert.assertTrue("id '" + sourceId + "' not found in " + canvasMatches,
+                              sourceId.equals(canvasMatches.getpId()) ||
+                              sourceId.equals(canvasMatches.getqId()) );
+        }
+    }
+
+    @Test
     public void testRemoveMatchesOutsideGroup() throws Exception {
 
         dao.removeMatchesOutsideGroup(collectionId, groupId);
