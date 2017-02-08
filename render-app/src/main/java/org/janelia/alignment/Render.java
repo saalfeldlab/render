@@ -162,6 +162,8 @@ public class Render {
                params.excludeMask(),
                imageProcessorCache,
                params.getBackgroundRGBColor(),
+               params.getMinIntensity(),
+               params.getMaxIntensity(),
                targetImage);
     }
 
@@ -170,11 +172,16 @@ public class Render {
             final double minIntensity,
             final double maxIntensity,
             final boolean binaryMask) {
+            final TileSpec ts,
+            final boolean binaryMask,
+            final Double renderMinIntensity,
+            final Double renderMaxIntensity) {
 
         target.ip.setMinAndMax(minIntensity, maxIntensity);
 
         // convert to 24bit RGB
         final ColorProcessor cp = target.ip.convertToColorProcessor();
+        final ColorProcessor cp = convertToRGB(target.ip, ts, renderMinIntensity, renderMaxIntensity);
 
         // set alpha channel
         final int[] cpPixels = (int[]) cp.getPixels();

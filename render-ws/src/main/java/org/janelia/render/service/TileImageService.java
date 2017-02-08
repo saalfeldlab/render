@@ -66,6 +66,8 @@ public class TileImageService {
                                            @QueryParam("filter") final Boolean filter,
                                            @QueryParam("excludeMask") final Boolean excludeMask,
                                            @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
+                                           @QueryParam("minIntensity") final Double minIntensity,
+                                           @QueryParam("maxIntensity") final Double maxIntensity,
                                            @Context final Request request) {
 
         LOG.info("renderJpegImageForTile: entry, owner={}, project={}, stack={}, tileId={}",
@@ -76,7 +78,8 @@ public class TileImageService {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
-                                                        filter, false, excludeMask, normalizeForMatching);
+                                                        filter, false, excludeMask, normalizeForMatching,
+                                                        minIntensity, maxIntensity);
             return RenderServiceUtil.renderJpegImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -100,6 +103,8 @@ public class TileImageService {
                                           @QueryParam("filter") final Boolean filter,
                                           @QueryParam("excludeMask") final Boolean excludeMask,
                                           @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
+                                          @QueryParam("minIntensity") final Double minIntensity,
+                                          @QueryParam("maxIntensity") final Double maxIntensity,
                                           @Context final Request request) {
 
         LOG.info("renderPngImageForTile: entry, owner={}, project={}, stack={}, tileId={}",
@@ -110,7 +115,8 @@ public class TileImageService {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
-                                                        filter, false, excludeMask, normalizeForMatching);
+                                                        filter, false, excludeMask, normalizeForMatching,
+                                                        minIntensity, maxIntensity);
             return RenderServiceUtil.renderPngImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -134,6 +140,8 @@ public class TileImageService {
                                            @QueryParam("filter") final Boolean filter,
                                            @QueryParam("excludeMask") final Boolean excludeMask,
                                            @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
+                                           @QueryParam("minIntensity") final Double minIntensity,
+                                           @QueryParam("maxIntensity") final Double maxIntensity,
                                            @Context final Request request) {
 
         LOG.info("renderTiffImageForTile: entry, owner={}, project={}, stack={}, tileId={}",
@@ -144,7 +152,8 @@ public class TileImageService {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
-                                                        filter, false, excludeMask, normalizeForMatching);
+                                                        filter, false, excludeMask, normalizeForMatching,
+                                                        minIntensity, maxIntensity);
             return RenderServiceUtil.renderTiffImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();

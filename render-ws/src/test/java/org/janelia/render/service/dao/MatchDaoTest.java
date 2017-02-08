@@ -226,6 +226,32 @@ public class MatchDaoTest {
     }
 
     @Test
+    public void testWriteMatchesInvolvingObject() throws Exception {
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        // "pGroupId": "section0", "pId": "tile0.1", "qGroupId": "section1", "qId": "tile1.1",
+        final String sourceId = "tile1.1";
+
+        dao.writeMatchesInvolvingObject(collectionId, null, groupId, sourceId, outputStream);
+
+        final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
+
+        Assert.assertEquals("invalid number of matches returned",
+                            3, canvasMatchesList.size());
+
+        for (final CanvasMatches canvasMatches : canvasMatchesList) {
+//            System.out.println(canvasMatches.toTabSeparatedFormat());
+            Assert.assertTrue("groupId '" + groupId + "' not found in " + canvasMatches,
+                              groupId.equals(canvasMatches.getpGroupId()) ||
+                              groupId.equals(canvasMatches.getqGroupId()) );
+            Assert.assertTrue("id '" + sourceId + "' not found in " + canvasMatches,
+                              sourceId.equals(canvasMatches.getpId()) ||
+                              sourceId.equals(canvasMatches.getqId()) );
+        }
+    }
+
+    @Test
     public void testRemoveMatchesOutsideGroup() throws Exception {
 
         dao.removeMatchesOutsideGroup(collectionId, groupId);
@@ -329,6 +355,70 @@ public class MatchDaoTest {
             final double ws[] = matches.getWs();
             Assert.assertEquals("weight not updated", 8.0, ws[0], 0.01);
         }
+    }
+
+    @Test
+    public void testRemoveMatches() throws Exception {
+
+        final MatchCollectionId deletionCollectionId = new MatchCollectionId("testOwner", "deletionCollection");
+
+        final String tileA = "tileA";
+        final String tileB = "tileB";
+        final List<CanvasMatches> insertList = new ArrayList<>();
+        for (int pGroup = 0; pGroup < 3; pGroup++) {
+            insertList.add(
+                    new CanvasMatches(String.valueOf(pGroup), tileA,
+                                      String.valueOf(pGroup), tileB,
+                                      new Matches(new double[][]{{1}, {4},},
+                                                  new double[][]{{11}, {14}},
+                                                  new double[]{7})));
+            for (int qGroup = 7; qGroup < 10; qGroup++) {
+                insertList.add(
+                        new CanvasMatches(String.valueOf(pGroup), tileA,
+                                          String.valueOf(qGroup), tileB,
+                                          new Matches(new double[][]{{1}, {4},},
+                                                      new double[][]{{11}, {14}},
+                                                      new double[]{7})));
+            }
+        }
+
+        dao.saveMatches(deletionCollectionId, insertList);
+
+        MatchCollectionMetaData collectionMetaData = getCollectionMetaData(deletionCollectionId);
+        Assert.assertEquals("invalid pair count before deletions",
+                            new Long(12), collectionMetaData.getPairCount());
+
+        dao.removeMatchesBetweenTiles(deletionCollectionId, "0", tileA, "0", tileB);
+
+        collectionMetaData = getCollectionMetaData(deletionCollectionId);
+        Assert.assertEquals("invalid pair count after removing one tile pair",
+                            new Long(11), collectionMetaData.getPairCount());
+
+        dao.removeMatchesBetweenGroups(deletionCollectionId, "0", "7");
+        collectionMetaData = getCollectionMetaData(deletionCollectionId);
+        Assert.assertEquals("invalid pair count after removing pairs between groups 0 and 7",
+                            new Long(10), collectionMetaData.getPairCount());
+
+        dao.removeMatchesOutsideGroup(deletionCollectionId, "0");
+        collectionMetaData = getCollectionMetaData(deletionCollectionId);
+        Assert.assertEquals("invalid pair count after removing pairs outside group 0",
+                            new Long(8), collectionMetaData.getPairCount());
+
+        dao.removeAllMatches(deletionCollectionId);
+        collectionMetaData = getCollectionMetaData(deletionCollectionId);
+        Assert.assertNull(deletionCollectionId + " not removed",
+                          collectionMetaData);
+    }
+
+    private MatchCollectionMetaData getCollectionMetaData(final MatchCollectionId collectionId) {
+        MatchCollectionMetaData metaData = null;
+        for (final MatchCollectionMetaData md : dao.getMatchCollectionMetaData()) {
+            if (collectionId.equals(md.getCollectionId())) {
+                metaData = md;
+                break;
+            }
+        }
+        return metaData;
     }
 
     private List<CanvasMatches> getListFromStream(final ByteArrayOutputStream outputStream) {

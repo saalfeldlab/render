@@ -70,7 +70,7 @@ public class PointMatchClient {
 
         // NOTE: --baseDataUrl, --owner, and --collection parameters defined in MatchDataClientParameters
 
-        @Parameter(names = "--fillWithNoise", description = "Fill each canvas image with noise before rendering to improve point match derivation", required = false, arity = 0)
+        @Parameter(names = "--fillWithNoise", description = "Fill each canvas image with noise before rendering to improve point match derivation", required = false, arity = 1)
         private boolean fillWithNoise = true;
 
         @Parameter(names = "--SIFTfdSize", description = "SIFT feature descriptor size: how many samples per row and column", required = false)
