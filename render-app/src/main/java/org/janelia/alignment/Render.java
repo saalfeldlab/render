@@ -17,14 +17,12 @@
 package org.janelia.alignment;
 
 import ij.process.ByteProcessor;
-import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.awt.image.WritableRaster;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -167,52 +165,6 @@ public class Render {
                targetImage);
     }
 
-    static private BufferedImage targetToARGBImage(
-            final ImageProcessorWithMasks target,
-            final double minIntensity,
-            final double maxIntensity,
-            final boolean binaryMask) {
-            final TileSpec ts,
-            final boolean binaryMask,
-            final Double renderMinIntensity,
-            final Double renderMaxIntensity) {
-
-        target.ip.setMinAndMax(minIntensity, maxIntensity);
-
-        // convert to 24bit RGB
-        final ColorProcessor cp = target.ip.convertToColorProcessor();
-        final ColorProcessor cp = convertToRGB(target.ip, ts, renderMinIntensity, renderMaxIntensity);
-
-        // set alpha channel
-        final int[] cpPixels = (int[]) cp.getPixels();
-        final byte[] alphaPixels;
-
-        if (target.mask != null) {
-            alphaPixels = (byte[]) target.mask.getPixels();
-        } else {
-            alphaPixels = (byte[]) target.outside.getPixels();
-        }
-
-        if (binaryMask) {
-            for (int i = 0; i < cpPixels.length; ++i) {
-                if (alphaPixels[i] == -1)
-                    cpPixels[i] &= 0xffffffff;
-                else
-                    cpPixels[i] &= 0x00ffffff;
-            }
-        } else {
-            for (int i = 0; i < cpPixels.length; ++i) {
-                cpPixels[i] &= 0x00ffffff | (alphaPixels[i] << 24);
-            }
-        }
-
-        final BufferedImage image = new BufferedImage(cp.getWidth(), cp.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        final WritableRaster raster = image.getRaster();
-        raster.setDataElements(0, 0, cp.getWidth(), cp.getHeight(), cpPixels);
-
-        return image;
-    }
-
     public static void render(final List<TileSpec> tileSpecs,
                               final List<String> channelNames,
                               final double x,
@@ -227,6 +179,8 @@ public class Render {
                               final boolean excludeMask,
                               final ImageProcessorCache imageProcessorCache,
                               final Integer backgroundRGBColor,
+                              final Double renderMinIntensity,
+                              final Double renderMaxIntensity,
                               final BufferedImage targetImage)
             throws IllegalArgumentException {
 
@@ -272,10 +226,11 @@ public class Render {
             final Set<String> channelNameSet = new HashSet<>(Collections.singletonList(channelName));
             final ChannelSpec channelSpec = tileSpecs.get(0).getChannels(channelNameSet).get(0);
             final ImageProcessorWithMasks worldTarget = worldTargetChannels.get(channelName);
-            final BufferedImage image = targetToARGBImage(worldTarget,
-                                                          channelSpec.getMinIntensity(),
-                                                          channelSpec.getMaxIntensity(),
-                                                          binaryMask);
+            final BufferedImage image = ArgbRenderer.targetToARGBImage(worldTarget,
+                                                                       channelSpec,
+                                                                       binaryMask,
+                                                                       renderMinIntensity,
+                                                                       renderMaxIntensity);
             targetGraphics.drawImage(image, 0, 0, null);
         }
 
