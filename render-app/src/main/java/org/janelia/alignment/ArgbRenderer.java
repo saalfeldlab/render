@@ -125,7 +125,8 @@ public class ArgbRenderer {
             final ChannelSpec channelSpec = tileSpecs.get(0).getChannels(channelNameSet).get(0);
             final ImageProcessorWithMasks worldTarget = canvasChannels.get(channelName);
             final BufferedImage image = targetToARGBImage(worldTarget,
-                                                          channelSpec,
+                                                          channelSpec.getMinIntensity(),
+                                                          channelSpec.getMaxIntensity(),
                                                           params.binaryMask(),
                                                           params.getMinIntensity(),
                                                           params.getMaxIntensity());
@@ -144,15 +145,16 @@ public class ArgbRenderer {
     }
 
     public static BufferedImage targetToARGBImage(final ImageProcessorWithMasks target,
-                                                  final ChannelSpec channelSpec,
+                                                  final double sourceMinIntensity,
+                                                  final double sourceMaxIntensity,
                                                   final boolean binaryMask,
                                                   final Double renderMinIntensity,
                                                   final Double renderMaxIntensity) {
 
         // TODO: should render intensities only be applied if they constrain more than the channel spec (e.g. renderMin > channelMin) ?
 
-        final double minIntensity = (renderMinIntensity == null) ? channelSpec.getMinIntensity() : renderMinIntensity;
-        final double maxIntensity = (renderMaxIntensity == null) ? channelSpec.getMaxIntensity() : renderMaxIntensity;
+        final double minIntensity = (renderMinIntensity == null) ? sourceMinIntensity : renderMinIntensity;
+        final double maxIntensity = (renderMaxIntensity == null) ? sourceMaxIntensity : renderMaxIntensity;
 
         target.ip.setMinAndMax(minIntensity, maxIntensity);
 

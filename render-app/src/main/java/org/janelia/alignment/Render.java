@@ -227,7 +227,8 @@ public class Render {
             final ChannelSpec channelSpec = tileSpecs.get(0).getChannels(channelNameSet).get(0);
             final ImageProcessorWithMasks worldTarget = worldTargetChannels.get(channelName);
             final BufferedImage image = ArgbRenderer.targetToARGBImage(worldTarget,
-                                                                       channelSpec,
+                                                                       channelSpec.getMinIntensity(),
+                                                                       channelSpec.getMaxIntensity(),
                                                                        binaryMask,
                                                                        renderMinIntensity,
                                                                        renderMaxIntensity);
