@@ -22,6 +22,13 @@ public class ChannelMap {
         this.firstChannelName = null;
     }
 
+    public ChannelMap(final String firstChannelName,
+                      final ImageProcessorWithMasks firstChannel) {
+        this.nameToChannelMap = new LinkedHashMap<>();
+        this.nameToChannelMap.put(firstChannelName, firstChannel);
+        this.firstChannelName = firstChannelName;
+    }
+
     public Set<String> names() {
         return nameToChannelMap.keySet();
     }
