@@ -17,7 +17,7 @@ else
   MEMORY="6G"
 fi
 
-MAIN_CLASS="org.janelia.alignment.Render"
+MAIN_CLASS="org.janelia.alignment.ArgbRenderer"
 
 ABSOLUTE_SCRIPT=`readlink -m $0`
 SCRIPTS_DIR=`dirname ${ABSOLUTE_SCRIPT}`
