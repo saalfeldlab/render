@@ -346,7 +346,7 @@ public class RenderedCanvasMipmapSource
 
                 final long mapStop = System.currentTimeMillis();
 
-                LOG.debug("mapPixels: mapping of {} took {} milliseconds to process (mesh:{}, {}map:{})",
+                LOG.debug("mapPixels: mapping of {} took {} milliseconds to process (mesh:{}, map{}:{})",
                           source.getSourceName(),
                           mapStop - mapStart,
                           meshCreationStop - mapStart,
