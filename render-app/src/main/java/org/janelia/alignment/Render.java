@@ -16,29 +16,17 @@
  */
 package org.janelia.alignment;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Keeping this deprecated class around just in case there are legacy scripts that still reference it.
- * The class' main method now simply calls {@link ArgbRenderer#renderUsingCommandLineArguments}.
+ * The class' main method now simply calls {@link ArgbRenderer#main}.
  *
  * @deprecated use {@link ArgbRenderer} instead.
  */
 @Deprecated
 public class Render {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Render.class);
-
     public static void main(final String[] args) {
-
-        try {
-            ArgbRenderer.renderUsingCommandLineArguments(args);
-        } catch (final Throwable t) {
-            LOG.error("main: caught exception", t);
-            System.exit(1);
-        }
-
+        ArgbRenderer.main(args);
     }
 
 }
