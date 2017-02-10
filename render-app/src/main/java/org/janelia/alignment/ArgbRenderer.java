@@ -38,7 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Render a set of image tile as an ARGB image.
+ * Render a set of image tiles as an ARGB image.
  * <p/>
  * <pre>
  * Usage: java [-options] -cp render.jar org.janelia.alignment.ArgbRenderer [options]

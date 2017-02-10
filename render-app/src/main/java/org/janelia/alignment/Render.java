@@ -20,8 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Keeping this deprecated class around just in case there are scripts lying around that reference it.
- * It's main method now simply calls {@link ArgbRenderer#renderUsingCommandLineArguments}.
+ * Keeping this deprecated class around just in case there are legacy scripts that still reference it.
+ * The class' main method now simply calls {@link ArgbRenderer#renderUsingCommandLineArguments}.
  *
  * @deprecated use {@link ArgbRenderer} instead.
  */
