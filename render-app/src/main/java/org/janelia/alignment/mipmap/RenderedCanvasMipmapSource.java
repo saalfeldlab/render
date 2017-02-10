@@ -154,10 +154,14 @@ public class RenderedCanvasMipmapSource
                                        null));
         }
 
+        long totalScaleDerivationTime = 0;
+
         for (final TransformableCanvas canvas : canvasList) {
 
+            final long scaleDerivationStart = System.currentTimeMillis();
+
             final CoordinateTransformList<CoordinateTransform> renderTransformList =
-                    createMipmapTransformList(canvas.getTransformList(), levelZeroScale, levelScale, x, y);
+                    addRenderScaleAndOffset(canvas.getTransformList(), levelZeroScale, levelScale, x, y);
 
             final MipmapSource source = canvas.getSource();
 
@@ -168,6 +172,8 @@ public class RenderedCanvasMipmapSource
 
             final int componentMipmapLevel = Utils.bestMipmapLevel(averageScale);
 
+            totalScaleDerivationTime += (System.currentTimeMillis() - scaleDerivationStart);
+
             mapPixels(source,
                       componentMipmapLevel,
                       renderTransformList,
@@ -177,6 +183,10 @@ public class RenderedCanvasMipmapSource
                       skipInterpolation,
                       targetChannels);
         }
+
+        LOG.debug("getChannels: deriving average scale for {} canvases took {} milliseconds",
+                  canvasList.size(),
+                  totalScaleDerivationTime);
 
         return targetChannels;
     }
@@ -213,29 +223,21 @@ public class RenderedCanvasMipmapSource
     }
 
     /**
-     * Creates a transform list that includes all transforms for a canvas plus an additional render context
-     * transform for bounding box offset, scale, and an area offset (for scaled mipmaps).
+     * Modifies the specified full scale transform list for the current render context by
+     * adding a transform for bounding box offset, scale, and an area offset (for scaled mipmaps).
      *
-     * @param  canvasTransformList  list of transforms for full scale (and un-clipped) canvas.
+     * @param  renderTransformList  list of transforms for full scale (and un-clipped) canvas.
      * @param  levelZeroScale       scale factor for transformed components at mipmap level 0.
      * @param  actualMipmapScale    scale factor for transformed components at desired mipmap level.
      * @param  x                    target image left coordinate.
      * @param  y                    target image top coordinate.
-     *
-     * @return transform list for a specific render context.
      */
-    public static CoordinateTransformList<CoordinateTransform> createMipmapTransformList(
-            final CoordinateTransformList<CoordinateTransform> canvasTransformList,
+    public static CoordinateTransformList<CoordinateTransform> addRenderScaleAndOffset(
+            final CoordinateTransformList<CoordinateTransform> renderTransformList,
             final double levelZeroScale,
             final double actualMipmapScale,
             final double x,
             final double y) {
-
-        final CoordinateTransformList<CoordinateTransform> renderTransformList = new CoordinateTransformList<>();
-
-        for (final CoordinateTransform t : canvasTransformList.getList(null)) {
-            renderTransformList.add(t);
-        }
 
         final AffineModel2D scaleAndOffset = new AffineModel2D();
 
@@ -248,6 +250,7 @@ public class RenderedCanvasMipmapSource
                            actualMipmapScale,
                            -(x * actualMipmapScale + areaOffset),
                            -(y * actualMipmapScale + areaOffset));
+
         renderTransformList.add(scaleAndOffset);
 
         return renderTransformList;

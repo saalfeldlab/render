@@ -97,11 +97,11 @@ public class UtilsTest {
         final double levelZeroScale = renderParameters.getRes(renderParameters.getScale());
 
         final CoordinateTransformList<CoordinateTransform> coordinateTransformList =
-                RenderedCanvasMipmapSource.createMipmapTransformList(tileSpec.getTransformList(),
-                                                                     levelZeroScale,
-                                                                     scale,
-                                                                     x,
-                                                                     y);
+                RenderedCanvasMipmapSource.addRenderScaleAndOffset(tileSpec.getTransformList(),
+                                                                   levelZeroScale,
+                                                                   scale,
+                                                                   x,
+                                                                   y);
 
         final double sampleAverageScale =
                 Utils.sampleAverageScale(coordinateTransformList, width, height, meshCellSize);
