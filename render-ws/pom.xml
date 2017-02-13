@@ -116,7 +116,7 @@
         <dependency>
             <groupId>de.flapdoodle.embed</groupId>
             <artifactId>de.flapdoodle.embed.mongo</artifactId>
-            <version>1.50.2</version>
+            <version>1.50.5</version> <!-- note: versions 2.0+ depend upon java 8 -->
             <scope>test</scope>
         </dependency>
 
