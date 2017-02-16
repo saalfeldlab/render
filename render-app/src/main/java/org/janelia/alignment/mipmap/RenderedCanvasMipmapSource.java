@@ -150,7 +150,7 @@ public class RenderedCanvasMipmapSource
             targetChannels.put(channelName,
                                new ImageProcessorWithMasks(
                                        new FloatProcessor(levelWidth, levelHeight),
-                                       new ByteProcessor(levelWidth, levelHeight),
+                                       null, // mask is added by mapPixels call later (if necessary)
                                        null));
         }
 
@@ -325,6 +325,16 @@ public class RenderedCanvasMipmapSource
             final boolean hasMask = (firstChannel.mask != null);
             final int mipmapWidth = firstChannel.ip.getWidth();
             final int mipmapHeight = firstChannel.ip.getHeight();
+
+            if (hasMask) {
+                // add target mask for each channel if it does not already exist
+                for (final ImageProcessorWithMasks targetChannel : targetChannels.values()) {
+                    if (targetChannel.mask == null) {
+                        targetChannel.mask = new ByteProcessor(targetChannel.ip.getWidth(),
+                                                               targetChannel.ip.getHeight());
+                    }
+                }
+            }
 
             final PixelMapper tilePixelMapper = getPixelMapper(sourceChannels,
                                                                hasMask,

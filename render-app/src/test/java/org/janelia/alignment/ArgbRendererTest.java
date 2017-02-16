@@ -26,6 +26,8 @@ import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import org.janelia.alignment.spec.ChannelSpec;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.After;
 import org.junit.Assert;
@@ -216,6 +218,73 @@ public class ArgbRendererTest {
         Assert.assertTrue("rendered file " + outputFile.getAbsolutePath() + " not created",
                           outputFile.exists());
 
+    }
+
+    @Test
+    public void testExcludeMask() throws Exception {
+
+        final String imageUrl = "src/test/resources/stitch-test/col0075_row0021_cam1.png";
+        final String maskUrl = "src/test/resources/stitch-test/test_mask.jpg";
+        final int fullScaleWidth = 2650;
+        final int fullScaleHeight = 2250;
+        final double scale = 0.02;
+
+        final RenderParameters parametersWithoutMask =
+                getParametersForTile(imageUrl, null, fullScaleWidth, fullScaleHeight, scale);
+        final BufferedImage expectedRenderedImage = parametersWithoutMask.openTargetImage();
+        ArgbRenderer.render(parametersWithoutMask, expectedRenderedImage, ImageProcessorCache.DISABLED_CACHE);
+
+        final RenderParameters parametersWithMask =
+                getParametersForTile(imageUrl, maskUrl, fullScaleWidth, fullScaleHeight, scale);
+        parametersWithMask.setExcludeMask(true);
+        final BufferedImage actualRenderedImage = parametersWithMask.openTargetImage();
+        ArgbRenderer.render(parametersWithMask, actualRenderedImage, ImageProcessorCache.DISABLED_CACHE);
+
+        final int width = expectedRenderedImage.getWidth();
+        final int height = expectedRenderedImage.getHeight();
+        Assert.assertEquals("widths do not match", width, actualRenderedImage.getWidth());
+        Assert.assertEquals("height do not match", height, actualRenderedImage.getHeight());
+
+        boolean hasAtLeastOneNonZeroPixel = false;
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                final int expectedPixel = expectedRenderedImage.getRGB(x, y);
+                final int actualPixel = actualRenderedImage.getRGB(x, y);
+                if (expectedPixel != actualPixel) {
+                    Assert.assertEquals("pixel at (" + x + ", " + y + ") does not match", expectedPixel, actualPixel);
+                }
+                if (actualPixel != 0) {
+                    hasAtLeastOneNonZeroPixel = true;
+                }
+            }
+        }
+
+        Assert.assertTrue("image is empty", hasAtLeastOneNonZeroPixel);
+    }
+
+    private RenderParameters getParametersForTile(final String imageUrl,
+                                                  final String maskUrl,
+                                                  final int fullScaleWidth,
+                                                  final int fullScaleHeight,
+                                                  final double scale) {
+
+        final ImageAndMask imageAndMask = new ImageAndMask(imageUrl,maskUrl);
+
+        final ChannelSpec channelSpec = new ChannelSpec();
+        channelSpec.putMipmap(0, imageAndMask);
+
+        final TileSpec tileSpec = new TileSpec();
+        tileSpec.addChannel(channelSpec);
+
+        final RenderParameters parameters = new RenderParameters(null,
+                                                                 0,
+                                                                 0,
+                                                                 fullScaleWidth,
+                                                                 fullScaleHeight,
+                                                                 scale);
+        parameters.addTileSpec(tileSpec);
+
+        return parameters;
     }
 
     private void validateCacheRender(final String context,

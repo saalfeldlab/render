@@ -167,11 +167,17 @@ public class ArgbRenderer {
 
         if (target.mask != null) {
             alphaPixels = (byte[]) target.mask.getPixels();
-        } else {
+        } else if (target.outside != null) {
             alphaPixels = (byte[]) target.outside.getPixels();
+        } else {
+            alphaPixels = null;
         }
 
-        if (binaryMask) {
+        if (alphaPixels == null) {
+            for (int i = 0; i < cpPixels.length; ++i) {
+                cpPixels[i] &= 0xffffffff;
+            }
+        } else if (binaryMask) {
             for (int i = 0; i < cpPixels.length; ++i) {
                 if (alphaPixels[i] == -1)
                     cpPixels[i] &= 0xffffffff;
