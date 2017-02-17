@@ -83,79 +83,81 @@ public class UrlMipmapSource
     public ChannelMap getChannels(final int mipmapLevel)
             throws IllegalArgumentException {
 
-        final long loadMipStart = System.currentTimeMillis();
-
-        final ChannelSpec firstChannelSpec = channelSpecList.get(0);
-
-        int downSampleLevels = 0;
-
-        final Map.Entry<Integer, ImageAndMask> mipmapEntry = firstChannelSpec.getFloorMipmapEntry(mipmapLevel);
-        final ImageAndMask imageAndMask = mipmapEntry.getValue();
-
-        final int currentMipmapLevel = mipmapEntry.getKey();
-        if (currentMipmapLevel < mipmapLevel) {
-            downSampleLevels = mipmapLevel - currentMipmapLevel;
-        }
-
-        final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
-                                                                      downSampleLevels,
-                                                                      false);
-
-        final long loadMipStop = System.currentTimeMillis();
-
         final ChannelMap channels = new ChannelMap();
 
-        if (imageProcessor.getWidth() == 0 || imageProcessor.getHeight() == 0) {
+        if ((channelSpecList != null) && (channelSpecList.size() > 0)) {
 
-            LOG.debug("skipping " + getSourceName()  + " mipmap " + imageAndMask.getImageUrl() +
-                      " with zero dimension after down-sampling " + downSampleLevels + " levels");
+            final long loadMipStart = System.currentTimeMillis();
 
-        } else {
+            final ChannelSpec firstChannelSpec = channelSpecList.get(0);
 
-            // open mask
-            final ImageProcessor maskProcessor;
-            final String maskUrl = imageAndMask.getMaskUrl();
-            if ((maskUrl != null) && (!excludeMask)) {
-                maskProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true);
+            int downSampleLevels = 0;
+
+            final Map.Entry<Integer, ImageAndMask> mipmapEntry = firstChannelSpec.getFloorMipmapEntry(mipmapLevel);
+            final ImageAndMask imageAndMask = mipmapEntry.getValue();
+
+            final int currentMipmapLevel = mipmapEntry.getKey();
+            if (currentMipmapLevel < mipmapLevel) {
+                downSampleLevels = mipmapLevel - currentMipmapLevel;
+            }
+
+            final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
+                                                                          downSampleLevels,
+                                                                          false);
+            final long loadMipStop = System.currentTimeMillis();
+
+            if (imageProcessor.getWidth() == 0 || imageProcessor.getHeight() == 0) {
+
+                LOG.debug("skipping " + getSourceName() + " mipmap " + imageAndMask.getImageUrl() +
+                          " with zero dimension after down-sampling " + downSampleLevels + " levels");
+
             } else {
-                maskProcessor = null;
+
+                // open mask
+                final ImageProcessor maskProcessor;
+                final String maskUrl = imageAndMask.getMaskUrl();
+                if ((maskUrl != null) && (!excludeMask)) {
+                    maskProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true);
+                } else {
+                    maskProcessor = null;
+                }
+
+                final long loadMaskStop = System.currentTimeMillis();
+
+                final ImageProcessorWithMasks firstChannel =
+                        new ImageProcessorWithMasks(imageProcessor, maskProcessor, null);
+
+                // log warning if source.mask gets "quietly" removed (because of size)
+                if ((maskProcessor != null) && (firstChannel.mask == null)) {
+                    LOG.warn("getChannels: {} mask removed because image {} size ({}x{}) differs from mask {} size ({}x{})",
+                             sourceName,
+                             imageAndMask.getImageUrl(), imageProcessor.getWidth(), imageProcessor.getHeight(),
+                             imageAndMask.getMaskUrl(), maskProcessor.getWidth(), maskProcessor.getHeight());
+                }
+
+                channels.put(firstChannelSpec.getName(), firstChannel);
+
+                if (channelSpecList.size() > 1) {
+                    final boolean firstChannelHasMask = (firstChannel.mask != null);
+                    loadAdditionalChannels(imageProcessor.getWidth(),
+                                           imageProcessor.getHeight(),
+                                           firstChannelHasMask,
+                                           mipmapLevel,
+                                           channels);
+                }
+
+                final long loadAdditionalChannelsStop = System.currentTimeMillis();
+
+                LOG.debug("getChannels: {} took {} milliseconds to load level {} (first mip:{}, downSampleLevels:{}, first mask:{}, additional channels:{}), cacheSize:{}",
+                          sourceName,
+                          loadAdditionalChannelsStop - loadMipStart,
+                          mipmapLevel,
+                          loadMipStop - loadMipStart,
+                          downSampleLevels,
+                          loadMaskStop - loadMipStop,
+                          loadAdditionalChannelsStop - loadMaskStop,
+                          imageProcessorCache.size());
             }
-
-            final long loadMaskStop = System.currentTimeMillis();
-
-            final ImageProcessorWithMasks firstChannel =
-                    new ImageProcessorWithMasks(imageProcessor, maskProcessor, null);
-
-            // log warning if source.mask gets "quietly" removed (because of size)
-            if ((maskProcessor != null) && (firstChannel.mask == null)) {
-                LOG.warn("getChannels: {} mask removed because image {} size ({}x{}) differs from mask {} size ({}x{})",
-                         sourceName,
-                         imageAndMask.getImageUrl(), imageProcessor.getWidth(), imageProcessor.getHeight(),
-                         imageAndMask.getMaskUrl(), maskProcessor.getWidth(), maskProcessor.getHeight());
-            }
-
-            channels.put(firstChannelSpec.getName(), firstChannel);
-
-            if (channelSpecList.size() > 1) {
-                final boolean firstChannelHasMask = (firstChannel.mask != null);
-                loadAdditionalChannels(imageProcessor.getWidth(),
-                                       imageProcessor.getHeight(),
-                                       firstChannelHasMask,
-                                       mipmapLevel,
-                                       channels);
-            }
-
-            final long loadAdditionalChannelsStop = System.currentTimeMillis();
-
-            LOG.debug("getChannels: {} took {} milliseconds to load level {} (first mip:{}, downSampleLevels:{}, first mask:{}, additional channels:{}), cacheSize:{}",
-                      sourceName,
-                      loadAdditionalChannelsStop - loadMipStart,
-                      mipmapLevel,
-                      loadMipStop - loadMipStart,
-                      downSampleLevels,
-                      loadMaskStop - loadMipStop,
-                      loadAdditionalChannelsStop - loadMaskStop,
-                      imageProcessorCache.size());
         }
 
         return channels;
