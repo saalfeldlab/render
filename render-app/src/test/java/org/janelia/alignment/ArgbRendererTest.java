@@ -97,13 +97,11 @@ public class ArgbRendererTest {
     @Test
     public void testMultichannelStitching() throws Exception {
 
-        final File expectedFile =
-                new File(modulePath + "/src/test/resources/multichannel-test/expected_stitched_4_tiles.jpg");
+        File expectedFile = new File(modulePath + "/src/test/resources/multichannel-test/expected_dapi_1_0.jpg");
 
-        final String[] args = {
+        String[] args = {
                 "--tile_spec_url", "src/test/resources/multichannel-test/test_2_channels.json",
-                "--channel", "DAPI",
-                "--channel", "TdTomato",
+                "--channels", "DAPI",
                 "--out", outputFile.getAbsolutePath(),
                 "--x", "650",
                 "--y", "1600",
@@ -116,11 +114,35 @@ public class ArgbRendererTest {
 
         Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
 
-        final String expectedDigestString = getDigestString(expectedFile);
-        final String actualDigestString = getDigestString(outputFile);
+        String expectedDigestString = getDigestString(expectedFile);
+        String actualDigestString = getDigestString(outputFile);
 
-        Assert.assertEquals("stitched file MD5 hash differs from expected result",
+        Assert.assertEquals("for DAPI, stitched file MD5 hash differs from expected result",
                             expectedDigestString, actualDigestString);
+
+        expectedFile = new File(modulePath + "/src/test/resources/multichannel-test/expected_dapi_0_9_td_0_1.jpg");
+
+        args = new String[] {
+                "--tile_spec_url", "src/test/resources/multichannel-test/test_2_channels.json",
+                "--channels", "DAPI__0.9__TdTomato__0.1",
+                "--out", outputFile.getAbsolutePath(),
+                "--x", "650",
+                "--y", "1600",
+                "--width", "4000",
+                "--height", "2200",
+                "--scale", "0.25"
+        };
+
+        ArgbRenderer.renderUsingCommandLineArguments(args);
+
+        Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+
+        expectedDigestString = getDigestString(expectedFile);
+        actualDigestString = getDigestString(outputFile);
+
+        Assert.assertEquals("for DAPI__0.9__TdTomato_0.1, stitched file MD5 hash differs from expected result",
+                            expectedDigestString, actualDigestString);
+
     }
 
     @Test

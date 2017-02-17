@@ -75,6 +75,12 @@ public class ScapeClient
         private boolean doFilter = false;
 
         @Parameter(
+                names = "--channels",
+                description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3')",
+                required = false)
+        private String channels;
+
+        @Parameter(
                 names = "--fillWithNoise",
                 description = "Fill image with noise before rendering to improve point match derivation",
                 required = false)
@@ -226,6 +232,7 @@ public class ScapeClient
 
                 final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
                 renderParameters.setDoFilter(parameters.doFilter);
+                renderParameters.setChannels(parameters.channels);
 
                 final File sectionDirectory = getSectionDirectory(sectionBaseDirectory, sectionData.getZ());
                 final File sectionFile = new File(sectionDirectory, z + "." + parameters.format.toLowerCase());

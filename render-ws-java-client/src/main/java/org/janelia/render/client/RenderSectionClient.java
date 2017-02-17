@@ -46,6 +46,9 @@ public class RenderSectionClient {
         @Parameter(names = "--doFilter", description = "Use ad hoc filter to support alignment", required = false, arity = 1)
         private boolean doFilter = true;
 
+        @Parameter(names = "--channels", description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3')", required = false)
+        private String channels;
+
         @Parameter(names = "--fillWithNoise", description = "Fill image with noise before rendering to improve point match derivation", required = false, arity = 1)
         private boolean fillWithNoise = true;
 
@@ -126,6 +129,7 @@ public class RenderSectionClient {
 
         final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
         renderParameters.setDoFilter(clientParameters.doFilter);
+        renderParameters.setChannels(clientParameters.channels);
 
         final File sectionFile = getSectionFile(z);
 

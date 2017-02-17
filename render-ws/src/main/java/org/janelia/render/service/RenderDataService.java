@@ -767,7 +767,7 @@ public class RenderDataService {
 
         List<TileSpec> tileSpecList = null;
         try {
-            final RenderParameters parameters = getRenderParametersForZ(owner, project, stack, z, 1.0, false);
+            final RenderParameters parameters = getRenderParametersForZ(owner, project, stack, z, 1.0, false, null);
             tileSpecList = parameters.getTileSpecs();
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -796,7 +796,7 @@ public class RenderDataService {
 
         List<LastTileTransform> lastTileTransformList = null;
         try {
-            final RenderParameters parameters = getRenderParametersForZ(owner, project, stack, z, 1.0, false);
+            final RenderParameters parameters = getRenderParametersForZ(owner, project, stack, z, 1.0, false, null);
             final List<TileSpec> tileSpecList = parameters.getTileSpecs();
             lastTileTransformList = new ArrayList<>(tileSpecList.size());
             for (final TileSpec tileSpec : tileSpecList) {
@@ -827,7 +827,8 @@ public class RenderDataService {
                                                     @PathParam("stack") final String stack,
                                                     @PathParam("z") final Double z,
                                                     @QueryParam("scale") final Double scale,
-                                                    @QueryParam("filter") final Boolean filter) {
+                                                    @QueryParam("filter") final Boolean filter,
+                                                    @QueryParam("channels") final String channels) {
 
         LOG.info("getRenderParametersForZ: entry, owner={}, project={}, stack={}, z={}, scale={}",
                  owner, project, stack, z, scale);
@@ -837,6 +838,7 @@ public class RenderDataService {
             final StackId stackId = new StackId(owner, project, stack);
             parameters = renderDao.getParameters(stackId, z, scale);
             parameters.setDoFilter(filter);
+            parameters.setChannels(channels);
 
             final StackMetaData stackMetaData = getStackMetaData(stackId);
             final MipmapPathBuilder mipmapPathBuilder = stackMetaData.getCurrentMipmapPathBuilder();
@@ -873,9 +875,11 @@ public class RenderDataService {
                                                         @PathParam("scale") final Double scale,
                                                         @QueryParam("filter") final Boolean filter,
                                                         @QueryParam("binaryMask") final Boolean binaryMask,
-                                                        @QueryParam("convertToGray") final Boolean convertToGray) {
+                                                        @QueryParam("convertToGray") final Boolean convertToGray,
+                                                        @QueryParam("channels") final String channels) {
 
-        return getExternalRenderParameters(owner, project, stack, null, x, y, z, width, height, scale, filter, binaryMask, convertToGray);
+        return getExternalRenderParameters(owner, project, stack, null, x, y, z, width, height, scale, filter,
+                                           binaryMask, convertToGray, channels);
     }
 
     /**
@@ -900,8 +904,10 @@ public class RenderDataService {
                                                                   @QueryParam("scale") final Double scale,
                                                                   @QueryParam("filter") final Boolean filter,
                                                                   @QueryParam("binaryMask") final Boolean binaryMask,
-                                                                  @QueryParam("convertToGray") final Boolean convertToGray) {
-        return getExternalRenderParameters(owner, project, stack, null, x, y, z, width, height, scale, filter, binaryMask, convertToGray);
+                                                                  @QueryParam("convertToGray") final Boolean convertToGray,
+                                                                  @QueryParam("channels") final String channels) {
+        return getExternalRenderParameters(owner, project, stack, null, x, y, z, width, height, scale, filter,
+                                           binaryMask, convertToGray, channels);
     }
 
     /**
@@ -927,7 +933,8 @@ public class RenderDataService {
                                                         @PathParam("scale") final Double scale,
                                                         @QueryParam("filter") final Boolean filter,
                                                         @QueryParam("binaryMask") final Boolean binaryMask,
-                                                        @QueryParam("convertToGray") final Boolean convertToGray) {
+                                                        @QueryParam("convertToGray") final Boolean convertToGray,
+                                                        @QueryParam("channels") final String channels) {
 
         LOG.info("getExternalRenderParameters: entry, owner={}, project={}, stack={}, groupId={}, x={}, y={}, z={}, width={}, height={}, scale={}, filter={}, binaryMask={}, convertToGray={}",
                  owner, project, stack, groupId, x, y, z, width, height, scale, filter, binaryMask, convertToGray);
@@ -940,6 +947,7 @@ public class RenderDataService {
             parameters.setDoFilter(filter);
             parameters.setBinaryMask(binaryMask);
             parameters.setConvertToGray(convertToGray);
+            parameters.setChannels(channels);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -969,8 +977,10 @@ public class RenderDataService {
                                                                   @QueryParam("scale") final Double scale,
                                                                   @QueryParam("filter") final Boolean filter,
                                                                   @QueryParam("binaryMask") final Boolean binaryMask,
-                                                                  @QueryParam("convertToGray") final Boolean convertToGray) {
-        return getExternalRenderParameters(owner, project, stack, groupId, x, y, z, width, height, scale, filter, binaryMask, convertToGray);
+                                                                  @QueryParam("convertToGray") final Boolean convertToGray,
+                                                                  @QueryParam("channels") final String channels) {
+        return getExternalRenderParameters(owner, project, stack, groupId, x, y, z, width, height, scale, filter,
+                                           binaryMask, convertToGray, channels);
     }
 
     /**

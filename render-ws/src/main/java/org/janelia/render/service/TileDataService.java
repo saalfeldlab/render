@@ -136,7 +136,8 @@ public class TileDataService {
                                                 @QueryParam("excludeMask") final Boolean excludeMask,
                                                 @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
                                                 @QueryParam("minIntensity") final Double minIntensity,
-                                                @QueryParam("maxIntensity") final Double maxIntensity) {
+                                                @QueryParam("maxIntensity") final Double maxIntensity,
+                                                @QueryParam("channels") final String channels) {
 
         LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
@@ -224,6 +225,7 @@ public class TileDataService {
             parameters.setMipmapPathBuilder(stackMetaData.getCurrentMipmapPathBuilder());
             parameters.setMinIntensity(minIntensity);
             parameters.setMaxIntensity(maxIntensity);
+            parameters.setChannels(channels);
 
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -291,10 +293,11 @@ public class TileDataService {
                                                                  @QueryParam("scale") Double scale,
                                                                  @QueryParam("filter") final Boolean filter,
                                                                  @QueryParam("binaryMask") final Boolean binaryMask,
-                                                                 @QueryParam("convertToGray") final Boolean convertToGray) {
+                                                                 @QueryParam("convertToGray") final Boolean convertToGray,
+                                                                 @QueryParam("channels") final String channels) {
 
-        LOG.info("getTileWithNeighborsRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, widthFactor={}, heightFactor={}, scale={}, filter={}, binaryMask={}, convertToGray={}",
-                 owner, project, stack, tileId, widthFactor, heightFactor, scale, filter, binaryMask, convertToGray);
+        LOG.info("getTileWithNeighborsRenderParameters: entry, owner={}, project={}, stack={}, tileId={}",
+                 owner, project, stack, tileId);
 
         RenderParameters parameters = null;
         try {
@@ -332,7 +335,8 @@ public class TileDataService {
                                                                        scale,
                                                                        filter,
                                                                        binaryMask,
-                                                                       convertToGray);
+                                                                       convertToGray,
+                                                                       channels);
 
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);

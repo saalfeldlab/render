@@ -23,13 +23,13 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
+import org.janelia.alignment.mipmap.AveragedChannelMipmapSource;
+import org.janelia.alignment.mipmap.MipmapSource;
 import org.janelia.alignment.mipmap.RenderedCanvasMipmapSource;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
@@ -101,8 +101,20 @@ public class ArgbRenderer {
         final int targetWidth = targetImage.getWidth();
         final int targetHeight = targetImage.getHeight();
 
-        final List<String> channelNames = params.getChannelNames();
-        final RenderedCanvasMipmapSource canvas = new RenderedCanvasMipmapSource(params, imageProcessorCache);
+        final RenderedCanvasMipmapSource renderedCanvasMipmapSource =
+                new RenderedCanvasMipmapSource(params, imageProcessorCache);
+
+        final MipmapSource canvas;
+        final Set<String> channelNames = params.getChannelNames();
+        final int numberOfTargetChannels = channelNames.size();
+        if (numberOfTargetChannels > 1) {
+            canvas = new AveragedChannelMipmapSource("averaged_canvas",
+                                                     renderedCanvasMipmapSource,
+                                                     params.getChannelNamesAndWeights());
+        }  else {
+            canvas = renderedCanvasMipmapSource;
+        }
+
         final ChannelMap canvasChannels = canvas.getChannels(0);
 
         final long drawImageStart = System.currentTimeMillis();
@@ -117,19 +129,39 @@ public class ArgbRenderer {
 
         if (tileSpecs.size() > 0) {
 
-            // TODO: handle targetImage generation for multiple channels
-            // This hack only generates the first channel even though all channels are rendered.
+            Double minIntensity = params.getMinIntensity();
+            Double maxIntensity = params.getMaxIntensity();
 
-            final String channelName = channelNames.get(0);
-            final Set<String> channelNameSet = new HashSet<>(Collections.singletonList(channelName));
-            final ChannelSpec channelSpec = tileSpecs.get(0).getChannels(channelNameSet).get(0);
-            final ImageProcessorWithMasks worldTarget = canvasChannels.get(channelName);
+            // TODO: verify approach for deriving intensity range is reasonable
+
+            // if intensity range has not been explicitly specified in render parameters,
+            // use the range of the first channel in the first tile spec
+            if ((minIntensity == null) || (maxIntensity == null)) {
+
+                final TileSpec firstTileSpec = tileSpecs.get(0);
+                final List<ChannelSpec> channelSpecList = firstTileSpec.getChannels(channelNames);
+                final ChannelSpec firstChannelSpec;
+                if (channelSpecList.size() > 0) {
+                    firstChannelSpec = channelSpecList.get(0);
+                } else {
+                    firstChannelSpec = new ChannelSpec();
+                }
+
+                if (minIntensity == null) {
+                    minIntensity = firstChannelSpec.getMinIntensity();
+                }
+
+                if (maxIntensity == null) {
+                    maxIntensity = firstChannelSpec.getMaxIntensity();
+                }
+
+            }
+
+            final ImageProcessorWithMasks worldTarget = canvasChannels.getFirstChannel();
             final BufferedImage image = targetToARGBImage(worldTarget,
-                                                          channelSpec.getMinIntensity(),
-                                                          channelSpec.getMaxIntensity(),
-                                                          params.binaryMask(),
-                                                          params.getMinIntensity(),
-                                                          params.getMaxIntensity());
+                                                          minIntensity,
+                                                          maxIntensity,
+                                                          params.binaryMask());
             targetGraphics.drawImage(image, 0, 0, null);
         }
 
@@ -145,16 +177,9 @@ public class ArgbRenderer {
     }
 
     public static BufferedImage targetToARGBImage(final ImageProcessorWithMasks target,
-                                                  final double sourceMinIntensity,
-                                                  final double sourceMaxIntensity,
-                                                  final boolean binaryMask,
-                                                  final Double renderMinIntensity,
-                                                  final Double renderMaxIntensity) {
-
-        // TODO: should render intensities only be applied if they constrain more than the channel spec (e.g. renderMin > channelMin) ?
-
-        final double minIntensity = (renderMinIntensity == null) ? sourceMinIntensity : renderMinIntensity;
-        final double maxIntensity = (renderMaxIntensity == null) ? sourceMaxIntensity : renderMaxIntensity;
+                                                  final double minIntensity,
+                                                  final double maxIntensity,
+                                                  final boolean binaryMask) {
 
         target.ip.setMinAndMax(minIntensity, maxIntensity);
 

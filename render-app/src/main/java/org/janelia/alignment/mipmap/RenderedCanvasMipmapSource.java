@@ -4,7 +4,6 @@ import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -42,7 +41,7 @@ public class RenderedCanvasMipmapSource
         implements MipmapSource {
 
     private final String canvasName;
-    private final List<String> channelNames;
+    private final Set<String> channelNames;
     private final List<TransformableCanvas> canvasList;
     private final double x;
     private final double y;
@@ -96,7 +95,7 @@ public class RenderedCanvasMipmapSource
      * @param  binaryMask              render only 100% opaque pixels.
      */
     public RenderedCanvasMipmapSource(final String canvasName,
-                                      final List<String> channelNames,
+                                      final Set<String> channelNames,
                                       final List<TransformableCanvas> canvasList,
                                       final double x,
                                       final double y,
@@ -196,7 +195,8 @@ public class RenderedCanvasMipmapSource
      */
     public static List<TransformableCanvas> buildCanvasList(final RenderParameters renderParameters,
                                                             final ImageProcessorCache imageProcessorCache) {
-        final Set<String> channelNames = new HashSet<>(renderParameters.getChannelNames());
+
+        final Set<String> channelNames = renderParameters.getChannelNames();
 
         final List<TransformableCanvas> canvasList = new ArrayList<>(renderParameters.numberOfTileSpecs());
 

@@ -17,14 +17,13 @@
 package org.janelia.alignment.mipmap;
 
 import java.awt.image.BufferedImage;
-import java.util.HashMap;
-import java.util.Map;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.ChannelMap;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.ChannelNamesAndWeights;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Test;
 
@@ -46,8 +45,7 @@ public class AveragedChannelMipmapSourceTest {
 
         final String[] args = {
                 "--tile_spec_url", "src/test/resources/multichannel-test/test_2_channels.json",
-                "--channel", firstChannelName,
-                "--channel", secondChannelName,
+                "--channels", firstChannelName + "__0.7__" + secondChannelName + "__0.3",
                 "--out", "not-applicable-but-required-file-name.png",
                 "--x", "650",
                 "--y", "1600",
@@ -72,7 +70,7 @@ public class AveragedChannelMipmapSourceTest {
         Assert.assertNotSame("channel intensity should not match",
                              onlySecondChannel.ip.getf(pixelIndex), averagedChannel.ip.getf(pixelIndex));
 
-        final BufferedImage image = ArgbRenderer.targetToARGBImage(averagedChannel, 0.0, 10000.0, false, null, null);
+        final BufferedImage image = ArgbRenderer.targetToARGBImage(averagedChannel, 0.0, 10000.0, false);
 
         Assert.assertNotNull("averaged image not rendered", image);
     }
@@ -82,13 +80,13 @@ public class AveragedChannelMipmapSourceTest {
                                                        final double firstChannelWeight,
                                                        final double secondChannelWeight) {
 
-        final Map<String, Double> channelToWeightMap = new HashMap<>();
-        channelToWeightMap.put(firstChannelName, firstChannelWeight);
-        channelToWeightMap.put(secondChannelName, secondChannelWeight);
+        final ChannelNamesAndWeights channelNamesAndWeights = new ChannelNamesAndWeights();
+        channelNamesAndWeights.add(firstChannelName, firstChannelWeight);
+        channelNamesAndWeights.add(secondChannelName, secondChannelWeight);
 
         final AveragedChannelMipmapSource convertedSource = new AveragedChannelMipmapSource(convertedChannelName,
                                                                                             source,
-                                                                                            channelToWeightMap);
+                                                                                            channelNamesAndWeights);
 
         final ChannelMap channelMap = convertedSource.getChannels(0);
         return channelMap.get(convertedChannelName);

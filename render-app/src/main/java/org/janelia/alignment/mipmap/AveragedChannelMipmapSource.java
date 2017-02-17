@@ -2,12 +2,10 @@ package org.janelia.alignment.mipmap;
 
 import ij.process.ByteProcessor;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.ChannelMap;
+import org.janelia.alignment.spec.ChannelNamesAndWeights;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,46 +19,25 @@ public class AveragedChannelMipmapSource
 
     private final String averagedChannelName;
     private final MipmapSource source;
-    private final Map<String, Double> sourceChannelNameToWeightMap;
+    private final ChannelNamesAndWeights channelNamesAndWeights;
 
     /**
      * Basic constructor.
      *
-     * @param  averagedChannelName             name of the averaged channel.
-     * @param  source                          source channels to average.
-     * @param  sourceChannelNameToWeightMap    map of source channel names to averaging weights.
-     *                                         The sum of all weights must be <= 1.0.
+     * @param  averagedChannelName       name of the averaged channel.
+     * @param  source                    source channels to average.
+     * @param  channelNamesAndWeights    source channel names and averaging weights.
      *
      * @throws IllegalArgumentException
      *   if the sum of all weights is greater than 1.0.
      */
     public AveragedChannelMipmapSource(final String averagedChannelName,
                                        final MipmapSource source,
-                                       final Map<String, Double> sourceChannelNameToWeightMap) {
+                                       final ChannelNamesAndWeights channelNamesAndWeights) {
 
         this.averagedChannelName = averagedChannelName;
         this.source = source;
-        this.sourceChannelNameToWeightMap = new HashMap<>(sourceChannelNameToWeightMap.size());
-
-        double weightSum = 0.0;
-        for (final Map.Entry<String, Double> entry : sourceChannelNameToWeightMap.entrySet()) {
-
-            final String channelName = entry.getKey();
-            final Double weight = entry.getValue();
-
-            if ((weight != null) &&  (weight > 0.0)) {
-                this.sourceChannelNameToWeightMap.put(channelName, weight);
-                weightSum += weight;
-            } else {
-                LOG.warn("excluding {} channel with zero weight", channelName);
-            }
-        }
-
-        if (weightSum > 1.0) {
-            throw new IllegalArgumentException("The sum of all weights (" + weightSum +
-                                               ") must be less than or equal to 1.0.  Specified map is: " +
-                                               sourceChannelNameToWeightMap + ".");
-        }
+        this.channelNamesAndWeights = channelNamesAndWeights;
     }
 
     @Override
@@ -96,13 +73,13 @@ public class AveragedChannelMipmapSource
                                                 new ByteProcessor(width, height),
                                                 null);
 
-        for (final String channelName : sourceChannelNameToWeightMap.keySet()) {
+        for (final String channelName : channelNamesAndWeights.getNames()) {
 
             final ImageProcessorWithMasks sourceChannel = sourceChannels.get(channelName);
 
             if (sourceChannel != null) {
 
-                final float sourceWeight = sourceChannelNameToWeightMap.get(channelName).floatValue();
+                final float sourceWeight = channelNamesAndWeights.getWeight(channelName).floatValue();
 
                 for (int i = 0; i < pixelCount; i++) {
                     averageChannelAndAlphaPixels(sourceChannel, sourceWeight, averagedChannel, i);
@@ -118,7 +95,7 @@ public class AveragedChannelMipmapSource
         LOG.debug("getChannels: {} took {} milliseconds to average {} channels for level {}",
                   getSourceName(),
                   stop - start,
-                  sourceChannelNameToWeightMap.size(),
+                  channelNamesAndWeights.size(),
                   mipmapLevel);
 
         return averagedChannelMap;
