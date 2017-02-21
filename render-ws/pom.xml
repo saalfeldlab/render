@@ -113,13 +113,6 @@
             <version>3.2.0</version>
         </dependency>
 
-        <dependency>
-            <groupId>de.flapdoodle.embed</groupId>
-            <artifactId>de.flapdoodle.embed.mongo</artifactId>
-            <version>1.50.5</version> <!-- note: versions 2.0+ depend upon java 8 -->
-            <scope>test</scope>
-        </dependency>
-
         <!-- override project dependency with provided scope since logback should be installed into jetty directly -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
@@ -151,6 +144,19 @@
             <groupId>ar.com.hjg</groupId>
             <artifactId>pngj</artifactId>
             <version>2.1.0</version>
+        </dependency>
+
+        <!--
+             NOTE:
+             It is important that this flapdoodle dependency (for testing) is
+             listed after the swagger dependencies above.
+             Swagger currently requires a newer version of commons-lang3 than flapdoodle.
+        -->
+        <dependency>
+            <groupId>de.flapdoodle.embed</groupId>
+            <artifactId>de.flapdoodle.embed.mongo</artifactId>
+            <version>1.50.5</version> <!-- NOTE: versions 2.0+ depend upon java 8 -->
+            <scope>test</scope>
         </dependency>
 
     </dependencies>
