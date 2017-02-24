@@ -238,7 +238,7 @@ public class CopyStackClient {
         final Set<Double> toStackZValues = new LinkedHashSet<>();
         if (parameters.splitMergedSections) {
             for (final TileSpec tileSpec : sourceCollection.getTileSpecs()) {
-                final Double zValue = new Double(sectionIdToZMap.get(tileSpec.getLayout().getSectionId()));
+                final Double zValue = new Double(getContrivedZ(tileSpec.getLayout().getSectionId(), tileSpec.getZ()));
                 toStackZValues.add(zValue);
                 tileSpec.setZ(zValue);
             }
@@ -343,8 +343,11 @@ public class CopyStackClient {
                 firstContrivedZ = lastZ.intValue() + 50000;
             }
 
+            SectionData sectionData;
             for (int i = 0; i < orderedSectionDataList.size(); i++) {
-                sectionIdToZMap.put(orderedSectionDataList.get(i).getSectionId(), i + firstContrivedZ);
+                sectionData = orderedSectionDataList.get(i);
+                sectionIdToZMap.put(getSectionWithZKey(sectionData.getSectionId(), sectionData.getZ()),
+                                    i + firstContrivedZ);
             }
 
         } else {
@@ -357,6 +360,16 @@ public class CopyStackClient {
                  sectionIdToZMap.size(), firstContrivedZ, lastContrivedZ);
 
         return sectionIdToZMap;
+    }
+
+    private String getSectionWithZKey(final String sectionId,
+                                      final Double z) {
+        return sectionId + "::" + z;
+    }
+
+    private Integer getContrivedZ(final String sectionId,
+                                  final Double z) {
+        return sectionIdToZMap.get(getSectionWithZKey(sectionId, z));
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CopyStackClient.class);
