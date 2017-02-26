@@ -295,7 +295,6 @@ public class RenderDao {
                   stackId, z, worldCoordinatesList.size());
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
-        MongoUtil.validateRequiredParameter("z", z);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
         final Document tileKeys = new Document("tileId", 1).append("_id", 0);
@@ -311,6 +310,7 @@ public class RenderDao {
         int coordinateCount = 0;
 
         double[] world;
+        double coordinateZ = z == null ? 0 : z;
         Document tileQuery = new Document();
         MongoCursor<Document> cursor = null;
         Document document;
@@ -328,11 +328,18 @@ public class RenderDao {
 
                 if (world == null) {
                     throw new IllegalArgumentException("world values are missing for element " + i);
-                } else if (world.length < 2) {
-                    throw new IllegalArgumentException("world values must include both x and y for element " + i);
+                } else if (z == null) {
+                    if (world.length < 2) {
+                        throw new IllegalArgumentException("world values must include both x and y for element " + i);
+                    }
+                } else {
+                    if (world.length < 3) {
+                        throw new IllegalArgumentException("world values must include x, y, and z for element " + i);
+                    }
+                    coordinateZ = world[2];
                 }
 
-                tileQuery = getIntersectsBoxQuery(z, world[0], world[1], world[0], world[1]);
+                tileQuery = getIntersectsBoxQuery(coordinateZ, world[0], world[1], world[0], world[1]);
 
                 // EXAMPLE:   find({"z": 3299.0 , "minX": {"$lte": 95000.0}, "minY": {"$lte": 200000.0}, "maxX": {"$gte": 95000.0}, "maxY": {"$gte": 200000.0}}, {"tileId":1, "_id": 0}).sort({"tileId" : 1})
                 // INDEXES:   z_1_minY_1_minX_1_maxY_1_maxX_1_tileId_1 (z1_minX_1, z1_maxX_1, ... used for edge cases)
