@@ -24,6 +24,7 @@ import javax.ws.rs.core.UriInfo;
 
 import org.bson.types.ObjectId;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
@@ -595,6 +596,38 @@ public class StackMetaDataService {
         }
 
         return response;
+    }
+
+    /**
+     * @return list of tile specs with specified ids.
+     *         Tile specs will contain with flattened (and therefore resolved)
+     *         transform specs suitable for external use.
+     */
+    @Path("project/{project}/stack/{stack}/tile-specs-with-ids")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "Get flattened tile specs with the specified ids",
+            notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
+    public List<TileSpec> getTileSpecsWithIds(@PathParam("owner") final String owner,
+                                              @PathParam("project") final String project,
+                                              @PathParam("stack") final String stack,
+                                              final List<String> tileIdList) {
+
+        LOG.info("getTileSpecsWithIds: entry, owner={}, project={}, stack={}, tileIdList.size()={}",
+                 owner, project, stack, tileIdList.size());
+
+        List<TileSpec> tileSpecList = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            tileSpecList = renderDao.getTileSpecs(stackId, tileIdList);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return tileSpecList;
     }
 
     public static ObjectNotFoundException getStackNotFoundException(final String owner,

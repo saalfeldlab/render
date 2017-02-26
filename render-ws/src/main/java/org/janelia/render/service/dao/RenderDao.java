@@ -254,7 +254,6 @@ public class RenderDao {
         return resolvedIdToSpecMap;
     }
 
-
     /**
      * @return a list of resolved tile specifications for all tiles that encompass the specified coordinates.
      *
@@ -283,6 +282,34 @@ public class RenderDao {
         }
 
         return renderParameters.getTileSpecs();
+    }
+
+    /**
+     * @return a list of resolved tile specifications for the specified tileIds.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or if the stack cannot be found.
+     */
+    public List<TileSpec> getTileSpecs(final StackId stackId,
+                                       final List<String> tileIds)
+            throws IllegalArgumentException {
+
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+
+        final Document tileQuery = new Document("tileId", new Document("$in", tileIds));
+
+        final RenderParameters renderParameters = new RenderParameters();
+        addResolvedTileSpecs(stackId, tileQuery, renderParameters);
+
+        final List<TileSpec> tileSpecs;
+        if (renderParameters.hasTileSpecs()) {
+            tileSpecs = renderParameters.getTileSpecs();
+        } else {
+            tileSpecs = new ArrayList<>();
+            LOG.info("no tile specs with requested ids found in stack " + stackId);
+        }
+
+        return tileSpecs;
     }
 
     public void writeCoordinatesWithTileIds(final StackId stackId,
