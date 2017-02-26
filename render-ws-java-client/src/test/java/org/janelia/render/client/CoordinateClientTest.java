@@ -3,6 +3,7 @@ package org.janelia.render.client;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
@@ -54,7 +55,7 @@ public class CoordinateClientTest {
         final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(emptyTransformSpecList,
                                                                                 emptyTileSpecList);
 
-        final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
+        final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles, z);
 
         Assert.assertEquals("invalid number of local lists returned",
                             worldListOfLists.size(), localListOfLists.size());
@@ -96,23 +97,29 @@ public class CoordinateClientTest {
     public void testRealClient()
             throws Exception {
 
+        final Double z = 3451.0;
+
         final RenderDataClient renderDataClient =
-                new RenderDataClient("http://renderer-dev:8080/render-ws/v1", "flyTEM", "FAFB00");
-        final CoordinateClient client = new CoordinateClient("v5_montage", 3451.0, renderDataClient, 1);
+                new RenderDataClient("http://tem-services:8080/render-ws/v1", "flyTEM", "FAFB00");
+        final CoordinateClient client = new CoordinateClient("v13_align_tps", z, renderDataClient, 1);
 
         final TileCoordinates worldCoord =
-                TileCoordinates.buildWorldInstance(null, new double[]{194000.0, 1000.0});
+                TileCoordinates.buildWorldInstance(null, new double[]{49600.0, 135500.0});
 
         final List<TileCoordinates> worldList = new ArrayList<>();
         worldList.add(worldCoord);
 
-        final List<List<TileCoordinates>> worldListOfLists = client.getWorldCoordinatesWithTileIds(worldList);
+        final Map<Double, CoordinateClient.WorldListWithTileIdsForZ> worldCoordinatesWithTileIds =
+                client.getWorldCoordinatesWithTileIds(worldList);
+
+        final List<List<TileCoordinates>> worldListOfLists =
+                worldCoordinatesWithTileIds.get(z).getWorldListWithTileIds();
 
         Assert.assertEquals("invalid number of world lists returned", 1, worldListOfLists.size());
 
         final List<TileCoordinates> returnedWorldList = worldListOfLists.get(0);
 
-        Assert.assertEquals("invalid number of coordinates in first world list", 1, returnedWorldList.size());
+        Assert.assertEquals("invalid number of coordinates in first world list", 3, returnedWorldList.size());
 
         final TileCoordinates returnedWorldCoord = returnedWorldList.get(0);
 
@@ -188,7 +195,7 @@ public class CoordinateClientTest {
         // Then force resolution ...
         tiles.resolveTileSpecs();
 
-        final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
+        final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles, z);
 
         Assert.assertEquals("invalid number of local lists returned",
                             worldListOfLists.size(), localListOfLists.size());
