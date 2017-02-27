@@ -337,7 +337,7 @@ public class RenderDao {
         int coordinateCount = 0;
 
         double[] world;
-        double coordinateZ = z == null ? 0 : z;
+        double coordinateZ = z == null ? -1 : z;
         Document tileQuery = new Document();
         MongoCursor<Document> cursor = null;
         Document document;
@@ -356,14 +356,14 @@ public class RenderDao {
                 if (world == null) {
                     throw new IllegalArgumentException("world values are missing for element " + i);
                 } else if (z == null) {
-                    if (world.length < 2) {
-                        throw new IllegalArgumentException("world values must include both x and y for element " + i);
-                    }
-                } else {
                     if (world.length < 3) {
                         throw new IllegalArgumentException("world values must include x, y, and z for element " + i);
                     }
                     coordinateZ = world[2];
+                } else {
+                    if (world.length < 2) {
+                        throw new IllegalArgumentException("world values must include both x and y for element " + i);
+                    }
                 }
 
                 tileQuery = getIntersectsBoxQuery(coordinateZ, world[0], world[1], world[0], world[1]);
@@ -1716,9 +1716,15 @@ public class RenderDao {
             }
         }
 
-        LOG.debug("addResolvedTileSpecs: found {} tile spec(s) for {}.find({}).sort({})",
-                  renderParameters.numberOfTileSpecs(), MongoUtil.fullName(tileCollection),
-                  tileQuery.toJson(), orderBy.toJson());
+        if (LOG.isDebugEnabled()) {
+            String queryJson = tileQuery.toJson();
+            if (queryJson.length() > 100) {
+                queryJson = queryJson.substring(0, 95) + " ...}";
+            }
+            LOG.debug("addResolvedTileSpecs: found {} tile spec(s) for {}.find({}).sort({})",
+                      renderParameters.numberOfTileSpecs(), MongoUtil.fullName(tileCollection),
+                      queryJson, orderBy.toJson());
+        }
 
         return resolveTransformReferencesForTiles(stackId, renderParameters.getTileSpecs());
     }
