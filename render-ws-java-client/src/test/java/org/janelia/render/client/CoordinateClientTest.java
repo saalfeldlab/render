@@ -3,12 +3,7 @@ package org.janelia.render.client;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
-import mpicbg.trakem2.transform.AffineModel2D;
-
-import org.janelia.alignment.spec.LeafTransformSpec;
-import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
@@ -55,7 +50,7 @@ public class CoordinateClientTest {
         final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(emptyTransformSpecList,
                                                                                 emptyTileSpecList);
 
-        final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles, z);
+        final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
 
         Assert.assertEquals("invalid number of local lists returned",
                             worldListOfLists.size(), localListOfLists.size());
@@ -109,11 +104,7 @@ public class CoordinateClientTest {
         final List<TileCoordinates> worldList = new ArrayList<>();
         worldList.add(worldCoord);
 
-        final Map<Double, CoordinateClient.WorldListWithTileIdsForZ> worldCoordinatesWithTileIds =
-                client.getWorldCoordinatesWithTileIds(worldList);
-
-        final List<List<TileCoordinates>> worldListOfLists =
-                worldCoordinatesWithTileIds.get(z).getWorldListWithTileIds();
+        final List<List<TileCoordinates>> worldListOfLists = client.getWorldCoordinatesWithTileIds(worldList);
 
         Assert.assertEquals("invalid number of world lists returned", 1, worldListOfLists.size());
 
@@ -165,13 +156,6 @@ public class CoordinateClientTest {
         final Double z = 9.9;
         final CoordinateClient client = new CoordinateClient(stackName, z, null, numberOfThreads);
 
-        final String transformId = "transform-1";
-        final AffineModel2D noOpAffine = new AffineModel2D();
-        final TransformSpec transform1 = new LeafTransformSpec(transformId,
-                                                               null,
-                                                               noOpAffine.getClass().getName(),
-                                                               noOpAffine.toDataString());
-
         final List<List<TileCoordinates>> worldListOfLists = new ArrayList<>();
         final List<TileSpec> tileSpecList = new ArrayList<>();
         // use same tile to make sure concurrent access doesn't break coordinate mapping
@@ -180,22 +164,13 @@ public class CoordinateClientTest {
 
         for (int i = 0; i < numberOfThreads; i++) {
             final TileCoordinates worldCoord = TileCoordinates.buildWorldInstance(tile.getTileId(),
-                                                                                  new double[]{i, (i+1)});
+                                                                                  new double[]{i, (i+1), z});
             worldListOfLists.add(Collections.singletonList(worldCoord));
         }
 
-        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(Collections.singletonList(transform1),
+        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(new ArrayList<TransformSpec>(),
                                                                                 tileSpecList);
-
-        // Hack: Add ref transform to tile after adding to collection so that it is not resolved by constructor.
-        //       This should mimic what happens after JSON deserialization.
-        final TransformSpec transform1Ref = new ReferenceTransformSpec(transformId);
-        tile.addTransformSpecs(Collections.singletonList(transform1Ref));
-
-        // Then force resolution ...
-        tiles.resolveTileSpecs();
-
-        final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles, z);
+        final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
 
         Assert.assertEquals("invalid number of local lists returned",
                             worldListOfLists.size(), localListOfLists.size());
@@ -239,7 +214,7 @@ public class CoordinateClientTest {
             final double[] expectedArray = worldCoord.getWorld();
             final double[] actualArray = roundTripWorldCoord.getWorld();
             Assert.assertEquals("incorrect round trip world array length for " + context,
-                                expectedArray.length + 1, actualArray.length);
+                                expectedArray.length, actualArray.length);
             for (int j = 0; j < expectedArray.length; j++) {
                 Assert.assertEquals("incorrect round trip value for item " + j + " in " + context,
                                     expectedArray[j], actualArray[j], 0.01);

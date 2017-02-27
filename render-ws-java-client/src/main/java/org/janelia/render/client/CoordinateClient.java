@@ -10,13 +10,14 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,10 +96,7 @@ public class CoordinateClient {
                 } else {
                     final List<TileCoordinates> loadedWorldCoordinates =
                             loadJsonArrayOfCoordinates(parameters.fromJson);
-                    final Map<Double, WorldListWithTileIdsForZ> worldCoordinatesWithTileIds =
-                            client.getWorldCoordinatesWithTileIds(loadedWorldCoordinates);
-                    coordinatesToSave = client.worldToLocal(worldCoordinatesWithTileIds,
-                                                            loadedWorldCoordinates.size());
+                    coordinatesToSave = client.worldToLocalInBatches(loadedWorldCoordinates);
                 }
 
                 FileUtil.saveJsonFile(parameters.toJson, coordinatesToSave);
@@ -133,138 +131,51 @@ public class CoordinateClient {
                '}';
     }
 
-    public class WorldListWithTileIdsForZ {
-
-        private final double coordinatesZ;
-        private final List<TileCoordinates> worldList;
-        private final List<Integer> originalIndexList;
-        private List<List<TileCoordinates>> worldListWithTileIds;
-
-        public WorldListWithTileIdsForZ(final double coordinatesZ) {
-            this(coordinatesZ, new ArrayList<TileCoordinates>());
-        }
-
-        public WorldListWithTileIdsForZ(final double coordinatesZ,
-                                        final List<TileCoordinates> worldList) {
-            this.coordinatesZ = coordinatesZ;
-            this.worldList = worldList;
-            this.originalIndexList = new ArrayList<>();
-        }
-
-        public List<List<TileCoordinates>> getWorldListWithTileIds() {
-            return worldListWithTileIds;
-        }
-
-        public void addCoordinates(final TileCoordinates tileCoordinates,
-                                   final int originalIndex) {
-            worldList.add(tileCoordinates);
-            originalIndexList.add(originalIndex);
-        }
-
-        public void retrieveTileIds()
-                throws IOException {
-
-            worldListWithTileIds = renderDataClient.getTileIdsForCoordinates(worldList, stack, coordinatesZ);
-
-            if (worldList.size() != worldListWithTileIds.size()) {
-                throw new IllegalStateException("mapped " + worldList.size() + " coordinates to " +
-                                                worldListWithTileIds.size() +
-                                                " coordinate lists with tileIds but counts should be the same");
-            }
-
-            LOG.info("retrieveTileIds: requested tile IDs for {} coordinates with z {}",
-                     worldListWithTileIds.size(), coordinatesZ);
-        }
-
-        public List<List<TileCoordinates>> deriveAndInsertLocalCoordinates(final List<List<TileCoordinates>> localListOfLists)
-                throws IOException, InterruptedException {
-
-            final List<List<TileCoordinates>> populatedLocalListOfLists;
-
-            final List<List<TileCoordinates>> localListOfListsForZ =
-                    worldToLocal(worldListWithTileIds, getResolvedTiles(coordinatesZ), coordinatesZ);
-
-            if (originalIndexList == null) {
-                populatedLocalListOfLists = localListOfListsForZ;
-            } else {
-                populatedLocalListOfLists = localListOfLists;
-                for (int i = 0; i < localListOfListsForZ.size(); i++) {
-                    populatedLocalListOfLists.set(originalIndexList.get(i), localListOfListsForZ.get(i));
-                }
-            }
-
-            return populatedLocalListOfLists;
-        }
-
+    public List<List<TileCoordinates>> getWorldCoordinatesWithTileIds(final List<TileCoordinates> worldCoordinatesList)
+            throws IOException {
+        return renderDataClient.getTileIdsForCoordinates(worldCoordinatesList,
+                                                         stack,
+                                                         z);
     }
 
-    public Map<Double, WorldListWithTileIdsForZ> getWorldCoordinatesWithTileIds(final List<TileCoordinates> worldList)
-            throws IOException, IllegalStateException {
-
-        LOG.info("getWorldCoordinatesWithTileIds: entry, worldList size is {}", worldList.size());
-
-        final Map<Double, WorldListWithTileIdsForZ> zToWorldMap = new HashMap<>();
-
-        if (z == null) {
-
-            TileCoordinates tileCoordinates;
-            double[] coordinateArray;
-            double coordinateZ;
-            WorldListWithTileIdsForZ worldListWithTileIdsForZ;
-            for (int i = 0; i < worldList.size(); i++) {
-
-                tileCoordinates = worldList.get(i);
-                coordinateArray = tileCoordinates.getWorld();
-                if (coordinateArray.length < 3) {
-                    throw new IllegalStateException("coordinate [" + i + "] is missing a z value");
-                }
-                coordinateZ = coordinateArray[2];
-
-                worldListWithTileIdsForZ = zToWorldMap.get(coordinateZ);
-
-                if (worldListWithTileIdsForZ == null) {
-                    worldListWithTileIdsForZ = new WorldListWithTileIdsForZ(coordinateZ);
-                    zToWorldMap.put(coordinateZ, worldListWithTileIdsForZ);
-                }
-
-                worldListWithTileIdsForZ.addCoordinates(tileCoordinates, i);
-            }
-
-            LOG.info("getWorldCoordinatesWithTileIds: organized {} coordinates into {} z groups",
-                     worldList.size(), zToWorldMap.size());
-
-        } else {
-            zToWorldMap.put(z, new WorldListWithTileIdsForZ(z, worldList));
-        }
-
-        for (final WorldListWithTileIdsForZ worldListWithTileIdsForZ : zToWorldMap.values()) {
-            worldListWithTileIdsForZ.retrieveTileIds();
-        }
-
-        return zToWorldMap;
-    }
-
-    public List<List<TileCoordinates>> worldToLocal(final Map<Double, WorldListWithTileIdsForZ> worldCoordinatesWithTileIds,
-                                                    final int totalCoordinateCount)
+    public List<List<TileCoordinates>> worldToLocalInBatches(final List<TileCoordinates> loadedWorldCoordinates)
             throws IOException, InterruptedException {
 
-        List<List<TileCoordinates>> localListOfLists = new ArrayList<>(totalCoordinateCount);
-        if (z == null) {
-            for (int i = 0; i < totalCoordinateCount; i++) {
-                localListOfLists.add(null);
-            }
-        }
+        final int totalCoordinatesToMap = loadedWorldCoordinates.size();
 
-        for (final WorldListWithTileIdsForZ coordinatesWithTileIdsForZ : worldCoordinatesWithTileIds.values()) {
-            localListOfLists = coordinatesWithTileIdsForZ.deriveAndInsertLocalCoordinates(localListOfLists);
+        final List<List<TileCoordinates>> localListOfLists = new ArrayList<>(totalCoordinatesToMap);
+
+        final int batchSize = 25000;
+        for (int fromIndex = 0; fromIndex < totalCoordinatesToMap; fromIndex += batchSize) {
+
+            final long startTime = System.currentTimeMillis();
+
+            final int toIndex = Math.min((fromIndex + batchSize), totalCoordinatesToMap);
+
+            LOG.info("worldToLocalInBatches: processing points {} to {} of {}",
+                     fromIndex, toIndex - 1, totalCoordinatesToMap);
+
+            final List<List<TileCoordinates>> worldCoordinatesWithTileIds =
+                    getWorldCoordinatesWithTileIds(loadedWorldCoordinates.subList(fromIndex,
+                                                                                  toIndex));
+            final ResolvedTileSpecCollection tiles = getTiles(worldCoordinatesWithTileIds);
+            localListOfLists.addAll(worldToLocal(worldCoordinatesWithTileIds, tiles));
+
+            final long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
+            final int elapsedMinutes = (int) ((elapsedSeconds / 60.0) + 0.5);
+            final String elapsedTimeLog = elapsedMinutes > 0 ? elapsedMinutes + " minutes" :
+                                          elapsedSeconds + " seconds";
+
+            LOG.info("worldToLocalInBatches: mapped points {} to {} of {} in {}",
+                     fromIndex, toIndex - 1, totalCoordinatesToMap, elapsedTimeLog);
+
         }
 
         return localListOfLists;
     }
 
     public List<List<TileCoordinates>> worldToLocal(final List<List<TileCoordinates>> worldListOfLists,
-                                                    final ResolvedTileSpecCollection tiles,
-                                                    final Double zForAllTiles)
+                                                    final ResolvedTileSpecCollection tiles)
             throws IOException, InterruptedException {
 
         final List<List<TileCoordinates>> localListOfLists;
@@ -280,7 +191,7 @@ public class CoordinateClient {
 
             for (int i = 1; i < batchIndexes.size(); i++) {
                 final WorldToLocalMapper mapper = new WorldToLocalMapper(stack,
-                                                                         zForAllTiles,
+                                                                         z,
                                                                          tiles,
                                                                          worldListOfLists,
                                                                          batchIndexes.get(i-1),
@@ -317,7 +228,7 @@ public class CoordinateClient {
 
     public List<TileCoordinates> localToWorld(final List<List<TileCoordinates>> localCoordinatesList)
             throws IOException, InterruptedException {
-        return localToWorld(localCoordinatesList, getResolvedTiles(z));
+        return localToWorld(localCoordinatesList, getTiles(localCoordinatesList));
     }
 
     public List<TileCoordinates> localToWorld(final List<List<TileCoordinates>> localListOfLists,
@@ -372,16 +283,39 @@ public class CoordinateClient {
         return worldList;
     }
 
-    private ResolvedTileSpecCollection getResolvedTiles(final Double tileZ) {
-        ResolvedTileSpecCollection tiles;
+    private ResolvedTileSpecCollection getTiles(final List<List<TileCoordinates>> listOfCoordinateLists) {
+
+        final Set<String> tileIdSet = new HashSet<>(listOfCoordinateLists.size());
+        for (final List<TileCoordinates> coordinatesList : listOfCoordinateLists) {
+            for (final TileCoordinates coordinates : coordinatesList) {
+                tileIdSet.add(coordinates.getTileId());
+            }
+        }
+
+        final List<String> tileIdList = new ArrayList<>(tileIdSet.size());
+        List<TileSpec> tileSpecList = new ArrayList<>(listOfCoordinateLists.size());
         try {
-            tiles = renderDataClient.getResolvedTiles(stack, tileZ);
+
+            final int maxTileIdsPerRequest = 50000;
+
+            for (final String tileId : tileIdSet) {
+                if (tileIdList.size() == maxTileIdsPerRequest) {
+                    tileSpecList.addAll(renderDataClient.getTileSpecsWithIds(tileIdList, stack));
+                    tileIdList.clear();
+                }
+                tileIdList.add(tileId);
+            }
+
+            if (tileIdList.size() > 0) {
+                tileSpecList.addAll(renderDataClient.getTileSpecsWithIds(tileIdList, stack));
+            }
+
         } catch (final Throwable t) {
             LOG.warn("failed to retireve tile specs", t);
-            tiles = new ResolvedTileSpecCollection();
+            tileSpecList = new ArrayList<>();
         }
-        tiles.resolveTileSpecs();
-        return tiles;
+
+        return new ResolvedTileSpecCollection(new ArrayList<TransformSpec>(), tileSpecList);
     }
 
     public static List<TileCoordinates> loadJsonArrayOfCoordinates(final String path)
@@ -563,7 +497,8 @@ public class CoordinateClient {
             }
 
             if (tileSpecList.size() == 0) {
-                throw new IllegalArgumentException("no tile specifications found in layer " + z + " of stack " + stack +
+                final String zMessage = z == null ? "" : "layer " + z + " of ";
+                throw new IllegalArgumentException("no tile specifications found in " + zMessage + "stack " + stack +
                                                    " for " + Arrays.toString(coordinatesList.get(0).getWorld()));
             }
 

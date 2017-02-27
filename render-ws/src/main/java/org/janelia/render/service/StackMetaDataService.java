@@ -603,7 +603,7 @@ public class StackMetaDataService {
      *         Tile specs will contain with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */
-    @Path("project/{project}/stack/{stack}/tile-specs-with-ids")
+    @Path("owner/{owner}/project/{project}/stack/{stack}/tile-specs-with-ids")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -623,6 +623,9 @@ public class StackMetaDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             tileSpecList = renderDao.getTileSpecs(stackId, tileIdList);
+            for (final TileSpec tileSpec : tileSpecList) {
+                tileSpec.flattenTransforms();
+            }
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
