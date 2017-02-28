@@ -92,7 +92,7 @@ public class CoordinateClient {
                 if (parameters.localToWorld) {
                     final List<List<TileCoordinates>> loadedLocalCoordinates =
                             loadJsonArrayOfArraysOfCoordinates(parameters.fromJson);
-                    coordinatesToSave = client.localToWorld(loadedLocalCoordinates);
+                    coordinatesToSave = client.localToWorldInBatches(loadedLocalCoordinates);
                 } else {
                     final List<TileCoordinates> loadedWorldCoordinates =
                             loadJsonArrayOfCoordinates(parameters.fromJson);
@@ -141,34 +141,21 @@ public class CoordinateClient {
     public List<List<TileCoordinates>> worldToLocalInBatches(final List<TileCoordinates> loadedWorldCoordinates)
             throws IOException, InterruptedException {
 
-        final int totalCoordinatesToMap = loadedWorldCoordinates.size();
+        final BatchHelper batchHelper = new BatchHelper("worldToLocalInBatches", loadedWorldCoordinates.size());
 
-        final List<List<TileCoordinates>> localListOfLists = new ArrayList<>(totalCoordinatesToMap);
+        final List<List<TileCoordinates>> localListOfLists = new ArrayList<>(batchHelper.totalCoordinatesToMap);
 
-        final int batchSize = 25000;
-        for (int fromIndex = 0; fromIndex < totalCoordinatesToMap; fromIndex += batchSize) {
+        for (int fromIndex = 0; fromIndex < batchHelper.totalCoordinatesToMap; fromIndex += batchHelper.batchSize) {
 
-            final long startTime = System.currentTimeMillis();
+            final int toIndex = batchHelper.getToIndexAndLogStart(fromIndex);
 
-            final int toIndex = Math.min((fromIndex + batchSize), totalCoordinatesToMap);
-
-            LOG.info("worldToLocalInBatches: processing points {} to {} of {}",
-                     fromIndex, toIndex - 1, totalCoordinatesToMap);
-
-            final List<List<TileCoordinates>> worldCoordinatesWithTileIds =
+            final List<List<TileCoordinates>> batchWorldCoordinatesWithTileIds =
                     getWorldCoordinatesWithTileIds(loadedWorldCoordinates.subList(fromIndex,
                                                                                   toIndex));
-            final ResolvedTileSpecCollection tiles = getTiles(worldCoordinatesWithTileIds);
-            localListOfLists.addAll(worldToLocal(worldCoordinatesWithTileIds, tiles));
+            final ResolvedTileSpecCollection tiles = getTiles(batchWorldCoordinatesWithTileIds);
+            localListOfLists.addAll(worldToLocal(batchWorldCoordinatesWithTileIds, tiles));
 
-            final long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
-            final int elapsedMinutes = (int) ((elapsedSeconds / 60.0) + 0.5);
-            final String elapsedTimeLog = elapsedMinutes > 0 ? elapsedMinutes + " minutes" :
-                                          elapsedSeconds + " seconds";
-
-            LOG.info("worldToLocalInBatches: mapped points {} to {} of {} in {}",
-                     fromIndex, toIndex - 1, totalCoordinatesToMap, elapsedTimeLog);
-
+            batchHelper.logCompletion(fromIndex, toIndex);
         }
 
         return localListOfLists;
@@ -226,9 +213,27 @@ public class CoordinateClient {
         return localListOfLists;
     }
 
-    public List<TileCoordinates> localToWorld(final List<List<TileCoordinates>> localCoordinatesList)
+    public List<TileCoordinates> localToWorldInBatches(final List<List<TileCoordinates>> loadedLocalCoordinates)
             throws IOException, InterruptedException {
-        return localToWorld(localCoordinatesList, getTiles(localCoordinatesList));
+
+        final BatchHelper batchHelper = new BatchHelper("localToWorldInBatches", loadedLocalCoordinates.size());
+
+        final List<TileCoordinates> worldList = new ArrayList<>(batchHelper.totalCoordinatesToMap);
+
+        for (int fromIndex = 0; fromIndex < batchHelper.totalCoordinatesToMap; fromIndex += batchHelper.batchSize) {
+
+            final int toIndex = batchHelper.getToIndexAndLogStart(fromIndex);
+
+            final List<List<TileCoordinates>> batchLocalCoordinates =
+                    loadedLocalCoordinates.subList(fromIndex, toIndex);
+
+            final ResolvedTileSpecCollection tiles = getTiles(batchLocalCoordinates);
+            worldList.addAll(localToWorld(batchLocalCoordinates, tiles));
+
+            batchHelper.logCompletion(fromIndex, toIndex);
+        }
+
+        return worldList;
     }
 
     public List<TileCoordinates> localToWorld(final List<List<TileCoordinates>> localListOfLists,
@@ -311,7 +316,7 @@ public class CoordinateClient {
             }
 
         } catch (final Throwable t) {
-            LOG.warn("failed to retireve tile specs", t);
+            LOG.warn("failed to retrieve tile specs", t);
             tileSpecList = new ArrayList<>();
         }
 
@@ -634,6 +639,41 @@ public class CoordinateClient {
             return tileCoordinates;
         }
 
+    }
+
+    private class BatchHelper {
+
+        private final String methodName;
+        private final int batchSize;
+        private final int totalCoordinatesToMap;
+        private long startTime;
+
+        public BatchHelper(final String methodName,
+                           final int totalCoordinatesToMap) {
+            this.methodName = methodName;
+            this.startTime = System.currentTimeMillis();
+            this.totalCoordinatesToMap = totalCoordinatesToMap;
+            this.batchSize = 25000;
+        }
+
+        public int getToIndexAndLogStart(final int fromIndex) {
+            startTime = System.currentTimeMillis();
+            final int toIndex = Math.min((fromIndex + batchSize), totalCoordinatesToMap);
+            LOG.info("{}: processing points {} to {} of {}",
+                     methodName, fromIndex + 1, toIndex, totalCoordinatesToMap);
+            return toIndex;
+        }
+
+        public void logCompletion(final int fromIndex,
+                                  final int toIndex) {
+            final long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
+            final int elapsedMinutes = (int) ((elapsedSeconds / 60.0) + 0.5);
+            final String elapsedTimeLog = elapsedMinutes > 0 ? elapsedMinutes + " minutes" :
+                                          elapsedSeconds + " seconds";
+            LOG.info("{}: mapped points {} to {} of {} in {}",
+                     methodName, fromIndex + 1, toIndex, totalCoordinatesToMap, elapsedTimeLog);
+
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CoordinateClient.class);
