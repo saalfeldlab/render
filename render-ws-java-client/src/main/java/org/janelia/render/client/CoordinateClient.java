@@ -43,6 +43,24 @@ public class CoordinateClient {
         @Parameter(names = "--z", description = "Z value for all source coordinates", required = false)
         private Double z;
 
+        @Parameter(
+                names = "--toOwner",
+                description = "Name of target stack owner (for round trip mapping, default is source owner)",
+                required = false)
+        private String toOwner;
+
+        @Parameter(
+                names = "--toProject",
+                description = "Name of target stack project (for round trip mapping, default is source owner)",
+                required = false)
+        private String toProject;
+
+        @Parameter(
+                names = "--toStack",
+                description = "Name of target stack (for round trip mapping, omit for one way mapping)",
+                required = false)
+        private String toStack;
+
         @Parameter(names = "--fromJson", description = "JSON file containing coordinates to be mapped (.json, .gz, or .zip)", required = true)
         private String fromJson;
 
@@ -54,6 +72,21 @@ public class CoordinateClient {
 
         @Parameter(names = "--numberOfThreads", description = "Number of threads to use for conversion", required = false)
         private int numberOfThreads = 1;
+
+        public String getToOwner() {
+            if (toOwner == null) {
+                toOwner = owner;
+            }
+            return toOwner;
+        }
+
+        public String getToProject() {
+            if (toProject == null) {
+                toProject = project;
+            }
+            return toProject;
+        }
+
     }
 
     public static void main(final String[] args) {
@@ -90,13 +123,34 @@ public class CoordinateClient {
                                                                      parameters.numberOfThreads);
                 final Object coordinatesToSave;
                 if (parameters.localToWorld) {
+
                     final List<List<TileCoordinates>> loadedLocalCoordinates =
                             loadJsonArrayOfArraysOfCoordinates(parameters.fromJson);
                     coordinatesToSave = client.localToWorldInBatches(loadedLocalCoordinates);
+
                 } else {
+
                     final List<TileCoordinates> loadedWorldCoordinates =
                             loadJsonArrayOfCoordinates(parameters.fromJson);
-                    coordinatesToSave = client.worldToLocalInBatches(loadedWorldCoordinates);
+
+                    if (parameters.toStack == null) {
+                        coordinatesToSave =
+                                client.worldToLocalInBatches(loadedWorldCoordinates);
+                    } else {
+
+                        final RenderDataClient targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                                                             parameters.getToOwner(),
+                                                                                             parameters.getToProject());
+
+                        final CoordinateClient targetClient = new CoordinateClient(parameters.toStack,
+                                                                                   null,
+                                                                                   targetRenderDataClient,
+                                                                                   parameters.numberOfThreads);
+
+                        coordinatesToSave =
+                                targetClient.localToWorldInBatches(
+                                        client.worldToLocalInBatches(loadedWorldCoordinates));
+                    }
                 }
 
                 FileUtil.saveJsonFile(parameters.toJson, coordinatesToSave);
