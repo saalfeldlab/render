@@ -1,13 +1,20 @@
 package org.janelia.render.client;
 
+import com.google.common.io.Files;
+
+import java.io.File;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.StackVersion;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -18,6 +25,15 @@ import org.junit.Test;
  * @author Eric Trautman
  */
 public class CoordinateClientTest {
+
+    private File targetSwcDirectory;
+
+    @After
+    public void tearDown() throws Exception {
+        if (targetSwcDirectory != null) {
+            MipmapClientTest.deleteRecursive(targetSwcDirectory);
+        }
+    }
 
     @Test
     public void testRoundTripMapping() throws Exception {
@@ -130,6 +146,41 @@ public class CoordinateClientTest {
         validateBatchIndexes(3, 1, 2, 1, 1);
         validateBatchIndexes(3, 3, 4, 1, 1);
         validateBatchIndexes(1, 3, 2, 3, 3);
+    }
+
+    @Test
+    public void testSwcHelper()
+            throws Exception {
+
+        final CoordinateClient.SWCHelper swcHelper = new CoordinateClient.SWCHelper();
+
+        final StackVersion stackVersion = new StackVersion(new Date(), null, null, null, 4.0, 4.0, 35.0, null, null);
+        final List<TileCoordinates> coordinatesList = new ArrayList<>();
+
+        final String swcSourceDirectoryPath = "src/test/resources/swc";
+        swcHelper.addCoordinatesForAllFilesInDirectory(swcSourceDirectoryPath,
+                                                       stackVersion,
+                                                       coordinatesList);
+
+        Assert.assertEquals("invalid number of coordinates parsed from swc directory", 99, coordinatesList.size());
+
+        targetSwcDirectory = MipmapClientTest.createTestDirectory("target_swc");
+
+        swcHelper.saveMappedResults(coordinatesList,
+                                    stackVersion,
+                                    targetSwcDirectory.getAbsolutePath());
+
+        final String swcFileName = "8881_swc.swc";
+        final File sourceFile = new File(swcSourceDirectoryPath, swcFileName);
+        final File targetFile = new File(targetSwcDirectory, swcFileName);
+        Assert.assertTrue(targetFile.getAbsolutePath() + " was not saved", targetFile.exists());
+
+        final String beforeText = Files.toString(sourceFile, Charset.defaultCharset());
+        final String afterText = Files.toString(targetFile, Charset.defaultCharset());
+
+        final String hackedAfterTextForComparison = afterText.replaceAll("\\.0", "").replaceAll("\n", "\r\n");
+
+        Assert.assertEquals(swcFileName + " contents should be the same", beforeText, hackedAfterTextForComparison);
     }
 
     private void validateBatchIndexes(final int threads,

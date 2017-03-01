@@ -2,22 +2,34 @@ package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,10 +73,16 @@ public class CoordinateClient {
                 required = false)
         private String toStack;
 
-        @Parameter(names = "--fromJson", description = "JSON file containing coordinates to be mapped (.json, .gz, or .zip)", required = true)
+        @Parameter(names = "--fromSwcDirectory", description = "directory containing source .swc files", required = false)
+        private String fromSwcDirectory;
+
+        @Parameter(names = "--toSwcDirectory", description = "directory to write target .swc files with mapped coordinates", required = false)
+        private String toSwcDirectory;
+
+        @Parameter(names = "--fromJson", description = "JSON file containing coordinates to be mapped (.json, .gz, or .zip)", required = false)
         private String fromJson;
 
-        @Parameter(names = "--toJson", description = "JSON file where mapped coordinates are to be stored (.json, .gz, or .zip)", required = true)
+        @Parameter(names = "--toJson", description = "JSON file where mapped coordinates are to be stored (.json, .gz, or .zip)", required = false)
         private String toJson;
 
         @Parameter(names = "--localToWorld", description = "Convert from local to world coordinates (default is to convert from world to local)", required = false, arity = 0)
@@ -87,6 +105,63 @@ public class CoordinateClient {
             return toProject;
         }
 
+        public void validateInputAndOutput() throws IllegalArgumentException {
+
+            File file;
+
+            if (fromJson == null) {
+
+                if (localToWorld) {
+                    throw new IllegalArgumentException("--localToWorld mapping requires --fromJson to be specified");
+                }
+
+                if (fromSwcDirectory == null) {
+                    throw new IllegalArgumentException("must specify input location with either --fromJson or --fromSwcDirectory");
+                } else if (toSwcDirectory == null) {
+                    throw new IllegalArgumentException("must specify output location with --toSwcDirectory");
+                }
+
+                file = new File(fromSwcDirectory);
+                if (! file.isDirectory() || ! file.canRead()) {
+                    throw new IllegalArgumentException("--fromSwcDirectory " + file.getAbsolutePath() + " must be a readable directory");
+                }
+
+                file = new File(toSwcDirectory);
+                if (! file.exists()) {
+                    if (! file.mkdirs()) {
+                        throw new IllegalArgumentException("failed to create toSwcDirectory " + file.getAbsolutePath());
+                    }
+                } else if (! file.isDirectory() || ! file.canWrite()) {
+                    throw new IllegalArgumentException("--toSwcDirectory " + file.getAbsolutePath() + " must be a writable directory");
+                }
+
+                if (toStack == null) {
+                    throw new IllegalArgumentException("--toStack must be specified for SWC mapping");
+                }
+
+            } else if (toJson == null) {
+
+                throw new IllegalArgumentException("must specify output location with --toJson");
+
+            } else {
+
+                file = new File(fromJson).getAbsoluteFile();
+                if (! file.canRead()) {
+                    throw new IllegalArgumentException("--fromJson " + file.getAbsolutePath() + " must be readable");
+                }
+
+                file = new File(toJson).getAbsoluteFile();
+                if (! file.exists()) {
+                    file = file.getParentFile();
+                }
+                if (! file.canWrite()) {
+                    throw new IllegalArgumentException("--toJson " + file.getAbsolutePath() + " must be writeable");
+                }
+
+            }
+
+        }
+
     }
 
     public static void main(final String[] args) {
@@ -97,19 +172,7 @@ public class CoordinateClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args, CoordinateClient.class);
-
-                final File fromFile = new File(parameters.fromJson).getAbsoluteFile();
-                if (! fromFile.canRead()) {
-                    throw new IllegalArgumentException("cannot read " + fromFile.getAbsolutePath());
-                }
-
-                File toFile = new File(parameters.toJson).getAbsoluteFile();
-                if (! toFile.exists()) {
-                    toFile = toFile.getParentFile();
-                }
-                if (! toFile.canWrite()) {
-                    throw new IllegalArgumentException("cannot write " + toFile.getAbsolutePath());
-                }
+                parameters.validateInputAndOutput();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -121,39 +184,69 @@ public class CoordinateClient {
                                                                      parameters.z,
                                                                      renderDataClient,
                                                                      parameters.numberOfThreads);
-                final Object coordinatesToSave;
+                SWCHelper swcHelper = null;
+                StackVersion toStackVersion = null;
+                Object coordinatesToSave = null;
+
                 if (parameters.localToWorld) {
 
                     final List<List<TileCoordinates>> loadedLocalCoordinates =
                             loadJsonArrayOfArraysOfCoordinates(parameters.fromJson);
                     coordinatesToSave = client.localToWorldInBatches(loadedLocalCoordinates);
 
+                } else if (parameters.toStack == null) {
+
+                    final List<TileCoordinates> worldCoordinates = loadJsonArrayOfCoordinates(parameters.fromJson);
+                    coordinatesToSave = client.worldToLocalInBatches(worldCoordinates);
+
                 } else {
 
-                    final List<TileCoordinates> loadedWorldCoordinates =
-                            loadJsonArrayOfCoordinates(parameters.fromJson);
 
-                    if (parameters.toStack == null) {
-                        coordinatesToSave =
-                                client.worldToLocalInBatches(loadedWorldCoordinates);
+                    final RenderDataClient targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                                                         parameters.getToOwner(),
+                                                                                         parameters.getToProject());
+
+                    final CoordinateClient targetClient = new CoordinateClient(parameters.toStack,
+                                                                               null,
+                                                                               targetRenderDataClient,
+                                                                               parameters.numberOfThreads);
+
+                    final List<TileCoordinates> worldCoordinates;
+
+                    if (parameters.fromSwcDirectory == null) {
+
+                        worldCoordinates = loadJsonArrayOfCoordinates(parameters.fromJson);
+
                     } else {
 
-                        final RenderDataClient targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                                             parameters.getToOwner(),
-                                                                                             parameters.getToProject());
+                        swcHelper = new SWCHelper();
+                        final StackVersion fromStackVersion = client.getStackVersion();
+                        toStackVersion = targetClient.getStackVersion();
+                        worldCoordinates = new ArrayList<>();
 
-                        final CoordinateClient targetClient = new CoordinateClient(parameters.toStack,
-                                                                                   null,
-                                                                                   targetRenderDataClient,
-                                                                                   parameters.numberOfThreads);
+                        swcHelper.addCoordinatesForAllFilesInDirectory(parameters.fromSwcDirectory,
+                                                                       fromStackVersion,
+                                                                       worldCoordinates);
 
-                        coordinatesToSave =
-                                targetClient.localToWorldInBatches(
-                                        client.worldToLocalInBatches(loadedWorldCoordinates));
                     }
+
+                    final List<TileCoordinates> targetWorldCoordinates =
+                            targetClient.localToWorldInBatches(
+                                    client.worldToLocalInBatches(worldCoordinates));
+
+                    if (swcHelper == null) {
+                        coordinatesToSave = targetWorldCoordinates;
+                    } else {
+                        swcHelper.saveMappedResults(targetWorldCoordinates,
+                                                    toStackVersion,
+                                                    parameters.toSwcDirectory);
+                    }
+
                 }
 
-                FileUtil.saveJsonFile(parameters.toJson, coordinatesToSave);
+                if (swcHelper == null) {
+                    FileUtil.saveJsonFile(parameters.toJson, coordinatesToSave);
+                }
 
             }
         };
@@ -183,6 +276,24 @@ public class CoordinateClient {
                ", stack='" + stack + '\'' +
                ", z='" + z + '\'' +
                '}';
+    }
+
+    public StackVersion getStackVersion() throws IOException {
+
+        final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stack);
+        final StackVersion stackVersion = stackMetaData.getCurrentVersion();
+
+        if ((stackVersion == null) ||
+            (stackVersion.getStackResolutionX() == null) ||
+            (stackVersion.getStackResolutionY() == null) ||
+            (stackVersion.getStackResolutionZ() == null)) {
+            throw new IOException("SWC mapping cannot be performed because stack " +
+                                  stackMetaData.getStackId() +
+                                  " does not have resolution attributes.  " +
+                                  "Data for the current stack version is: " + stackVersion);
+        }
+
+        return stackVersion;
     }
 
     public List<List<TileCoordinates>> getWorldCoordinatesWithTileIds(final List<TileCoordinates> worldCoordinatesList)
@@ -730,5 +841,143 @@ public class CoordinateClient {
         }
     }
 
+    public static class SWCHelper {
+
+        // SWC format specification: http://research.mssm.edu/cnic/swc.html
+
+        private final Map<File, int[]> fileToIndexRangeMap;
+        private final Pattern readPattern = Pattern.compile("^\\d+ \\d+ (\\S+) (\\S+) (\\S+) .+");
+        private final Pattern writePattern = Pattern.compile("^(\\d+ \\d+ )\\S+ \\S+ \\S+( .+)");
+
+        public SWCHelper() {
+            this.fileToIndexRangeMap = new LinkedHashMap<>();
+        }
+
+        public void addCoordinatesForAllFilesInDirectory(final String directoryPath,
+                                                         final StackVersion sourceStackVersion,
+                                                         final List<TileCoordinates> coordinatesList)
+                throws IOException {
+
+            try (DirectoryStream<Path> directoryStream =
+                         Files.newDirectoryStream(Paths.get(directoryPath), "*.swc")) {
+                for (final Path path : directoryStream) {
+                    addCoordinatesForFile(new File(path.toString()),
+                                          sourceStackVersion,
+                                          coordinatesList);
+                }
+            }
+
+        }
+
+        public List<TileCoordinates> addCoordinatesForFile(final File sourceFile,
+                                                           final StackVersion sourceStackVersion,
+                                                           final List<TileCoordinates> coordinatesList)
+                throws IOException {
+
+            final int startIndex = coordinatesList.size();
+
+            final double xPerPixel = sourceStackVersion.getStackResolutionX();
+            final double yPerPixel = sourceStackVersion.getStackResolutionY();
+            final double zPerPixel = sourceStackVersion.getStackResolutionZ();
+
+            try (BufferedReader reader = new BufferedReader(new FileReader(sourceFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    final Matcher m = readPattern.matcher(line);
+                    if (m.matches()) {
+                        final double[] pixelCoordinates = {
+                                Double.parseDouble(m.group(1)) / xPerPixel,
+                                Double.parseDouble(m.group(2)) / yPerPixel,
+                                Double.parseDouble(m.group(3)) / zPerPixel
+                        };
+                        coordinatesList.add(TileCoordinates.buildWorldInstance(null, pixelCoordinates));
+                    }
+                }
+            } catch (final Throwable t) {
+                throw new IOException("failed to parse " + sourceFile.getAbsolutePath(), t);
+            }
+
+            final int stopIndex = coordinatesList.size();
+
+            if (stopIndex > startIndex) {
+                fileToIndexRangeMap.put(sourceFile, new int[] {startIndex, stopIndex});
+            }
+
+            return coordinatesList;
+        }
+
+        public void saveMappedResults(final List<TileCoordinates> coordinatesList,
+                                      final StackVersion targetStackVersion,
+                                      final String targetDirectoryPath)
+                throws IOException {
+
+            final StringBuilder failureData = new StringBuilder();
+
+            final double xPerPixel = targetStackVersion.getStackResolutionX();
+            final double yPerPixel = targetStackVersion.getStackResolutionY();
+            final double zPerPixel = targetStackVersion.getStackResolutionZ();
+
+            final File targetDirectory = new File(targetDirectoryPath).getAbsoluteFile();
+
+            for (final File sourceFile : fileToIndexRangeMap.keySet()) {
+
+                final int[] range = fileToIndexRangeMap.get(sourceFile);
+                final List<TileCoordinates> coordinatesForFile = coordinatesList.subList(range[0], range[1]);
+                final File targetFile = new File(targetDirectory, sourceFile.getName());
+
+                int i = 0;
+                try (BufferedReader reader = new BufferedReader(new FileReader(sourceFile));
+                     BufferedWriter writer = new BufferedWriter(new FileWriter(targetFile))) {
+
+                    String line;
+                    TileCoordinates tileCoordinates;
+                    double[] world;
+                    while ((line = reader.readLine()) != null) {
+
+                        final Matcher m = writePattern.matcher(line);
+
+                        if (m.matches()) {
+
+                            tileCoordinates = coordinatesForFile.get(i);
+                            world = tileCoordinates.getWorld();
+
+                            if ((world != null) && (world.length > 2)) {
+                                writer.write(m.group(1));
+                                writer.write((world[0] * xPerPixel) + " " +
+                                             (world[1] * yPerPixel) + " " +
+                                             (world[2] * zPerPixel));
+                                writer.write(m.group(2));
+                                writer.newLine();
+                            } else {
+                                failureData.append(sourceFile.getAbsolutePath()).append(": ").append(line).append("\n");
+                            }
+
+                            i++;
+
+                        } else {
+                            writer.write(line);
+                            writer.newLine();
+                        }
+
+                    }
+
+                    LOG.info("saved {}", targetFile.getAbsolutePath());
+
+                } catch (final Throwable t) {
+                    throw new IOException("failed to parse " + sourceFile.getAbsolutePath(), t);
+                }
+
+            }
+
+            if (failureData.length() > 0) {
+                final File failuresFile = new File(targetDirectory, "failed_mappings.txt");
+                Files.write(Paths.get(failuresFile.getAbsolutePath()), failureData.toString().getBytes());
+                LOG.warn("saved failed mapping details in {}", failuresFile.getAbsolutePath());
+            }
+
+        }
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(CoordinateClient.class);
+
 }
