@@ -185,7 +185,6 @@ public class CoordinateClient {
                                                                      renderDataClient,
                                                                      parameters.numberOfThreads);
                 SWCHelper swcHelper = null;
-                StackVersion toStackVersion = null;
                 Object coordinatesToSave = null;
 
                 if (parameters.localToWorld) {
@@ -219,13 +218,10 @@ public class CoordinateClient {
 
                     } else {
 
-                        swcHelper = new SWCHelper();
-                        final StackVersion fromStackVersion = client.getStackVersion();
-                        toStackVersion = targetClient.getStackVersion();
+                        swcHelper = new SWCHelper(client.getStackVersion(), targetClient.getStackVersion());
                         worldCoordinates = new ArrayList<>();
 
                         swcHelper.addCoordinatesForAllFilesInDirectory(parameters.fromSwcDirectory,
-                                                                       fromStackVersion,
                                                                        worldCoordinates);
 
                     }
@@ -238,7 +234,6 @@ public class CoordinateClient {
                         coordinatesToSave = targetWorldCoordinates;
                     } else {
                         swcHelper.saveMappedResults(targetWorldCoordinates,
-                                                    toStackVersion,
                                                     parameters.toSwcDirectory);
                     }
 
@@ -845,16 +840,20 @@ public class CoordinateClient {
 
         // SWC format specification: http://research.mssm.edu/cnic/swc.html
 
+        private final StackVersion sourceStackVersion;
+        private final StackVersion targetStackVersion;
         private final Map<File, int[]> fileToIndexRangeMap;
         private final Pattern readPattern = Pattern.compile("^\\d+ \\d+ (\\S+) (\\S+) (\\S+) .+");
-        private final Pattern writePattern = Pattern.compile("^(\\d+ \\d+ )\\S+ \\S+ \\S+( .+)");
+        private final Pattern writePattern = Pattern.compile("^(\\d+ \\d+ )\\S+ \\S+ (\\S+)( .+)");
 
-        public SWCHelper() {
+        public SWCHelper(final StackVersion sourceStackVersion,
+                         final StackVersion targetStackVersion) {
+            this.sourceStackVersion = sourceStackVersion;
+            this.targetStackVersion = targetStackVersion;
             this.fileToIndexRangeMap = new LinkedHashMap<>();
         }
 
         public void addCoordinatesForAllFilesInDirectory(final String directoryPath,
-                                                         final StackVersion sourceStackVersion,
                                                          final List<TileCoordinates> coordinatesList)
                 throws IOException {
 
@@ -862,7 +861,6 @@ public class CoordinateClient {
                          Files.newDirectoryStream(Paths.get(directoryPath), "*.swc")) {
                 for (final Path path : directoryStream) {
                     addCoordinatesForFile(new File(path.toString()),
-                                          sourceStackVersion,
                                           coordinatesList);
                 }
             }
@@ -870,7 +868,6 @@ public class CoordinateClient {
         }
 
         public List<TileCoordinates> addCoordinatesForFile(final File sourceFile,
-                                                           final StackVersion sourceStackVersion,
                                                            final List<TileCoordinates> coordinatesList)
                 throws IOException {
 
@@ -888,7 +885,7 @@ public class CoordinateClient {
                         final double[] pixelCoordinates = {
                                 Double.parseDouble(m.group(1)) / xPerPixel,
                                 Double.parseDouble(m.group(2)) / yPerPixel,
-                                Double.parseDouble(m.group(3)) / zPerPixel
+                                roundDoubleToInt(Double.parseDouble(m.group(3)) / zPerPixel) // force z to integral value
                         };
                         coordinatesList.add(TileCoordinates.buildWorldInstance(null, pixelCoordinates));
                     }
@@ -907,7 +904,6 @@ public class CoordinateClient {
         }
 
         public void saveMappedResults(final List<TileCoordinates> coordinatesList,
-                                      final StackVersion targetStackVersion,
                                       final String targetDirectoryPath)
                 throws IOException {
 
@@ -916,6 +912,7 @@ public class CoordinateClient {
             final double xPerPixel = targetStackVersion.getStackResolutionX();
             final double yPerPixel = targetStackVersion.getStackResolutionY();
             final double zPerPixel = targetStackVersion.getStackResolutionZ();
+            final double sourceZPerPixel = sourceStackVersion.getStackResolutionZ();
 
             final File targetDirectory = new File(targetDirectoryPath).getAbsoluteFile();
 
@@ -945,8 +942,8 @@ public class CoordinateClient {
                                 writer.write(m.group(1));
                                 writer.write((world[0] * xPerPixel) + " " +
                                              (world[1] * yPerPixel) + " " +
-                                             (world[2] * zPerPixel));
-                                writer.write(m.group(2));
+                                             getTargetZ(m.group(2), sourceZPerPixel, world[2], zPerPixel));
+                                writer.write(m.group(3));
                                 writer.newLine();
                             } else {
                                 failureData.append(sourceFile.getAbsolutePath()).append(": ").append(line).append("\n");
@@ -975,6 +972,21 @@ public class CoordinateClient {
                 LOG.warn("saved failed mapping details in {}", failuresFile.getAbsolutePath());
             }
 
+        }
+
+        private int roundDoubleToInt(final double value) {
+            return (int) (value + 0.5);
+        }
+
+        private double getTargetZ(final String sourceZString,
+                                  final double sourceZPerPixel,
+                                  final double targetZPixels,
+                                  final double targetZPerPixel) {
+
+            final double sourceZ = Double.parseDouble(sourceZString);
+            final double sourceZPixels = sourceZ / sourceZPerPixel;
+            final double remainderZPixels = sourceZPixels - roundDoubleToInt(sourceZPixels);
+            return (targetZPixels + remainderZPixels) * targetZPerPixel;
         }
     }
 

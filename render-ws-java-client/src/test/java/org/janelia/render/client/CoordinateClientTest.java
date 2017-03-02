@@ -152,14 +152,12 @@ public class CoordinateClientTest {
     public void testSwcHelper()
             throws Exception {
 
-        final CoordinateClient.SWCHelper swcHelper = new CoordinateClient.SWCHelper();
-
         final StackVersion stackVersion = new StackVersion(new Date(), null, null, null, 4.0, 4.0, 35.0, null, null);
+        final CoordinateClient.SWCHelper swcHelper = new CoordinateClient.SWCHelper(stackVersion, stackVersion);
         final List<TileCoordinates> coordinatesList = new ArrayList<>();
 
         final String swcSourceDirectoryPath = "src/test/resources/swc";
         swcHelper.addCoordinatesForAllFilesInDirectory(swcSourceDirectoryPath,
-                                                       stackVersion,
                                                        coordinatesList);
 
         Assert.assertEquals("invalid number of coordinates parsed from swc directory", 99, coordinatesList.size());
@@ -167,7 +165,6 @@ public class CoordinateClientTest {
         targetSwcDirectory = MipmapClientTest.createTestDirectory("target_swc");
 
         swcHelper.saveMappedResults(coordinatesList,
-                                    stackVersion,
                                     targetSwcDirectory.getAbsolutePath());
 
         final String swcFileName = "8881_swc.swc";
