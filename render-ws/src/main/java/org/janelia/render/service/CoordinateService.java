@@ -58,8 +58,8 @@ public class CoordinateService {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            value = "Map world coordinates to tileId(s)",
-            notes = "Locates all tiles that contain each specified world coordinate.  An array of arrays of coordinates with tileIds are then returned.",
+            value = "Map world coordinates in one layer to tileId(s)",
+            notes = "Locates all tiles that contain each specified world coordinate.  World coordinates need only identify x and y since z is provided.",
             response = TileCoordinates.class,
             responseContainer = "List")
     @ApiResponses(value = {
@@ -91,6 +91,25 @@ public class CoordinateService {
         }
 
         return response;
+    }
+
+    @Path("project/{project}/stack/{stack}/tileIdsForCoordinates")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Map world coordinates in any layer to tileId(s)",
+            notes = "Locates all tiles that contain each specified world coordinate.  World coordinates must identify x, y, and z.",
+            response = TileCoordinates.class,
+            responseContainer = "List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "problem with specified coordinates")
+    })
+    public Response getTileIdsForCoordinatesAcrossZ(@PathParam("owner") final String owner,
+                                                    @PathParam("project") final String project,
+                                                    @PathParam("stack") final String stack,
+                                                    final List<TileCoordinates> worldCoordinatesList) {
+        return getTileIdsForCoordinates(owner, project, stack, null, worldCoordinatesList);
     }
 
     @Path("local-to-world-coordinates/{x},{y}")

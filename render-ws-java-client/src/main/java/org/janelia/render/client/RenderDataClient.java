@@ -677,6 +677,36 @@ public class RenderDataClient {
     }
 
     /**
+     * @return list of tile specs with the specified ids.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<TileSpec> getTileSpecsWithIds(final List<String> tileIdList,
+                                              final String stack)
+            throws IOException {
+
+        final String tileIdListJson = JsonUtils.MAPPER.writeValueAsString(tileIdList);
+        final StringEntity stringEntity = new StringEntity(tileIdListJson, ContentType.APPLICATION_JSON);
+        final URI uri = getUri(urls.getStackUrlString(stack) + "/tile-specs-with-ids");
+        final String requestContext = "PUT " + uri;
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        final TypeReference<List<TileSpec>> typeReference =
+                new TypeReference<List<TileSpec>>() {};
+        final JsonUtils.GenericHelper<List<TileSpec>> helper =
+                new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<TileSpec>> responseHandler =
+                new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getTileSpecsWithIds: submitting {}", requestContext);
+
+        return httpClient.execute(httpPut, responseHandler);
+    }
+
+    /**
      * Sends the specified world coordinates to the server to be mapped to tiles.
      * Because tiles overlap, each coordinate can potentially be mapped to multiple tiles.
      * The result is a list of coordinate lists for all mapped tiles.

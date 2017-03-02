@@ -19,6 +19,7 @@ package org.janelia.render.client;
 import ij.process.ImageProcessor;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
@@ -44,12 +45,7 @@ public class MipmapClientTest {
 
     @Before
     public void setup() throws Exception {
-        final SimpleDateFormat TIMESTAMP = new SimpleDateFormat("yyyyMMddHHmmssSSS");
-        final String timestamp = TIMESTAMP.format(new Date());
-        mipmapRootDirectory = new File("test_mipmap_client_" + timestamp).getCanonicalFile();
-        if (! mipmapRootDirectory.mkdir() ) {
-            throw new IllegalStateException("failed to create " + mipmapRootDirectory.getAbsolutePath());
-        }
+        mipmapRootDirectory = createTestDirectory("test_mipmap_client");
     }
 
     @After
@@ -151,8 +147,18 @@ public class MipmapClientTest {
 
     }
 
+    public static File createTestDirectory(final String baseName)
+            throws IOException {
+        final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+        final String timestamp = sdf.format(new Date());
+        final File testDirectory = new File(baseName + "_" + timestamp).getCanonicalFile();
+        if (! testDirectory.mkdir() ) {
+            throw new IOException("failed to create " + testDirectory.getAbsolutePath());
+        }
+        return testDirectory;
+    }
 
-    private static boolean deleteRecursive(final File file) {
+    public static boolean deleteRecursive(final File file) {
 
         boolean deleteSuccessful = true;
 

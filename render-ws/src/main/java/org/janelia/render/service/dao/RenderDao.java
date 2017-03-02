@@ -254,7 +254,6 @@ public class RenderDao {
         return resolvedIdToSpecMap;
     }
 
-
     /**
      * @return a list of resolved tile specifications for all tiles that encompass the specified coordinates.
      *
@@ -285,6 +284,34 @@ public class RenderDao {
         return renderParameters.getTileSpecs();
     }
 
+    /**
+     * @return a list of resolved tile specifications for the specified tileIds.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing or if the stack cannot be found.
+     */
+    public List<TileSpec> getTileSpecs(final StackId stackId,
+                                       final List<String> tileIds)
+            throws IllegalArgumentException {
+
+        MongoUtil.validateRequiredParameter("stackId", stackId);
+
+        final Document tileQuery = new Document("tileId", new Document("$in", tileIds));
+
+        final RenderParameters renderParameters = new RenderParameters();
+        addResolvedTileSpecs(stackId, tileQuery, renderParameters);
+
+        final List<TileSpec> tileSpecs;
+        if (renderParameters.hasTileSpecs()) {
+            tileSpecs = renderParameters.getTileSpecs();
+        } else {
+            tileSpecs = new ArrayList<>();
+            LOG.info("no tile specs with requested ids found in stack " + stackId);
+        }
+
+        return tileSpecs;
+    }
+
     public void writeCoordinatesWithTileIds(final StackId stackId,
                                             final Double z,
                                             final List<TileCoordinates> worldCoordinatesList,
@@ -295,7 +322,6 @@ public class RenderDao {
                   stackId, z, worldCoordinatesList.size());
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
-        MongoUtil.validateRequiredParameter("z", z);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
         final Document tileKeys = new Document("tileId", 1).append("_id", 0);
@@ -311,6 +337,7 @@ public class RenderDao {
         int coordinateCount = 0;
 
         double[] world;
+        double coordinateZ = z == null ? -1 : z;
         Document tileQuery = new Document();
         MongoCursor<Document> cursor = null;
         Document document;
@@ -328,11 +355,18 @@ public class RenderDao {
 
                 if (world == null) {
                     throw new IllegalArgumentException("world values are missing for element " + i);
-                } else if (world.length < 2) {
-                    throw new IllegalArgumentException("world values must include both x and y for element " + i);
+                } else if (z == null) {
+                    if (world.length < 3) {
+                        throw new IllegalArgumentException("world values must include x, y, and z for element " + i);
+                    }
+                    coordinateZ = world[2];
+                } else {
+                    if (world.length < 2) {
+                        throw new IllegalArgumentException("world values must include both x and y for element " + i);
+                    }
                 }
 
-                tileQuery = getIntersectsBoxQuery(z, world[0], world[1], world[0], world[1]);
+                tileQuery = getIntersectsBoxQuery(coordinateZ, world[0], world[1], world[0], world[1]);
 
                 // EXAMPLE:   find({"z": 3299.0 , "minX": {"$lte": 95000.0}, "minY": {"$lte": 200000.0}, "maxX": {"$gte": 95000.0}, "maxY": {"$gte": 200000.0}}, {"tileId":1, "_id": 0}).sort({"tileId" : 1})
                 // INDEXES:   z_1_minY_1_minX_1_maxY_1_maxX_1_tileId_1 (z1_minX_1, z1_maxX_1, ... used for edge cases)
@@ -1682,9 +1716,15 @@ public class RenderDao {
             }
         }
 
-        LOG.debug("addResolvedTileSpecs: found {} tile spec(s) for {}.find({}).sort({})",
-                  renderParameters.numberOfTileSpecs(), MongoUtil.fullName(tileCollection),
-                  tileQuery.toJson(), orderBy.toJson());
+        if (LOG.isDebugEnabled()) {
+            String queryJson = tileQuery.toJson();
+            if (queryJson.length() > 100) {
+                queryJson = queryJson.substring(0, 95) + " ...}";
+            }
+            LOG.debug("addResolvedTileSpecs: found {} tile spec(s) for {}.find({}).sort({})",
+                      renderParameters.numberOfTileSpecs(), MongoUtil.fullName(tileCollection),
+                      queryJson, orderBy.toJson());
+        }
 
         return resolveTransformReferencesForTiles(stackId, renderParameters.getTileSpecs());
     }

@@ -30,8 +30,7 @@ public class ResolvedTileSpecCollection implements Serializable {
     private transient TileSpecValidator tileSpecValidator;
 
     // no-arg constructor needed for JSON deserialization
-    @SuppressWarnings("unused")
-    private ResolvedTileSpecCollection() {
+    public ResolvedTileSpecCollection() {
         this(new ArrayList<TransformSpec>(), new ArrayList<TileSpec>());
     }
 
