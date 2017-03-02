@@ -12,6 +12,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="Maven: io.swagger:swagger-annotations:1.5.12" level="project" />
     <orderEntry type="module" module-name="render-app" />
     <orderEntry type="library" name="Maven: mpicbg:mpicbg_:1.0.1" level="project" />
     <orderEntry type="library" name="Maven: mpicbg:mpicbg:1.0.1" level="project" />
