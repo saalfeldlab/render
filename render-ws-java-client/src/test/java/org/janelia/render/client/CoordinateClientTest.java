@@ -175,7 +175,7 @@ public class CoordinateClientTest {
         final String beforeText = Files.toString(sourceFile, Charset.defaultCharset());
         final String afterText = Files.toString(targetFile, Charset.defaultCharset());
 
-        final String hackedAfterTextForComparison = afterText.replaceAll("\\.0", "").replaceAll("\n", "\r\n");
+        final String hackedAfterTextForComparison = afterText.replaceAll("\\.0", "");
 
         Assert.assertEquals(swcFileName + " contents should be the same", beforeText, hackedAfterTextForComparison);
     }
