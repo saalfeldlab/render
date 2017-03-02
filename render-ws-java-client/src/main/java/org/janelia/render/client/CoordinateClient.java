@@ -938,16 +938,19 @@ public class CoordinateClient {
                             tileCoordinates = coordinatesForFile.get(i);
                             world = tileCoordinates.getWorld();
 
+                            writer.write(m.group(1));
+
                             if ((world != null) && (world.length > 2)) {
-                                writer.write(m.group(1));
                                 writer.write((world[0] * xPerPixel) + " " +
                                              (world[1] * yPerPixel) + " " +
                                              getTargetZ(m.group(2), sourceZPerPixel, world[2], zPerPixel));
-                                writer.write(m.group(3));
-                                writer.newLine();
                             } else {
+                                writer.write("-999 -999 -999"); // mark error with bad coordinates but keep swc references intact
                                 failureData.append(sourceFile.getAbsolutePath()).append(": ").append(line).append("\n");
                             }
+
+                            writer.write(m.group(3));
+                            writer.newLine();
 
                             i++;
 
