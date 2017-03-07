@@ -24,6 +24,7 @@ import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.client.request.WaitingRetryHandler;
@@ -102,6 +103,20 @@ public class RenderDataClient {
         final JsonResponseHandler<StackMetaData> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
         LOG.info("getStackMetaData: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    public List<StackId> getOwnerStacks() throws IOException {
+        final URI uri = getUri(urls.getOwnerStackIdsUrlString());
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        TypeReference<List<StackId>> stackIdsTypeReference = new TypeReference<List<StackId>>(){};;
+
+        final JsonUtils.GenericHelper<List<StackId>> helper = new JsonUtils.GenericHelper<>(stackIdsTypeReference);
+        final JsonResponseHandler<List<StackId>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getOwnerStacks: submitting {}", requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
     }
