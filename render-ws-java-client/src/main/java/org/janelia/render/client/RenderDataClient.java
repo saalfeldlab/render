@@ -24,6 +24,7 @@ import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.client.request.WaitingRetryHandler;
@@ -306,6 +307,33 @@ public class RenderDataClient {
         final HttpPut httpPut = new HttpPut(uri);
 
         LOG.info("setStackState: submitting {}", requestContext);
+
+        httpClient.execute(httpPut, responseHandler);
+    }
+
+    /**
+     * Updates the mipmapPathBuilder for the specified stack.
+     *
+     * @param  stack              stack to change.
+     * @param  mipmapPathBuilder  new builder.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void setMipmapPathBuilder(final String stack,
+                                     final MipmapPathBuilder mipmapPathBuilder)
+            throws IOException {
+
+        final String json = mipmapPathBuilder.toJson();
+        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+        final URI uri = getUri(urls.getStackUrlString(stack) + "/mipmapPathBuilder");
+        final String requestContext = "PUT " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        LOG.info("setMipmapPathBuilder: submitting {}", requestContext);
 
         httpClient.execute(httpPut, responseHandler);
     }

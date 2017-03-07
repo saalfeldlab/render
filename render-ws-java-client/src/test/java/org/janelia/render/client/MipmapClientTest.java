@@ -21,6 +21,7 @@ import ij.process.ImageProcessor;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Map;
 
@@ -55,8 +56,10 @@ public class MipmapClientTest {
     @Test
     public void testGenerateMissingMipmapFiles() throws Exception {
 
-        MipmapClient.Parameters parameters = new MipmapClient.Parameters(mipmapRootDirectory.getAbsolutePath(),
-                                                                               2);
+        MipmapClient.CommonParameters commonParameters =
+                new MipmapClient.CommonParameters(mipmapRootDirectory.getAbsolutePath(),
+                                                  2);
+        MipmapClient.Parameters parameters = new MipmapClient.Parameters(commonParameters, new ArrayList<Double>());
         MipmapClient mipmapClient = new MipmapClient(parameters);
 
         final ImageAndMask sourceImageAndMask = new ImageAndMask("src/test/resources/col0060_row0140_cam0.tif",
@@ -111,8 +114,9 @@ public class MipmapClientTest {
         final File previouslyGeneratedImageFile = new File(imageAndMask.getImageFilePath());
         final long expectedLastModified = previouslyGeneratedImageFile.lastModified();
 
-        parameters = new MipmapClient.Parameters(mipmapRootDirectory.getAbsolutePath(),
-                                                 level);
+        commonParameters = new MipmapClient.CommonParameters(mipmapRootDirectory.getAbsolutePath(),
+                                                             level);
+        parameters = new MipmapClient.Parameters(commonParameters, new ArrayList<Double>());
         mipmapClient = new MipmapClient(parameters);
         tileSpec.setMipmapPathBuilder(mipmapClient.getMipmapPathBuilder());
 

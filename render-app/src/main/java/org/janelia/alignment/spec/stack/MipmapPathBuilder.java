@@ -104,6 +104,10 @@ public class MipmapPathBuilder
         return extension;
     }
 
+    public boolean hasSamePathAndExtension(final MipmapPathBuilder that) {
+        return this.rootPath.equals(that.rootPath) && this.extension.equals(that.extension);
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }

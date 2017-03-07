@@ -24,20 +24,25 @@ public class RenderDataClientParameters
 
     @Parameter(
             names = "--owner",
-            description = "Owner for all stacks",
+            description = "Stack owner",
             required = true)
     public String owner;
 
     @Parameter(
             names = "--project",
-            description = "Project for all stacks",
+            description = "Stack project",
             required = true)
     public String project;
 
     public RenderDataClientParameters() {
-        this.baseDataUrl = null;
-        this.owner = null;
-        this.project = null;
+        this(null, null, null);
     }
 
+    public RenderDataClientParameters(final String baseDataUrl,
+                                      final String owner,
+                                      final String project) {
+        this.baseDataUrl = baseDataUrl;
+        this.owner = owner;
+        this.project = project;
+    }
 }
