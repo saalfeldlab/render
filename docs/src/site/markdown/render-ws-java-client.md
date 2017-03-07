@@ -84,8 +84,8 @@ java -cp current-ws-standalone.jar org.janelia.render.client.BoxClient [options]
 ```
 
 ### Source Code: 
-* Java: [BoxClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/BoxClient.java)
-* Launch Script: [render_catmaid_boxes.sh](render-ws-java-client/src/main/java/scripts/render_catmaid_boxes.sh) 
+* Java: [BoxClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/BoxClient.java)
+* Launch Script: [render_catmaid_boxes.sh](../../../../render-ws-java-client/src/main/java/scripts/render_catmaid_boxes.sh) 
 
 
 
@@ -148,8 +148,8 @@ At Janelia, we've mapped 1.8 million points in an hour using ten 32 core nodes w
 This works out to a mapping rate of roughly 100 points per minute per core.
 
 ### Source Code: 
-* Java: [CoordinateClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/CoordinateClient.java)
-* Launch Script: [map_coordinates.sh](render-ws-java-client/src/main/java/scripts/map_coordinates.sh) 
+* Java: [CoordinateClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/CoordinateClient.java)
+* Launch Script: [map_coordinates.sh](../../../../render-ws-java-client/src/main/java/scripts/map_coordinates.sh) 
 
 ### Examples:
 
@@ -288,7 +288,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.CopyStackClient [op
 ```
 
 ### Source Code: 
-* Java: [CopyStackClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/CopyStackClient.java)
+* Java: [CopyStackClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/CopyStackClient.java)
 
 
 
@@ -319,8 +319,8 @@ java -cp current-ws-standalone.jar org.janelia.render.client.ImportJsonClient [o
 ```
 
 ### Source Code: 
-* Java: [ImportJsonClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/ImportJsonClient.java)
-* Launch Script: [import_json.sh](render-ws-java-client/src/main/java/scripts/import_json.sh) 
+* Java: [ImportJsonClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/ImportJsonClient.java)
+* Launch Script: [import_json.sh](../../../../render-ws-java-client/src/main/java/scripts/import_json.sh) 
 
 
 
@@ -346,7 +346,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.ImportMatchClient [
 ```
 
 ### Source Code: 
-* Java: [ImportMatchClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/ImportMatchClient.java)
+* Java: [ImportMatchClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/ImportMatchClient.java)
 
 
 
@@ -386,8 +386,8 @@ java -cp current-ws-standalone.jar org.janelia.render.client.ImportTransformChan
 ```
 
 ### Source Code: 
-* Java: [ImportTransformChangesClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/ImportTransformChangesClient.java)
-* Launch Script: [import_transform_changes.sh](render-ws-java-client/src/main/java/scripts/import_transform_changes.sh) 
+* Java: [ImportTransformChangesClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/ImportTransformChangesClient.java)
+* Launch Script: [import_transform_changes.sh](../../../../render-ws-java-client/src/main/java/scripts/import_transform_changes.sh) 
 
 
 
@@ -433,8 +433,8 @@ java -cp current-ws-standalone.jar org.janelia.render.client.MipmapClient [optio
 ```
 
 ### Source Code: 
-* Java: [MipmapClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/MipmapClient.java)
-* Launch Script: [render_mipmaps.sh](render-ws-java-client/src/main/java/scripts/render_mipmaps.sh) 
+* Java: [MipmapClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/MipmapClient.java)
+* Launch Script: [render_mipmaps.sh](../../../../render-ws-java-client/src/main/java/scripts/render_mipmaps.sh) 
 
 
 
@@ -473,7 +473,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.RenderSectionClient
 ```
 
 ### Source Code: 
-* Java: [RenderSectionClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/RenderSectionClient.java)
+* Java: [RenderSectionClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/RenderSectionClient.java)
 
 
 
@@ -501,7 +501,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.SectionUpdateClient
 ```
 
 ### Source Code: 
-* Java: [SectionUpdateClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/SectionUpdateClient.java)
+* Java: [SectionUpdateClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/SectionUpdateClient.java)
 
 
 
@@ -560,8 +560,8 @@ java -cp current-ws-standalone.jar org.janelia.render.client.StackClient [option
 ```
 
 ### Source Code: 
-* Java: [StackClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/StackClient.java)
-* Launch Script: [manage_stacks.sh](render-ws-java-client/src/main/java/scripts/manage_stacks.sh) 
+* Java: [StackClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/StackClient.java)
+* Launch Script: [manage_stacks.sh](../../../../render-ws-java-client/src/main/java/scripts/manage_stacks.sh) 
 
 
 
@@ -629,7 +629,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.TilePairClient [opt
 ```
 
 ### Source Code: 
-* Java: [TilePairClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/TilePairClient.java)
+* Java: [TilePairClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/TilePairClient.java)
 
 
 
@@ -670,7 +670,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.TileRemovalClient [
 ```
 
 ### Source Code: 
-* Java: [TileRemovalClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/TileRemovalClient.java)
+* Java: [TileRemovalClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/TileRemovalClient.java)
 
 
 
@@ -714,7 +714,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.TransformSectionCli
 ```
 
 ### Source Code: 
-* Java: [TransformSectionClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/TransformSectionClient.java)
+* Java: [TransformSectionClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/TransformSectionClient.java)
 
 
 
@@ -742,7 +742,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.ValidateTilesClient
 ```
 
 ### Source Code: 
-* Java: [ValidateTilesClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/ValidateTilesClient.java)
+* Java: [ValidateTilesClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/ValidateTilesClient.java)
 
 
 
@@ -781,8 +781,8 @@ java -cp current-ws-standalone.jar org.janelia.render.client.WarpTransformClient
 ```
 
 ### Source Code: 
-* Java: [WarpTransformClient.java](render-ws-java-client/src/main/java/org/janelia/render/client/WarpTransformClient.java)
-* Launch Script: [generate_warp_transforms.sh](render-ws-java-client/src/main/java/scripts/generate_warp_transforms.sh) 
+* Java: [WarpTransformClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/WarpTransformClient.java)
+* Launch Script: [generate_warp_transforms.sh](../../../../render-ws-java-client/src/main/java/scripts/generate_warp_transforms.sh) 
 
 
     
@@ -795,7 +795,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.WarpTransformClient
   [Import Transform Changes Client]: <#import-transform-changes-client> 
   [Mipmap Client]: <#mipmap-client> 
   [Render Section Client]: <#render-section-client> 
-  [render web services]: <docs/src/site/markdown/render-ws.md>
+  [render web services]: <render-ws.md>
   [Section Update Client]: <#section-update-client> 
   [Stack Client]: <#stack-client> 
   [SWC format]: <http://research.mssm.edu/cnic/swc.html>
