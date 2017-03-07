@@ -85,7 +85,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.BoxClient [options]
 
 ### Source Code: 
 * Java: [BoxClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/BoxClient.java)
-* Launch Script: [render_catmaid_boxes.sh](../../../../render-ws-java-client/src/main/java/scripts/render_catmaid_boxes.sh) 
+* Launch Script: [render_catmaid_boxes.sh](../../../../render-ws-java-client/src/main/scripts/render_catmaid_boxes.sh) 
 
 
 
@@ -149,7 +149,7 @@ This works out to a mapping rate of roughly 100 points per minute per core.
 
 ### Source Code: 
 * Java: [CoordinateClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/CoordinateClient.java)
-* Launch Script: [map_coordinates.sh](../../../../render-ws-java-client/src/main/java/scripts/map_coordinates.sh) 
+* Launch Script: [map_coordinates.sh](../../../../render-ws-java-client/src/main/scripts/map_coordinates.sh) 
 
 ### Examples:
 
@@ -320,7 +320,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.ImportJsonClient [o
 
 ### Source Code: 
 * Java: [ImportJsonClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/ImportJsonClient.java)
-* Launch Script: [import_json.sh](../../../../render-ws-java-client/src/main/java/scripts/import_json.sh) 
+* Launch Script: [import_json.sh](../../../../render-ws-java-client/src/main/scripts/import_json.sh) 
 
 
 
@@ -387,7 +387,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.ImportTransformChan
 
 ### Source Code: 
 * Java: [ImportTransformChangesClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/ImportTransformChangesClient.java)
-* Launch Script: [import_transform_changes.sh](../../../../render-ws-java-client/src/main/java/scripts/import_transform_changes.sh) 
+* Launch Script: [import_transform_changes.sh](../../../../render-ws-java-client/src/main/scripts/import_transform_changes.sh) 
 
 
 
@@ -434,7 +434,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.MipmapClient [optio
 
 ### Source Code: 
 * Java: [MipmapClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/MipmapClient.java)
-* Launch Script: [render_mipmaps.sh](../../../../render-ws-java-client/src/main/java/scripts/render_mipmaps.sh) 
+* Launch Script: [render_mipmaps.sh](../../../../render-ws-java-client/src/main/scripts/render_mipmaps.sh) 
 
 
 
@@ -561,7 +561,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.StackClient [option
 
 ### Source Code: 
 * Java: [StackClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/StackClient.java)
-* Launch Script: [manage_stacks.sh](../../../../render-ws-java-client/src/main/java/scripts/manage_stacks.sh) 
+* Launch Script: [manage_stacks.sh](../../../../render-ws-java-client/src/main/scripts/manage_stacks.sh) 
 
 
 
@@ -782,7 +782,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.WarpTransformClient
 
 ### Source Code: 
 * Java: [WarpTransformClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/WarpTransformClient.java)
-* Launch Script: [generate_warp_transforms.sh](../../../../render-ws-java-client/src/main/java/scripts/generate_warp_transforms.sh) 
+* Launch Script: [generate_warp_transforms.sh](../../../../render-ws-java-client/src/main/scripts/generate_warp_transforms.sh) 
 
 
     
