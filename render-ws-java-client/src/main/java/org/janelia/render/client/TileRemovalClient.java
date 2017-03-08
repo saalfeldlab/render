@@ -182,6 +182,9 @@ public class TileRemovalClient {
                 final RenderDataClient renderDataClient = new RenderDataClient(parameters.baseDataUrl,
                                                                                parameters.owner,
                                                                                parameters.project);
+
+                renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
+
                 parameters.loadTileIds(renderDataClient);
 
                 final TileRemovalClient client = new TileRemovalClient(parameters);

@@ -5,7 +5,6 @@ import com.beust.jcommander.Parameter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -25,7 +24,6 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackMetaData.StackState;
-import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,7 +146,7 @@ public class CopyStackClient {
 
                 final CopyStackClient client = new CopyStackClient(parameters);
 
-                client.setUpToStack();
+                client.setUpDerivedStack();
 
                 for (final Double z : parameters.zValues) {
                     client.copyLayer(z);
@@ -186,35 +184,9 @@ public class CopyStackClient {
         }
     }
 
-    public void setUpToStack() throws Exception {
-
-        StackState toStackState = null;
-        boolean isLoading = true;
-        try {
-            final StackMetaData toStackMetaData = toDataClient.getStackMetaData(parameters.toStack);
-            isLoading = toStackMetaData.isLoading();
-            toStackState = toStackMetaData.getState();
-        } catch (final Throwable t) {
-            LOG.info("to stack does not exist, creating it ...");
-            final StackMetaData fromStackMetaData = fromDataClient.getStackMetaData(parameters.fromStack);
-            final StackVersion sourceVersion = fromStackMetaData.getCurrentVersion();
-            final StackVersion targetVerison = new StackVersion(new Date(),
-                                                                "copied from " + fromStackMetaData.getStackId(),
-                                                                null,
-                                                                null,
-                                                                sourceVersion.getStackResolutionX(),
-                                                                sourceVersion.getStackResolutionY(),
-                                                                sourceVersion.getStackResolutionZ(),
-                                                                null,
-                                                                sourceVersion.getMipmapPathBuilder());
-            toDataClient.saveStackVersion(parameters.toStack, targetVerison);
-        }
-
-        if (! isLoading) {
-            LOG.info("{} stack state is {}, will try to set it back to LOADING ...", parameters.toStack, toStackState);
-            toDataClient.setStackState(parameters.toStack, StackState.LOADING);
-        }
-
+    public void setUpDerivedStack() throws Exception {
+        final StackMetaData fromStackMetaData = fromDataClient.getStackMetaData(parameters.fromStack);
+        toDataClient.setupDerivedStack(fromStackMetaData, parameters.toStack);
     }
 
     public void completeToStack() throws Exception {

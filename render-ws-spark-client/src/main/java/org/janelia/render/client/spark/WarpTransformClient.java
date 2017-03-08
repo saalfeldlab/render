@@ -165,11 +165,8 @@ public class WarpTransformClient
                                                                        parameters.getTargetOwner(),
                                                                        parameters.getTargetProject());
 
-        final StackMetaData targetStackMetaData = targetDataClient.getStackMetaData(parameters.targetStack);
-        if (! targetStackMetaData.isLoading()) {
-            throw new IllegalArgumentException("target stack must be in the loading state, meta data is " +
-                                               targetStackMetaData);
-        }
+        final StackMetaData montageStackMetaData = sourceDataClient.getStackMetaData(parameters.montageStack);
+        targetDataClient.setupDerivedStack(montageStackMetaData, parameters.targetStack);
 
         final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
 
