@@ -21,11 +21,11 @@ import org.slf4j.LoggerFactory;
 public class ImportMatchClient {
 
     @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    private static class Parameters extends MatchDataClientParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        // NOTE: --baseDataUrl, --owner, and --collection parameters defined in MatchDataClientParameters
 
-        @Parameter(names = "--batchSize", description = "maximum number of matches to batch in a single request (default 10000)", required = false)
+        @Parameter(names = "--batchSize", description = "maximum number of matches to batch in a single request", required = false)
         private Integer batchSize = 10000;
 
         @Parameter(description = "list of canvas match data files, each file (.json, .gz, or .zip) can contain an arbitrary set of matches", required = true)
@@ -60,7 +60,7 @@ public class ImportMatchClient {
         this.parameters = parameters;
         this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
                                                      parameters.owner,
-                                                     parameters.project);
+                                                     parameters.collection);
     }
 
     public void importMatchData(final String dataFile) throws Exception {

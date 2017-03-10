@@ -2,10 +2,12 @@ package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +75,9 @@ public class TransformSectionClient {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final TransformSectionClient client = new TransformSectionClient(parameters);
+
+                client.setupDerivedStack();
+
                 for (final String z : parameters.zValues) {
                     client.generateStackDataForZ(new Double(z));
                 }
@@ -113,6 +118,12 @@ public class TransformSectionClient {
                                                                parameters.targetProject);
         }
 
+    }
+
+    public void setupDerivedStack()
+            throws IOException {
+        final StackMetaData sourceStackMetaData = sourceRenderDataClient.getStackMetaData(parameters.stack);
+        targetRenderDataClient.setupDerivedStack(sourceStackMetaData, parameters.getTargetStack());
     }
 
     public void generateStackDataForZ(final Double z)

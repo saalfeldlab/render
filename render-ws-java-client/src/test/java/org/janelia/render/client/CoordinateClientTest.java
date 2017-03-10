@@ -1,17 +1,20 @@
 package org.janelia.render.client;
 
+import com.google.common.io.Files;
+
+import java.io.File;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
-import mpicbg.trakem2.transform.AffineModel2D;
-
-import org.janelia.alignment.spec.LeafTransformSpec;
-import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.StackVersion;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -22,6 +25,15 @@ import org.junit.Test;
  * @author Eric Trautman
  */
 public class CoordinateClientTest {
+
+    private File targetSwcDirectory;
+
+    @After
+    public void tearDown() throws Exception {
+        if (targetSwcDirectory != null) {
+            MipmapClientTest.deleteRecursive(targetSwcDirectory);
+        }
+    }
 
     @Test
     public void testRoundTripMapping() throws Exception {
@@ -96,12 +108,14 @@ public class CoordinateClientTest {
     public void testRealClient()
             throws Exception {
 
+        final Double z = 3451.0;
+
         final RenderDataClient renderDataClient =
-                new RenderDataClient("http://renderer-dev:8080/render-ws/v1", "flyTEM", "FAFB00");
-        final CoordinateClient client = new CoordinateClient("v5_montage", 3451.0, renderDataClient, 1);
+                new RenderDataClient("http://tem-services:8080/render-ws/v1", "flyTEM", "FAFB00");
+        final CoordinateClient client = new CoordinateClient("v13_align_tps", z, renderDataClient, 1);
 
         final TileCoordinates worldCoord =
-                TileCoordinates.buildWorldInstance(null, new double[]{194000.0, 1000.0});
+                TileCoordinates.buildWorldInstance(null, new double[]{49600.0, 135500.0});
 
         final List<TileCoordinates> worldList = new ArrayList<>();
         worldList.add(worldCoord);
@@ -112,7 +126,7 @@ public class CoordinateClientTest {
 
         final List<TileCoordinates> returnedWorldList = worldListOfLists.get(0);
 
-        Assert.assertEquals("invalid number of coordinates in first world list", 1, returnedWorldList.size());
+        Assert.assertEquals("invalid number of coordinates in first world list", 3, returnedWorldList.size());
 
         final TileCoordinates returnedWorldCoord = returnedWorldList.get(0);
 
@@ -132,6 +146,38 @@ public class CoordinateClientTest {
         validateBatchIndexes(3, 1, 2, 1, 1);
         validateBatchIndexes(3, 3, 4, 1, 1);
         validateBatchIndexes(1, 3, 2, 3, 3);
+    }
+
+    @Test
+    public void testSwcHelper()
+            throws Exception {
+
+        final StackVersion stackVersion = new StackVersion(new Date(), null, null, null, 4.0, 4.0, 35.0, null, null);
+        final CoordinateClient.SWCHelper swcHelper = new CoordinateClient.SWCHelper(stackVersion, stackVersion);
+        final List<TileCoordinates> coordinatesList = new ArrayList<>();
+
+        final String swcSourceDirectoryPath = "src/test/resources/swc";
+        swcHelper.addCoordinatesForAllFilesInDirectory(swcSourceDirectoryPath,
+                                                       coordinatesList);
+
+        Assert.assertEquals("invalid number of coordinates parsed from swc directory", 99, coordinatesList.size());
+
+        targetSwcDirectory = MipmapClientTest.createTestDirectory("target_swc");
+
+        swcHelper.saveMappedResults(coordinatesList,
+                                    targetSwcDirectory.getAbsolutePath());
+
+        final String swcFileName = "8881_swc.swc";
+        final File sourceFile = new File(swcSourceDirectoryPath, swcFileName);
+        final File targetFile = new File(targetSwcDirectory, swcFileName);
+        Assert.assertTrue(targetFile.getAbsolutePath() + " was not saved", targetFile.exists());
+
+        final String beforeText = Files.toString(sourceFile, Charset.defaultCharset());
+        final String afterText = Files.toString(targetFile, Charset.defaultCharset());
+
+        final String hackedAfterTextForComparison = afterText.replaceAll("\\.0", "");
+
+        Assert.assertEquals(swcFileName + " contents should be the same", beforeText, hackedAfterTextForComparison);
     }
 
     private void validateBatchIndexes(final int threads,
@@ -158,13 +204,6 @@ public class CoordinateClientTest {
         final Double z = 9.9;
         final CoordinateClient client = new CoordinateClient(stackName, z, null, numberOfThreads);
 
-        final String transformId = "transform-1";
-        final AffineModel2D noOpAffine = new AffineModel2D();
-        final TransformSpec transform1 = new LeafTransformSpec(transformId,
-                                                               null,
-                                                               noOpAffine.getClass().getName(),
-                                                               noOpAffine.toDataString());
-
         final List<List<TileCoordinates>> worldListOfLists = new ArrayList<>();
         final List<TileSpec> tileSpecList = new ArrayList<>();
         // use same tile to make sure concurrent access doesn't break coordinate mapping
@@ -173,21 +212,12 @@ public class CoordinateClientTest {
 
         for (int i = 0; i < numberOfThreads; i++) {
             final TileCoordinates worldCoord = TileCoordinates.buildWorldInstance(tile.getTileId(),
-                                                                                  new double[]{i, (i+1)});
+                                                                                  new double[]{i, (i+1), z});
             worldListOfLists.add(Collections.singletonList(worldCoord));
         }
 
-        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(Collections.singletonList(transform1),
+        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(new ArrayList<TransformSpec>(),
                                                                                 tileSpecList);
-
-        // Hack: Add ref transform to tile after adding to collection so that it is not resolved by constructor.
-        //       This should mimic what happens after JSON deserialization.
-        final TransformSpec transform1Ref = new ReferenceTransformSpec(transformId);
-        tile.addTransformSpecs(Collections.singletonList(transform1Ref));
-
-        // Then force resolution ...
-        tiles.resolveTileSpecs();
-
         final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
 
         Assert.assertEquals("invalid number of local lists returned",
@@ -232,7 +262,7 @@ public class CoordinateClientTest {
             final double[] expectedArray = worldCoord.getWorld();
             final double[] actualArray = roundTripWorldCoord.getWorld();
             Assert.assertEquals("incorrect round trip world array length for " + context,
-                                expectedArray.length + 1, actualArray.length);
+                                expectedArray.length, actualArray.length);
             for (int j = 0; j < expectedArray.length; j++) {
                 Assert.assertEquals("incorrect round trip value for item " + j + " in " + context,
                                     expectedArray[j], actualArray[j], 0.01);

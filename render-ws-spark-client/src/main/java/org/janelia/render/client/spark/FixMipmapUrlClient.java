@@ -185,11 +185,8 @@ public class FixMipmapUrlClient
                                                                        parameters.getTargetOwner(),
                                                                        parameters.getTargetProject());
 
-        final StackMetaData targetStackMetaData = targetDataClient.getStackMetaData(parameters.getTargetStack());
-        if (! targetStackMetaData.isLoading()) {
-            throw new IllegalArgumentException("target stack must be in the loading state, meta data is " +
-                                               targetStackMetaData);
-        }
+        final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
+        targetDataClient.setupDerivedStack(sourceStackMetaData, parameters.getTargetStack());
 
         final LinkedHashMap<Pattern, String> replacementData = loadReplacementData(parameters.replacementDataFile);
 

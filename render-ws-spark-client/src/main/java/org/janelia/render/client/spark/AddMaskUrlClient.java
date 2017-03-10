@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 public class AddMaskUrlClient
         implements Serializable {
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings("ALL")
     private static class Parameters extends RenderDataClientParameters {
 
         // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
@@ -82,6 +82,12 @@ public class AddMaskUrlClient
                 description = "File containing paths of different sized mask files",
                 required = true)
         private String maskListFile;
+
+        @Parameter(
+                names = "--completeTargetStack",
+                description = "Complete the target stack after adding masks",
+                required = false, arity = 0)
+        private boolean completeTargetStack = false;
 
         public String getTargetOwner() {
             if (targetOwner == null) {
@@ -194,11 +200,8 @@ public class AddMaskUrlClient
                                                                        parameters.getTargetOwner(),
                                                                        parameters.getTargetProject());
 
-        final StackMetaData targetStackMetaData = targetDataClient.getStackMetaData(parameters.getTargetStack());
-        if (! targetStackMetaData.isLoading()) {
-            throw new IllegalArgumentException("target stack must be in the loading state, meta data is " +
-                                               targetStackMetaData);
-        }
+        final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
+        targetDataClient.setupDerivedStack(sourceStackMetaData, parameters.getTargetStack());
 
         final List<MaskData> maskDataList = loadMaskData(parameters.maskListFile);
         LOG.info("loaded {} from {}", maskDataList, parameters.maskListFile);
@@ -267,6 +270,10 @@ public class AddMaskUrlClient
         LOG.info("run: saved {} tiles and transforms", total);
 
         sparkContext.stop();
+
+        if (parameters.completeTargetStack) {
+            targetDataClient.setStackState(parameters.getTargetStack(), StackMetaData.StackState.COMPLETE);
+        }
     }
 
     public static String getMaskUrl(final ImageAndMask imageAndMask,

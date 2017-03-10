@@ -23,7 +23,6 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
-import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.RenderDataClientParameters;
@@ -159,34 +158,11 @@ public class CopyStackClient implements Serializable {
                                                                        parameters.getTargetOwner(),
                                                                        parameters.getTargetProject());
 
-        StackMetaData targetStackMetaData;
-        try {
-            targetStackMetaData = targetDataClient.getStackMetaData(parameters.targetStack);
-        } catch (final Throwable t) {
-            LOG.info("target stack does not exist, creating it ...");
-            final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
-            final StackVersion sourceVersion = sourceStackMetaData.getCurrentVersion();
-            final StackVersion targetVerison = new StackVersion(new Date(),
-                                                                "copied from " + sourceStackMetaData.getStackId(),
-                                                                null,
-                                                                null,
-                                                                sourceVersion.getStackResolutionX(),
-                                                                sourceVersion.getStackResolutionY(),
-                                                                sourceVersion.getStackResolutionZ(),
-                                                                null,
-                                                                sourceVersion.getMipmapPathBuilder());
-            targetDataClient.saveStackVersion(parameters.targetStack, targetVerison);
-            targetStackMetaData = targetDataClient.getStackMetaData(parameters.targetStack);
-        }
-
-        if (! targetStackMetaData.isLoading()) {
-            throw new IllegalArgumentException("target stack must be in the loading state, meta data is " +
-                                               targetStackMetaData);
-        }
+        final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
+        targetDataClient.setupDerivedStack(sourceStackMetaData, parameters.targetStack);
 
         final LeafTransformSpec moveStackTransform;
         if (parameters.moveToOrigin) {
-            final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
             final StackStats sourceStackStats = sourceStackMetaData.getStats();
             final Bounds sourceStackBounds = sourceStackStats.getStackBounds();
 

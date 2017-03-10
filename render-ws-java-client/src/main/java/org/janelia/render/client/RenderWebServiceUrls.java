@@ -100,8 +100,14 @@ public class RenderWebServiceUrls {
     }
 
     public String getTileIdsForCoordinatesUrlString(final String stack,
-                                                    final double z) {
-        return getZUrlString(stack, z) + "/tileIdsForCoordinates";
+                                                    final Double z) {
+        final String baseUrlString;
+        if (z == null) {
+            baseUrlString = getStackUrlString(stack);
+        } else {
+            baseUrlString = getZUrlString(stack, z);
+        }
+        return baseUrlString + "/tileIdsForCoordinates";
     }
 
     public String getRenderParametersUrlString(final String stack,

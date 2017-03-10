@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TransformSectionClient implements Serializable {
 
+    @SuppressWarnings("unused")
     private static class Parameters extends RenderDataClientParameters {
 
         // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
@@ -151,11 +152,8 @@ public class TransformSectionClient implements Serializable {
                                                                        parameters.getTargetOwner(),
                                                                        parameters.getTargetProject());
 
-        final StackMetaData targetStackMetaData = targetDataClient.getStackMetaData(parameters.getTargetStack());
-        if (! targetStackMetaData.isLoading()) {
-            throw new IllegalArgumentException("target stack must be in the loading state, meta data is " +
-                                               targetStackMetaData);
-        }
+        final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
+        targetDataClient.setupDerivedStack(sourceStackMetaData, parameters.getTargetStack());
 
         final LeafTransformSpec stackTransform = new LeafTransformSpec(parameters.transformId,
                                                                        null,

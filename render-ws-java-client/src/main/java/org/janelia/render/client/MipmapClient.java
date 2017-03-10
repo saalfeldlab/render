@@ -22,6 +22,8 @@ import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,27 +36,89 @@ import org.slf4j.LoggerFactory;
 public class MipmapClient {
 
     @SuppressWarnings("ALL")
-    public static class Parameters extends RenderDataClientParameters {
+    public static class CommonParameters extends RenderDataClientParameters {
 
         // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
 
-        @Parameter(names = "--stack", description = "Stack name", required = true)
-        private String stack;
+        @Parameter(
+                names = "--stack",
+                description = "Stack name",
+                required = true)
+        public String stack;
 
-        @Parameter(names = "--rootDirectory", description = "Root directory for mipmaps (e.g. /tier2/flyTEM/nobackup/rendered_mipmaps/FAFB00)", required = true)
-        private String rootDirectory;
+        @Parameter(
+                names = "--rootDirectory",
+                description = "Root directory for mipmaps (e.g. /nrs/flyTEM/rendered_mipmaps/FAFB00)",
+                required = true)
+        protected String rootDirectory;
 
-        @Parameter(names = "--minLevel", description = "Minimum mipmap level to generate", required = false)
-        private Integer minLevel = 1;
+        @Parameter(
+                names = "--minLevel",
+                description = "Minimum mipmap level to generate",
+                required = false)
+        protected Integer minLevel = 1;
 
         @Parameter(names = "--maxLevel", description = "Maximum mipmap level to generate", required = false)
-        private Integer maxLevel = 6;
+        protected Integer maxLevel = 6;
 
-        @Parameter(names = "--format", description = "Format for mipmaps", required = false)
-        private String format = Utils.TIFF_FORMAT;
+        @Parameter(names = "--format", description = "Format for mipmaps (tiff, jpg, png)", required = false)
+        protected String format = Utils.TIFF_FORMAT;
 
         @Parameter(names = "--forceGeneration", description = "Regenerate mipmaps even if they already exist", required = false, arity = 0)
-        private boolean forceGeneration = false;
+        protected boolean forceGeneration = false;
+
+        public CommonParameters() {
+            this(null, null, null, null, null, Utils.TIFF_FORMAT, 1, 6, false);
+        }
+
+        public CommonParameters(final String rootDirectory,
+                                final Integer maxLevel) {
+            this(null, null, null, null, rootDirectory, Utils.TIFF_FORMAT, 1, maxLevel, false);
+        }
+
+        public CommonParameters(final String baseDataUrl,
+                                final String owner,
+                                final String project,
+                                final String stack,
+                                final String rootDirectory,
+                                final String format,
+                                final Integer minLevel,
+                                final Integer maxLevel,
+                                final boolean forceGeneration) {
+            super(baseDataUrl, owner, project);
+            this.stack = stack;
+            this.rootDirectory = rootDirectory;
+            this.format = format;
+            this.minLevel = minLevel;
+            this.maxLevel = maxLevel;
+            this.forceGeneration = forceGeneration;
+        }
+
+        public MipmapPathBuilder getMipmapPathBuilder()
+                throws IOException {
+
+            final File dir = new File(rootDirectory).getCanonicalFile();
+
+            if (! dir.exists()) {
+                throw new IOException("missing root directory " + rootDirectory);
+            }
+
+            if (! dir.canWrite()) {
+                throw new IOException("not allowed to write to root directory " + rootDirectory);
+            }
+
+            String extension = format;
+            // map 'tiff' format to 'tif' extension so that {@link ij.io.Opener#openURL(String)} method will work.
+            if (Utils.TIFF_FORMAT.equals(format)) {
+                extension = "tif";
+            }
+
+            return new MipmapPathBuilder(dir.getPath(), maxLevel, extension);
+        }
+    }
+
+    @SuppressWarnings("ALL")
+    public static class Parameters extends CommonParameters {
 
         @Parameter(names = "--renderGroup", description = "Index (1-n) that identifies portion of layer to render (omit if only one job is being used)", required = false)
         private Integer renderGroup = 1;
@@ -66,33 +130,18 @@ public class MipmapClient {
         private List<Double> zValues;
 
         public Parameters() {
+            this(new CommonParameters(), new ArrayList<Double>());
         }
 
-        /**
-         * Constructor for testing.
-         *
-         * @param  rootDirectory  root directory for rendered tiles.
-         */
-        protected Parameters(final String rootDirectory,
-                             final int maxLevel) {
-            this.rootDirectory = rootDirectory;
-            this.maxLevel = maxLevel;
-            this.zValues = new ArrayList<>();
+        public Parameters(final CommonParameters commonParameters,
+                          final List<Double> zValues) {
+            super(commonParameters.baseDataUrl,
+                  commonParameters.owner, commonParameters.project, commonParameters.stack,
+                  commonParameters.rootDirectory, commonParameters.format,
+                  commonParameters.minLevel, commonParameters.maxLevel, commonParameters.forceGeneration);
+            this.zValues = zValues;
         }
 
-        /**
-         * Maps 'tiff' format to 'tif' extension so that {@link ij.io.Opener#openURL(String)} method will work.
-         *
-         * @return mapped extension for format
-         */
-        public String getExtension() {
-            String extension = format;
-            // map 'tiff' format to 'tif' extension so that
-            if (Utils.TIFF_FORMAT.equals(format)) {
-                extension = "tif";
-            }
-            return extension;
-        }
     }
 
     /**
@@ -112,6 +161,7 @@ public class MipmapClient {
                 for (final Double z : parameters.zValues) {
                     client.generateMipmapsForZ(z);
                 }
+                client.updateMipmapPathBuilderForStack();
             }
         };
         clientRunner.run();
@@ -129,16 +179,7 @@ public class MipmapClient {
         this.parameters = parameters;
         this.stack = parameters.stack;
 
-        final File rootDirectory = new File(parameters.rootDirectory).getCanonicalFile();
-        if (! rootDirectory.exists()) {
-            throw new IllegalArgumentException("missing root directory " + rootDirectory);
-        }
-
-        if (! rootDirectory.canWrite()) {
-            throw new IllegalArgumentException("not allowed to write to root directory " + rootDirectory);
-        }
-
-        this.mipmapPathBuilder = new MipmapPathBuilder(rootDirectory.getPath(), parameters.maxLevel, parameters.getExtension());
+        this.mipmapPathBuilder = parameters.getMipmapPathBuilder();
 
         if (parameters.renderGroup != null) {
 
@@ -171,11 +212,47 @@ public class MipmapClient {
         return mipmapPathBuilder;
     }
 
-    public void generateMipmapsForZ(final Double z)
+    public void updateMipmapPathBuilderForStack()
+            throws IOException {
+
+        final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
+        final StackVersion stackVersion = stackMetaData.getCurrentVersion();
+
+        if (stackVersion != null) {
+            final MipmapPathBuilder updatedBuilder;
+            final MipmapPathBuilder currentBuilder = stackVersion.getMipmapPathBuilder();
+            if (currentBuilder != null) {
+                if (currentBuilder.hasSamePathAndExtension(mipmapPathBuilder)) {
+                    if (mipmapPathBuilder.getNumberOfLevels() > currentBuilder.getNumberOfLevels()) {
+                        updatedBuilder = mipmapPathBuilder;
+                    } else {
+                        updatedBuilder = null; // no need to update
+                    }
+                } else {
+                    throw new IOException("Old and new mipmap path builders have different root path or extension ( old=" +
+                                          currentBuilder + ", new=" + mipmapPathBuilder + " ).");
+                }
+
+            } else {
+                updatedBuilder = mipmapPathBuilder;
+            }
+
+            if (updatedBuilder != null) {
+                renderDataClient.setMipmapPathBuilder(parameters.stack, updatedBuilder);
+            } else {
+                LOG.info("updateMipmapPathBuilderForStack: builder is already up-to-date");
+            }
+
+        } else {
+            throw new IOException("Version is missing for stack " + parameters.stack + ".");
+        }
+
+    }
+
+    public int generateMipmapsForZ(final Double z)
             throws Exception {
 
-        LOG.info("generateMipmapsForZ: {}, entry, dataClient={}",
-                 z, renderDataClient);
+        LOG.info("generateMipmapsForZ: entry, z={}", z);
 
         final ResolvedTileSpecCollection tiles = renderDataClient.getResolvedTiles(stack, z);
         final int tileCount = tiles.getTileCount();
@@ -191,7 +268,9 @@ public class MipmapClient {
             count++;
         }
 
-        LOG.info("generateMipmapsForZ: {}, exit", z);
+        LOG.info("generateMipmapsForZ: exit, generated mipmaps for {} tiles with z {}", count, z);
+
+        return count;
     }
 
     public void generateMissingMipmapFiles(final TileSpec tileSpec)

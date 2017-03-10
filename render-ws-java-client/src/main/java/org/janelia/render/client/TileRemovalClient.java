@@ -46,15 +46,15 @@ public class TileRemovalClient {
 
         @Parameter(
                 names = "--hiddenTilesWithZ",
-                description = "",
+                description = "Z value for all hidden tiles to be removed",
                 required = false)
         private Double hiddenTilesWithZ;
 
         @Parameter(
-                names = "--keepOrRemoveZ",
-                description = "Z value for all tiles to be kept or removed",
+                names = "--keepZ",
+                description = "Z value for all tiles to be kept",
                 required = false)
-        private Double keepOrRemoveZ;
+        private Double keepZ;
 
         @Parameter(
                 names = "--keepMinX",
@@ -81,7 +81,7 @@ public class TileRemovalClient {
         private Double keepMaxY;
 
         private boolean isKeepBoxSpecified() {
-            return ((keepOrRemoveZ != null) && (keepMinX != null) && (keepMaxX != null) &&
+            return ((keepZ != null) && (keepMinX != null) && (keepMaxX != null) &&
                     (keepMinY != null) && (keepMaxY != null));
         }
 
@@ -144,8 +144,8 @@ public class TileRemovalClient {
                             "--tileIdList should not be specified when --keep parameters are specified");
                 }
 
-                final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, keepOrRemoveZ);
-                final TileBoundsRTree tree = new TileBoundsRTree(keepOrRemoveZ, tileBoundsList);
+                final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, keepZ);
+                final TileBoundsRTree tree = new TileBoundsRTree(keepZ, tileBoundsList);
                 final Set<String> keeperTileIds = new HashSet<>(tileBoundsList.size() * 2);
                 for (final TileBounds keeper : tree.findTilesInBox(keepMinX, keepMinY, keepMaxX, keepMaxY)) {
                     keeperTileIds.add(keeper.getTileId());
@@ -159,7 +159,7 @@ public class TileRemovalClient {
                 }
 
                 LOG.info("loadTileIds: found {} tiles outside the box to remove from z {}",
-                         tileIdList.size(), keepOrRemoveZ);
+                         tileIdList.size(), keepZ);
 
             } // else tileIdList was explictly specified on command line
 
@@ -182,6 +182,9 @@ public class TileRemovalClient {
                 final RenderDataClient renderDataClient = new RenderDataClient(parameters.baseDataUrl,
                                                                                parameters.owner,
                                                                                parameters.project);
+
+                renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
+
                 parameters.loadTileIds(renderDataClient);
 
                 final TileRemovalClient client = new TileRemovalClient(parameters);

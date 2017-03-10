@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.http.client.methods.HttpDelete;
@@ -24,6 +25,7 @@ import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.client.request.WaitingRetryHandler;
@@ -204,6 +206,81 @@ public class RenderDataClient {
     }
 
     /**
+     * A derived stack should retain a common set of meta data from its source stack
+     * (e.g. resolution and mipmap path builder values).  This method ensures that
+     * the derived stack exists, that it shares the common meta data from its source stack,
+     * and that it is in the LOADING state.
+     *
+     * @param  sourceStackMetaData  source stack meta data.
+     * @param  derivedStack         name of derived stack.
+     *
+     * @return meta data for the derived stack.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public StackMetaData setupDerivedStack(final StackMetaData sourceStackMetaData,
+                                           final String derivedStack)
+            throws IOException {
+
+        final StackVersion sourceVersion = sourceStackMetaData.getCurrentVersion();
+
+        StackMetaData derivedStackMetaData;
+        StackVersion derivedVersion;
+        try {
+            derivedStackMetaData = getStackMetaData(derivedStack);
+            derivedVersion = derivedStackMetaData.getCurrentVersion();
+        } catch (final Throwable t) {
+
+            LOG.info("setupDerivedStack: derived stack does not exist, creating it ...");
+
+            derivedVersion = new StackVersion(new Date(),
+                                              "derived from " + sourceStackMetaData.getStackId(),
+                                              null,
+                                              null,
+                                              sourceVersion.getStackResolutionX(),
+                                              sourceVersion.getStackResolutionY(),
+                                              sourceVersion.getStackResolutionZ(),
+                                              null,
+                                              sourceVersion.getMipmapPathBuilder());
+            saveStackVersion(derivedStack, derivedVersion);
+            derivedStackMetaData = getStackMetaData(derivedStack);
+        }
+
+        if ((derivedVersion.getStackResolutionX() == null) ||
+            (derivedVersion.getStackResolutionY() == null) ||
+            (derivedVersion.getStackResolutionZ() == null)) {
+
+            if ((sourceVersion.getStackResolutionX() != null) ||
+                (sourceVersion.getStackResolutionY() != null) ||
+                (sourceVersion.getStackResolutionZ() != null)) {
+
+                LOG.info("setupDerivedStack: derived stack is missing resolution data, setting it ...");
+
+                final List<Double> commonResolutionValues = sourceVersion.getStackResolutionValues();
+                derivedVersion.setStackResolutionValues(commonResolutionValues);
+                setStackResolutionValues(derivedStack, commonResolutionValues);
+
+            }
+        }
+
+        final MipmapPathBuilder commonMipmapPathBuilder = sourceVersion.getMipmapPathBuilder();
+
+        if ((derivedVersion.getMipmapPathBuilder() == null) && (commonMipmapPathBuilder != null)) {
+
+            LOG.info("setupDerivedStack: derived stack is missing mipmap path builder, setting it ...");
+
+            derivedVersion.setMipmapPathBuilder(commonMipmapPathBuilder);
+            setMipmapPathBuilder(derivedStack, commonMipmapPathBuilder);
+
+        }
+
+        ensureStackIsInLoadingState(derivedStack, derivedStackMetaData);
+
+        return derivedStackMetaData;
+    }
+
+    /**
      * Saves the specified version data.
      *
      * @param  stack         name of stack.
@@ -306,6 +383,89 @@ public class RenderDataClient {
         final HttpPut httpPut = new HttpPut(uri);
 
         LOG.info("setStackState: submitting {}", requestContext);
+
+        httpClient.execute(httpPut, responseHandler);
+    }
+
+    /**
+     * Sets the state of the specified stack to LOADING if necessary.
+     *
+     * @param  stack          stack to change.
+     * @param  stackMetaData  current meta data for stack (or null if it needs to be retrieved).
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void ensureStackIsInLoadingState(final String stack,
+                                            StackMetaData stackMetaData)
+            throws IOException {
+
+        if (stackMetaData == null) {
+            stackMetaData = getStackMetaData(stack);
+        }
+
+        if (! stackMetaData.isLoading()) {
+            if (! stackMetaData.isReadOnly()) {
+                setStackState(stack, StackState.LOADING);
+            } else {
+                throw new IOException(stack + " stack state is READ_ONLY and cannot be changed");
+            }
+        } else {
+            LOG.info("ensureStackIsInLoadingState: {} stack is already in the LOADING state", stack);
+        }
+
+    }
+
+    /**
+     * Updates the resolution values for the specified stack.
+     *
+     * @param  stack             stack to change.
+     * @param  resolutionValues  resolution values.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void setStackResolutionValues(final String stack,
+                                         final List<Double> resolutionValues)
+            throws IOException {
+
+        final String json = JsonUtils.FAST_MAPPER.writeValueAsString(resolutionValues);
+        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+        final URI uri = getUri(urls.getStackUrlString(stack) + "/resolutionValues");
+        final String requestContext = "PUT " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        LOG.info("setStackResolutionValues: submitting {}", requestContext);
+
+        httpClient.execute(httpPut, responseHandler);
+    }
+
+    /**
+     * Updates the mipmapPathBuilder for the specified stack.
+     *
+     * @param  stack              stack to change.
+     * @param  mipmapPathBuilder  new builder.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void setMipmapPathBuilder(final String stack,
+                                     final MipmapPathBuilder mipmapPathBuilder)
+            throws IOException {
+
+        final String json = mipmapPathBuilder.toJson();
+        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+        final URI uri = getUri(urls.getStackUrlString(stack) + "/mipmapPathBuilder");
+        final String requestContext = "PUT " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        LOG.info("setMipmapPathBuilder: submitting {}", requestContext);
 
         httpClient.execute(httpPut, responseHandler);
     }
@@ -674,6 +834,36 @@ public class RenderDataClient {
         } else {
             LOG.info("saveMatches: no matches to save");
         }
+    }
+
+    /**
+     * @return list of tile specs with the specified ids.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<TileSpec> getTileSpecsWithIds(final List<String> tileIdList,
+                                              final String stack)
+            throws IOException {
+
+        final String tileIdListJson = JsonUtils.MAPPER.writeValueAsString(tileIdList);
+        final StringEntity stringEntity = new StringEntity(tileIdListJson, ContentType.APPLICATION_JSON);
+        final URI uri = getUri(urls.getStackUrlString(stack) + "/tile-specs-with-ids");
+        final String requestContext = "PUT " + uri;
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        final TypeReference<List<TileSpec>> typeReference =
+                new TypeReference<List<TileSpec>>() {};
+        final JsonUtils.GenericHelper<List<TileSpec>> helper =
+                new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<TileSpec>> responseHandler =
+                new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getTileSpecsWithIds: submitting {}", requestContext);
+
+        return httpClient.execute(httpPut, responseHandler);
     }
 
     /**

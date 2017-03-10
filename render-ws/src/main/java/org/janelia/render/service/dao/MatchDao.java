@@ -151,7 +151,7 @@ public class MatchDao {
                                           final OutputStream outputStream)
             throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
-        LOG.debug("writeMatchesBetweenGroups: entry, collectionId={}, mergeCollectionIdList={}, pGroupId={}, pGroupId={}",
+        LOG.debug("writeMatchesBetweenGroups: entry, collectionId={}, mergeCollectionIdList={}, pGroupId={}, qGroupId={}",
                   collectionId, mergeCollectionIdList, pGroupId, qGroupId);
 
         final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
