@@ -151,6 +151,9 @@ public class RenderDataService {
     @ApiOperation(
             tags = "Stack Data APIs",
             value = "List z values for specified stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack not found")
+    })
     public List<Double> getZValues(@PathParam("owner") final String owner,
                                    @PathParam("project") final String project,
                                    @PathParam("stack") final String stack,
@@ -164,6 +167,10 @@ public class RenderDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             list = renderDao.getZValues(stackId, minZ, maxZ);
+            if (list.size() == 0) {
+                // if no z values were found, make sure stack exists ...
+                getStackMetaData(stackId);
+            }
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -178,6 +185,7 @@ public class RenderDataService {
             value = "List z and sectionId for all sections in specified stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "section data not generated"),
+            @ApiResponse(code = 404, message = "stack not found")
     })
     public List<SectionData> getSectionData(@PathParam("owner") final String owner,
                                             @PathParam("project") final String project,
@@ -206,6 +214,7 @@ public class RenderDataService {
             value = "List z and sectionId for all reordered sections in specified stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "section data not generated"),
+            @ApiResponse(code = 404, message = "stack not found")
     })
     public List<SectionData> getReorderedSectionData(@PathParam("owner") final String owner,
                                                      @PathParam("project") final String project,
@@ -245,6 +254,7 @@ public class RenderDataService {
             value = "List z values for all merged sections in specified stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "section data not generated"),
+            @ApiResponse(code = 404, message = "stack not found")
     })
     public List<Double> getMergedZValues(@PathParam("owner") final String owner,
                                          @PathParam("project") final String project,
@@ -281,7 +291,7 @@ public class RenderDataService {
             value = "List plain text data for all mergeable sections in specified stack",
             notes = "Data format is 'toIndex < fromIndex : toZ < fromZ'.  Only layers with both an integral (.0) and at least one non-integral (e.g. .1) section are included.")
     @ApiResponses(value = {
-            @ApiResponse(code = 400, message = "section data not generated"),
+            @ApiResponse(code = 404, message = "stack not found")
     })
     public String getMergeableData(@PathParam("owner") final String owner,
                                    @PathParam("project") final String project,
@@ -324,7 +334,7 @@ public class RenderDataService {
             value = "List z values for all mergeable layers in specified stack",
             notes = "Only layers with both an integral (.0) and at least one non-integral (e.g. .1) section are included.")
     @ApiResponses(value = {
-            @ApiResponse(code = 400, message = "section data not generated"),
+            @ApiResponse(code = 404, message = "stack not found")
     })
     public List<Double> getMergeableZValues(@PathParam("owner") final String owner,
                                             @PathParam("project") final String project,
@@ -359,6 +369,9 @@ public class RenderDataService {
     @ApiOperation(
             tags = "Section Data APIs",
             value = "Get bounds for section with specified z")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack not found")
+    })
     public Bounds getLayerBounds(@PathParam("owner") final String owner,
                                  @PathParam("project") final String project,
                                  @PathParam("stack") final String stack,
@@ -383,6 +396,9 @@ public class RenderDataService {
     @ApiOperation(
             tags = "Section Data APIs",
             value = "Get bounds for each tile with specified z")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack not found")
+    })
     public List<TileBounds> getTileBoundsForZ(@PathParam("owner") final String owner,
                                               @PathParam("project") final String project,
                                               @PathParam("stack") final String stack,
@@ -608,7 +624,7 @@ public class RenderDataService {
             value = "Set z value for section")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "stack not in LOADING state"),
-            @ApiResponse(code = 404, message = "stack not found"),
+            @ApiResponse(code = 404, message = "stack not found")
     })
     public Response updateZForSection(@PathParam("owner") final String owner,
                                       @PathParam("project") final String project,
@@ -648,6 +664,9 @@ public class RenderDataService {
     @ApiOperation(
             tags = "Section Data APIs",
             value = "Get bounds for each tile with specified sectionId")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack not found")
+    })
     public List<TileBounds> getTileBoundsForSection(@PathParam("owner") final String owner,
                                                     @PathParam("project") final String project,
                                                     @PathParam("stack") final String stack,
@@ -673,7 +692,7 @@ public class RenderDataService {
             tags = "Transform Data APIs",
             value = "Get transform spec")
     @ApiResponses(value = {
-            @ApiResponse(code = 404, message = "transform not found"),
+            @ApiResponse(code = 404, message = "transform or stack not found")
     })
     public TransformSpec getTransformSpec(@PathParam("owner") final String owner,
                                           @PathParam("project") final String project,
@@ -703,6 +722,9 @@ public class RenderDataService {
     @ApiOperation(
             tags = "Bounding Box Data APIs",
             value = "Get number of tiles within box")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack not found")
+    })
     public Long getTileCount(@PathParam("owner") final String owner,
                              @PathParam("project") final String project,
                              @PathParam("stack") final String stack,
@@ -734,6 +756,9 @@ public class RenderDataService {
     @ApiOperation(
             tags = {"Bounding Box Data APIs", "DVID Style APIs"},
             value = "DVID style API to get number of tiles within box")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack not found")
+    })
     public Long getTileCountForDvidBox(@PathParam("owner") final String owner,
                                        @PathParam("project") final String project,
                                        @PathParam("stack") final String stack,
@@ -757,6 +782,9 @@ public class RenderDataService {
             tags = "Section Data APIs",
             value = "Get flattened tile specs with the specified z",
             notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack or tiles with z not found")
+    })
     public List<TileSpec> getTileSpecsForZ(@PathParam("owner") final String owner,
                                            @PathParam("project") final String project,
                                            @PathParam("stack") final String stack,
@@ -786,6 +814,9 @@ public class RenderDataService {
     @ApiOperation(
             tags = "Section Data APIs",
             value = "Get last transform for each tile spec with the specified z")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack or tiles with z not found")
+    })
     public List<LastTileTransform> getLastTileTransformsForZ(@PathParam("owner") final String owner,
                                                              @PathParam("project") final String project,
                                                              @PathParam("stack") final String stack,
@@ -822,6 +853,9 @@ public class RenderDataService {
             tags = "Section Data APIs",
             value = "Get parameters to render all tiles with the specified z",
             notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack or tiles with z not found")
+    })
     public RenderParameters getRenderParametersForZ(@PathParam("owner") final String owner,
                                                     @PathParam("project") final String project,
                                                     @PathParam("stack") final String stack,
@@ -835,10 +869,11 @@ public class RenderDataService {
         RenderParameters parameters = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = getStackMetaData(stackId);
+
             parameters = renderDao.getParameters(stackId, z, scale);
             parameters.setDoFilter(filter);
 
-            final StackMetaData stackMetaData = getStackMetaData(stackId);
             final MipmapPathBuilder mipmapPathBuilder = stackMetaData.getCurrentMipmapPathBuilder();
             if (mipmapPathBuilder != null) {
                 parameters.setMipmapPathBuilder(mipmapPathBuilder);
@@ -862,6 +897,9 @@ public class RenderDataService {
             tags = "Bounding Box Data APIs",
             value = "Get parameters to render all tiles within the specified box",
             notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack not found")
+    })
     public RenderParameters getExternalRenderParameters(@PathParam("owner") final String owner,
                                                         @PathParam("project") final String project,
                                                         @PathParam("stack") final String stack,
@@ -889,6 +927,9 @@ public class RenderDataService {
             tags = {"Bounding Box Data APIs", "DVID Style APIs"},
             value = "DVID style API to get parameters to render all tiles within the specified box",
             notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack not found")
+    })
     public RenderParameters getExternalRenderParametersForDvidBox(@PathParam("owner") final String owner,
                                                                   @PathParam("project") final String project,
                                                                   @PathParam("stack") final String stack,
@@ -915,6 +956,9 @@ public class RenderDataService {
             tags = "Bounding Box Data APIs",
             value = "Get parameters to render all tiles within the specified group and box",
             notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack not found")
+    })
     public RenderParameters getExternalRenderParameters(@PathParam("owner") final String owner,
                                                         @PathParam("project") final String project,
                                                         @PathParam("stack") final String stack,
@@ -957,6 +1001,9 @@ public class RenderDataService {
             tags = {"Bounding Box Data APIs", "DVID Style APIs"},
             value = "DVID style API to get parameters to render all tiles within the specified group and box",
             notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack not found")
+    })
     public RenderParameters getExternalRenderParametersForDvidBox(@PathParam("owner") final String owner,
                                                                   @PathParam("project") final String project,
                                                                   @PathParam("stack") final String stack,
@@ -984,7 +1031,8 @@ public class RenderDataService {
                                                         final Double z,
                                                         final Integer width,
                                                         final Integer height,
-                                                        final Double scale) {
+                                                        final Double scale)
+            throws ObjectNotFoundException {
 
 
         final RenderParameters parameters = renderDao.getParameters(stackId, groupId, x, y, z, width, height, scale);

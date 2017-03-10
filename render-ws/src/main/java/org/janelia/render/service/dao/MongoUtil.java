@@ -57,7 +57,7 @@ public class MongoUtil {
     public static boolean exists(final MongoDatabase database,
                                  final String collectionName) {
         for (final String name : database.listCollectionNames()) {
-            if (name.equalsIgnoreCase(collectionName)) {
+            if (name.equals(collectionName)) {
                 return true;
             }
         }
