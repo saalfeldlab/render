@@ -189,8 +189,10 @@ public class ScapeClient
 
         final File sectionBaseDirectory = sectionBasePath.toFile();
         for (final SectionData sectionData : adjustedSectionDataList) {
-            final File sectionDirectory = getSectionDirectory(sectionBaseDirectory, sectionData.getZ());
-            ensureWritableDirectory(sectionDirectory);
+            final File sectionFile = getSectionFile(sectionBaseDirectory,
+                                                    sectionData.getZ(),
+                                                    parameters.format.toLowerCase());
+            ensureWritableDirectory(sectionFile.getParentFile());
         }
 
 
@@ -227,8 +229,9 @@ public class ScapeClient
                 final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
                 renderParameters.setDoFilter(parameters.doFilter);
 
-                final File sectionDirectory = getSectionDirectory(sectionBaseDirectory, sectionData.getZ());
-                final File sectionFile = new File(sectionDirectory, z + "." + parameters.format.toLowerCase());
+                final File sectionFile = getSectionFile(sectionBaseDirectory,
+                                                        sectionData.getZ(),
+                                                        parameters.format.toLowerCase());
 
                 final BufferedImage sectionImage = renderParameters.openTargetImage();
 
@@ -265,15 +268,13 @@ public class ScapeClient
         sparkContext.stop();
     }
 
-    public static File getSectionDirectory(final File sectionBaseDirectory,
-                                           final Double z) {
+    public static File getSectionFile(final File sectionBaseDirectory,
+                                      final Double z,
+                                      final String format) {
 
-        final int thousands = z.intValue() / 1000;
-        final File thousandsDir = new File(sectionBaseDirectory, getNumericDirectoryName(thousands));
-
-        final int hundreds = (z.intValue() % 1000) / 100;
-
-        return new File(thousandsDir, String.valueOf(hundreds));
+        final String paddedZ = String.format("%08.1f", z);
+        final File thousandsDir = new File(sectionBaseDirectory, paddedZ.substring(0, 3));
+        return new File(thousandsDir, paddedZ.substring(3) + "." + format);
     }
 
     public static void ensureWritableDirectory(final File directory) {
@@ -293,16 +294,6 @@ public class ScapeClient
         if (! directory.canWrite()) {
             throw new IllegalArgumentException("not allowed to write to " + directory);
         }
-    }
-
-    public static String getNumericDirectoryName(final int value) {
-        String pad = "00";
-        if (value > 99) {
-            pad = "";
-        } else if (value > 9) {
-            pad = "0";
-        }
-        return pad + value;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ScapeClient.class);
