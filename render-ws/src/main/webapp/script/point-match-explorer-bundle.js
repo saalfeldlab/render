@@ -1,41 +1,41 @@
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
-
+/******/
 /******/ 	// The require function
 /******/ 	function __webpack_require__(moduleId) {
-
+/******/
 /******/ 		// Check if module is in cache
 /******/ 		if(installedModules[moduleId])
 /******/ 			return installedModules[moduleId].exports;
-
+/******/
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = installedModules[moduleId] = {
 /******/ 			i: moduleId,
 /******/ 			l: false,
 /******/ 			exports: {}
 /******/ 		};
-
+/******/
 /******/ 		// Execute the module function
 /******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
-
+/******/
 /******/ 		// Flag the module as loaded
 /******/ 		module.l = true;
-
+/******/
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
 /******/ 	}
-
-
+/******/
+/******/
 /******/ 	// expose the modules object (__webpack_modules__)
 /******/ 	__webpack_require__.m = modules;
-
+/******/
 /******/ 	// expose the module cache
 /******/ 	__webpack_require__.c = installedModules;
-
+/******/
 /******/ 	// identity function for calling harmony imports with the correct context
 /******/ 	__webpack_require__.i = function(value) { return value; };
-
+/******/
 /******/ 	// define getter function for harmony exports
 /******/ 	__webpack_require__.d = function(exports, name, getter) {
 /******/ 		if(!__webpack_require__.o(exports, name)) {
@@ -46,7 +46,7 @@
 /******/ 			});
 /******/ 		}
 /******/ 	};
-
+/******/
 /******/ 	// getDefaultExport function for compatibility with non-harmony modules
 /******/ 	__webpack_require__.n = function(module) {
 /******/ 		var getter = module && module.__esModule ?
@@ -55,13 +55,13 @@
 /******/ 		__webpack_require__.d(getter, 'a', getter);
 /******/ 		return getter;
 /******/ 	};
-
+/******/
 /******/ 	// Object.prototype.hasOwnProperty.call
 /******/ 	__webpack_require__.o = function(object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
-
+/******/
 /******/ 	// __webpack_public_path__
 /******/ 	__webpack_require__.p = "";
-
+/******/
 /******/ 	// Load entry module and return exports
 /******/ 	return __webpack_require__(__webpack_require__.s = 272);
 /******/ })
@@ -3834,16 +3834,23 @@ function fetchData(dataType) {
 }
 
 function mapDataTypeToURL(state, dataType, params) {
-  var BASE_URL = "http://renderer.int.janelia.org:8080/render-ws/v1";
   var _state$UserInput2 = state.UserInput,
       selectedProject = _state$UserInput2.selectedProject,
       selectedStack = _state$UserInput2.selectedStack,
       selectedMatchCollection = _state$UserInput2.selectedMatchCollection,
       selectedStackOwner = _state$UserInput2.selectedStackOwner,
-      selectedMatchOwner = _state$UserInput2.selectedMatchOwner;
+      selectedMatchOwner = _state$UserInput2.selectedMatchOwner,
+      renderDataHost = _state$UserInput2.renderDataHost,
+      mergeCollection = _state$UserInput2.mergeCollection;
 
+  var BASE_URL = "http://" + renderDataHost + "/render-ws/v1";
   var MATCH_BASE_URL = BASE_URL + "/owner/" + selectedMatchOwner;
   var STACK_BASE_URL = BASE_URL + "/owner/" + selectedStackOwner;
+
+  var matchQueryParameters = "";
+  if (mergeCollection.length > 0) {
+    matchQueryParameters = "?mergeCollection=" + mergeCollection;
+  }
 
   switch (dataType) {
     case "StackOwners":
@@ -3865,9 +3872,9 @@ function mapDataTypeToURL(state, dataType, params) {
     case "SectionBounds":
       return STACK_BASE_URL + "/project/" + selectedProject + "/stack/" + selectedStack + "/z/" + params.z + "/bounds";
     case "MatchesWithinGroup":
-      return STACK_BASE_URL + "/matchCollection/" + selectedMatchCollection + "/group/" + params.groupId + "/matchesWithinGroup";
+      return STACK_BASE_URL + "/matchCollection/" + selectedMatchCollection + "/group/" + params.groupId + "/matchesWithinGroup" + matchQueryParameters;
     case "MatchesOutsideGroup":
-      return STACK_BASE_URL + "/matchCollection/" + selectedMatchCollection + "/group/" + params.groupId + "/matchesOutsideGroup";
+      return STACK_BASE_URL + "/matchCollection/" + selectedMatchCollection + "/group/" + params.groupId + "/matchesOutsideGroup" + matchQueryParameters;
     default:
       return null;
   }
@@ -7544,7 +7551,7 @@ module.exports = getIteratorFn;
     root.chroma = chroma;
   }
 
-  chroma.version = '1.1.1';
+  chroma.version = '1.2.1';
 
 
   /**
@@ -9483,6 +9490,11 @@ module.exports = getIteratorFn;
       var dd, dm, i, numColors, o, out, ref, results, samples, w;
       numColors = 0;
       out = 'hex';
+      if (arguments.length === 0) {
+        return _colors.map(function(c) {
+          return c[out]();
+        });
+      }
       if (arguments.length === 1) {
         if (type(arguments[0]) === 'string') {
           out = arguments[0];
@@ -55403,6 +55415,10 @@ var userInputInitialState = exports.userInputInitialState = {
   selectedMatchCollection: "",
   selectedStackOwner: "",
   selectedMatchOwner: "",
+  renderDataHost: "tem-services.int.janelia.org:8080",
+  dynamicRenderHost: "renderer.int.janelia.org:8080",
+  catmaidHost: "renderer-catmaid:8000",
+  mergeCollection: "",
   startZ: "",
   endZ: ""
 };
@@ -55640,6 +55656,20 @@ function createLogger() {
 
   if (transformer) {
     console.error('Option \'transformer\' is deprecated, use \'stateTransformer\' instead!'); // eslint-disable-line no-console
+  }
+
+  // Detect if 'createLogger' was passed directly to 'applyMiddleware'.
+  if (options.getState && options.dispatch) {
+    // eslint-disable-next-line no-console
+    console.error('redux-logger not installed. Make sure to pass logger instance as middleware:\n\nimport createLogger from \'redux-logger\';\n\nconst logger = createLogger();\nconst store = createStore(\n  reducer,\n  applyMiddleware(logger)\n);');
+
+    return function () {
+      return function (next) {
+        return function (action) {
+          return next(action);
+        };
+      };
+    };
   }
 
   var logBuffer = [];
@@ -56116,7 +56146,11 @@ var userInputUrlMap = new urlParamStoreMapper({
   renderStackProject: "selectedProject",
   renderStack: "selectedStack",
   matchOwner: "selectedMatchOwner",
-  matchCollection: "selectedMatchCollection"
+  matchCollection: "selectedMatchCollection",
+  renderDataHost: "renderDataHost",
+  dynamicRenderHost: "dynamicRenderHost",
+  catmaidHost: "catmaidHost",
+  mergeCollection: "mergeCollection"
 });
 
 var mapStateToProps = function mapStateToProps(state) {
