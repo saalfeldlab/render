@@ -345,6 +345,27 @@ JaneliaRenderServiceData.prototype.setStack = function(selectedStack) {
     }
 };
 
+JaneliaRenderServiceData.prototype.deleteStack = function (stackName, deleteCallbacks) {
+
+    if (confirm("Are you sure you want to delete the " + stackName + " stack?")) {
+
+        var self = this;
+
+        $.ajax({
+                   url: self.getProjectUrl() + 'stack/' + stackName,
+                   type: 'DELETE',
+                   success: function () {
+                       deleteCallbacks.success();
+                   },
+                   error: function (data,
+                                    text,
+                                    xhr) {
+                       self.util.handleAjaxError(data, text, xhr, deleteCallbacks.error);
+                   }
+               });
+    }
+};
+
 /**
  *
  * @param messageId
@@ -465,7 +486,8 @@ JaneliaRenderServiceDataUI.prototype.getDynamicRenderBaseUrl = function() {
 
 JaneliaRenderServiceDataUI.prototype.isNdvizHostDefined = function() {
     return typeof this.ndvizHost != 'undefined';
-}
+};
+
 JaneliaRenderServiceDataUI.prototype.isCatmaidHostDefined = function() {
     return typeof this.catmaidHost != 'undefined';
 };
@@ -578,6 +600,8 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
                     stackId.owner + '/' + stackId.project + '/' + stackId.stack + '/';
         linksHtml = linksHtml + ' <a target="_blank" href="' + NDVIZUrl + '">NdViz</a>';
     }
+
+    linksHtml = linksHtml + ' <span id="' + stackId.stack + '__actions"></span>';
 
     if (stackInfo.state == 'OFFLINE') {
         linksHtml = '';

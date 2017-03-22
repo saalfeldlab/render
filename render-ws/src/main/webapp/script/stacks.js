@@ -21,12 +21,47 @@ var RenderWebServiceProjectStacks = function(ownerSelectId, projectSelectId, mes
         var stackInfoSelect = $('#stackInfo');
         stackInfoSelect.find("tr:gt(0)").remove();
 
+        var StackNameFunctions = function(stackName) {
+
+            this.stackName = stackName;
+            this.stackActionsId = stackName + "__actions";
+            this.stackDeleteId = this.stackActionsId + '__delete';
+            this.actionHtml = '<a id="' + this.stackDeleteId + '" href="#" onclick="return false;">DELETE</a>';
+
+            var self = this;
+            this.deleteStackWithName = function () {
+
+                var localStackName = self.stackName;
+
+                var deleteStackCallbacks = {
+                    success: function() {
+                        location.reload();
+                    },
+                    error: new JaneliaMessageUI('message', 'Failed to delete ' + localStackName + '.').displayError
+                };
+
+                renderData.deleteStack(localStackName, deleteStackCallbacks);
+
+                var actionsSelector = $('#' + self.stackActionsId);
+                actionsSelector.html('<i>delete in progress</i>');
+                actionsSelector.css('color', 'red');
+
+                return false;
+            };
+
+            this.updateActions = function() {
+                $('#' + self.stackActionsId).html(self.actionHtml);
+                $('#' + self.stackDeleteId).click(self.deleteStackWithName);
+            }
+        };
+
         var projectStackMetaDataList = renderData.getProjectStackMetaDataList();
         var summaryHtml;
         for (var index = 0; index < projectStackMetaDataList.length; index++) {
             summaryHtml = renderDataUi.getStackSummaryHtml(renderData.getOwnerUrl(),
                                                            projectStackMetaDataList[index]);
             stackInfoSelect.find('tr:last').after(summaryHtml);
+            new StackNameFunctions(projectStackMetaDataList[index].stackId.stack).updateActions();
         }
 
     };
