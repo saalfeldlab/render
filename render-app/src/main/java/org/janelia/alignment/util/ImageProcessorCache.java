@@ -17,6 +17,8 @@ import mpicbg.trakem2.util.Downsampler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.janelia.alignment.protocol.s3.S3Opener;
+
 /**
  * Cache of {@link ImageProcessor} instances for rendering.
  * Each cache is constrained by a max pixel count parameter which should roughly correlate to max memory usage.
@@ -235,7 +237,7 @@ public class ImageProcessorCache {
             // TODO: use Bio Formats to load strange formats
 
             // openers keep state about the file being opened, so we need to create a new opener for each load
-            final Opener opener = new Opener();
+            final Opener opener = new S3Opener();
             opener.setSilentMode(true);
 
             final ImagePlus imagePlus = opener.openURL(url);
