@@ -166,6 +166,7 @@ public class TileDataService {
 
             final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
 
+            if (removeAllOption == null) removeAllOption=false;
             parameters = getCoreTileRenderParameters(width, height, scale, normalizeForMatching, tileSpec, removeAllOption);
 
             parameters.setDoFilter(filter);
