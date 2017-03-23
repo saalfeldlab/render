@@ -49,6 +49,7 @@ public class Converter {
     public static void main(final String[] args) {
 
         boolean validateConvertedTileSpecs = false;
+        boolean useTitleForTileId = false;
         if (args.length > 2) {
 
             final File xmlFile = new File(args[0]);
@@ -57,17 +58,26 @@ public class Converter {
             if (args.length > 3) {
                 validateConvertedTileSpecs = Boolean.valueOf(args[3]);
             }
+            if (args.length >4) {
+            	useTitleForTileId = Boolean.valueOf(args[4]);
+            }
 
-            Converter.xmlToJson(xmlFile, rawProjectPath, jsonFile, validateConvertedTileSpecs);
+            Converter.xmlToJson(xmlFile, rawProjectPath, jsonFile, validateConvertedTileSpecs,useTitleForTileId);
 
         } else {
 
             System.err.println("\nUSAGE ERROR: missing parameters\n\nSYNTAX: java " + Converter.class +
-                               " <input XML file> <project base path> <output JSON file> [validate tile spec flag]");
+                               " <input XML file> <project base path> <output JSON file> [validate tile spec flag] [use_title_for_tileId]");
 
         }
     }
 
+    public static void xmlToJson(final File trakEM2XmlFile,
+            final String projectPath,
+            final File jsonFile,
+            final boolean validateConvertedTileSpecs) {
+    	xmlToJson(trakEM2XmlFile,projectPath,jsonFile,validateConvertedTileSpecs,false);
+    }
     /**
      * Converts the specified TrakEM2 XML project file data into Render Service JSON.
      *
@@ -86,7 +96,8 @@ public class Converter {
     public static void xmlToJson(final File trakEM2XmlFile,
                                  final String projectPath,
                                  final File jsonFile,
-                                 final boolean validateConvertedTileSpecs) {
+                                 final boolean validateConvertedTileSpecs,
+                                 final boolean useTitleForTileId) {
         FileInputStream trakEm2XmlStream = null;
         FileOutputStream jsonStream = null;
         try {
@@ -115,6 +126,14 @@ public class Converter {
         }
     }
 
+    public static void xmlToJson(final InputStream trakEM2XmlStream,
+            final String rawProjectPath,
+            final OutputStream jsonStream,
+            final boolean validateConvertedTileSpecs)
+     throws JAXBException, IOException, ParserConfigurationException, SAXException {
+    	xmlToJson(trakEM2XmlStream,rawProjectPath,jsonStream,validateConvertedTileSpecs,false);	
+    }
+    
     /**
      * Converts the specified TrakEM2 XML project file data into Render Service JSON.
      *
@@ -138,7 +157,8 @@ public class Converter {
     public static void xmlToJson(final InputStream trakEM2XmlStream,
                                  final String rawProjectPath,
                                  final OutputStream jsonStream,
-                                 final boolean validateConvertedTileSpecs)
+                                 final boolean validateConvertedTileSpecs,
+                                 final boolean useTitleForTileId)
             throws JAXBException, IOException, ParserConfigurationException, SAXException {
 
         final File baseProjectDirectory = new File(rawProjectPath).getCanonicalFile();
@@ -161,7 +181,7 @@ public class Converter {
                     json.append(",\n");
                 }
 
-                final TileSpec tileSpec = patch.getTileSpec(projectPath, baseMaskPath, layer.z);
+                final TileSpec tileSpec = patch.getTileSpec(projectPath, baseMaskPath, layer.z,useTitleForTileId);
                 if (validateConvertedTileSpecs) {
                     tileSpec.validate();
                 }
@@ -342,6 +362,7 @@ public class Converter {
         @XmlAttribute(name = "o_height")         public Double oHeight;
         @XmlAttribute(name = "mres")             public Integer meshResolution;
         @XmlAttribute(name = "alpha_mask_id")    public String alphaMaskId;
+        @XmlAttribute(name = "title")			 public String title;
         @XmlElement(name = "ict_transform_list") public IctTransformList transforms;
 
         private AffineTransform fullCoordinateTransform;
@@ -349,8 +370,14 @@ public class Converter {
         // projectPath  = '/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/'
         // baseMaskPath = '/groups/saalfeld/saalfeldlab/fly-bock-63-elastic/intensity-corrected/trakem2.1396292726179.1972921220.95381465/trakem2.masks/'
         public TileSpec getTileSpec(final String projectPath,
+                final String baseMaskPath,
+                final double z) {
+        	return getTileSpec(projectPath,baseMaskPath,z,false);
+        }
+        public TileSpec getTileSpec(final String projectPath,
                                     final String baseMaskPath,
-                                    final double z) {
+                                    final double z,
+                                    final boolean useTitleForTileId ) {
 
             final String imageUrl;
             // TODO: make sure we don't need to check for Windows paths
@@ -381,7 +408,8 @@ public class Converter {
 
             // convert to tile spec (which can ultimately be serialized as json)
             final TileSpec tileSpec = new TileSpec();
-            tileSpec.setTileId(oid);
+            if (useTitleForTileId) tileSpec.setTileId(title);
+            else tileSpec.setTileId(oid);
             tileSpec.setZ(z);
 
             tileSpec.setWidth(oWidth);
