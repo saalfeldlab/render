@@ -349,7 +349,7 @@ public class TileDataService {
             if (height == null) {
                 tileRenderHeight = (int) (tileSpec.getHeight() * normalizationFactor);
             }
-            if (removeAllOption){
+            if ((removeAllOption != null) && removeAllOption){
               while (tileSpec.getTransforms().size() > 0) {
                   tileSpec.removeLastTransformSpec();
               }
