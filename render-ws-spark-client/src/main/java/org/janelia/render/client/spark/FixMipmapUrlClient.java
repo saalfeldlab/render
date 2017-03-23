@@ -37,6 +37,7 @@ public class FixMipmapUrlClient
 
     private enum UrlType { IMAGE, MASK, BOTH }
 
+    @SuppressWarnings("unused")
     private static class Parameters extends RenderDataClientParameters {
 
         // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
@@ -231,8 +232,10 @@ public class FixMipmapUrlClient
 
                                 if (fixImage) {
                                     imageUrl = imageAndMask.getImageUrl();
-                                    for (final Pattern p : replacementData.keySet()){
-                                        imageUrl = fixUrl(p, imageUrl, replacementData.get(p));
+                                    if ((imageUrl != null) && (imageUrl.length() > 0)) {
+                                        for (final Pattern p : replacementData.keySet()) {
+                                            imageUrl = fixUrl(p, imageUrl, replacementData.get(p));
+                                        }
                                     }
                                 } else {
                                     imageUrl = imageAndMask.getImageUrl();
@@ -240,8 +243,10 @@ public class FixMipmapUrlClient
 
                                 if (fixMask) {
                                     maskUrl = imageAndMask.getMaskUrl();
-                                    for (final Pattern p : replacementData.keySet()) {
-                                        maskUrl = fixUrl(p, maskUrl, replacementData.get(p));
+                                    if ((maskUrl != null) && (maskUrl.length() > 0)) {
+                                        for (final Pattern p : replacementData.keySet()) {
+                                            maskUrl = fixUrl(p, maskUrl, replacementData.get(p));
+                                        }
                                     }
                                 } else {
                                     maskUrl = imageAndMask.getMaskUrl();
@@ -250,9 +255,9 @@ public class FixMipmapUrlClient
                                 fixedImageAndMask = new ImageAndMask(imageUrl, maskUrl);
                                 fixedImageAndMask.validate();
 
-                                final boolean imagePathChanged = fixImage &&
+                                final boolean imagePathChanged = fixImage && (imageUrl != null) &&
                                                                  (! imageUrl.equals(imageAndMask.getImageUrl()));
-                                final boolean maskPathChanged = fixMask &&
+                                final boolean maskPathChanged = fixMask && (maskUrl != null) &&
                                                                 (! maskUrl.equals(imageAndMask.getMaskUrl()));
                                 if (imagePathChanged || maskPathChanged) {
                                     fixedAtLeastOneSpec = true;

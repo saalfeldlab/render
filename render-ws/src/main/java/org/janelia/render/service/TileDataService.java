@@ -142,80 +142,13 @@ public class TileDataService {
 
         RenderParameters parameters = null;
         try {
-            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
-            tileSpec.flattenTransforms();
-
-            double tileRenderX = tileSpec.getMinX();
-            double tileRenderY = tileSpec.getMinY();
-
-            int tileRenderWidth;
-            if (width == null) {
-                tileRenderWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX());
-            } else {
-                tileRenderWidth = width;
-            }
-
-            int tileRenderHeight;
-            if (height == null) {
-                tileRenderHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY());
-            } else {
-                tileRenderHeight = height;
-            }
-
             final StackId stackId = new StackId(owner, project, stack);
             final StackMetaData stackMetaData = getStackMetaData(stackId);
 
-            if ((normalizeForMatching != null) && normalizeForMatching) {
+            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
 
-                // When deriving point matches for a tile pair in which each tile has different lens correction
-                // transformations, the bounding box for each rendered tile needs to be normalized.
-                //
-                // Normalization is achieved by:
-                // (1) Removing the last transform spec (assumed to be an affine that positions the tile in the world).
-                // (2) Setting the render start coordinate to (0,0).
-                // (3) Padding the raw tile width and height by multiplying a normalization factor (1.05).
-                //     Assuming that all tiles in a stack have the same raw width and height, this ensures
-                //     that normalized tiles also have the same width and height with a little extra room
-                //     for edges that are rotated/skewed by lens correction.
-                // (4) Ensuring that the normalized width and height are even by adding a pixel as needed.
-                //
-                // Consistent and even tile sizes are currently a requirement for generating DMesh point matches.
+            parameters = getCoreTileRenderParameters(width, height, scale, normalizeForMatching, tileSpec);
 
-                final double normalizationFactor = 1.05;
-                if (width == null) {
-                    tileRenderWidth = (int) (tileSpec.getWidth() * normalizationFactor);
-                }
-                if (height == null) {
-                    tileRenderHeight = (int) (tileSpec.getHeight() * normalizationFactor);
-                }
-
-                tileSpec.removeLastTransformSpec();
-
-                // If the tile still has more than 3 transforms, remove all but the last 3.
-                // This assumes that the last 3 transforms are for lens correction.
-                // Hopefully at some point we'll label transforms so that it is possible to
-                // explicitly include only lens correction transforms.
-                while (tileSpec.getTransforms().size() > 3) {
-                    tileSpec.removeLastTransformSpec();
-                }
-
-                tileRenderX = 0;
-                tileRenderY = 0;
-
-                if ((tileRenderWidth % 2) == 1) {
-                    tileRenderWidth++;
-                }
-                if ((tileRenderHeight % 2) == 1) {
-                    tileRenderHeight++;
-                }
-            }
-
-            parameters = new RenderParameters(null,
-                                              tileRenderX,
-                                              tileRenderY,
-                                              tileRenderWidth,
-                                              tileRenderHeight,
-                                              scale);
             parameters.setDoFilter(filter);
             parameters.setBinaryMask(binaryMask);
             parameters.setExcludeMask(excludeMask);
@@ -338,6 +271,78 @@ public class TileDataService {
         }
 
         return parameters;
+    }
+
+    protected static RenderParameters getCoreTileRenderParameters(final Integer width,
+                                                                  final Integer height,
+                                                                  final Double scale,
+                                                                  final Boolean normalizeForMatching,
+                                                                  final TileSpec tileSpec) {
+        tileSpec.flattenTransforms();
+
+        double tileRenderX = tileSpec.getMinX();
+        double tileRenderY = tileSpec.getMinY();
+
+        int tileRenderWidth;
+        if (width == null) {
+            tileRenderWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX() + 1);
+        } else {
+            tileRenderWidth = width;
+        }
+
+        int tileRenderHeight;
+        if (height == null) {
+            tileRenderHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY() + 1);
+        } else {
+            tileRenderHeight = height;
+        }
+
+        if ((normalizeForMatching != null) && normalizeForMatching) {
+
+            // When deriving point matches for a tile pair in which each tile has different lens correction
+            // transformations, the bounding box for each rendered tile needs to be normalized.
+            //
+            // Normalization is achieved by:
+            // (1) Removing the last transform spec (assumed to be an affine that positions the tile in the world).
+            // (2) Setting the render start coordinate to (0,0).
+            // (3) Padding the raw tile width and height by multiplying a normalization factor (1.05).
+            //     Assuming that all tiles in a stack have the same raw width and height, this ensures
+            //     that normalized tiles also have the same width and height with a little extra room
+            //     for edges that are rotated/skewed by lens correction.
+            // (4) Ensuring that the normalized width and height are even by adding a pixel as needed.
+            //
+            // Consistent and even tile sizes are currently a requirement for generating DMesh point matches.
+
+            final double normalizationFactor = 1.05;
+            if (width == null) {
+                tileRenderWidth = (int) (tileSpec.getWidth() * normalizationFactor);
+            }
+            if (height == null) {
+                tileRenderHeight = (int) (tileSpec.getHeight() * normalizationFactor);
+            }
+
+            tileSpec.removeLastTransformSpec();
+
+            // If the tile still has more than 3 transforms, remove all but the last 3.
+            // This assumes that the last 3 transforms are for lens correction.
+            // Hopefully at some point we'll label transforms so that it is possible to
+            // explicitly include only lens correction transforms.
+            while (tileSpec.getTransforms().size() > 3) {
+                tileSpec.removeLastTransformSpec();
+            }
+
+            tileRenderX = 0;
+            tileRenderY = 0;
+
+            if ((tileRenderWidth % 2) == 1) {
+                tileRenderWidth++;
+            }
+            if ((tileRenderHeight % 2) == 1) {
+                tileRenderHeight++;
+            }
+        }
+
+        return new RenderParameters(null, tileRenderX, tileRenderY, tileRenderWidth, tileRenderHeight, scale);
     }
 
     private StackMetaData getStackMetaData(final StackId stackId)

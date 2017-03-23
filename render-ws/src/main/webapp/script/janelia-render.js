@@ -22,13 +22,23 @@ var JaneliaScriptUtilities = function() {
         failureCallbackFunction(self.getErrorMessage(data));
     };
 
-    this.getServicesBaseUrl = function() {
+    this.getShortRenderHost = function() {
+	var href = window.location.href;
+        var hostIndex = href.indexOf(window.location.host);
+        var stopIndex = href.indexOf('/', hostIndex);
 
+	        // for localhost debugging:
+        // return 'http://renderer-dev.int.janelia.org:8080/render-ws/v1';
+
+        return href.substring(7, stopIndex);
+	};
+
+    this.getServicesBaseUrl = function() {
         var href = window.location.href;
         var hostIndex = href.indexOf(window.location.host);
         var stopIndex = href.indexOf('/', hostIndex);
 
-        // for localhost debugging:
+                // for localhost debugging:
         // return 'http://renderer-dev.int.janelia.org:8080/render-ws/v1';
 
         return href.substring(0, stopIndex) + '/render-ws/v1';
@@ -189,7 +199,7 @@ var JaneliaRenderServiceData = function(owner, project, stack) {
 
     this.util = new JaneliaScriptUtilities();
     this.baseUrl =  this.util.getServicesBaseUrl();
-
+    this.shortbaseUrl = this.util.getShortRenderHost();
     this.ownerList = [];
     this.stackMetaDataList = [];
     this.projectToStackCountMap = {};
@@ -335,6 +345,27 @@ JaneliaRenderServiceData.prototype.setStack = function(selectedStack) {
     }
 };
 
+JaneliaRenderServiceData.prototype.deleteStack = function (stackName, deleteCallbacks) {
+
+    if (confirm("Are you sure you want to delete the " + stackName + " stack?")) {
+
+        var self = this;
+
+        $.ajax({
+                   url: self.getProjectUrl() + 'stack/' + stackName,
+                   type: 'DELETE',
+                   success: function () {
+                       deleteCallbacks.success();
+                   },
+                   error: function (data,
+                                    text,
+                                    xhr) {
+                       self.util.handleAjaxError(data, text, xhr, deleteCallbacks.error);
+                   }
+               });
+    }
+};
+
 /**
  *
  * @param messageId
@@ -362,10 +393,10 @@ var JaneliaMessageUI = function(messageId, summaryMessage) {
 var JaneliaRenderServiceDataUI = function(queryParameters, ownerSelectId, projectSelectId, stackSelectId, messageId, urlToViewId) {
 
     this.util = new JaneliaScriptUtilities();
-
+    this.shortbaseUrl = this.util.getShortRenderHost();
     this.queryParameters = queryParameters;
-
     this.catmaidHost = queryParameters.map['catmaidHost'];
+    this.ndvizHost = queryParameters.map['ndvizHost'];
     this.dynamicRenderHost = queryParameters.map['dynamicRenderHost'];
 
     this.renderServiceData = new JaneliaRenderServiceData(queryParameters.map[ownerSelectId],
@@ -453,6 +484,10 @@ JaneliaRenderServiceDataUI.prototype.getDynamicRenderBaseUrl = function() {
     return baseRenderUrl;
 };
 
+JaneliaRenderServiceDataUI.prototype.isNdvizHostDefined = function() {
+    return typeof this.ndvizHost != 'undefined';
+};
+
 JaneliaRenderServiceDataUI.prototype.isCatmaidHostDefined = function() {
     return typeof this.catmaidHost != 'undefined';
 };
@@ -466,7 +501,8 @@ JaneliaRenderServiceDataUI.prototype.buildStackQueryParameters = function(owner,
         ['renderStackProject', project],
         ['renderStack', stack],
         ['dynamicRenderHost', this.dynamicRenderHost],
-        ['catmaidHost', this.catmaidHost]
+        ['catmaidHost', this.catmaidHost],
+        ['ndvizHost', this.ndvizHost]
     ];
 
     var key;
@@ -559,6 +595,13 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
                          '&zp=' + zp + '&yp=' + yp  + '&xp=' + xp;
         linksHtml = linksHtml + ' <a target="_blank" href="' + CATMAIDUrl + '">CATMAID-alpha</a>';
     }
+    if (this.isNdvizHostDefined()) {
+        var NDVIZUrl = 'http://' + this.ndvizHost + '/render/' + this.shortbaseUrl + '/' +
+                    stackId.owner + '/' + stackId.project + '/' + stackId.stack + '/';
+        linksHtml = linksHtml + ' <a target="_blank" href="' + NDVIZUrl + '">NdViz</a>';
+    }
+
+    linksHtml = linksHtml + ' <span id="' + stackId.stack + '__actions"></span>';
 
     if (stackInfo.state == 'OFFLINE') {
         linksHtml = '';
