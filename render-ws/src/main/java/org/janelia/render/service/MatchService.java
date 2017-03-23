@@ -324,7 +324,40 @@ public class MatchService {
 
         return streamResponse(responseOutput);
     }
-    
+    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Find matches from a specified object to a specified group",
+            notes = "Find all matches between a specific tile and a specific section.",
+            response = CanvasMatches.class,
+            responseContainer="List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public Response getMatchesFromObjectToGroup(@PathParam("owner") final String owner,
+                                             @PathParam("matchCollection") final String matchCollection,
+                                             @PathParam("pGroupId") final String pGroupId,
+                                             @PathParam("pId") final String pId,
+                                             @PathParam("qGroupId") final String qGroupId,
+                                             @QueryParam("mergeCollection") final List<String> mergeCollectionList) {
+
+        LOG.info("getMatchesFromObjectToGroup: entry, owner={}, matchCollection={}, pGroupId={}, pId={}, qGroupId={}, mergeCollectionList={}",
+                 owner, matchCollection, pGroupId, pId, qGroupId, mergeCollectionList);
+
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+        final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
+        final StreamingOutput responseOutput = new StreamingOutput() {
+            @Override
+            public void write(final OutputStream output)
+                    throws IOException, WebApplicationException {
+                matchDao.writeMatchesBetweenObjectandGroup(collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId, output);
+            }
+        };
+
+        return streamResponse(responseOutput);
+    }
+
     @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/id/{id}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -357,7 +390,7 @@ public class MatchService {
 
         return streamResponse(responseOutput);
     }
-    
+
     @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
     @DELETE
     @ApiOperation(
@@ -417,7 +450,7 @@ public class MatchService {
 
         return response;
     }
-    
+
     @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
     @DELETE
     @ApiOperation(
