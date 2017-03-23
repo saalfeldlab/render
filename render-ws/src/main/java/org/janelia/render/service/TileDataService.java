@@ -115,6 +115,24 @@ public class TileDataService {
         return response;
     }
 
+    public RenderParameters getRenderParameters(final String owner,
+                                                final String project,
+                                                final String stack,
+                                                final String tileId,
+                                                final Integer width,   // full scale width
+                                                final Integer height, // full scale height
+                                                final Double scale,
+                                                final Boolean filter,
+                                                final Boolean binaryMask,
+                                                final Boolean excludeMask,
+                                                final Boolean normalizeForMatching,
+                                                final Double minIntensity,
+                                                final Double maxIntensity) {
+        return getRenderParameters(owner,project,stack,tileId,width,height,scale,
+              filter,binaryMask,excludeMask,normalizeForMatching,minIntensity,
+              maxIntensity,false);
+
+                                                }
     @Path("project/{project}/stack/{stack}/tile/{tileId}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -135,7 +153,8 @@ public class TileDataService {
                                                 @QueryParam("excludeMask") final Boolean excludeMask,
                                                 @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
                                                 @QueryParam("minIntensity") final Double minIntensity,
-                                                @QueryParam("maxIntensity") final Double maxIntensity) {
+                                                @QueryParam("maxIntensity") final Double maxIntensity,
+                                                @QueryParam("removeAllOption" final Boolean removeAllOption)) {
 
         LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
@@ -147,7 +166,7 @@ public class TileDataService {
 
             final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
 
-            parameters = getCoreTileRenderParameters(width, height, scale, normalizeForMatching, tileSpec);
+            parameters = getCoreTileRenderParameters(width, height, scale, normalizeForMatching, tileSpec, removeAllOption);
 
             parameters.setDoFilter(filter);
             parameters.setBinaryMask(binaryMask);
@@ -272,12 +291,20 @@ public class TileDataService {
 
         return parameters;
     }
+    protected static RenderParameters getCoreTileRenderParameters(final Integer width,
+                                                                  final Integer height,
+                                                                  final Double scale,
+                                                                  final Boolean normalizeForMatching,
+                                                                  final TileSpec tileSpec){
+       return getCoreTileRenderParameters(width,height,scale,normalizeForMatching,tileSpec,false);
+                                                                  }
 
     protected static RenderParameters getCoreTileRenderParameters(final Integer width,
                                                                   final Integer height,
                                                                   final Double scale,
                                                                   final Boolean normalizeForMatching,
-                                                                  final TileSpec tileSpec) {
+                                                                  final TileSpec tileSpec,
+                                                                  final Boolean removeAllOption) {
         tileSpec.flattenTransforms();
 
         double tileRenderX = tileSpec.getMinX();
@@ -320,15 +347,21 @@ public class TileDataService {
             if (height == null) {
                 tileRenderHeight = (int) (tileSpec.getHeight() * normalizationFactor);
             }
+            if (removeAllOption){
+              while (tileSpec.getTransforms().size() > 0) {
+                  tileSpec.removeLastTransformSpec();
+              }
+            }
+            else{
+              tileSpec.removeLastTransformSpec();
 
-            tileSpec.removeLastTransformSpec();
-
-            // If the tile still has more than 3 transforms, remove all but the last 3.
-            // This assumes that the last 3 transforms are for lens correction.
-            // Hopefully at some point we'll label transforms so that it is possible to
-            // explicitly include only lens correction transforms.
-            while (tileSpec.getTransforms().size() > 3) {
-                tileSpec.removeLastTransformSpec();
+              // If the tile still has more than 3 transforms, remove all but the last 3.
+              // This assumes that the last 3 transforms are for lens correction.
+              // Hopefully at some point we'll label transforms so that it is possible to
+              // explicitly include only lens correction transforms.
+              while (tileSpec.getTransforms().size() > 3) {
+                  tileSpec.removeLastTransformSpec();
+              }
             }
 
             tileRenderX = 0;
