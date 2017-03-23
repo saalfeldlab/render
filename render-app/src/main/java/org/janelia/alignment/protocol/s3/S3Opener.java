@@ -1,14 +1,12 @@
 package org.janelia.alignment.protocol.s3;
 
-import ij.IJ;
+import com.amazonaws.auth.AWSCredentialsProvider;
 import ij.ImagePlus;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
@@ -21,6 +19,17 @@ import java.util.Locale;
  */
 public class S3Opener extends ij.io.Opener {
 
+    private AWSCredentialsProvider credentialsProvider;
+
+    public S3Opener() {
+        this(null);
+    }
+
+    public S3Opener(AWSCredentialsProvider credentialsProvider) {
+        super();
+        this.credentialsProvider = credentialsProvider;
+    }
+
     @Override
     public ImagePlus openURL(String url) {
         if (url.startsWith("s3://")) {
@@ -30,7 +39,7 @@ public class S3Opener extends ij.io.Opener {
             if (index>0)
                 name = url.substring(index+1);
             try {
-                URLStreamHandler handler = new Handler();
+                URLStreamHandler handler = new S3Handler(credentialsProvider);
                 URL u = new URL(null, url, handler);
                 URLConnection uc = u.openConnection();
                 String lurl = url.toLowerCase(Locale.US);
@@ -54,19 +63,17 @@ public class S3Opener extends ij.io.Opener {
         }
     }
 
-    /* Based on protected methods in ij.io.Opener. */
+    /* The following are based on protected methods from ij.io.Opener. */
     private ImagePlus openJpegOrGifUsingURL(String title, URL url) {
         Image img = Toolkit.getDefaultToolkit().createImage(url);
-        ImagePlus imp = new ImagePlus(title, img);
-        return imp;
+        return new ImagePlus(title, img);
     }
 
     ImagePlus openPngUsingURL(String title, URL url) throws IOException{
         Image img;
         InputStream in = url.openStream();
         img = ImageIO.read(in);
-        ImagePlus imp = new ImagePlus(title, img);
-        return imp;
+        return new ImagePlus(title, img);
     }
 
 

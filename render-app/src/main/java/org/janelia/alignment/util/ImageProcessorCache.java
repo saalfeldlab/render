@@ -1,5 +1,7 @@
 package org.janelia.alignment.util;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.CacheStats;
@@ -47,6 +49,9 @@ public class ImageProcessorCache {
 
     private final LoadingCache<CacheKey, ImageProcessor> cache;
 
+    /** Keep a single instance of the AWS credential provider per image cache */
+    private AWSCredentialsProvider awsCredentialsProvider;
+
     /**
      * Constructs an instance with default parameters.
      */
@@ -77,6 +82,8 @@ public class ImageProcessorCache {
         this.maximumNumberOfCachedPixels = maximumNumberOfCachedPixels;
         this.recordStats = recordStats;
         this.cacheOriginalsForDownSampledImages = cacheOriginalsForDownSampledImages;
+
+        this.awsCredentialsProvider = new DefaultAWSCredentialsProviderChain();
 
         final Weigher<CacheKey, ImageProcessor> weigher =
                 new Weigher<CacheKey, ImageProcessor>() {
@@ -237,7 +244,7 @@ public class ImageProcessorCache {
             // TODO: use Bio Formats to load strange formats
 
             // openers keep state about the file being opened, so we need to create a new opener for each load
-            final Opener opener = new S3Opener();
+            final Opener opener = new S3Opener(awsCredentialsProvider);
             opener.setSilentMode(true);
 
             final ImagePlus imagePlus = opener.openURL(url);
