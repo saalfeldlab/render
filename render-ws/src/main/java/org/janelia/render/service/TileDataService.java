@@ -115,9 +115,24 @@ public class TileDataService {
         return response;
     }
 
+    public RenderParameters getRenderParameters(final String owner,
+                                                final String project,
+                                                final String stack,
+                                                final String tileId,
+                                                final Integer width,   // full scale width
+                                                final Integer height, // full scale height
+                                                final Double scale,
+                                                final Boolean filter,
+                                                final Boolean binaryMask,
+                                                final Boolean excludeMask,
+                                                final Boolean normalizeForMatching,
+                                                final Double minIntensity,
+                                                final Double maxIntensity) {
+      return getRenderParameters(owner,project,stack,tileId,width,height,scale,
+      filter, binaryMask,excludeMask,normalizeForMatching,minIntensity,maxIntensity,
+      false);
+    }
 
-
-                                                }
     @Path("project/{project}/stack/{stack}/tile/{tileId}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
