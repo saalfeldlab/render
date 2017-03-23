@@ -166,7 +166,6 @@ public class TileDataService {
 
             final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
 
-            if (removeAllOption == null) removeAllOption=false;
             parameters = getCoreTileRenderParameters(width, height, scale, normalizeForMatching, tileSpec, removeAllOption);
 
             parameters.setDoFilter(filter);
@@ -310,7 +309,9 @@ public class TileDataService {
 
         double tileRenderX = tileSpec.getMinX();
         double tileRenderY = tileSpec.getMinY();
-
+        if (removeAllOption == null){
+          removeAllOption = false;
+        }
         int tileRenderWidth;
         if (width == null) {
             tileRenderWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX() + 1);
