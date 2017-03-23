@@ -131,6 +131,7 @@ public class TileDataService {
         return getRenderParameters(owner,project,stack,tileId,width,height,scale,
               filter,binaryMask,excludeMask,normalizeForMatching,minIntensity,
               maxIntensity,false);
+            }
 
                                                 }
     @Path("project/{project}/stack/{stack}/tile/{tileId}/render-parameters")
