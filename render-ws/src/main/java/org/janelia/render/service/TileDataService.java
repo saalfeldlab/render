@@ -155,7 +155,7 @@ public class TileDataService {
                                                 @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
                                                 @QueryParam("minIntensity") final Double minIntensity,
                                                 @QueryParam("maxIntensity") final Double maxIntensity,
-                                                @QueryParam("removeAllOption" final Boolean removeAllOption)) {
+                                                @QueryParam("removeAllOption") final Boolean removeAllOption) {
 
         LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
