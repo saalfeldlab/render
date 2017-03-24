@@ -2,6 +2,7 @@ package org.janelia.alignment.protocol.s3;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLConnection;
 
@@ -36,7 +37,15 @@ public class S3URLConnection extends URLConnection {
     public void connect() throws IOException {
         try {
             AmazonS3 s3Client = new AmazonS3Client(credentialsProvider);
-            s3object = s3Client.getObject(new GetObjectRequest(s3uri.getBucket(), s3uri.getKey()));
+            String s3key;
+            try {
+                s3key = java.net.URLDecoder.decode(s3uri.getKey(), "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                // TODO: Better error handling with badly encoded URLs?
+                s3key = s3uri.getKey();
+            }
+
+            s3object = s3Client.getObject(new GetObjectRequest(s3uri.getBucket(), s3key));
             connected = true;
         } catch (AmazonServiceException ase) {
             System.out.println("Caught an AmazonServiceException: ");
