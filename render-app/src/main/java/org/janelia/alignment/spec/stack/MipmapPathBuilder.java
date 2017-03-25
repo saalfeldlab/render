@@ -9,6 +9,8 @@ import org.janelia.alignment.json.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.swagger.annotations.ApiModelProperty;
+
 /**
  * <p>
  *     Supports dynamic derivation of image and mask mipmap paths based upon a common root path.
@@ -59,20 +61,51 @@ public class MipmapPathBuilder
 
     public MipmapPathBuilder(final String rootPath,
                              final Integer numberOfLevels,
-                             final String extension) {
+                             final String extension) throws IllegalArgumentException {
 
-        if (rootPath.endsWith("/")) {
+        if (rootPath == null) {
+            throw new IllegalArgumentException("rootPath must be specified for MipmapPathBuilder");
+        } else if (rootPath.endsWith("/")) {
             this.rootPath = rootPath;
         } else {
             this.rootPath = rootPath + '/';
         }
 
-        this.numberOfLevels = numberOfLevels;
-        this.extension = extension;
+        if (numberOfLevels == null) {
+            throw new IllegalArgumentException("numberOfLevels must be specified for MipmapPathBuilder");
+        } else {
+            this.numberOfLevels = numberOfLevels;
+        }
+
+        if (extension == null) {
+            throw new IllegalArgumentException("extension must be specified for MipmapPathBuilder");
+        } else {
+            this.extension = extension;
+        }
+    }
+
+    @ApiModelProperty(
+            value = "root path for all mipmaps",
+            notes = "The mipmap builder directory tree should be organized like <mipmap-root-path>/<level>/<level-0-path>.  " +
+                    "A typical setup for the <mipmap-root-path> is <base-directory>/rendered_mipmaps/<stack-owner>/<stack-project> " +
+                    "(e.g. /nrs/flyTEM/rendered_mipmaps/flyTEM/FAFB00).")
+    public String getRootPath() {
+        return rootPath;
     }
 
     public Integer getNumberOfLevels() {
         return numberOfLevels;
+    }
+
+    @ApiModelProperty(
+            value = "file extension (without dot) for all mipmaps",
+            allowableValues = "tif, jpg, png")
+    public String getExtension() {
+        return extension;
+    }
+
+    public boolean hasSamePathAndExtension(final MipmapPathBuilder that) {
+        return this.rootPath.equals(that.rootPath) && this.extension.equals(that.extension);
     }
 
     public String toJson() {

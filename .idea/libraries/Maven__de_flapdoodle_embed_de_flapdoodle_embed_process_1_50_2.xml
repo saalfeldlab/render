@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: de.flapdoodle.embed:de.flapdoodle.embed.process:1.50.2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/de/flapdoodle/embed/de.flapdoodle.embed.process/1.50.2/de.flapdoodle.embed.process-1.50.2.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/de/flapdoodle/embed/de.flapdoodle.embed.process/1.50.2/de.flapdoodle.embed.process-1.50.2-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/de/flapdoodle/embed/de.flapdoodle.embed.process/1.50.2/de.flapdoodle.embed.process-1.50.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

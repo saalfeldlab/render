@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.ws.rs.Consumes;
@@ -25,6 +26,7 @@ import javax.ws.rs.core.UriInfo;
 import org.bson.types.ObjectId;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
@@ -297,6 +299,79 @@ public class StackMetaDataService {
         return response;
     }
 
+    @Path("owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "The x, y, and z resolution values for the specified stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Stack not found")
+    })
+    public List<Double> getResolutionValues(@PathParam("owner") final String owner,
+                                            @PathParam("project") final String project,
+                                            @PathParam("stack") final String stack) {
+
+        LOG.info("getResolutionValues: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        List<Double> resolutionValues = null;
+        try {
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            resolutionValues = stackMetaData.getCurrentResolutionValues();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return resolutionValues;
+    }
+
+    @Path("owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs"},
+            value = "Saves x, y, and z resolution values for stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "resolution values successfully saved"),
+            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response saveResolutionValues(@PathParam("owner") final String owner,
+                                         @PathParam("project") final String project,
+                                         @PathParam("stack") final String stack,
+                                         final List<Double> resolutionValues) {
+
+        LOG.info("saveResolutionValues: entry, owner={}, project={}, stack={}, resolutionValues={}",
+                 owner, project, stack, resolutionValues);
+
+        try {
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            validateStackIsModifiable(stackMetaData);
+            stackMetaData.setCurrentResolutionValues(resolutionValues);
+            renderDao.saveStackMetaData(stackMetaData);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return Response.ok().build();
+    }
+
+    @Path("owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
+    @DELETE
+    @ApiOperation(
+            tags = {"Section Data APIs", "Stack Management APIs"},
+            value = "Deletes x, y, and z resolution values for stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response deleteResolutionValues(@PathParam("owner") final String owner,
+                                           @PathParam("project") final String project,
+                                           @PathParam("stack") final String stack) {
+        return saveResolutionValues(owner, project, stack, Arrays.asList((Double) null, null, null));
+    }
+
     @Path("owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
@@ -315,13 +390,8 @@ public class StackMetaDataService {
 
         String materializedBoxRootPath = null;
         try {
-            final StackId stackId = new StackId(owner, project, stack);
-            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
-            if (stackMetaData == null) {
-                throw getStackNotFoundException(owner, project, stack);
-            } else {
-                materializedBoxRootPath = stackMetaData.getCurrentMaterializedBoxRootPath();
-            }
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            materializedBoxRootPath = stackMetaData.getCurrentMaterializedBoxRootPath();
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -349,16 +419,10 @@ public class StackMetaDataService {
                  owner, project, stack, materializedBoxRootPath);
 
         try {
-            final StackId stackId = new StackId(owner, project, stack);
-            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
-            if (stackMetaData == null) {
-                throw getStackNotFoundException(owner, project, stack);
-            } else {
-                validateStackIsModifiable(stackMetaData);
-                stackMetaData.setCurrentMaterializedBoxRootPath(materializedBoxRootPath);
-                renderDao.saveStackMetaData(stackMetaData);
-            }
-
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            validateStackIsModifiable(stackMetaData);
+            stackMetaData.setCurrentMaterializedBoxRootPath(materializedBoxRootPath);
+            renderDao.saveStackMetaData(stackMetaData);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -379,6 +443,79 @@ public class StackMetaDataService {
                                                   @PathParam("project") final String project,
                                                   @PathParam("stack") final String stack) {
         return saveMaterializedBoxRootPath(owner, project, stack, null);
+    }
+
+    @Path("owner/{owner}/project/{project}/stack/{stack}/mipmapPathBuilder")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "The mipmap path builder specs for the specified stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Stack not found")
+    })
+    public MipmapPathBuilder getMipmapPathBuilder(@PathParam("owner") final String owner,
+                                                 @PathParam("project") final String project,
+                                                 @PathParam("stack") final String stack) {
+
+        LOG.info("getMipmapPathBuilder: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        MipmapPathBuilder mipmapPathBuilder = null;
+        try {
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            mipmapPathBuilder = stackMetaData.getCurrentMipmapPathBuilder();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return mipmapPathBuilder;
+    }
+
+    @Path("owner/{owner}/project/{project}/stack/{stack}/mipmapPathBuilder")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs"},
+            value = "Saves mipmap path builder specs for stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "mipmap path builder specs successfully saved"),
+            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response saveMipmapPathBuilder(@PathParam("owner") final String owner,
+                                          @PathParam("project") final String project,
+                                          @PathParam("stack") final String stack,
+                                          final MipmapPathBuilder mipmapPathBuilder) {
+
+        LOG.info("saveMipmapPathBuilder: entry, owner={}, project={}, stack={}, mipmapPathBuilder={}",
+                 owner, project, stack, mipmapPathBuilder);
+
+        try {
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            validateStackIsModifiable(stackMetaData);
+            stackMetaData.setCurrentMipmapPathBuilder(mipmapPathBuilder);
+            renderDao.saveStackMetaData(stackMetaData);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return Response.ok().build();
+    }
+
+    @Path("owner/{owner}/project/{project}/stack/{stack}/mipmapPathBuilder")
+    @DELETE
+    @ApiOperation(
+            tags = {"Section Data APIs", "Stack Management APIs"},
+            value = "Deletes mipmap path builder specs for stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response deleteMipmapPathBuilder(@PathParam("owner") final String owner,
+                                            @PathParam("project") final String project,
+                                            @PathParam("stack") final String stack) {
+        return saveMipmapPathBuilder(owner, project, stack, null);
     }
 
     @Path("owner/{owner}/project/{project}/stack/{stack}/section/{sectionId}")

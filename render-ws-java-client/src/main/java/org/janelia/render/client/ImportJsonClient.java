@@ -78,6 +78,8 @@ public class ImportJsonClient {
                                                      parameters.owner,
                                                      parameters.project);
 
+        this.renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
+
         this.transformSpecs = loadTransformData(parameters.transformFile);
     }
 

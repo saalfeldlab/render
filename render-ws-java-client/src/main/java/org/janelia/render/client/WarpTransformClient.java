@@ -11,6 +11,7 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.warp.AbstractWarpTransformBuilder;
 import org.janelia.alignment.warp.MovingLeastSquaresBuilder;
@@ -61,6 +62,9 @@ public class WarpTransformClient {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final WarpTransformClient client = new WarpTransformClient(parameters);
+
+                client.setUpDerivedStack();
+
                 for (final String z : parameters.zValues) {
                     client.generateStackDataForZ(new Double(z), parameters.alpha);
                 }
@@ -81,6 +85,11 @@ public class WarpTransformClient {
         this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
                                                      parameters.owner,
                                                      parameters.project);
+    }
+
+    public void setUpDerivedStack() throws Exception {
+        final StackMetaData montageStackMetaData = renderDataClient.getStackMetaData(parameters.montageStack);
+        renderDataClient.setupDerivedStack(montageStackMetaData, parameters.targetStack);
     }
 
     public void generateStackDataForZ(final Double z,

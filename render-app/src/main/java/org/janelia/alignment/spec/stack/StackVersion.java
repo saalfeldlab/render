@@ -1,7 +1,9 @@
 package org.janelia.alignment.spec.stack;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
 
@@ -19,12 +21,12 @@ public class StackVersion
     private final Integer cycleNumber;
     private final Integer cycleStepNumber;
 
-    private final Double stackResolutionX;
-    private final Double stackResolutionY;
-    private final Double stackResolutionZ;
+    private Double stackResolutionX;
+    private Double stackResolutionY;
+    private Double stackResolutionZ;
 
     private String materializedBoxRootPath;
-    private final MipmapPathBuilder mipmapPathBuilder;
+    private MipmapPathBuilder mipmapPathBuilder;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
@@ -80,6 +82,26 @@ public class StackVersion
         return stackResolutionZ;
     }
 
+    public List<Double> getStackResolutionValues() {
+        final List<Double> resolutionValues = new ArrayList<>();
+        resolutionValues.add(stackResolutionX);
+        resolutionValues.add(stackResolutionY);
+        resolutionValues.add(stackResolutionZ);
+        return resolutionValues;
+    }
+
+    public void setStackResolutionValues(final List<Double> resolutionValues) {
+        if (resolutionValues.size() > 0) {
+            stackResolutionX = resolutionValues.get(0);
+            if (resolutionValues.size() > 1) {
+                stackResolutionY = resolutionValues.get(1);
+                if (resolutionValues.size() > 2) {
+                    stackResolutionZ = resolutionValues.get(2);
+                }
+            }
+        }
+    }
+
     public String getMaterializedBoxRootPath() {
         return materializedBoxRootPath;
     }
@@ -97,6 +119,19 @@ public class StackVersion
 
     public MipmapPathBuilder getMipmapPathBuilder() {
         return mipmapPathBuilder;
+    }
+
+    public void setMipmapPathBuilder(final MipmapPathBuilder mipmapPathBuilder)
+            throws IllegalArgumentException {
+
+        if (mipmapPathBuilder == null) {
+            this.mipmapPathBuilder = null;
+        } else {
+            // reconstruct builder in case JSON de-serialization created "incomplete" instance
+            this.mipmapPathBuilder = new MipmapPathBuilder(mipmapPathBuilder.getRootPath(),
+                                                           mipmapPathBuilder.getNumberOfLevels(),
+                                                           mipmapPathBuilder.getExtension());
+        }
     }
 
     @Override

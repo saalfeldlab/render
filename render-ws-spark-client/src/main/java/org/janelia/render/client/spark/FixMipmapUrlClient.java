@@ -38,6 +38,7 @@ public class FixMipmapUrlClient
 
     private enum UrlType { IMAGE, MASK, BOTH }
 
+    @SuppressWarnings("unused")
     private static class Parameters extends RenderDataClientParameters {
 
         // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
@@ -186,11 +187,8 @@ public class FixMipmapUrlClient
                                                                        parameters.getTargetOwner(),
                                                                        parameters.getTargetProject());
 
-        final StackMetaData targetStackMetaData = targetDataClient.getStackMetaData(parameters.getTargetStack());
-        if (! targetStackMetaData.isLoading()) {
-            throw new IllegalArgumentException("target stack must be in the loading state, meta data is " +
-                                               targetStackMetaData);
-        }
+        final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
+        targetDataClient.setupDerivedStack(sourceStackMetaData, parameters.getTargetStack());
 
         final LinkedHashMap<Pattern, String> replacementData = loadReplacementData(parameters.replacementDataFile);
 
@@ -236,36 +234,40 @@ public class FixMipmapUrlClient
                                 imageAndMask = channelSpec.getMipmap(level);
                                 if (imageAndMask != null) {
 
-                                    if (fixImage) {
-                                        imageUrl = imageAndMask.getImageUrl();
+                                if (fixImage) {
+                                    imageUrl = imageAndMask.getImageUrl();
+                                    if ((imageUrl != null) && (imageUrl.length() > 0)) {
                                         for (final Pattern p : replacementData.keySet()) {
                                             imageUrl = fixUrl(p, imageUrl, replacementData.get(p));
                                         }
-                                    } else {
-                                        imageUrl = imageAndMask.getImageUrl();
                                     }
+                                } else {
+                                    imageUrl = imageAndMask.getImageUrl();
+                                }
 
-                                    if (fixMask) {
-                                        maskUrl = imageAndMask.getMaskUrl();
+                                if (fixMask) {
+                                    maskUrl = imageAndMask.getMaskUrl();
+                                    if ((maskUrl != null) && (maskUrl.length() > 0)) {
                                         for (final Pattern p : replacementData.keySet()) {
                                             maskUrl = fixUrl(p, maskUrl, replacementData.get(p));
                                         }
-                                    } else {
-                                        maskUrl = imageAndMask.getMaskUrl();
                                     }
+                                } else {
+                                    maskUrl = imageAndMask.getMaskUrl();
+                                }
 
                                     fixedImageAndMask = new ImageAndMask(imageUrl, maskUrl);
                                     fixedImageAndMask.validate();
 
-                                    final boolean imagePathChanged = fixImage &&
-                                                                     (!imageUrl.equals(imageAndMask.getImageUrl()));
-                                    final boolean maskPathChanged = fixMask &&
-                                                                    (!maskUrl.equals(imageAndMask.getMaskUrl()));
-                                    if (imagePathChanged || maskPathChanged) {
-                                        fixedAtLeastOneSpec = true;
-                                        channelSpec.putMipmap(level, fixedImageAndMask);
-                                    }
+                                final boolean imagePathChanged = fixImage && (imageUrl != null) &&
+                                                                 (! imageUrl.equals(imageAndMask.getImageUrl()));
+                                final boolean maskPathChanged = fixMask && (maskUrl != null) &&
+                                                                (! maskUrl.equals(imageAndMask.getMaskUrl()));
+                                if (imagePathChanged || maskPathChanged) {
+                                    fixedAtLeastOneSpec = true;
+                                    channelSpec.putMipmap(level, fixedImageAndMask);
                                 }
+                            }
 
                             }
                         }

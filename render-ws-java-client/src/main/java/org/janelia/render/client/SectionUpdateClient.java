@@ -59,6 +59,7 @@ public class SectionUpdateClient {
 
     public void updateZ()
             throws Exception {
+        renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
         renderDataClient.updateZForSection(parameters.stack, parameters.sectionId, parameters.z);
     }
 

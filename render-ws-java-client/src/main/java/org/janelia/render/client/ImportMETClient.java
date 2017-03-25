@@ -21,6 +21,7 @@ import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.validator.TemTileSpecValidator;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.util.ProcessTimer;
@@ -138,6 +139,9 @@ public class ImportMETClient {
     public void generateStackData() throws Exception {
 
         LOG.info("generateStackData: entry");
+
+        final StackMetaData sourceStackMetaData = sourceRenderDataClient.getStackMetaData(parameters.stack);
+        targetRenderDataClient.setupDerivedStack(sourceStackMetaData, parameters.targetStack);
 
         if ("v2".equalsIgnoreCase(parameters.formatVersion) || "v3".equalsIgnoreCase(parameters.formatVersion)) {
             loadMetData();

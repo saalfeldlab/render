@@ -1,7 +1,9 @@
 package org.janelia.alignment.spec.stack;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
 
@@ -213,6 +215,22 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         }
     }
 
+    public List<Double> getCurrentResolutionValues() {
+        final List<Double> resolutionValues;
+        if (currentVersion != null) {
+            resolutionValues = currentVersion.getStackResolutionValues();
+        } else {
+            resolutionValues = new ArrayList<>();
+        }
+        return resolutionValues;
+    }
+
+    public void setCurrentResolutionValues(final List<Double> resolutionValues) {
+        if (currentVersion != null) {
+            currentVersion.setStackResolutionValues(resolutionValues);
+        }
+    }
+
     public String getCurrentMaterializedBoxRootPath() {
         String path = null;
         if (currentVersion != null) {
@@ -233,6 +251,14 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
             mipmapPathBuilder = currentVersion.getMipmapPathBuilder();
         }
         return mipmapPathBuilder;
+    }
+
+    public void setCurrentMipmapPathBuilder(final MipmapPathBuilder mipmapPathBuilder)
+            throws IllegalArgumentException {
+
+        if (currentVersion != null) {
+            currentVersion.setMipmapPathBuilder(mipmapPathBuilder);
+        }
     }
 
     @SuppressWarnings({"ConstantConditions", "NullableProblems"})

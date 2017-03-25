@@ -61,12 +61,16 @@ public class ImportTileZValuesClient {
 
     private final Map<Double, List<String>> zToTileIdMap;
 
-    public ImportTileZValuesClient(final Parameters parameters) {
+    public ImportTileZValuesClient(final Parameters parameters)
+            throws IOException {
         this.parameters = parameters;
 
         this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
                                                      parameters.owner,
                                                      parameters.project);
+
+        this.renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
+
         this.zToTileIdMap = new HashMap<>();
     }
 

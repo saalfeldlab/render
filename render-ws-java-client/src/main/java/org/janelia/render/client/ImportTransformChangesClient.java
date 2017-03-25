@@ -14,6 +14,7 @@ import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TileTransform;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
@@ -131,6 +132,9 @@ public class ImportTransformChangesClient {
     public void updateStackData() throws Exception {
 
         LOG.info("updateStackData: entry");
+
+        final StackMetaData sourceStackMetaData = sourceRenderDataClient.getStackMetaData(parameters.stack);
+        targetRenderDataClient.setupDerivedStack(sourceStackMetaData, parameters.targetStack);
 
         final List<TileTransform> transformDataList = loadTransformData(parameters.transformFile);
         for (final TileTransform tileTransform : transformDataList) {

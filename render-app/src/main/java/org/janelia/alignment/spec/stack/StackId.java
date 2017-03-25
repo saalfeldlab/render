@@ -58,11 +58,7 @@ public class StackId implements Comparable<StackId>, Serializable {
 
     @Override
     public String toString() {
-        return "StackId{" +
-               "owner='" + owner + '\'' +
-               ", project='" + project + '\'' +
-               ", stack='" + stack + '\'' +
-               '}';
+        return "stack with owner '" + owner + "', project '" + project + "', and name '" + stack + "'";
     }
 
     @SuppressWarnings("NullableProblems")
