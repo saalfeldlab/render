@@ -32,6 +32,7 @@ RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/jdk*)"'; } >> ~/.mavenrc
 
 # build render modules
 #RUN mvn package
+RUN mvn clean
 RUN mvn -Dproject.build.sourceEncoding=UTF-8 package
 
 # deploy the web service
