@@ -80,7 +80,7 @@ public class TileImageService {
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
                                                         filter, false, excludeMask, normalizeForMatching,
-                                                        removeAllOption, minIntensity, maxIntensity);
+                                                         minIntensity, maxIntensity,removeAllOption);
             return RenderServiceUtil.renderJpegImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -117,8 +117,8 @@ public class TileImageService {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
-                                                        filter, false, excludeMask, normalizeForMatching, removeAllOption,
-                                                        minIntensity, maxIntensity);
+                                                        filter, false, excludeMask, normalizeForMatching,
+                                                        minIntensity, maxIntensity,removeAllOption);
             return RenderServiceUtil.renderPngImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -156,7 +156,7 @@ public class TileImageService {
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
                                                         filter, false, excludeMask, normalizeForMatching,
-                                                        removeAllOption, minIntensity, maxIntensity);
+                                                        minIntensity, maxIntensity,removeAllOption);
             return RenderServiceUtil.renderTiffImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
