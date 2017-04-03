@@ -6,6 +6,8 @@ import com.beust.jcommander.Parameters;
 import java.lang.reflect.Constructor;
 
 import org.janelia.alignment.spec.validator.TileSpecValidator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base parameters for all render web service clients that support tile validation.
@@ -68,6 +70,7 @@ public class RenderDataClientParametersWithValidator
 
             if (validatorData != null) {
                 validatorInstance.init(validatorData);
+                LOG.info("getValidatorInstance: created {}", validatorInstance);
             }
         }
 
@@ -79,5 +82,7 @@ public class RenderDataClientParametersWithValidator
         this.validatorClass = null;
         this.validatorData = null;
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(RenderDataClientParametersWithValidator.class);
 
 }
