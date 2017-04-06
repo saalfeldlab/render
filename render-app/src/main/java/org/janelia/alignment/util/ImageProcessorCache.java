@@ -86,7 +86,7 @@ public class ImageProcessorCache {
                         if (value == null) {
                             weight = 0;
                         } else {
-                            weight = value.getPixelCount();
+                            weight = value.getPixelCount() * value.getBitDepth() / 8;
                         }
                         return weight;
                     }
