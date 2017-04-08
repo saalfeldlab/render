@@ -8,9 +8,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -119,29 +117,6 @@ public class ImportJsonClient {
                 resolvedTiles.setTileSpecValidator(tileSpecValidator);
                 resolvedTiles.filterInvalidSpecs();
 
-                // filter out specs with differing widths or heights
-                final Set<String> validSpecIds = new HashSet<>(resolvedTiles.getTileCount());
-                Integer standardWidth = null;
-                Integer standardHeight = null;
-                for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
-
-                    if (standardWidth == null) {
-                        standardWidth = tileSpec.getWidth();
-                        standardHeight = tileSpec.getHeight();
-                    }
-
-                    if (! standardWidth.equals(tileSpec.getWidth())){
-                        LOG.error("removing tileId '" + tileSpec.getTileId() + "' because its width (" +
-                                  tileSpec.getWidth() + ") differs from the standard width (" + standardWidth + ")");
-                    } else if (! standardHeight.equals(tileSpec.getHeight())){
-                        LOG.error("removing tileId '" + tileSpec.getTileId() + "' because its height (" +
-                                  tileSpec.getHeight() + ") differs from the standard height (" + standardHeight + ")");
-                    } else {
-                        validSpecIds.add(tileSpec.getTileId());
-                    }
-                }
-
-                resolvedTiles.filterSpecs(validSpecIds);
             }
 
             LOG.info("importStackData: derived bounding box for {} tiles, elapsedSeconds={}",
