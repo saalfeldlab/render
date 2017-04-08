@@ -100,7 +100,7 @@ public class ImageProcessorCache {
                             throws Exception {
                         ImageProcessor imageProcessor = null;
                         if (key != null) {
-                            imageProcessor = loadImageProcessor(key.getUri(), key.getDownSampleLevels(), key.isMask());
+                            imageProcessor = loadImageProcessor(key.getUri(), key.getDownSampleLevels(), key.isMask(),key.isConvertTo16Bit());
                         }
                         return imageProcessor;
                     }
@@ -137,11 +137,17 @@ public class ImageProcessorCache {
      *   if the image cannot be loaded.
      */
     public ImageProcessor get(final String url,
+			      final int downSampleLevels,
+ 			      boolean isMask){
+	return this.get(url,downSampleLevels,isMask,true);
+	}
+    public ImageProcessor get(final String url,
                               final int downSampleLevels,
-                              boolean isMask)
+                              boolean isMask,
+			      boolean convertTo16Bit)
             throws IllegalArgumentException {
 
-        final CacheKey key = new CacheKey(url, downSampleLevels, isMask);
+        final CacheKey key = new CacheKey(url, downSampleLevels, isMask,convertTo16Bit);
         final ImageProcessor imageProcessor;
         try {
             imageProcessor = cache.get(key);
@@ -205,19 +211,27 @@ public class ImageProcessorCache {
      *   if the image cannot be loaded.
      */
     protected ImageProcessor loadImageProcessor(final String url,
+  						final int downSampleLevels,
+						final boolean isMask)
+	throws IllegalArgumentException{
+	   return loadImageProcessor(url,downSampleLevels,isMask,true); 
+	}
+
+    protected ImageProcessor loadImageProcessor(final String url,
                                                 final int downSampleLevels,
-                                                final boolean isMask)
+                                                final boolean isMask,
+						final boolean convertTo16Bit)
             throws IllegalArgumentException {
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("loadImageProcessor: entry, url={}, downSampleLevels={}", url, downSampleLevels);
+            LOG.debug("loadImageProcessor: entry, url={}, downSampleLevels={}, convertTo16Bit={}", url, downSampleLevels,convertTo16Bit);
         }
 
         ImageProcessor imageProcessor = null;
 
         // if we need to down sample, see if source image is already cached before trying to load it
         if (downSampleLevels > 0) {
-            imageProcessor = cache.getIfPresent(new CacheKey(url, 0, isMask));
+            imageProcessor = cache.getIfPresent(new CacheKey(url, 0, isMask,convertTo16Bit));
         }
 
         // load the image as needed
@@ -236,6 +250,12 @@ public class ImageProcessorCache {
 
             imageProcessor = imagePlus.getProcessor();
 
+            // Force images to 16-bit, to allow for testing of mixed 8-bit and 16-bit mipmap levels.
+            if (!isMask && imageProcessor.getBitDepth() == 8 && convertTo16Bit) {
+                imageProcessor = imageProcessor.convertToShort(false);
+                imageProcessor.multiply(256.0);
+            }
+
             // if we're going to down sample and we're supposed to cache originals, do so here
             if (cacheOriginalsForDownSampledImages && (downSampleLevels > 0)) {
 
@@ -243,7 +263,7 @@ public class ImageProcessorCache {
                     LOG.debug("loadImageProcessor: caching level 0 for {}", url);
                 }
 
-                cache.put(new CacheKey(url, 0, isMask), imageProcessor);
+                cache.put(new CacheKey(url, 0, isMask,convertTo16Bit), imageProcessor);
             }
 
         }
@@ -267,10 +287,18 @@ public class ImageProcessorCache {
         private final String url;
         private final int downSampleLevels;
         private final boolean isMask;
+        private final boolean convertTo16Bit;
+
+	public CacheKey(final String url,
+ 			final int downSampleLevels,
+			final boolean isMask){
+		this(url,downSampleLevels,isMask,true);
+	}
 
         public CacheKey(final String url,
                         final int downSampleLevels,
-                        final boolean isMask) {
+                        final boolean isMask,
+			final boolean convertTo16Bit) {
 
             this.url = url;
 
@@ -281,12 +309,16 @@ public class ImageProcessorCache {
             }
 
             this.isMask = isMask;
+	    this.convertTo16Bit = convertTo16Bit;
+
         }
 
         public String getUri() {
             return url;
         }
-
+	public boolean isConvertTo16Bit(){
+	    return convertTo16Bit;
+	}
         public int getDownSampleLevels() {
             return downSampleLevels;
         }
@@ -297,7 +329,7 @@ public class ImageProcessorCache {
 
         @Override
         public String toString() {
-            return "{url: '" + url + "', downSampleLevels: " + downSampleLevels + ", isMask: " + isMask + '}';
+            return "{url: '" + url + "', downSampleLevels: " + downSampleLevels + ", isMask: " + isMask + ", convertTo16Bit:" + convertTo16Bit +  '}';
         }
 
         @Override
@@ -306,7 +338,7 @@ public class ImageProcessorCache {
             if (this != o) {
                 if (o instanceof CacheKey) {
                     final CacheKey that = (CacheKey) o;
-                    result = this.url.equals(that.url) && (this.downSampleLevels == that.downSampleLevels);
+                    result = this.url.equals(that.url) && (this.downSampleLevels == that.downSampleLevels) && (this.convertTo16Bit==that.convertTo16Bit);
                 } else {
                     result = false;
                 }

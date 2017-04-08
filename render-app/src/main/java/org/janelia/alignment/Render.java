@@ -301,11 +301,12 @@ public class Render {
             ImageProcessor widthAndHeightProcessor = null;
             int width = ts.getWidth();
             int height = ts.getHeight();
+            boolean convertTo16Bit = (ts.getMaxIntensity()>255);
             // if width and height were not set, figure width and height
             if ((width < 0) || (height < 0)) {
                 mipmapEntry = ts.getFirstMipmapEntry();
                 imageAndMask = mipmapEntry.getValue();
-                widthAndHeightProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(), 0, false);
+                widthAndHeightProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(), 0, false,convertTo16Bit);
                 width = widthAndHeightProcessor.getWidth();
                 height = widthAndHeightProcessor.getHeight();
             }
@@ -328,12 +329,12 @@ public class Render {
                     mipmapLevel = currentMipmapLevel;
                 }
 
-                ipMipmap = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels, false);
+                ipMipmap = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels, false,convertTo16Bit);
 
             } else if (mipmapLevel > 0) {
 
                 downSampleLevels = mipmapLevel;
-                ipMipmap = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels, false);
+                ipMipmap = imageProcessorCache.get(imageAndMask.getImageUrl(), downSampleLevels, false,convertTo16Bit);
 
             } else {
 
@@ -361,7 +362,7 @@ public class Render {
             ImageProcessor maskSourceProcessor;
             final String maskUrl = imageAndMask.getMaskUrl();
             if ((maskUrl != null) && (! excludeMask)) {
-                maskSourceProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true);
+                maskSourceProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true,false);
             } else {
                 maskSourceProcessor = null;
             }
