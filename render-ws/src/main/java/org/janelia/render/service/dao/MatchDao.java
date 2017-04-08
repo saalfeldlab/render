@@ -168,6 +168,29 @@ public class MatchDao {
         writeMatches(collectionList, query, outputStream);
     }
 
+    public void writeMatchesBetweenObjectandGroup(final MatchCollectionId collectionId,
+                                           final List<MatchCollectionId> mergeCollectionIdList,
+                                           final String pGroupId,
+                                           final String pId,
+                                           final String qGroupId,
+                                           final OutputStream outputStream)
+            throws IllegalArgumentException, IOException, ObjectNotFoundException {
+
+        LOG.debug("writeMatchesBetweenObjectandGroup: entry, collectionId={}, mergeCollectionIdList={}, pGroupId={}, pId={}, qGroupId={}",
+                  collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId);
+
+        final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
+                                                                                         mergeCollectionIdList);
+        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
+        MongoUtil.validateRequiredParameter("pId", pId);
+        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
+
+        final String noTileId = "";
+        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, pId, qGroupId,noTileId, null);
+        final Document query = getInvolvingObjectAndGroupQuery(pGroupId,pId,qGroupId);
+
+        writeMatches(collectionList, query, outputStream);
+    }
     public void writeMatchesBetweenObjects(final MatchCollectionId collectionId,
                                            final List<MatchCollectionId> mergeCollectionIdList,
                                            final String pGroupId,
@@ -202,17 +225,17 @@ public class MatchDao {
 								           final String id,
 								           final OutputStream outputStream)
 			throws IllegalArgumentException, IOException, ObjectNotFoundException {
-			
+
 			LOG.debug("writeMatchesInvolvingObject: entry, collectionId={}, mergeCollectionIdList={}, groupId={}, id={}",
 			collectionId, mergeCollectionIdList, groupId, id);
-			
+
 			final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
 			                                                          mergeCollectionIdList);
 			MongoUtil.validateRequiredParameter("groupId", groupId);
 			MongoUtil.validateRequiredParameter("id", id);
-					
-			final Document query = getInvolvingObjectQuery(groupId,id);	
-			
+
+			final Document query = getInvolvingObjectQuery(groupId,id);
+
 			writeMatches(collectionList, query, outputStream);
 	}
     public void removeMatchesBetweenTiles(final MatchCollectionId collectionId,
@@ -570,14 +593,24 @@ public class MatchDao {
                 "pGroupId", new Document(QueryOperators.NE, groupId)));
         return new Document(QueryOperators.OR, queryList);
     }
-    
-    private Document getInvolvingObjectQuery(final String groupId,final String Id){
+
+    private Document getInvolvingObjectQuery(final String groupId,final String id){
     	 final List<Document> queryList = new ArrayList<>();
          queryList.add(new Document("pGroupId", groupId).append(
-                 "pId", Id));
+                 "pId", id));
          queryList.add(new Document("qGroupId", groupId).append(
-                 "qId", Id));
+                 "qId", id));
          return new Document(QueryOperators.OR, queryList);
+    }
+
+    private Document getInvolvingObjectAndGroupQuery(final String groupId,final String id, final String qGroupId){
+       final List<Document> queryList = new ArrayList<>();
+         queryList.add(new Document("pGroupId", groupId).append(
+                 "pId", id).append("qGroupId",qGroupId));
+         queryList.add(new Document("qGroupId", groupId).append(
+                 "qId", id).append("pGroupId",qGroupId));
+
+        return new Document(QueryOperators.OR, queryList);
     }
 
     private void ensureMatchIndexes(final MongoCollection<Document> collection) {
