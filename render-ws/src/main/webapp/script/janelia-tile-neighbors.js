@@ -18,8 +18,9 @@ var JaneliaTile2 = function(tileSpec, stackUrl, matchCollectionUrl, renderQueryP
 
     this.specUrl = this.stackUrl + "/tile/" + this.tileSpec.tileId;
 
-    this.renderUrl = this.specUrl + "/render-parameters" + renderQueryParameters;
-    this.imageUrl = this.specUrl + "/jpeg-image" + renderQueryParameters + "&scale=" + this.scale;
+    this.renderQueryParameters = renderQueryParameters;
+    this.renderUrl = this.specUrl + "/render-parameters?" + renderQueryParameters;
+    this.imageUrl = this.specUrl + "/jpeg-image?" + renderQueryParameters + "&scale=" + this.scale;
 
     this.image = new Image();
     this.imagePositioned = false;
@@ -28,22 +29,35 @@ var JaneliaTile2 = function(tileSpec, stackUrl, matchCollectionUrl, renderQueryP
 
     var self = this;
     this.image.onload = function() {
-        var scaledWidth = self.image.naturalWidth;
-        var scaledHeight = self.image.naturalHeight;
-
-        var context = self.canvas.getContext("2d");
-        var canvasOffset = 4;
-        var tileMargin = 4;
-        self.x = (self.column * (scaledWidth + tileMargin)) + canvasOffset;
-        self.y = (self.row * (scaledHeight + tileMargin)) + canvasOffset;
-        context.drawImage(self.image, self.x, self.y);
-
-        self.imagePositioned = true;
-
+        self.drawLoadedImage();
         if (typeof self.matchCollectionUrl !== 'undefined') {
             self.loadAllMatches()
         }
     };
+
+    this.matches = [];
+    this.matchIndex = -1;
+    this.matchInfoSelector = undefined;
+};
+
+JaneliaTile2.prototype.getMatchesUrl = function(qTile) {
+    return this.matchCollectionUrl + "/group/" + this.tileSpec.layout.sectionId +
+                   "/id/" + this.tileSpec.tileId + "/matchesWith/" +
+                   qTile.tileSpec.layout.sectionId + "/id/" + qTile.tileSpec.tileId;
+};
+
+JaneliaTile2.prototype.drawLoadedImage = function() {
+    var scaledWidth = this.image.naturalWidth;
+    var scaledHeight = this.image.naturalHeight;
+
+    var context = this.canvas.getContext("2d");
+    var canvasOffset = 4;
+    var tileMargin = 4;
+    this.x = (this.column * (scaledWidth + tileMargin)) + canvasOffset;
+    this.y = (this.row * (scaledHeight + tileMargin)) + canvasOffset;
+    context.drawImage(this.image, this.x, this.y);
+
+    this.imagePositioned = true;
 };
 
 JaneliaTile2.prototype.setRowAndColumn = function(row, column) {
@@ -76,24 +90,25 @@ JaneliaTile2.prototype.loadAllMatches = function() {
 
     this.matches = [];
 
-    var self = this;
-    for (var tileId in self.janeliaTileMap) {
-        if (self.janeliaTileMap.hasOwnProperty(tileId)) {
+    var pTile = this;
+    var pGroupId = pTile.tileSpec.layout.sectionId;
+    var pId = pTile.tileSpec.tileId;
 
-            var janeliaTile2 = self.janeliaTileMap[tileId];
-            var tileSpec = janeliaTile2.tileSpec;
+    for (var qTileId in pTile.janeliaTileMap) {
+        if (pTile.janeliaTileMap.hasOwnProperty(qTileId)) {
 
-            if ((self.tileSpec.layout.sectionId <= tileSpec.layout.sectionId) &&
-                (self.tileSpec.tileId < tileId)){
+            var qTile = pTile.janeliaTileMap[qTileId];
+            var qGroupId = qTile.tileSpec.layout.sectionId;
 
-                var matchUrl = self.matchCollectionUrl + "/group/" + self.tileSpec.layout.sectionId +
-                               "/id/" + self.tileSpec.tileId + "/matchesWith/" +
-                               tileSpec.layout.sectionId + "/id/" + tileId;
+            if ((pGroupId < qGroupId) || ((pGroupId == qGroupId) && (pId < qTileId))) {
+
+                var matchesUrl = pTile.getMatchesUrl(qTile);
+
                 $.ajax({
-                           url: matchUrl,
+                           url: matchesUrl,
                            cache: false,
                            success: function(data) {
-                               self.addMatchPair(data);
+                               pTile.addMatchPair(data);
                            },
                            error: function(data, text, xhr) {
                                console.log(xhr);
@@ -124,23 +139,18 @@ JaneliaTile2.prototype.drawMatches = function(canvasMatches) {
 
     if (pTile.imagePositioned && qTile.imagePositioned) {
 
-        var pMatches = canvasMatches.matches.p;
-        var qMatches = canvasMatches.matches.q;
+        var context = this.canvas.getContext("2d");
+        context.lineWidth = 1;
 
-        for (var matchIndex = 0; matchIndex < canvasMatches.matches.w.length; matchIndex++) {
+        var matchCount = canvasMatches.matches.w.length;
 
-            var px = (pMatches[0][matchIndex] * this.scale) + pTile.x;
-            var py = (pMatches[1][matchIndex] * this.scale) + pTile.y;
-            var qx = (qMatches[0][matchIndex] * this.scale) + qTile.x;
-            var qy = (qMatches[1][matchIndex] * this.scale) + qTile.y;
+        for (var matchIndex = 0; matchIndex < matchCount; matchIndex++) {
+            context.strokeStyle = colors[matchIndex % colors.length];
+            this.drawMatch(canvasMatches, matchIndex, pTile, qTile, context);
+        }
 
-            var ctx = this.canvas.getContext("2d");
-            ctx.strokeStyle = colors[matchIndex % colors.length];
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(px, py);
-            ctx.lineTo(qx, qy);
-            ctx.stroke();
+        if ((typeof pTile.matchInfoSelector !== 'undefined')) {
+            $(pTile.matchInfoSelector).html(matchCount + ' total matches');
         }
 
     } else {
@@ -153,7 +163,23 @@ JaneliaTile2.prototype.drawMatches = function(canvasMatches) {
     }
 };
 
-var JaneliaTileWithNeighbors = function(baseUrl, owner, project, stack, matchOwner, matchCollection, tileId, renderQueryParameters, scale, canvas) {
+JaneliaTile2.prototype.drawMatch = function(canvasMatches, matchIndex, pTile, qTile, context) {
+
+    var pMatches = canvasMatches.matches.p;
+    var qMatches = canvasMatches.matches.q;
+
+    var px = (pMatches[0][matchIndex] * this.scale) + pTile.x;
+    var py = (pMatches[1][matchIndex] * this.scale) + pTile.y;
+    var qx = (qMatches[0][matchIndex] * this.scale) + qTile.x;
+    var qy = (qMatches[1][matchIndex] * this.scale) + qTile.y;
+
+    context.beginPath();
+    context.moveTo(px, py);
+    context.lineTo(qx, qy);
+    context.stroke();
+};
+
+var JaneliaTileWithNeighbors = function(baseUrl, owner, project, stack, matchOwner, matchCollection, renderQueryParameters, scale, canvas) {
 
     this.baseUrl = baseUrl;
     this.owner = owner;
@@ -178,11 +204,6 @@ var JaneliaTileWithNeighbors = function(baseUrl, owner, project, stack, matchOwn
     }
 
     this.janeliaTileMap = {};
-
-    if ((typeof tileId !== 'undefined') && (tileId.length > 0)) {
-        this.setTileId(tileId);
-    }
-
 };
 
 JaneliaTileWithNeighbors.prototype.setTileId = function(tileId) {
@@ -309,6 +330,182 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
 
 };
 
+JaneliaTileWithNeighbors.prototype.setTilePair = function(tileId, otherTileId) {
+    var self = this;
+    $.ajax({
+               url: self.tileUrl + tileId,
+               cache: false,
+               success: function(data) {
+                   self.retrieveOtherTileSpec(data, otherTileId);
+               },
+               error: function(data, text, xhr) {
+                   console.log(xhr);
+               }
+           });
+};
+
+JaneliaTileWithNeighbors.prototype.retrieveOtherTileSpec = function(firstTileSpec, otherTileId) {
+    var self = this;
+    $.ajax({
+               url: self.tileUrl + otherTileId,
+               cache: false,
+               success: function(data) {
+                   self.buildTilePair(firstTileSpec, data);
+               },
+               error: function(data, text, xhr) {
+                   console.log(xhr);
+               }
+           });
+};
+
+JaneliaTileWithNeighbors.prototype.buildTilePair = function(tileSpec, otherTileSpec) {
+
+    this.janeliaTileMap = {};
+
+    var orderedPair = this.getOrderedTileSpecPair(tileSpec, otherTileSpec);
+
+    this.pTileId = orderedPair.pTileSpec.tileId;
+    this.qTileId = orderedPair.qTileSpec.tileId;
+
+    var pTile = this.buildTileAtPosition(orderedPair.pTileSpec, 0, 0);
+    var qTile = this.buildTileAtPosition(orderedPair.qTileSpec, 0, 1);
+
+    pTile.matchInfoSelector = "#matchInfo";
+
+    var canvasOffset = 4;
+    var tileMargin = 4;
+
+    var pTileWidth = (orderedPair.pTileSpec.maxX - orderedPair.pTileSpec.minX + 1) * this.scale;
+    var qTileWidth = (orderedPair.qTileSpec.maxX - orderedPair.qTileSpec.minX + 1) * this.scale;
+    var canvasWidth = canvasOffset + tileMargin + pTileWidth + qTileWidth;
+
+    var pTileHeight = (orderedPair.pTileSpec.maxY - orderedPair.pTileSpec.minY + 1) * this.scale;
+    var qTileHeight = (orderedPair.qTileSpec.maxY - orderedPair.qTileSpec.minY + 1) * this.scale;
+    var canvasHeight = canvasOffset + tileMargin + pTileHeight + qTileHeight;
+
+    var context = this.canvas.getContext("2d");
+    context.canvas.width = canvasWidth;
+    context.canvas.height = canvasHeight;
+
+    pTile.loadImage();
+    qTile.loadImage();
+
+    var matchesUrl = pTile.getMatchesUrl(qTile);
+    $('#pairMatchesLink').html('(<a href=\"' + matchesUrl + '" target="_blank"">pair matches</a>)');
+
+    this.updateTileIdHtml('p', pTile);
+    this.updateTileIdHtml('q', qTile);
+};
+
+JaneliaTileWithNeighbors.prototype.updateTileIdHtml = function(porq, tile2) {
+    var tileIdHtml = '<a href=\"' + tile2.specUrl + '" target="_blank"">' + tile2.tileSpec.tileId + '</a>' +
+                      '<br/>(<a href=\"' + tile2.renderUrl + '" target="_blank"">normalized render parameters</a>)';
+    var selectorId = '#' + porq + 'TileId';
+    $(selectorId).html(tileIdHtml);
+};
+
+JaneliaTileWithNeighbors.prototype.buildTileAtPosition = function(tileSpec, row, column) {
+    var tile = new JaneliaTile2(
+            tileSpec,
+            this.stackUrl, this.matchCollectionUrl, this.renderQueryParameters, this.scale,
+            this.canvas, this.janeliaTileMap);
+    tile.setRowAndColumn(row, column);
+    this.janeliaTileMap[tileSpec.tileId] = tile;
+    return tile;
+};
+
+JaneliaTileWithNeighbors.prototype.drawMatch = function(matchIndexDelta) {
+
+    var canvasMatches;
+    var pTile = undefined;
+    var qTile = undefined;
+
+    for (var tileId in this.janeliaTileMap) {
+        if (this.janeliaTileMap.hasOwnProperty(tileId)) {
+            var tile2 = this.janeliaTileMap[tileId];
+            if (tile2.matches.length > 0) {
+                canvasMatches = tile2.matches[0];
+                pTile = this.janeliaTileMap[canvasMatches.pId];
+                qTile = this.janeliaTileMap[canvasMatches.qId];
+                break;
+            }
+        }
+    }
+
+    if ((typeof pTile !== 'undefined') && (typeof qTile !== 'undefined')) {
+
+        var context = this.canvas.getContext("2d");
+        context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        pTile.drawLoadedImage();
+        qTile.drawLoadedImage();
+
+        var matchCount = canvasMatches.matches.w.length;
+
+        if (typeof matchIndexDelta !== 'undefined') {
+
+            pTile.matchIndex = (pTile.matchIndex + matchIndexDelta) % matchCount;
+            if (pTile.matchIndex < 0) {
+                pTile.matchIndex = matchCount - 1;
+            }
+
+            context.strokeStyle = '#00ff00';
+            context.lineWidth = 1;
+
+            pTile.drawMatch(canvasMatches, pTile.matchIndex, pTile, qTile, context);
+
+            if ((typeof pTile.matchInfoSelector !== 'undefined')) {
+                $(pTile.matchInfoSelector).html('match ' + (pTile.matchIndex + 1) + ' of ' + matchCount);
+            }
+
+        } else {
+
+            pTile.matchIndex = -1;
+            pTile.drawMatches(canvasMatches);
+
+        }
+
+    }
+};
+
+JaneliaTileWithNeighbors.prototype.drawAllMatches = function() {
+    this.drawMatch(undefined);
+};
+
+JaneliaTileWithNeighbors.prototype.rotatePair = function() {
+
+    var pTile = this.janeliaTileMap[this.pTileId];
+    var qTile = this.janeliaTileMap[this.qTileId];
+
+    if (pTile.row == 0) {
+        if (qTile.row == 0) {
+            if (pTile.column == 0) {
+                // PQ -> P
+                //       Q
+                qTile.row = 1;
+                qTile.column = 0;
+            } else {
+                // QP -> Q
+                //       P
+                pTile.row = 1;
+                pTile.column = 0;
+            }
+        } else { // qTile.row == 1
+            // P -> QP
+            // Q
+            qTile.row = 0;
+            pTile.column = 1;
+        }
+    } else { // pTile.row == 1
+        // Q -> PQ
+        // P
+        pTile.row = 0;
+        qTile.column = 1;
+    }
+
+    this.drawAllMatches();
+};
+
 JaneliaTileWithNeighbors.prototype.move = function(rowDelta, columnDelta) {
 
     if ((typeof this.tileId !== 'undefined') && (this.tileId.length > 0)) {
@@ -379,29 +576,33 @@ JaneliaTileWithNeighbors.prototype.selectTile = function(canvasClickX, canvasCli
     return selectedTile;
 };
 
+JaneliaTileWithNeighbors.prototype.getOrderedTileSpecPair = function(tileSpecA, tileSpecB) {
+
+    var orderedPair = { pTileSpec: tileSpecA, qTileSpec: tileSpecB };
+
+    var aGroupId = tileSpecA.layout.sectionId;
+    var aId = tileSpecA.tileId;
+    var bGroupId = tileSpecB.layout.sectionId;
+    var bId = tileSpecB.tileId;
+
+    if ((aGroupId > bGroupId) || ((aGroupId == bGroupId) && (aId > bId))) {
+        orderedPair.pTileSpec = tileSpecB;
+        orderedPair.qTileSpec = tileSpecA;
+    }
+
+    return orderedPair;
+};
+
 JaneliaTileWithNeighbors.prototype.viewTilePair = function(tileA, tileB, renderScale) {
 
-    var pGroupId = tileA.tileSpec.layout.sectionId;
-    var pId = tileA.tileSpec.tileId;
-
-    var qGroupId = tileB.tileSpec.layout.sectionId;
-    var qId = tileB.tileSpec.tileId;
-
-    if ((pGroupId > qGroupId) || ((pGroupId == qGroupId) && (pId > qId))) {
-        var swapGroupId = pGroupId;
-        var swapId = pId;
-        pGroupId = qGroupId;
-        pId = qId;
-        qGroupId = swapGroupId;
-        qId = swapId;
-    }
+    var orderedPair = this.getOrderedTileSpecPair(tileA.tileSpec, tileB.tileSpec);
 
     var parameters = {
         'renderStackOwner': this.owner, 'renderStackProject': this.project, 'renderStack': this.stack,
         'renderScale': renderScale,
         'matchOwner': this.matchOwner, 'matchCollection': this.matchCollection,
-        'pGroupId': pGroupId, 'pId': pId,
-        'qGroupId': qGroupId, 'qId': qId
+        'pGroupId': orderedPair.pTileSpec.layout.sectionId, 'pId': orderedPair.pTileSpec.tileId,
+        'qGroupId': orderedPair.qTileSpec.layout.sectionId, 'qId': orderedPair.qTileSpec.tileId
     };
 
     var tilePairUrl = "tile-pair.html?" + $.param(parameters);
