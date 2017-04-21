@@ -33,6 +33,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TileSpecLayout;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
@@ -84,9 +85,10 @@ public class RenderDataService {
                                   @PathParam("stack") final String stack,
                                   @QueryParam("minZ") final Double minZ,
                                   @QueryParam("maxZ") final Double maxZ,
+                                  @QueryParam("format") final TileSpecLayout.Format format,
                                   @Context final UriInfo uriInfo) {
 
-        return getLayoutFileForZRange(owner, project, stack, minZ, maxZ, uriInfo);
+        return getLayoutFileForZRange(owner, project, stack, minZ, maxZ, format, uriInfo);
     }
 
     @Path("project/{project}/stack/{stack}/z/{z}/layoutFile")
@@ -100,9 +102,10 @@ public class RenderDataService {
                                       @PathParam("project") final String project,
                                       @PathParam("stack") final String stack,
                                       @PathParam("z") final Double z,
+                                      @QueryParam("format") final TileSpecLayout.Format format,
                                       @Context final UriInfo uriInfo) {
 
-        return getLayoutFileForZRange(owner, project, stack, z, z, uriInfo);
+        return getLayoutFileForZRange(owner, project, stack, z, z, format, uriInfo);
     }
 
     @Path("project/{project}/stack/{stack}/zRange/{minZ},{maxZ}/layoutFile")
@@ -117,14 +120,16 @@ public class RenderDataService {
                                            @PathParam("stack") final String stack,
                                            @PathParam("minZ") final Double minZ,
                                            @PathParam("maxZ") final Double maxZ,
+                                           @QueryParam("format") final TileSpecLayout.Format format,
                                            @Context final UriInfo uriInfo) {
 
-        LOG.info("getLayoutFileForZRange: entry, owner={}, project={}, stack={}, minZ={}, maxZ={}",
-                 owner, project, stack, minZ, maxZ);
+        LOG.info("getLayoutFileForZRange: entry, owner={}, project={}, stack={}, minZ={}, maxZ={}, format={}",
+                 owner, project, stack, minZ, maxZ, format);
 
         Response response = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = getStackMetaData(stackId);
 
             final String requestUri = uriInfo.getRequestUri().toString();
             final String stackUri = "/stack/" + stack + "/";
@@ -134,7 +139,7 @@ public class RenderDataService {
                 @Override
                 public void write(final OutputStream output)
                         throws IOException, WebApplicationException {
-                    renderDao.writeLayoutFileData(stackId, stackRequestUri, minZ, maxZ, output);
+                    renderDao.writeLayoutFileData(stackMetaData, stackRequestUri, minZ, maxZ, format, output);
                 }
             };
             response = Response.ok(responseOutput).build();

@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.regex.Pattern;
 
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
@@ -488,80 +487,6 @@ public class TileSpec implements Serializable {
         return ctl;
     }
 
-    public String toLayoutFileFormat() {
-
-        String affineData = null;
-        if (hasTransforms()) {
-            final TransformSpec lastSpec = transforms.getSpec(transforms.size() - 1);
-            if (lastSpec instanceof LeafTransformSpec) {
-                final LeafTransformSpec leafSpec = (LeafTransformSpec) lastSpec;
-                final String[] data = WHITESPACE_PATTERN.split(leafSpec.getDataString(), -1);
-                if (data.length == 6) {
-
-                    // Need to translate affine matrix order "back" for Karsh aligner.
-                    //
-                    // Given: A D
-                    //        B E
-                    //        C F
-                    //
-                    // Saalfeld order is:      A D B E C F
-                    // Karsh aligner order is: A B C D E F
-
-                    affineData = data[0] + '\t' + data[2] + '\t' + data[4] + '\t' +
-                                 data[1] + '\t' + data[3] + '\t' + data[5];
-
-                } else if (data.length > 6) {
-
-                    // hack to export polynomial data in layout format (keep in Saalfeld order)
-
-                    final int lengthMinusOne = data.length - 1;
-                    final StringBuilder sb = new StringBuilder(1024);
-
-                    sb.append(data.length);
-                    sb.append('\t');
-
-                    for (int i = 0; i < lengthMinusOne; i++) {
-                        sb.append(data[i]);
-                        sb.append('\t');
-                    }
-                    sb.append(data[lengthMinusOne]);
-
-                    affineData = sb.toString();
-                }
-
-            }
-        }
-
-        String sectionId = null;
-        Integer imageCol = null;
-        Integer imageRow = null;
-        String camera = null;
-        String temca = null;
-        Double rotation = null;
-        if (layout != null) {
-            sectionId = layout.getSectionId();
-            imageCol = layout.getImageCol();
-            imageRow = layout.getImageRow();
-            camera = layout.getCamera();
-            temca = layout.getTemca();
-            rotation = layout.getRotation();
-            if (affineData == null) {
-                affineData = "1.0\t0.0\t" + layout.getStageX() + "\t0.0\t1.0\t" + layout.getStageY();
-            }
-        }
-
-        String rawPath = null;
-        final Map.Entry<Integer, ImageAndMask> firstMipmapEntry = getFirstMipmapEntry();
-        if (firstMipmapEntry != null) {
-            final ImageAndMask imageAndMask = firstMipmapEntry.getValue();
-            rawPath = imageAndMask.getImageFilePath();
-        }
-
-        // sectionId, 1.0, 0.0, stageX, 0.0, 1.0, stageY, imageCol, imageRow, camera, rawPath, temca, rotation, z
-        return sectionId + '\t' + tileId + '\t' + affineData + '\t' +
-               imageCol + '\t' + imageRow + '\t' + camera + '\t' + rawPath + '\t' + temca + '\t' + rotation + '\t' + z;
-    }
-
     @Override
     public String toString() {
         return tileId;
@@ -595,8 +520,6 @@ public class TileSpec implements Serializable {
             throw new IllegalArgumentException(e);
         }
     }
-
-    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
 
     private static final JsonUtils.Helper<TileSpec> JSON_HELPER =
             new JsonUtils.Helper<>(TileSpec.class);
