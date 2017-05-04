@@ -18,8 +18,8 @@ public class StackVersion
     private final Date createTimestamp;
     private final String versionNotes;
 
-    private final Integer cycleNumber;
-    private final Integer cycleStepNumber;
+    private Integer cycleNumber;
+    private Integer cycleStepNumber;
 
     private Double stackResolutionX;
     private Double stackResolutionY;
@@ -68,6 +68,20 @@ public class StackVersion
 
     public Integer getCycleStepNumber() {
         return cycleStepNumber;
+    }
+
+    public ReconstructionCycle getCycle() {
+        return new ReconstructionCycle(getCycleNumber(), getCycleStepNumber());
+    }
+
+    public void setCycle(final ReconstructionCycle cycle) {
+        if (cycle == null) {
+            this.cycleNumber = null;
+            this.cycleStepNumber = null;
+        } else {
+            this.cycleNumber = cycle.getNumber();
+            this.cycleStepNumber = cycle.getStepNumber();
+        }
     }
 
     public Double getStackResolutionX() {
