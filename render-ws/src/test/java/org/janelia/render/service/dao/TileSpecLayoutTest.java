@@ -14,7 +14,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package org.janelia.alignment.spec;
+package org.janelia.render.service.dao;
 
 import java.awt.Rectangle;
 import java.util.ArrayList;
@@ -23,6 +23,10 @@ import java.util.List;
 import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
 import org.junit.Assert;
 import org.junit.Test;
 

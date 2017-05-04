@@ -37,7 +37,6 @@ import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TileSpecLayout;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -1504,7 +1503,7 @@ public class RenderDao {
 
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
-        final Document orderBy = new Document("z", 1).append("minY", 1).append("minX", 1);
+        final Document orderBy = format.getOrderBy();
         try (MongoCursor<Document> cursor =
                      tileCollection.find(tileQuery).projection(tileKeys).sort(orderBy).iterator()) {
 

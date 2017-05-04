@@ -33,7 +33,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TileSpecLayout;
+import org.janelia.render.service.dao.TileSpecLayout;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;

@@ -1,11 +1,17 @@
-package org.janelia.alignment.spec;
+package org.janelia.render.service.dao;
 
 import java.util.Map;
 import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 
+import org.bson.Document;
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 
@@ -23,6 +29,7 @@ public class TileSpecLayout {
         String formatHeader(final StackMetaData stackMetaData);
         String formatTileSpec(final TileSpec tileSpec,
                               final String stackRequestUri);
+        Document getOrderBy();
     }
 
     /**
@@ -74,6 +81,13 @@ public class TileSpecLayout {
                                imageCol + '\t' + imageRow + '\t' + camera + '\t' + rawPath + '\t' +
                                temca + '\t' + rotation + '\t' + tileSpec.getZ() + '\t' + uriString + '\n';
                     }
+
+                    @Override
+                    public Document getOrderBy() {
+                        // Khaled's code needs transform data to be sorted in this way
+                        // to optimize the matrix produced from the data.
+                        return new Document("z", 1).append("minY", 1).append("minX", 1);
+                    }
                 }),
 
         SCHEFFER(
@@ -115,6 +129,13 @@ public class TileSpecLayout {
                         return "TRANSFORM '" + rawPath + "' " + affineData + ' ' +
                                tileSpec.getWidth() + ' ' + tileSpec.getHeight() + '\n';
                     }
+
+                    @Override
+                    public Document getOrderBy() {
+                        // Lou's code needs transform data sorted in scope acquisition order
+                        // which is encoded in the tileIds (e.g. 235328_0-0-0, 235328_0-0-1, ...).
+                        return new Document("z", 1).append("tileId", 1);
+                    }
                 });
 
         private final Formatter formatter;
@@ -133,6 +154,12 @@ public class TileSpecLayout {
                                      final String stackRequestUri) {
             return formatter.formatTileSpec(tileSpec, stackRequestUri);
         }
+
+        @Override
+        public Document getOrderBy() {
+            return formatter.getOrderBy();
+        }
+
     }
 
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
