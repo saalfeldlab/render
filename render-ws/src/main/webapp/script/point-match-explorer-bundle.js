@@ -3872,9 +3872,9 @@ function mapDataTypeToURL(state, dataType, params) {
     case "SectionBounds":
       return STACK_BASE_URL + "/project/" + selectedProject + "/stack/" + selectedStack + "/z/" + params.z + "/bounds";
     case "MatchesWithinGroup":
-      return STACK_BASE_URL + "/matchCollection/" + selectedMatchCollection + "/group/" + params.groupId + "/matchesWithinGroup" + matchQueryParameters;
+      return MATCH_BASE_URL + "/matchCollection/" + selectedMatchCollection + "/group/" + params.groupId + "/matchesWithinGroup" + matchQueryParameters;
     case "MatchesOutsideGroup":
-      return STACK_BASE_URL + "/matchCollection/" + selectedMatchCollection + "/group/" + params.groupId + "/matchesOutsideGroup" + matchQueryParameters;
+      return MATCH_BASE_URL + "/matchCollection/" + selectedMatchCollection + "/group/" + params.groupId + "/matchesOutsideGroup" + matchQueryParameters;
     default:
       return null;
   }
