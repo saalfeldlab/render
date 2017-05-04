@@ -30,10 +30,20 @@
             var matchOwner = queryParameters.get('matchOwner');
             var matchCollection = queryParameters.get('matchCollection');
 
-            // Until we've stored the point match render context properly, hack these parameters to match your setup.
-            // The parameters here are for the FAFB00 project.
-            // The SPC parameters used in Fall 2016 were simply 'normalizeForMatching=true&filter=true'.
-            var defaultRenderQueryParameters = "excludeMask=true&normalizeForMatching=true&width=2760&height=2330";
+            // Until we've stored the point match render context properly,
+            // you may need to hack these parameters to match your setup.
+            var defaultRenderQueryParameters = "excludeMask=true&normalizeForMatching=true";
+
+            // Here's a hack for Janelia's FAFB project ...
+            var FAFB_projects = [ 'FAFB00', 'FAFB00_beautification', 'FAFBv14', 'FAFBv14_kk',
+                                  'ackermand', 'fly_pilot', 'goinac_test', 'khairyk_stage', 'trautmane_test',
+                                  'whirlie' ];
+            for (i = 0; i < FAFB_projects.length; i++) {
+                if (project == FAFB_projects[i]) {
+                    defaultRenderQueryParameters = "excludeMask=true&normalizeForMatching=true&width=2760&height=2330";
+                    break;
+                }
+            }
 
             var defaultRenderScale = 0.15;
             var renderScale = queryParameters.get('renderScale', defaultRenderScale);
