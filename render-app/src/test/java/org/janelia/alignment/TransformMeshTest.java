@@ -80,12 +80,12 @@ public class TransformMeshTest {
 
         final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
         final ImageAndMask imageAndMask = mipmapEntry.getValue();
-        ipMipmap = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(), downSampleLevels, false);
+        ipMipmap = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(), downSampleLevels, false, false);
 
         tp = ipMipmap.createProcessor(ipMipmap.getWidth(), ipMipmap.getHeight());
 
         final String maskUrl = imageAndMask.getMaskUrl();
-        maskSourceProcessor = ImageProcessorCache.getNonCachedImage(maskUrl, downSampleLevels, true);
+        maskSourceProcessor = ImageProcessorCache.getNonCachedImage(maskUrl, downSampleLevels, true, false);
         maskTargetProcessor = new ByteProcessor(tp.getWidth(), tp.getHeight());
 
     }

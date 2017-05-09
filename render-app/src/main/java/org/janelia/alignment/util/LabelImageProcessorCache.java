@@ -120,6 +120,7 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
      * @param  url               url for the image.
      * @param  downSampleLevels  number of levels to further down sample the image.
      * @param  isMask            indicates whether this image is a mask.
+     * @param  convertTo16Bit    ignored for labels (always false).
      *
      * @return a newly loaded image processor to be cached.
      *
@@ -129,13 +130,14 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
     @Override
     protected ImageProcessor loadImageProcessor(final String url,
                                                 final int downSampleLevels,
-                                                final boolean isMask)
+                                                final boolean isMask,
+                                                final boolean convertTo16Bit)
             throws IllegalArgumentException {
 
         ImageProcessor imageProcessor;
 
         if (isMask) {
-            imageProcessor = super.loadImageProcessor(url, downSampleLevels, true);
+            imageProcessor = super.loadImageProcessor(url, downSampleLevels, true, false);
         } else {
 
             final Color labelColor = getColorForUrl(url);

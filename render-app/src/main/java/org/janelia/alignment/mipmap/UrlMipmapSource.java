@@ -103,7 +103,8 @@ public class UrlMipmapSource
 
             final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
                                                                           downSampleLevels,
-                                                                          false);
+                                                                          false,
+                                                                          firstChannelSpec.is16Bit());
             final long loadMipStop = System.currentTimeMillis();
 
             if (imageProcessor.getWidth() == 0 || imageProcessor.getHeight() == 0) {
@@ -117,7 +118,7 @@ public class UrlMipmapSource
                 final ImageProcessor maskProcessor;
                 final String maskUrl = imageAndMask.getMaskUrl();
                 if ((maskUrl != null) && (!excludeMask)) {
-                    maskProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true);
+                    maskProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true, false);
                 } else {
                     maskProcessor = null;
                 }
@@ -195,7 +196,8 @@ public class UrlMipmapSource
 
             final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
                                                                           downSampleLevels,
-                                                                          false);
+                                                                          false,
+                                                                          channelSpec.is16Bit());
 
             if (imageProcessor.getWidth() == firstChannelWidth && imageProcessor.getWidth() == firstChannelHeight) {
 
@@ -203,7 +205,7 @@ public class UrlMipmapSource
                 final ImageProcessor maskProcessor;
                 final String maskUrl = imageAndMask.getMaskUrl();
                 if ((maskUrl != null) && (! excludeMask)) {
-                    maskProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true);
+                    maskProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true, false);
                 } else {
                     maskProcessor = null;
                 }
@@ -254,7 +256,10 @@ public class UrlMipmapSource
         final ChannelSpec firstChannelSpec = channelSpecList.get(0);
         final Map.Entry<Integer, ImageAndMask> mipmapEntry = firstChannelSpec.getFloorMipmapEntry(0);
         final ImageAndMask imageAndMask = mipmapEntry.getValue();
-        final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(), 0, false);
+        final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
+                                                                      0,
+                                                                      false,
+                                                                      firstChannelSpec.is16Bit());
         fullScaleWidth = imageProcessor.getWidth();
         fullScaleHeight = imageProcessor.getHeight();
     }

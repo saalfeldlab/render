@@ -52,6 +52,10 @@ public class ChannelSpec {
         return maxIntensity;
     }
 
+    public boolean is16Bit() {
+        return (maxIntensity > 255);
+    }
+
     /**
      * @param  level  desired mipmap level.
      *

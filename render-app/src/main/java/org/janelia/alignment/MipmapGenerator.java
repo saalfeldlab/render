@@ -412,6 +412,7 @@ public class MipmapGenerator {
             final ImageAndMask imageAndMask = mipmapEntry.getValue();
             final ImageProcessor imageProcessor = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(),
                                                                                         0,
+                                                                                        false,
                                                                                         false);
             tileSpec.setWidth((double) imageProcessor.getWidth());
             tileSpec.setHeight((double) imageProcessor.getHeight());

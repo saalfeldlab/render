@@ -23,6 +23,7 @@ import java.util.List;
 import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
@@ -67,7 +68,10 @@ public class TileSpecLayoutTest {
 
         parsedSpec.setBoundingBox(new Rectangle(11, 12, 21, 22), parsedSpec.getMeshCellSize());
         final ImageAndMask imageAndMask = new ImageAndMask("src/test/resources/stitch-test/coll0075_row0021_cam1.png", null);
-        parsedSpec.putMipmap(0, imageAndMask);
+        final ChannelSpec channelSpec = new ChannelSpec();
+        channelSpec.putMipmap(0, imageAndMask);
+        parsedSpec.addChannel(channelSpec);
+
         final String stackRequestUri = "http://foo";
         String layoutFileFormat = TileSpecLayout.Format.KARSH.formatTileSpec(parsedSpec, stackRequestUri);
         String hackedFileFormat = layoutFileFormat.replaceFirst("\t[^\t]+coll0075_row0021_cam1.png",
