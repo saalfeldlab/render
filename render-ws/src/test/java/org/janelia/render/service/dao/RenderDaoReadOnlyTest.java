@@ -328,10 +328,10 @@ public class RenderDaoReadOnlyTest {
 
         resolvedTiles = dao.getResolvedTiles(stackId, 3903.0, null, null, null, null, null, null);
         Assert.assertNotNull("null collection retrieved for min z query", resolvedTiles);
-        Assert.assertEquals("invalid number of tiles found for min/max z query", 14, resolvedTiles.getTileCount());
+        Assert.assertEquals("invalid number of tiles found for min z query", 14, resolvedTiles.getTileCount());
 
         resolvedTiles = dao.getResolvedTiles(stackId, null, 3903.0, null, null, null, null, null);
-        Assert.assertNotNull("null collection retrieved for min z query", resolvedTiles);
+        Assert.assertNotNull("null collection retrieved for max z query", resolvedTiles);
         Assert.assertEquals("invalid number of tiles found for max z query", 12, resolvedTiles.getTileCount());
 
         resolvedTiles = dao.getResolvedTiles(stackId, 3903.1, 3905.0, null, null, null, null, null);
