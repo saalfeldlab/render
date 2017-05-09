@@ -201,11 +201,11 @@ public class RenderDaoReadOnlyTest {
 
     @Test
     public void testGetZValues() throws Exception {
-        validateZValues("",                      dao.getZValues(stackId), 1);
-        validateZValues("between 3900 and 4000", dao.getZValues(stackId, 3900.0, 4000.0), 1);
-        validateZValues("after 3900",            dao.getZValues(stackId, 3900.0, null),   1);
-        validateZValues("before 4000",           dao.getZValues(stackId, null,   4000.0), 1);
-        validateZValues("between 3811 and 3812", dao.getZValues(stackId, 3811.0, 3812.0), 0);
+        validateZValues("",                      dao.getZValues(stackId), 2);
+        validateZValues("between 3900 and 4000", dao.getZValues(stackId, 3900.0, 4000.0), 2);
+        validateZValues("after 3900",            dao.getZValues(stackId, 3900.0, null),   2);
+        validateZValues("before 4000",           dao.getZValues(stackId, null,   4000.0), 2);
+        validateZValues("between 3911 and 3912", dao.getZValues(stackId, 3911.0, 3912.0), 0);
     }
 
     private void validateZValues(final String context,
@@ -326,7 +326,6 @@ public class RenderDaoReadOnlyTest {
         Assert.assertNotNull("null collection retrieved for groupId with minX query", resolvedTiles);
         Assert.assertEquals("invalid number of tiles found for groupId with minX query", 1, resolvedTiles.getTileCount());
 
-
     }
 
     @Test
@@ -337,7 +336,7 @@ public class RenderDaoReadOnlyTest {
 
         final String[] tileIds = outputStream.toString().split(",");
 
-        Assert.assertEquals("invalid number of tileIds written for query", 12, tileIds.length);
+        Assert.assertEquals("invalid number of tileIds written for query", 14, tileIds.length);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDaoReadOnlyTest.class);
