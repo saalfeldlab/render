@@ -93,7 +93,7 @@ public class RenderDaoTest {
         dao.cloneStack(stackId, toStackId, null, null);
 
         zValues = dao.getZValues(toStackId);
-        Assert.assertEquals("invalid number of z values after clone", 1, zValues.size());
+        Assert.assertEquals("invalid number of z values after clone", 2, zValues.size());
 
         toStackMetaData = new StackMetaData(toStackId, fromStackMetaData.getCurrentVersion());
         toStackMetaData = dao.ensureIndexesAndDeriveStats(toStackMetaData);
@@ -153,22 +153,22 @@ public class RenderDaoTest {
         final StackStats stats = stackMetaDataAfterStats.getStats();
         Assert.assertNotNull("null stats returned after derivation", stats);
 
-        final Bounds expectedBounds = new Bounds(1094.0, 1769.0, 3903.0, 9917.0, 8301.0, 3903.0);
+        final Bounds expectedBounds = new Bounds(1094.0, 1769.0, 3903.0, 9917.0, 8301.0, 3903.1);
 
         Assert.assertEquals("invalid bounds", expectedBounds.toJson(), stats.getStackBounds().toJson());
-        Assert.assertEquals("invalid tile count", new Long(12), stats.getTileCount());
+        Assert.assertEquals("invalid tile count", new Long(14), stats.getTileCount());
 
         // test getSectionData after section collection was created by call to ensureIndexesAndDeriveStats
         final List<SectionData> list = dao.getSectionData(stackId, null, null);
 
         Assert.assertNotNull("null list retrieved", list);
-        Assert.assertEquals("invalid number of sections found", 2, list.size());
+        Assert.assertEquals("invalid number of sections found", 3, list.size());
         final SectionData sectionData = list.get(0);
         Assert.assertEquals("invalid sectionId for first section", "3903.0", sectionData.getSectionId());
         Assert.assertEquals("invalid z for section 3903.0", 3903, sectionData.getZ(), 0.01);
         Assert.assertEquals("invalid tileCount for section 3903.0", new Long(2), sectionData.getTileCount());
 
-        final List<SectionData> filteredList = dao.getSectionData(stackId, 3903.0, 3904.0);
+        final List<SectionData> filteredList = dao.getSectionData(stackId, 3902.0, 3903.0);
 
         Assert.assertNotNull("null filtered list retrieved", filteredList);
         Assert.assertEquals("invalid number of sections found for filtered list", 2, filteredList.size());
@@ -258,7 +258,7 @@ public class RenderDaoTest {
         Assert.assertNotNull("zValues null for " + stackId + " before removal",
                              zValuesBeforeRemove);
         Assert.assertEquals("incorrect number of zValues for " + stackId + " before removal",
-                            2, zValuesBeforeRemove.size());
+                            3, zValuesBeforeRemove.size());
 
         dao.removeTilesWithZ(stackId, tileSpec.getZ());
 
@@ -266,7 +266,7 @@ public class RenderDaoTest {
         Assert.assertNotNull("zValues null for " + stackId + " after removal",
                              zValuesAfterRemove);
         Assert.assertEquals("zValues exist for " + stackId + " after removal",
-                            1, zValuesAfterRemove.size());
+                            2, zValuesAfterRemove.size());
     }
 
     @Test

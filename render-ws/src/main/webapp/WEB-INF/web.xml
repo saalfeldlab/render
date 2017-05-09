@@ -41,10 +41,12 @@
             <param-name>allowedOrigins</param-name>
             <param-value>*</param-value>
         </init-param>
+        -->
         <init-param>
             <param-name>allowedMethods</param-name>
-            <param-value>GET,POST,HEAD</param-value>
+            <param-value>GET,POST,PUT,OPTIONS,HEAD</param-value>
         </init-param>
+        <!--
         <init-param>
             <param-name>allowedHeaders</param-name>
             <param-value>X-Requested-With,Content-Type,Accept,Origin</param-value>
@@ -61,11 +63,11 @@
             <param-name>exposeHeaders</param-name>
             <param-value></param-value>
         </init-param>
+        -->
         <init-param>
             <param-name>chainPreflight</param-name>
-            <param-value>true</param-value>
+            <param-value>false</param-value>
         </init-param>
-        -->
     </filter>
 
     <filter-mapping>

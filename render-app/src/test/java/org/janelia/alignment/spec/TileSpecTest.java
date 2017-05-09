@@ -16,14 +16,9 @@
  */
 package org.janelia.alignment.spec;
 
-import java.awt.Rectangle;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-
-import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.janelia.alignment.ImageAndMask;
 import org.junit.Assert;
@@ -92,9 +87,8 @@ public class TileSpecTest {
         Assert.assertEquals("bad rotation value", layoutData.getRotation(), parsedLayoutData.getRotation());
 
         parsedSpec.setBoundingBox(new Rectangle(11, 12, 21, 22), parsedSpec.getMeshCellSize());
-        final ChannelSpec channelSpec = parsedSpec.getAllChannels().get(0);
         final ImageAndMask imageAndMask = new ImageAndMask("src/test/resources/stitch-test/coll0075_row0021_cam1.png", null);
-        channelSpec.putMipmap(0, imageAndMask);
+        parsedSpec.putMipmap(0, imageAndMask);
         String layoutFileFormat = parsedSpec.toLayoutFileFormat();
         String hackedFileFormat = layoutFileFormat.replaceFirst("\t[^\t]+coll0075_row0021_cam1.png",
                                                                       "\timage.png");
