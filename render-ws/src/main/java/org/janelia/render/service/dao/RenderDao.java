@@ -1810,9 +1810,12 @@ public class RenderDao {
             groupQuery.append("z", minZ);
         } else {
             if (minZ != null) {
-                groupQuery.append("z", new Document(QueryOperators.GTE, minZ));
-            }
-            if (maxZ != null) {
+                if (maxZ != null) {
+                    groupQuery.append("z", new Document(QueryOperators.GTE, minZ).append(QueryOperators.LTE, maxZ));
+                } else {
+                    groupQuery.append("z", new Document(QueryOperators.GTE, minZ));
+                }
+            } else if (maxZ != null) {
                 groupQuery.append("z", new Document(QueryOperators.LTE, maxZ));
             }
         }
