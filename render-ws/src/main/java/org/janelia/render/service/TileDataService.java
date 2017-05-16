@@ -378,7 +378,7 @@ public class TileDataService {
         final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId);
 
         final RenderParameters tileRenderParameters =
-                new RenderParameters(null, 0, 0, tileSpec.getWidth() - 1, tileSpec.getHeight() - 1, scale);
+                new RenderParameters(null, 0, 0, tileSpec.getWidth(), tileSpec.getHeight(), scale);
 
         final Map.Entry<Integer, ImageAndMask> firstEntry = tileSpec.getFirstMipmapEntry();
         final ImageAndMask imageAndMask = firstEntry.getValue();
