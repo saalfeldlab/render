@@ -1,6 +1,7 @@
 package org.janelia.render.service.dao;
 
 import com.mongodb.MongoClientOptions;
+import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 
 import java.io.File;
@@ -26,17 +27,20 @@ public class DbConfig {
     private final String password;
     private int maxConnectionsPerHost;
     private int maxConnectionIdleTime;
+    private final ReadPreference readPreference;
 
     public DbConfig(final List<ServerAddress> serverAddressList,
                     final String userName,
                     final String authenticationDatabase,
-                    final String password) {
+                    final String password,
+                    final ReadPreference readPreference) {
         this.serverAddressList = new ArrayList<>(serverAddressList);
         this.userName = userName;
         this.authenticationDatabase = authenticationDatabase;
         this.password = password;
         this.maxConnectionsPerHost = new MongoClientOptions.Builder().build().getConnectionsPerHost(); // 100
         this.maxConnectionIdleTime = 600000; // 10 minutes
+        this.readPreference = readPreference;
     }
 
     public List<ServerAddress> getServerAddressList() {
@@ -65,6 +69,10 @@ public class DbConfig {
 
     public int getMaxConnectionIdleTime() {
         return maxConnectionIdleTime;
+    }
+
+    public ReadPreference getReadPreference() {
+        return readPreference;
     }
 
     public static DbConfig fromFile(final File file)
@@ -111,7 +119,13 @@ public class DbConfig {
                 password = getRequiredProperty("password", properties, path);
             }
 
-            dbConfig = new DbConfig(serverAddressList, userName, userNameSource, password);
+            final String readPreferenceName = properties.getProperty("readPreference");
+            ReadPreference readPreference = ReadPreference.primary();
+            if (readPreferenceName != null) {
+                readPreference = ReadPreference.valueOf(readPreferenceName);
+            }
+
+            dbConfig = new DbConfig(serverAddressList, userName, userNameSource, password, readPreference);
 
             final String maxConnectionsPerHostStr = properties.getProperty("maxConnectionsPerHost");
             if (maxConnectionsPerHostStr != null) {
