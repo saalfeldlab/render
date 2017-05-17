@@ -400,6 +400,10 @@ public class TileDataService {
         tileRenderParameters.addTileSpec(simpleTileSpec);
         tileRenderParameters.setDoFilter(filter);
 
+        // since we have only one tile with no transformations,
+        // skip interpolation to save pixels in last row and column of image
+        tileRenderParameters.setSkipInterpolation(true);
+
         return tileRenderParameters;
     }
 
