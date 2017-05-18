@@ -1,6 +1,7 @@
 package org.janelia.alignment.mapper;
 
 import ij.process.ByteProcessor;
+import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import ij.process.ShortProcessor;
@@ -87,6 +88,11 @@ public class SingleChannelMapper
         } else if (target instanceof FloatProcessor) {
             normalizedSource =
                     new ImageProcessorWithMasks(source.ip.convertToFloatProcessor(),
+                                                source.mask,
+                                                null);
+        } else if (target instanceof ColorProcessor) {
+            normalizedSource =
+                    new ImageProcessorWithMasks(source.ip.convertToColorProcessor(),
                                                 source.mask,
                                                 null);
         } else {
