@@ -127,7 +127,7 @@ public class ArgbRenderer {
             targetGraphics.clearRect(0, 0, targetWidth, targetHeight);
         }
 
-        if (tileSpecs.size() > 0) {
+        if ((tileSpecs.size() > 0) && (canvasChannels.size() > 0)) {
 
             Double minIntensity = params.getMinIntensity();
             Double maxIntensity = params.getMaxIntensity();
