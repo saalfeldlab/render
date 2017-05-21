@@ -4,6 +4,7 @@ import ij.process.ImageProcessor;
 
 import java.awt.image.BufferedImage;
 
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Assert;
@@ -22,11 +23,14 @@ public class RenderRawTileTest {
         final ImageAndMask imageWithoutMask = new ImageAndMask("src/test/resources/raw-tile-test/raw-tile.png", null);
         final ImageProcessorCache imageProcessorCache = new ImageProcessorCache();
 
-        final ImageProcessor rawIp = imageProcessorCache.get(imageWithoutMask.getImageUrl(), 0, false);
+        final ImageProcessor rawIp = imageProcessorCache.get(imageWithoutMask.getImageUrl(), 0, false, false);
         final BufferedImage rawImage = rawIp.getBufferedImage();
 
+        final ChannelSpec channelSpec = new ChannelSpec();
+        channelSpec.putMipmap(0, imageWithoutMask);
+
         final TileSpec tileSpec = new TileSpec();
-        tileSpec.putMipmap(0, imageWithoutMask);
+        tileSpec.addChannel(channelSpec);
 
         final RenderParameters tileRenderParameters =
                 new RenderParameters(null, 0, 0, rawIp.getWidth(), rawIp.getHeight(), 1.0);
@@ -36,9 +40,9 @@ public class RenderRawTileTest {
 
         final BufferedImage renderedImage = tileRenderParameters.openTargetImage();
 
-        Render.render(tileRenderParameters,
-                      renderedImage,
-                      imageProcessorCache);
+        ArgbRenderer.render(tileRenderParameters,
+                            renderedImage,
+                            imageProcessorCache);
 
         Assert.assertEquals("bad rendered image width",
                             rawImage.getWidth(), renderedImage.getWidth());
