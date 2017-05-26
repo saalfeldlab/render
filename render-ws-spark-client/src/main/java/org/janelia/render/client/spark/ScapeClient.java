@@ -69,6 +69,12 @@ public class ScapeClient
         private String rootDirectory;
 
         @Parameter(
+                names = "--maxImagesPerDirectory",
+                description = "Maximum number of images to render in one directory",
+                required = false)
+        private Integer maxImagesPerDirectory = 1000;
+
+        @Parameter(
                 names = "--scale",
                 description = "Scale for each rendered layer",
                 required = false)
@@ -337,6 +343,12 @@ public class ScapeClient
         final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
         final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
 
+        int maxZCharacters = 3; // %3.1d => 1.0
+        for (long z = 1; z < stackBounds.getMaxZ().longValue(); z = z * 10) {
+            maxZCharacters++;
+        }
+        final String zFormatSpec = "%0" + maxZCharacters + ".1f";
+
         final double zScale = parameters.zScale == null ? 0.0 : parameters.zScale / parameters.scale;
 
         final List<RenderSection> renderSectionList = new ArrayList<>(sectionDataList.size());
@@ -350,6 +362,8 @@ public class ScapeClient
                 currentZ = sectionData.getZ();
                 currentRenderSection = new RenderSection(currentZ,
                                                          renderSectionList.size(),
+                                                         zFormatSpec,
+                                                         parameters.maxImagesPerDirectory,
                                                          sectionRootDirectory);
                 renderSectionList.add(currentRenderSection);
             }
@@ -393,15 +407,21 @@ public class ScapeClient
         private final Double firstZ;
         private final List<SectionData> sectionDataList;
         private final File outputDir;
+        private final String zFormatSpec;
 
         public RenderSection(final Double firstZ,
                              final int stackIndex,
+                             final String zFormatSpec,
+                             final int maxImagesPerDirectory,
                              final File sectionRootDirectory) {
 
             this.firstZ = firstZ;
             this.sectionDataList = new ArrayList<>();
-            final String paddedThousands = String.format("%06d", stackIndex).substring(0, 3);
-            this.outputDir = new File(sectionRootDirectory, paddedThousands);
+            this.zFormatSpec = zFormatSpec;
+
+            final int imageDirectoryIndex = stackIndex / maxImagesPerDirectory;
+            final String imageDirectoryName = String.format("%03d", imageDirectoryIndex);
+            this.outputDir = new File(sectionRootDirectory, imageDirectoryName);
         }
 
         public List<SectionData> getSectionDataList() {
@@ -416,15 +436,17 @@ public class ScapeClient
             return sectionDataList.size() > 1;
         }
 
-        public File getOutputFile(final String format) {
+        public File getOutputFile(final String fileExtension) {
             final String paddedZName;
             if (sectionDataList.size() > 1) {
                 final Double lastZ = sectionDataList.get(sectionDataList.size() - 1).getZ();
-                paddedZName = String.format("z%08.1f_to_%08.1f", firstZ, lastZ);
+                final String formatPattern = "z" + zFormatSpec + "_to_" + zFormatSpec;
+                paddedZName = String.format(formatPattern, firstZ, lastZ);
             } else {
-                paddedZName = String.format("z%08.1f", firstZ);
+                final String formatPattern = "z" + zFormatSpec;
+                paddedZName = String.format(formatPattern, firstZ);
             }
-            return new File(outputDir, paddedZName + "." + format.toLowerCase());
+            return new File(outputDir, paddedZName + "." + fileExtension.toLowerCase());
         }
 
         public void addSection(final SectionData sectionData) {
