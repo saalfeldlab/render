@@ -1463,7 +1463,7 @@ public class RenderDao {
             throw new ObjectNotFoundException(fromStackId + " does not exist");
         }
 
-        if (fromStackMetaData.isReadOnly()) {
+        if (fromStackMetaData.isReadOnly() || fromStackMetaData.isOffline()) {
             throw new IllegalArgumentException(fromStackId + " cannot be modified because it is " +
                                                fromStackMetaData.getState() + ".");
         }
@@ -1473,24 +1473,11 @@ public class RenderDao {
             throw new IllegalArgumentException(toStackId + " already exists");
         }
 
-        final MongoCollection<Document> fromSectionCollection = getSectionCollection(fromStackId);
-        final MongoCollection<Document> fromTransformCollection = getTransformCollection(fromStackId);
-        final MongoCollection<Document> fromTileCollection = getTileCollection(fromStackId);
+        renameCollection(fromStackId.getSectionCollectionName(), toStackId.getSectionCollectionName());
+        renameCollection(fromStackId.getTransformCollectionName(), toStackId.getTransformCollectionName());
+        renameCollection(fromStackId.getTileCollectionName(), toStackId.getTileCollectionName());
 
-        final MongoNamespace toSectionNamespace = new MongoNamespace(RENDER_DB_NAME,
-                                                                     toStackId.getSectionCollectionName());
-        final MongoNamespace toTransformNamespace = new MongoNamespace(RENDER_DB_NAME,
-                                                                       toStackId.getTransformCollectionName());
-        final MongoNamespace toTileNamespace = new MongoNamespace(RENDER_DB_NAME,
-                                                                  toStackId.getTileCollectionName());
-
-        renameCollection(fromSectionCollection, toSectionNamespace);
-        renameCollection(fromTransformCollection, toTransformNamespace);
-        renameCollection(fromTileCollection, toTileNamespace);
-
-        toStackMetaData = new StackMetaData(toStackId, fromStackMetaData.getCurrentVersion());
-        toStackMetaData.setStats(fromStackMetaData.getStats());
-        toStackMetaData.setState(fromStackMetaData.getState());
+        toStackMetaData = StackMetaData.buildDerivedMetaData(toStackId, fromStackMetaData);
 
         final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
         final Document query = getStackIdQuery(fromStackId);
@@ -1978,14 +1965,20 @@ public class RenderDao {
         return bound;
     }
 
-    private void renameCollection(final MongoCollection<Document> fromCollection,
-                                  final MongoNamespace toNamespace) {
+    private void renameCollection(final String fromCollectionName,
+                                  final String toCollectionName) {
 
-        fromCollection.renameCollection(toNamespace);
+        if (MongoUtil.exists(renderDatabase, fromCollectionName)) {
 
-        LOG.debug("renameCollection: exit, ran {}.renameCollection({})",
-                  MongoUtil.fullName(fromCollection),
-                  toNamespace.getCollectionName());
+            final MongoCollection<Document> fromCollection = renderDatabase.getCollection(fromCollectionName);
+            final MongoNamespace toNamespace = new MongoNamespace(renderDatabase.getName(), toCollectionName);
+            fromCollection.renameCollection(toNamespace);
+
+            LOG.debug("renameCollection: exit, ran {}.renameCollection({})",
+                      MongoUtil.fullName(fromCollection),
+                      toCollectionName);
+        }
+
     }
 
     private void cloneCollection(final MongoCollection<Document> fromCollection,

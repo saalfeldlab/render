@@ -79,25 +79,50 @@ public class RenderDaoTest {
     @Test
     public void testRenameStack() throws Exception {
 
-        StackMetaData fromStackMetaData = dao.getStackMetaData(stackId);
-        fromStackMetaData = dao.ensureIndexesAndDeriveStats(fromStackMetaData);
-        final StackStats fromStats = fromStackMetaData.getStats();
-        final List<Double> fromZValues = dao.getZValues(stackId);
+        StackId fromStackId = stackId;
+        final List<Double> fromZValues = dao.getZValues(fromStackId);
 
-        final StackId toStackId = new StackId(stackId.getOwner(), stackId.getProject(), "renamedStack");
+        // -------------------------------------------------------------------------
+        // test renaming stack without stats ...
+
+        StackId toStackId = new StackId(fromStackId.getOwner(), fromStackId.getProject(), "renamedStackA");
 
         StackMetaData toStackMetaData = dao.getStackMetaData(toStackId);
         Assert.assertNull("toStack should not exist before rename", toStackMetaData);
 
-        dao.renameStack(stackId, toStackId);
+        dao.renameStack(fromStackId, toStackId);
 
         toStackMetaData = dao.getStackMetaData(toStackId);
         Assert.assertNotNull("toStack should exist after rename", toStackMetaData);
 
-        fromStackMetaData = dao.getStackMetaData(stackId);
+        StackMetaData fromStackMetaData = dao.getStackMetaData(fromStackId);
         Assert.assertNull("fromStack should not exist after rename", fromStackMetaData);
 
-        final List<Double> toZValues = dao.getZValues(toStackId);
+        List<Double> toZValues = dao.getZValues(toStackId);
+        Assert.assertArrayEquals("z values do not match after rename", fromZValues.toArray(), toZValues.toArray());
+
+        // -------------------------------------------------------------------------
+        // test renaming stack with stats ...
+
+        fromStackId = toStackId;
+        fromStackMetaData = toStackMetaData;
+        fromStackMetaData = dao.ensureIndexesAndDeriveStats(fromStackMetaData);
+        final StackStats fromStats = fromStackMetaData.getStats();
+
+        toStackId = new StackId(fromStackId.getOwner(), fromStackId.getProject(), "renamedStackB");
+
+        toStackMetaData = dao.getStackMetaData(toStackId);
+        Assert.assertNull("toStack should not exist before rename", toStackMetaData);
+
+        dao.renameStack(fromStackId, toStackId);
+
+        toStackMetaData = dao.getStackMetaData(toStackId);
+        Assert.assertNotNull("toStack should exist after rename", toStackMetaData);
+
+        fromStackMetaData = dao.getStackMetaData(fromStackId);
+        Assert.assertNull("fromStack should not exist after rename", fromStackMetaData);
+
+        toZValues = dao.getZValues(toStackId);
         Assert.assertArrayEquals("z values do not match after rename", fromZValues.toArray(), toZValues.toArray());
 
         final StackStats toStats = toStackMetaData.getStats();
