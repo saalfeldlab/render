@@ -2,6 +2,7 @@ package org.janelia.render.service.dao;
 
 import com.mongodb.BasicDBList;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoNamespace;
 import com.mongodb.QueryOperators;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
@@ -1439,6 +1440,73 @@ public class RenderDao {
     }
 
     /**
+     * Renames the specified stack.
+     *
+     * @param  fromStackId  original stack name.
+     * @param  toStackId    new stack name.
+     *
+     * @throws IllegalArgumentException
+     *   if the new stack already exists or the original stack cannot be renamed for any other reason.
+     *
+     * @throws ObjectNotFoundException
+     *   if the original stack does not exist.
+     */
+    public void renameStack(final StackId fromStackId,
+                            final StackId toStackId)
+            throws IllegalArgumentException, ObjectNotFoundException {
+
+        MongoUtil.validateRequiredParameter("fromStackId", fromStackId);
+        MongoUtil.validateRequiredParameter("toStackId", toStackId);
+
+        final StackMetaData fromStackMetaData = getStackMetaData(fromStackId);
+        if (fromStackMetaData == null) {
+            throw new ObjectNotFoundException(fromStackId + " does not exist");
+        }
+
+        if (fromStackMetaData.isReadOnly()) {
+            throw new IllegalArgumentException(fromStackId + " cannot be modified because it is " +
+                                               fromStackMetaData.getState() + ".");
+        }
+
+        StackMetaData toStackMetaData = getStackMetaData(toStackId);
+        if (toStackMetaData != null) {
+            throw new IllegalArgumentException(toStackId + " already exists");
+        }
+
+        final MongoCollection<Document> fromSectionCollection = getSectionCollection(fromStackId);
+        final MongoCollection<Document> fromTransformCollection = getTransformCollection(fromStackId);
+        final MongoCollection<Document> fromTileCollection = getTileCollection(fromStackId);
+
+        final MongoNamespace toSectionNamespace = new MongoNamespace(RENDER_DB_NAME,
+                                                                     toStackId.getSectionCollectionName());
+        final MongoNamespace toTransformNamespace = new MongoNamespace(RENDER_DB_NAME,
+                                                                       toStackId.getTransformCollectionName());
+        final MongoNamespace toTileNamespace = new MongoNamespace(RENDER_DB_NAME,
+                                                                  toStackId.getTileCollectionName());
+
+        renameCollection(fromSectionCollection, toSectionNamespace);
+        renameCollection(fromTransformCollection, toTransformNamespace);
+        renameCollection(fromTileCollection, toTileNamespace);
+
+        toStackMetaData = new StackMetaData(toStackId, fromStackMetaData.getCurrentVersion());
+        toStackMetaData.setStats(fromStackMetaData.getStats());
+        toStackMetaData.setState(fromStackMetaData.getState());
+
+        final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
+        final Document query = getStackIdQuery(fromStackId);
+        final Document stackMetaDataObject = Document.parse(toStackMetaData.toJson());
+        final UpdateResult result = stackMetaDataCollection.replaceOne(query,
+                                                                       stackMetaDataObject,
+                                                                       MongoUtil.UPSERT_OPTION);
+
+        LOG.debug("renameStack: ran {}.{},({}), upsertedId is {}",
+                  MongoUtil.fullName(stackMetaDataCollection),
+                  MongoUtil.action(result),
+                  query.toJson(),
+                  result.getUpsertedId());
+    }
+
+    /**
      * Writes the layout file data for the specified stack to the specified stream.
      *
      * @param  stackMetaData    stack metadata.
@@ -1908,6 +1976,16 @@ public class RenderDao {
                   bound, MongoUtil.fullName(tileCollection), query.toJson(), tileKeys.toJson(), orderBy.toJson());
 
         return bound;
+    }
+
+    private void renameCollection(final MongoCollection<Document> fromCollection,
+                                  final MongoNamespace toNamespace) {
+
+        fromCollection.renameCollection(toNamespace);
+
+        LOG.debug("renameCollection: exit, ran {}.renameCollection({})",
+                  MongoUtil.fullName(fromCollection),
+                  toNamespace.getCollectionName());
     }
 
     private void cloneCollection(final MongoCollection<Document> fromCollection,

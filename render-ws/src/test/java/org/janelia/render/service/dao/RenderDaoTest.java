@@ -77,6 +77,35 @@ public class RenderDaoTest {
     }
 
     @Test
+    public void testRenameStack() throws Exception {
+
+        StackMetaData fromStackMetaData = dao.getStackMetaData(stackId);
+        fromStackMetaData = dao.ensureIndexesAndDeriveStats(fromStackMetaData);
+        final StackStats fromStats = fromStackMetaData.getStats();
+        final List<Double> fromZValues = dao.getZValues(stackId);
+
+        final StackId toStackId = new StackId(stackId.getOwner(), stackId.getProject(), "renamedStack");
+
+        StackMetaData toStackMetaData = dao.getStackMetaData(toStackId);
+        Assert.assertNull("toStack should not exist before rename", toStackMetaData);
+
+        dao.renameStack(stackId, toStackId);
+
+        toStackMetaData = dao.getStackMetaData(toStackId);
+        Assert.assertNotNull("toStack should exist after rename", toStackMetaData);
+
+        fromStackMetaData = dao.getStackMetaData(stackId);
+        Assert.assertNull("fromStack should not exist after rename", fromStackMetaData);
+
+        final List<Double> toZValues = dao.getZValues(toStackId);
+        Assert.assertArrayEquals("z values do not match after rename", fromZValues.toArray(), toZValues.toArray());
+
+        final StackStats toStats = toStackMetaData.getStats();
+
+        Assert.assertEquals("incorrect stats after rename", fromStats.toJson(), toStats.toJson());
+    }
+
+    @Test
     public void testCloneStack() throws Exception {
 
         final StackId toStackId = new StackId(stackId.getOwner(), stackId.getProject(), "clonedStack");
