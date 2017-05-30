@@ -1,5 +1,7 @@
 package org.janelia.alignment.spec.stack;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
 
 import org.janelia.alignment.util.CollectionNameUtil;
@@ -74,14 +76,17 @@ public class StackId implements Comparable<StackId>, Serializable {
         return v;
     }
 
+    @JsonIgnore
     public String getSectionCollectionName() {
         return getCollectionName(SECTION_COLLECTION_SUFFIX);
     }
 
+    @JsonIgnore
     public String getTileCollectionName() {
         return getCollectionName(TILE_COLLECTION_SUFFIX);
     }
 
+    @JsonIgnore
     public String getTransformCollectionName() {
         return getCollectionName(TRANSFORM_COLLECTION_SUFFIX);
     }
