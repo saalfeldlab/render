@@ -128,13 +128,14 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
     @Override
     protected ImageProcessor loadImageProcessor(final String url,
                                                 final int downSampleLevels,
-                                                final boolean isMask)
+                                                final boolean isMask,
+                                                final boolean convertTo16Bit)
             throws IllegalArgumentException {
 
         ImageProcessor imageProcessor;
 
         if (isMask) {
-            imageProcessor = super.loadImageProcessor(url, downSampleLevels, true);
+            imageProcessor = super.loadImageProcessor(url, downSampleLevels, true, convertTo16Bit);
         } else {
 
             final Color labelColor = getColorForUrl(url);

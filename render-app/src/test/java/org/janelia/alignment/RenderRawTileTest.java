@@ -22,7 +22,7 @@ public class RenderRawTileTest {
         final ImageAndMask imageWithoutMask = new ImageAndMask("src/test/resources/raw-tile-test/raw-tile.png", null);
         final ImageProcessorCache imageProcessorCache = new ImageProcessorCache();
 
-        final ImageProcessor rawIp = imageProcessorCache.get(imageWithoutMask.getImageUrl(), 0, false);
+        final ImageProcessor rawIp = imageProcessorCache.get(imageWithoutMask.getImageUrl(), 0, false, false);
         final BufferedImage rawImage = rawIp.getBufferedImage();
 
         final TileSpec tileSpec = new TileSpec();

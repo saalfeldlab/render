@@ -301,7 +301,7 @@ public class Render {
             ImageProcessor widthAndHeightProcessor = null;
             int width = ts.getWidth();
             int height = ts.getHeight();
-            boolean convertTo16Bit = (ts.getMaxIntensity()>255);
+            final boolean convertTo16Bit = (ts.getMaxIntensity()>255);
             // if width and height were not set, figure width and height
             if ((width < 0) || (height < 0)) {
                 mipmapEntry = ts.getFirstMipmapEntry();
@@ -482,7 +482,7 @@ public class Render {
         if (! tileSpec.hasWidthAndHeightDefined()) {
             final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
             final ImageAndMask imageAndMask = mipmapEntry.getValue();
-            final ImageProcessor imageProcessor = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(), 0, false);
+            final ImageProcessor imageProcessor = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(), 0, false, false);
             tileSpec.setWidth((double) imageProcessor.getWidth());
             tileSpec.setHeight((double) imageProcessor.getHeight());
         }

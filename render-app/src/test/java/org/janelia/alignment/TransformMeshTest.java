@@ -33,6 +33,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
+@Ignore
 public class TransformMeshTest {
 
     private TileSpec tileSpec;
@@ -75,17 +77,17 @@ public class TransformMeshTest {
 
         final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
         final ImageAndMask imageAndMask = mipmapEntry.getValue();
-        ipMipmap = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(), downSampleLevels, false);
+        ipMipmap = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(), downSampleLevels, false, false);
 
         tp = ipMipmap.createProcessor(ipMipmap.getWidth(), ipMipmap.getHeight());
 
         final String maskUrl = imageAndMask.getMaskUrl();
-        maskSourceProcessor = ImageProcessorCache.getNonCachedImage(maskUrl, downSampleLevels, true);
+        maskSourceProcessor = ImageProcessorCache.getNonCachedImage(maskUrl, downSampleLevels, true, false);
         maskTargetProcessor = new ByteProcessor(tp.getWidth(), tp.getHeight());
 
     }
 
-//    @Test
+    @Test
     public void testRenderMeshOperations() throws Exception {
 
         for (int i = 0; i < 10; ++i) {
@@ -136,7 +138,7 @@ public class TransformMeshTest {
         }
     }
 
-//    @Test
+    @Test
     public void testMeshOperations() throws Exception {
 
         for (int i = 0; i < 10; ++i) {
