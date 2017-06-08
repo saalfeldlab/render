@@ -48,7 +48,7 @@ public class RenderRawTileTest {
                             rawImage.getWidth(), renderedImage.getWidth());
 
         Assert.assertEquals("bad rendered image height",
-                            rawImage.getWidth(), renderedImage.getHeight());
+                            rawImage.getHeight(), renderedImage.getHeight());
 
         for (int x = 0; x < rawImage.getWidth(); x++) {
             for (int y = 0; y < rawImage.getHeight(); y++) {
