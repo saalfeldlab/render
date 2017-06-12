@@ -1,8 +1,11 @@
 package org.janelia.alignment;
 
+import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
 import java.awt.image.BufferedImage;
+
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
@@ -24,7 +27,12 @@ public class RenderRawTileTest {
         final ImageProcessorCache imageProcessorCache = new ImageProcessorCache();
 
         final ImageProcessor rawIp = imageProcessorCache.get(imageWithoutMask.getImageUrl(), 0, false, false);
-        final BufferedImage rawImage = rawIp.getBufferedImage();
+        final FloatProcessor floatRawIp = rawIp.convertToFloatProcessor();
+        final BufferedImage rawImage =
+                ArgbRenderer.targetToARGBImage(new TransformMeshMappingWithMasks.ImageProcessorWithMasks(floatRawIp, null, null),
+                                               0,
+                                               255,
+                                               false);
 
         final ChannelSpec channelSpec = new ChannelSpec();
         channelSpec.putMipmap(0, imageWithoutMask);
