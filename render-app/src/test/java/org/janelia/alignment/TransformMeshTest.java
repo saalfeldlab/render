@@ -35,6 +35,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +45,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
+@Ignore
 public class TransformMeshTest {
 
     // increase this to 10 (or more) to see average times

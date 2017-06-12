@@ -137,7 +137,7 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         ImageProcessor imageProcessor;
 
         if (isMask) {
-            imageProcessor = super.loadImageProcessor(url, downSampleLevels, true, false);
+            imageProcessor = super.loadImageProcessor(url, downSampleLevels, true, convertTo16Bit);
         } else {
 
             final Color labelColor = getColorForUrl(url);

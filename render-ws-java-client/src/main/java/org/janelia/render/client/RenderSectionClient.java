@@ -98,7 +98,7 @@ public class RenderSectionClient {
                                            sectionsAtScaleName).toAbsolutePath();
 
         this.sectionDirectory = sectionPath.toFile();
-        ensureWritableDirectory(this.sectionDirectory);
+        FileUtil.ensureWritableDirectory(this.sectionDirectory);
 
         // set cache size to 50MB so that masks get cached but most of RAM is left for target image
         final int maxCachedPixels = 50 * 1000000;
@@ -155,29 +155,11 @@ public class RenderSectionClient {
         final int hundreds = (z.intValue() % 1000) / 100;
         final File hundredsDir = new File(thousandsDir, String.valueOf(hundreds));
 
-        ensureWritableDirectory(hundredsDir);
+        FileUtil.ensureWritableDirectory(hundredsDir);
 
         return new File(hundredsDir, z + "." + clientParameters.format.toLowerCase());
     }
 
-    private void ensureWritableDirectory(final File directory) {
-        // try twice to work around concurrent access issues
-        if (! directory.exists()) {
-            if (! directory.mkdirs()) {
-                if (! directory.exists()) {
-                    // last try
-                    if (! directory.mkdirs()) {
-                        if (! directory.exists()) {
-                            throw new IllegalArgumentException("failed to create " + directory);
-                        }
-                    }
-                }
-            }
-        }
-        if (! directory.canWrite()) {
-            throw new IllegalArgumentException("not allowed to write to " + directory);
-        }
-    }
 
     private String getNumericDirectoryName(final int value) {
         String pad = "00";

@@ -2,6 +2,7 @@ package org.janelia.render.service.dao;
 
 import com.mongodb.BasicDBList;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoNamespace;
 import com.mongodb.QueryOperators;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
@@ -1439,6 +1440,60 @@ public class RenderDao {
     }
 
     /**
+     * Renames the specified stack.
+     *
+     * @param  fromStackId  original stack name.
+     * @param  toStackId    new stack name.
+     *
+     * @throws IllegalArgumentException
+     *   if the new stack already exists or the original stack cannot be renamed for any other reason.
+     *
+     * @throws ObjectNotFoundException
+     *   if the original stack does not exist.
+     */
+    public void renameStack(final StackId fromStackId,
+                            final StackId toStackId)
+            throws IllegalArgumentException, ObjectNotFoundException {
+
+        MongoUtil.validateRequiredParameter("fromStackId", fromStackId);
+        MongoUtil.validateRequiredParameter("toStackId", toStackId);
+
+        final StackMetaData fromStackMetaData = getStackMetaData(fromStackId);
+        if (fromStackMetaData == null) {
+            throw new ObjectNotFoundException(fromStackId + " does not exist");
+        }
+
+        if (fromStackMetaData.isReadOnly() || fromStackMetaData.isOffline()) {
+            throw new IllegalArgumentException(fromStackId + " cannot be modified because it is " +
+                                               fromStackMetaData.getState() + ".");
+        }
+
+        StackMetaData toStackMetaData = getStackMetaData(toStackId);
+        if (toStackMetaData != null) {
+            throw new IllegalArgumentException(toStackId + " already exists");
+        }
+
+        renameCollection(fromStackId.getSectionCollectionName(), toStackId.getSectionCollectionName());
+        renameCollection(fromStackId.getTransformCollectionName(), toStackId.getTransformCollectionName());
+        renameCollection(fromStackId.getTileCollectionName(), toStackId.getTileCollectionName());
+
+        toStackMetaData = StackMetaData.buildDerivedMetaData(toStackId, fromStackMetaData);
+
+        final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
+        final Document query = getStackIdQuery(fromStackId);
+        final Document stackMetaDataObject = Document.parse(toStackMetaData.toJson());
+        final UpdateResult result = stackMetaDataCollection.replaceOne(query,
+                                                                       stackMetaDataObject,
+                                                                       MongoUtil.UPSERT_OPTION);
+
+        LOG.debug("renameStack: ran {}.{},({}), upsertedId is {}",
+                  MongoUtil.fullName(stackMetaDataCollection),
+                  MongoUtil.action(result),
+                  query.toJson(),
+                  result.getUpsertedId());
+    }
+
+    /**
      * Writes the layout file data for the specified stack to the specified stream.
      *
      * @param  stackMetaData    stack metadata.
@@ -1908,6 +1963,22 @@ public class RenderDao {
                   bound, MongoUtil.fullName(tileCollection), query.toJson(), tileKeys.toJson(), orderBy.toJson());
 
         return bound;
+    }
+
+    private void renameCollection(final String fromCollectionName,
+                                  final String toCollectionName) {
+
+        if (MongoUtil.exists(renderDatabase, fromCollectionName)) {
+
+            final MongoCollection<Document> fromCollection = renderDatabase.getCollection(fromCollectionName);
+            final MongoNamespace toNamespace = new MongoNamespace(renderDatabase.getName(), toCollectionName);
+            fromCollection.renameCollection(toNamespace);
+
+            LOG.debug("renameCollection: exit, ran {}.renameCollection({})",
+                      MongoUtil.fullName(fromCollection),
+                      toCollectionName);
+        }
+
     }
 
     private void cloneCollection(final MongoCollection<Document> fromCollection,

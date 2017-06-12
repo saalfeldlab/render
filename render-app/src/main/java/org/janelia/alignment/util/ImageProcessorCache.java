@@ -306,7 +306,7 @@ public class ImageProcessorCache {
         }
         public boolean isConvertTo16Bit(){
             return convertTo16Bit;
-        }
+	    }
         public int getDownSampleLevels() {
             return downSampleLevels;
         }

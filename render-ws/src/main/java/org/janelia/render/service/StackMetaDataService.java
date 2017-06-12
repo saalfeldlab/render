@@ -153,6 +153,40 @@ public class StackMetaDataService {
         return stackMetaData;
     }
 
+    @Path("owner/{owner}/project/{fromProject}/stack/{fromStack}/stackId")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs"},
+            value = "Rename a stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "stack successfully renamed"),
+            @ApiResponse(code = 400, message = "stack cannot be renamed"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response renameStack(@PathParam("owner") final String owner,
+                                @PathParam("fromProject") final String fromProject,
+                                @PathParam("fromStack") final String fromStack,
+                                @Context final UriInfo uriInfo,
+                                final StackId toStackId) {
+
+        LOG.info("renameStack: entry, owner={}, fromProject={}, fromStack={}, toStackId={}",
+                 owner, fromProject, fromStack, toStackId);
+
+        try {
+            final StackId fromStackId = new StackId(owner, fromProject, fromStack);
+
+            renderDao.renameStack(fromStackId, toStackId);
+
+            LOG.info("renameStack: renamed {} to {}", fromStackId, toStackId);
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return Response.ok().build();
+    }
+
     @Path("owner/{owner}/project/{fromProject}/stack/{fromStack}/cloneTo/{toStack}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)

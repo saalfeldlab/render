@@ -1,6 +1,10 @@
 package org.janelia.alignment.spec;
 
+import java.beans.Transient;
 import java.io.Serializable;
+import java.util.Comparator;
+
+import org.janelia.alignment.json.JsonUtils;
 
 /**
  * Maps a section identifier to its z value.
@@ -68,4 +72,35 @@ public class SectionData
     public Double getMinY() {
         return minY;
     }
+
+    @Transient
+    public int getWidth() {
+        return (int) (maxX - minX + 0.5);
+    }
+
+    @Transient
+    public int getHeight() {
+        return (int) (maxY - minY + 0.5);
+    }
+
+    public String toJson() {
+        return JSON_HELPER.toJson(this);
+    }
+
+    @Override
+    public String toString() {
+        return this.toJson();
+    }
+
+    public static final Comparator<SectionData> Z_COMPARATOR = new Comparator<SectionData>() {
+        @Override
+        public int compare(final SectionData o1,
+                           final SectionData o2) {
+            return o1.z.compareTo(o2.z);
+        }
+    };
+
+    private static final JsonUtils.Helper<SectionData> JSON_HELPER =
+            new JsonUtils.Helper<>(SectionData.class);
+
 }
