@@ -346,7 +346,10 @@ public class Render {
                 LOG.debug("Skipping zero pixel size mipmap {}", imageAndMask.getImageUrl());
                 continue;
             }
+            final double minIntensity = (renderMinIntensity == null) ? ts.getMinIntensity() : renderMinIntensity;
+            final double maxIntensity = (renderMaxIntensity == null) ? ts.getMaxIntensity() : renderMaxIntensity;
 
+            ipMipmap.setMinAndMax( minIntensity,maxIntensity);
             // filter
             if (doFilter) {
                 final double mipmapScale = 1.0 / (1 << mipmapLevel);
@@ -371,6 +374,7 @@ public class Render {
             // attach mipmap transformation
             final CoordinateTransformList<CoordinateTransform> ctlMipmap = new CoordinateTransformList<>();
             ctlMipmap.add(Utils.createScaleLevelTransform(mipmapLevel));
+
             ctlMipmap.add(ctl);
 
             ctListCreationStop = System.currentTimeMillis();
