@@ -11,7 +11,7 @@ SWAGGER_UI_VERSION="2.1.4"
 # This occasionally needs to be updated when Oracle moves things around.
 # You can find latest Linux x64 download link at:
 # http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html
-JDK_URL="http://download.oracle.com/otn-pub/java/jdk/8u73-b02/jdk-8u73-linux-x64.tar.gz"
+JDK_URL="http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz"
 
 # URLs for Jetty 9, SLF4J 1.7, Logback 1.1, and Swagger 2.1
 JETTY_URL="http://central.maven.org/maven2/org/eclipse/jetty/jetty-distribution/${JETTY_VERSION}/${JETTY_DIST}.tar.gz"
