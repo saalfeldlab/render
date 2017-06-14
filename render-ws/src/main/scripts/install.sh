@@ -1,6 +1,6 @@
 #!/bin/bash
 
-JDK_VERSION="jdk1.8.0_73"
+JDK_VERSION="jdk1.8.0_131"
 JETTY_VERSION="9.3.7.v20160115"
 JETTY_DIST="jetty-distribution-${JETTY_VERSION}"
 LOGBACK_VERSION="1.1.5"
