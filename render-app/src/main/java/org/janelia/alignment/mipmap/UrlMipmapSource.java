@@ -27,6 +27,8 @@ public class UrlMipmapSource
     private int fullScaleWidth;
     private int fullScaleHeight;
     private final List<ChannelSpec> channelSpecList;
+    private final Double renderMinIntensity;
+    private final Double renderMaxIntensity;
     private final boolean excludeMask;
     private final ImageProcessorCache imageProcessorCache;
 
@@ -37,6 +39,8 @@ public class UrlMipmapSource
      * @param  fullScaleWidth       full scale (level 0) width of this source (specify as -1 if unknown).
      * @param  fullScaleHeight      full scale (level 0) height of this source (specify as -1 if unknown).
      * @param  channelSpecList      list of channel specifications for this source.
+     * @param  renderMinIntensity   minimum intensity value for all channel specs (or null to use spec intensity values).
+     * @param  renderMaxIntensity   maximum intensity value for all channel specs (or null to use spec intensity values).
      * @param  excludeMask          flag indicating whether mask data should be excluded.
      * @param  imageProcessorCache  cache of previously loaded pixel data (or null if caching is not desired).
      */
@@ -44,12 +48,16 @@ public class UrlMipmapSource
                            final int fullScaleWidth,
                            final int fullScaleHeight,
                            final List<ChannelSpec> channelSpecList,
+                           final Double renderMinIntensity,
+                           final Double renderMaxIntensity,
                            final boolean excludeMask,
                            final ImageProcessorCache imageProcessorCache) {
         this.sourceName = sourceName;
         this.fullScaleWidth = fullScaleWidth;
         this.fullScaleHeight = fullScaleHeight;
         this.channelSpecList = channelSpecList;
+        this.renderMinIntensity = renderMinIntensity;
+        this.renderMaxIntensity = renderMaxIntensity;
         this.excludeMask = excludeMask;
         if (imageProcessorCache == null) {
             this.imageProcessorCache = ImageProcessorCache.DISABLED_CACHE;
@@ -125,6 +133,8 @@ public class UrlMipmapSource
 
                 final long loadMaskStop = System.currentTimeMillis();
 
+                setMinAndMaxIntensity(imageProcessor, firstChannelSpec);
+
                 final ImageProcessorWithMasks firstChannel =
                         new ImageProcessorWithMasks(imageProcessor, maskProcessor, null);
 
@@ -179,8 +189,6 @@ public class UrlMipmapSource
                                         final int mipmapLevel,
                                         final ChannelMap channels) {
 
-        // TODO: need to figure out how to handle different min/max intensity per channel
-
         for (int i = 1; i < channelSpecList.size(); i++) {
 
             final ChannelSpec channelSpec = channelSpecList.get(i);
@@ -209,6 +217,8 @@ public class UrlMipmapSource
                 } else {
                     maskProcessor = null;
                 }
+
+                setMinAndMaxIntensity(imageProcessor, channelSpec);
 
                 final ImageProcessorWithMasks channel = new ImageProcessorWithMasks(imageProcessor,
                                                                                     maskProcessor,
@@ -262,6 +272,13 @@ public class UrlMipmapSource
                                                                       firstChannelSpec.is16Bit());
         fullScaleWidth = imageProcessor.getWidth();
         fullScaleHeight = imageProcessor.getHeight();
+    }
+
+    private void setMinAndMaxIntensity(final ImageProcessor imageProcessor,
+                                       final ChannelSpec channelSpec) {
+        final double minChannelIntensity = (renderMinIntensity == null) ? channelSpec.getMinIntensity() : renderMinIntensity;
+        final double maxChannelIntensity = (renderMaxIntensity == null) ? channelSpec.getMaxIntensity() : renderMaxIntensity;
+        imageProcessor.setMinAndMax(minChannelIntensity, maxChannelIntensity);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(UrlMipmapSource.class);

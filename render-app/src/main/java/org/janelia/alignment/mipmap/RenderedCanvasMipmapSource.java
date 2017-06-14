@@ -207,6 +207,8 @@ public class RenderedCanvasMipmapSource
                                          tileSpec.getWidth(),
                                          tileSpec.getHeight(),
                                          tileSpec.getChannels(channelNames),
+                                         renderParameters.getMinIntensity(),
+                                         renderParameters.getMaxIntensity(),
                                          renderParameters.excludeMask(),
                                          imageProcessorCache);
 
@@ -356,6 +358,13 @@ public class RenderedCanvasMipmapSource
 
                 final String mapType = skipInterpolation ? "" : " interpolated";
                 mapping.map(tilePixelMapper, numberOfMappingThreads);
+
+                // apply source channel intensity ranges to corresponding target channels
+                for (final String channelName : targetChannels.names()) {
+                    final ImageProcessorWithMasks sourceChannel = sourceChannels.get(channelName);
+                    final ImageProcessorWithMasks targetChannel = targetChannels.get(channelName);
+                    targetChannel.ip.setMinAndMax(sourceChannel.ip.getMin(), sourceChannel.ip.getMax());
+                }
 
                 final long mapStop = System.currentTimeMillis();
 

@@ -28,10 +28,9 @@ public class RenderRawTileTest {
 
         final ImageProcessor rawIp = imageProcessorCache.get(imageWithoutMask.getImageUrl(), 0, false, false);
         final FloatProcessor floatRawIp = rawIp.convertToFloatProcessor();
+        floatRawIp.setMinAndMax(0, 255);
         final BufferedImage rawImage =
                 ArgbRenderer.targetToARGBImage(new TransformMeshMappingWithMasks.ImageProcessorWithMasks(floatRawIp, null, null),
-                                               0,
-                                               255,
                                                false);
 
         final ChannelSpec channelSpec = new ChannelSpec();

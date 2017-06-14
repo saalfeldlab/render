@@ -31,7 +31,6 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWith
 import org.janelia.alignment.mipmap.AveragedChannelMipmapSource;
 import org.janelia.alignment.mipmap.MipmapSource;
 import org.janelia.alignment.mipmap.RenderedCanvasMipmapSource;
-import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
@@ -129,38 +128,8 @@ public class ArgbRenderer {
 
         if ((tileSpecs.size() > 0) && (canvasChannels.size() > 0)) {
 
-            Double minIntensity = params.getMinIntensity();
-            Double maxIntensity = params.getMaxIntensity();
-
-            // TODO: verify approach for deriving intensity range is reasonable
-
-            // if intensity range has not been explicitly specified in render parameters,
-            // use the range of the first channel in the first tile spec
-            if ((minIntensity == null) || (maxIntensity == null)) {
-
-                final TileSpec firstTileSpec = tileSpecs.get(0);
-                final List<ChannelSpec> channelSpecList = firstTileSpec.getChannels(channelNames);
-                final ChannelSpec firstChannelSpec;
-                if (channelSpecList.size() > 0) {
-                    firstChannelSpec = channelSpecList.get(0);
-                } else {
-                    firstChannelSpec = new ChannelSpec();
-                }
-
-                if (minIntensity == null) {
-                    minIntensity = firstChannelSpec.getMinIntensity();
-                }
-
-                if (maxIntensity == null) {
-                    maxIntensity = firstChannelSpec.getMaxIntensity();
-                }
-
-            }
-
             final ImageProcessorWithMasks worldTarget = canvasChannels.getFirstChannel();
             final BufferedImage image = targetToARGBImage(worldTarget,
-                                                          minIntensity,
-                                                          maxIntensity,
                                                           params.binaryMask());
             targetGraphics.drawImage(image, 0, 0, null);
         }
@@ -177,11 +146,7 @@ public class ArgbRenderer {
     }
 
     public static BufferedImage targetToARGBImage(final ImageProcessorWithMasks target,
-                                                  final double minIntensity,
-                                                  final double maxIntensity,
                                                   final boolean binaryMask) {
-
-        target.ip.setMinAndMax(minIntensity, maxIntensity);
 
         // convert to 24bit RGB
         final ColorProcessor cp = target.ip.convertToColorProcessor();

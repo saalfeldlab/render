@@ -70,7 +70,7 @@ public class AveragedChannelMipmapSourceTest {
         Assert.assertNotSame("channel intensity should not match",
                              onlySecondChannel.ip.getf(pixelIndex), averagedChannel.ip.getf(pixelIndex));
 
-        final BufferedImage image = ArgbRenderer.targetToARGBImage(averagedChannel, 0.0, 10000.0, false);
+        final BufferedImage image = ArgbRenderer.targetToARGBImage(averagedChannel, false);
 
         Assert.assertNotNull("averaged image not rendered", image);
     }
