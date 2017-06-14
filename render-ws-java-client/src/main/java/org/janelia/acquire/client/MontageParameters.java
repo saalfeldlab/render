@@ -5,6 +5,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.render.client.FileUtil;
@@ -23,24 +24,33 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings({"FieldCanBeLocal", "unused"})
 public class MontageParameters {
 
-    private SolverOptions solver_options;
     private AlignmentRenderCollection source_collection;
     private AlignmentRenderCollection target_collection;
-
-    private String scratch;
+    private Map<String, Object> target_point_match_collection;
+    private Map<String, Object> SURF_options;
+    private Map<String, Object> solver_options;
+    private String image_filter;
+    private int ncpus;
     private String renderer_client;
-
+    private String scratch;
     /** The z value used for render web service API calls. */
     private Double section_number;
-
     private final Integer verbose;
 
     public MontageParameters() {
         this.verbose = 1;
     }
 
+    public AlignmentRenderCollection getSourceCollection() {
+        return source_collection;
+    }
+
     public void setSourceCollection(final AlignmentRenderCollection sourceCollection) {
         this.source_collection = sourceCollection;
+    }
+
+    public AlignmentRenderCollection getTargetCollection() {
+        return target_collection;
     }
 
     public void setTargetCollection(final AlignmentRenderCollection targetCollection) {

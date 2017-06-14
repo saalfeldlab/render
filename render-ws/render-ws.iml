@@ -28,10 +28,6 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" scope="TEST" name="Maven: de.flapdoodle.embed:de.flapdoodle.embed.mongo:2.0.0" level="project" />
-    <orderEntry type="library" scope="TEST" name="Maven: de.flapdoodle.embed:de.flapdoodle.embed.process:2.0.1" level="project" />
-    <orderEntry type="library" scope="TEST" name="Maven: de.flapdoodle.embed:de.flapdoodle.embed.mongo:2.0.0" level="project" />
-    <orderEntry type="library" scope="TEST" name="Maven: de.flapdoodle.embed:de.flapdoodle.embed.process:2.0.1" level="project" />
     <orderEntry type="module" module-name="render-app" />
     <orderEntry type="library" name="Maven: mpicbg:mpicbg_:1.0.1" level="project" />
     <orderEntry type="library" name="Maven: mpicbg:mpicbg:1.0.1" level="project" />

@@ -7,12 +7,13 @@ release.properties
 # Eclipse project settings
 .classpath
 .project
-.settings/
+.settings
 
 # IntelliJ user specific files
 # see https://intellij-support.jetbrains.com/entries/23393067-How-to-manage-projects-under-Version-Control-Systems
 .idea/workspace.xml
 .idea/tasks.xml
+.idea/artifacts
 .idea/dictionaries
 .idea/libraries
 
