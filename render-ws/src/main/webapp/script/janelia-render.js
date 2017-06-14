@@ -30,6 +30,7 @@ var JaneliaScriptUtilities = function() {
 	        // for localhost debugging:
         // return 'http://renderer-dev.int.janelia.org:8080/render-ws/v1';
 
+
         return href.substring(7, stopIndex);
 	};
 
@@ -486,6 +487,7 @@ JaneliaRenderServiceDataUI.prototype.getDynamicRenderBaseUrl = function() {
 
 JaneliaRenderServiceDataUI.prototype.isNdvizHostDefined = function() {
     return typeof this.ndvizHost != 'undefined';
+
 };
 
 JaneliaRenderServiceDataUI.prototype.isCatmaidHostDefined = function() {
