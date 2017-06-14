@@ -167,6 +167,34 @@ public class TileDataService {
         return parameters;
     }
 
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/validation-info")
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    @ApiOperation(
+            value = "Get information indicating whether a tile exists and is valid")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "tile exists and is valid"),
+            @ApiResponse(code = 400, message = "tile not valid"),
+            @ApiResponse(code = 404, message = "tile not found"),
+    })
+    public Response getValidationInfo(@PathParam("owner") final String owner,
+                                      @PathParam("project") final String project,
+                                      @PathParam("stack") final String stack,
+                                      @PathParam("tileId") final String tileId) {
+
+        LOG.info("getValidationInfo: entry, owner={}, project={}, stack={}, tileId={}",
+                 owner, project, stack, tileId);
+
+        try {
+            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
+            tileSpec.validate();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return Response.ok().build();
+    }
+
     @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
