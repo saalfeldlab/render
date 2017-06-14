@@ -60,7 +60,6 @@ ENV JETTY_RUN $JETTY_BASE/logs
 ENV JETTY_PID $JETTY_RUN/jetty.pid
 ENV JETTY_STATE $JETTY_RUN/jetty.state
 
-ENV JAVA_HOME /var/www/render/deploy/jdk1.8.0_73
 ENV PATH $JAVA_HOME/bin:$PATH
 ENV JAVA $JAVA_HOME/bin/java
 
