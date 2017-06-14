@@ -19,6 +19,7 @@ import mpicbg.trakem2.util.Downsampler;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
@@ -276,72 +277,80 @@ public class MipmapClient {
     public void generateMissingMipmapFiles(final TileSpec tileSpec)
             throws IllegalArgumentException, IOException {
 
-        final Map.Entry<Integer, ImageAndMask> firstEntry = tileSpec.getFirstMipmapEntry();
-        if (firstEntry == null) {
-            throw new IllegalArgumentException("first entry mipmap is missing from tile '" +
-                                               tileSpec.getTileId() + "'");
-        }
+        for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
 
-        final ImageAndMask sourceImageAndMask = firstEntry.getValue();
-
-        if ((sourceImageAndMask == null) || (! sourceImageAndMask.hasImage())) {
-            throw new IllegalArgumentException("first entry mipmap image is missing from tile '" +
-                                               tileSpec.getTileId() + "'");
-        }
-
-        if (parameters.forceGeneration || isMissingMipmaps(tileSpec, firstEntry, sourceImageAndMask.hasMask())) {
-
-            ImageProcessor sourceImageProcessor = loadImageProcessor(sourceImageAndMask.getImageUrl());
-
-            ImageProcessor sourceMaskProcessor = null;
-            if (sourceImageAndMask.hasMask()) {
-                sourceMaskProcessor = loadImageProcessor(sourceImageAndMask.getMaskUrl());
+            final String channelName = channelSpec.getName();
+            final String context;
+            if (channelName == null) {
+                context = "tile '" + tileSpec.getTileId() + "'";
+            } else {
+                context = "channel '" + channelName + "' in tile '" + tileSpec.getTileId() + "'";
             }
 
-            Map.Entry<Integer, ImageAndMask> derivedEntry;
-            ImageAndMask derivedImageAndMask;
-            File imageMipmapFile;
-            File maskMipmapFile;
-            for (int mipmapLevel = 1; mipmapLevel <= mipmapPathBuilder.getNumberOfLevels(); mipmapLevel++) {
+            final Map.Entry<Integer, ImageAndMask> firstEntry = channelSpec.getFirstMipmapEntry();
+            if (firstEntry == null) {
+                throw new IllegalArgumentException("first entry mipmap is missing from " + context);
+            }
 
-                derivedEntry = mipmapPathBuilder.deriveImageAndMask(mipmapLevel, firstEntry, false);
-                derivedImageAndMask = derivedEntry.getValue();
+            final ImageAndMask sourceImageAndMask = firstEntry.getValue();
 
-                if (! tileSpec.hasMipmap(mipmapLevel)) {
+            if ((sourceImageAndMask == null) || (!sourceImageAndMask.hasImage())) {
+                throw new IllegalArgumentException("first entry mipmap image is missing from " + context);
+            }
 
-                    final boolean isMipmapLevelInRange = mipmapLevel >= parameters.minLevel;
+            if (parameters.forceGeneration || isMissingMipmaps(channelSpec, firstEntry, sourceImageAndMask.hasMask())) {
 
-                    if (isMipmapLevelInRange) {
-                        createMissingDirectories(derivedImageAndMask.getImageUrl());
-                    }
+                ImageProcessor sourceImageProcessor = loadImageProcessor(sourceImageAndMask.getImageUrl());
 
-                    imageMipmapFile = getFileForUrlString(derivedImageAndMask.getImageUrl());
-                    sourceImageProcessor = generateMipmapFile(sourceImageProcessor, imageMipmapFile, 1,
-                                                              tileSpec.getMinIntensity(),
-                                                              tileSpec.getMaxIntensity(),
-                                                              isMipmapLevelInRange);
-
-                    if (sourceImageAndMask.hasMask()) {
-                        if (isMipmapLevelInRange) {
-                            createMissingDirectories(derivedImageAndMask.getMaskUrl());
-                        }
-                        maskMipmapFile = getFileForUrlString(derivedImageAndMask.getMaskUrl());
-                        sourceMaskProcessor = generateMipmapFile(sourceMaskProcessor, maskMipmapFile, 1,
-                                                                 tileSpec.getMinIntensity(),
-                                                                 tileSpec.getMaxIntensity(),
-                                                                 isMipmapLevelInRange);
-                    }
-
+                ImageProcessor sourceMaskProcessor = null;
+                if (sourceImageAndMask.hasMask()) {
+                    sourceMaskProcessor = loadImageProcessor(sourceImageAndMask.getMaskUrl());
                 }
-            }
 
-        } else {
-            LOG.info("generateMissingMipmapFiles: all mipmap files exist for tileId {}",
-                     tileSpec.getTileId());
+                Map.Entry<Integer, ImageAndMask> derivedEntry;
+                ImageAndMask derivedImageAndMask;
+                File imageMipmapFile;
+                File maskMipmapFile;
+                for (int mipmapLevel = 1; mipmapLevel <= mipmapPathBuilder.getNumberOfLevels(); mipmapLevel++) {
+
+                    derivedEntry = mipmapPathBuilder.deriveImageAndMask(mipmapLevel, firstEntry, false);
+                    derivedImageAndMask = derivedEntry.getValue();
+
+                    if (! channelSpec.hasMipmap(mipmapLevel)) {
+
+                        final boolean isMipmapLevelInRange = mipmapLevel >= parameters.minLevel;
+
+                        if (isMipmapLevelInRange) {
+                            createMissingDirectories(derivedImageAndMask.getImageUrl());
+                        }
+
+                        imageMipmapFile = getFileForUrlString(derivedImageAndMask.getImageUrl());
+                        sourceImageProcessor = generateMipmapFile(sourceImageProcessor, imageMipmapFile, 1,
+                                                                  channelSpec.getMinIntensity(),
+                                                                  channelSpec.getMaxIntensity(),
+                                                                  isMipmapLevelInRange);
+
+                        if (sourceImageAndMask.hasMask()) {
+                            if (isMipmapLevelInRange) {
+                                createMissingDirectories(derivedImageAndMask.getMaskUrl());
+                            }
+                            maskMipmapFile = getFileForUrlString(derivedImageAndMask.getMaskUrl());
+                            sourceMaskProcessor = generateMipmapFile(sourceMaskProcessor, maskMipmapFile, 1,
+                                                                     channelSpec.getMinIntensity(),
+                                                                     channelSpec.getMaxIntensity(),
+                                                                     isMipmapLevelInRange);
+                        }
+
+                    }
+                }
+
+            } else {
+                LOG.info("generateMissingMipmapFiles: all mipmap files exist for ", context);
+            }
         }
     }
 
-    private boolean isMissingMipmaps(final TileSpec tileSpec,
+    private boolean isMissingMipmaps(final ChannelSpec channelSpec,
                                      final Map.Entry<Integer, ImageAndMask> firstEntry,
                                      final boolean hasMask) {
 
@@ -356,7 +365,7 @@ public class MipmapClient {
             derivedEntry = mipmapPathBuilder.deriveImageAndMask(mipmapLevel, firstEntry, false);
             derivedImageAndMask = derivedEntry.getValue();
 
-            if (! tileSpec.hasMipmap(mipmapLevel)) {
+            if (! channelSpec.hasMipmap(mipmapLevel)) {
 
                 imageMipmapFile = getFileForUrlString(derivedImageAndMask.getImageUrl());
                 if (! imageMipmapFile.exists()) {

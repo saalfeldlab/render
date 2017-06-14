@@ -18,6 +18,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -241,7 +242,9 @@ public class AddMaskUrlClient
                             maskUrl = getMaskUrl(imageAndMask, maskDataList);
                             fixedImageAndMask = new ImageAndMask(imageAndMask.getImageUrl(), maskUrl);
                             fixedImageAndMask.validate();
-                            tileSpec.putMipmap(firstMipmapEntry.getKey(), fixedImageAndMask);
+                            for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
+                                channelSpec.putMipmap(firstMipmapEntry.getKey(), fixedImageAndMask);
+                            }
                             updatedAtLeastOneSpec = true;
                         }
                     }

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.junit.Assert;
 import org.junit.Test;
@@ -55,7 +56,9 @@ public class LabelImageProcessorCacheTest {
         for (int i = 0; i < tileCount; i++) {
             tileSpec = new TileSpec();
             imageUrl = "file://tile_" + i;
-            tileSpec.putMipmap(0, new ImageAndMask(imageUrl, null));
+            final ChannelSpec channelSpec = new ChannelSpec();
+            channelSpec.putMipmap(0, new ImageAndMask(imageUrl, null));
+            tileSpec.addChannel(channelSpec);
             tileSpec.setWidth((double) i);
             tileSpec.setHeight((double) i + 1);
             tileSpecs.add(tileSpec);

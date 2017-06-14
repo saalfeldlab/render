@@ -250,6 +250,35 @@ public class MatchDaoTest {
                               sourceId.equals(canvasMatches.getqId()) );
         }
     }
+    @Test
+    public void testWriteMatchesInvolvingObjectAndGroup() throws Exception {
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        // "pGroupId": "section0", "pId": "tile0.1", "qGroupId": "section1", "qId": "tile1.1",
+        final String sourceId = "tile1.1";
+        final String qGroupId = "section1";
+
+        dao.writeMatchesBetweenObjectandGroup(collectionId, null, groupId, sourceId,qGroupId, outputStream);
+
+        final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
+
+        Assert.assertEquals("invalid number of matches returned",
+                            1, canvasMatchesList.size());
+
+        for (final CanvasMatches canvasMatches : canvasMatchesList) {
+//            System.out.println(canvasMatches.toTabSeparatedFormat());
+            Assert.assertTrue("groupId '" + groupId + "' not found in " + canvasMatches,
+                              groupId.equals(canvasMatches.getpGroupId()) ||
+                              groupId.equals(canvasMatches.getqGroupId()) );
+            Assert.assertTrue("id '" + sourceId + "' not found in " + canvasMatches,
+                              sourceId.equals(canvasMatches.getpId()) ||
+                              sourceId.equals(canvasMatches.getqId()) );
+            Assert.assertTrue("qGroupId '" + qGroupId + "' not found in " + canvasMatches,
+                              qGroupId.equals(canvasMatches.getpGroupId()) ||
+                              qGroupId.equals(canvasMatches.getqGroupId()) );
+        }
+    }
 
     @Test
     public void testRemoveMatchesOutsideGroup() throws Exception {

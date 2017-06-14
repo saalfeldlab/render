@@ -2,6 +2,7 @@ package org.janelia.render.service.dao;
 
 import com.mongodb.BasicDBList;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoNamespace;
 import com.mongodb.QueryOperators;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
@@ -1439,9 +1440,63 @@ public class RenderDao {
     }
 
     /**
+     * Renames the specified stack.
+     *
+     * @param  fromStackId  original stack name.
+     * @param  toStackId    new stack name.
+     *
+     * @throws IllegalArgumentException
+     *   if the new stack already exists or the original stack cannot be renamed for any other reason.
+     *
+     * @throws ObjectNotFoundException
+     *   if the original stack does not exist.
+     */
+    public void renameStack(final StackId fromStackId,
+                            final StackId toStackId)
+            throws IllegalArgumentException, ObjectNotFoundException {
+
+        MongoUtil.validateRequiredParameter("fromStackId", fromStackId);
+        MongoUtil.validateRequiredParameter("toStackId", toStackId);
+
+        final StackMetaData fromStackMetaData = getStackMetaData(fromStackId);
+        if (fromStackMetaData == null) {
+            throw new ObjectNotFoundException(fromStackId + " does not exist");
+        }
+
+        if (fromStackMetaData.isReadOnly() || fromStackMetaData.isOffline()) {
+            throw new IllegalArgumentException(fromStackId + " cannot be modified because it is " +
+                                               fromStackMetaData.getState() + ".");
+        }
+
+        StackMetaData toStackMetaData = getStackMetaData(toStackId);
+        if (toStackMetaData != null) {
+            throw new IllegalArgumentException(toStackId + " already exists");
+        }
+
+        renameCollection(fromStackId.getSectionCollectionName(), toStackId.getSectionCollectionName());
+        renameCollection(fromStackId.getTransformCollectionName(), toStackId.getTransformCollectionName());
+        renameCollection(fromStackId.getTileCollectionName(), toStackId.getTileCollectionName());
+
+        toStackMetaData = StackMetaData.buildDerivedMetaData(toStackId, fromStackMetaData);
+
+        final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
+        final Document query = getStackIdQuery(fromStackId);
+        final Document stackMetaDataObject = Document.parse(toStackMetaData.toJson());
+        final UpdateResult result = stackMetaDataCollection.replaceOne(query,
+                                                                       stackMetaDataObject,
+                                                                       MongoUtil.UPSERT_OPTION);
+
+        LOG.debug("renameStack: ran {}.{},({}), upsertedId is {}",
+                  MongoUtil.fullName(stackMetaDataCollection),
+                  MongoUtil.action(result),
+                  query.toJson(),
+                  result.getUpsertedId());
+    }
+
+    /**
      * Writes the layout file data for the specified stack to the specified stream.
      *
-     * @param  stackId          stack identifier.
+     * @param  stackMetaData    stack metadata.
      * @param  stackRequestUri  the base stack request URI for building tile render-parameter URIs.
      * @param  minZ             the minimum z to include (or null if no minimum).
      * @param  maxZ             the maximum z to include (or null if no maximum).
@@ -1453,17 +1508,29 @@ public class RenderDao {
      * @throws IOException
      *   if the data cannot be written for any reason.
      */
-    public void writeLayoutFileData(final StackId stackId,
+    public void writeLayoutFileData(final StackMetaData stackMetaData,
                                     final String stackRequestUri,
                                     final Double minZ,
                                     final Double maxZ,
+                                    TileSpecLayout.Format format,
                                     final OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
-        LOG.debug("writeLayoutFileData: entry, stackId={}, minZ={}, maxZ={}",
-                  stackId, minZ, maxZ);
+        final StackId stackId = stackMetaData.getStackId();
+
+        LOG.debug("writeLayoutFileData: entry, stackId={}, minZ={}, maxZ={}, format={}",
+                  stackId, minZ, maxZ, format);
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
+
+        if (format == null) {
+            format = TileSpecLayout.Format.KARSH;
+        }
+
+        final String header = format.formatHeader(stackMetaData);
+        if (header != null) {
+            outputStream.write(header.getBytes());
+        }
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
@@ -1491,25 +1558,18 @@ public class RenderDao {
 
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
-        final Document orderBy = new Document("z", 1).append("minY", 1).append("minX", 1);
+        final Document orderBy = format.getOrderBy();
         try (MongoCursor<Document> cursor =
                      tileCollection.find(tileQuery).projection(tileKeys).sort(orderBy).iterator()) {
 
-            final String baseUriString = '\t' + stackRequestUri + "/tile/";
-
             Document document;
             TileSpec tileSpec;
-            String layoutData;
-            String uriString;
+            String layoutText;
             while (cursor.hasNext()) {
                 document = cursor.next();
                 tileSpec = TileSpec.fromJson(document.toJson());
-                layoutData = tileSpec.toLayoutFileFormat();
-                outputStream.write(layoutData.getBytes());
-
-                // {stackRequestUri}/tile/{tileId}/render-parameters
-                uriString = baseUriString + tileSpec.getTileId() + "/render-parameters" + "\n";
-                outputStream.write(uriString.getBytes());
+                layoutText = format.formatTileSpec(tileSpec, stackRequestUri);
+                outputStream.write(layoutText.getBytes());
                 tileSpecCount++;
 
                 if (timer.hasIntervalPassed()) {
@@ -1805,9 +1865,12 @@ public class RenderDao {
             groupQuery.append("z", minZ);
         } else {
             if (minZ != null) {
-                groupQuery.append("z", new Document(QueryOperators.GTE, minZ));
-            }
-            if (maxZ != null) {
+                if (maxZ != null) {
+                    groupQuery.append("z", new Document(QueryOperators.GTE, minZ).append(QueryOperators.LTE, maxZ));
+                } else {
+                    groupQuery.append("z", new Document(QueryOperators.GTE, minZ));
+                }
+            } else if (maxZ != null) {
                 groupQuery.append("z", new Document(QueryOperators.LTE, maxZ));
             }
         }
@@ -1900,6 +1963,22 @@ public class RenderDao {
                   bound, MongoUtil.fullName(tileCollection), query.toJson(), tileKeys.toJson(), orderBy.toJson());
 
         return bound;
+    }
+
+    private void renameCollection(final String fromCollectionName,
+                                  final String toCollectionName) {
+
+        if (MongoUtil.exists(renderDatabase, fromCollectionName)) {
+
+            final MongoCollection<Document> fromCollection = renderDatabase.getCollection(fromCollectionName);
+            final MongoNamespace toNamespace = new MongoNamespace(renderDatabase.getName(), toCollectionName);
+            fromCollection.renameCollection(toNamespace);
+
+            LOG.debug("renameCollection: exit, ran {}.renameCollection({})",
+                      MongoUtil.fullName(fromCollection),
+                      toCollectionName);
+        }
+
     }
 
     private void cloneCollection(final MongoCollection<Document> fromCollection,

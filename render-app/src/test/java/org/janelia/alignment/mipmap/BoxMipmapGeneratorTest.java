@@ -24,7 +24,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.janelia.alignment.Render;
+import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
@@ -166,7 +166,7 @@ public class BoxMipmapGeneratorTest {
         final LabelImageProcessorCache cache =
                 new LabelImageProcessorCache(1000000, false, false, params.getTileSpecs());
 
-        Render.render(params, argbLabelImage, cache);
+        ArgbRenderer.render(params, argbLabelImage, cache);
 
         final File outputFile = BoxMipmapGenerator.getImageFile(Utils.PNG_FORMAT,
                                                                boxDirectory,

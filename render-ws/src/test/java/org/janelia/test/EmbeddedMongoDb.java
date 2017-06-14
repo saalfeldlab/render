@@ -9,6 +9,7 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.flapdoodle.embed.mongo.Command;
 import de.flapdoodle.embed.mongo.MongoImportExecutable;
 import de.flapdoodle.embed.mongo.MongoImportStarter;
 import de.flapdoodle.embed.mongo.MongodExecutable;
@@ -18,8 +19,10 @@ import de.flapdoodle.embed.mongo.config.IMongoImportConfig;
 import de.flapdoodle.embed.mongo.config.MongoImportConfigBuilder;
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
+import de.flapdoodle.embed.mongo.config.RuntimeConfigBuilder;
 import de.flapdoodle.embed.mongo.distribution.IFeatureAwareVersion;
 import de.flapdoodle.embed.mongo.distribution.Version;
+import de.flapdoodle.embed.process.config.IRuntimeConfig;
 import de.flapdoodle.embed.process.runtime.Network;
 
 /**
@@ -29,8 +32,6 @@ import de.flapdoodle.embed.process.runtime.Network;
  * @author Eric Trautman
  */
 public class EmbeddedMongoDb {
-
-    private static final MongodStarter STARTER = MongodStarter.getDefaultInstance();
 
     private final IFeatureAwareVersion version;
     private final int port;
@@ -42,7 +43,7 @@ public class EmbeddedMongoDb {
     public EmbeddedMongoDb(final String dbName)
             throws IOException {
 
-        this.version = Version.Main.V3_2;
+        this.version = Version.Main.V3_4;
         this.port = 12345;
 
         // see MongodForTestsFactory for example verbose startup options
@@ -79,21 +80,45 @@ public class EmbeddedMongoDb {
                 .build();
 
         final MongoImportExecutable mongoImportExecutable =
-                MongoImportStarter.getDefaultInstance().prepare(mongoImportConfig);
+                MongoImportStarter.getInstance(MONGO_IMPORT_RUNTIME_CONFIG).prepare(mongoImportConfig);
 
         mongoImportExecutable.start();
     }
 
     public void stop() {
+
         try {
             db.drop();
+        } catch (final Throwable t) {
+            LOG.warn("failed to drop test database", t);
+        }
+
+        try {
             mongodProcess.stop();
+        } catch (final Throwable t) {
+            LOG.warn("failed to stop mongod process", t);
+        }
+
+        try {
             mongodExecutable.stop();
         } catch (final Throwable t) {
-            LOG.warn("failed to stop embedded mongodb", t);
+            LOG.warn("failed to stop mongod executable", t);
         }
+
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(EmbeddedMongoDb.class);
 
+    private static final Logger MONGO_LOG = LoggerFactory.getLogger("mongo");
+
+    private static final IRuntimeConfig MONGO_IMPORT_RUNTIME_CONFIG = new RuntimeConfigBuilder()
+            .defaultsWithLogger(Command.MongoImport, MONGO_LOG)
+            .daemonProcess(false) // make sure import processes are not daemons to avoid shutdown issues (see https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/issues/191 )
+            .build();
+
+    private static final IRuntimeConfig MONGOD_RUNTIME_CONFIG = new RuntimeConfigBuilder()
+            .defaultsWithLogger(Command.MongoD, MONGO_LOG)
+            .build();
+
+    private static final MongodStarter STARTER = MongodStarter.getInstance(MONGOD_RUNTIME_CONFIG);
 }

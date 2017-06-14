@@ -1,6 +1,8 @@
 package org.janelia.alignment;
 
 import junit.framework.Assert;
+
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.junit.After;
 import org.junit.Before;
@@ -61,7 +63,7 @@ public class MipmapGeneratorTest {
         final MipmapGeneratorParameters parameters = MipmapGeneratorParameters.parseJson(parametersFile);
         parameters.initializeDerivedValues();
 
-        List<TileSpec> tileSpecList = parameters.getTileSpecs();
+        final List<TileSpec> tileSpecList = parameters.getTileSpecs();
 
         Assert.assertEquals("incorrect number of tile specs parsed", 4, tileSpecList.size());
 
@@ -72,20 +74,22 @@ public class MipmapGeneratorTest {
         ImageAndMask consolidatedLevel1imageAndMask = null;
         ImageAndMask consolidatedLevel2imageAndMask = null;
         TileSpec tileSpec;
+        ChannelSpec channelSpec;
         for (int i = 0; i < tileSpecList.size(); i++) {
 
             tileSpec = tileSpecList.get(i);
+            channelSpec = tileSpec.getAllChannels().get(0);
 
-            Assert.assertTrue("original tile spec is missing level 0 mipmap", tileSpec.hasMipmap(0));
-            Assert.assertFalse("original tile spec already has level 1 mipmap", tileSpec.hasMipmap(1));
-            Assert.assertFalse("original tile spec already has level 2 mipmap", tileSpec.hasMipmap(2));
+            Assert.assertTrue("original tile spec is missing level 0 mipmap", channelSpec.hasMipmap(0));
+            Assert.assertFalse("original tile spec already has level 1 mipmap", channelSpec.hasMipmap(1));
+            Assert.assertFalse("original tile spec already has level 2 mipmap", channelSpec.hasMipmap(2));
 
             mipmapGenerator.generateMissingMipmapFiles(tileSpec, 2);
 
-            Assert.assertTrue("updated tile spec lost level 0 mipmap", tileSpec.hasMipmap(0));
-            Assert.assertTrue("updated tile spec is missing level 1 mipmap", tileSpec.hasMipmap(1));
-            Assert.assertTrue("updated tile spec is missing level 2 mipmap", tileSpec.hasMipmap(2));
-            Assert.assertFalse("updated tile spec should not have level 3 mipmap", tileSpec.hasMipmap(3));
+            Assert.assertTrue("updated tile spec lost level 0 mipmap", channelSpec.hasMipmap(0));
+            Assert.assertTrue("updated tile spec is missing level 1 mipmap", channelSpec.hasMipmap(1));
+            Assert.assertTrue("updated tile spec is missing level 2 mipmap", channelSpec.hasMipmap(2));
+            Assert.assertFalse("updated tile spec should not have level 3 mipmap", channelSpec.hasMipmap(3));
 
             // Consolidation Test:
             // -  Tiles 0 and 1 (with zipped masks) should have the same (consolidated) level 1 and level 2 masks.
@@ -93,25 +97,25 @@ public class MipmapGeneratorTest {
             // -  Tile 3 should have different level 1 and level 2 masks.
 
             if (i == 0) {
-                consolidatedLevel1imageAndMask = tileSpec.getMipmap(1);
-                consolidatedLevel2imageAndMask = tileSpec.getMipmap(2);
+                consolidatedLevel1imageAndMask = channelSpec.getMipmap(1);
+                consolidatedLevel2imageAndMask = channelSpec.getMipmap(2);
             } else if (i < 3) {
-                validateMask(tileSpec, i, consolidatedLevel1imageAndMask, 1, true);
-                validateMask(tileSpec, i, consolidatedLevel2imageAndMask, 2, true);
+                validateMask(channelSpec, i, consolidatedLevel1imageAndMask, 1, true);
+                validateMask(channelSpec, i, consolidatedLevel2imageAndMask, 2, true);
             } else { // i == 3
-                validateMask(tileSpec, i, consolidatedLevel1imageAndMask, 1, false);
-                validateMask(tileSpec, i, consolidatedLevel2imageAndMask, 2, false);
+                validateMask(channelSpec, i, consolidatedLevel1imageAndMask, 1, false);
+                validateMask(channelSpec, i, consolidatedLevel2imageAndMask, 2, false);
             }
         }
 
     }
 
-    private void validateMask(TileSpec tileSpec,
-                              int specIndex,
-                              ImageAndMask consolidatedImageAndMask,
-                              int level,
-                              boolean shouldBeTheSame) {
-        final ImageAndMask imageAndMask = tileSpec.getMipmap(level);
+    private void validateMask(final ChannelSpec channelSpec,
+                              final int specIndex,
+                              final ImageAndMask consolidatedImageAndMask,
+                              final int level,
+                              final boolean shouldBeTheSame) {
+        final ImageAndMask imageAndMask = channelSpec.getMipmap(level);
         if (shouldBeTheSame) {
             Assert.assertEquals("level " + level + " mask for tile " + specIndex + " should have been consolidated",
                                 consolidatedImageAndMask.getMaskUrl(), imageAndMask.getMaskUrl());
@@ -121,14 +125,14 @@ public class MipmapGeneratorTest {
         }
     }
 
-    private static boolean deleteRecursive(File file) {
+    private static boolean deleteRecursive(final File file) {
 
         boolean deleteSuccessful = true;
 
         if (file.isDirectory()){
             final File[] files = file.listFiles();
             if (files != null) {
-                for (File f : files) {
+                for (final File f : files) {
                     deleteSuccessful = deleteSuccessful && deleteRecursive(f);
                 }
             }

@@ -7,7 +7,7 @@ import java.io.IOException;
 import javax.annotation.Nonnull;
 
 import org.apache.commons.io.FileUtils;
-import org.janelia.alignment.Render;
+import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.match.CanvasId;
@@ -54,7 +54,7 @@ public class CanvasFileLoader
 
         final RenderParameters renderParameters = getRenderParameters(canvasId);
 
-        final BufferedImage bufferedImage = Render.renderWithNoise(renderParameters, fillWithNoise);
+        final BufferedImage bufferedImage = ArgbRenderer.renderWithNoise(renderParameters, fillWithNoise);
 
         Utils.saveImage(bufferedImage,
                         renderFile,

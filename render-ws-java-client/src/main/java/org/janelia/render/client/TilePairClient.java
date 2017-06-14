@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
+import org.janelia.alignment.spec.stack.StackId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,6 +111,21 @@ public class TilePairClient {
                 required = false)
         private String excludePairsInMatchCollection;
 
+        @Parameter(
+                names = "--existingMatchOwner",
+                description = "Owner of match collection whose existing pairs should be excluded from the generated list (default is owner)",
+                required = false)
+        private String existingMatchOwner;
+
+        @Parameter(names = "--minExistingMatchCount", description = "Minimum number of existing matches to trigger pair exclusion", required = false)
+        private Integer minExistingMatchCount = 0;
+
+        @Parameter(
+                names = "--onlyIncludeTilesFromStack",
+                description = "Name of match collection whose existing pairs should be excluded from the generated list (default is to include all pairs)",
+                required = false)
+        private String onlyIncludeTilesFromStack;
+
         @Parameter(names = "--toJson", description = "JSON file where tile pairs are to be stored (.json, .gz, or .zip)", required = true)
         private String toJson;
 
@@ -172,6 +189,13 @@ public class TilePairClient {
                 baseStack = stack;
             }
             return baseStack;
+        }
+
+        public String getExistingMatchOwner() {
+            if (existingMatchOwner == null) {
+                existingMatchOwner = owner;
+            }
+            return existingMatchOwner;
         }
 
         public void validateStackBounds() throws IllegalArgumentException {
@@ -239,6 +263,8 @@ public class TilePairClient {
     private final Parameters parameters;
     private final boolean filterTilesWithBox;
     private final RenderDataClient renderDataClient;
+    private final RenderDataClient includeClient;
+    private final StackId includeStack;
 
     public TilePairClient(final Parameters parameters) throws IllegalArgumentException {
 
@@ -250,6 +276,18 @@ public class TilePairClient {
         this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
                                                      parameters.owner,
                                                      parameters.project);
+
+        if (parameters.onlyIncludeTilesFromStack == null) {
+            includeClient = null;
+            includeStack = null;
+        } else {
+            includeStack = StackId.fromNameString(parameters.onlyIncludeTilesFromStack,
+                                                  parameters.owner,
+                                                  parameters.project);
+            includeClient = new RenderDataClient(parameters.baseDataUrl,
+                                                 includeStack.getOwner(),
+                                                 includeStack.getProject());
+        }
     }
 
     public String getRenderParametersUrlTemplate() {
@@ -330,6 +368,30 @@ public class TilePairClient {
         for (final Double z : zValues) {
 
             List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
+
+            if (includeClient != null) {
+
+                final int beforeFilterCount = tileBoundsList.size();
+
+                final List<TileBounds> includeList = includeClient.getTileBounds(includeStack.getStack(), z);
+                final Set<String> includeTileIds = new HashSet<>(includeList.size() * 2);
+                for (final TileBounds bounds : includeList) {
+                    includeTileIds.add(bounds.getTileId());
+                }
+
+                for (final Iterator<TileBounds> i = tileBoundsList.iterator(); i.hasNext();) {
+                    if (! includeTileIds.contains(i.next().getTileId())) {
+                        i.remove();
+                    }
+                }
+
+                if (beforeFilterCount > tileBoundsList.size()) {
+                    LOG.info("buildRTrees: removed {} tiles not found in {}",
+                             (beforeFilterCount - tileBoundsList.size()), includeStack);
+                }
+
+            }
+
             TileBoundsRTree tree = new TileBoundsRTree(z, tileBoundsList);
 
             totalTileCount += tileBoundsList.size();
@@ -390,17 +452,19 @@ public class TilePairClient {
 
             final RenderDataClient matchDataClient =
                     new RenderDataClient(parameters.baseDataUrl,
-                                         parameters.owner,
+                                         parameters.getExistingMatchOwner(),
                                          parameters.excludePairsInMatchCollection);
 
             String pGroupId;
             for (final SectionData sectionData: stackSectionDataList) {
                 pGroupId = sectionData.getSectionId();
                 for (final CanvasMatches canvasMatches : matchDataClient.getMatchesWithPGroupId(pGroupId)) {
-                    existingPairs.add(
-                            new OrderedCanvasIdPair(
-                                    new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),
-                                    new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId())));
+                    if (canvasMatches.size() > parameters.minExistingMatchCount) {
+                        existingPairs.add(
+                                new OrderedCanvasIdPair(
+                                        new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),
+                                        new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId())));
+                    }
                 }
             }
 

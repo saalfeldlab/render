@@ -370,5 +370,47 @@
                 }
             ]
         }
+    },
+    {
+        "tileId": "reacquire_a",
+        "layout": {"sectionId": "3903.1"},
+        "z": 3903.1,
+        "minX": 7178.0,
+        "minY": 5696.0,
+        "maxX": 9917.0,
+        "maxY": 7981.0,
+        "width": 2560,
+        "height": 2160,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "data/140318164943_100x192/col0060/col0060_row0140_cam0.tif"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+            ]
+        }
+    },
+    {
+        "tileId": "reacquire_b",
+        "layout": {"sectionId": "3903.1"},
+        "z": 3903.1,
+        "minX": 7178.0,
+        "minY": 5696.0,
+        "maxX": 9917.0,
+        "maxY": 7981.0,
+        "width": 2560,
+        "height": 2160,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "data/140318164943_100x192/col0060/col0060_row0140_cam0.tif"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+            ]
+        }
     }
 ]

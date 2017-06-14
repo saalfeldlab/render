@@ -38,8 +38,10 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.ChannelNamesAndWeights;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.slf4j.Logger;
@@ -124,6 +126,9 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--background_color", description = "RGB int color for background (default is 0: black)", required = false)
     private Integer backgroundRGBColor;
 
+    @Parameter(names = "--channels", description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3').", required = false)
+    private String channels;
+
     private MipmapPathBuilder mipmapPathBuilder;
 
     /** List of tile specifications parsed from --tileSpecUrl or deserialized directly from json. */
@@ -150,6 +155,7 @@ public class RenderParameters implements Serializable {
     private transient JCommander jCommander;
     private transient URI outUri;
     private transient boolean initialized;
+    private transient ChannelNamesAndWeights channelNamesAndWeights;
 
     public RenderParameters() {
         this(null,
@@ -388,6 +394,7 @@ public class RenderParameters implements Serializable {
         if (! initialized) {
             parseTileSpecs();
             applyMipmapPathBuilderToTileSpecs();
+            channelNamesAndWeights = ChannelNamesAndWeights.fromSpec(channels);
             initialized = true;
         }
     }
@@ -465,10 +472,6 @@ public class RenderParameters implements Serializable {
         this.scale = scale;
     }
 
-    public boolean isAreaOffset() {
-        return areaOffset;
-    }
-
     public boolean isConvertToGray() {
         return convertToGray;
     }
@@ -527,6 +530,31 @@ public class RenderParameters implements Serializable {
 
     public void setBackgroundRGBColor(final Integer backgroundRGBColor) {
         this.backgroundRGBColor = backgroundRGBColor;
+    }
+
+    public Set<String> getChannelNames()
+            throws IllegalArgumentException {
+        final ChannelNamesAndWeights namesAndWeights = getChannelNamesAndWeights();
+        return namesAndWeights.getNames();
+    }
+
+    public ChannelNamesAndWeights getChannelNamesAndWeights()
+            throws IllegalArgumentException {
+        if (channelNamesAndWeights == null) {
+            deriveChannelNamesAndWeights();
+        }
+        return channelNamesAndWeights;
+    }
+
+    public void setChannels(final String channels)
+            throws IllegalArgumentException {
+        this.channels = channels;
+        deriveChannelNamesAndWeights();
+    }
+
+    public void deriveChannelNamesAndWeights()
+            throws IllegalArgumentException {
+        this.channelNamesAndWeights = ChannelNamesAndWeights.fromSpec(channels);
     }
 
     public boolean hasTileSpecs() {

@@ -16,6 +16,7 @@ import java.util.Random;
 
 import mpicbg.trakem2.util.Downsampler;
 
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,6 +120,7 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
      * @param  url               url for the image.
      * @param  downSampleLevels  number of levels to further down sample the image.
      * @param  isMask            indicates whether this image is a mask.
+     * @param  convertTo16Bit    ignored for labels (always false).
      *
      * @return a newly loaded image processor to be cached.
      *
@@ -128,13 +130,14 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
     @Override
     protected ImageProcessor loadImageProcessor(final String url,
                                                 final int downSampleLevels,
-                                                final boolean isMask)
+                                                final boolean isMask,
+                                                final boolean convertTo16Bit)
             throws IllegalArgumentException {
 
         ImageProcessor imageProcessor;
 
         if (isMask) {
-            imageProcessor = super.loadImageProcessor(url, downSampleLevels, true);
+            imageProcessor = super.loadImageProcessor(url, downSampleLevels, true, convertTo16Bit);
         } else {
 
             final Color labelColor = getColorForUrl(url);
@@ -183,9 +186,11 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         }
 
         int tileIndex = 0;
+        ChannelSpec firstChannelSpec;
         String imageUrl;
         for (final TileSpec tileSpec : tileSpecs) {
-            imageUrl = tileSpec.getFloorMipmapEntry(0).getValue().getImageUrl();
+            firstChannelSpec = tileSpec.getAllChannels().get(0);
+            imageUrl = firstChannelSpec.getFloorMipmapEntry(0).getValue().getImageUrl();
             urlToTileSpec.put(imageUrl, tileSpec);
             urlToColor.put(imageUrl, colorList.get(tileIndex));
             tileIndex++;

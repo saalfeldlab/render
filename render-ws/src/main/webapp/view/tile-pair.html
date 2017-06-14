@@ -8,7 +8,7 @@
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="../script/janelia-render.js?v=20170105_001"></script>
-    <script type="text/javascript" src="../script/janelia-tile-pair.js?v=20170105_001"></script>
+    <script type="text/javascript" src="../script/janelia-tile-neighbors.js?v=20170419_001"></script>
     <script type="text/javascript">
 
         var tilePair;
@@ -18,19 +18,58 @@
             var util = new JaneliaScriptUtilities();
             var queryParameters = new JaneliaQueryParameters();
 
-            tilePair = new JaneliaTilePair(
-                    util.getServicesBaseUrl(),
-                    queryParameters.map['renderStackOwner'],
-                    queryParameters.map['renderStackProject'],
-                    queryParameters.map['renderStack'],
-                    queryParameters.map['matchOwner'],
-                    queryParameters.map['matchCollection'],
-                    parseFloat(queryParameters.map['renderScale']),
-                    queryParameters.map['pGroupId'],
-                    queryParameters.map['pId'],
-                    queryParameters.map['qGroupId'],
-                    queryParameters.map['qId']);
+            var baseUrl = util.getServicesBaseUrl();
+
+            // TODO: remove this when done debugging on localhost
+            //var baseUrl = "http://renderer-dev:8080/render-ws/v1";
+
+            var owner = queryParameters.get('renderStackOwner');
+            var project = queryParameters.get('renderStackProject');
+            var stack = queryParameters.get('renderStack');
+
+            var matchOwner = queryParameters.get('matchOwner');
+            var matchCollection = queryParameters.get('matchCollection');
+
+            // Until we've stored the point match render context properly,
+            // you may need to hack these parameters to match your setup.
+            var defaultRenderQueryParameters = "excludeMask=true&normalizeForMatching=true";
+
+            // Here's a hack for Janelia's FAFB project ...
+            var FAFB_projects = [ 'FAFB00', 'FAFB00_beautification', 'FAFBv14', 'FAFBv14_kk',
+                                  'ackermand', 'fly_pilot', 'goinac_test', 'khairyk_stage', 'trautmane_test',
+                                  'whirlie' ];
+            for (i = 0; i < FAFB_projects.length; i++) {
+                if (project == FAFB_projects[i]) {
+                    defaultRenderQueryParameters = "excludeMask=true&normalizeForMatching=true&width=2760&height=2330";
+                    break;
+                }
+            }
+
+            var defaultRenderScale = 0.15;
+            var renderScale = queryParameters.get('renderScale', defaultRenderScale);
+
+            var canvas = document.getElementById("theCanvas");
+
+            tilePair = new JaneliaTileWithNeighbors(
+                    baseUrl, owner, project, stack,
+                    matchOwner, matchCollection,
+                    defaultRenderQueryParameters, renderScale, canvas);
+
+            var tileId = queryParameters.get('pId');
+            var otherTileId = queryParameters.get('qId');
+            tilePair.setTilePair(tileId, otherTileId);
+
+            var sep = '&nbsp;&nbsp;&nbsp;&nbsp;';
+
+            $("#renderStack").html(tilePair.owner + sep + tilePair.project + sep + tilePair.stack);
+
+            var stackLinkHtml = '(<a href="' + tilePair.stackUrl + '" target="_blank">stack metadata</a>)';
+            $("#renderStackLink").html(stackLinkHtml);
+            $("#matchCollection").html(tilePair.matchOwner + sep + tilePair.matchCollection);
+
+
         });
+
     </script>
 
 </head>
@@ -42,49 +81,36 @@
 
 <div id="headerDiv" class="header_div">
     <table class="data_table">
-        <tr> <td>Render Stack:</td>     <td id="renderStack"></td>     <td id="renderStackLink"></td> </tr>
-        <tr> <td>Match Collection:</td> <td id="matchCollection"></td> <td id="pairMatchesLink"></td> </tr>
+        <tr>
+            <td>Render Stack:</td>
+            <td id="renderStack"></td>
+            <td id="renderStackLink"></td>
+        </tr>
+        <tr>
+            <td>Match Collection:</td>
+            <td id="matchCollection"></td>
+            <td id="pairMatchesLink"></td>
+        </tr>
+        <tr>
+            <td>Tile IDs:</td>
+            <td id="pTileId"></td>
+            <td id="qTileId"></td>
+        </tr>
+        <tr>
+            <td>Match View:</td>
+            <td>
+                <input type='button' value='All Matches' onclick='tilePair.drawAllMatches()' />
+                <input type='button' value='Previous Match' onclick='tilePair.drawMatch(-1)' />
+                <input type='button' value='Next Match' onclick='tilePair.drawMatch(1)' />
+                <input type='button' value='Rotate Tiles' onclick='tilePair.rotatePair()' />
+            </td>
+            <td id="matchInfo"></td>
+        </tr>
     </table>
 </div>
 
-<div id="pTileDiv" class="tile_div">
-    <table class="data_table">
-        <tr><td>Tile ID:</td><td id="pTileId"></td></tr>
-        <tr><td>Tile Size:</td><td id="pFullScaleSize"></td></tr>
-        <tr>
-            <td>Match Point:</td>
-            <td id="pPoint"></td>
-        </tr>
-        <tr>
-            <td></td>
-            <td>
-                <input type='button' value='Previous' onclick='tilePair.drawPreviousMatch()' />
-                <input type='button' value='Next' onclick='tilePair.drawNextMatch()' />
-            </td>
-        </tr>
-    </table>
-    <img id="pTileImage" src="" style="z-index: 1">
-    <canvas id="pCanvas" style="z-index: 11"></canvas>
-</div>
-
-<div id="qTileDiv" class="tile_div">
-    <table class="data_table">
-        <tr><td>Tile ID:</td><td id="qTileId"></td></tr>
-        <tr><td>Tile Size:</td><td id="qFullScaleSize"></td></tr>
-        <tr>
-            <td>Match Point:</td>
-            <td id="qPoint"></td>
-        </tr>
-        <tr>
-            <td></td>
-            <td>
-                <input type='button' value='Previous' onclick='tilePair.drawPreviousMatch()' />
-                <input type='button' value='Next' onclick='tilePair.drawNextMatch()' />
-            </td>
-        </tr>
-    </table>
-    <img id="qTileImage" src="" style="z-index: 1">
-    <canvas id="qCanvas" style="z-index: 11"></canvas>
+<div id="tileDiv">
+    <canvas id="theCanvas"></canvas>
 </div>
 
 </body>

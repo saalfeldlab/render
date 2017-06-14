@@ -68,6 +68,7 @@ public class TileImageService {
                                            @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
                                            @QueryParam("minIntensity") final Double minIntensity,
                                            @QueryParam("maxIntensity") final Double maxIntensity,
+                                           @QueryParam("channels") final String channels,
                                            @Context final Request request) {
 
         LOG.info("renderJpegImageForTile: entry, owner={}, project={}, stack={}, tileId={}",
@@ -79,7 +80,7 @@ public class TileImageService {
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
                                                         filter, false, excludeMask, normalizeForMatching,
-                                                        minIntensity, maxIntensity);
+                                                        minIntensity, maxIntensity, channels);
             return RenderServiceUtil.renderJpegImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -105,6 +106,7 @@ public class TileImageService {
                                           @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
                                           @QueryParam("minIntensity") final Double minIntensity,
                                           @QueryParam("maxIntensity") final Double maxIntensity,
+                                          @QueryParam("channels") final String channels,
                                           @Context final Request request) {
 
         LOG.info("renderPngImageForTile: entry, owner={}, project={}, stack={}, tileId={}",
@@ -116,7 +118,7 @@ public class TileImageService {
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
                                                         filter, false, excludeMask, normalizeForMatching,
-                                                        minIntensity, maxIntensity);
+                                                        minIntensity, maxIntensity, channels);
             return RenderServiceUtil.renderPngImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -142,6 +144,7 @@ public class TileImageService {
                                            @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
                                            @QueryParam("minIntensity") final Double minIntensity,
                                            @QueryParam("maxIntensity") final Double maxIntensity,
+                                           @QueryParam("channels") final String channels,
                                            @Context final Request request) {
 
         LOG.info("renderTiffImageForTile: entry, owner={}, project={}, stack={}, tileId={}",
@@ -153,7 +156,7 @@ public class TileImageService {
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
                                                         filter, false, excludeMask, normalizeForMatching,
-                                                        minIntensity, maxIntensity);
+                                                        minIntensity, maxIntensity, channels);
             return RenderServiceUtil.renderTiffImage(renderParameters, null, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -346,17 +349,18 @@ public class TileImageService {
                                                      @QueryParam("widthFactor") final Double widthFactor,
                                                      @QueryParam("heightFactor") final Double heightFactor,
                                                      @QueryParam("boundingBoxesOnly") final Boolean boundingBoxesOnly,
+                                                     @QueryParam("channels") final String channels,
                                                      @Context final Request request) {
 
-        LOG.info("renderJpegTileWithNeighborsImage: entry, owner={}, project={}, stack={}, tileId={}, scale={}, filter={}, binaryMask={}, convertToGray={}, boundingBoxesOnly={}",
-                 owner, project, stack, tileId, scale, filter, binaryMask, convertToGray, boundingBoxesOnly);
+        LOG.info("renderJpegTileWithNeighborsImage: entry, owner={}, project={}, stack={}, tileId={}",
+                 owner, project, stack, tileId);
 
         final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getTileWithNeighborsRenderParameters(owner, project, stack, tileId,
                                                                          widthFactor, heightFactor, scale,
-                                                                         filter, binaryMask, convertToGray);
+                                                                         filter, binaryMask, convertToGray, channels);
             if ((boundingBoxesOnly != null) && boundingBoxesOnly) {
                 return RenderServiceUtil.renderJpegBoundingBoxes(renderParameters, responseHelper);
             } else {

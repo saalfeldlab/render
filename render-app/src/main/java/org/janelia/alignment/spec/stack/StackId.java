@@ -1,5 +1,7 @@
 package org.janelia.alignment.spec.stack;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
 
 import org.janelia.alignment.util.CollectionNameUtil;
@@ -74,20 +76,56 @@ public class StackId implements Comparable<StackId>, Serializable {
         return v;
     }
 
+    @JsonIgnore
     public String getSectionCollectionName() {
         return getCollectionName(SECTION_COLLECTION_SUFFIX);
     }
 
+    @JsonIgnore
     public String getTileCollectionName() {
         return getCollectionName(TILE_COLLECTION_SUFFIX);
     }
 
+    @JsonIgnore
     public String getTransformCollectionName() {
         return getCollectionName(TRANSFORM_COLLECTION_SUFFIX);
     }
 
     private String getCollectionName(final String suffix) {
         return COLLECTION_NAME_UTIL.getName(owner, project, stack, suffix);
+    }
+
+    /**
+     * Converts a name string with format <pre> owner::project::stack </pre> to a stack ID.
+     *
+     * @param  nameString      string with format owner::project::stack where owner and project components are optional.
+     * @param  defaultOwner    owner to use if not specified in name string.
+     * @param  defaultProject  project to use if not specified in name string.
+     *
+     * @return stack ID with components parsed from the specified name string.
+     *
+     * @throws IllegalArgumentException
+     *   if the parsed stack ID is missing components or is otherwise invalid.
+     */
+    public static StackId fromNameString(final String nameString,
+                                         final String defaultOwner,
+                                         final String defaultProject)
+            throws IllegalArgumentException {
+        final String[] names = nameString.split("::");
+        String owner = defaultOwner;
+        String project = defaultProject;
+        String stack = null;
+        if (names.length == 1) {
+            stack = names[0];
+        } else if (names.length == 2) {
+            project = names[0];
+            stack = names[1];
+        } else if (names.length == 3) {
+            owner = names[0];
+            project = names[1];
+            stack = names[2];
+        }
+        return new StackId(owner, project, stack);
     }
 
     private static final CollectionNameUtil COLLECTION_NAME_UTIL = new CollectionNameUtil("render");

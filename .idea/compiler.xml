@@ -62,13 +62,13 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="docs" target="1.7" />
+      <module name="docs" target="1.8" />
       <module name="render" target="1.5" />
-      <module name="render-app" target="1.7" />
-      <module name="render-ws" target="1.7" />
-      <module name="render-ws-java-client" target="1.7" />
-      <module name="render-ws-spark-client" target="1.7" />
-      <module name="trakem2-scripts" target="1.7" />
+      <module name="render-app" target="1.8" />
+      <module name="render-ws" target="1.8" />
+      <module name="render-ws-java-client" target="1.8" />
+      <module name="render-ws-spark-client" target="1.8" />
+      <module name="trakem2-scripts" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>

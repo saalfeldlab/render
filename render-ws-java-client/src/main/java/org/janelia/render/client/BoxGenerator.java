@@ -17,7 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.janelia.alignment.Render;
+import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.mipmap.BoxMipmapGenerator;
@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Utility for rendering uniform (but arbitrarily sized) boxes (derived tiles) to disk for one or more layers.
  *
- * A {@link Render} instance is first used to produce the full scale (level 0) boxes.
+ * An {@link ArgbRenderer} instance is first used to produce the full scale (level 0) boxes.
  * {@link BoxMipmapGenerator} instances are then used to produce any requested down-sampled mipmaps.
  *
  * All generated images have the same dimensions and pixel count and are stored within a
@@ -526,7 +526,7 @@ public class BoxGenerator implements Serializable {
 
             final BufferedImage levelZeroImage = renderParameters.openTargetImage();
 
-            Render.render(renderParameters, levelZeroImage, imageProcessorCache);
+            ArgbRenderer.render(renderParameters, levelZeroImage, imageProcessorCache);
 
             BoxMipmapGenerator.saveImage(levelZeroImage,
                                          levelZeroFile,

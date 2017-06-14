@@ -16,6 +16,7 @@
  */
 package org.janelia.alignment;
 
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -45,10 +46,13 @@ public class RenderParametersTest {
 
         final RenderParameters parameters = new RenderParameters(url, x, y, width, height, scale);
 
+        final ChannelSpec channelSpec0 = new ChannelSpec();
+        channelSpec0.putMipmap(0, new ImageAndMask("spec0-level0.png", null));
+        channelSpec0.putMipmap(1, new ImageAndMask("spec0-level1.png", null));
+        channelSpec0.putMipmap(2, new ImageAndMask("spec0-level2.png", null));
+
         final TileSpec tileSpec0 = new TileSpec();
-        tileSpec0.putMipmap(0, new ImageAndMask("spec0-level0.png", null));
-        tileSpec0.putMipmap(1, new ImageAndMask("spec0-level1.png", null));
-        tileSpec0.putMipmap(2, new ImageAndMask("spec0-level2.png", null));
+        tileSpec0.addChannel(channelSpec0);
 
         List<TransformSpec> transformSpecList = new ArrayList<>();
         transformSpecList.add(new LeafTransformSpec("mpicbg.trakem2.transform.AffineModel2D", "1 0 0 1 0 0"));
@@ -57,8 +61,11 @@ public class RenderParametersTest {
 
         parameters.addTileSpec(tileSpec0);
 
+        final ChannelSpec channelSpec1 = new ChannelSpec();
+        channelSpec1.putMipmap(0, new ImageAndMask("spec1-level0.png", null));
+
         final TileSpec tileSpec1 = new TileSpec();
-        tileSpec1.putMipmap(0, new ImageAndMask("spec1-level0.png", null));
+        tileSpec1.addChannel(channelSpec1);
 
         transformSpecList = new ArrayList<>();
         transformSpecList.add(new LeafTransformSpec("mpicbg.trakem2.transform.AffineModel2D", "1 0 0 1 1650 0"));
