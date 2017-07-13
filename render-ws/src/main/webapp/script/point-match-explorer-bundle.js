@@ -3872,9 +3872,9 @@ function mapDataTypeToURL(state, dataType, params) {
     case "SectionBounds":
       return STACK_BASE_URL + "/project/" + selectedProject + "/stack/" + selectedStack + "/z/" + params.z + "/bounds";
     case "MatchesWithinGroup":
-      return STACK_BASE_URL + "/matchCollection/" + selectedMatchCollection + "/group/" + params.groupId + "/matchesWithinGroup" + matchQueryParameters;
+      return MATCH_BASE_URL + "/matchCollection/" + selectedMatchCollection + "/group/" + params.groupId + "/matchesWithinGroup" + matchQueryParameters;
     case "MatchesOutsideGroup":
-      return STACK_BASE_URL + "/matchCollection/" + selectedMatchCollection + "/group/" + params.groupId + "/matchesOutsideGroup" + matchQueryParameters;
+      return MATCH_BASE_URL + "/matchCollection/" + selectedMatchCollection + "/group/" + params.groupId + "/matchesOutsideGroup" + matchQueryParameters;
     default:
       return null;
   }
@@ -55205,9 +55205,10 @@ var App = function (_Component) {
       var _props$PMEVariables = this.props.PMEVariables,
           isShiftDown = _props$PMEVariables.isShiftDown,
           isCtrlDown = _props$PMEVariables.isCtrlDown,
-          isMetaDown = _props$PMEVariables.isMetaDown;
+          isMetaDown = _props$PMEVariables.isMetaDown,
+          isPDown = _props$PMEVariables.isPDown;
 
-      var md = (0, _utilsThree.onMouseUp)(event, isShiftDown, isCtrlDown, isMetaDown, this.afterMouseUp, this.props.UserInput, this.props.APIData.StackResolution.data.currentVersion);
+      var md = (0, _utilsThree.onMouseUp)(event, isShiftDown, isCtrlDown, isMetaDown, isPDown, this.afterMouseUp, this.props.UserInput, this.props.APIData.StackResolution.data.currentVersion);
       this.props.updatePMEVariables({ selectedMetadata: md });
     }
   }, {
@@ -55220,6 +55221,8 @@ var App = function (_Component) {
           this.props.updatePMEVariables({ isCtrlDown: true });break;
         case "Meta":
           this.props.updatePMEVariables({ isMetaDown: true });break;
+        case "p":
+          this.props.updatePMEVariables({ isPDown: true });break;
       }
     }
   }, {
@@ -55232,6 +55235,8 @@ var App = function (_Component) {
           this.props.updatePMEVariables({ isCtrlDown: false });break;
         case "Meta":
           this.props.updatePMEVariables({ isMetaDown: false });break;
+        case "p":
+          this.props.updatePMEVariables({ isPDown: false });break;
       }
     }
   }, {
@@ -55240,6 +55245,7 @@ var App = function (_Component) {
       this.props.updatePMEVariables({ isShiftDown: false });
       this.props.updatePMEVariables({ isCtrlDown: false });
       this.props.updatePMEVariables({ isMetaDown: false });
+      this.props.updatePMEVariables({ isPDown: false });
     }
   }, {
     key: "componentWillReceiveProps",
@@ -55431,6 +55437,7 @@ var PMEVariablesInitialState = {
   isShiftDown: false,
   isCtrlDown: false,
   isMetaDown: false,
+  isPDown: false,
   rendered: false
 };
 
@@ -56737,7 +56744,7 @@ var onMouseDown = exports.onMouseDown = function onMouseDown(event) {
   }
 };
 
-var onMouseUp = exports.onMouseUp = function onMouseUp(event, isShiftDown, isCtrlDown, isMetaDown, afterMouseUp, userInput, stackResolution) {
+var onMouseUp = exports.onMouseUp = function onMouseUp(event, isShiftDown, isCtrlDown, isMetaDown, isPDown, afterMouseUp, userInput, stackResolution) {
   var metadataValues;
   event.preventDefault();
   var intersections = getRaycastIntersections(event);
@@ -56754,6 +56761,9 @@ var onMouseUp = exports.onMouseUp = function onMouseUp(event, isShiftDown, isCtr
       //dehighlight already selected tile/layer
       if (selected) {
         dehighlight(selected.faceIndex, true);
+        if (isPDown) {
+          openTilePair(selected.faceIndex, upobj.faceIndex, userInput);
+        }
       }
       selected = upobj;
       if (isCtrlDown) {
@@ -56788,13 +56798,33 @@ var onMouseUp = exports.onMouseUp = function onMouseUp(event, isShiftDown, isCtr
 };
 
 var openTileImageWithNeighbors = function openTileImageWithNeighbors(faceIndex, userInput) {
-  var url = "http://renderer-dev:8080/render-ws/view/tile-with-neighbors.html?tileId=" + faceIndexToTileInfo[faceIndex].tileId + "&renderStackOwner=" + userInput.selectedStackOwner + "&renderStackProject=" + userInput.selectedProject + "&renderStack=" + userInput.selectedStack + "&matchOwner=" + userInput.selectedMatchOwner + "&matchCollection=" + userInput.selectedMatchCollection;
+
+  var tile = faceIndexToTileInfo[faceIndex];
+
+  var width = tile.maxX - tile.minX + 1;
+  var renderScale = 400.0 / width;
+
+  var url = "http://" + userInput.dynamicRenderHost + "/render-ws/view/tile-with-neighbors.html?tileId=" + tile.tileId + "&renderScale=" + renderScale + "&renderStackOwner=" + userInput.selectedStackOwner + "&renderStackProject=" + userInput.selectedProject + "&renderStack=" + userInput.selectedStack + "&matchOwner=" + userInput.selectedMatchOwner + "&matchCollection=" + userInput.selectedMatchCollection;
+
+  window.open(url);
+};
+
+var openTilePair = function openTilePair(faceIndexA, faceIndexB, userInput) {
+
+  var pTile = faceIndexToTileInfo[faceIndexA];
+  var qTile = faceIndexToTileInfo[faceIndexB];
+
+  var maxWidth = Math.max(pTile.maxX - pTile.minX + 1, qTile.maxX - qTile.minX + 1);
+  var renderScale = 700.0 / maxWidth;
+
+  var url = "http://" + userInput.dynamicRenderHost + "/render-ws/view/tile-pair.html?pId=" + pTile.tileId + "&qId=" + qTile.tileId + "&renderScale=" + renderScale + "&renderStackOwner=" + userInput.selectedStackOwner + "&renderStackProject=" + userInput.selectedProject + "&renderStack=" + userInput.selectedStack + "&matchOwner=" + userInput.selectedMatchOwner + "&matchCollection=" + userInput.selectedMatchCollection;
+
   window.open(url);
 };
 
 var openStackInCatmaid = function openStackInCatmaid(faceIndex, userInput, stackResolution) {
   var tileInfo = faceIndexToTileInfo[faceIndex];
-  var url = "http://renderer-catmaid:8000/?";
+  var url = "http://" + userInput.catmaidHost + "/?";
   url += "pid=" + userInput.selectedProject;
   url += "&zp=" + tileInfo.tileZ * stackResolution.stackResolutionZ;
   url += "&yp=" + (tileInfo.minY + tileInfo.maxY) / 2 * stackResolution.stackResolutionY;

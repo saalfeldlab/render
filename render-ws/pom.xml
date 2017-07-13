@@ -1,11 +1,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.janelia</groupId>
-        <artifactId>render</artifactId>
-        <version>0.3.0-SNAPSHOT</version>
+        <artifactId>modules-root</artifactId>
+        <groupId>org.janelia.render</groupId>
+        <version>2.0.0-SNAPSHOT</version>
     </parent>
 
     <name>Render Web Service</name>
@@ -19,7 +20,22 @@
                 <version>2.6</version>
                 <configuration>
                     <packagingExcludes>WEB-INF/lib/log4j*.jar</packagingExcludes>
+                    <attachClasses>true</attachClasses>
+                    <classesClassifier>classes</classesClassifier>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.0.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
@@ -27,9 +43,9 @@
     <dependencies>
 
         <dependency>
-            <groupId>org.janelia</groupId>
+            <groupId>org.janelia.render</groupId>
             <artifactId>render-app</artifactId>
-            <version>0.3.0-SNAPSHOT</version>
+            <version>${render-version}</version>
         </dependency>
 
         <dependency>
@@ -113,13 +129,6 @@
             <version>3.2.0</version>
         </dependency>
 
-        <dependency>
-            <groupId>de.flapdoodle.embed</groupId>
-            <artifactId>de.flapdoodle.embed.mongo</artifactId>
-            <version>1.50.2</version>
-            <scope>test</scope>
-        </dependency>
-
         <!-- override project dependency with provided scope since logback should be installed into jetty directly -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
@@ -151,6 +160,19 @@
             <groupId>ar.com.hjg</groupId>
             <artifactId>pngj</artifactId>
             <version>2.1.0</version>
+        </dependency>
+
+        <!--
+             NOTE:
+             It is important that this flapdoodle dependency (for testing) is
+             listed after the swagger dependencies above.
+             Swagger currently requires a newer version of commons-lang3 than flapdoodle.
+        -->
+        <dependency>
+            <groupId>de.flapdoodle.embed</groupId>
+            <artifactId>de.flapdoodle.embed.mongo</artifactId>
+            <version>2.0.0</version> <!-- NOTE: versions 2.0+ depend upon java 8 -->
+            <scope>test</scope>
         </dependency>
 
     </dependencies>

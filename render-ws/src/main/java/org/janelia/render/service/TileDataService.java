@@ -14,6 +14,7 @@ import javax.ws.rs.core.Response;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -135,7 +136,8 @@ public class TileDataService {
                                                 @QueryParam("excludeMask") final Boolean excludeMask,
                                                 @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
                                                 @QueryParam("minIntensity") final Double minIntensity,
-                                                @QueryParam("maxIntensity") final Double maxIntensity) {
+                                                @QueryParam("maxIntensity") final Double maxIntensity,
+                                                @QueryParam("channels") final String channels) {
 
         LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
@@ -156,12 +158,41 @@ public class TileDataService {
             parameters.setMipmapPathBuilder(stackMetaData.getCurrentMipmapPathBuilder());
             parameters.setMinIntensity(minIntensity);
             parameters.setMaxIntensity(maxIntensity);
+            parameters.setChannels(channels);
 
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
 
         return parameters;
+    }
+
+    @Path("project/{project}/stack/{stack}/tile/{tileId}/validation-info")
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    @ApiOperation(
+            value = "Get information indicating whether a tile exists and is valid")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "tile exists and is valid"),
+            @ApiResponse(code = 400, message = "tile not valid"),
+            @ApiResponse(code = 404, message = "tile not found"),
+    })
+    public Response getValidationInfo(@PathParam("owner") final String owner,
+                                      @PathParam("project") final String project,
+                                      @PathParam("stack") final String stack,
+                                      @PathParam("tileId") final String tileId) {
+
+        LOG.info("getValidationInfo: entry, owner={}, project={}, stack={}, tileId={}",
+                 owner, project, stack, tileId);
+
+        try {
+            final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
+            tileSpec.validate();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return Response.ok().build();
     }
 
     @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/render-parameters")
@@ -223,10 +254,11 @@ public class TileDataService {
                                                                  @QueryParam("scale") Double scale,
                                                                  @QueryParam("filter") final Boolean filter,
                                                                  @QueryParam("binaryMask") final Boolean binaryMask,
-                                                                 @QueryParam("convertToGray") final Boolean convertToGray) {
+                                                                 @QueryParam("convertToGray") final Boolean convertToGray,
+                                                                 @QueryParam("channels") final String channels) {
 
-        LOG.info("getTileWithNeighborsRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, widthFactor={}, heightFactor={}, scale={}, filter={}, binaryMask={}, convertToGray={}",
-                 owner, project, stack, tileId, widthFactor, heightFactor, scale, filter, binaryMask, convertToGray);
+        LOG.info("getTileWithNeighborsRenderParameters: entry, owner={}, project={}, stack={}, tileId={}",
+                 owner, project, stack, tileId);
 
         RenderParameters parameters = null;
         try {
@@ -264,7 +296,8 @@ public class TileDataService {
                                                                        scale,
                                                                        filter,
                                                                        binaryMask,
-                                                                       convertToGray);
+                                                                       convertToGray,
+                                                                       channels);
 
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -383,15 +416,21 @@ public class TileDataService {
         final Map.Entry<Integer, ImageAndMask> firstEntry = tileSpec.getFirstMipmapEntry();
         final ImageAndMask imageAndMask = firstEntry.getValue();
         final TileSpec simpleTileSpec = new TileSpec();
+        final ChannelSpec channelSpec = new ChannelSpec();
+        simpleTileSpec.addChannel(channelSpec);
         if (isSource) {
             final ImageAndMask imageWithoutMask = new ImageAndMask(imageAndMask.getImageUrl(), null);
-            simpleTileSpec.putMipmap(firstEntry.getKey(), imageWithoutMask);
+            channelSpec.putMipmap(firstEntry.getKey(), imageWithoutMask);
         } else {
             final ImageAndMask maskAsImage = new ImageAndMask(imageAndMask.getMaskUrl(), null);
-            simpleTileSpec.putMipmap(firstEntry.getKey(), maskAsImage);
+            channelSpec.putMipmap(firstEntry.getKey(), maskAsImage);
         }
         tileRenderParameters.addTileSpec(simpleTileSpec);
         tileRenderParameters.setDoFilter(filter);
+
+        // since we have only one tile with no transformations,
+        // skip interpolation to save pixels in last row and column of image
+        tileRenderParameters.setSkipInterpolation(true);
 
         return tileRenderParameters;
     }

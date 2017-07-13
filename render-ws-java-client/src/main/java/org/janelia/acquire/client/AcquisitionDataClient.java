@@ -156,16 +156,40 @@ public class AcquisitionDataClient {
      * @throws IOException
      *   if the request fails for any reason.
      */
-    public List<Acquisition> getAcquisitions(final AcquisitionTileState tileState,
-                                             final Long acquisitionId)
+    public List<Acquisition> getAcquisitions(final AcquisitionTileState tileState, final Long acquisitionId)
+        throws IOException {
+
+        final AcquisitionDataImportClient.Parameters acquisitionFilter = new AcquisitionDataImportClient.Parameters();
+        acquisitionFilter.acquisitionId = acquisitionId;
+        acquisitionFilter.acquisitionTileState = tileState;
+        return getAcquisitionsUsingFilter(acquisitionFilter);
+    }
+
+    /**
+     * @param  acquisitionFilter acquisition filter parameters for building the qcquisition query
+     *
+     * @return list of acquisitions that match the specified criteria.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<Acquisition> getAcquisitionsUsingFilter(final AcquisitionDataImportClient.Parameters acquisitionFilter)
             throws IOException {
 
         final URIBuilder uriBuilder = new URIBuilder(getUri(baseUrl + "/acquisitions"));
-        if (tileState != null) {
-            uriBuilder.addParameter("exists-tile-in-state", tileState.toString());
-        }
-        if (acquisitionId != null) {
-            uriBuilder.addParameter("acqid", acquisitionId.toString());
+        if (acquisitionFilter != null) {
+            if (acquisitionFilter.acquisitionTileState != null)
+                uriBuilder.addParameter("exists-tile-in-state", acquisitionFilter.acquisitionTileState.toString());
+            if (acquisitionFilter.acquisitionId != null && acquisitionFilter.acquisitionId > 0)
+                uriBuilder.addParameter("acqid", acquisitionFilter.acquisitionId.toString());
+            if (acquisitionFilter.projectFilter != null && acquisitionFilter.projectFilter.trim().length() > 0)
+                uriBuilder.addParameter("project", acquisitionFilter.projectFilter.trim());
+            if (acquisitionFilter.stackFilter != null && acquisitionFilter.stackFilter.trim().length() > 0)
+                uriBuilder.addParameter("stack", acquisitionFilter.stackFilter.trim());
+            if (acquisitionFilter.mosaicType != null && acquisitionFilter.mosaicType.trim().length() > 0)
+                uriBuilder.addParameter("mosaic-type", acquisitionFilter.mosaicType.trim());
+            if (acquisitionFilter.acquisitionFromFilter != null && acquisitionFilter.acquisitionFromFilter.trim().length() > 0)
+                uriBuilder.addParameter("acq-from", acquisitionFilter.acquisitionFromFilter.trim());
         }
 
         final URI uri = getUri(uriBuilder);

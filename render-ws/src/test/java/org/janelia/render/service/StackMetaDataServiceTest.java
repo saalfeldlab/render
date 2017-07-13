@@ -201,9 +201,9 @@ public class StackMetaDataServiceTest {
 
         Assert.assertEquals("invalid stackBounds.minZ", 3903.0, stackBounds.getMinZ(), 0.01);
 
-        Assert.assertEquals("invalid sectionCount", new Long(1), stats.getSectionCount());
-        Assert.assertEquals("invalid nonIntegralSectionCount", new Long(0), stats.getNonIntegralSectionCount());
-        Assert.assertEquals("invalid tileCount", new Long(12), stats.getTileCount());
+        Assert.assertEquals("invalid sectionCount", new Long(2), stats.getSectionCount());
+        Assert.assertEquals("invalid nonIntegralSectionCount", new Long(1), stats.getNonIntegralSectionCount());
+        Assert.assertEquals("invalid tileCount", new Long(14), stats.getTileCount());
         Assert.assertEquals("invalid transformCount", new Long(3), stats.getTransformCount());
         Assert.assertEquals("invalid minTileWidth", new Integer(2631), stats.getMinTileWidth());
         Assert.assertEquals("invalid maxTileWidth", new Integer(2772), stats.getMaxTileWidth());

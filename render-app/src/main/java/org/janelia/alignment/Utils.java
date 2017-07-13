@@ -18,6 +18,7 @@ package org.janelia.alignment;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -40,6 +41,10 @@ import ij.ImagePlus;
 import ij.io.FileInfo;
 import ij.io.Opener;
 import ij.io.TiffEncoder;
+import ij.process.ByteProcessor;
+import ij.process.ColorProcessor;
+import ij.process.ImageProcessor;
+
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.IllDefinedDataPointsException;
@@ -392,6 +397,40 @@ public class Utils {
             }
         }
         return uri;
+    }
+
+    public static BufferedImage toARGBImage(final ImageProcessor ip) {
+
+        final BufferedImage image = new BufferedImage(ip.getWidth(), ip.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        final WritableRaster raster = image.getRaster();
+
+        final ColorProcessor cp;
+        if (ip instanceof ColorProcessor) {
+            cp = (ColorProcessor) ip;
+        } else {
+            cp = ip.convertToColorProcessor();
+        }
+
+        raster.setDataElements(0, 0, ip.getWidth(), ip.getHeight(), cp.getPixels());
+
+        return image;
+    }
+
+    public static BufferedImage toByteGrayImage(final ImageProcessor ip) {
+
+        final BufferedImage image = new BufferedImage(ip.getWidth(), ip.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
+        final WritableRaster raster = image.getRaster();
+
+        final ByteProcessor bp;
+        if (ip instanceof ByteProcessor) {
+            bp = (ByteProcessor) ip;
+        } else {
+            bp = ip.convertToByteProcessor();
+        }
+
+        raster.setDataElements(0, 0, ip.getWidth(), ip.getHeight(), bp.getPixels());
+
+        return image;
     }
 
 }

@@ -62,6 +62,7 @@ public class SharedMongoClient {
         final MongoClientOptions options = new MongoClientOptions.Builder()
                 .connectionsPerHost(dbConfig.getMaxConnectionsPerHost())
                 .maxConnectionIdleTime(dbConfig.getMaxConnectionIdleTime())
+                .readPreference(dbConfig.getReadPreference())
                 .build();
 
         LOG.info("creating {} client for server(s) {} with {}",

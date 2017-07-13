@@ -8,7 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.janelia.alignment.Render;
+import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -133,18 +133,11 @@ public class RenderPerformanceTest {
         // *** Start Clock ***
         testData.setStartTime();
 
-        Render.render(params.getTileSpecs(),
-                      targetImage,
-                      params.getX(),
-                      params.getY(),
-                      params.getRes(params.getScale()),
-                      params.getScale(),
-                      params.isAreaOffset(),
-                      testData.threads,
-                      params.skipInterpolation(),
-                      params.doFilter(),
-                      ImageProcessorCache.DISABLED_CACHE,
-                      null);
+        params.setNumberOfThreads(testData.threads);
+
+        ArgbRenderer.render(params,
+                            targetImage,
+                            ImageProcessorCache.DISABLED_CACHE);
 
         // *** Stop Clock ***
         testData.calculateElapsedTime();
@@ -152,7 +145,7 @@ public class RenderPerformanceTest {
 
     private void createAndOrderTests() {
 
-        testDataList = new ArrayList<TestData>();
+        testDataList = new ArrayList<>();
 
         final String baseImagePath = "src/test/resources/perf-test/json/";
         final int availableProcessors = Runtime.getRuntime().availableProcessors();
@@ -208,7 +201,7 @@ public class RenderPerformanceTest {
             @Override
             public Map<String, Comparator<TestData>> getReportNameToComparatorMap() {
                 final Map<String, Comparator<TestData>> map =
-                        new LinkedHashMap<String, Comparator<TestData>>();
+                        new LinkedHashMap<>();
                 map.put("Level::Threads Results", levelThreadsComparator);
                 return map;
             }
@@ -271,7 +264,7 @@ public class RenderPerformanceTest {
         }
 
         public double getScale() {
-            double scale;
+            final double scale;
             if (level == 3) {
                 scale = 0.1;
             } else if (level == 2) {

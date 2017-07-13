@@ -15,13 +15,17 @@ import java.net.URL;
 @SuppressWarnings({"FieldCanBeLocal", "unused"})
 public class AlignmentRenderCollection {
 
-    private final String service_host;
-    private final String baseURL;
-    private final String owner;
-    private final String project;
-    private final String stack;
-    private final Integer verbose;
+    private String service_host;
+    private String baseURL;
+    private String owner;
+    private String project;
+    private String stack;
+    private Integer verbose;
+    private String versionNotes;
 
+    public AlignmentRenderCollection() {
+        // To be used by JSON reader
+    }
     public AlignmentRenderCollection(final String baseURL,
                                      final String owner,
                                      final String project,
@@ -44,5 +48,53 @@ public class AlignmentRenderCollection {
             hostAndPort = hostAndPort + ':' + port;
         }
         return hostAndPort;
+    }
+
+    public String getServiceHost() {
+        return service_host;
+    }
+
+    public void setServiceHost(final String service_host) {
+        this.service_host = service_host;
+    }
+
+    public String getBaseURL() {
+        return baseURL;
+    }
+
+    public void setBaseURL(final String baseURL) {
+        this.baseURL = baseURL;
+    }
+
+    public String getOwner() {
+        return owner;
+    }
+
+    public void setOwner(final String owner) {
+        this.owner = owner;
+    }
+
+    public String getProject() {
+        return project;
+    }
+
+    public void setProject(final String project) {
+        this.project = project;
+    }
+
+    public String getStack() {
+        return stack;
+    }
+
+    public void setStack(final String stack) {
+        this.stack = stack;
+    }
+
+    public Integer getVerbose() {
+        return verbose;
+    }
+
+    public void setVerbose(final Integer verbose) {
+        this.verbose = verbose;
     }
 }

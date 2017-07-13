@@ -59,6 +59,10 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         return LOADING.equals(state);
     }
 
+    public boolean isOffline() {
+        return OFFLINE.equals(state);
+    }
+
     public boolean isReadOnly() {
         return READ_ONLY.equals(state);
     }
@@ -278,6 +282,15 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
 
     public static StackMetaData fromJson(final String json) {
         return JSON_HELPER.fromJson(json);
+    }
+
+    public static StackMetaData buildDerivedMetaData(final StackId stackId,
+                                                     final StackMetaData fromStackMetaData) {
+        final StackMetaData derivedMetaData = new StackMetaData(stackId, fromStackMetaData.getCurrentVersion());
+        derivedMetaData.state = fromStackMetaData.state;
+        derivedMetaData.currentVersionNumber = fromStackMetaData.currentVersionNumber;
+        derivedMetaData.stats = fromStackMetaData.stats;
+        return derivedMetaData;
     }
 
     private static final JsonUtils.Helper<StackMetaData> JSON_HELPER =

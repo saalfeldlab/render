@@ -91,9 +91,11 @@ public class ResolvedTileSpecCollectionTest {
         tileSpec.setTileId(tileId);
         tileSpec.setZ(99.0);
 
+        final ChannelSpec channelSpec = new ChannelSpec();
         final File scaledImagesDir = new File("src/test/resources/mipmap-test/scaled-images");
-        tileSpec.putMipmap(0, new ImageAndMask(new File(scaledImagesDir, "col0060_row0140_cam0.tif"),
-                                               new File(scaledImagesDir, "49.134.zip")));
+        channelSpec.putMipmap(0, new ImageAndMask(new File(scaledImagesDir, "col0060_row0140_cam0.tif"),
+                                                  new File(scaledImagesDir, "49.134.zip")));
+        tileSpec.addChannel(channelSpec);
 
         if (isBad) {
             tileSpec.setBoundingBox(new Rectangle(-5, 0, 1, 1), RenderParameters.DEFAULT_MESH_CELL_SIZE);

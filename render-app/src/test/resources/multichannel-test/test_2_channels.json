@@ -1,0 +1,92 @@
+[
+  {
+    "tileId": "100000001003000",
+    "z": 1.0,
+    "minX": 662.0,
+    "minY": 1659.0,
+    "maxX": 2709.0,
+    "maxY": 3707.0,
+    "width": 2048.0,
+    "height": 2048.0,
+    "channels": [
+      {
+        "name": "DAPI",
+        "minIntensity":100.0,
+        "maxIntensity":6000.0,
+        "mipmapLevels": {
+          "0": {
+            "imageUrl": "src/test/resources/multichannel-test/DAPI_1_S0001_F0003_Z00.tif",
+            "maskUrl": "src/test/resources/multichannel-test/fullcmos.tif"
+          }
+        }
+      },
+      {
+        "name": "TdTomato",
+        "minIntensity": 0.0,
+        "maxIntensity": 10000.0,
+        "mipmapLevels": {
+          "0": {
+            "imageUrl": "src/test/resources/multichannel-test/TdTomato_S0001_F0003_Z00.tif",
+            "maskUrl": "src/test/resources/multichannel-test/fullcmos.tif"
+          }
+        }
+      }
+    ],
+    "transforms": {
+      "type": "list",
+      "specList": [
+        {
+          "type": "leaf",
+          "className": "mpicbg.trakem2.transform.AffineModel2D",
+          "dataString": "1.000000 0.000000 0.000000 1.000000 662.6192164270324 1659.706576042783 "
+        }
+      ]
+    },
+    "meshCellSize": 64.0
+  },
+  {
+    "tileId": "100000001004000",
+    "z": 1.0,
+    "minX":2296.0,
+    "minY":1648.0,
+    "maxX":4343.0,
+    "maxY":3695.0,
+    "width": 2048.0,
+    "height": 2048.0,
+    "channels": [
+      {
+        "name": "DAPI",
+        "minIntensity":100.0,
+        "maxIntensity":6000.0,
+        "mipmapLevels": {
+          "0": {
+            "imageUrl": "src/test/resources/multichannel-test/DAPI_1_S0001_F0004_Z00.tif",
+            "maskUrl": "src/test/resources/multichannel-test/fullcmos.tif"
+          }
+        }
+      },
+      {
+        "name": "TdTomato",
+        "minIntensity": 0.0,
+        "maxIntensity": 10000.0,
+        "mipmapLevels": {
+          "0": {
+            "imageUrl": "src/test/resources/multichannel-test/TdTomato_S0001_F0004_Z00.tif",
+            "maskUrl": "src/test/resources/multichannel-test/fullcmos.tif"
+          }
+        }
+      }
+    ],
+    "transforms": {
+      "type": "list",
+      "specList": [
+        {
+          "type": "leaf",
+          "className": "mpicbg.trakem2.transform.AffineModel2D",
+          "dataString": "1.000000 0.000000 0.000000 1.000000 2296.8235136181947 1648.2548941942687 "
+        }
+      ]
+    },
+    "meshCellSize": 64.0
+  }
+]

@@ -26,6 +26,7 @@ import java.util.Date;
 import java.util.Map;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.junit.After;
 import org.junit.Assert;
@@ -66,7 +67,9 @@ public class MipmapClientTest {
                                                                  "src/test/resources/mask.tif");
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setTileId("test-mipmap-tile");
-        tileSpec.putMipmap(0, sourceImageAndMask);
+        final ChannelSpec channelSpec = new ChannelSpec();
+        channelSpec.putMipmap(0, sourceImageAndMask);
+        tileSpec.addChannel(channelSpec);
         tileSpec.setMipmapPathBuilder(mipmapClient.getMipmapPathBuilder());
 
         mipmapClient.generateMissingMipmapFiles(tileSpec);
@@ -84,7 +87,7 @@ public class MipmapClientTest {
             expectedWidth = imageProcessor.getWidth() / 2;
             expectedHeight = imageProcessor.getHeight() / 2;
 
-            mipmapEntry = tileSpec.getFloorMipmapEntry(level);
+            mipmapEntry = channelSpec.getFloorMipmapEntry(level);
             imageAndMask = mipmapEntry.getValue();
             url = imageAndMask.getImageUrl();
 
@@ -102,7 +105,7 @@ public class MipmapClientTest {
                                 expectedHeight, imageProcessor.getHeight());
         }
 
-        final Map.Entry<Integer, ImageAndMask> floor3Entry = tileSpec.getFloorMipmapEntry(level);
+        final Map.Entry<Integer, ImageAndMask> floor3Entry = channelSpec.getFloorMipmapEntry(level);
         //noinspection ConstantConditions
         Assert.assertEquals("invalid level returned for floor of non-existent level",
                             mipmapEntry.getKey(), floor3Entry.getKey());
@@ -125,7 +128,7 @@ public class MipmapClientTest {
         expectedWidth = imageProcessor.getWidth() / 2;
         expectedHeight = imageProcessor.getHeight() / 2;
 
-        mipmapEntry = tileSpec.getFloorMipmapEntry(level);
+        mipmapEntry = channelSpec.getFloorMipmapEntry(level);
         imageAndMask = mipmapEntry.getValue();
         url = imageAndMask.getImageUrl();
 

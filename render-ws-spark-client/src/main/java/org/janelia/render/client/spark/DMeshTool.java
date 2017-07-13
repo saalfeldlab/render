@@ -10,7 +10,7 @@ import java.util.List;
 import mpicbg.util.Timer;
 
 import org.apache.commons.io.IOUtils;
-import org.janelia.alignment.Render;
+import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.match.CanvasId;
@@ -224,7 +224,7 @@ public class DMeshTool implements Serializable {
 
             final File renderedTileFile = new File(tileSpec.getTileId() + ".png");
             final BufferedImage targetImage = renderParameters.openTargetImage();
-            Render.render(renderParameters, targetImage, ImageProcessorCache.DISABLED_CACHE);
+            ArgbRenderer.render(renderParameters, targetImage, ImageProcessorCache.DISABLED_CACHE);
             Utils.saveImage(targetImage,
                             renderedTileFile.getAbsolutePath(),
                             Utils.PNG_FORMAT,

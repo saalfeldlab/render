@@ -2,6 +2,7 @@ package org.janelia.render.client;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -88,6 +89,25 @@ public class FileUtil {
         }
 
         LOG.info("saveJsonFile: exit, wrote data to {}", toPath);
+    }
+
+    public static void ensureWritableDirectory(final File directory) {
+        // try twice to work around concurrent access issues
+        if (! directory.exists()) {
+            if (! directory.mkdirs()) {
+                if (! directory.exists()) {
+                    // last try
+                    if (! directory.mkdirs()) {
+                        if (! directory.exists()) {
+                            throw new IllegalArgumentException("failed to create " + directory);
+                        }
+                    }
+                }
+            }
+        }
+        if (! directory.canWrite()) {
+            throw new IllegalArgumentException("not allowed to write to " + directory);
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(FileUtil.class);

@@ -1,14 +1,19 @@
 #!/bin/bash
 
-JDK_VERSION="jdk1.8.0_73"
+JDK_VERSION="jdk1.8.0_131"
 JETTY_VERSION="9.3.7.v20160115"
 JETTY_DIST="jetty-distribution-${JETTY_VERSION}"
 LOGBACK_VERSION="1.1.5"
 SLF4J_VERSION="1.7.16"
 SWAGGER_UI_VERSION="2.1.4"
 
-# URLs for JDK 8, Jetty 9, SLF4J 1.7, Logback 1.1, and Swagger 2.1
-JDK_URL="http://download.oracle.com/otn-pub/java/jdk/8u73-b02/jdk-8u73-linux-x64.tar.gz"
+# URL for JDK 8
+# This occasionally needs to be updated when Oracle moves things around.
+# You can find latest Linux x64 download link at:
+# http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html
+JDK_URL="http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz"
+
+# URLs for Jetty 9, SLF4J 1.7, Logback 1.1, and Swagger 2.1
 JETTY_URL="http://central.maven.org/maven2/org/eclipse/jetty/jetty-distribution/${JETTY_VERSION}/${JETTY_DIST}.tar.gz"
 SLF4J_URL="https://www.slf4j.org/dist/slf4j-${SLF4J_VERSION}.tar.gz"
 LOGBACK_URL="https://logback.qos.ch/dist/logback-${LOGBACK_VERSION}.tar.gz"

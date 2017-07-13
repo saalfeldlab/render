@@ -18,6 +18,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -224,11 +225,14 @@ public class FixMipmapUrlClient
                 String imageUrl;
                 String maskUrl;
                 for (final TileSpec tileSpec : sourceCollection.getTileSpecs()) {
-                    final Map.Entry<Integer, ImageAndMask> maxEntry = tileSpec.getFloorMipmapEntry(Integer.MAX_VALUE);
-                    if (maxEntry != null) {
-                        for (int level = maxEntry.getKey(); level >= 0; level--) {
-                            imageAndMask = tileSpec.getMipmap(level);
-                            if (imageAndMask != null) {
+
+                    for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
+
+                        final Map.Entry<Integer, ImageAndMask> maxEntry = channelSpec.getFloorMipmapEntry(Integer.MAX_VALUE);
+                        if (maxEntry != null) {
+                            for (int level = maxEntry.getKey(); level >= 0; level--) {
+                                imageAndMask = channelSpec.getMipmap(level);
+                                if (imageAndMask != null) {
 
                                 if (fixImage) {
                                     imageUrl = imageAndMask.getImageUrl();
@@ -252,8 +256,8 @@ public class FixMipmapUrlClient
                                     maskUrl = imageAndMask.getMaskUrl();
                                 }
 
-                                fixedImageAndMask = new ImageAndMask(imageUrl, maskUrl);
-                                fixedImageAndMask.validate();
+                                    fixedImageAndMask = new ImageAndMask(imageUrl, maskUrl);
+                                    fixedImageAndMask.validate();
 
                                 final boolean imagePathChanged = fixImage && (imageUrl != null) &&
                                                                  (! imageUrl.equals(imageAndMask.getImageUrl()));
@@ -261,10 +265,11 @@ public class FixMipmapUrlClient
                                                                 (! maskUrl.equals(imageAndMask.getMaskUrl()));
                                 if (imagePathChanged || maskPathChanged) {
                                     fixedAtLeastOneSpec = true;
-                                    tileSpec.putMipmap(level, fixedImageAndMask);
+                                    channelSpec.putMipmap(level, fixedImageAndMask);
                                 }
                             }
 
+                            }
                         }
                     }
 

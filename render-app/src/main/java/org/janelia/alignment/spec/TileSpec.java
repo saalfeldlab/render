@@ -21,11 +21,13 @@ import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
-import java.util.regex.Pattern;
 
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
@@ -56,9 +58,12 @@ public class TileSpec implements Serializable {
     private Double maxY;
     private Double width;
     private Double height;
+    @SuppressWarnings("unused")   // older JSON specs without channels might have minIntensity explicitly specified
     private Double minIntensity;
+    @SuppressWarnings("unused")   // older JSON specs without channels might have maxIntensity explicitly specified
     private Double maxIntensity;
     private final TreeMap<Integer, ImageAndMask> mipmapLevels;
+    private List<ChannelSpec> channels;
     private MipmapPathBuilder mipmapPathBuilder;
     private ListTransformSpec transforms;
     private double meshCellSize = RenderParameters.DEFAULT_MESH_CELL_SIZE;
@@ -336,74 +341,64 @@ public class TileSpec implements Serializable {
         this.height = height;
     }
 
-    public void setMinIntensity(final Double minIntensity) {
-        this.minIntensity = minIntensity;
-    }
-
-    public double getMinIntensity() {
-        double value = 0;
-        if (minIntensity != null) {
-            value = minIntensity;
+    public List<ChannelSpec> getAllChannels() {
+        final List<ChannelSpec> channelList;
+        if ((channels == null) || (channels.size() == 0)) {
+            channelList = Collections.singletonList(new ChannelSpec(null,
+                                                                    minIntensity,
+                                                                    maxIntensity,
+                                                                    mipmapLevels,
+                                                                    mipmapPathBuilder));
+        } else {
+            channelList = channels;
         }
-        return value;
+        return channelList;
     }
 
-    public double getMaxIntensity() {
-        double value = 255;
-        if (maxIntensity != null) {
-            value = maxIntensity;
+    public List<ChannelSpec> getChannels(final Set<String> withNames) {
+        final List<ChannelSpec> channelList = new ArrayList<>();
+        if ((channels == null) || (channels.size() == 0)) {
+            if (withNames.contains(null)) {
+                channelList.add(new ChannelSpec(null,
+                                                minIntensity,
+                                                maxIntensity,
+                                                mipmapLevels,
+                                                mipmapPathBuilder));
+            }
+        } else {
+            for (final ChannelSpec channelSpec : channels) {
+                if (withNames.contains(channelSpec.getName())) {
+                    channelList.add(channelSpec);
+                }
+            }
         }
-        return value;
+        return channelList;
     }
 
-    public void setMaxIntensity(final Double maxIntensity) {
-        this.maxIntensity = maxIntensity;
-    }
-
-    /**
-     * @param  level  desired mipmap level.
-     *
-     * @return true if this tile spec contains mipmap for the specified level; otherwise false.
-     */
-    public boolean hasMipmap(final Integer level) {
-        return mipmapLevels.containsKey(level);
-    }
-
-    /**
-     * @param  level  desired mipmap level.
-     *
-     * @return the mipmap for the specified level or null if none exists.
-     */
-    public ImageAndMask getMipmap(final Integer level) {
-        return mipmapLevels.get(level);
-    }
-
-    public void putMipmap(final Integer level,
-                          final ImageAndMask value) {
-        this.mipmapLevels.put(level, value);
+    public void addChannel(final ChannelSpec channelSpec) {
+        if (channels == null) {
+            channels = new ArrayList<>();
+        }
+        channels.add(channelSpec);
     }
 
     public Map.Entry<Integer, ImageAndMask> getFirstMipmapEntry() {
-        return mipmapLevels.firstEntry();
-    }
-
-    public Map.Entry<Integer, ImageAndMask> getFloorMipmapEntry(final Integer mipmapLevel) {
-
-        Map.Entry<Integer, ImageAndMask> floorEntry = mipmapLevels.floorEntry(mipmapLevel);
-
-        if (floorEntry == null) {
-            floorEntry = mipmapLevels.firstEntry();
-        } else if ((floorEntry.getKey() < mipmapLevel) && (mipmapPathBuilder != null)) {
-            floorEntry = mipmapPathBuilder.deriveImageAndMask(mipmapLevel,
-                                                              mipmapLevels.firstEntry(),
-                                                              true);
+        final Map.Entry<Integer, ImageAndMask> firstEntry;
+        if ((channels == null) || (channels.size() == 0)) {
+            firstEntry = mipmapLevels.firstEntry();
+        } else {
+            firstEntry = channels.get(0).getFirstMipmapEntry();
         }
-
-        return floorEntry;
+        return firstEntry;
     }
 
     public void setMipmapPathBuilder(final MipmapPathBuilder mipmapPathBuilder) {
         this.mipmapPathBuilder = mipmapPathBuilder;
+        if (channels != null) {
+            for (final ChannelSpec channelSpec : channels) {
+                channelSpec.setMipmapPathBuilder(mipmapPathBuilder);
+            }
+        }
     }
 
     public boolean hasTransforms() {
@@ -445,13 +440,8 @@ public class TileSpec implements Serializable {
      *   if this spec's mipmaps are invalid.
      */
     public void validateMipmaps() throws IllegalArgumentException {
-        if (mipmapLevels.size() == 0) {
-            throw new IllegalArgumentException("tile specification with id '" + tileId +
-                                               "' does not contain any mipmapLevel elements");
-        }
-
-        for (final ImageAndMask imageAndMask : mipmapLevels.values()) {
-            imageAndMask.validate();
+        for (final ChannelSpec channelSpec : getAllChannels()) {
+            channelSpec.validateMipmaps(tileId);
         }
     }
 
@@ -488,80 +478,6 @@ public class TileSpec implements Serializable {
         return ctl;
     }
 
-    public String toLayoutFileFormat() {
-
-        String affineData = null;
-        if (hasTransforms()) {
-            final TransformSpec lastSpec = transforms.getSpec(transforms.size() - 1);
-            if (lastSpec instanceof LeafTransformSpec) {
-                final LeafTransformSpec leafSpec = (LeafTransformSpec) lastSpec;
-                final String[] data = WHITESPACE_PATTERN.split(leafSpec.getDataString(), -1);
-                if (data.length == 6) {
-
-                    // Need to translate affine matrix order "back" for Karsh aligner.
-                    //
-                    // Given: A D
-                    //        B E
-                    //        C F
-                    //
-                    // Saalfeld order is:      A D B E C F
-                    // Karsh aligner order is: A B C D E F
-
-                    affineData = data[0] + '\t' + data[2] + '\t' + data[4] + '\t' +
-                                 data[1] + '\t' + data[3] + '\t' + data[5];
-
-                } else if (data.length > 6) {
-
-                    // hack to export polynomial data in layout format (keep in Saalfeld order)
-
-                    final int lengthMinusOne = data.length - 1;
-                    final StringBuilder sb = new StringBuilder(1024);
-
-                    sb.append(data.length);
-                    sb.append('\t');
-
-                    for (int i = 0; i < lengthMinusOne; i++) {
-                        sb.append(data[i]);
-                        sb.append('\t');
-                    }
-                    sb.append(data[lengthMinusOne]);
-
-                    affineData = sb.toString();
-                }
-
-            }
-        }
-
-        String sectionId = null;
-        Integer imageCol = null;
-        Integer imageRow = null;
-        String camera = null;
-        String temca = null;
-        Double rotation = null;
-        if (layout != null) {
-            sectionId = layout.getSectionId();
-            imageCol = layout.getImageCol();
-            imageRow = layout.getImageRow();
-            camera = layout.getCamera();
-            temca = layout.getTemca();
-            rotation = layout.getRotation();
-            if (affineData == null) {
-                affineData = "1.0\t0.0\t" + layout.getStageX() + "\t0.0\t1.0\t" + layout.getStageY();
-            }
-        }
-
-        String rawPath = null;
-        final Map.Entry<Integer, ImageAndMask> firstMipmapEntry = getFirstMipmapEntry();
-        if (firstMipmapEntry != null) {
-            final ImageAndMask imageAndMask = firstMipmapEntry.getValue();
-            rawPath = imageAndMask.getImageFilePath();
-        }
-
-        // sectionId, 1.0, 0.0, stageX, 0.0, 1.0, stageY, imageCol, imageRow, camera, rawPath, temca, rotation, z
-        return sectionId + '\t' + tileId + '\t' + affineData + '\t' +
-               imageCol + '\t' + imageRow + '\t' + camera + '\t' + rawPath + '\t' + temca + '\t' + rotation + '\t' + z;
-    }
-
     @Override
     public String toString() {
         return tileId;
@@ -595,8 +511,6 @@ public class TileSpec implements Serializable {
             throw new IllegalArgumentException(e);
         }
     }
-
-    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
 
     private static final JsonUtils.Helper<TileSpec> JSON_HELPER =
             new JsonUtils.Helper<>(TileSpec.class);

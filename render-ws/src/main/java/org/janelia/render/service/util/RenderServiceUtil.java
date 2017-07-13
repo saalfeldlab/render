@@ -6,8 +6,8 @@ import java.io.File;
 
 import javax.ws.rs.core.Response;
 
+import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.BoundingBoxRenderer;
-import org.janelia.alignment.Render;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
@@ -171,9 +171,9 @@ public class RenderServiceUtil {
 
             // otherwise render the real thing ...
 
-            Render.render(renderParameters,
-                          targetImage,
-                          SharedImageProcessorCache.getInstance());
+            ArgbRenderer.render(renderParameters,
+                                targetImage,
+                                SharedImageProcessorCache.getInstance());
 
         }
 

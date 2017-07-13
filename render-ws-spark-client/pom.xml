@@ -2,12 +2,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <parent>
-        <artifactId>render</artifactId>
-        <groupId>org.janelia</groupId>
-        <version>0.3.0-SNAPSHOT</version>
-    </parent>
+
     <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <artifactId>modules-root</artifactId>
+        <groupId>org.janelia.render</groupId>
+        <version>2.0.0-SNAPSHOT</version>
+    </parent>
 
     <name>Render Web Service Spark Client</name>
     <artifactId>render-ws-spark-client</artifactId>
@@ -66,16 +68,28 @@
                 </executions>
 
             </plugin>
-
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.0.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
     <dependencies>
 
         <dependency>
-            <groupId>org.janelia</groupId>
+            <groupId>org.janelia.render</groupId>
             <artifactId>render-ws-java-client</artifactId>
-            <version>0.3.0-SNAPSHOT</version>
+            <version>${render-version}</version>
         </dependency>
 
         <dependency>

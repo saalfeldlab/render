@@ -16,14 +16,9 @@
  */
 package org.janelia.alignment.spec;
 
-import java.awt.Rectangle;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-
-import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.janelia.alignment.ImageAndMask;
 import org.junit.Assert;
@@ -50,73 +45,17 @@ public class TileSpecTest {
         Assert.assertEquals("mipmap sorting failed, unexpected first entry returned",
                             new Integer(0), firstMipMap.getKey());
 
-        Map.Entry<Integer, ImageAndMask> floorMipMap = tileSpec.getFloorMipmapEntry(3);
+        final ChannelSpec channelSpec = tileSpec.getAllChannels().get(0);
+
+        Map.Entry<Integer, ImageAndMask> floorMipMap = channelSpec.getFloorMipmapEntry(3);
         Assert.assertNotNull("floor 3 mipmap entry is null", floorMipMap);
         Assert.assertEquals("invalid key for floor 3 mipmap entry",
                             new Integer(3), floorMipMap.getKey());
 
-        floorMipMap = tileSpec.getFloorMipmapEntry(4);
+        floorMipMap = channelSpec.getFloorMipmapEntry(4);
         Assert.assertNotNull("floor 4 mipmap entry is null", floorMipMap);
         Assert.assertEquals("invalid key for floor 3 mipmap entry",
                             new Integer(3), floorMipMap.getKey());
-    }
-
-    @Test
-    public void testLayoutData() throws Exception {
-        final TileSpec tileSpec = new TileSpec();
-        tileSpec.setTileId(EXPECTED_TILE_ID);
-        tileSpec.setZ(1234.5);
-        final LayoutData layoutData = new LayoutData("s12", "array-a", "camera-b", 4, 5, 6.0, 7.0, 8.0);
-        tileSpec.setLayout(layoutData);
-
-        final String json = tileSpec.toJson();
-
-        Assert.assertNotNull("json generation returned null string", json);
-
-        final TileSpec parsedSpec = TileSpec.fromJson(json);
-
-        Assert.assertNotNull("json parse returned null spec", parsedSpec);
-        Assert.assertEquals("invalid tileId parsed", EXPECTED_TILE_ID, parsedSpec.getTileId());
-
-        final LayoutData parsedLayoutData = parsedSpec.getLayout();
-        Assert.assertNotNull("json parse returned null layout data", parsedLayoutData);
-        Assert.assertEquals("bad sectionId value", layoutData.getSectionId(), parsedLayoutData.getSectionId());
-        Assert.assertEquals("bad array value", layoutData.getTemca(), parsedLayoutData.getTemca());
-        Assert.assertEquals("bad camera value", layoutData.getCamera(), parsedLayoutData.getCamera());
-        Assert.assertEquals("bad row value", layoutData.getImageRow(), parsedLayoutData.getImageRow());
-        Assert.assertEquals("bad col value", layoutData.getImageCol(), parsedLayoutData.getImageCol());
-        Assert.assertEquals("bad stageX value", layoutData.getStageX(), parsedLayoutData.getStageX());
-        Assert.assertEquals("bad stageY value", layoutData.getStageY(), parsedLayoutData.getStageY());
-        Assert.assertEquals("bad rotation value", layoutData.getRotation(), parsedLayoutData.getRotation());
-
-        parsedSpec.setBoundingBox(new Rectangle(11, 12, 21, 22), parsedSpec.getMeshCellSize());
-        final ImageAndMask imageAndMask = new ImageAndMask("src/test/resources/stitch-test/coll0075_row0021_cam1.png", null);
-        parsedSpec.putMipmap(0, imageAndMask);
-        String layoutFileFormat = parsedSpec.toLayoutFileFormat();
-        String hackedFileFormat = layoutFileFormat.replaceFirst("\t[^\t]+coll0075_row0021_cam1.png",
-                                                                      "\timage.png");
-        String expectedLayoutFormat =
-                layoutData.getSectionId() + '\t' + tileSpec.getTileId() + "\t1.0\t0.0\t" +
-                layoutData.getStageX() + "\t0.0\t1.0\t" + layoutData.getStageY() + '\t' +
-                layoutData.getImageCol() + '\t' + layoutData.getImageRow() + '\t' + layoutData.getCamera() +
-                "\timage.png\t" + layoutData.getTemca() + '\t' + layoutData.getRotation() + '\t' + tileSpec.getZ();
-        Assert.assertEquals("bad layout file format generated", expectedLayoutFormat, hackedFileFormat);
-
-        // test tile spec with affine data
-        final List<TransformSpec> list = new ArrayList<>();
-        list.add(new LeafTransformSpec(AffineModel2D.class.getName(), "1.0 4.0 2.0 5.0 3.0 6.0"));
-        parsedSpec.addTransformSpecs(list);
-
-        layoutFileFormat = parsedSpec.toLayoutFileFormat();
-        hackedFileFormat = layoutFileFormat.replaceFirst("\t[^\t]+coll0075_row0021_cam1.png",
-                                                         "\timage.png");
-        expectedLayoutFormat =
-                layoutData.getSectionId() + '\t' + tileSpec.getTileId() + "\t1.0\t2.0\t3.0\t4.0\t5.0\t6.0\t" +
-                layoutData.getImageCol() + '\t' + layoutData.getImageRow() + '\t' + layoutData.getCamera() +
-                "\timage.png\t" + layoutData.getTemca() + '\t' + layoutData.getRotation() + '\t' + tileSpec.getZ();
-
-        Assert.assertEquals("bad layout file format generated for affine", expectedLayoutFormat, hackedFileFormat);
-
     }
 
     @Test

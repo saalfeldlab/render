@@ -27,6 +27,7 @@ import org.bson.types.ObjectId;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
+import org.janelia.alignment.spec.stack.ReconstructionCycle;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
@@ -150,6 +151,40 @@ public class StackMetaDataService {
         }
 
         return stackMetaData;
+    }
+
+    @Path("owner/{owner}/project/{fromProject}/stack/{fromStack}/stackId")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs"},
+            value = "Rename a stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "stack successfully renamed"),
+            @ApiResponse(code = 400, message = "stack cannot be renamed"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response renameStack(@PathParam("owner") final String owner,
+                                @PathParam("fromProject") final String fromProject,
+                                @PathParam("fromStack") final String fromStack,
+                                @Context final UriInfo uriInfo,
+                                final StackId toStackId) {
+
+        LOG.info("renameStack: entry, owner={}, fromProject={}, fromStack={}, toStackId={}",
+                 owner, fromProject, fromStack, toStackId);
+
+        try {
+            final StackId fromStackId = new StackId(owner, fromProject, fromStack);
+
+            renderDao.renameStack(fromStackId, toStackId);
+
+            LOG.info("renameStack: renamed {} to {}", fromStackId, toStackId);
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return Response.ok().build();
     }
 
     @Path("owner/{owner}/project/{fromProject}/stack/{fromStack}/cloneTo/{toStack}")
@@ -516,6 +551,85 @@ public class StackMetaDataService {
                                             @PathParam("project") final String project,
                                             @PathParam("stack") final String stack) {
         return saveMipmapPathBuilder(owner, project, stack, null);
+    }
+
+    @Path("owner/{owner}/project/{project}/stack/{stack}/cycle")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "The cycle data for the specified stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Stack not found")
+    })
+    public ReconstructionCycle getCycle(@PathParam("owner") final String owner,
+                                        @PathParam("project") final String project,
+                                        @PathParam("stack") final String stack) {
+
+        LOG.info("getCycleNumber: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        ReconstructionCycle cycle = new ReconstructionCycle();
+        try {
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            final StackVersion stackVersion = stackMetaData.getCurrentVersion();
+            if (stackVersion != null) {
+                cycle = stackVersion.getCycle();
+            }
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return cycle;
+    }
+
+    @Path("owner/{owner}/project/{project}/stack/{stack}/cycle")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs"},
+            value = "Saves cycle data for stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "cycle data successfully saved"),
+            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response saveCycle(@PathParam("owner") final String owner,
+                              @PathParam("project") final String project,
+                              @PathParam("stack") final String stack,
+                              final ReconstructionCycle cycle) {
+
+        LOG.info("saveCycleNumber: entry, owner={}, project={}, stack={}, cycle={}",
+                 owner, project, stack, cycle);
+
+        try {
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            validateStackIsModifiable(stackMetaData);
+            final StackVersion stackVersion = stackMetaData.getCurrentVersion();
+            if (stackVersion != null) {
+                stackVersion.setCycle(cycle);
+            }
+            renderDao.saveStackMetaData(stackMetaData);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return Response.ok().build();
+    }
+
+    @Path("owner/{owner}/project/{project}/stack/{stack}/cycle")
+    @DELETE
+    @ApiOperation(
+            tags = {"Section Data APIs", "Stack Management APIs"},
+            value = "Deletes cycle data for stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response deleteCycleNumber(@PathParam("owner") final String owner,
+                                      @PathParam("project") final String project,
+                                      @PathParam("stack") final String stack) {
+        return saveCycle(owner, project, stack, null);
     }
 
     @Path("owner/{owner}/project/{project}/stack/{stack}/section/{sectionId}")

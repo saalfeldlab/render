@@ -13,7 +13,7 @@ import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
 import mpicbg.util.Timer;
 
-import org.janelia.alignment.Render;
+import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.slf4j.Logger;
@@ -75,7 +75,7 @@ public class CanvasFeatureExtractor implements Serializable {
 
         renderParameters.validate();
 
-        final BufferedImage bufferedImage = Render.renderWithNoise(renderParameters, fillWithNoise);
+        final BufferedImage bufferedImage = ArgbRenderer.renderWithNoise(renderParameters, fillWithNoise);
 
         if (renderFile != null) {
             try {
