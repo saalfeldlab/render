@@ -31,12 +31,6 @@
         <dependencies>
         
             <dependency>
-                <groupId>org.janelia</groupId>
-                <artifactId>render-app</artifactId>
-                <version>0.4.0-SNAPSHOT</version>
-            </dependency>
-
-            <dependency>
                 <groupId>net.imagej</groupId>
                 <artifactId>ij</artifactId>
                 <version>1.49m</version>
