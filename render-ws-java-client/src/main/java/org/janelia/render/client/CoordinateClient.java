@@ -27,7 +27,6 @@ import java.util.regex.Pattern;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.util.ProcessTimer;
@@ -480,7 +479,7 @@ public class CoordinateClient {
             tileSpecList = new ArrayList<>();
         }
 
-        return new ResolvedTileSpecCollection(new ArrayList<TransformSpec>(), tileSpecList);
+        return new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecList);
     }
 
     public static List<TileCoordinates> loadJsonArrayOfCoordinates(final String path)
@@ -843,8 +842,8 @@ public class CoordinateClient {
         private final StackVersion sourceStackVersion;
         private final StackVersion targetStackVersion;
         private final Map<File, int[]> fileToIndexRangeMap;
-        private final Pattern readPattern = Pattern.compile("^\\d+ \\d+ (\\S+) (\\S+) (\\S+) .+");
-        private final Pattern writePattern = Pattern.compile("^(\\d+ \\d+ )\\S+ \\S+ (\\S+)( .+)");
+        private final Pattern readPattern = Pattern.compile("^\\d+ \\d+ (\\d+\\.\\d+) (\\d+\\.\\d+) (\\d+\\.\\d+) .+");
+        private final Pattern writePattern = Pattern.compile("^(\\d+ \\d+ )\\d+\\.\\d+ \\d+\\.\\d+ (\\d+\\.\\d+)( .+)");
 
         public SWCHelper(final StackVersion sourceStackVersion,
                          final StackVersion targetStackVersion) {
