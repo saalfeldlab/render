@@ -842,8 +842,8 @@ public class CoordinateClient {
         private final StackVersion sourceStackVersion;
         private final StackVersion targetStackVersion;
         private final Map<File, int[]> fileToIndexRangeMap;
-        private final Pattern readPattern = Pattern.compile("^\\d+ \\d+ (\\d+\\.\\d+) (\\d+\\.\\d+) (\\d+\\.\\d+) .+");
-        private final Pattern writePattern = Pattern.compile("^(\\d+ \\d+ )\\d+\\.\\d+ \\d+\\.\\d+ (\\d+\\.\\d+)( .+)");
+        private final Pattern readPattern = Pattern.compile("^\\d+ \\d+ (\\d+(?:\\.\\d+)?) (\\d+(?:\\.\\d+)?) (\\d+(?:\\.\\d+)?) .+");
+        private final Pattern writePattern = Pattern.compile("^(\\d+ \\d+ )\\d+(?:\\.\\d+)? \\d+(?:\\.\\d+)? (\\d+(?:\\.\\d+)?)( .+)");
 
         public SWCHelper(final StackVersion sourceStackVersion,
                          final StackVersion targetStackVersion) {
