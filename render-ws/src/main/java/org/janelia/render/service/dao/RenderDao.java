@@ -552,27 +552,7 @@ public class RenderDao {
         final Collection<TileSpec> tileSpecs = resolvedTileSpecs.getTileSpecs();
 
         if (transformSpecs.size() > 0) {
-
-            final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
-
-            final List<WriteModel<Document>> modelList = new ArrayList<>(transformSpecs.size());
-            Document query = new Document();
-            Document transformSpecObject;
-            for (final TransformSpec transformSpec : transformSpecs) {
-                query = new Document("id", transformSpec.getId());
-                transformSpecObject = Document.parse(transformSpec.toJson());
-                modelList.add(new ReplaceOneModel<>(query, transformSpecObject, MongoUtil.UPSERT_OPTION));
-            }
-
-            final BulkWriteResult result = transformCollection.bulkWrite(modelList, MongoUtil.UNORDERED_OPTION);
-
-            if (LOG.isDebugEnabled()) {
-                final String bulkResultMessage = MongoUtil.toMessage("transform specs", result, transformSpecs.size());
-                LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
-                          bulkResultMessage, MongoUtil.fullName(transformCollection), query.toJson());
-            }
-
-            // TODO: re-derive bounding boxes for all tiles (outside this collection) that reference modified transforms
+            saveResolvedTransforms(stackId, transformSpecs);
         }
 
         if (tileSpecs.size() > 0) {
@@ -2053,6 +2033,38 @@ public class RenderDao {
 
         LOG.debug("cloneCollection: inserted {} documents from {}.find(\\{}) to {}",
                   toCount, fromFullName, toFullName);
+    }
+
+    // Synchronize storage of shared transforms to help prevent duplicate key issues when
+    // different layers (and different tile specs) contain references to the same transform specs.
+    // Because the number of shared transforms should always be relatively small,
+    // this call is expected to complete quickly and not become a problem for larger concurrent usage
+    // of the saveResolvedTiles method.
+    // Major caveat: this synchronization is not bullet-proof in terms of preventing the duplicate key issue
+    // in all possible use cases but hopefully is good enough for standard usage.
+    private synchronized void saveResolvedTransforms(final StackId stackId,
+                                                     final Collection<TransformSpec> transformSpecs) {
+
+        final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
+
+        final List<WriteModel<Document>> modelList = new ArrayList<>(transformSpecs.size());
+        Document query = new Document();
+        Document transformSpecObject;
+        for (final TransformSpec transformSpec : transformSpecs) {
+            query = new Document("id", transformSpec.getId());
+            transformSpecObject = Document.parse(transformSpec.toJson());
+            modelList.add(new ReplaceOneModel<>(query, transformSpecObject, MongoUtil.UPSERT_OPTION));
+        }
+
+        final BulkWriteResult result = transformCollection.bulkWrite(modelList, MongoUtil.UNORDERED_OPTION);
+
+        if (LOG.isDebugEnabled()) {
+            final String bulkResultMessage = MongoUtil.toMessage("transform specs", result, transformSpecs.size());
+            LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
+                      bulkResultMessage, MongoUtil.fullName(transformCollection), query.toJson());
+        }
+
+        // TODO: re-derive bounding boxes for all tiles (outside this collection) that reference modified transforms
     }
 
     private MongoCollection<Document> getStackMetaDataCollection() {
