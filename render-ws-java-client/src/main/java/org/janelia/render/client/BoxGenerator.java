@@ -26,6 +26,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.LabelImageProcessorCache;
 import org.slf4j.Logger;
@@ -257,7 +258,12 @@ public class BoxGenerator implements Serializable {
         }
 
         final StackMetaData stackMetaData = getRenderDataClient().getStackMetaData(this.stack);
-        this.stackBounds = stackMetaData.getStats().getStackBounds();
+        final StackStats stats = stackMetaData.getStats();
+        if (stats == null) {
+            throw new IllegalArgumentException("missing bounds for stack " + this.stack +
+                                               ", completing the stack will derive and store bounds");
+        }
+        this.stackBounds = stats.getStackBounds();
     }
 
     public RenderDataClient getRenderDataClient() {
