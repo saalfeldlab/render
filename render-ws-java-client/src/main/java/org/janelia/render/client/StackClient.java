@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.slf4j.Logger;
@@ -21,7 +22,7 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
  */
 public class StackClient {
 
-    public enum Action { CREATE, CLONE, SET_STATE, DELETE }
+    public enum Action { CREATE, CLONE, RENAME, SET_STATE, DELETE }
 
     @SuppressWarnings("ALL")
     private static class Parameters extends RenderDataClientParameters {
@@ -64,6 +65,15 @@ public class StackClient {
         @Parameter(names = "--cloneResultStack", description = "Name of stack created by clone operation", required = false)
         private String cloneResultStack;
 
+        @Parameter(names = "--renamedOwner", description = "Name of renamed stack owner (default is to use source owner)", required = false)
+        private String renamedOwner;
+
+        @Parameter(names = "--renamedProject", description = "Name of renamed stack project (default is to use source project)", required = false)
+        private String renamedProject;
+
+        @Parameter(names = "--renamedStack", description = "Name of renamed stack", required = false)
+        private String renamedStack;
+
         @Parameter(names = "--sectionId", description = "The sectionId to delete", required = false)
         private String sectionId;
 
@@ -94,6 +104,8 @@ public class StackClient {
                     client.createStackVersion();
                 } else if (Action.CLONE.equals(parameters.action)) {
                     client.cloneStackVersion();
+                } else if (Action.RENAME.equals(parameters.action)) {
+                    client.renameStack();
                 } else if (Action.SET_STATE.equals(parameters.action)) {
                     client.setStackState();
                 } else if (Action.DELETE.equals(parameters.action)) {
@@ -172,7 +184,26 @@ public class StackClient {
                                            parameters.skipSharedTransformClone,
                                            zValues);
 
-        logMetaData("cloneStackVersion: after clone", parameters.cloneResultStack);
+        logMetaData("cloneStackVersion: after clone", renderDataClient, parameters.cloneResultStack);
+    }
+
+    public void renameStack()
+            throws Exception {
+
+        if (parameters.renamedStack == null) {
+            throw new IllegalArgumentException("missing --renamedStack value");
+        }
+
+        final String toOwner = parameters.renamedOwner == null ? parameters.owner : parameters.renamedOwner;
+        final String toProject = parameters.renamedProject == null ? parameters.project : parameters.renamedProject;
+
+        final StackId toStackId = new StackId(toOwner, toProject, parameters.renamedStack);
+
+        renderDataClient.renameStack(stack, toStackId);
+
+        final RenderDataClient renamedDataClient = new RenderDataClient(parameters.baseDataUrl, toOwner, toProject);
+
+        logMetaData("renameStack: after rename", renamedDataClient, parameters.renamedStack);
     }
 
     public void setStackState()
@@ -213,13 +244,14 @@ public class StackClient {
     }
 
     private void logMetaData(final String context) {
-        logMetaData(context, stack);
+        logMetaData(context, renderDataClient, stack);
     }
 
     private void logMetaData(final String context,
+                             final RenderDataClient dataClient,
                              final String stackName) {
         try {
-            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stackName);
+            final StackMetaData stackMetaData = dataClient.getStackMetaData(stackName);
             LOG.info("{}, stackMetaData={}", context, stackMetaData);
         } catch (final IOException e) {
             LOG.info("{}, no meta data returned", context);

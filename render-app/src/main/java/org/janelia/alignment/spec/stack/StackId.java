@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serializable;
 
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.util.CollectionNameUtil;
 
 /**
@@ -61,6 +62,10 @@ public class StackId implements Comparable<StackId>, Serializable {
     @Override
     public String toString() {
         return "stack with owner '" + owner + "', project '" + project + "', and name '" + stack + "'";
+    }
+
+    public String toJson() {
+        return JSON_HELPER.toJson(this);
     }
 
     @SuppressWarnings("NullableProblems")
@@ -127,6 +132,9 @@ public class StackId implements Comparable<StackId>, Serializable {
         }
         return new StackId(owner, project, stack);
     }
+
+    private static final JsonUtils.Helper<StackId> JSON_HELPER =
+            new JsonUtils.Helper<>(StackId.class);
 
     private static final CollectionNameUtil COLLECTION_NAME_UTIL = new CollectionNameUtil("render");
 }

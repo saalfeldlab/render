@@ -30,6 +30,7 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.client.request.WaitingRetryHandler;
+import org.janelia.render.client.response.EmptyResponseHandler;
 import org.janelia.render.client.response.JsonResponseHandler;
 import org.janelia.render.client.response.ResourceCreatedResponseHandler;
 import org.janelia.render.client.response.TextResponseHandler;
@@ -374,6 +375,35 @@ public class RenderDataClient {
         httpPut.setEntity(stringEntity);
 
         LOG.info("cloneStackVersion: submitting {}", requestContext);
+
+        httpClient.execute(httpPut, responseHandler);
+    }
+
+    /**
+     * Renames the specified stack.
+     *
+     * @param  fromStack       source stack to rename.
+     * @param  toStackId       new owner, project, and/or stack names.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void renameStack(final String fromStack,
+                            final StackId toStackId)
+            throws IOException {
+
+        final String json = toStackId.toJson();
+        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+
+        final URI uri = getUri(urls.getStackUrlString(fromStack) + "/stackId");
+
+        final String requestContext = "PUT " + uri;
+        final EmptyResponseHandler responseHandler = new EmptyResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        LOG.info("renameStack: submitting {} with body {}", requestContext, json);
 
         httpClient.execute(httpPut, responseHandler);
     }
