@@ -1,6 +1,7 @@
 package org.janelia.render.service.dao;
 
 import com.mongodb.BasicDBList;
+import com.mongodb.DuplicateKeyException;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoNamespace;
 import com.mongodb.QueryOperators;
@@ -2035,36 +2036,51 @@ public class RenderDao {
                   toCount, fromFullName, toFullName);
     }
 
-    // Synchronize storage of shared transforms to help prevent duplicate key issues when
-    // different layers (and different tile specs) contain references to the same transform specs.
-    // Because the number of shared transforms should always be relatively small,
-    // this call is expected to complete quickly and not become a problem for larger concurrent usage
-    // of the saveResolvedTiles method.
-    // Major caveat: this synchronization is not bullet-proof in terms of preventing the duplicate key issue
-    // in all possible use cases but hopefully is good enough for standard usage.
-    private synchronized void saveResolvedTransforms(final StackId stackId,
-                                                     final Collection<TransformSpec> transformSpecs) {
+    // Individually upserts each transform spec in the specified list, retrying if a duplicate key error occurs.
+    // This should work around concurrent update issues that MongoDB does not currently handle
+    // ( see https://jira.mongodb.org/browse/SERVER-14322 ).  If MongoDB ever corrects this issue,
+    // we may want to restore the original bulk write operation for storing shared transforms.
+    private void saveResolvedTransforms(final StackId stackId,
+                                        final Collection<TransformSpec> transformSpecs) {
 
         final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
 
-        final List<WriteModel<Document>> modelList = new ArrayList<>(transformSpecs.size());
-        Document query = new Document();
-        Document transformSpecObject;
+        int updateCount = 0;
+        int insertCount = 0;
+        UpdateResult result;
         for (final TransformSpec transformSpec : transformSpecs) {
-            query = new Document("id", transformSpec.getId());
-            transformSpecObject = Document.parse(transformSpec.toJson());
-            modelList.add(new ReplaceOneModel<>(query, transformSpecObject, MongoUtil.UPSERT_OPTION));
-        }
+            final Document query = new Document("id", transformSpec.getId());
+            final Document transformSpecObject = Document.parse(transformSpec.toJson());
+            try {
+                result = transformCollection.replaceOne(query,
+                                                        transformSpecObject,
+                                                        MongoUtil.UPSERT_OPTION);
+                if (result.getMatchedCount() > 0) {
+                    updateCount++;
+                } else {
+                    insertCount++;
+                }
+            } catch (final DuplicateKeyException e) {
+                LOG.warn("duplicate key exception thrown for upsert, retrying operation ...", e);
 
-        final BulkWriteResult result = transformCollection.bulkWrite(modelList, MongoUtil.UNORDERED_OPTION);
+                result = transformCollection.replaceOne(query,
+                                                        transformSpecObject,
+                                                        MongoUtil.UPSERT_OPTION);
+                if (result.getMatchedCount() > 0) {
+                    updateCount++;
+                } else {
+                    insertCount++;
+                }
+            }
 
-        if (LOG.isDebugEnabled()) {
-            final String bulkResultMessage = MongoUtil.toMessage("transform specs", result, transformSpecs.size());
-            LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
-                      bulkResultMessage, MongoUtil.fullName(transformCollection), query.toJson());
         }
 
         // TODO: re-derive bounding boxes for all tiles (outside this collection) that reference modified transforms
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("saveResolvedTransforms: inserted {} and updated {} documents in {})",
+                      insertCount, updateCount, transformCollection.getNamespace().getFullName());
+        }
     }
 
     private MongoCollection<Document> getStackMetaDataCollection() {
