@@ -6,7 +6,10 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.net.URISyntaxException;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import mpicbg.trakem2.transform.CoordinateTransform;
 
@@ -16,6 +19,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -96,6 +100,17 @@ public class WarpTransformClient
                 required = false)
         private Double maxZ;
 
+        @Parameter(
+                names = "--z",
+                description = "Explicit z values for sections to be processed",
+                required = false,
+                variableArity = true) // e.g. --z 20.0 21.0 22.0
+        private List<Double> zValues;
+
+        public Set<Double> getZValues() {
+            return (zValues == null) ? Collections.emptySet() : new HashSet<Double>(zValues);
+        }
+
         public String getAlignOwner() {
             return alignOwner == null ? owner : alignOwner;
         }
@@ -153,13 +168,18 @@ public class WarpTransformClient
                                                                        parameters.owner,
                                                                        parameters.project);
 
-        final List<Double> zValues = sourceDataClient.getStackZValues(parameters.montageStack,
-                                                                      parameters.minZ,
-                                                                      parameters.maxZ);
-
-        if (zValues.size() == 0) {
+        final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(parameters.montageStack,
+                                                                                       parameters.minZ,
+                                                                                       parameters.maxZ,
+                                                                                       parameters.getZValues());
+        if (sectionDataList.size() == 0) {
             throw new IllegalArgumentException("montage stack does not contain any matching z values");
         }
+
+        // batch layers by tile count in attempt to distribute work load as evenly as possible across cores
+        final int numberOfCores = sparkContext.defaultParallelism();
+        final LayerDistributor layerDistributor = new LayerDistributor(numberOfCores);
+        final List<List<Double>> batchedZValues = layerDistributor.distribute(sectionDataList);
 
         final RenderDataClient targetDataClient = new RenderDataClient(parameters.baseDataUrl,
                                                                        parameters.getTargetOwner(),
@@ -168,18 +188,22 @@ public class WarpTransformClient
         final StackMetaData montageStackMetaData = sourceDataClient.getStackMetaData(parameters.montageStack);
         targetDataClient.setupDerivedStack(montageStackMetaData, parameters.targetStack);
 
-        final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
+        final JavaRDD<List<Double>> rddZValues = sparkContext.parallelize(batchedZValues);
 
-        final Function<Double, Integer> warpFunction = new Function<Double, Integer>() {
+        final Function<List<Double>, Long> warpFunction = (Function<List<Double>, Long>) zBatch -> {
 
-            final
-            @Override
-            public Integer call(final Double z)
-                    throws Exception {
+            LOG.info("warpFunction: entry");
+
+            long processedTileCount = 0;
+
+            for (int i = 0; i < zBatch.size(); i++) {
+
+                final Double z = zBatch.get(i);
 
                 LogUtilities.setupExecutorLog4j("z " + z);
 
-                LOG.info("warpFunction: entry");
+                LOG.info("warpFunction: processing layer {} of {}, remaining layer z values are {}",
+                         i + 1, zBatch.size(), zBatch.subList(i+1, zBatch.size()));
 
                 final TileSpecValidator tileSpecValidator = parameters.getValidatorInstance();
 
@@ -191,9 +215,9 @@ public class WarpTransformClient
                                                                               parameters.getAlignOwner(),
                                                                               parameters.getAlignProject());
 
-                final RenderDataClient targetDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                               parameters.getTargetOwner(),
-                                                                               parameters.getTargetProject());
+                final RenderDataClient targetDataClient1 = new RenderDataClient(parameters.baseDataUrl,
+                                                                                parameters.getTargetOwner(),
+                                                                                parameters.getTargetProject());
 
                 final ResolvedTileSpecCollection montageTiles =
                         montageDataClient.getResolvedTiles(parameters.montageStack, z);
@@ -223,19 +247,21 @@ public class WarpTransformClient
                     throw new IllegalStateException("no tiles left to save after filtering invalid tiles");
                 }
 
-                targetDataClient.saveResolvedTiles(montageTiles, parameters.targetStack, z);
+                targetDataClient1.saveResolvedTiles(montageTiles, parameters.targetStack, z);
 
-                LOG.info("warpFunction: exit");
-
-                return montageTiles.getTileCount();
+                processedTileCount += montageTiles.getTileCount();
             }
+
+            LOG.info("warpFunction: exit");
+
+            return processedTileCount;
         };
 
-        final JavaRDD<Integer> rddTileCounts = rddZValues.map(warpFunction);
+        final JavaRDD<Long> rddTileCounts = rddZValues.map(warpFunction);
 
-        final List<Integer> tileCountList = rddTileCounts.collect();
+        final List<Long> tileCountList = rddTileCounts.collect();
         long total = 0;
-        for (final Integer tileCount : tileCountList) {
+        for (final Long tileCount : tileCountList) {
             total += tileCount;
         }
 

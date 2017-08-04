@@ -6,12 +6,16 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.render.client.BoxGenerator;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -45,6 +49,17 @@ public class BoxClient
                 description = "Maximum Z value for sections to be rendered",
                 required = false)
         private Double maxZ;
+
+        @Parameter(
+                names = "--z",
+                description = "Explicit z values for sections to be rendered",
+                required = false,
+                variableArity = true) // e.g. --z 20.0 21.0 22.0
+        private List<Double> zValues;
+
+        public Set<Double> getZValues() {
+            return (zValues == null) ? Collections.emptySet() : new HashSet<Double>(zValues);
+        }
 
     }
 
@@ -87,25 +102,31 @@ public class BoxClient
                                                                        parameters.owner,
                                                                        parameters.project);
 
-        final List<Double> zValues = sourceDataClient.getStackZValues(parameters.stack,
-                                                                      parameters.minZ,
-                                                                      parameters.maxZ);
-
-        if (zValues.size() == 0) {
+        final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(parameters.stack,
+                                                                                       parameters.minZ,
+                                                                                       parameters.maxZ,
+                                                                                       parameters.getZValues());
+        if (sectionDataList.size() == 0) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 
-        final List<Tuple2<Double, BoxGenerator.Parameters>> zWithParametersList = new ArrayList<>(zValues.size());
+        // batch layers by tile count in attempt to distribute work load as evenly as possible across cores
+        final int numberOfCores = sparkContext.defaultParallelism();
+        final LayerDistributor layerDistributor = new LayerDistributor(numberOfCores);
+        final List<List<Double>> batchedZValues = layerDistributor.distribute(sectionDataList);
+
+        final List<Tuple2<List<Double>, BoxGenerator.Parameters>> zBatchWithParametersList =
+                new ArrayList<>(batchedZValues.size());
 
         BoxGenerator.Parameters lastGroupParameters = parameters;
 
-        for (final Double z : zValues) {
+        for (final List<Double> zBatch : batchedZValues) {
             if (parameters.numberOfRenderGroups == null) {
-                zWithParametersList.add(new Tuple2<>(z, (BoxGenerator.Parameters) parameters));
+                zBatchWithParametersList.add(new Tuple2<>(zBatch, (BoxGenerator.Parameters) parameters));
             } else {
                 for (int i = 0; i < parameters.numberOfRenderGroups; i++) {
                     final BoxGenerator.Parameters p = parameters.getInstanceForRenderGroup(i+1, parameters.numberOfRenderGroups);
-                    zWithParametersList.add(new Tuple2<>(z, p));
+                    zBatchWithParametersList.add(new Tuple2<>(zBatch, p));
                     lastGroupParameters = p;
                 }
             }
@@ -115,29 +136,33 @@ public class BoxClient
         final BoxGenerator boxGenerator = new BoxGenerator(lastGroupParameters);
         boxGenerator.createEmptyImageFile();
 
-        final JavaRDD<Tuple2<Double, BoxGenerator.Parameters>> rddZValues = sparkContext.parallelize(zWithParametersList);
+        final JavaRDD<Tuple2<List<Double>, BoxGenerator.Parameters>> rddZValues = sparkContext.parallelize(zBatchWithParametersList);
 
-        final Function<Tuple2<Double, BoxGenerator.Parameters>, Integer> generateBoxesFunction = new Function<Tuple2<Double, BoxGenerator.Parameters>, Integer>() {
+        final Function<Tuple2<List<Double>, BoxGenerator.Parameters>, Integer> generateBoxesFunction =
+                (Function<Tuple2<List<Double>, BoxGenerator.Parameters>, Integer>) zBatchWithParameters -> {
 
-            final
-            @Override
-            public Integer call(final Tuple2<Double, BoxGenerator.Parameters> zWithParameters)
-                    throws Exception {
+                    final List<Double> zBatch = zBatchWithParameters._1;
+                    final BoxGenerator.Parameters p = zBatchWithParameters._2;
 
-                final Double z = zWithParameters._1;
-                final BoxGenerator.Parameters p = zWithParameters._2;
+                    final BoxGenerator boxGenerator1 = new BoxGenerator(p);
 
-                if (p.renderGroup == null) {
-                    LogUtilities.setupExecutorLog4j("z " + z);
-                } else {
-                    LogUtilities.setupExecutorLog4j("z " + z + " (" + p.renderGroup + " of " + p.numberOfRenderGroups + ")");
-                }
+                    for (int i = 0; i < zBatch.size(); i++) {
 
-                final BoxGenerator boxGenerator = new BoxGenerator(p);
-                boxGenerator.generateBoxesForZ(z);
-                return 1;
-            }
-        };
+                        final Double z = zBatch.get(i);
+                        if (p.renderGroup == null) {
+                            LogUtilities.setupExecutorLog4j("z " + z);
+                        } else {
+                            LogUtilities.setupExecutorLog4j("z " + z + " (" + p.renderGroup + " of " + p.numberOfRenderGroups + ")");
+                        }
+
+                        LOG.info("materializing layer {} of {}, remaining layer z values are {}",
+                                 i + 1, zBatch.size(), zBatch.subList(i+1, zBatch.size()));
+
+                        boxGenerator1.generateBoxesForZ(z);
+                    }
+
+                    return zBatch.size();
+                };
 
         final JavaRDD<Integer> rddLayerCounts = rddZValues.map(generateBoxesFunction);
 

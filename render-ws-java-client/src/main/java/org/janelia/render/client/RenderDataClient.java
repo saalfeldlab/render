@@ -5,8 +5,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
@@ -184,7 +186,7 @@ public class RenderDataClient {
      * @param  minZ   (optional) only include layers with z values greater than or equal to this minimum.
      * @param  maxZ   (optional) only include layers with z values less than or equal to this maximum.
      *
-     * @return section data for all layers in the specified stack.
+     * @return section data for set of layers in the specified stack.
      *
      * @throws IOException
      *   if the request fails for any reason.
@@ -219,6 +221,48 @@ public class RenderDataClient {
         LOG.info("getStackSectionData: submitting {}", requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
+     * @param  stack            name of stack.
+     * @param  minZ             (optional) only include layers with z values greater than or equal to this minimum.
+     * @param  maxZ             (optional) only include layers with z values less than or equal to this maximum.
+     * @param  explicitZValues  (optional) set of z values to explicitly include.
+     *
+     * @return section data for set of layers in the specified stack.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<SectionData> getStackSectionData(final String stack,
+                                                 final Double minZ,
+                                                 final Double maxZ,
+                                                 final Set<Double> explicitZValues)
+            throws IOException {
+
+        final List<SectionData> sectionDataList;
+
+        if ((explicitZValues == null) || (explicitZValues.size() == 0)) {
+
+            sectionDataList = getStackSectionData(stack, minZ, maxZ);
+
+        } else {
+
+            final double min = (minZ == null) ? -Double.MAX_VALUE : minZ;
+            final double max = (maxZ == null) ? Double.MAX_VALUE : maxZ;
+
+            final List<SectionData> allSectionDataList = getStackSectionData(stack, null, null);
+            sectionDataList = new ArrayList<>(allSectionDataList.size());
+            for (final SectionData sectionData : allSectionDataList) {
+                final Double z = sectionData.getZ();
+                if ( explicitZValues.contains(z) || ((z >= min) && (z <= max)) ) {
+                    sectionDataList.add(sectionData);
+                }
+            }
+
+        }
+
+        return sectionDataList;
     }
 
     /**
