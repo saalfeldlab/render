@@ -21,7 +21,9 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.janelia.alignment.ArgbRenderer;
@@ -43,7 +45,8 @@ import org.slf4j.LoggerFactory;
  */
 public class BoxMipmapGeneratorTest {
 
-    private File boxDirectory = new File("src/test/resources/box-test/test-project/test-stack/148x148");
+    private File testDirectory;
+    private File boxDirectory;
     private int z;
     private int boxWidth = 148;
     private int boxHeight = 148;
@@ -52,12 +55,20 @@ public class BoxMipmapGeneratorTest {
     private int maxOverviewWidthAndHeight;
     private Bounds stackBounds;
 
-    private List<File> filesAndDirectoriesToDelete;
-
     @Before
     public void setup() throws Exception {
 
-        this.boxDirectory = new File("src/test/resources/box-test/test-project/test-stack/148x148");
+        final SimpleDateFormat TIMESTAMP = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+        final String timestamp = TIMESTAMP.format(new Date());
+        testDirectory = new File("test-box-" + timestamp).getCanonicalFile();
+
+        if (testDirectory.mkdirs()) {
+            LOG.info("created directory " + testDirectory.getAbsolutePath());
+        } else {
+            throw new IllegalStateException("failed to create " + testDirectory.getAbsolutePath());
+        }
+
+        this.boxDirectory = new File(testDirectory, "test-project/test-stack/148x148");
 
         this.z = 11;
         this.boxWidth = 148;
@@ -70,15 +81,11 @@ public class BoxMipmapGeneratorTest {
         final double layerMaxX = ((lastColumn + 1) * boxWidth) - 1;
         final double layerMaxY = ((lastRow + 1) * boxHeight) - 1;
         this.stackBounds = new Bounds(0.0, 0.0, layerMaxX, layerMaxY);
-
-        filesAndDirectoriesToDelete = new ArrayList<>();
     }
 
     @After
     public void tearDown() throws Exception {
-        for (final File file : filesAndDirectoriesToDelete) {
-            deleteTestFile(file);
-        }
+        deleteRecursive(testDirectory);
     }
 
     @Test
@@ -130,8 +137,6 @@ public class BoxMipmapGeneratorTest {
                                                                                 stackBounds,
                                                                                 overviewFile);
 
-        filesAndDirectoriesToDelete.add(overviewFile);
-
         Assert.assertTrue("overview generated flag should be true", isOverviewGenerated);
 
         Assert.assertNotNull("overview " + overviewFile +
@@ -142,7 +147,6 @@ public class BoxMipmapGeneratorTest {
                           " generated for level " + boxMipmapGenerator.getSourceLevel() + " but does not exist",
                           overviewFile.exists());
 
-        filesAndDirectoriesToDelete.add(overviewFile.getParentFile());
     }
 
     @Test
@@ -180,11 +184,6 @@ public class BoxMipmapGeneratorTest {
                                      true,
                                      Utils.PNG_FORMAT);
 
-        filesAndDirectoriesToDelete.add(outputFile);
-        filesAndDirectoriesToDelete.add(outputFile.getParentFile()); // row
-        filesAndDirectoriesToDelete.add(outputFile.getParentFile().getParentFile()); // z
-        filesAndDirectoriesToDelete.add(outputFile.getParentFile().getParentFile().getParentFile()); // level
-
         Assert.assertTrue("missing label image " + outputFile.getAbsolutePath(), outputFile.exists());
 
     }
@@ -199,15 +198,10 @@ public class BoxMipmapGeneratorTest {
 
         for (final int[] rowAndColumn : expectedRowAndColumnPairs) {
             final File file = new File(boxDirectory, level+"/"+z+"/"+rowAndColumn[0]+"/"+rowAndColumn[1]+".png");
-            filesAndDirectoriesToDelete.add(file);
             if (! file.exists()) {
                 missingFiles.add(file);
             }
-            filesAndDirectoriesToDelete.add(new File(boxDirectory, level+"/"+z+"/"+rowAndColumn[0]));
         }
-
-        filesAndDirectoriesToDelete.add(new File(boxDirectory, level+"/"+z));
-        filesAndDirectoriesToDelete.add(new File(boxDirectory, String.valueOf(level)));
 
         Assert.assertTrue("The following files were not generated for level " + level + ": " + missingFiles,
                           missingFiles.isEmpty());
@@ -217,8 +211,6 @@ public class BoxMipmapGeneratorTest {
         final boolean isOverviewGenerated = boxMipmapGenerator.generateOverview(maxOverviewWidthAndHeight,
                                                                                 stackBounds,
                                                                                 overviewFile);
-        filesAndDirectoriesToDelete.add(overviewFile);
-        filesAndDirectoriesToDelete.add(overviewFile.getParentFile());
 
         Assert.assertFalse("overview generated flag should be false for level " + level, isOverviewGenerated);
         Assert.assertFalse("overview " + overviewFile + " should NOT have been generated for level " + level,
@@ -227,14 +219,28 @@ public class BoxMipmapGeneratorTest {
         return nextLevelGenerator;
     }
 
-    private void deleteTestFile(final File file) {
-        if ((file != null) && file.exists()) {
-            if (file.delete()) {
-                LOG.info("deleteTestFile: deleted " + file.getAbsolutePath());
-            } else {
-                LOG.info("deleteTestFile: failed to delete " + file.getAbsolutePath());
+    // TODO: replace with Apache Commons FileUtils.delete
+    public static boolean deleteRecursive(final File file) {
+
+        boolean deleteSuccessful = true;
+
+        if (file.isDirectory()){
+            final File[] files = file.listFiles();
+            if (files != null) {
+                for (final File f : files) {
+                    deleteSuccessful = deleteSuccessful && deleteRecursive(f);
+                }
             }
         }
+
+        if (file.delete()) {
+            LOG.info("deleted " + file.getAbsolutePath());
+        } else {
+            LOG.warn("failed to delete " + file.getAbsolutePath());
+            deleteSuccessful = false;
+        }
+
+        return deleteSuccessful;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(BoxMipmapGeneratorTest.class);
