@@ -26,7 +26,7 @@ var RenderWebServiceProjectStacks = function(ownerSelectId, projectSelectId, mes
             this.stackName = stackName;
             this.stackActionsId = stackName + "__actions";
             this.stackDeleteId = this.stackActionsId + '__delete';
-            this.actionHtml = '<a id="' + this.stackDeleteId + '" href="#" onclick="return false;">DELETE</a>';
+            this.actionHtml = '<a id="' + this.stackDeleteId + '" href="#" onclick="return false;">Delete Stack</a>';
 
             var self = this;
             this.deleteStackWithName = function () {
@@ -59,7 +59,8 @@ var RenderWebServiceProjectStacks = function(ownerSelectId, projectSelectId, mes
         var summaryHtml;
         for (var index = 0; index < projectStackMetaDataList.length; index++) {
             summaryHtml = renderDataUi.getStackSummaryHtml(renderData.getOwnerUrl(),
-                                                           projectStackMetaDataList[index]);
+                                                           projectStackMetaDataList[index],
+                                                           true);
             stackInfoSelect.find('tr:last').after(summaryHtml);
             new StackNameFunctions(projectStackMetaDataList[index].stackId.stack).updateActions();
         }

@@ -20,7 +20,7 @@ table {
 th, td {
     vertical-align: top;
     text-align: left;
-    padding: 0 20px 10px 0;
+    padding: 5px 20px 5px 0;
 }
 
 ul {
@@ -69,4 +69,68 @@ ul {
 
 #stackInfo td {
     font-family: monospace;
+}
+
+#stackInfo tr:hover {
+    background-color: yellow;
+}
+
+#stackInfo tr:hover .dropbtn {
+    background-color: yellow;
+}
+
+#stackInfo tr:hover .dropdown:hover .dropbtn {
+    background-color: white;
+}
+
+/* Drop-down Button */
+.dropbtn {
+    background-color: white;
+    color: blue;
+    font-family: serif;
+    font-size: 0.9em;
+    border: none;
+    cursor: pointer;
+}
+
+/* The container <div> - needed to position the drop-down content */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+/* Drop-down Content (Hidden by Default) */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: white;
+    min-width: 160px;
+    box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+    z-index: 1;
+}
+
+/* Links inside the drop-down */
+.dropdown-content a {
+    color: black;
+    padding: 5px 0 0 20px;
+    text-decoration: none;
+    display: block;
+    font-family: serif;
+    font-size: 0.9em;
+}
+
+/* Change color of drop-down links on hover */
+.dropdown-content a:hover {
+    background-color: lightgray;
+    color: blue;
+}
+
+/* Show the drop-down menu on hover */
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+/* Change the background color of the drop-down button when the drop-down content is shown */
+.dropdown:hover .dropbtn {
+    background-color: white;
 }

@@ -538,8 +538,9 @@ JaneliaRenderServiceDataUI.prototype.buildStackQueryParameters = function(owner,
  * @param stackInfo.stats.nonIntegralSectionCount
  * @param stackInfo.stats.tileCount
  * @param stackInfo.stats.transformCount
+ * @param includeActions
  */
-JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, stackInfo) {
+JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, stackInfo, includeActions) {
     var values = [];
     var version = stackInfo.currentVersion;
     if (typeof version === 'undefined') {
@@ -578,7 +579,6 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
             }
         }
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.sectionCount)));
-        values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.nonIntegralSectionCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.tileCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.transformCount)));
     }
@@ -586,32 +586,50 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
     var stackId = stackInfo.stackId;
     var baseStackUrl = ownerUrl + 'project/' + stackId.project + '/stack/' + stackId.stack;
 
+    var detailsQueryString = '?' + this.buildStackQueryParameters(stackId.owner, stackId.project, stackId.stack);
     //noinspection HtmlUnknownTarget
-    var linksHtml = '<a target="_blank" href="' + baseStackUrl + '">Metadata</a> ' +
-                    '<a target="_blank" href="' + baseStackUrl + '/zValues">Z Values</a> ' +
-                    '<a target="_blank" href="' + baseStackUrl + '/mergeableZValues">mergeable Z Values</a>';
+    var detailsLinkPrefix = '<a target="_blank" href="stack-details.html' + detailsQueryString + '">';
+    var detailsLink = detailsLinkPrefix + stackId.stack  +'</a>';
+
+    var linksHtml = '<div class="dropdown">' +
+                    '<button class="dropbtn">View</button>' +
+                    '<div class="dropdown-content">' +
+                    '<a target="_blank" href="' + baseStackUrl + '">Metadata</a> ';
 
     if (this.isCatmaidHostDefined()) {
         var CATMAIDUrl = 'http://' + this.catmaidHost + '/?tool=navigator&s0=8' +
                          '&pid=' + stackId.project + '&sid0=' + stackId.stack +
                          '&zp=' + zp + '&yp=' + yp  + '&xp=' + xp;
-        linksHtml = linksHtml + ' <a target="_blank" href="' + CATMAIDUrl + '">CATMAID-alpha</a>';
+        linksHtml = linksHtml + ' <a target="_blank" href="' + CATMAIDUrl + '">CATMAID</a>';
     }
+
     if (this.isNdvizHostDefined()) {
         var NDVIZUrl = 'http://' + this.ndvizHost + '/render/' + this.shortbaseUrl + '/' +
-                    stackId.owner + '/' + stackId.project + '/' + stackId.stack + '/';
+                       stackId.owner + '/' + stackId.project + '/' + stackId.stack + '/';
         linksHtml = linksHtml + ' <a target="_blank" href="' + NDVIZUrl + '">NdViz</a>';
     }
 
-    linksHtml = linksHtml + ' <span id="' + stackId.stack + '__actions"></span>';
+    //noinspection HtmlUnknownTarget
+    linksHtml = linksHtml +
+                '<a target="_blank" href="' + baseStackUrl + '/zValues">Z Values</a> ' +
+                '<a target="_blank" href="' + baseStackUrl + '/mergeableZValues">Mergeable Z Values</a>' +
+                '<a target="_blank" href="' + baseStackUrl + '/mergedZValues">Merged Z Values</a>' +
+                '<a target="_blank" href="' + baseStackUrl + '/mergeableData">Mergeable Data</a>' +
+                '<a target="_blank" href="' + baseStackUrl + '/sectionData">Section Data</a>' +
+                '<a target="_blank" href="' + baseStackUrl + '/reorderedSectionData">Re-ordered Section Data</a>' +
+                detailsLinkPrefix + 'Stack Details Charts</a>' +
+                '</div>' +
+                '</div>' +
+                '<div class="dropdown">' +
+                '<button class="dropbtn">Manage</button>' +
+                '<div class="dropdown-content">' +
+                '<span id="' + stackId.stack + '__actions"></span>' +
+                '</div>' +
+                '</div>';
 
-    if (stackInfo.state == 'OFFLINE') {
+    if ((stackInfo.state == 'OFFLINE') || (! includeActions)) {
         linksHtml = '';
     }
-
-    var detailsQueryString = '?' + this.buildStackQueryParameters(stackId.owner, stackId.project, stackId.stack);
-    //noinspection HtmlUnknownTarget
-    var detailsLink = '<a target="_blank" href="stack-details.html' + detailsQueryString + '">' + stackId.stack  +'</a>';
 
     return '<tr class="' + stackInfo.state + '">\n' +
            '  <td class="number">' + values[0] + '</td>\n' +
@@ -623,7 +641,6 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
            '  <td class="number">' + values[4] + '</td>\n' +
            '  <td class="number">' + values[5] + '</td>\n' +
            '  <td class="number">' + values[6] + '</td>\n' +
-           '  <td class="number">' + values[7] + '</td>\n' +
            '  <td>' + linksHtml + '</td>\n' +
            '</tr>\n';
 };
