@@ -248,8 +248,14 @@ public class RenderDataClient {
 
         } else {
 
-            final double min = (minZ == null) ? -Double.MAX_VALUE : minZ;
+            // if range is specified in any way, include everything in range plus explicit z values
+            double min = (minZ == null) ? -Double.MAX_VALUE : minZ;
             final double max = (maxZ == null) ? Double.MAX_VALUE : maxZ;
+
+            // if range is not specified, exclude everything except explicit z values
+            if ((minZ == null) && (maxZ == null)) {
+                min = Double.MAX_VALUE;
+            }
 
             final List<SectionData> allSectionDataList = getStackSectionData(stack, null, null);
             sectionDataList = new ArrayList<>(allSectionDataList.size());
@@ -259,6 +265,8 @@ public class RenderDataClient {
                     sectionDataList.add(sectionData);
                 }
             }
+
+            LOG.info("getStackSectionData: returning data for {} (filtered) sections", sectionDataList.size());
 
         }
 
