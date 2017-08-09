@@ -6,10 +6,12 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
@@ -20,6 +22,7 @@ import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
@@ -76,6 +79,17 @@ public class CopyStackClient implements Serializable {
                 description = "Maximum Z value for sections to be copied",
                 required = false)
         private Double maxZ;
+
+        @Parameter(
+                names = "--z",
+                description = "Explicit z values for sections to be processed",
+                required = false,
+                variableArity = true) // e.g. --z 20.0 21.0 22.0
+        private List<Double> zValues;
+
+        public Set<Double> getZValues() {
+            return (zValues == null) ? Collections.emptySet() : new HashSet<Double>(zValues);
+        }
 
         @Parameter(
                 names = "--moveToOrigin",
@@ -146,13 +160,18 @@ public class CopyStackClient implements Serializable {
                                                                        parameters.owner,
                                                                        parameters.project);
 
-        final List<Double> zValues = sourceDataClient.getStackZValues(parameters.stack,
-                                                                      parameters.minZ,
-                                                                      parameters.maxZ);
-
-        if (zValues.size() == 0) {
+        final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(parameters.stack,
+                                                                                       parameters.minZ,
+                                                                                       parameters.maxZ,
+                                                                                       parameters.getZValues());
+        if (sectionDataList.size() == 0) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
+
+        // batch layers by tile count in attempt to distribute work load as evenly as possible across cores
+        final int numberOfCores = sparkContext.defaultParallelism();
+        final LayerDistributor layerDistributor = new LayerDistributor(numberOfCores);
+        final List<List<Double>> batchedZValues = layerDistributor.distribute(sectionDataList);
 
         final RenderDataClient targetDataClient = new RenderDataClient(parameters.baseDataUrl,
                                                                        parameters.getTargetOwner(),
@@ -188,27 +207,31 @@ public class CopyStackClient implements Serializable {
             moveStackTransform = null;
         }
 
-        final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
+        final JavaRDD<List<Double>> rddZValues = sparkContext.parallelize(batchedZValues);
 
-        final Function<Double, Integer> copyFunction = new Function<Double, Integer>() {
+        final Function<List<Double>, Long> copyFunction = (Function<List<Double>, Long>) zBatch -> {
 
-            final
-            @Override
-            public Integer call(final Double z)
-                    throws Exception {
+            final RenderDataClient localSourceDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                                                parameters.owner,
+                                                                                parameters.project);
+
+            final RenderDataClient localTargetDataClient = new RenderDataClient(parameters.baseDataUrl,
+                                                                                parameters.getTargetOwner(),
+                                                                                parameters.getTargetProject());
+
+            long processedTileCount = 0;
+
+            for (int i = 0; i < zBatch.size(); i++) {
+
+                final Double z = zBatch.get(i);
 
                 LogUtilities.setupExecutorLog4j("z " + z);
 
-                final RenderDataClient sourceDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                               parameters.owner,
-                                                                               parameters.project);
-
-                final RenderDataClient targetDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                               parameters.getTargetOwner(),
-                                                                               parameters.getTargetProject());
+                LOG.info("copyFunction: processing layer {} of {}, remaining layer z values are {}",
+                         i + 1, zBatch.size(), zBatch.subList(i+1, zBatch.size()));
 
                 final ResolvedTileSpecCollection sourceCollection =
-                        sourceDataClient.getResolvedTiles(parameters.stack, z);
+                        localSourceDataClient.getResolvedTiles(parameters.stack, z);
 
                 final Set<String> tileIdsToKeep = new HashSet<>();
                 String filterStack = null;
@@ -216,9 +239,11 @@ public class CopyStackClient implements Serializable {
 
                     for (final String tileIdStack : parameters.excludeTileIdsMissingFromStacks) {
 
-                        for (final TileBounds tileBounds : sourceDataClient.getTileBounds(tileIdStack, z)) {
-                            tileIdsToKeep.add(tileBounds.getTileId());
-                        }
+                        tileIdsToKeep.addAll(
+                                localSourceDataClient.getTileBounds(tileIdStack, z)
+                                        .stream()
+                                        .map(TileBounds::getTileId)
+                                        .collect(Collectors.toList()));
 
                         // once a stack with tiles for the current z is found, use that as the filter
                         if (tileIdsToKeep.size() > 0) {
@@ -233,7 +258,7 @@ public class CopyStackClient implements Serializable {
                     final int numberOfTilesBeforeFilter = sourceCollection.getTileCount();
                     sourceCollection.filterSpecs(tileIdsToKeep);
                     final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();
-                    LOG.info("removed {} tiles not found in {}", numberOfTilesRemoved, filterStack);
+                    LOG.info("copyFunction: removed {} tiles not found in {}", numberOfTilesRemoved, filterStack);
                 }
 
                 if (moveStackTransform != null) {
@@ -243,17 +268,19 @@ public class CopyStackClient implements Serializable {
 
                 sourceCollection.removeUnreferencedTransforms();
 
-                targetDataClient.saveResolvedTiles(sourceCollection, parameters.targetStack, z);
+                localTargetDataClient.saveResolvedTiles(sourceCollection, parameters.targetStack, z);
 
-                return sourceCollection.getTileCount();
+                processedTileCount += sourceCollection.getTileCount();
             }
+
+            return processedTileCount;
         };
 
-        final JavaRDD<Integer> rddTileCounts = rddZValues.map(copyFunction);
+        final JavaRDD<Long> rddTileCounts = rddZValues.map(copyFunction);
 
-        final List<Integer> tileCountList = rddTileCounts.collect();
+        final List<Long> tileCountList = rddTileCounts.collect();
         long total = 0;
-        for (final Integer tileCount : tileCountList) {
+        for (final Long tileCount : tileCountList) {
             total += tileCount;
         }
 
