@@ -1,8 +1,8 @@
 package org.janelia.render.service.dao;
 
 import com.mongodb.BasicDBList;
-import com.mongodb.DuplicateKeyException;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.QueryOperators;
 import com.mongodb.bulk.BulkWriteResult;
@@ -2060,8 +2060,8 @@ public class RenderDao {
                 } else {
                     insertCount++;
                 }
-            } catch (final DuplicateKeyException e) {
-                LOG.warn("duplicate key exception thrown for upsert, retrying operation ...", e);
+            } catch (final MongoException e) {
+                LOG.warn("possible duplicate key exception thrown for upsert, retrying operation ...", e);
 
                 result = transformCollection.replaceOne(query,
                                                         transformSpecObject,
