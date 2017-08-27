@@ -2,3 +2,10 @@ deploy
 htmlcov
 test-reports
 Dockerfile
+**/target
+.idea
+.settings
+.vscode
+**/.settings
+Dockerfile
+.git
