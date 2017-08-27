@@ -33,7 +33,8 @@ RUN  curl ${SLF4J_URL} | tar xz && \
  rm -rf logback-${LOGBACK_VERSION} &&\
  rm -rf v${SWAGGER_UI_VERSION} 
 
-# expose the render port
+COPY src/main/scripts/fix_swagger.sh ${SWAGGER_UI_DEPLOY_DIR}
+RUN cd ${SWAGGER_UI_DEPLOY_DIR} && ./fix_swagger.sh
 EXPOSE 8080
 
 #ENV PATH $JAVA_HOME/bin:$PATH
