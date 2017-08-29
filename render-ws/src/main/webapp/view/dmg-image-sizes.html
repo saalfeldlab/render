@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!--suppress ALL -->
+<html>
+  <head>
+
+    <style>
+      th, td {
+        width: 25px;
+        height: 25px;
+        text-align: right;
+      }
+      td.error {
+        width: 600px;
+        height: 25px;
+        text-align: left;
+        color: red;
+      }
+    </style>
+
+    <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
+    <script type="text/javascript" src="../script/janelia-render.js"></script>
+    <script type="text/javascript" src="../script/dmg-image-sizes.js"></script>
+
+    <!--
+
+    Default setup assumes same jetty server is exposing DMG filesystem using a
+    [jetty_base]/webapps/dmg/WEB-INF/web.xml file like this:
+
+    <web-app>
+      <display-name>DMG</display-name>
+      <servlet>
+        <servlet-name>Default</servlet-name>
+        <servlet-class> org.eclipse.jetty.servlet.DefaultServlet </servlet-class>
+        <init-param> <param-name>dirAllowed</param-name> <param-value>true</param-value> </init-param>
+        <init-param> <param-name>aliases</param-name> <param-value>true</param-value> </init-param>
+        <init-param> <param-name>resourceBase</param-name> <param-value>/nrs/flyTEM/dmg</param-value> </init-param>
+      </servlet>
+      <servlet-mapping>
+        <servlet-name>Default</servlet-name>
+        <url-pattern>/*</url-pattern>
+      </servlet-mapping>
+    </web-app>
+
+    -->
+
+    <script type="text/javascript">
+      $( document ).ready(function() {
+        // assumes
+        var queryParameters = new JaneliaQueryParameters();
+        var baseDmgUrl = queryParameters.get('baseDmgUrl', '/dmg/FAFB00/v14_align_tps_20170818/8192x8192/0/');
+        new DmgImageSizesView(baseDmgUrl);
+      });
+    </script>
+  </head>
+  <body>
+
+  <h3>DMG Image Sizes (MB)</h3>
+
+  <div>
+    <p>
+      Enter layer number and click 'Show' to display grid of image sizes (in MB).<br/>
+      'Prev' and 'Next' buttons will decrement/increment the layer number.<br/>
+      Click on specific row/column links to display image in another tab.
+    </p>
+    <p>
+      <label for="layerNumber">Layer Number:</label>
+      <input type="text" id="layerNumber" value="1">
+      <button id="showLayerButton">Show</button>
+      <button id="prevLayerButton">Prev</button>
+      <button id="nextLayerButton">Next</button>
+    </p>
+  </div>
+
+  <div>
+    <table id="image-grid">
+      <tbody></tbody>
+    </table>
+  </div>
+
+  </body>
+</html>
+
+
