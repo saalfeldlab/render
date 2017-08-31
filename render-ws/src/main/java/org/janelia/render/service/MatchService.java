@@ -2,8 +2,6 @@ package org.janelia.render.service;
 
 import com.mongodb.MongoClient;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -18,7 +16,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -182,13 +179,8 @@ public class MatchService {
 
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
-        final StreamingOutput responseOutput = new StreamingOutput() {
-            @Override
-            public void write(final OutputStream output)
-                    throws IOException, WebApplicationException {
-                matchDao.writeMatchesWithPGroup(collectionId, mergeCollectionIdList, pGroupId, output);
-            }
-        };
+        final StreamingOutput responseOutput =
+                output -> matchDao.writeMatchesWithPGroup(collectionId, mergeCollectionIdList, pGroupId, output);
 
         return streamResponse(responseOutput);
     }
@@ -214,13 +206,8 @@ public class MatchService {
 
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
-        final StreamingOutput responseOutput = new StreamingOutput() {
-            @Override
-            public void write(final OutputStream output)
-                    throws IOException, WebApplicationException {
-                matchDao.writeMatchesWithinGroup(collectionId, mergeCollectionIdList, groupId, output);
-            }
-        };
+        final StreamingOutput responseOutput =
+                output -> matchDao.writeMatchesWithinGroup(collectionId, mergeCollectionIdList, groupId, output);
 
         return streamResponse(responseOutput);
     }
@@ -246,13 +233,8 @@ public class MatchService {
 
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
-        final StreamingOutput responseOutput = new StreamingOutput() {
-            @Override
-            public void write(final OutputStream output)
-                    throws IOException, WebApplicationException {
-                matchDao.writeMatchesOutsideGroup(collectionId, mergeCollectionIdList, groupId, output);
-            }
-        };
+        final StreamingOutput responseOutput =
+                output -> matchDao.writeMatchesOutsideGroup(collectionId, mergeCollectionIdList, groupId, output);
 
         return streamResponse(responseOutput);
     }
@@ -279,13 +261,8 @@ public class MatchService {
 
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
-        final StreamingOutput responseOutput = new StreamingOutput() {
-            @Override
-            public void write(final OutputStream output)
-                    throws IOException, WebApplicationException {
-                matchDao.writeMatchesBetweenGroups(collectionId, mergeCollectionIdList, pGroupId, qGroupId, output);
-            }
-        };
+        final StreamingOutput responseOutput =
+                output -> matchDao.writeMatchesBetweenGroups(collectionId, mergeCollectionIdList, pGroupId, qGroupId, output);
 
         return streamResponse(responseOutput);
     }
@@ -314,13 +291,8 @@ public class MatchService {
 
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
-        final StreamingOutput responseOutput = new StreamingOutput() {
-            @Override
-            public void write(final OutputStream output)
-                    throws IOException, WebApplicationException {
-                matchDao.writeMatchesBetweenObjects(collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId, qId, output);
-            }
-        };
+        final StreamingOutput responseOutput =
+                output -> matchDao.writeMatchesBetweenObjects(collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId, qId, output);
 
         return streamResponse(responseOutput);
     }
@@ -347,13 +319,8 @@ public class MatchService {
 
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
-        final StreamingOutput responseOutput = new StreamingOutput() {
-            @Override
-            public void write(final OutputStream output)
-                    throws IOException, WebApplicationException {
-                matchDao.writeMatchesBetweenObjectandGroup(collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId, output);
-            }
-        };
+        final StreamingOutput responseOutput =
+                output -> matchDao.writeMatchesBetweenObjectandGroup(collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId, output);
 
         return streamResponse(responseOutput);
     }
@@ -380,15 +347,40 @@ public class MatchService {
 
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
-        final StreamingOutput responseOutput = new StreamingOutput() {
-            @Override
-            public void write(final OutputStream output)
-                    throws IOException, WebApplicationException {
-                matchDao.writeMatchesInvolvingObject(collectionId, mergeCollectionIdList, groupId, id, output);
-            }
-        };
+        final StreamingOutput responseOutput =
+                output -> matchDao.writeMatchesInvolvingObject(collectionId, mergeCollectionIdList, groupId, id, output);
 
         return streamResponse(responseOutput);
+    }
+
+    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/id/{id}")
+    @DELETE
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Delete matches from or to a specific object",
+            notes = "Delete all matches from or to a specific tile.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public Response deleteMatchesInvolvingObject(@PathParam("owner") final String owner,
+                                                 @PathParam("matchCollection") final String matchCollection,
+                                                 @PathParam("groupId") final String groupId,
+                                                 @PathParam("id") final String id) {
+
+        LOG.info("deleteMatchesInvolvingObject: entry, owner={}, matchCollection={}, groupId={}, id={}",
+                 owner, matchCollection, groupId, id);
+
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+
+        Response response = null;
+        try {
+            matchDao.removeMatchesInvolvingObject(collectionId, groupId, id);
+            response = Response.ok().build();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return response;
     }
 
     @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")

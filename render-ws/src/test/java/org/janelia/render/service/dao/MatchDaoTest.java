@@ -250,6 +250,25 @@ public class MatchDaoTest {
                               sourceId.equals(canvasMatches.getqId()) );
         }
     }
+
+    @Test
+    public void testRemoveMatchesInvolvingObject() throws Exception {
+
+        // "pGroupId": "section0", "pId": "tile0.1", "qGroupId": "section1", "qId": "tile1.1",
+        final String sourceId = "tile1.1";
+
+        dao.removeMatchesInvolvingObject(collectionId, groupId, sourceId);
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        dao.writeMatchesInvolvingObject(collectionId, null, groupId, sourceId, outputStream);
+
+        final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
+
+        Assert.assertEquals("invalid number of matches returned",
+                            0, canvasMatchesList.size());
+    }
+
     @Test
     public void testWriteMatchesInvolvingObjectAndGroup() throws Exception {
 

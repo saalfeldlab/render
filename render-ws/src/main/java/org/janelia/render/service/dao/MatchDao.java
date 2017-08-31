@@ -220,24 +220,46 @@ public class MatchDao {
         writeMatches(collectionList, query, outputStream);
     }
     public void writeMatchesInvolvingObject(final MatchCollectionId collectionId,
-								           final List<MatchCollectionId> mergeCollectionIdList,
-								           final String groupId,
-								           final String id,
-								           final OutputStream outputStream)
-			throws IllegalArgumentException, IOException, ObjectNotFoundException {
+                                            final List<MatchCollectionId> mergeCollectionIdList,
+                                            final String groupId,
+                                            final String id,
+                                            final OutputStream outputStream)
+            throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
-			LOG.debug("writeMatchesInvolvingObject: entry, collectionId={}, mergeCollectionIdList={}, groupId={}, id={}",
-			collectionId, mergeCollectionIdList, groupId, id);
+        LOG.debug("writeMatchesInvolvingObject: entry, collectionId={}, mergeCollectionIdList={}, groupId={}, id={}",
+                  collectionId, mergeCollectionIdList, groupId, id);
 
-			final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
-			                                                          mergeCollectionIdList);
-			MongoUtil.validateRequiredParameter("groupId", groupId);
-			MongoUtil.validateRequiredParameter("id", id);
+        final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
+                                                                                         mergeCollectionIdList);
+        MongoUtil.validateRequiredParameter("groupId", groupId);
+        MongoUtil.validateRequiredParameter("id", id);
 
-			final Document query = getInvolvingObjectQuery(groupId,id);
+        final Document query = getInvolvingObjectQuery(groupId, id);
 
-			writeMatches(collectionList, query, outputStream);
-	}
+        writeMatches(collectionList, query, outputStream);
+    }
+
+    public void removeMatchesInvolvingObject(final MatchCollectionId collectionId,
+                                             final String groupId,
+                                             final String id)
+            throws IllegalArgumentException, ObjectNotFoundException {
+
+        LOG.debug("removeMatchesInvolvingObject: entry, collectionId={}, groupId={}, id={}",
+                  collectionId, groupId, id);
+
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+
+        MongoUtil.validateRequiredParameter("groupId", groupId);
+        MongoUtil.validateRequiredParameter("id", id);
+
+        final Document query = getInvolvingObjectQuery(groupId, id);
+
+        final DeleteResult result = collection.deleteMany(query);
+
+        LOG.debug("removeMatchesInvolvingObject: removed {} matches using {}.delete({})",
+                  result.getDeletedCount(), MongoUtil.fullName(collection), query.toJson());
+    }
+
     public void removeMatchesBetweenTiles(final MatchCollectionId collectionId,
                                           final String pGroupId,
                                           final String pId,
@@ -595,12 +617,12 @@ public class MatchDao {
     }
 
     private Document getInvolvingObjectQuery(final String groupId,final String id){
-    	 final List<Document> queryList = new ArrayList<>();
-         queryList.add(new Document("pGroupId", groupId).append(
-                 "pId", id));
-         queryList.add(new Document("qGroupId", groupId).append(
-                 "qId", id));
-         return new Document(QueryOperators.OR, queryList);
+        final List<Document> queryList = new ArrayList<>();
+        queryList.add(new Document("pGroupId", groupId).append(
+                "pId", id));
+        queryList.add(new Document("qGroupId", groupId).append(
+                "qId", id));
+        return new Document(QueryOperators.OR, queryList);
     }
 
     private Document getInvolvingObjectAndGroupQuery(final String groupId,final String id, final String qGroupId){
