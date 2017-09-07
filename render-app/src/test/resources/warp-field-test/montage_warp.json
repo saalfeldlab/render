@@ -1,0 +1,26 @@
+[
+  {
+    "tileId": "tier_0_canvas_A",
+    "layout": {
+      "sectionId": "1.0"
+    },
+    "z": 1.0,
+    "width": 1000.0,
+    "height": 1000.0,
+    "mipmapLevels": {
+      "0": {
+        "imageUrl": "src/test/resources/warp-field-test/montage.png"
+      }
+    },
+    "transforms": {
+      "type": "list",
+      "specList": [
+        {
+          "type": "leaf",
+          "className": "org.janelia.alignment.transform.AffineWarpFieldTransform",
+          "dataString": "1020.0 1020.0 2 2 none 1.0 1.0 1.0 1.0    0.0 0.0 0.0 0.0    0.0 0.0 0.0 0.0    1.0 1.0 1.0 1.0    0.0 0.0 0.0 20.0    0.0 0.0 0.0 20.0"
+        }
+      ]
+    }
+  }
+]

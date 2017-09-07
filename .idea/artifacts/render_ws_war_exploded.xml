@@ -15,6 +15,8 @@
           <element id="library" level="project" name="Maven: gov.nist.math:jama:1.0.3" />
           <element id="library" level="project" name="Maven: jama:jama:1.0.2" />
           <element id="library" level="project" name="Maven: net.imagej:ij:1.49m" />
+          <element id="library" level="project" name="Maven: net.imglib2:imglib2:4.2.1" />
+          <element id="library" level="project" name="Maven: net.imglib2:imglib2-realtransform:2.0.0-beta-37" />
           <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-databind:2.4.4" />
           <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-annotations:2.4.0" />
           <element id="library" level="project" name="Maven: com.google.guava:guava:18.0" />

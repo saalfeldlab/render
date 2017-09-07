@@ -38,7 +38,7 @@
     <orderEntry type="library" name="Maven: batik:batik:1.8" level="project" />
     <orderEntry type="library" name="Maven: org.apache.commons:commons-math3:3.2" level="project" />
     <orderEntry type="library" name="Maven: sc.fiji:legacy-imglib1:1.1.2-DEPRECATED" level="project" />
-    <orderEntry type="library" name="Maven: net.imglib2:imglib2:2.2.1" level="project" />
+    <orderEntry type="library" name="Maven: net.imglib2:imglib2:4.2.1" level="project" />
     <orderEntry type="library" name="Maven: net.imglib2:imglib2-ij:2.0.0-beta-30" level="project" />
     <orderEntry type="library" name="Maven: net.imagej:imagej-common:0.12.2" level="project" />
     <orderEntry type="library" name="Maven: net.imglib2:imglib2-roi:0.2.0" level="project" />

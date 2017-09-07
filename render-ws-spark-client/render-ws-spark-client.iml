@@ -28,6 +28,8 @@
         <SOURCES />
       </library>
     </orderEntry>
+    <orderEntry type="library" name="Maven: net.imglib2:imglib2:4.2.1" level="project" />
+    <orderEntry type="library" name="Maven: net.imglib2:imglib2-realtransform:2.0.0-beta-37" level="project" />
     <orderEntry type="library" name="Maven: com.google.guava:guava:18.0" level="project" />
     <orderEntry type="library" name="Maven: com.beust:jcommander:1.48" level="project" />
     <orderEntry type="library" name="Maven: sc.fiji:mpicbg-trakem2:1.2.2" level="project" />
