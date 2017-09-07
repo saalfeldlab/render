@@ -185,7 +185,7 @@ public class AffineWarpField
         final double[] s = { xScale, yScale };
 
         // TODO: is this right? should inverse scaling be done to translation?
-        final double[] shift = { 0.5 , 0.5 };
+        final double[] shift = { 0.5 * xScale , 0.5 * yScale };
 
         final ScaleAndTranslation scaleAndTranslation = new ScaleAndTranslation(s, shift);
 
