@@ -40,24 +40,28 @@ public class AffineWarpField
      * Constructs a simple 1x1 identify field.
      */
     public AffineWarpField() {
-        this(1, 1, 1, 1);
+        this(1, 1, 1, 1, getDefaultInterpolatorFactory());
     }
 
     /**
      * Constructs a field with the specified dimensions.
      * Each affine is initialized with identity values.
      *
-     * @param  width        pixel width of the warp field.
-     * @param  height       pixel height of the warp field.
-     * @param  rowCount     number of affine rows in the warp field.
-     * @param  columnCount  number of affine columns in the warp field.
+     * @param  width                pixel width of the warp field.
+     * @param  height               pixel height of the warp field.
+     * @param  rowCount             number of affine rows in the warp field.
+     * @param  columnCount          number of affine columns in the warp field.
+     * @param  interpolatorFactory  factory for desired interpolator instance.
      */
     public AffineWarpField(final double width,
                            final double height,
                            final int rowCount,
-                           final int columnCount)
+                           final int columnCount,
+                           final InterpolatorFactory<RealComposite<DoubleType>, RandomAccessible<RealComposite<DoubleType>>> interpolatorFactory)
             throws IllegalArgumentException {
-        this(width, height, rowCount, columnCount, getDefaultValues(rowCount, columnCount));
+        this(width, height, rowCount, columnCount,
+             getDefaultValues(rowCount, columnCount),
+             interpolatorFactory);
     }
 
     /**
@@ -82,11 +86,12 @@ public class AffineWarpField
      *            0,     0,     0,    29           m12
      * </pre>
      *
-     * @param  width        pixel width of the warp field.
-     * @param  height       pixel height of the warp field.
-     * @param  rowCount     number of affine rows in the warp field.
-     * @param  columnCount  number of affine columns in the warp field.
-     * @param  values       affine values with row-column-affine ordering (see example above).
+     * @param  width                pixel width of the warp field.
+     * @param  height               pixel height of the warp field.
+     * @param  rowCount             number of affine rows in the warp field.
+     * @param  columnCount          number of affine columns in the warp field.
+     * @param  values               affine values with row-column-affine ordering (see example above).
+     * @param  interpolatorFactory  factory for desired interpolator instance.
      *
      * @throws IllegalArgumentException
      *   if rowCount < 1, columnCount < 1, or there is any inconsistency between
@@ -96,7 +101,8 @@ public class AffineWarpField
                            final double height,
                            final int rowCount,
                            final int columnCount,
-                           final double[] values)
+                           final double[] values,
+                           final InterpolatorFactory<RealComposite<DoubleType>, RandomAccessible<RealComposite<DoubleType>>> interpolatorFactory)
             throws IllegalArgumentException {
 
         final int size = getSize(rowCount, columnCount);
@@ -112,9 +118,31 @@ public class AffineWarpField
         this.rowCount = rowCount;
         this.columnCount = columnCount;
         this.values = values;
+        this.interpolatorFactory = interpolatorFactory;
+    }
 
-        // we can expose this parameter later if necessary
-        this.interpolatorFactory = new NLinearInterpolatorFactory<>();
+    public double getWidth() {
+        return width;
+    }
+
+    public double getHeight() {
+        return height;
+    }
+
+    public int getRowCount() {
+        return rowCount;
+    }
+
+    public int getColumnCount() {
+        return columnCount;
+    }
+
+    public double[] getValues() {
+        return values;
+    }
+
+    public InterpolatorFactory<RealComposite<DoubleType>, RandomAccessible<RealComposite<DoubleType>>> getInterpolatorFactory() {
+        return interpolatorFactory;
     }
 
     /**
@@ -155,7 +183,6 @@ public class AffineWarpField
         int valuesIndex;
         for (int i = 0; i < VALUES_PER_AFFINE; i++) {
             valuesIndex = startIndex + (i * affineCount);
-            // TODO: offset translation elements (4,5) based on row and column?
             values[valuesIndex] = affineMatrixElements[i];
         }
     }
@@ -182,12 +209,10 @@ public class AffineWarpField
 
         final double xScale = getXScale();
         final double yScale = getYScale();
-        final double[] s = { xScale, yScale };
-
-        // TODO: is this right? should inverse scaling be done to translation?
+        final double[] scale = { xScale, yScale };
         final double[] shift = { 0.5 * xScale , 0.5 * yScale };
 
-        final ScaleAndTranslation scaleAndTranslation = new ScaleAndTranslation(s, shift);
+        final ScaleAndTranslation scaleAndTranslation = new ScaleAndTranslation(scale, shift);
 
         final RealRandomAccessible<RealComposite<DoubleType>> stretchedCoefficients =
                 RealViews.transform(coefficients, scaleAndTranslation);
@@ -196,95 +221,21 @@ public class AffineWarpField
     }
 
     /**
-     * Serializes this object to a string value and appends it to the specified string.
-     */
-    public void toDataString(final StringBuilder data) {
-        data.append(width).append(' ').append(height).append(' ');
-        data.append(rowCount).append(' ').append(columnCount).append(' ');
-        if (values.length < 64) { // skip encoding for smaller fields to simplify visual inspection and testing
-            data.append(NO_ENCODING);
-            for (final double value : values) {
-                data.append(' ').append(value);
-            }
-        } else {
-            data.append(BASE_64_ENCODING).append(' ').append(DoubleArrayConverter.encodeBase64(values));
-        }
-    }
-
-    /**
      * @return a deep copy of this field that is safe for other uses.
      */
     public AffineWarpField getCopy() {
         final double[] valuesCopy = Arrays.copyOf(values, values.length);
-        return new AffineWarpField(width, height, rowCount, columnCount, valuesCopy);
+        return new AffineWarpField(width, height, rowCount, columnCount, valuesCopy, interpolatorFactory);
     }
 
     /**
-     * De-serializes a warp field instance from the specified data string.
-     *
-     * @param  data  string serialization of a warp field.
-     *
-     * @return warp field constructed from specified data string.
-     *
-     * @throws IllegalArgumentException
-     *   if any errors occur during parsing.
+     * @return the default interpolator factory for warp field instances.
      */
-    public static AffineWarpField fromDataString(final String data) throws IllegalArgumentException {
-
-        final AffineWarpField affineWarpField;
-
-        final String[] fields = data.split("\\s+");
-
-        final int valuesStartIndex = 5;
-
-        if (fields.length > valuesStartIndex) {
-
-            final double width = Double.parseDouble(fields[0]);
-            final double height = Double.parseDouble(fields[1]);
-            final int rowCount = Integer.parseInt(fields[2]);
-            final int columnCount = Integer.parseInt(fields[3]);
-            final String encoding = fields[4];
-
-            final int size = getSize(rowCount, columnCount);
-            final double[] values;
-
-            if (BASE_64_ENCODING.equals(encoding)) {
-
-                try {
-                    values = DoubleArrayConverter.decodeBase64(fields[valuesStartIndex], size);
-                } catch (final Exception e) {
-                    throw new IllegalArgumentException("failed to decode warp field values", e);
-                }
-
-            } else {
-
-                final int expectedSize = size + valuesStartIndex;
-
-                if (fields.length == expectedSize) {
-
-                    values = new double[size];
-
-                    for (int i = valuesStartIndex; i < fields.length; i++) {
-                        values[i - valuesStartIndex] = Double.parseDouble(fields[i]);
-                    }
-
-                } else {
-                    throw new IllegalArgumentException("expected warp field data to contain " + expectedSize +
-                                                       " fields but found " + fields.length + " instead");
-                }
-
-            }
-
-            affineWarpField = new AffineWarpField(width, height, rowCount, columnCount, values);
-
-        } else {
-            throw new IllegalArgumentException("warp field data must contain at least " + valuesStartIndex + " fields");
-        }
-
-        return affineWarpField;
+    public static InterpolatorFactory<RealComposite<DoubleType>, RandomAccessible<RealComposite<DoubleType>>> getDefaultInterpolatorFactory() {
+        return new NLinearInterpolatorFactory<>();
     }
 
-    private static int getSize(final int rowCount,
+    public static int getSize(final int rowCount,
                                final int columnCount) {
         return rowCount * columnCount * VALUES_PER_AFFINE;
     }
@@ -316,6 +267,4 @@ public class AffineWarpField
     }
 
     private static final int VALUES_PER_AFFINE = 6;
-    private static final String BASE_64_ENCODING = "base64";
-    private static final String NO_ENCODING = "none";
 }

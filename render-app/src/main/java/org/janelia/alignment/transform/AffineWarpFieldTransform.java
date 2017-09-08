@@ -2,7 +2,9 @@ package org.janelia.alignment.transform;
 
 import mpicbg.trakem2.transform.CoordinateTransform;
 
+import net.imglib2.RandomAccessible;
 import net.imglib2.RealRandomAccess;
+import net.imglib2.interpolation.InterpolatorFactory;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.view.composite.RealComposite;
 
@@ -30,7 +32,7 @@ public class AffineWarpFieldTransform
             throws IllegalArgumentException {
 
         this.affineWarpField = affineWarpField;
-        this.warpFieldAccessor = affineWarpField.getAccessor();
+        setWarpFieldAccessor();
     }
 
     @Override
@@ -61,8 +63,8 @@ public class AffineWarpFieldTransform
 
     @Override
     public void init(final String data) throws NumberFormatException {
-        affineWarpField = AffineWarpField.fromDataString(data);
-        warpFieldAccessor = affineWarpField.getAccessor();
+        affineWarpField = deserializeWarpField(data);
+        setWarpFieldAccessor();
     }
 
     @Override
@@ -71,14 +73,14 @@ public class AffineWarpFieldTransform
         xml.append(indent).append("<ict_transform class=\"")
                 .append(this.getClass().getCanonicalName())
                 .append("\" data=\"");
-        affineWarpField.toDataString(xml);
+        serializeWarpField(affineWarpField, xml);
         return xml.append("\"/>").toString();
     }
 
     @Override
     public String toDataString() {
         final StringBuilder data = new StringBuilder();
-        affineWarpField.toDataString(data);
+        serializeWarpField(affineWarpField, data);
         return data.toString();
     }
 
@@ -86,5 +88,148 @@ public class AffineWarpFieldTransform
     public CoordinateTransform copy() {
         return new AffineWarpFieldTransform(affineWarpField.getCopy());
     }
+
+    private void setWarpFieldAccessor() throws IllegalArgumentException {
+        // set accessor and validate interpolator factory instance
+        try {
+            warpFieldAccessor = affineWarpField.getAccessor();
+        } catch (final Exception e) {
+            final String factoryClassName = affineWarpField.getInterpolatorFactory().getClass().getCanonicalName();
+            throw new IllegalArgumentException("interpolator factory class '" + factoryClassName + "' does not implement required interface", e);
+        }
+    }
+
+    /**
+     * Appends serialization of the specified warp field to the specified data string.
+     *
+     * @param  affineWarpField  field to serialize.
+     * @param  data             target data string.
+     */
+    private static void serializeWarpField(final AffineWarpField affineWarpField,
+                                           final StringBuilder data) {
+        data.append(affineWarpField.getWidth()).append(' ').append(affineWarpField.getHeight()).append(' ');
+        data.append(affineWarpField.getRowCount()).append(' ').append(affineWarpField.getColumnCount()).append(' ');
+        final InterpolatorFactory<RealComposite<DoubleType>, RandomAccessible<RealComposite<DoubleType>>> factory =
+                affineWarpField.getInterpolatorFactory();
+        data.append(factory.getClass().getCanonicalName()).append(' ');
+        final double[] values = affineWarpField.getValues();
+        if (values.length < 64) { // skip encoding for smaller fields to simplify visual inspection and testing
+            data.append(NO_ENCODING);
+            for (final double value : values) {
+                data.append(' ').append(value);
+            }
+        } else {
+            data.append(BASE_64_ENCODING).append(' ').append(DoubleArrayConverter.encodeBase64(values));
+        }
+    }
+
+    /**
+     * De-serializes a warp field instance from the specified data string.
+     *
+     * Note that before using instance, interpolator factory must be validated by
+     * calling {@link AffineWarpField#getAccessor}.
+     *
+     * @param  data  string serialization of a warp field.
+     *
+     * @return warp field constructed from specified data string.
+     *
+     * @throws IllegalArgumentException
+     *   if any errors occur during parsing.
+     */
+    private static AffineWarpField deserializeWarpField(final String data) throws IllegalArgumentException {
+
+        final AffineWarpField affineWarpField;
+
+        final String[] fields = data.split("\\s+");
+
+        final int valuesStartIndex = 6;
+
+        if (fields.length > valuesStartIndex) {
+
+            final double width = Double.parseDouble(fields[0]);
+            final double height = Double.parseDouble(fields[1]);
+            final int rowCount = Integer.parseInt(fields[2]);
+            final int columnCount = Integer.parseInt(fields[3]);
+            final InterpolatorFactory<RealComposite<DoubleType>, RandomAccessible<RealComposite<DoubleType>>>
+                    interpolatorFactory =
+                    buildInterpolatorFactoryInstance(fields[4]);
+            final String encoding = fields[5];
+
+            final int size = AffineWarpField.getSize(rowCount, columnCount);
+            final double[] values;
+
+            if (BASE_64_ENCODING.equals(encoding)) {
+
+                try {
+                    values = DoubleArrayConverter.decodeBase64(fields[valuesStartIndex], size);
+                } catch (final Exception e) {
+                    throw new IllegalArgumentException("failed to decode warp field values", e);
+                }
+
+            } else {
+
+                final int expectedSize = size + valuesStartIndex;
+
+                if (fields.length == expectedSize) {
+
+                    values = new double[size];
+
+                    for (int i = valuesStartIndex; i < fields.length; i++) {
+                        values[i - valuesStartIndex] = Double.parseDouble(fields[i]);
+                    }
+
+                } else {
+                    throw new IllegalArgumentException("expected warp field data to contain " + expectedSize +
+                                                       " fields but found " + fields.length + " instead");
+                }
+
+            }
+
+            affineWarpField = new AffineWarpField(width, height, rowCount, columnCount, values, interpolatorFactory);
+
+        } else {
+            throw new IllegalArgumentException("warp field data must contain at least " + valuesStartIndex + " fields");
+        }
+
+        return affineWarpField;
+    }
+
+    /**
+     * @return a factory instance for the specified class name.
+     *         Note that instance may not completely implement interface because type erasure prevents this check.
+     *
+     * @throws IllegalArgumentException
+     *   if an instance cannot be created.
+     */
+    private static InterpolatorFactory<RealComposite<DoubleType>, RandomAccessible<RealComposite<DoubleType>>> buildInterpolatorFactoryInstance(final String className)
+            throws IllegalArgumentException {
+
+        final Class clazz;
+        try {
+            clazz = Class.forName(className);
+        } catch (final ClassNotFoundException e) {
+            throw new IllegalArgumentException("class '" + className + "' cannot be found", e);
+        }
+
+        final Object instance;
+        try {
+            instance = clazz.newInstance();
+        } catch (final Exception e) {
+            throw new IllegalArgumentException("failed to create instance of '" + className + "'", e);
+        }
+
+        final InterpolatorFactory<RealComposite<DoubleType>, RandomAccessible<RealComposite<DoubleType>>> factory;
+        try {
+            //noinspection unchecked
+            factory = (InterpolatorFactory<RealComposite<DoubleType>, RandomAccessible<RealComposite<DoubleType>>>) instance;
+        } catch (final Exception e) {
+            throw new IllegalArgumentException("class '" + className + "' does not implement required interface", e);
+        }
+
+        return factory;
+    }
+
+    private static final String BASE_64_ENCODING = "base64";
+    private static final String NO_ENCODING = "none";
 
 }

@@ -35,7 +35,8 @@ public class AffineWarpFieldTransformTest {
     @Test
     public void testPersistence() throws Exception {
 
-        final AffineWarpField affineWarpField = new AffineWarpField(1000, 1000, 2, 2);
+        final AffineWarpField affineWarpField =
+                new AffineWarpField(1000, 1000, 2, 2, AffineWarpField.getDefaultInterpolatorFactory());
         affineWarpField.set(0, 0, new double[] {1, 0, 0, 1,  0, 0});
         affineWarpField.set(0, 1, new double[] {1, 0, 0, 1,  0, 0});
         affineWarpField.set(1, 0, new double[] {1, 0, 0, 1,  0, 0});
@@ -64,6 +65,15 @@ public class AffineWarpFieldTransformTest {
 
     public static void main(final String[] args)
             throws Exception {
+
+        // interpolator factory options:
+        //   FloorInterpolatorFactory
+        //   NearestNeighborInterpolatorFactory
+        //   NLinearInterpolatorFactory
+
+        // invalid factory types:
+        //   LanczosInterpolatorFactory
+        //   NLinearInterpolatorARGBFactory
 
         final String exampleArgs =
                 "--tile_spec_url src/test/resources/warp-field-test/montage_warp.json " + // montage_no_warp.json
