@@ -63,10 +63,10 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--tile_spec_url", description = "URL to JSON tile spec", required = false)
     private String tileSpecUrl;
 
-    @Parameter(names = "--res", description = " Mesh resolution, specified by the desired size of a mesh cell (triangle) in pixels", required = false)
+    @Parameter(names = {"--res", "--meshCellSize"}, description = " Mesh resolution, specified by the desired size of a mesh cell (triangle) in pixels", required = false)
     public double meshCellSize;
 
-    @Parameter(names = "--min_res", description = " Miinimal mesh resolution, specified by the desired size of a mesh cell (triangle) in pixels", required = false)
+    @Parameter(names = {"--min_res", "--minMeshCellSize"}, description = " Minimal mesh resolution, specified by the desired size of a mesh cell (triangle) in pixels", required = false)
     public double minMeshCellSize = 0;
 
     @Parameter(names = "--in", description = "Path to the input image if any", required = false)
@@ -197,6 +197,7 @@ public class RenderParameters implements Serializable {
         this.excludeMask = false;
         this.doFilter = false;
         this.backgroundRGBColor = null;
+        this.channels = null;
         this.parametersUrl = null;
 
         this.tileSpecs = new ArrayList<>();
@@ -730,6 +731,10 @@ public class RenderParameters implements Serializable {
             sb.append("backgroundRGBColor=").append(backgroundRGBColor).append(", ");
         }
 
+        if (channels != null) {
+            sb.append("channels=").append(channels).append(", ");
+        }
+
         if (in != null) {
             sb.append("in='").append(in).append("', ");
         }
@@ -834,6 +839,7 @@ public class RenderParameters implements Serializable {
             quality = mergedValue(quality, baseParameters.quality, DEFAULT_QUALITY);
             doFilter = mergedValue(doFilter, baseParameters.doFilter, false);
             backgroundRGBColor = mergedValue(backgroundRGBColor, baseParameters.backgroundRGBColor);
+            channels = mergedValue(channels, baseParameters.channels);
             mipmapPathBuilder = mergedValue(mipmapPathBuilder, baseParameters.mipmapPathBuilder);
 
             tileSpecs.addAll(baseParameters.tileSpecs);
