@@ -19,19 +19,11 @@ package org.janelia.alignment;
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
-import java.util.List;
-import java.util.Set;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
-import org.janelia.alignment.mipmap.AveragedChannelMipmapSource;
-import org.janelia.alignment.mipmap.MipmapSource;
-import org.janelia.alignment.mipmap.RenderedCanvasMipmapSource;
-import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,85 +72,98 @@ import org.slf4j.LoggerFactory;
  */
 public class ArgbRenderer {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ArgbRenderer.class);
-
-    private ArgbRenderer() {
-    }
-
-    public static void render(final RenderParameters params,
+    /**
+     * Constructs a renderer instance and renders to the specified image.
+     *
+     * @param  renderParameters     specifies what to render.
+     * @param  targetImage          target for rendered result.
+     * @param  imageProcessorCache  cache of source tile data.
+     *
+     * @throws IllegalArgumentException
+     *   if rendering fails for any reason.
+     */
+    public static void render(final RenderParameters renderParameters,
                               final BufferedImage targetImage,
                               final ImageProcessorCache imageProcessorCache)
             throws IllegalArgumentException {
+        Renderer.renderToBufferedImage(renderParameters, targetImage, imageProcessorCache, CONVERTER);
+    }
 
-        final long tileLoopStart = System.currentTimeMillis();
+    /**
+     * Constructs a renderer instance and renders an image optionally pre-filled with noise.
+     *
+     * @param  renderParameters  specifies what to render.
+     * @param  fillWithNoise     indicates whether image should be filled with noise before rendering.
+     *
+     * @return the rendered image.
+     */
+    public static BufferedImage renderWithNoise(final RenderParameters renderParameters,
+                                                final boolean fillWithNoise) {
 
-        final List<TileSpec> tileSpecs = params.getTileSpecs();
+        LOG.info("renderWithNoise: entry, fillWithNoise={}", fillWithNoise);
 
-        LOG.debug("render: entry, processing {} tile specifications, numberOfThreads={}",
-                  tileSpecs.size(), params.getNumberOfThreads());
+        final BufferedImage bufferedImage = renderParameters.openTargetImage();
 
-        final int targetWidth = targetImage.getWidth();
-        final int targetHeight = targetImage.getHeight();
-
-        final RenderedCanvasMipmapSource renderedCanvasMipmapSource =
-                new RenderedCanvasMipmapSource(params, imageProcessorCache);
-
-        final MipmapSource canvas;
-        final Set<String> channelNames = params.getChannelNames();
-        final int numberOfTargetChannels = channelNames.size();
-        if (numberOfTargetChannels > 1) {
-            canvas = new AveragedChannelMipmapSource("averaged_canvas",
-                                                     renderedCanvasMipmapSource,
-                                                     params.getChannelNamesAndWeights());
-        }  else {
-            canvas = renderedCanvasMipmapSource;
+        if (fillWithNoise) {
+            final ByteProcessor ip = new ByteProcessor(bufferedImage.getWidth(), bufferedImage.getHeight());
+            mpicbg.ij.util.Util.fillWithNoise(ip);
+            bufferedImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
         }
 
-        final ChannelMap canvasChannels = canvas.getChannels(0);
+        ArgbRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
 
-        final long drawImageStart = System.currentTimeMillis();
+        LOG.info("renderWithNoise: exit");
 
-        final Graphics2D targetGraphics = targetImage.createGraphics();
+        return bufferedImage;
+    }
 
-        final Integer backgroundRGBColor = params.getBackgroundRGBColor();
-        if (backgroundRGBColor != null) {
-            targetGraphics.setBackground(new Color(backgroundRGBColor));
-            targetGraphics.clearRect(0, 0, targetWidth, targetHeight);
+    /**
+     * Constructs a renderer instance and saves the rendered result to disk.
+     * This is basically the 'main' method but it has been extracted so that it can be more easily used for tests.
+     *
+     * @param  args  command line arguments for constructing a {@link RenderParameters} instance.
+     *
+     * @throws Exception
+     *   if rendering fails for any reason.
+     */
+    public static void renderUsingCommandLineArguments(final String[] args)
+            throws Exception {
+        Renderer.renderUsingCommandLineArguments(args, OPENER, CONVERTER);
+    }
+
+    public static void main(final String[] args) {
+
+        try {
+            renderUsingCommandLineArguments(args);
+        } catch (final Throwable t) {
+            LOG.error("main: caught exception", t);
+            System.exit(1);
         }
-
-        if ((tileSpecs.size() > 0) && (canvasChannels.size() > 0)) {
-
-            final ImageProcessorWithMasks worldTarget = canvasChannels.getFirstChannel();
-            final BufferedImage image = targetToARGBImage(worldTarget,
-                                                          params.binaryMask());
-            targetGraphics.drawImage(image, 0, 0, null);
-        }
-
-        targetGraphics.dispose();
-
-        final long drawImageStop = System.currentTimeMillis();
-
-        LOG.debug("render: exit, {} tiles processed in {} milliseconds, draw image:{}",
-                  tileSpecs.size(),
-                  System.currentTimeMillis() - tileLoopStart,
-                  drawImageStop - drawImageStart);
 
     }
 
-    public static BufferedImage targetToARGBImage(final ImageProcessorWithMasks target,
+    /**
+     * Converts the processor to an ARGB image.
+     *
+     * @param  renderedImageProcessorWithMasks  processor to convert.
+     * @param  binaryMask                       indicates whether a binary mask should be applied.
+     *
+     * @return the converted image.
+     */
+    public static BufferedImage targetToARGBImage(final ImageProcessorWithMasks renderedImageProcessorWithMasks,
                                                   final boolean binaryMask) {
 
         // convert to 24bit RGB
-        final ColorProcessor cp = target.ip.convertToColorProcessor();
+        final ColorProcessor cp = renderedImageProcessorWithMasks.ip.convertToColorProcessor();
 
         // set alpha channel
         final int[] cpPixels = (int[]) cp.getPixels();
         final byte[] alphaPixels;
 
-        if (target.mask != null) {
-            alphaPixels = (byte[]) target.mask.getPixels();
-        } else if (target.outside != null) {
-            alphaPixels = (byte[]) target.outside.getPixels();
+        if (renderedImageProcessorWithMasks.mask != null) {
+            alphaPixels = (byte[]) renderedImageProcessorWithMasks.mask.getPixels();
+        } else if (renderedImageProcessorWithMasks.outside != null) {
+            alphaPixels = (byte[]) renderedImageProcessorWithMasks.outside.getPixels();
         } else {
             alphaPixels = null;
         }
@@ -187,90 +192,11 @@ public class ArgbRenderer {
         return image;
     }
 
-    public static BufferedImage renderWithNoise(final RenderParameters renderParameters,
-                                                final boolean fillWithNoise) {
+    private static final Logger LOG = LoggerFactory.getLogger(ArgbRenderer.class);
 
-        LOG.info("renderWithNoise: entry, fillWithNoise={}", fillWithNoise);
+    private static final Renderer.ImageOpener OPENER = RenderParameters::openTargetImage;
 
-        final BufferedImage bufferedImage = renderParameters.openTargetImage();
-        final ByteProcessor ip = new ByteProcessor(bufferedImage.getWidth(), bufferedImage.getHeight());
-
-        if (fillWithNoise) {
-            mpicbg.ij.util.Util.fillWithNoise(ip);
-            bufferedImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
-        }
-
-        ArgbRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
-
-        LOG.info("renderWithNoise: exit");
-
-        return bufferedImage;
-    }
-
-    public static void renderUsingCommandLineArguments(final String[] args)
-            throws Exception {
-
-        final long mainStart = System.currentTimeMillis();
-        long parseStop = mainStart;
-        long targetOpenStop = mainStart;
-        long saveStart = mainStart;
-        long saveStop = mainStart;
-
-        final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
-
-        if (params.displayHelp()) {
-
-            params.showUsage();
-
-        } else {
-
-            LOG.info("renderUsingCommandLineArguments: entry, params={}", params);
-
-            params.validate();
-
-            parseStop = System.currentTimeMillis();
-
-            final BufferedImage targetImage = params.openTargetImage();
-
-            targetOpenStop = System.currentTimeMillis();
-
-            final ImageProcessorCache imageProcessorCache = new ImageProcessorCache();
-            render(params,
-                   targetImage,
-                   imageProcessorCache);
-
-            saveStart = System.currentTimeMillis();
-
-            // save the modified image
-            final String outputPathOrUri = params.getOut();
-            final String outputFormat = outputPathOrUri.substring(outputPathOrUri.lastIndexOf('.') + 1);
-            Utils.saveImage(targetImage,
-                            outputPathOrUri,
-                            outputFormat,
-                            params.isConvertToGray(),
-                            params.getQuality());
-
-            saveStop = System.currentTimeMillis();
-        }
-
-        LOG.debug("renderUsingCommandLineArguments: processing took {} milliseconds (parse command:{}, open target:{}, render tiles:{}, save target:{})",
-                  saveStop - mainStart,
-                  parseStop - mainStart,
-                  targetOpenStop - parseStop,
-                  saveStart - targetOpenStop,
-                  saveStop - saveStart);
-
-    }
-
-    public static void main(final String[] args) {
-
-        try {
-            renderUsingCommandLineArguments(args);
-        } catch (final Throwable t) {
-            LOG.error("main: caught exception", t);
-            System.exit(1);
-        }
-
-    }
-
+    private static final Renderer.ProcessorWithMasksConverter CONVERTER =
+            (renderParameters, renderedImageProcessorWithMasks) -> targetToARGBImage(renderedImageProcessorWithMasks,
+                                                                                     renderParameters.binaryMask());
 }

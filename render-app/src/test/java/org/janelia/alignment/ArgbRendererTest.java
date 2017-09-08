@@ -341,7 +341,7 @@ public class ArgbRendererTest {
                             expectedDigestString, actualDigestString);
     }
 
-    private String getDigestString(final File file) throws Exception {
+    public static String getDigestString(final File file) throws Exception {
         final MessageDigest messageDigest = MessageDigest.getInstance("MD5");
         final FileInputStream fileInputStream = new FileInputStream(file);
         final DigestInputStream digestInputStream = new DigestInputStream(fileInputStream, messageDigest);
@@ -360,7 +360,7 @@ public class ArgbRendererTest {
         return sb.toString();
     }
 
-    private void deleteTestFile(final File file) {
+    public static void deleteTestFile(final File file) {
         if ((file != null) && file.exists()) {
             if (file.delete()) {
                 LOG.info("deleteTestFile: deleted " + file.getAbsolutePath());
