@@ -16,6 +16,8 @@
  */
 package org.janelia.alignment.spec;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
 import java.io.IOException;
@@ -341,6 +343,7 @@ public class TileSpec implements Serializable {
         this.height = height;
     }
 
+    @JsonIgnore
     public List<ChannelSpec> getAllChannels() {
         final List<ChannelSpec> channelList;
         if ((channels == null) || (channels.size() == 0)) {
@@ -382,6 +385,7 @@ public class TileSpec implements Serializable {
         channels.add(channelSpec);
     }
 
+    @JsonIgnore
     public Map.Entry<Integer, ImageAndMask> getFirstMipmapEntry() {
         final Map.Entry<Integer, ImageAndMask> firstEntry;
         if ((channels == null) || (channels.size() == 0)) {
@@ -409,6 +413,7 @@ public class TileSpec implements Serializable {
         return transforms;
     }
 
+    @JsonIgnore
     public TransformSpec getLastTransform() {
         TransformSpec lastTransform = null;
         if (hasTransforms()) {
@@ -465,6 +470,7 @@ public class TileSpec implements Serializable {
      * @throws IllegalArgumentException
      *   if the list cannot be generated.
      */
+    @JsonIgnore
     public CoordinateTransformList<CoordinateTransform> getTransformList()
             throws IllegalArgumentException {
 

@@ -1,5 +1,7 @@
 package org.janelia.alignment.spec;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.Map;
 import java.util.Set;
 
@@ -47,6 +49,7 @@ public class ReferenceTransformSpec extends TransformSpec {
         return refId;
     }
 
+    @JsonIgnore
     public String getEffectiveRefId() {
         if (effectiveRefId == null) {
             effectiveRefId = refId;
