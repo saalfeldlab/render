@@ -149,10 +149,8 @@ public class UrlMipmapSource
                 channels.put(firstChannelSpec.getName(), firstChannel);
 
                 if (channelSpecList.size() > 1) {
-                    final boolean firstChannelHasMask = (firstChannel.mask != null);
                     loadAdditionalChannels(imageProcessor.getWidth(),
                                            imageProcessor.getHeight(),
-                                           firstChannelHasMask,
                                            mipmapLevel,
                                            channels);
                 }
@@ -179,13 +177,11 @@ public class UrlMipmapSource
      *
      * @param  firstChannelWidth    first channel width (at requested mipmap level).
      * @param  firstChannelHeight   first channel height (at requested mipmap level).
-     * @param  firstChannelHasMask  indicates whether the first channel has a mask.
      * @param  mipmapLevel          requested mipmap level for all channels.
      * @param  channels             map of pixel data for all source channels.
      */
     private void loadAdditionalChannels(final int firstChannelWidth,
                                         final int firstChannelHeight,
-                                        final boolean firstChannelHasMask,
                                         final int mipmapLevel,
                                         final ChannelMap channels) {
 
@@ -234,28 +230,11 @@ public class UrlMipmapSource
             }
         }
 
-        // TODO: do we want to allow heterogeneous mask situations? pixel mappers currently expect homogeneous masks
 
-        // clean-up heterogeneous mask situations
-        boolean removeAllMasks = false;
-        for (final ImageProcessorWithMasks channel : channels.values()) {
-            if (firstChannelHasMask) {
-                if (channel.mask == null) {
-                    removeAllMasks = true;
-                    break;
-                }
-            } else if (channel.mask != null) {
-                removeAllMasks = true;
-                break;
-            }
-        }
-
-        if (removeAllMasks) {
-            LOG.warn("removing masks for {} because some channels have masks and others do not", getSourceName());
-            for (final ImageProcessorWithMasks channel : channels.values()) {
-                channel.mask = null;
-            }
-        }
+        // NOTE: The render pixel mappers expect all channels to either have a mask or not have a mask.
+        //       Previously in heterogeneous mask situations, we removed all masks to make this work.
+        //       Now in heterogeneous mask situations, the RenderedCanvasMipmapSource.mapPixels method creates
+        //       empty masks for any channels that are missing masks.
 
     }
 

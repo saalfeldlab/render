@@ -409,6 +409,20 @@ public class TileSpec implements Serializable {
         return ((transforms != null) && (transforms.size() > 0));
     }
 
+    /**
+     * @return true if this tile spec has at least one channel with a mask.
+     */
+    public boolean hasMasks() {
+        boolean hasMasks = false;
+        for (final ChannelSpec channelSpec : getAllChannels()) {
+            if (channelSpec.hasMask()) {
+                hasMasks = true;
+                break;
+            }
+        }
+        return hasMasks;
+    }
+
     public ListTransformSpec getTransforms() {
         return transforms;
     }

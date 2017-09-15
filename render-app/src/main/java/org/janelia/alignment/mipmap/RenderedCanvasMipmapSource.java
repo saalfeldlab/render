@@ -51,6 +51,7 @@ public class RenderedCanvasMipmapSource
     private final double levelZeroScale;
     private final int numberOfMappingThreads;
     private final boolean skipInterpolation;
+    private final boolean hasMasks;
     private final boolean binaryMask;
 
     /**
@@ -74,6 +75,7 @@ public class RenderedCanvasMipmapSource
              renderParameters.getScale(),
              renderParameters.getNumberOfThreads(),
              renderParameters.skipInterpolation(),
+             renderParameters.hasMasks(),
              renderParameters.binaryMask());
     }
 
@@ -92,6 +94,7 @@ public class RenderedCanvasMipmapSource
      * @param  levelZeroScale          scale factor for transformed components at mipmap level 0 of this canvas.
      * @param  numberOfMappingThreads  number of threads to use for pixel mapping.
      * @param  skipInterpolation       enable sloppy but fast rendering by skipping interpolation.
+     * @param  hasMasks                true if this canvas contains at least one source with a mask.
      * @param  binaryMask              render only 100% opaque pixels.
      */
     public RenderedCanvasMipmapSource(final String canvasName,
@@ -105,6 +108,7 @@ public class RenderedCanvasMipmapSource
                                       final double levelZeroScale,
                                       final int numberOfMappingThreads,
                                       final boolean skipInterpolation,
+                                      final boolean hasMasks,
                                       final boolean binaryMask) {
         this.canvasName = canvasName;
         this.channelNames = channelNames;
@@ -117,6 +121,7 @@ public class RenderedCanvasMipmapSource
         this.levelZeroScale = levelZeroScale;
         this.numberOfMappingThreads = numberOfMappingThreads;
         this.skipInterpolation = skipInterpolation;
+        this.hasMasks = hasMasks;
         this.binaryMask = binaryMask;
     }
 
@@ -177,6 +182,7 @@ public class RenderedCanvasMipmapSource
                       componentMipmapLevel,
                       renderTransformList,
                       meshCellSize,
+                      hasMasks,
                       binaryMask,
                       numberOfMappingThreads,
                       skipInterpolation,
@@ -302,6 +308,8 @@ public class RenderedCanvasMipmapSource
      * @param  mipmapLevel             source mipmap level.
      * @param  renderTransformList     list of transforms for the render context.
      * @param  meshCellSize            desired size of a mesh cell (triangle) in pixels.
+     * @param  canvasHasMasks          true if at least one source in the larger canvas being rendered has a mask
+     *                                 (even if this source does not have a mask).
      * @param  binaryMask              render only 100% opaque pixels.
      * @param  numberOfMappingThreads  number of threads to use for pixel mapping.
      * @param  skipInterpolation       enable sloppy but fast rendering by skipping interpolation.
@@ -311,6 +319,7 @@ public class RenderedCanvasMipmapSource
                                  final int mipmapLevel,
                                  final CoordinateTransformList<CoordinateTransform> renderTransformList,
                                  final double meshCellSize,
+                                 final boolean canvasHasMasks,
                                  final boolean binaryMask,
                                  final int numberOfMappingThreads,
                                  final boolean skipInterpolation,
@@ -324,11 +333,10 @@ public class RenderedCanvasMipmapSource
 
             // all channels should have same size, so we only need to look at the first channel
             final ImageProcessorWithMasks firstChannel = sourceChannels.getFirstChannel();
-            final boolean hasMask = (firstChannel.mask != null);
             final int mipmapWidth = firstChannel.ip.getWidth();
             final int mipmapHeight = firstChannel.ip.getHeight();
 
-            if (hasMask) {
+            if (canvasHasMasks) {
                 // add target mask for each channel if it does not already exist
                 for (final ImageProcessorWithMasks targetChannel : targetChannels.values()) {
                     if (targetChannel.mask == null) {
@@ -336,10 +344,19 @@ public class RenderedCanvasMipmapSource
                                                                targetChannel.ip.getHeight());
                     }
                 }
+
+                // add empty (inverted) source mask for each channel if it does not already exist
+                for (final ImageProcessorWithMasks sourceChannel : sourceChannels.values()) {
+                    if (sourceChannel.mask == null) {
+                        sourceChannel.mask = new ByteProcessor(sourceChannel.ip.getWidth(),
+                                                               sourceChannel.ip.getHeight());
+                        sourceChannel.mask.invert();
+                    }
+                }
             }
 
             final PixelMapper tilePixelMapper = getPixelMapper(sourceChannels,
-                                                               hasMask,
+                                                               canvasHasMasks,
                                                                binaryMask,
                                                                skipInterpolation,
                                                                targetChannels);
