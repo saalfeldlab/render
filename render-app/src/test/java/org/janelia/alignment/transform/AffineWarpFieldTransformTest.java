@@ -16,7 +16,10 @@
  */
 package org.janelia.alignment.transform;
 
+import java.io.File;
 import java.util.Collections;
+
+import mpicbg.models.AffineModel2D;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.spec.LeafTransformSpec;
@@ -36,7 +39,7 @@ public class AffineWarpFieldTransformTest {
     public void testPersistence() throws Exception {
 
         final AffineWarpField affineWarpField =
-                new AffineWarpField(1000, 1000, 2, 2, AffineWarpField.getDefaultInterpolatorFactory());
+                new AffineWarpField(0, 0, 1000, 1000, 2, 2, AffineWarpField.getDefaultInterpolatorFactory());
         affineWarpField.set(0, 0, new double[] {1, 0, 0, 1,  0, 0});
         affineWarpField.set(0, 1, new double[] {1, 0, 0, 1,  0, 0});
         affineWarpField.set(1, 0, new double[] {1, 0, 0, 1,  0, 0});
@@ -63,6 +66,46 @@ public class AffineWarpFieldTransformTest {
         // System.out.println(tileSpec.toJson());
     }
 
+    @Test
+    public void testApply() throws Exception {
+        testApplyForOffset(0, 0);
+        testApplyForOffset(500, 0);
+        testApplyForOffset(0, 500);
+        testApplyForOffset(500, 500);
+    }
+
+    public void testApplyForOffset(final double x,
+                                   final double y) throws Exception {
+
+        final AffineWarpField affineWarpField =
+                new AffineWarpField(x, y, 1000, 1000, 2, 2, AffineWarpField.getDefaultInterpolatorFactory());
+
+        affineWarpField.set(0, 0, new double[] {1, 0, 0, 1,  0,  0});
+        affineWarpField.set(0, 1, new double[] {1, 0, 0, 1,  0,  0});
+        affineWarpField.set(1, 0, new double[] {1, 0, 0, 1,  0,  0});
+        affineWarpField.set(1, 1, new double[] {1, 0, 0, 1, 20, 20});
+
+        final AffineWarpFieldTransform transform = new AffineWarpFieldTransform(affineWarpField);
+        System.out.println(transform.toDataString());
+
+        final double[][] testLocations = {
+                { 0.0, 0.0 },
+                { 250.0, 250.0 },
+                { 500.0, 500.0 }
+        };
+
+        for (final double[] location : testLocations) {
+            final AffineModel2D model = transform.getWarpedAffineModel(location);
+            final double[] result = model.apply(location);
+            final String msg =
+                    String.format("offset: (%3.0f, %3.0f), location: (%6.1f, %6.1f), model: %s, result: (%6.1f, %6.1f)",
+                                  x, y, location[0], location[1], model, result[0], result[1]);
+            System.out.println(msg);
+        }
+
+        System.out.println();
+    }
+
     public static void main(final String[] args)
             throws Exception {
 
@@ -82,6 +125,15 @@ public class AffineWarpFieldTransformTest {
         if (args.length < 14) {
             System.out.println("Example: " + exampleArgs);
         } else {
+            for (int i = 1; i < args.length; i += 2) {
+                if ("--out".equals(args[i - 1])) {
+                    final File outFile = new File(args[i]);
+                    if (outFile.isDirectory()) {
+                        final File testFile = new File(outFile, "test_" + System.currentTimeMillis() + ".jpg");
+                        args[i] = testFile.getAbsolutePath();
+                    }
+                }
+            }
             ArgbRenderer.renderUsingCommandLineArguments(args);
         }
 

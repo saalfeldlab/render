@@ -18,7 +18,7 @@
         {
           "type": "leaf",
           "className": "org.janelia.alignment.transform.AffineWarpFieldTransform",
-          "dataString": "1020.0 1020.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 1.0    0.0 0.0 0.0 0.0    0.0 0.0 0.0 0.0    1.0 1.0 1.0 1.0    0.0 0.0 0.0 20.0    0.0 0.0 0.0 20.0"
+          "dataString": "0 0 1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 1.0    0.0 0.0 0.0 0.0    0.0 0.0 0.0 0.0    1.0 1.0 1.0 1.0    0.0 0.0 0.0 20.0    0.0 0.0 0.0 20.0"
         }
       ]
     }
