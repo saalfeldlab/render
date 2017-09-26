@@ -16,9 +16,12 @@
       "type": "list",
       "specList": [
         {
-          "type": "leaf",
+          "className": "mpicbg.trakem2.transform.TranslationModel2D",
+          "dataString": "0.0 0.0"
+        },
+        {
           "className": "org.janelia.alignment.transform.AffineWarpFieldTransform",
-          "dataString": "0.0 0.0 1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 1.0  0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0  1.0 1.0 1.0 1.0   0.0 0.0 0.0 20.0   0.0 0.0 0.0 20.0"
+          "dataString": "1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 1.0  0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0  1.0 1.0 1.0 1.0   0.0 0.0 0.0 20.0   0.0 0.0 0.0 20.0"
         }
       ]
     }
@@ -40,9 +43,12 @@
       "type": "list",
       "specList": [
         {
-          "type": "leaf",
+          "className": "mpicbg.trakem2.transform.TranslationModel2D",
+          "dataString": "480.0 0.0"
+        },
+        {
           "className": "org.janelia.alignment.transform.AffineWarpFieldTransform",
-          "dataString": "480.0 0.0 1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 1.0  0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0  1.0 1.0 1.0 1.0   0.0 0.0 0.0 20.0   0.0 0.0 0.0 20.0"
+          "dataString": "1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 1.0  0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0  1.0 1.0 1.0 1.0   0.0 0.0 0.0 20.0   0.0 0.0 0.0 20.0"
         }
       ]
     }
@@ -64,8 +70,12 @@
       "type": "list",
       "specList": [
         {
+          "className": "mpicbg.trakem2.transform.TranslationModel2D",
+          "dataString": "0.0 480.0"
+        },
+        {
           "className": "org.janelia.alignment.transform.AffineWarpFieldTransform",
-          "dataString": "0.0 480.0 1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 1.0  0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0  1.0 1.0 1.0 1.0   0.0 0.0 0.0 20.0   0.0 0.0 0.0 20.0"
+          "dataString": "1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 1.0  0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0  1.0 1.0 1.0 1.0   0.0 0.0 0.0 20.0   0.0 0.0 0.0 20.0"
         }
       ]
     }
@@ -87,9 +97,12 @@
       "type": "list",
       "specList": [
         {
-          "type": "leaf",
+          "className": "mpicbg.trakem2.transform.TranslationModel2D",
+          "dataString": "480.0 480.0"
+        },
+        {
           "className": "org.janelia.alignment.transform.AffineWarpFieldTransform",
-          "dataString": "480.0 480.0 1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 1.0  0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0  1.0 1.0 1.0 1.0   0.0 0.0 0.0 20.0   0.0 0.0 0.0 20.0"
+          "dataString": "1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 1.0  0.0 0.0 0.0 0.0  0.0 0.0 0.0 0.0  1.0 1.0 1.0 1.0   0.0 0.0 0.0 20.0   0.0 0.0 0.0 20.0"
         }
       ]
     }

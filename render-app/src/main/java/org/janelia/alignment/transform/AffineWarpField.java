@@ -27,8 +27,6 @@ import net.imglib2.view.composite.RealComposite;
 public class AffineWarpField
         implements Serializable {
 
-    private final double x;
-    private final double y;
     private final double width;
     private final double height;
     private final int rowCount;
@@ -42,30 +40,26 @@ public class AffineWarpField
      * Constructs a simple 1x1 identify field.
      */
     public AffineWarpField() {
-        this(0, 0, 1, 1, 1, 1, getDefaultInterpolatorFactory());
+        this(1, 1, 1, 1, getDefaultInterpolatorFactory());
     }
 
     /**
      * Constructs a field with the specified dimensions.
      * Each affine is initialized with identity values.
      *
-     * @param  x                    pixel offset for x translation.
-     * @param  y                    pixel offset for y translation.
      * @param  width                pixel width of the warp field.
      * @param  height               pixel height of the warp field.
      * @param  rowCount             number of affine rows in the warp field.
      * @param  columnCount          number of affine columns in the warp field.
      * @param  interpolatorFactory  factory for desired interpolator instance.
      */
-    public AffineWarpField(final double x,
-                           final double y,
-                           final double width,
+    public AffineWarpField(final double width,
                            final double height,
                            final int rowCount,
                            final int columnCount,
                            final InterpolatorFactory<RealComposite<DoubleType>, RandomAccessible<RealComposite<DoubleType>>> interpolatorFactory)
             throws IllegalArgumentException {
-        this(x, y, width, height, rowCount, columnCount,
+        this(width, height, rowCount, columnCount,
              getDefaultValues(rowCount, columnCount),
              interpolatorFactory);
     }
@@ -92,8 +86,6 @@ public class AffineWarpField
      *            0,     0,     0,    29           m12
      * </pre>
      *
-     * @param  x                    pixel offset for x translation.
-     * @param  y                    pixel offset for y translation.
      * @param  width                pixel width of the warp field.
      * @param  height               pixel height of the warp field.
      * @param  rowCount             number of affine rows in the warp field.
@@ -105,9 +97,7 @@ public class AffineWarpField
      *   if rowCount < 1, columnCount < 1, or there is any inconsistency between
      *   rowCount, columnCount, and the values array length.
      */
-    public AffineWarpField(final double x,
-                           final double y,
-                           final double width,
+    public AffineWarpField(final double width,
                            final double height,
                            final int rowCount,
                            final int columnCount,
@@ -123,22 +113,12 @@ public class AffineWarpField
                                                size + " but was " + values.length);
         }
 
-        this.x = x;
-        this.y = y;
         this.width = width;
         this.height = height;
         this.rowCount = rowCount;
         this.columnCount = columnCount;
         this.values = values;
         this.interpolatorFactory = interpolatorFactory;
-    }
-
-    public double getX() {
-        return x;
-    }
-
-    public double getY() {
-        return y;
     }
 
     public double getWidth() {
@@ -245,7 +225,7 @@ public class AffineWarpField
      */
     public AffineWarpField getCopy() {
         final double[] valuesCopy = Arrays.copyOf(values, values.length);
-        return new AffineWarpField(x, y, width, height, rowCount, columnCount, valuesCopy, interpolatorFactory);
+        return new AffineWarpField(width, height, rowCount, columnCount, valuesCopy, interpolatorFactory);
     }
 
     /**

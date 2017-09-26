@@ -19,7 +19,9 @@ package org.janelia.alignment.transform;
 import java.io.File;
 import java.util.Collections;
 
-import mpicbg.models.AffineModel2D;
+import mpicbg.models.CoordinateTransform;
+import mpicbg.models.CoordinateTransformList;
+import mpicbg.trakem2.transform.TranslationModel2D;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.spec.LeafTransformSpec;
@@ -39,7 +41,7 @@ public class AffineWarpFieldTransformTest {
     public void testPersistence() throws Exception {
 
         final AffineWarpField affineWarpField =
-                new AffineWarpField(0, 0, 1000, 1000, 2, 2, AffineWarpField.getDefaultInterpolatorFactory());
+                new AffineWarpField(1000, 1000, 2, 2, AffineWarpField.getDefaultInterpolatorFactory());
         affineWarpField.set(0, 0, new double[] {1, 0, 0, 1,  0, 0});
         affineWarpField.set(0, 1, new double[] {1, 0, 0, 1,  0, 0});
         affineWarpField.set(1, 0, new double[] {1, 0, 0, 1,  0, 0});
@@ -77,16 +79,23 @@ public class AffineWarpFieldTransformTest {
     public void testApplyForOffset(final double x,
                                    final double y) throws Exception {
 
+        final TranslationModel2D offsetModel = new TranslationModel2D();
+        offsetModel.init(x + " " + y);
+
         final AffineWarpField affineWarpField =
-                new AffineWarpField(x, y, 1000, 1000, 2, 2, AffineWarpField.getDefaultInterpolatorFactory());
+                new AffineWarpField(1000, 1000, 2, 2, AffineWarpField.getDefaultInterpolatorFactory());
 
         affineWarpField.set(0, 0, new double[] {1, 0, 0, 1,  0,  0});
         affineWarpField.set(0, 1, new double[] {1, 0, 0, 1,  0,  0});
         affineWarpField.set(1, 0, new double[] {1, 0, 0, 1,  0,  0});
         affineWarpField.set(1, 1, new double[] {1, 0, 0, 1, 20, 20});
 
-        final AffineWarpFieldTransform transform = new AffineWarpFieldTransform(affineWarpField);
-        System.out.println(transform.toDataString());
+        final AffineWarpFieldTransform warpFieldTransform = new AffineWarpFieldTransform(affineWarpField);
+        System.out.println(warpFieldTransform.toDataString());
+
+        final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList<>();
+        ctl.add(offsetModel);
+        ctl.add(warpFieldTransform);
 
         final double[][] testLocations = {
                 { 0.0, 0.0 },
@@ -95,11 +104,10 @@ public class AffineWarpFieldTransformTest {
         };
 
         for (final double[] location : testLocations) {
-            final AffineModel2D model = transform.getWarpedAffineModel(location);
-            final double[] result = model.apply(location);
+            final double[] result = ctl.apply(location);
             final String msg =
-                    String.format("offset: (%3.0f, %3.0f), location: (%6.1f, %6.1f), model: %s, result: (%6.1f, %6.1f)",
-                                  x, y, location[0], location[1], model, result[0], result[1]);
+                    String.format("offset: (%3.0f, %3.0f), location: (%6.1f, %6.1f), result: (%6.1f, %6.1f)",
+                                  x, y, location[0], location[1], result[0], result[1]);
             System.out.println(msg);
         }
 
@@ -119,7 +127,7 @@ public class AffineWarpFieldTransformTest {
         //   NLinearInterpolatorARGBFactory
 
         final String exampleArgs =
-                "--tile_spec_url src/test/resources/warp-field-test/montage_warp.json " + // montage_no_warp.json
+                "--tile_spec_url src/test/resources/warp-field-test/montage_warp_tiles_rotate.json " + // montage_no_warp.json
                 "--out test.jpg --x 0 --y 0 --width 1020 --height 1020 --scale 1.0";
 
         if (args.length < 14) {
