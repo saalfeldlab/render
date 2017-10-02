@@ -1,5 +1,7 @@
 package org.janelia.alignment.spec;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,6 +18,8 @@ import org.janelia.alignment.util.ProcessTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.swagger.annotations.ApiModelProperty;
+
 /**
  * A collection of tile specifications that also includes all referenced transform specifications,
  * allowing the tile specifications to be fully resolved.
@@ -31,7 +35,7 @@ public class ResolvedTileSpecCollection implements Serializable {
 
     // no-arg constructor needed for JSON deserialization
     public ResolvedTileSpecCollection() {
-        this(new ArrayList<TransformSpec>(), new ArrayList<TileSpec>());
+        this(new ArrayList<>(), new ArrayList<>());
     }
 
     /**
@@ -51,13 +55,8 @@ public class ResolvedTileSpecCollection implements Serializable {
         this.tileIdToSpecMap = new HashMap<>(tileSpecs.size() * 2);
         this.tileSpecValidator = null;
 
-        for (final TransformSpec transformSpec : transformSpecs) {
-            addTransformSpecToCollection(transformSpec);
-        }
-
-        for (final TileSpec tileSpec : tileSpecs) {
-            addTileSpecToCollection(tileSpec);
-        }
+        transformSpecs.forEach(this::addTransformSpecToCollection);
+        tileSpecs.forEach(this::addTileSpecToCollection);
     }
 
     /**
@@ -92,6 +91,7 @@ public class ResolvedTileSpecCollection implements Serializable {
      * @throws IllegalArgumentException
      *   if any of the tile specifications reference an unknown transform specification.
      */
+    @JsonIgnore
     public Collection<TileSpec> getTileSpecs()
             throws IllegalArgumentException {
         resolveTileSpecs(); // this needs to be done here for collections deserialized from JSON
@@ -116,6 +116,7 @@ public class ResolvedTileSpecCollection implements Serializable {
     /**
      * @return the set of shared transform specifications in this collection.
      */
+    @JsonIgnore
     public Collection<TransformSpec> getTransformSpecs() {
         return transformIdToSpecMap.values();
     }
@@ -355,6 +356,7 @@ public class ResolvedTileSpecCollection implements Serializable {
     /**
      * @return the number opf transform specs in this collection.
      */
+    @JsonIgnore
     public int getTransformCount() {
         return transformIdToSpecMap.size();
     }
@@ -362,6 +364,7 @@ public class ResolvedTileSpecCollection implements Serializable {
     /**
      * @return the number opf tile specs in this collection.
      */
+    @JsonIgnore
     public int getTileCount() {
         return tileIdToSpecMap.size();
     }
@@ -381,9 +384,7 @@ public class ResolvedTileSpecCollection implements Serializable {
      */
     public void resolveTileSpecs()
             throws IllegalArgumentException {
-        for (final TileSpec tileSpec : tileIdToSpecMap.values()) {
-            resolveTileSpec(tileSpec);
-        }
+        tileIdToSpecMap.values().forEach(this::resolveTileSpec);
     }
 
     @Override
@@ -442,6 +443,26 @@ public class ResolvedTileSpecCollection implements Serializable {
                 addReferencedTransformIds((ListTransformSpec) transformSpec, referencedTransformIds);
             }
         }
+    }
+
+    /**
+     * Hack to correct Swagger spec for this model.
+     * @return null always.
+     */
+    @SuppressWarnings("unused")
+    @ApiModelProperty(name = "tileIdToSpecMap")
+    public Map<String, TileSpec> getNullTileIdToSpecMap() {
+        return null;
+    }
+
+    /**
+     * Hack to correct Swagger spec for this model.
+     * @return null always.
+     */
+    @SuppressWarnings("unused")
+    @ApiModelProperty(name = "transformIdToSpecMap")
+    public Map<String, TransformSpec> getNullTransformIdToSpecMap() {
+        return null;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ResolvedTileSpecCollection.class);

@@ -39,6 +39,7 @@ public class ListTransformSpec extends TransformSpec {
         return specList.get(index);
     }
 
+    @JsonIgnore
     public TransformSpec getLastSpec() {
         final TransformSpec lastSpec;
         if ((specList.size() > 0)) {

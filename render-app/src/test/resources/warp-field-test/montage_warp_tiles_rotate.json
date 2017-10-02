@@ -1,0 +1,110 @@
+[
+  {
+    "tileId": "tier_1_canvas_A",
+    "layout": {
+      "sectionId": "1.0"
+    },
+    "z": 1.0,
+    "width": 520.0,
+    "height": 520.0,
+    "mipmapLevels": {
+      "0": {
+        "imageUrl": "src/test/resources/warp-field-test/tile000.png"
+      }
+    },
+    "transforms": {
+      "type": "list",
+      "specList": [
+        {
+          "className": "mpicbg.trakem2.transform.TranslationModel2D",
+          "dataString": "0.0 0.0"
+        },
+        {
+          "className": "org.janelia.alignment.transform.AffineWarpFieldTransform",
+          "dataString": "1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 0.996194698091746  0.0 0.0 0.0 0.0871557427476582  0.0 0.0 0.0 -0.0871557427476582  1.0 1.0 1.0 0.996194698091746   0.0 0.0 0.0 20.0   0.0 0.0 0.0 20.0"
+        }
+      ]
+    }
+  },
+  {
+    "tileId": "tier_1_canvas_B",
+    "layout": {
+      "sectionId": "1.0"
+    },
+    "z": 1.0,
+    "width": 520.0,
+    "height": 520.0,
+    "mipmapLevels": {
+      "0": {
+        "imageUrl": "src/test/resources/warp-field-test/tile001.png"
+      }
+    },
+    "transforms": {
+      "type": "list",
+      "specList": [
+        {
+          "className": "mpicbg.trakem2.transform.TranslationModel2D",
+          "dataString": "480.0 0.0"
+        },
+        {
+          "className": "org.janelia.alignment.transform.AffineWarpFieldTransform",
+          "dataString": "1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 0.996194698091746  0.0 0.0 0.0 0.0871557427476582  0.0 0.0 0.0 -0.0871557427476582  1.0 1.0 1.0 0.996194698091746   0.0 0.0 0.0 20.0   0.0 0.0 0.0 20.0"
+        }
+      ]
+    }
+  },
+  {
+    "tileId": "tier_1_canvas_C",
+    "layout": {
+      "sectionId": "1.0"
+    },
+    "z": 1.0,
+    "width": 520.0,
+    "height": 520.0,
+    "mipmapLevels": {
+      "0": {
+        "imageUrl": "src/test/resources/warp-field-test/tile002.png"
+      }
+    },
+    "transforms": {
+      "type": "list",
+      "specList": [
+        {
+          "className": "mpicbg.trakem2.transform.TranslationModel2D",
+          "dataString": "0.0 480.0"
+        },
+        {
+          "className": "org.janelia.alignment.transform.AffineWarpFieldTransform",
+          "dataString": "1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 0.996194698091746  0.0 0.0 0.0 0.0871557427476582  0.0 0.0 0.0 -0.0871557427476582  1.0 1.0 1.0 0.996194698091746   0.0 0.0 0.0 20.0   0.0 0.0 0.0 20.0"
+        }
+      ]
+    }
+  },
+  {
+    "tileId": "tier_1_canvas_D",
+    "layout": {
+      "sectionId": "1.0"
+    },
+    "z": 1.0,
+    "width": 520.0,
+    "height": 520.0,
+    "mipmapLevels": {
+      "0": {
+        "imageUrl": "src/test/resources/warp-field-test/tile003.png"
+      }
+    },
+    "transforms": {
+      "type": "list",
+      "specList": [
+        {
+          "className": "mpicbg.trakem2.transform.TranslationModel2D",
+          "dataString": "480.0 480.0"
+        },
+        {
+          "className": "org.janelia.alignment.transform.AffineWarpFieldTransform",
+          "dataString": "1000.0 1000.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none 1.0 1.0 1.0 0.996194698091746  0.0 0.0 0.0 0.0871557427476582  0.0 0.0 0.0 -0.0871557427476582  1.0 1.0 1.0 0.996194698091746   0.0 0.0 0.0 20.0   0.0 0.0 0.0 20.0"
+        }
+      ]
+    }
+  }
+]

@@ -24,7 +24,7 @@
             //var baseUrl = "http://renderer-dev:8080/render-ws/v1";
 
             var owner = queryParameters.get('renderStackOwner');
-            var project = queryParameters.get('renderStackProject');
+            var project = queryParameters.get('renderStackProject', '');
             var stack = queryParameters.get('renderStack');
 
             var matchOwner = queryParameters.get('matchOwner');
@@ -32,18 +32,19 @@
 
             // Until we've stored the point match render context properly,
             // you may need to hack these parameters to match your setup.
-            var defaultRenderQueryParameters = "excludeMask=true&normalizeForMatching=true";
+            var keyToDefaultRenderParametersMap = {
+                'DEFAULT': "excludeMask=true&normalizeForMatching=true",
+                'FAFB': "excludeMask=true&normalizeForMatching=true&width=2760&height=2330",
+                'HIER_CANVAS': "filter=true"
+            };
 
-            // Here's a hack for Janelia's FAFB project ...
-            var FAFB_projects = [ 'FAFB00', 'FAFB00_beautification', 'FAFBv14', 'FAFBv14_kk',
-                                  'ackermand', 'fly_pilot', 'goinac_test', 'khairyk_stage', 'trautmane_test',
-                                  'whirlie' ];
-            for (i = 0; i < FAFB_projects.length; i++) {
-                if (project == FAFB_projects[i]) {
-                    defaultRenderQueryParameters = "excludeMask=true&normalizeForMatching=true&width=2760&height=2330";
-                    break;
-                }
+            var defaultKey = 'DEFAULT';
+            if (project.includes('FAFB') || (project == 'ackermand') || (project == 'fly_pilot')) {
+                defaultKey = 'FAFB';
             }
+            var renderParametersKey = queryParameters.get('renderParametersKey', defaultKey);
+
+            var defaultRenderQueryParameters = keyToDefaultRenderParametersMap[renderParametersKey];
 
             var defaultRenderScale = 0.15;
             var renderScale = queryParameters.get('renderScale', defaultRenderScale);

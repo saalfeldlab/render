@@ -79,6 +79,7 @@ public abstract class TransformSpec implements Serializable {
      * @throws IllegalArgumentException
      *   if the instance cannot be created.
      */
+    @JsonIgnore
     public CoordinateTransform getNewInstance()
             throws IllegalArgumentException {
         return buildInstance();
@@ -103,6 +104,7 @@ public abstract class TransformSpec implements Serializable {
     /**
      * @return the set of unresolved spec references within this spec.
      */
+    @JsonIgnore
     public Set<String> getUnresolvedIds() {
         final Set<String> unresolvedIds = new HashSet<>();
         addUnresolvedIds(unresolvedIds);

@@ -25,7 +25,7 @@ public class ChannelSpec {
 
     public ChannelSpec(final Double minIntensity,
                        final Double maxIntensity) {
-        this(null, maxIntensity, minIntensity, new TreeMap<Integer, ImageAndMask>(), null);
+        this(null, maxIntensity, minIntensity, new TreeMap<>(), null);
     }
 
     public ChannelSpec(final String name,
@@ -63,6 +63,14 @@ public class ChannelSpec {
      */
     public boolean hasMipmap(final Integer level) {
         return mipmapLevels.containsKey(level);
+    }
+
+    /**
+     * @return true if this channel has a mask.
+     */
+    public boolean hasMask() {
+        final Map.Entry<Integer, ImageAndMask> firstMipmapEntry = getFirstMipmapEntry();
+        return (firstMipmapEntry != null) && (firstMipmapEntry.getValue().hasMask());
     }
 
     /**
@@ -117,9 +125,7 @@ public class ChannelSpec {
             throw new IllegalArgumentException(context + tileId + "' does not contain any mipmapLevel elements");
         }
 
-        for (final ImageAndMask imageAndMask : mipmapLevels.values()) {
-            imageAndMask.validate();
-        }
+        mipmapLevels.values().forEach(ImageAndMask::validate);
     }
 
 }

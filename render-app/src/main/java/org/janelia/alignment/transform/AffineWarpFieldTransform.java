@@ -48,7 +48,6 @@ public class AffineWarpFieldTransform
         warpFieldAccessor.setPosition(location);
         final RealComposite<DoubleType> coefficients = warpFieldAccessor.get();
 
-        // TODO: should we use AffineTransform2D instance here to avoid copying (simple) algorithm or is this okay?
         final double m00 = coefficients.get(0).getRealDouble();
         final double m10 = coefficients.get(1).getRealDouble();
         final double m01 = coefficients.get(2).getRealDouble();
@@ -56,6 +55,7 @@ public class AffineWarpFieldTransform
         final double m02 = coefficients.get(4).getRealDouble();
         final double m12 = coefficients.get(5).getRealDouble();
 
+        // stolen from AffineModel2D.applyInPlace
         final double l0 = location[0];
         location[0] = l0 * m00 + location[1] * m01 + m02;
         location[1] = l0 * m10 + location[1] * m11 + m12;

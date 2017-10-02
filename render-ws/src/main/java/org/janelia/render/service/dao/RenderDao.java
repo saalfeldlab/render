@@ -926,9 +926,9 @@ public class RenderDao {
         final Document query = new Document("stackId.owner", owner);
         final Document sortCriteria = new Document(
                 "stackId.project", 1).append(
-                "currentVersion.cycleNumber", 1).append(
-                "currentVersion.cycleStepNumber", 1).append(
-                "stackId.name", 1);
+                "currentVersion.cycleNumber", -1).append(
+                "currentVersion.cycleStepNumber", -1).append(
+                "lastModifiedTimestamp", -1);
 
         try (MongoCursor<Document> cursor = stackMetaDataCollection.find(query).sort(sortCriteria).iterator()) {
             Document document;

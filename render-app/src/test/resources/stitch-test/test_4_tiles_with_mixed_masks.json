@@ -1,0 +1,84 @@
+[
+    {
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/col0075_row0021_cam1.png"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "0.959851    -0.007319      0.00872     0.923958      47.5933      45.6929"
+                },
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "1  0  0  1  0  0"
+                }
+            ]
+        }
+    },
+    {
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/col0075_row0022_cam3.png",
+                "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "0.961479      -0.009077       0.007616       0.920045              0      1866.4334"
+                },
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "1  0  0  1  0  0"
+                }
+            ]
+        }
+    },
+    {
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/col0076_row0021_cam0.png",
+                "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "0.961072      -0.011856       0.009729       0.927899      1804.0608              0"
+                },
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "1  0  0  1  0  0"
+                }
+            ]
+        }
+    },
+    {
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/col0076_row0022_cam2.png"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "0.953635      -0.015531       0.012933       0.924585      1877.4222      1821.9698"
+                },
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "1  0  0  1  0  0"
+                }
+            ]
+        }
+    }
+]

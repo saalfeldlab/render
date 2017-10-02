@@ -637,6 +637,22 @@ public class RenderParameters implements Serializable {
     }
 
     /**
+     * @return true if this render spec has at least one tile with a mask.
+     */
+    public boolean hasMasks() {
+        boolean hasMasks = false;
+        if (! excludeMask) {
+            for (final TileSpec tileSpec : tileSpecs) {
+                if (tileSpec.hasMasks()) {
+                    hasMasks = true;
+                    break;
+                }
+            }
+        }
+        return hasMasks;
+    }
+
+    /**
      * Opens the target/input image specified by these parameters or
      * creates a new (in-memory) image if no input image was specified.
      *
