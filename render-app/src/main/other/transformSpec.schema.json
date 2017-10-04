@@ -85,9 +85,13 @@
             "description" : "any data about the transform that is not needed for rendering",
             "type" : "object",
             "properties" : {
-                "group" : {
-                    "description" : "name for group of related transforms",
-                    "type" : "string"
+                "labels" : {
+                    "description" : "set of labels for a transform",
+                    "type" : "array",
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         }
