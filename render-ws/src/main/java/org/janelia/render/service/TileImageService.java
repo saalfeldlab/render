@@ -1,6 +1,7 @@
 package org.janelia.render.service;
 
 import java.net.UnknownHostException;
+import java.util.Set;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -66,6 +67,8 @@ public class TileImageService {
                                            @QueryParam("filter") final Boolean filter,
                                            @QueryParam("excludeMask") final Boolean excludeMask,
                                            @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
+                                           @QueryParam("includeTransformLabel") final Set<String> includeTransformLabels,
+                                           @QueryParam("excludeTransformLabel") final Set<String> excludeTransformLabels,
                                            @QueryParam("minIntensity") final Double minIntensity,
                                            @QueryParam("maxIntensity") final Double maxIntensity,
                                            @QueryParam("channels") final String channels,
@@ -80,6 +83,7 @@ public class TileImageService {
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
                                                         filter, false, excludeMask, normalizeForMatching,
+                                                        includeTransformLabels, excludeTransformLabels,
                                                         minIntensity, maxIntensity, channels);
             return RenderServiceUtil.renderJpegImage(renderParameters, null, responseHelper);
         } else {
@@ -104,6 +108,8 @@ public class TileImageService {
                                           @QueryParam("filter") final Boolean filter,
                                           @QueryParam("excludeMask") final Boolean excludeMask,
                                           @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
+                                          @QueryParam("includeTransformLabel") final Set<String> includeTransformLabels,
+                                          @QueryParam("excludeTransformLabel") final Set<String> excludeTransformLabels,
                                           @QueryParam("minIntensity") final Double minIntensity,
                                           @QueryParam("maxIntensity") final Double maxIntensity,
                                           @QueryParam("channels") final String channels,
@@ -118,6 +124,7 @@ public class TileImageService {
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
                                                         filter, false, excludeMask, normalizeForMatching,
+                                                        includeTransformLabels, excludeTransformLabels,
                                                         minIntensity, maxIntensity, channels);
             return RenderServiceUtil.renderPngImage(renderParameters, null, responseHelper);
         } else {
@@ -142,6 +149,8 @@ public class TileImageService {
                                            @QueryParam("filter") final Boolean filter,
                                            @QueryParam("excludeMask") final Boolean excludeMask,
                                            @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
+                                           @QueryParam("includeTransformLabel") final Set<String> includeTransformLabels,
+                                           @QueryParam("excludeTransformLabel") final Set<String> excludeTransformLabels,
                                            @QueryParam("minIntensity") final Double minIntensity,
                                            @QueryParam("maxIntensity") final Double maxIntensity,
                                            @QueryParam("channels") final String channels,
@@ -156,6 +165,7 @@ public class TileImageService {
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
                                                         filter, false, excludeMask, normalizeForMatching,
+                                                        includeTransformLabels, excludeTransformLabels,
                                                         minIntensity, maxIntensity, channels);
             return RenderServiceUtil.renderTiffImage(renderParameters, null, responseHelper);
         } else {

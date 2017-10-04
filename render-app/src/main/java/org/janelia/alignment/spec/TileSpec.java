@@ -448,10 +448,26 @@ public class TileSpec implements Serializable {
         transforms.removeLastSpec();
     }
 
+    /**
+     * Replace this tile's possibly nested transform list with a flattened version.
+     */
     public void flattenTransforms() {
         final ListTransformSpec flattenedList = new ListTransformSpec();
         transforms.flatten(flattenedList);
         transforms = flattenedList;
+    }
+
+    /**
+     * Replace this tile's possibly nested transform list with a flattened version
+     * that includes and/or excludes transforms with the specified labels
+     * (see {@link ListTransformSpec#flattenAndFilter}).
+     *
+     * @param  includeTransformLabels  labels for transforms to include (or null).
+     * @param  excludeTransformLabels  labels for transforms to exclude (or null).
+     */
+    public void flattenAndFilterTransforms(final Set<String> includeTransformLabels,
+                                           final Set<String> excludeTransformLabels) {
+        transforms = transforms.flattenAndFilter(includeTransformLabels, excludeTransformLabels);
     }
 
     /**

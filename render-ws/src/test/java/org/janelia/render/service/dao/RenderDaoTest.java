@@ -365,27 +365,25 @@ public class RenderDaoTest {
     public void testSaveTransformSpec() throws Exception {
 
         final String transformId = "new-transform-1";
+        final String testGroupLabel = "test-group";
         final TransformSpecMetaData metaData = new TransformSpecMetaData();
-        metaData.setGroup("test-group");
 
         final LeafTransformSpec leafSpec = new LeafTransformSpec(transformId,
                                                                  metaData,
                                                                  AffineModel2D.class.getName(),
                                                                  "1  0  0  1  0  0");
+        leafSpec.addLabel(testGroupLabel);
         dao.saveTransformSpec(stackId, leafSpec);
 
         final TransformSpec insertedSpec = dao.getTransformSpec(stackId, transformId);
 
         Assert.assertNotNull("null transformSpec retrieved after insert", insertedSpec);
-        final TransformSpecMetaData insertedMetaData = insertedSpec.getMetaData();
-        Assert.assertNotNull("null meta data retrieved after insert", insertedMetaData);
-        Assert.assertEquals("invalid group retrieved after insert",
-                            metaData.getGroup(), insertedMetaData.getGroup());
+        Assert.assertTrue("label missing after insert", insertedSpec.hasLabel(testGroupLabel));
 
-        final TransformSpecMetaData changedMetaData = new TransformSpecMetaData();
-        changedMetaData.setGroup("updated-group");
+        insertedSpec.removeLabel(testGroupLabel);
+        Assert.assertFalse("label exists after removal", insertedSpec.hasLabel(testGroupLabel));
 
-        final ListTransformSpec listSpec = new ListTransformSpec(transformId, changedMetaData);
+        final ListTransformSpec listSpec = new ListTransformSpec(transformId, null);
         listSpec.addSpec(new ReferenceTransformSpec("1"));
 
         dao.saveTransformSpec(stackId, listSpec);
@@ -393,10 +391,6 @@ public class RenderDaoTest {
         final TransformSpec updatedSpec = dao.getTransformSpec(stackId, transformId);
 
         Assert.assertNotNull("null transformSpec retrieved after update", updatedSpec);
-        final TransformSpecMetaData updatedMetaData = updatedSpec.getMetaData();
-        Assert.assertNotNull("null meta data retrieved after update", updatedMetaData);
-        Assert.assertEquals("invalid group retrieved after update",
-                            changedMetaData.getGroup(), updatedMetaData.getGroup());
         Assert.assertFalse("transformSpec should not be resolved after update", updatedSpec.isFullyResolved());
     }
 
