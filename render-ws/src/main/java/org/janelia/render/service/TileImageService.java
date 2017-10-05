@@ -67,8 +67,9 @@ public class TileImageService {
                                            @QueryParam("filter") final Boolean filter,
                                            @QueryParam("excludeMask") final Boolean excludeMask,
                                            @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
-                                           @QueryParam("includeTransformLabel") final Set<String> includeTransformLabels,
-                                           @QueryParam("excludeTransformLabel") final Set<String> excludeTransformLabels,
+                                           @QueryParam("excludeTransformsAfterLast") final Set<String> excludeAfterLastLabels,
+                                           @QueryParam("excludeFirstTransformAndAllAfter") final Set<String> excludeFirstAndAllAfterLabels,
+                                           @QueryParam("excludeAllTransforms") final Boolean excludeAllTransforms,
                                            @QueryParam("minIntensity") final Double minIntensity,
                                            @QueryParam("maxIntensity") final Double maxIntensity,
                                            @QueryParam("channels") final String channels,
@@ -82,8 +83,10 @@ public class TileImageService {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
-                                                        filter, false, excludeMask, normalizeForMatching,
-                                                        includeTransformLabels, excludeTransformLabels,
+                                                        filter, false, excludeMask,
+                                                        normalizeForMatching,
+                                                        excludeAfterLastLabels, excludeFirstAndAllAfterLabels,
+                                                        excludeAllTransforms,
                                                         minIntensity, maxIntensity, channels);
             return RenderServiceUtil.renderJpegImage(renderParameters, null, responseHelper);
         } else {
@@ -108,8 +111,9 @@ public class TileImageService {
                                           @QueryParam("filter") final Boolean filter,
                                           @QueryParam("excludeMask") final Boolean excludeMask,
                                           @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
-                                          @QueryParam("includeTransformLabel") final Set<String> includeTransformLabels,
-                                          @QueryParam("excludeTransformLabel") final Set<String> excludeTransformLabels,
+                                          @QueryParam("excludeTransformsAfterLast") final Set<String> excludeAfterLastLabels,
+                                          @QueryParam("excludeFirstTransformAndAllAfter") final Set<String> excludeFirstAndAllAfterLabels,
+                                          @QueryParam("excludeAllTransforms") final Boolean excludeAllTransforms,
                                           @QueryParam("minIntensity") final Double minIntensity,
                                           @QueryParam("maxIntensity") final Double maxIntensity,
                                           @QueryParam("channels") final String channels,
@@ -123,8 +127,10 @@ public class TileImageService {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
-                                                        filter, false, excludeMask, normalizeForMatching,
-                                                        includeTransformLabels, excludeTransformLabels,
+                                                        filter, false, excludeMask,
+                                                        normalizeForMatching,
+                                                        excludeAfterLastLabels, excludeFirstAndAllAfterLabels,
+                                                        excludeAllTransforms,
                                                         minIntensity, maxIntensity, channels);
             return RenderServiceUtil.renderPngImage(renderParameters, null, responseHelper);
         } else {
@@ -149,8 +155,9 @@ public class TileImageService {
                                            @QueryParam("filter") final Boolean filter,
                                            @QueryParam("excludeMask") final Boolean excludeMask,
                                            @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
-                                           @QueryParam("includeTransformLabel") final Set<String> includeTransformLabels,
-                                           @QueryParam("excludeTransformLabel") final Set<String> excludeTransformLabels,
+                                           @QueryParam("excludeTransformsAfterLast") final Set<String> excludeAfterLastLabels,
+                                           @QueryParam("excludeFirstTransformAndAllAfter") final Set<String> excludeFirstAndAllAfterLabels,
+                                           @QueryParam("excludeAllTransforms") final Boolean excludeAllTransforms,
                                            @QueryParam("minIntensity") final Double minIntensity,
                                            @QueryParam("maxIntensity") final Double maxIntensity,
                                            @QueryParam("channels") final String channels,
@@ -164,8 +171,10 @@ public class TileImageService {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId,
                                                         width, height, scale,
-                                                        filter, false, excludeMask, normalizeForMatching,
-                                                        includeTransformLabels, excludeTransformLabels,
+                                                        filter, false, excludeMask,
+                                                        normalizeForMatching,
+                                                        excludeAfterLastLabels, excludeFirstAndAllAfterLabels,
+                                                        excludeAllTransforms,
                                                         minIntensity, maxIntensity, channels);
             return RenderServiceUtil.renderTiffImage(renderParameters, null, responseHelper);
         } else {

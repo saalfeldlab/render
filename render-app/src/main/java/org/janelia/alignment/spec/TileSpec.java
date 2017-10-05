@@ -409,6 +409,14 @@ public class TileSpec implements Serializable {
         return ((transforms != null) && (transforms.size() > 0));
     }
 
+    public boolean hasTransformWithLabel(final String label) {
+        boolean hasLabel = false;
+        if (transforms != null) {
+            hasLabel = transforms.hasLabel(label);
+        }
+        return hasLabel;
+    }
+
     /**
      * @return true if this tile spec has at least one channel with a mask.
      */
@@ -458,16 +466,27 @@ public class TileSpec implements Serializable {
     }
 
     /**
-     * Replace this tile's possibly nested transform list with a flattened version
-     * that includes and/or excludes transforms with the specified labels
-     * (see {@link ListTransformSpec#flattenAndFilter}).
+     * Replace this tile's nested transform list with a flattened version
+     * and optionally filter/exclude labelled transforms.
      *
-     * @param  includeTransformLabels  labels for transforms to include (or null).
-     * @param  excludeTransformLabels  labels for transforms to exclude (or null).
+     * @param  excludeAll                     if true, removes all transforms.
+     *                                        Specify as null to skip.
+     *
+     * @param  excludeAfterLastLabels         removes all transforms after the last occurrence
+     *                                        of a transform with one of these labels.
+     *                                        Specify as null to skip.
+     *
+     * @param  excludeFirstAndAllAfterLabels  removes the first transform with one of these labels.
+     *                                        Specify as null to skip.
      */
-    public void flattenAndFilterTransforms(final Set<String> includeTransformLabels,
-                                           final Set<String> excludeTransformLabels) {
-        transforms = transforms.flattenAndFilter(includeTransformLabels, excludeTransformLabels);
+    public void flattenAndFilterTransforms(final Boolean excludeAll,
+                                           final Set<String> excludeAfterLastLabels,
+                                           final Set<String> excludeFirstAndAllAfterLabels) {
+        if ((excludeAll != null) && excludeAll) {
+            transforms = new ListTransformSpec();
+        } else {
+            transforms = transforms.flattenAndFilter(excludeAfterLastLabels, excludeFirstAndAllAfterLabels);
+        }
     }
 
     /**

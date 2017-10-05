@@ -160,44 +160,44 @@ public class ListTransformSpec extends TransformSpec {
      * Flattens this list of transform specs, filters it based upon the specified labels,
      * and returns the resulting list.
      *
-     * @param  includeTransformLabels  all transforms after the last occurrence in the flattened list
-     *                                 of a transform with one of these labels will be removed.
-     *                                 Specify as null to skip include filtering.
+     * @param  excludeAfterLastLabels         removes all transforms after the last occurrence
+     *                                        of a transform with one of these labels.
+     *                                        Specify as null to skip include filtering.
      *
-     * @param  excludeTransformLabels  the first transform with one of these labels in the
-     *                                 include filtered flattened list and all following transforms will be removed.
-     *                                 Specify as null to skip exclude filtering.
+     * @param  excludeFirstAndAllAfterLabels  removes the first transform with one of these labels
+     *                                        and all following transforms.
+     *                                        Specify as null to skip exclude filtering.
      *
      * @return a flattened and filtered list of these transforms.
      */
-    public ListTransformSpec flattenAndFilter(final Set<String> includeTransformLabels,
-                                              final Set<String> excludeTransformLabels) {
+    public ListTransformSpec flattenAndFilter(final Set<String> excludeAfterLastLabels,
+                                              final Set<String> excludeFirstAndAllAfterLabels) {
 
         final ListTransformSpec flattenedList = new ListTransformSpec();
 
         flatten(flattenedList);
 
-        if ((includeTransformLabels != null) && (includeTransformLabels.size() > 0)) {
+        if ((excludeAfterLastLabels != null) && (excludeAfterLastLabels.size() > 0)) {
 
             final int listSize = flattenedList.specList.size();
-            int firstIndexWithoutLabel = -1;
+            int lastIndexWithoutLabel = listSize;
 
             TransformSpec spec;
             for (int i = listSize - 1; i >= 0; i--) {
                 spec = flattenedList.specList.get(i);
-                if (spec.hasOneOfTheseLabels(includeTransformLabels)) {
-                    firstIndexWithoutLabel = i + 1;
+                if (spec.hasOneOfTheseLabels(excludeAfterLastLabels)) {
+                    lastIndexWithoutLabel = i + 1;
                     break;
                 }
             }
 
-            if (firstIndexWithoutLabel < listSize) {
-                flattenedList.specList = flattenedList.specList.subList(0, firstIndexWithoutLabel);
+            if (lastIndexWithoutLabel < listSize) {
+                flattenedList.specList = flattenedList.specList.subList(0, lastIndexWithoutLabel);
             }
 
         }
 
-        if ((excludeTransformLabels != null) && (excludeTransformLabels.size() > 0)) {
+        if ((excludeFirstAndAllAfterLabels != null) && (excludeFirstAndAllAfterLabels.size() > 0)) {
 
             final int listSize = flattenedList.specList.size();
             int firstIndexWithLabel = listSize;
@@ -205,7 +205,7 @@ public class ListTransformSpec extends TransformSpec {
             TransformSpec spec;
             for (int i = 0; i < listSize; i++) {
                 spec = flattenedList.specList.get(i);
-                if (spec.hasOneOfTheseLabels(excludeTransformLabels)) {
+                if (spec.hasOneOfTheseLabels(excludeFirstAndAllAfterLabels)) {
                     firstIndexWithLabel = i;
                     break;
                 }

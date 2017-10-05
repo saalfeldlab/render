@@ -12,6 +12,9 @@ import java.util.Set;
  */
 public class TransformSpecMetaData implements Serializable {
 
+    /** The default label for a lens correction transform. */
+    public static final String LENS_CORRECTION_LABEL = "lens";
+
     private Set<String> labels;
 
     public TransformSpecMetaData() {

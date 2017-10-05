@@ -45,6 +45,7 @@ public class TileDataServiceTest {
 
         RenderParameters renderParameters =
                 TileDataService.getCoreTileRenderParameters(null, null, null,
+                                                            null,
                                                             null, null, null,
                                                             tileSpec);
 
@@ -56,7 +57,8 @@ public class TileDataServiceTest {
 
         renderParameters =
                 TileDataService.getCoreTileRenderParameters(null, null, null,
-                                                            true, null, null,
+                                                            true,
+                                                            null, null, null,
                                                             tileSpec);
 
         List<TileSpec> tileSpecs = renderParameters.getTileSpecs();
@@ -71,7 +73,8 @@ public class TileDataServiceTest {
 
         renderParameters =
                 TileDataService.getCoreTileRenderParameters(null, null, null,
-                                                            true, Collections.emptySet(), Collections.emptySet(),
+                                                            true,
+                                                            Collections.emptySet(), Collections.emptySet(), null,
                                                             tileSpec);
 
         tileSpecs = renderParameters.getTileSpecs();
