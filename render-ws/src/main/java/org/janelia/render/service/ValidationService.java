@@ -28,11 +28,11 @@ import io.swagger.annotations.Api;
  *
  * @author Eric Trautman
  */
-@Path("/v1/owner/{owner}/validate-json")
+@Path("/")
 @Api(tags = {"Validation APIs"})
 public class ValidationService {
 
-    @Path("render")
+    @Path("v1/owner/{owner}/validate-json/render")
     @PUT
     @Consumes(MediaType.WILDCARD)
     @Produces(MediaType.TEXT_PLAIN)
@@ -52,7 +52,7 @@ public class ValidationService {
         return response;
     }
 
-    @Path("tile")
+    @Path("v1/owner/{owner}/validate-json/tile")
     @PUT
     @Consumes(MediaType.WILDCARD)
     @Produces(MediaType.TEXT_PLAIN)
@@ -71,7 +71,7 @@ public class ValidationService {
         return response;
     }
 
-    @Path("tile-array")
+    @Path("v1/owner/{owner}/validate-json/tile-array")
     @PUT
     @Consumes(MediaType.WILDCARD)
     @Produces(MediaType.TEXT_PLAIN)
@@ -82,9 +82,7 @@ public class ValidationService {
         Response response;
         try {
             final List<TileSpec> list = TileSpec.fromJsonArray(json);
-            for (final TileSpec spec : list) {
-                spec.validateMipmaps();
-            }
+            list.forEach(TileSpec::validateMipmaps);
             final String value = "array of " + list.size() + " tile specifications";
             response = getParseSuccessResponse(context, value);
         } catch (final Throwable t) {
@@ -93,7 +91,7 @@ public class ValidationService {
         return response;
     }
 
-    @Path("transform")
+    @Path("v1/owner/{owner}/validate-json/transform")
     @PUT
     @Consumes(MediaType.WILDCARD)
     @Produces(MediaType.TEXT_PLAIN)
@@ -112,7 +110,7 @@ public class ValidationService {
         return response;
     }
 
-    @Path("transform-array")
+    @Path("v1/owner/{owner}/validate-json/transform-array")
     @PUT
     @Consumes(MediaType.WILDCARD)
     @Produces(MediaType.TEXT_PLAIN)
@@ -124,11 +122,7 @@ public class ValidationService {
         try {
             final List<TransformSpec> list = TransformSpec.fromJsonArray(json);
             final Map<String, TransformSpec> map = new HashMap<>((int) (list.size() * 1.5));
-            for (final TransformSpec spec : list) {
-                if (spec.hasId()) {
-                    map.put(spec.getId(), spec);
-                }
-            }
+            list.stream().filter(TransformSpec::hasId).forEach(spec -> map.put(spec.getId(), spec));
             for (final TransformSpec spec : list) {
                 spec.resolveReferences(map);
                 spec.validate();

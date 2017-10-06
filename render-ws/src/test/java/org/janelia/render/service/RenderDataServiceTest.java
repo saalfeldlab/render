@@ -2,12 +2,10 @@ package org.janelia.render.service;
 
 import java.io.File;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import javax.ws.rs.core.PathSegment;
 import javax.ws.rs.core.UriInfo;
 
 import org.janelia.alignment.RenderParameters;
@@ -19,7 +17,7 @@ import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.test.EmbeddedMongoDb;
-import org.jboss.resteasy.specimpl.UriInfoImpl;
+import org.jboss.resteasy.spi.ResteasyUriInfo;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -108,11 +106,8 @@ public class RenderDataServiceTest {
 
         final StackId testStackId = new StackId(alignStackId.getOwner(), alignStackId.getProject(), "test");
 
-        final UriInfo uriInfo = new UriInfoImpl(new URI("http://test/resolvedTiles"),
-                                                new URI("http://test"),
-                                                "/resolvedTiles",
-                                                "",
-                                                new ArrayList<PathSegment>());
+        final UriInfo uriInfo = new ResteasyUriInfo(new URI("http://test/resolvedTiles"),
+                                                    new URI("http://test"));
 
         service.saveResolvedTilesForZ(testStackId.getOwner(),
                                       testStackId.getProject(),

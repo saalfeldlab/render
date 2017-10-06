@@ -30,7 +30,7 @@ import io.swagger.annotations.ApiResponses;
  *
  * @author Eric Trautman
  */
-@Path("/v1/owner/{owner}")
+@Path("/")
 @Api(tags = {"Tile Image APIs"})
 public class TileImageService {
 
@@ -50,7 +50,7 @@ public class TileImageService {
         this.tileDataService = tileDataService;
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/jpeg-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/jpeg-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(value = "Render JPEG image for a tile")
@@ -94,7 +94,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/png-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/png-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(value = "Render PNG image for a tile")
@@ -138,7 +138,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/tiff-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/tiff-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
     @ApiOperation(value = "Render TIFF image for a tile")
@@ -182,7 +182,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/jpeg-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/source/jpeg-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(value = "Render tile's source image without transformations in JPEG format")
@@ -210,7 +210,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/png-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/source/png-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(value = "Render tile's source image without transformations in PNG format")
@@ -238,7 +238,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/tiff-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/source/tiff-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
     @ApiOperation(value = "Render tile's source image without transformations in TIFF format")
@@ -266,7 +266,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/jpeg-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/mask/jpeg-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(value = "Render tile's mask image without transformations in JPEG format")
@@ -294,7 +294,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/png-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/mask/png-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(value = "Render tile's mask image without transformations in PNG format")
@@ -322,7 +322,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/tiff-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/mask/tiff-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
     @ApiOperation(value = "Render tile's mask image without transformations in TIFF format")
@@ -350,7 +350,7 @@ public class TileImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/jpeg-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/jpeg-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(value = "Render tile with its neighbors in JPEG format")

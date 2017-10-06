@@ -37,7 +37,7 @@ import io.swagger.annotations.ApiResponses;
  *
  * @author Eric Trautman
  */
-@Path("/v1/owner/{owner}")
+@Path("/")
 @Api(tags = {"Tile Data APIs"})
 public class TileDataService {
 
@@ -56,7 +56,7 @@ public class TileDataService {
     }
 
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -82,7 +82,7 @@ public class TileDataService {
         return tileSpec;
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}")
     @DELETE
     @ApiOperation(
             value = "Deletes specified tile.",
@@ -119,7 +119,7 @@ public class TileDataService {
         return response;
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -174,7 +174,7 @@ public class TileDataService {
         return parameters;
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/validation-info")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/validation-info")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     @ApiOperation(
@@ -202,7 +202,7 @@ public class TileDataService {
         return Response.ok().build();
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -223,7 +223,7 @@ public class TileDataService {
         return getRawTileRenderParameters(owner, project, stack, tileId, scale, filter, true);
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -244,7 +244,7 @@ public class TileDataService {
         return getRawTileRenderParameters(owner, project, stack, tileId, scale, filter, false);
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(

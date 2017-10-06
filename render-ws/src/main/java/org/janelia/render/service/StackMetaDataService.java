@@ -1,7 +1,5 @@
 package org.janelia.render.service;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,7 +14,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -45,16 +42,14 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
-import static org.janelia.alignment.spec.stack.StackMetaData.StackState.COMPLETE;
-import static org.janelia.alignment.spec.stack.StackMetaData.StackState.OFFLINE;
-import static org.janelia.alignment.spec.stack.StackMetaData.StackState.READ_ONLY;
+import static org.janelia.alignment.spec.stack.StackMetaData.StackState.*;
 
 /**
  * APIs for accessing stack meta data stored in the Render service database.
  *
  * @author Eric Trautman
  */
-@Path("/v1")
+@Path("/")
 @Api(tags = {"Stack Management APIs"})
 public class StackMetaDataService {
 
@@ -71,7 +66,7 @@ public class StackMetaDataService {
         this.renderDao = renderDao;
     }
 
-    @Path("likelyUniqueId")
+    @Path("v1/likelyUniqueId")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     @ApiOperation(value = "A (very likely) globally unique identifier")
@@ -80,7 +75,7 @@ public class StackMetaDataService {
         return objectId.toString();
     }
 
-    @Path("owners")
+    @Path("v1/owners")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "List of all data owners")
@@ -89,7 +84,7 @@ public class StackMetaDataService {
         return renderDao.getOwners();
     }
 
-    @Path("owner/{owner}/stackIds")
+    @Path("v1/owner/{owner}/stackIds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "List of stack identifiers for the specified owner")
@@ -106,7 +101,7 @@ public class StackMetaDataService {
         return list;
     }
 
-    @Path("owner/{owner}/stacks")
+    @Path("v1/owner/{owner}/stacks")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "List of stack metadata for the specified owner")
@@ -123,7 +118,7 @@ public class StackMetaDataService {
         return list;
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -153,7 +148,7 @@ public class StackMetaDataService {
         return stackMetaData;
     }
 
-    @Path("owner/{owner}/project/{fromProject}/stack/{fromStack}/stackId")
+    @Path("v1/owner/{owner}/project/{fromProject}/stack/{fromStack}/stackId")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -187,7 +182,7 @@ public class StackMetaDataService {
         return Response.ok().build();
     }
 
-    @Path("owner/{owner}/project/{fromProject}/stack/{fromStack}/cloneTo/{toStack}")
+    @Path("v1/owner/{owner}/project/{fromProject}/stack/{fromStack}/cloneTo/{toStack}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -247,7 +242,7 @@ public class StackMetaDataService {
         return responseBuilder.build();
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}")
     @POST  // NOTE: POST method is used because version number is auto-incremented
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -294,7 +289,7 @@ public class StackMetaDataService {
         return responseBuilder.build();
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}")
     @DELETE
     @ApiOperation(
             tags = {"Stack Data APIs", "Stack Management APIs"},
@@ -334,7 +329,7 @@ public class StackMetaDataService {
         return response;
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -361,7 +356,7 @@ public class StackMetaDataService {
         return resolutionValues;
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -392,7 +387,7 @@ public class StackMetaDataService {
         return Response.ok().build();
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
     @DELETE
     @ApiOperation(
             tags = {"Section Data APIs", "Stack Management APIs"},
@@ -407,7 +402,7 @@ public class StackMetaDataService {
         return saveResolutionValues(owner, project, stack, Arrays.asList((Double) null, null, null));
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     @ApiOperation(
@@ -434,7 +429,7 @@ public class StackMetaDataService {
         return materializedBoxRootPath;
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
     @PUT
     @Consumes(MediaType.TEXT_PLAIN)
     @ApiOperation(
@@ -465,7 +460,7 @@ public class StackMetaDataService {
         return Response.ok().build();
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
     @DELETE
     @ApiOperation(
             tags = {"Section Data APIs", "Stack Management APIs"},
@@ -480,7 +475,7 @@ public class StackMetaDataService {
         return saveMaterializedBoxRootPath(owner, project, stack, null);
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/mipmapPathBuilder")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/mipmapPathBuilder")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -507,7 +502,7 @@ public class StackMetaDataService {
         return mipmapPathBuilder;
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/mipmapPathBuilder")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/mipmapPathBuilder")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -538,7 +533,7 @@ public class StackMetaDataService {
         return Response.ok().build();
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/mipmapPathBuilder")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/mipmapPathBuilder")
     @DELETE
     @ApiOperation(
             tags = {"Section Data APIs", "Stack Management APIs"},
@@ -553,7 +548,7 @@ public class StackMetaDataService {
         return saveMipmapPathBuilder(owner, project, stack, null);
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/cycle")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/cycle")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -583,7 +578,7 @@ public class StackMetaDataService {
         return cycle;
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/cycle")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/cycle")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -617,7 +612,7 @@ public class StackMetaDataService {
         return Response.ok().build();
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/cycle")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/cycle")
     @DELETE
     @ApiOperation(
             tags = {"Section Data APIs", "Stack Management APIs"},
@@ -632,7 +627,7 @@ public class StackMetaDataService {
         return saveCycle(owner, project, stack, null);
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/section/{sectionId}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/section/{sectionId}")
     @DELETE
     @ApiOperation(
             tags = {"Section Data APIs", "Stack Management APIs"},
@@ -669,7 +664,7 @@ public class StackMetaDataService {
         return response;
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/z/{z}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}")
     @DELETE
     @ApiOperation(
             tags = {"Section Data APIs", "Stack Management APIs"},
@@ -706,7 +701,7 @@ public class StackMetaDataService {
         return response;
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/state/{state}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/state/{state}")
     @PUT
     @ApiOperation(
             tags = {"Stack Data APIs", "Stack Management APIs"},
@@ -767,7 +762,7 @@ public class StackMetaDataService {
         return responseBuilder.build();
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/bounds")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/bounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -814,7 +809,7 @@ public class StackMetaDataService {
         return bounds;
     }
 
-    @Path("owner/{owner}/project/{project}/stack/{stack}/tileIds")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tileIds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -834,13 +829,7 @@ public class StackMetaDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
 
-            final StreamingOutput responseOutput = new StreamingOutput() {
-                @Override
-                public void write(final OutputStream output)
-                        throws IOException, WebApplicationException {
-                    renderDao.writeTileIds(stackId, output);
-                }
-            };
+            final StreamingOutput responseOutput = output -> renderDao.writeTileIds(stackId, output);
             response = Response.ok(responseOutput).build();
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -854,7 +843,7 @@ public class StackMetaDataService {
      *         Tile specs will contain with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */
-    @Path("owner/{owner}/project/{project}/stack/{stack}/tile-specs-with-ids")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile-specs-with-ids")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -874,9 +863,7 @@ public class StackMetaDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             tileSpecList = renderDao.getTileSpecs(stackId, tileIdList);
-            for (final TileSpec tileSpec : tileSpecList) {
-                tileSpec.flattenTransforms();
-            }
+            tileSpecList.forEach(TileSpec::flattenTransforms);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }

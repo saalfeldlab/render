@@ -1,7 +1,5 @@
 package org.janelia.render.service;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,7 +12,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
@@ -37,7 +34,7 @@ import io.swagger.annotations.ApiResponses;
  *
  * @author Eric Trautman
  */
-@Path("/v1/owner/{owner}")
+@Path("/")
 @Api(tags = {"Coordinate Mapping APIs"})
 public class CoordinateService {
 
@@ -53,7 +50,7 @@ public class CoordinateService {
         this.renderDao = renderDao;
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/tileIdsForCoordinates")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/tileIdsForCoordinates")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -78,13 +75,8 @@ public class CoordinateService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
 
-            final StreamingOutput responseOutput = new StreamingOutput() {
-                @Override
-                public void write(final OutputStream output)
-                        throws IOException, WebApplicationException {
-                    renderDao.writeCoordinatesWithTileIds(stackId, z, worldCoordinatesList, output);
-                }
-            };
+            final StreamingOutput responseOutput =
+                    output -> renderDao.writeCoordinatesWithTileIds(stackId, z, worldCoordinatesList, output);
             response = Response.ok(responseOutput).build();
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -93,7 +85,7 @@ public class CoordinateService {
         return response;
     }
 
-    @Path("project/{project}/stack/{stack}/tileIdsForCoordinates")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tileIdsForCoordinates")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -112,14 +104,15 @@ public class CoordinateService {
         return getTileIdsForCoordinates(owner, project, stack, null, worldCoordinatesList);
     }
 
-    @Path("local-to-world-coordinates/{x},{y}")
+    @SuppressWarnings("PathAnnotation")
+    @Path("v1/owner/{owner}/local-to-world-coordinates/{x},{y}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "Derive world coordinates for specified local coordinates using provided tile spec")
     public double[] getWorldCoordinates(@PathParam("x") final double x,
-                                       @PathParam("y") final double y,
-                                       final TileSpec tileSpec) {
+                                        @PathParam("y") final double y,
+                                        final TileSpec tileSpec) {
 
         double[] worldCoordinates = null;
         try {
@@ -131,7 +124,8 @@ public class CoordinateService {
         return worldCoordinates;
     }
 
-    @Path("world-to-local-coordinates/{x},{y}")
+    @SuppressWarnings("PathAnnotation")
+    @Path("v1/owner/{owner}/world-to-local-coordinates/{x},{y}")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -140,9 +134,9 @@ public class CoordinateService {
             @ApiResponse(code = 500, message = "coordinates not invertible")
     })
     public double[] getLocalCoordinates(@PathParam("x") final double x,
-                                       @PathParam("y") final double y,
-                                       @QueryParam("meshCellSize") final Double meshCellSize,
-                                       final TileSpec tileSpec) {
+                                        @PathParam("y") final double y,
+                                        @QueryParam("meshCellSize") final Double meshCellSize,
+                                        final TileSpec tileSpec) {
 
         double[] localCoordinates = null;
         try {
@@ -154,7 +148,7 @@ public class CoordinateService {
         return localCoordinates;
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/local-to-world-coordinates/{x},{y}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/local-to-world-coordinates/{x},{y}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "Derive world coordinates for specified tile local coordinates")
@@ -183,7 +177,7 @@ public class CoordinateService {
         return worldCoordinates;
     }
 
-    @Path("project/{project}/stack/{stack}/local-to-world-coordinates")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/local-to-world-coordinates")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -261,7 +255,7 @@ public class CoordinateService {
         return worldCoordinatesList;
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/local-to-world-coordinates")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/local-to-world-coordinates")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -281,7 +275,7 @@ public class CoordinateService {
         return getWorldCoordinates(owner, project, stack, localCoordinatesList);
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/world-to-local-coordinates/{x},{y}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/world-to-local-coordinates/{x},{y}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -314,7 +308,7 @@ public class CoordinateService {
         return localCoordinatesList;
     }
 
-    @Path("project/{project}/stack/{stack}/world-to-local-coordinates")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/world-to-local-coordinates")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -335,7 +329,7 @@ public class CoordinateService {
         return getLocalCoordinates(owner, project, stack, null, worldCoordinatesList);
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/world-to-local-coordinates")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/world-to-local-coordinates")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
