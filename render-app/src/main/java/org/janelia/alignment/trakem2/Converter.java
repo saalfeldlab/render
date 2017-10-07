@@ -178,21 +178,23 @@ public class Converter {
                                     final boolean isFirstPatch) {
 
                 final StringBuilder json = new StringBuilder(16 * 1024);
-                if (! isFirstPatch) {
-                    json.append(",\n");
-                }
+                if (patch.isVisible){
+                    if (! isFirstPatch) {
+                        json.append(",\n");
+                    }
 
                 final TileSpec tileSpec = patch.getTileSpec(projectPath, baseMaskPath, layer.z,useTitleForTileId);
                 if (validateConvertedTileSpecs) {
                     tileSpec.validate();
                 }
 
-                json.append(tileSpec.toJson());
+                    json.append(tileSpec.toJson());
 
-                try {
-                    jsonStream.write(json.toString().getBytes());
-                } catch (final IOException e) {
-                    throw new RuntimeException("failed to write to JSON stream", e);
+                    try {
+                        jsonStream.write(json.toString().getBytes());
+                    } catch (final IOException e) {
+                        throw new RuntimeException("failed to write to JSON stream", e);
+                    }
                 }
             }
         };
@@ -364,6 +366,7 @@ public class Converter {
         @XmlAttribute(name = "mres")             public Integer meshResolution;
         @XmlAttribute(name = "alpha_mask_id")    public String alphaMaskId;
         @XmlAttribute(name = "title")			 public String title;
+        @XmlAttribute(name = "visible")          public Boolean isVisible=true;
         @XmlElement(name = "ict_transform_list") public IctTransformList transforms;
 
         private AffineTransform fullCoordinateTransform;
