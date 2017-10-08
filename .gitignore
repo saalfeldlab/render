@@ -23,3 +23,6 @@ release.properties
 .idea/sqlDataSources.xml
 .idea/dynamic.xml
 .idea/uiDesigner.xml
+
+.DS_Store
+
