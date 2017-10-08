@@ -38,7 +38,7 @@ import org.janelia.alignment.json.JsonUtils;
 public abstract class TransformSpec implements Serializable {
 
     private final String id;
-    private final TransformSpecMetaData metaData;
+    private TransformSpecMetaData metaData;
 
     protected TransformSpec(final String id,
                             final TransformSpecMetaData metaData) {
@@ -56,6 +56,38 @@ public abstract class TransformSpec implements Serializable {
 
     public TransformSpecMetaData getMetaData() {
         return metaData;
+    }
+
+    public void setMetaData(final TransformSpecMetaData metaData) {
+        this.metaData = metaData;
+    }
+
+    public boolean hasLabel(final String label) {
+        return (metaData != null) && metaData.hasLabel(label);
+    }
+
+    public boolean hasOneOfTheseLabels(final Set<String> labels) {
+        boolean hasOne = false;
+        for (final String label : labels) {
+            if (hasLabel(label)) {
+                hasOne = true;
+                break;
+            }
+        }
+        return hasOne;
+    }
+
+    public void addLabel(final String label) {
+        if (metaData == null) {
+            metaData = new TransformSpecMetaData();
+        }
+        metaData.addLabel(label);
+    }
+
+    public void removeLabel(final String label) {
+        if (metaData != null) {
+            metaData.removeLabel(label);
+        }
     }
 
     /**

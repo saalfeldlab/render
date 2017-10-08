@@ -35,7 +35,7 @@ import io.swagger.annotations.ApiOperation;
  *
  * @author Eric Trautman
  */
-@Path("/v1/owner/{owner}")
+@Path("/")
 @Api(tags = {"Image APIs"})
 public class RenderImageService {
 
@@ -51,7 +51,8 @@ public class RenderImageService {
         this.renderDataService = renderDataService;
     }
 
-    @Path("jpeg-image")
+    @SuppressWarnings("PathAnnotation")
+    @Path("v1/owner/{owner}/jpeg-image")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
@@ -67,7 +68,8 @@ public class RenderImageService {
     }
 
 
-    @Path("png-image")
+    @SuppressWarnings("PathAnnotation")
+    @Path("v1/owner/{owner}/png-image")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
@@ -82,7 +84,8 @@ public class RenderImageService {
                                                    ResponseHelper.NO_CACHE_HELPER);
     }
 
-    @Path("tiff-image")
+    @SuppressWarnings("PathAnnotation")
+    @Path("v1/owner/{owner}/tiff-image")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
@@ -97,7 +100,7 @@ public class RenderImageService {
                                                    ResponseHelper.NO_CACHE_HELPER);
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/jpeg-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/jpeg-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(
@@ -130,7 +133,7 @@ public class RenderImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/png-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/png-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(
@@ -163,7 +166,7 @@ public class RenderImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/tiff-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/tiff-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
     @ApiOperation(
@@ -196,7 +199,7 @@ public class RenderImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(
@@ -233,7 +236,7 @@ public class RenderImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/jpg")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/jpg")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(
@@ -259,7 +262,7 @@ public class RenderImageService {
                                      maxTileSpecsToRender, minIntensity, maxIntensity, channels, request);
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(
@@ -296,7 +299,7 @@ public class RenderImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/png")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/png")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(
@@ -322,7 +325,7 @@ public class RenderImageService {
                                     maxTileSpecsToRender, minIntensity, maxIntensity, channels, request);
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
     @ApiOperation(
@@ -359,7 +362,7 @@ public class RenderImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/tif")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/tif")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
     @ApiOperation(
@@ -385,7 +388,7 @@ public class RenderImageService {
                                      maxTileSpecsToRender, minIntensity, maxIntensity, channels, request);
     }
 
-    @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(
@@ -423,7 +426,7 @@ public class RenderImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/group/{groupId}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/jpg")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/jpg")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(
@@ -451,7 +454,7 @@ public class RenderImageService {
                                           request);
     }
 
-    @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(
@@ -489,7 +492,7 @@ public class RenderImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/group/{groupId}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/png")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/png")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(
@@ -517,7 +520,7 @@ public class RenderImageService {
                                          request);
     }
 
-    @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
     @ApiOperation(
@@ -555,7 +558,7 @@ public class RenderImageService {
         }
     }
 
-    @Path("project/{project}/stack/{stack}/group/{groupId}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/tif")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/tif")
     @GET
     @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
     @ApiOperation(
@@ -583,7 +586,7 @@ public class RenderImageService {
                                           request);
     }
 
-    @Path("project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.jpg")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.jpg")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(
@@ -613,7 +616,7 @@ public class RenderImageService {
     }
 
 
-    @Path("project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/small/{z}.jpg")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/small/{z}.jpg")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)
     @ApiOperation(
@@ -641,7 +644,7 @@ public class RenderImageService {
                                        minIntensity, maxIntensity, channels, request);
     }
 
-    @Path("project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.png")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.png")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(
@@ -670,7 +673,7 @@ public class RenderImageService {
                                          request);
     }
 
-    @Path("project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/small/{z}.png")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/small/{z}.png")
     @GET
     @Produces(RenderServiceUtil.IMAGE_PNG_MIME_TYPE)
     @ApiOperation(

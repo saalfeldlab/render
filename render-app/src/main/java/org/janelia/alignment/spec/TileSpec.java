@@ -409,6 +409,14 @@ public class TileSpec implements Serializable {
         return ((transforms != null) && (transforms.size() > 0));
     }
 
+    public boolean hasTransformWithLabel(final String label) {
+        boolean hasLabel = false;
+        if (transforms != null) {
+            hasLabel = transforms.hasLabel(label);
+        }
+        return hasLabel;
+    }
+
     /**
      * @return true if this tile spec has at least one channel with a mask.
      */
@@ -448,10 +456,37 @@ public class TileSpec implements Serializable {
         transforms.removeLastSpec();
     }
 
+    /**
+     * Replace this tile's possibly nested transform list with a flattened version.
+     */
     public void flattenTransforms() {
         final ListTransformSpec flattenedList = new ListTransformSpec();
         transforms.flatten(flattenedList);
         transforms = flattenedList;
+    }
+
+    /**
+     * Replace this tile's nested transform list with a flattened version
+     * and optionally filter/exclude labelled transforms.
+     *
+     * @param  excludeAll                     if true, removes all transforms.
+     *                                        Specify as null to skip.
+     *
+     * @param  excludeAfterLastLabels         removes all transforms after the last occurrence
+     *                                        of a transform with one of these labels.
+     *                                        Specify as null to skip.
+     *
+     * @param  excludeFirstAndAllAfterLabels  removes the first transform with one of these labels.
+     *                                        Specify as null to skip.
+     */
+    public void flattenAndFilterTransforms(final Boolean excludeAll,
+                                           final Set<String> excludeAfterLastLabels,
+                                           final Set<String> excludeFirstAndAllAfterLabels) {
+        if ((excludeAll != null) && excludeAll) {
+            transforms = new ListTransformSpec();
+        } else {
+            transforms = transforms.flattenAndFilter(excludeAfterLastLabels, excludeFirstAndAllAfterLabels);
+        }
     }
 
     /**

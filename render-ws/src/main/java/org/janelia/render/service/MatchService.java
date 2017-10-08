@@ -42,7 +42,7 @@ import io.swagger.annotations.ApiResponses;
  *
  * @author Eric Trautman
  */
-@Path("/v1")
+@Path("/")
 @Api(tags = {"Point Match APIs"})
 public class MatchService {
 
@@ -58,7 +58,7 @@ public class MatchService {
         this.matchDao = matchDao;
     }
 
-    @Path("matchCollectionOwners")
+    @Path("v1/matchCollectionOwners")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "List of all data owners")
@@ -75,7 +75,7 @@ public class MatchService {
         return owners;
     }
 
-    @Path("owner/{owner}/matchCollections")
+    @Path("v1/owner/{owner}/matchCollections")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "List of match collection metadata for the specified owner")
@@ -98,7 +98,7 @@ public class MatchService {
         return ownerMetaDataList;
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/pGroupIds")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/pGroupIds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -118,7 +118,7 @@ public class MatchService {
         return matchDao.getDistinctPGroupIds(collectionId);
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/qGroupIds")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/qGroupIds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -138,7 +138,7 @@ public class MatchService {
         return matchDao.getDistinctQGroupIds(collectionId);
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/groupIds")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/groupIds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -158,7 +158,7 @@ public class MatchService {
         return matchDao.getDistinctGroupIds(collectionId);
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/pGroup/{pGroupId}/matches")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/pGroup/{pGroupId}/matches")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -185,7 +185,7 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesWithinGroup")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesWithinGroup")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -212,7 +212,7 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -239,7 +239,7 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/matchesWith/{qGroupId}")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/matchesWith/{qGroupId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -267,7 +267,7 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -296,7 +296,7 @@ public class MatchService {
 
         return streamResponse(responseOutput);
     }
-    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -325,7 +325,7 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/id/{id}")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/id/{id}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -353,7 +353,7 @@ public class MatchService {
         return streamResponse(responseOutput);
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/id/{id}")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/id/{id}")
     @DELETE
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -383,7 +383,7 @@ public class MatchService {
         return response;
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/id/{pId}/matchesWith/{qGroupId}/id/{qId}")
     @DELETE
     @ApiOperation(
             value = "Delete matches between the specified tiles",
@@ -414,7 +414,7 @@ public class MatchService {
         return response;
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/matchesWith/{qGroupId}")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/group/{pGroupId}/matchesWith/{qGroupId}")
     @DELETE
     @ApiOperation(
             value = "Delete matches between the specified groups",
@@ -443,7 +443,7 @@ public class MatchService {
         return response;
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
     @DELETE
     @ApiOperation(
             value = "Delete matches outside the specified group",
@@ -470,7 +470,7 @@ public class MatchService {
         return response;
      }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}/matches")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/matches")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -507,7 +507,7 @@ public class MatchService {
         return responseBuilder.build();
     }
 
-    @Path("owner/{owner}/matchCollection/{matchCollection}")
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}")
     @DELETE
     @ApiOperation(
             value = "Delete the collection",

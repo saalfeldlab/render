@@ -1,7 +1,5 @@
 package org.janelia.render.service;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,7 +17,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -33,12 +30,12 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.render.service.dao.TileSpecLayout;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.service.dao.RenderDao;
+import org.janelia.render.service.dao.TileSpecLayout;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.render.service.util.RenderServiceUtil;
@@ -57,7 +54,7 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
  *
  * @author Eric Trautman
  */
-@Path("/v1/owner/{owner}")
+@Path("/")
 @Api(tags = {"Render Data APIs"})
 public class RenderDataService {
 
@@ -73,7 +70,7 @@ public class RenderDataService {
         this.renderDao = renderDao;
     }
 
-    @Path("project/{project}/stack/{stack}/layoutFile")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/layoutFile")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     @ApiOperation(
@@ -91,7 +88,7 @@ public class RenderDataService {
         return getLayoutFileForZRange(owner, project, stack, minZ, maxZ, format, uriInfo);
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/layoutFile")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/layoutFile")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     @ApiOperation(
@@ -108,7 +105,7 @@ public class RenderDataService {
         return getLayoutFileForZRange(owner, project, stack, z, z, format, uriInfo);
     }
 
-    @Path("project/{project}/stack/{stack}/zRange/{minZ},{maxZ}/layoutFile")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/zRange/{minZ},{maxZ}/layoutFile")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     @ApiOperation(
@@ -135,13 +132,8 @@ public class RenderDataService {
             final String stackUri = "/stack/" + stack + "/";
             final int stackEnd = requestUri.indexOf(stackUri) + stackUri.length() - 1;
             final String stackRequestUri = requestUri.substring(0, stackEnd);
-            final StreamingOutput responseOutput = new StreamingOutput() {
-                @Override
-                public void write(final OutputStream output)
-                        throws IOException, WebApplicationException {
-                    renderDao.writeLayoutFileData(stackMetaData, stackRequestUri, minZ, maxZ, format, output);
-                }
-            };
+            final StreamingOutput responseOutput =
+                    output -> renderDao.writeLayoutFileData(stackMetaData, stackRequestUri, minZ, maxZ, format, output);
             response = Response.ok(responseOutput).build();
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -150,7 +142,7 @@ public class RenderDataService {
         return response;
     }
 
-    @Path("project/{project}/stack/{stack}/zValues")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/zValues")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -182,7 +174,7 @@ public class RenderDataService {
         return list;
     }
 
-    @Path("project/{project}/stack/{stack}/sectionData")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/sectionData")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -211,7 +203,7 @@ public class RenderDataService {
         return list;
     }
 
-    @Path("project/{project}/stack/{stack}/reorderedSectionData")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/reorderedSectionData")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -251,7 +243,7 @@ public class RenderDataService {
         return filteredList;
     }
 
-    @Path("project/{project}/stack/{stack}/mergedZValues")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/mergedZValues")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -288,7 +280,7 @@ public class RenderDataService {
         return sortedZList;
     }
 
-    @Path("project/{project}/stack/{stack}/mergeableData")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/mergeableData")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     @ApiOperation(
@@ -331,7 +323,7 @@ public class RenderDataService {
         return mergeableData.toString();
     }
 
-    @Path("project/{project}/stack/{stack}/mergeableZValues")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/mergeableZValues")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -368,7 +360,7 @@ public class RenderDataService {
         return new ArrayList<>(filteredSet);
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/bounds")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/bounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -395,7 +387,7 @@ public class RenderDataService {
         return bounds;
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/tileBounds")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/tileBounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -422,7 +414,7 @@ public class RenderDataService {
         return list;
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/tileIds")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/tileIds")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -464,7 +456,7 @@ public class RenderDataService {
         return responseBuilder.build();
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/resolvedTiles")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -492,7 +484,7 @@ public class RenderDataService {
         return resolvedTiles;
     }
 
-    @Path("project/{project}/stack/{stack}/resolvedTiles")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/resolvedTiles")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -526,7 +518,7 @@ public class RenderDataService {
         return resolvedTiles;
     }
 
-    @Path("project/{project}/stack/{stack}/resolvedTiles")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/resolvedTiles")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -544,7 +536,7 @@ public class RenderDataService {
         return saveResolvedTilesForZ(owner, project, stack, null, uriInfo, resolvedTiles);
     }
 
-    @Path("project/{project}/stack/{stack}/z/{z}/resolvedTiles")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/resolvedTiles")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -593,7 +585,7 @@ public class RenderDataService {
         return responseBuilder.build();
     }
 
-    @Path("project/{project}/stack/{stack}/section/{sectionId}/z")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/section/{sectionId}/z")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -621,7 +613,7 @@ public class RenderDataService {
         return z;
     }
 
-    @Path("project/{project}/stack/{stack}/section/{sectionId}/z")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/section/{sectionId}/z")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -663,7 +655,7 @@ public class RenderDataService {
         return responseBuilder.build();
     }
 
-    @Path("project/{project}/stack/{stack}/section/{sectionId}/tileBounds")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/section/{sectionId}/tileBounds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -690,7 +682,7 @@ public class RenderDataService {
         return list;
     }
 
-    @Path("project/{project}/stack/{stack}/transform/{transformId}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/transform/{transformId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -721,7 +713,7 @@ public class RenderDataService {
     /**
      * @return number of tiles within the specified bounding box.
      */
-    @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height}/tile-count")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height}/tile-count")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -755,7 +747,7 @@ public class RenderDataService {
     /**
      * @return number of tiles within the specified bounding box.
      */
-    @Path("project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/tile-count")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/tile-count")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -780,7 +772,7 @@ public class RenderDataService {
      * @return list of tile specs for specified layer with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */
-    @Path("project/{project}/stack/{stack}/z/{z}/tile-specs")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/tile-specs")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -813,7 +805,7 @@ public class RenderDataService {
      * @return list of tile specs for specified layer with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */
-    @Path("project/{project}/stack/{stack}/z/{z}/last-tile-transforms")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/last-tile-transforms")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -851,7 +843,7 @@ public class RenderDataService {
      * @return render parameters for specified layer with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */
-    @Path("project/{project}/stack/{stack}/z/{z}/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -897,7 +889,7 @@ public class RenderDataService {
      * @return render parameters for specified bounding box with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */
-    @Path("project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -929,7 +921,7 @@ public class RenderDataService {
      * @return render parameters for specified bounding box with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */
-    @Path("project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -960,7 +952,7 @@ public class RenderDataService {
      * @return render parameters for specified bounding box with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */
-    @Path("project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -1007,7 +999,7 @@ public class RenderDataService {
      * @return render parameters for specified bounding box with flattened (and therefore resolved)
      *         transform specs suitable for external use.
      */
-    @Path("project/{project}/stack/{stack}/group/{groupId}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/dvid/imagetile/raw/xy/{width}_{height}/{x}_{y}_{z}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(

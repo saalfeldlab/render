@@ -87,6 +87,15 @@ public class ReferenceTransformSpec extends TransformSpec {
     }
 
     @Override
+    public boolean hasLabel(final String label) {
+        if (! isFullyResolved()) {
+            throw new IllegalArgumentException("reference to spec '" + refId +
+                                               "' must be resolved before evaluating labels");
+        }
+        return resolvedInstance.hasLabel(label);
+    }
+
+    @Override
     public void flatten(final ListTransformSpec flattenedList) throws IllegalStateException {
         if (! isFullyResolved()) {
             throw new IllegalStateException("cannot flatten unresolved reference to " + getEffectiveRefId());

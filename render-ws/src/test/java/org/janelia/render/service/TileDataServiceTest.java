@@ -1,6 +1,10 @@
 package org.janelia.render.service;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.junit.Assert;
 import org.junit.Test;
@@ -37,13 +41,49 @@ public class TileDataServiceTest {
                 "  }\n" +
                 "}";
 
-        final TileSpec tileSpec = TileSpec.fromJson(json);
+        TileSpec tileSpec = TileSpec.fromJson(json);
 
-        final RenderParameters renderParameters =
-                TileDataService.getCoreTileRenderParameters(null, null, null, null, tileSpec);
+        RenderParameters renderParameters =
+                TileDataService.getCoreTileRenderParameters(null, null, null,
+                                                            null,
+                                                            null, null, null,
+                                                            tileSpec);
 
         Assert.assertEquals("invalid width for tile", 1024, renderParameters.getWidth());
         Assert.assertEquals("invalid height for tile", 1024, renderParameters.getHeight());
+
+        // ---------------------------------------------------
+        tileSpec = TileSpec.fromJson(json);
+
+        renderParameters =
+                TileDataService.getCoreTileRenderParameters(null, null, null,
+                                                            true,
+                                                            null, null, null,
+                                                            tileSpec);
+
+        List<TileSpec> tileSpecs = renderParameters.getTileSpecs();
+        Assert.assertEquals("invalid number of tile specs returned after normalization", 1, tileSpecs.size());
+
+        TileSpec flattenedTileSpec = tileSpecs.get(0);
+        ListTransformSpec transforms = flattenedTileSpec.getTransforms();
+        Assert.assertEquals("invalid number of transforms after normalization", 1, transforms.size());
+
+        // ---------------------------------------------------
+        tileSpec = TileSpec.fromJson(json);
+
+        renderParameters =
+                TileDataService.getCoreTileRenderParameters(null, null, null,
+                                                            true,
+                                                            Collections.emptySet(), Collections.emptySet(), null,
+                                                            tileSpec);
+
+        tileSpecs = renderParameters.getTileSpecs();
+        Assert.assertEquals("invalid number of tile specs returned with empty sets", 1, tileSpecs.size());
+
+        flattenedTileSpec = tileSpecs.get(0);
+        transforms = flattenedTileSpec.getTransforms();
+        Assert.assertEquals("invalid number of transforms with empty sets", 1, transforms.size());
+
     }
 
 }

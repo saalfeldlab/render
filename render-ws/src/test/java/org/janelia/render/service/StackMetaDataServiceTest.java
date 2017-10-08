@@ -3,11 +3,9 @@ package org.janelia.render.service;
 import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import javax.ws.rs.core.PathSegment;
 import javax.ws.rs.core.UriInfo;
 
 import org.janelia.alignment.spec.Bounds;
@@ -21,7 +19,7 @@ import org.janelia.render.service.dao.RenderDaoTest;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.test.EmbeddedMongoDb;
-import org.jboss.resteasy.specimpl.UriInfoImpl;
+import org.jboss.resteasy.spi.ResteasyUriInfo;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -335,11 +333,8 @@ public class StackMetaDataServiceTest {
 
     private static UriInfo getUriInfo()
             throws URISyntaxException {
-        return new UriInfoImpl(new URI("http://test/stack"),
-                               new URI("http://test"),
-                               "/stack",
-                               "",
-                               new ArrayList<PathSegment>());
+        return new ResteasyUriInfo(new URI("http://test/stack"),
+                                   new URI("http://test"));
     }
 
 }

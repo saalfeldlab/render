@@ -1,7 +1,9 @@
 package org.janelia.render.service;
 
 import java.net.UnknownHostException;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -16,6 +18,7 @@ import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpecMetaData;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.service.dao.RenderDao;
@@ -34,7 +37,7 @@ import io.swagger.annotations.ApiResponses;
  *
  * @author Eric Trautman
  */
-@Path("/v1/owner/{owner}")
+@Path("/")
 @Api(tags = {"Tile Data APIs"})
 public class TileDataService {
 
@@ -53,7 +56,7 @@ public class TileDataService {
     }
 
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -79,7 +82,7 @@ public class TileDataService {
         return tileSpec;
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}")
     @DELETE
     @ApiOperation(
             value = "Deletes specified tile.",
@@ -116,7 +119,7 @@ public class TileDataService {
         return response;
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -135,6 +138,9 @@ public class TileDataService {
                                                 @QueryParam("binaryMask") final Boolean binaryMask,
                                                 @QueryParam("excludeMask") final Boolean excludeMask,
                                                 @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
+                                                @QueryParam("excludeTransformsAfterLast") final Set<String> excludeAfterLastLabels,
+                                                @QueryParam("excludeFirstTransformAndAllAfter") final Set<String> excludeFirstAndAllAfterLabels,
+                                                @QueryParam("excludeAllTransforms") final Boolean excludeAllTransforms,
                                                 @QueryParam("minIntensity") final Double minIntensity,
                                                 @QueryParam("maxIntensity") final Double maxIntensity,
                                                 @QueryParam("channels") final String channels) {
@@ -149,12 +155,13 @@ public class TileDataService {
 
             final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
 
-            parameters = getCoreTileRenderParameters(width, height, scale, normalizeForMatching, tileSpec);
+            parameters = getCoreTileRenderParameters(width, height, scale, normalizeForMatching,
+                                                     excludeAfterLastLabels, excludeFirstAndAllAfterLabels,
+                                                     excludeAllTransforms, tileSpec);
 
             parameters.setDoFilter(filter);
             parameters.setBinaryMask(binaryMask);
             parameters.setExcludeMask(excludeMask);
-            parameters.addTileSpec(tileSpec);
             parameters.setMipmapPathBuilder(stackMetaData.getCurrentMipmapPathBuilder());
             parameters.setMinIntensity(minIntensity);
             parameters.setMaxIntensity(maxIntensity);
@@ -167,7 +174,7 @@ public class TileDataService {
         return parameters;
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/validation-info")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/validation-info")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     @ApiOperation(
@@ -195,7 +202,7 @@ public class TileDataService {
         return Response.ok().build();
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/source/scale/{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -216,7 +223,7 @@ public class TileDataService {
         return getRawTileRenderParameters(owner, project, stack, tileId, scale, filter, true);
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -237,7 +244,7 @@ public class TileDataService {
         return getRawTileRenderParameters(owner, project, stack, tileId, scale, filter, false);
     }
 
-    @Path("project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/render-parameters")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/render-parameters")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
@@ -310,72 +317,96 @@ public class TileDataService {
                                                                   final Integer height,
                                                                   final Double scale,
                                                                   final Boolean normalizeForMatching,
+                                                                  final Set<String> excludeAfterLastLabels,
+                                                                  final Set<String> excludeFirstAndAllAfterLabels,
+                                                                  final Boolean excludeAllTransforms,
                                                                   final TileSpec tileSpec) {
-        tileSpec.flattenTransforms();
+
+        // final Boolean excludeAll,
+        // final Set<String> excludeAfterLastLabels,
+        // final Set<String> excludeFirstAndAllAfterLabels
+
+        // Flatten and (if requested) normalize the tile's list of transforms for rendering.
+        // Normalization is typically achieved by removing all non-lens correction transformations.
+
+        final boolean useLabelNormalization =
+                (excludeAllTransforms != null) ||
+                ((excludeAfterLastLabels != null) && (excludeAfterLastLabels.size() > 0)) ||
+                ((excludeFirstAndAllAfterLabels != null) && (excludeFirstAndAllAfterLabels.size() > 0));
+
+        final boolean useLegacyNormalization = (normalizeForMatching != null) && normalizeForMatching;
+
+        if (useLabelNormalization) {
+
+            // If the lens correction (or other) transforms have been explicitly labelled,
+            // include/exclude transformations with specified labels.
+            tileSpec.flattenAndFilterTransforms(excludeAllTransforms,
+                                                excludeAfterLastLabels,
+                                                excludeFirstAndAllAfterLabels);
+
+            tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);  // transforms changed, so re-calculate box
+
+        } else if (useLegacyNormalization) {
+
+            if (tileSpec.hasTransformWithLabel(TransformSpecMetaData.LENS_CORRECTION_LABEL)) {
+
+                // Handle a legacy client request for a stack that has labelled transforms ...
+                tileSpec.flattenAndFilterTransforms(null, EXCLUDE_AFTER_LENS, null);
+
+            } else {
+
+                // Handle a legacy client request for a stack without labelled transforms ...
+                tileSpec.flattenTransforms();
+
+                // Assume the last transform is an affine that positions the tile in the world and remove it.
+                tileSpec.removeLastTransformSpec();
+
+                // If the tile still has more than 3 transforms, remove all but the last 3.
+                // This assumes that the last 3 transforms are for lens correction.
+                while (tileSpec.getTransforms().size() > 3) {
+                    tileSpec.removeLastTransformSpec();
+                }
+            }
+
+            tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);  // transforms changed, so re-calculate box
+
+        } else {
+
+            // No normalization requested, so flatten the transform list and move on.
+            tileSpec.flattenTransforms();
+
+        }
 
         double tileRenderX = tileSpec.getMinX();
         double tileRenderY = tileSpec.getMinY();
 
-        int tileRenderWidth;
+        // The legacy approach assumed the tile would be at (0,0) when only lens correction transforms were applied.
+        // If we're using the legacy approach, override the upper left of the derived box just in case it moves
+        // the tile slightly off the origin.
+        if (useLegacyNormalization) {
+            tileRenderX = 0.0;
+            tileRenderY = 0.0;
+        }
+
+        final int tileRenderWidth;
         if (width == null) {
             tileRenderWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX() + 1);
         } else {
             tileRenderWidth = width;
         }
 
-        int tileRenderHeight;
+        final int tileRenderHeight;
         if (height == null) {
             tileRenderHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY() + 1);
         } else {
             tileRenderHeight = height;
         }
 
-        if ((normalizeForMatching != null) && normalizeForMatching) {
+        final RenderParameters parameters =
+                new RenderParameters(null, tileRenderX, tileRenderY, tileRenderWidth, tileRenderHeight, scale);
+        parameters.addTileSpec(tileSpec);
 
-            // When deriving point matches for a tile pair in which each tile has different lens correction
-            // transformations, the bounding box for each rendered tile needs to be normalized.
-            //
-            // Normalization is achieved by:
-            // (1) Removing the last transform spec (assumed to be an affine that positions the tile in the world).
-            // (2) Setting the render start coordinate to (0,0).
-            // (3) Padding the raw tile width and height by multiplying a normalization factor (1.05).
-            //     Assuming that all tiles in a stack have the same raw width and height, this ensures
-            //     that normalized tiles also have the same width and height with a little extra room
-            //     for edges that are rotated/skewed by lens correction.
-            // (4) Ensuring that the normalized width and height are even by adding a pixel as needed.
-            //
-            // Consistent and even tile sizes are currently a requirement for generating DMesh point matches.
-
-            final double normalizationFactor = 1.05;
-            if (width == null) {
-                tileRenderWidth = (int) (tileSpec.getWidth() * normalizationFactor);
-            }
-            if (height == null) {
-                tileRenderHeight = (int) (tileSpec.getHeight() * normalizationFactor);
-            }
-
-            tileSpec.removeLastTransformSpec();
-
-            // If the tile still has more than 3 transforms, remove all but the last 3.
-            // This assumes that the last 3 transforms are for lens correction.
-            // Hopefully at some point we'll label transforms so that it is possible to
-            // explicitly include only lens correction transforms.
-            while (tileSpec.getTransforms().size() > 3) {
-                tileSpec.removeLastTransformSpec();
-            }
-
-            tileRenderX = 0;
-            tileRenderY = 0;
-
-            if ((tileRenderWidth % 2) == 1) {
-                tileRenderWidth++;
-            }
-            if ((tileRenderHeight % 2) == 1) {
-                tileRenderHeight++;
-            }
-        }
-
-        return new RenderParameters(null, tileRenderX, tileRenderY, tileRenderWidth, tileRenderHeight, scale);
+        return parameters;
     }
 
     private StackMetaData getStackMetaData(final StackId stackId)
@@ -436,4 +467,7 @@ public class TileDataService {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TileDataService.class);
+
+    private static final Set<String> EXCLUDE_AFTER_LENS =
+            Collections.singleton(TransformSpecMetaData.LENS_CORRECTION_LABEL);
 }
