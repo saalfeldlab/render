@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Java client for rendering a composite image of all tiles in a section for one or more sections.
- * Images are placed in [rootDirectory]/[project]/[stack]/sections_at_[scale]/000/001/123.png
+ * Images are placed in [rootDirectory]/[project]/[stack]/sections_at_[scale]/000/1/123.png
  *
  * @author Eric Trautman
  */
@@ -54,12 +54,12 @@ public class RenderSectionClient {
 
         @Parameter(description = "Z values for sections to render", required = true)
         private List<Double> zValues;
-		
+
         @Parameter(names = "--bounds", description = "Bounds used for all layers: xmin, xmax, ymin,ymax", required = false)
         private List<Integer> bounds;
 
         @Parameter(names = "--customOutputFolder", description = "Custom named folder for output. Overrides the default format 'sections_at_#' folder", required = false)
-        private String customOutPutFolder="";
+        private String customOutputFolder;
 
         @Parameter(names = "--customSubFolder", description = "Name for subfolder to customOutputFolder, if used", required = false)
         private String customSubFolder;
@@ -68,10 +68,10 @@ public class RenderSectionClient {
         private boolean padFileNameWithZeroes;
 
         @Parameter(names = "--maxIntensity",description = "Max intensity to render image", required = false)
-        private int maxIntensity=-1;
+        private Integer maxIntensity;
 
         @Parameter(names = "--minIntensity",description = "Min intensity to render image", required = false)
-        private int minIntensity=-1;
+        private Integer minIntensity;
     }
 
     /**
@@ -107,22 +107,25 @@ public class RenderSectionClient {
 
         this.clientParameters = clientParameters;
 
-        Path projectPath = Paths.get(clientParameters.rootDirectory, clientParameters.project).toAbsolutePath();
-        Path sectionPath;
+        final Path sectionPath;
+        if (clientParameters.customOutputFolder != null) {
+            if (clientParameters.customSubFolder != null) {
+                sectionPath = Paths.get(clientParameters.rootDirectory,
+                                        clientParameters.customOutputFolder,
+                                        clientParameters.customSubFolder);
+            } else {
+                sectionPath = Paths.get(clientParameters.rootDirectory,
+                                        clientParameters.customOutputFolder);
+            }
+        } else {
+            final String sectionsAtScaleName = "sections_at_" + clientParameters.scale;
+            sectionPath = Paths.get(clientParameters.rootDirectory,
+                                    clientParameters.project,
+                                    clientParameters.stack,
+                                    sectionsAtScaleName);
+        }
 
-        if(clientParameters.customOutPutFolder.length() > 0)
-        {
-            projectPath = Paths.get(clientParameters.rootDirectory, clientParameters.customOutPutFolder, clientParameters.customSubFolder).toAbsolutePath();            
-            this.sectionDirectory = projectPath.toFile();
-        }
-        else
-        {
-        	final String sectionsAtScaleName = "sections_at_" + clientParameters.scale;
-        	sectionPath = Paths.get(projectPath.toString(),
-                                           clientParameters.stack,
-                                           sectionsAtScaleName).toAbsolutePath();
-            this.sectionDirectory = sectionPath.toFile();
-        }
+        this.sectionDirectory = sectionPath.toAbsolutePath().toFile();
 
         FileUtil.ensureWritableDirectory(this.sectionDirectory);
 
@@ -169,20 +172,20 @@ public class RenderSectionClient {
                                                               (int) (layerBounds.getDeltaY() + 0.5),
                                                               clientParameters.scale);
         }
-        if ((clientParameters.minIntensity != -1) || (clientParameters.maxIntensity != -1)){
-            parametersUrl = parametersUrl + "?";
-            if (clientParameters.minIntensity != -1){
-                parametersUrl = parametersUrl + "minIntensity=" + clientParameters.minIntensity;
-                if (clientParameters.maxIntensity != -1){
-                    parametersUrl = parametersUrl + "&maxIntensity=" + clientParameters.maxIntensity;
-                }
-            }
-            else if (clientParameters.maxIntensity != -1){
-                parametersUrl = parametersUrl + "maxIntensity=" + clientParameters.maxIntensity;
+
+        if (clientParameters.minIntensity != null) {
+
+            if (clientParameters.maxIntensity != null) {
+                parametersUrl += "?minIntensity=" + clientParameters.minIntensity +
+                                 "&maxIntensity=" + clientParameters.maxIntensity;
+            } else {
+                parametersUrl += "?minIntensity=" + clientParameters.minIntensity;
             }
 
+        } else if (clientParameters.maxIntensity != null) {
+            parametersUrl += "?maxIntensity=" + clientParameters.maxIntensity;
         }
-        
+
         LOG.debug("generateImageForZ: {}, loading {}", z, parametersUrl);
 
         final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
@@ -208,32 +211,27 @@ public class RenderSectionClient {
 
     private File getSectionFile(final Double z) {
 
-        String fName = (clientParameters.padFileNameWithZeroes == true) ? String.format("%05d", z.intValue()) : String.valueOf(z.floatValue());
+        final String fileName = clientParameters.padFileNameWithZeroes ?
+                                String.format("%05d", z.intValue()) : z.toString();
 
-        if(clientParameters.customOutPutFolder.length() < 1)
-        {
+        final File parentDirectory;
+        if (clientParameters.customOutputFolder == null) {
+
             final int thousands = z.intValue() / 1000;
-            final File thousandsDir = new File(sectionDirectory, getNumericDirectoryName(thousands));
+            final File thousandsDir = new File(sectionDirectory, String.format("%03d", thousands));
 
             final int hundreds = (z.intValue() % 1000) / 100;
-            final File hundredsDir = new File(thousandsDir, String.valueOf(hundreds));
-        	FileUtil.ensureWritableDirectory(hundredsDir);
-			return new File(hundredsDir, z + "." + clientParameters.format.toLowerCase());		
+            parentDirectory = new File(thousandsDir, String.valueOf(hundreds));
+
+        } else {
+
+            parentDirectory = sectionDirectory;
+
         }
 
-        FileUtil.ensureWritableDirectory(sectionDirectory);
-		return new File(sectionDirectory, fName + "." + clientParameters.format.toLowerCase());
-	}
+        FileUtil.ensureWritableDirectory(parentDirectory);
 
-
-    private String getNumericDirectoryName(final int value) {
-        String pad = "00";
-        if (value > 99) {
-            pad = "";
-        } else if (value > 9) {
-            pad = "0";
-        }
-        return pad + value;
+        return new File(parentDirectory, fileName + "." + clientParameters.format.toLowerCase());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderSectionClient.class);
