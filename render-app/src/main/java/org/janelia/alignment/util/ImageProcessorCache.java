@@ -50,7 +50,7 @@ public class ImageProcessorCache {
     private final LoadingCache<CacheKey, ImageProcessor> cache;
 
     /** Keep a single instance of the AWS credential provider per image cache */
-    private AWSCredentialsProvider awsCredentialsProvider;
+    private final AWSCredentialsProvider awsCredentialsProvider;
 
     /**
      * Constructs an instance with default parameters.
@@ -86,19 +86,14 @@ public class ImageProcessorCache {
         this.awsCredentialsProvider = new DefaultAWSCredentialsProviderChain();
 
         final Weigher<CacheKey, ImageProcessor> weigher =
-                new Weigher<CacheKey, ImageProcessor>() {
-
-                    @Override
-                    public int weigh(@Nullable final CacheKey key,
-                                     @Nullable final ImageProcessor value) {
-                        final int weight;
-                        if (value == null) {
-                            weight = 0;
-                        } else {
-                            weight = value.getPixelCount() * value.getBitDepth() / 8;
-                        }
-                        return weight;
+                (key, value) -> {
+                    final int weight;
+                    if (value == null) {
+                        weight = 0;
+                    } else {
+                        weight = value.getPixelCount() * value.getBitDepth() / 8;
                     }
+                    return weight;
                 };
 
         final CacheLoader<CacheKey, ImageProcessor> loader =
