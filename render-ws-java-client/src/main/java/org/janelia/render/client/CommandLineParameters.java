@@ -2,12 +2,15 @@ package org.janelia.render.client;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.io.Serializable;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base parameters for all command line tools.
@@ -37,8 +40,10 @@ public class CommandLineParameters implements Serializable {
         try {
             jCommander.parse(args);
             parseFailed = false;
+        } catch (final ParameterException pe) {
+            JCommander.getConsole().println("\nERROR: failed to parse command line arguments\n\n" + pe.getMessage());
         } catch (final Throwable t) {
-            JCommander.getConsole().println("\nERROR: failed to parse command line arguments\n\n" + t.getMessage());
+            LOG.error("failed to parse command line arguments", t);
         }
 
         if (help || parseFailed) {
@@ -59,5 +64,7 @@ public class CommandLineParameters implements Serializable {
             throw new IllegalArgumentException(e);
         }
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(CommandLineParameters.class);
 
 }
