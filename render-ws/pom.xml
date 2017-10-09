@@ -37,6 +37,38 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <!--
+                  See https://github.com/ktoso/maven-git-commit-id-plugin/tree/ed4a76ace5b269e08cd51b603d0efca206c89d71
+                  for plugin details.
+                 -->
+                <groupId>pl.project13.maven</groupId>
+                <artifactId>git-commit-id-plugin</artifactId>
+                <version>2.1.13</version> <!-- using slightly older version that works with maven 3.0 -->
+                <executions>
+                    <execution>
+                        <id>get-git-info</id>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                    </execution>
+                </executions>
+
+                <configuration>
+                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                    <verbose>false</verbose>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                    <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+                    <format>properties</format> <!-- Valid options are "properties" (default) and "json". -->
+                    <excludeProperties>
+                        <!-- filter out email address info just in case -->
+                        <excludeProperty>git.commit.user.email</excludeProperty>
+                        <excludeProperty>git.build.user.email</excludeProperty>
+                    </excludeProperties>
+                </configuration>
+
+            </plugin>
         </plugins>
     </build>
 
