@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
 
@@ -128,6 +130,9 @@ public class TilePairClient {
 
         @Parameter(names = "--toJson", description = "JSON file where tile pairs are to be stored (.json, .gz, or .zip)", required = true)
         private String toJson;
+
+        @Parameter(names = "--maxPairsPerFile", description = "Maximum number of pairs to include in each file.", required = false)
+        private Integer maxPairsPerFile = 100000;
 
         @Parameter(names = "--minX", description = "Minimum X value for all tiles", required = false)
         private Double minX;
@@ -246,14 +251,9 @@ public class TilePairClient {
 
                 final TilePairClient client = new TilePairClient(parameters);
 
-                // TODO: consider splitting up into multiple pair files for large z ranges
-
                 final List<OrderedCanvasIdPair> neighborPairs = client.getSortedNeighborPairs();
-                final RenderableCanvasIdPairs renderableCanvasIdPairs =
-                        new RenderableCanvasIdPairs(client.getRenderParametersUrlTemplate(),
-                                                    neighborPairs);
-                FileUtil.saveJsonFile(parameters.toJson, renderableCanvasIdPairs);
 
+                savePairs(parameters, client.getRenderParametersUrlTemplate(), neighborPairs);
             }
         };
         clientRunner.run();
@@ -473,5 +473,55 @@ public class TilePairClient {
         return existingPairs;
     }
 
+    public static void savePairs(final Parameters parameters,
+                                 final String renderParametersUrlTemplate,
+                                 final List<OrderedCanvasIdPair> neighborPairs)
+            throws IOException {
+
+        if (neighborPairs.size() > parameters.maxPairsPerFile) {
+
+            String outPrefix = parameters.toJson;
+            String outSuffix = "";
+            final Matcher m = OUT_FILE_PATTERN.matcher(parameters.toJson);
+            if (m.matches() && (m.groupCount() == 2)) {
+                outPrefix = m.group(1);
+                outSuffix = "." + m.group(2);
+            }
+
+            for (int fromIndex = 0; fromIndex < neighborPairs.size(); fromIndex += parameters.maxPairsPerFile) {
+
+                int toIndex = fromIndex + parameters.maxPairsPerFile;
+                if (toIndex > neighborPairs.size()) {
+                    toIndex = neighborPairs.size();
+                }
+
+                final String outputFileName = String.format("%s_p%08d%s", outPrefix, fromIndex, outSuffix);
+
+                savePairsForChunk(neighborPairs.subList(fromIndex, toIndex),
+                                  renderParametersUrlTemplate,
+                                  outputFileName);
+            }
+
+        } else {
+
+            savePairsForChunk(neighborPairs,
+                              renderParametersUrlTemplate,
+                              parameters.toJson);
+        }
+    }
+
+    private static void savePairsForChunk(final List<OrderedCanvasIdPair> neighborPairs,
+                                          final String renderParametersUrlTemplate,
+                                          final String outputFileName)
+            throws IOException {
+        final RenderableCanvasIdPairs renderableCanvasIdPairs =
+                new RenderableCanvasIdPairs(renderParametersUrlTemplate,
+                                            neighborPairs);
+        FileUtil.saveJsonFile(outputFileName, renderableCanvasIdPairs);
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(TilePairClient.class);
+
+    private static final Pattern OUT_FILE_PATTERN = Pattern.compile("^(.*)\\.(json|gz|zip)$");
+
 }
