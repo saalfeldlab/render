@@ -292,10 +292,16 @@ public class TilePairClient {
 
         this.outputFileNamePrefix = parameters.toJson;
         this.outputFileNameSuffix = "";
-        final Matcher m = OUT_FILE_PATTERN.matcher(parameters.toJson);
+        final Pattern p = Pattern.compile("^(.*)\\.(json|gz|zip)$");
+        final Matcher m = p.matcher(parameters.toJson);
         if (m.matches() && (m.groupCount() == 2)) {
             this.outputFileNamePrefix = m.group(1);
             this.outputFileNameSuffix = "." + m.group(2);
+            if (this.outputFileNamePrefix.endsWith(".json")) {
+                this.outputFileNamePrefix =
+                        this.outputFileNamePrefix.substring(0, this.outputFileNamePrefix.length() - 5);
+                this.outputFileNameSuffix = ".json" + this.outputFileNameSuffix;
+            }
         }
 
         this.numberOfOutputFiles = 0;
@@ -539,7 +545,5 @@ public class TilePairClient {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TilePairClient.class);
-
-    private static final Pattern OUT_FILE_PATTERN = Pattern.compile("^(.*)\\.(json|gz|zip)$");
 
 }
