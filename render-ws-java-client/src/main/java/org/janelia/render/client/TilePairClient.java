@@ -251,9 +251,7 @@ public class TilePairClient {
 
                 final TilePairClient client = new TilePairClient(parameters);
 
-                final List<OrderedCanvasIdPair> neighborPairs = client.getSortedNeighborPairs();
-
-                savePairs(parameters, client.getRenderParametersUrlTemplate(), neighborPairs);
+                client.deriveAndSaveSortedNeighborPairs();
             }
         };
         clientRunner.run();
@@ -265,6 +263,9 @@ public class TilePairClient {
     private final RenderDataClient renderDataClient;
     private final RenderDataClient includeClient;
     private final StackId includeStack;
+    private String outputFileNamePrefix;
+    private String outputFileNameSuffix;
+    private int numberOfOutputFiles;
 
     public TilePairClient(final Parameters parameters) throws IllegalArgumentException {
 
@@ -288,6 +289,16 @@ public class TilePairClient {
                                                  includeStack.getOwner(),
                                                  includeStack.getProject());
         }
+
+        this.outputFileNamePrefix = parameters.toJson;
+        this.outputFileNameSuffix = "";
+        final Matcher m = OUT_FILE_PATTERN.matcher(parameters.toJson);
+        if (m.matches() && (m.groupCount() == 2)) {
+            this.outputFileNamePrefix = m.group(1);
+            this.outputFileNameSuffix = "." + m.group(2);
+        }
+
+        this.numberOfOutputFiles = 0;
     }
 
     public String getRenderParametersUrlTemplate() {
@@ -300,21 +311,35 @@ public class TilePairClient {
                "/tile/" + RenderableCanvasIdPairs. TEMPLATE_ID_TOKEN + "/render-parameters";
     }
 
-    public List<OrderedCanvasIdPair> getSortedNeighborPairs()
+    public List<Double> getZValues()
+            throws IOException {
+        return renderDataClient.getStackZValues(parameters.stack,
+                                                parameters.minZ,
+                                                parameters.maxZ);
+    }
+
+    public void deriveAndSaveSortedNeighborPairs()
             throws IOException, InterruptedException {
 
-        LOG.info("getSortedNeighborPairs: entry");
+        LOG.info("deriveAndSaveSortedNeighborPairs: entry");
 
-        final List<Double> zValues = renderDataClient.getStackZValues(parameters.stack,
-                                                                      parameters.minZ,
-                                                                      parameters.maxZ);
+        final String renderParametersUrlTemplate = getRenderParametersUrlTemplate();
 
-        final Map<Double, TileBoundsRTree> zToTreeMap = buildRTrees(zValues);
+        final List<Double> zValues = getZValues();
+
+        final Map<Double, TileBoundsRTree> zToTreeMap = new LinkedHashMap<>(zValues.size());
+
+        // load the first zNeighborDistance trees
+        double z;
+        for (int zIndex = 0; (zIndex < zValues.size()) && (zIndex < parameters.zNeighborDistance); zIndex++) {
+            z = zValues.get(zIndex);
+            zToTreeMap.put(z, buildRTree(z));
+        }
 
         final Set<OrderedCanvasIdPair> existingPairs = getExistingPairs();
         final Set<OrderedCanvasIdPair> neighborPairs = new TreeSet<>();
 
-        Double z;
+        int totalSavedPairCount = 0;
         Double neighborZ;
         TileBoundsRTree currentZTree;
         List<TileBoundsRTree> neighborTreeList;
@@ -322,11 +347,24 @@ public class TilePairClient {
         for (int zIndex = 0; zIndex < zValues.size(); zIndex++) {
 
             z = zValues.get(zIndex);
+
+            if (parameters.zNeighborDistance == 0) {
+                zToTreeMap.put(z, buildRTree(z));
+            }
+
+            final double maxNeighborZ = Math.min(parameters.maxZ, z + parameters.zNeighborDistance);
+
+            if (! zToTreeMap.containsKey(maxNeighborZ)) {
+                if (zIndex > 0) {
+                    final double completedZ = zValues.get(zIndex - 1);
+                    zToTreeMap.remove(completedZ);
+                }
+                zToTreeMap.put(maxNeighborZ, buildRTree(maxNeighborZ));
+            }
+
             currentZTree = zToTreeMap.get(z);
 
             neighborTreeList = new ArrayList<>();
-
-            final double maxNeighborZ = Math.min(parameters.maxZ, z + parameters.zNeighborDistance);
 
             for (int neighborZIndex = zIndex + 1; neighborZIndex < zValues.size(); neighborZIndex++) {
                 neighborZ = zValues.get(neighborZIndex);
@@ -349,93 +387,105 @@ public class TilePairClient {
             }
 
             neighborPairs.addAll(currentNeighborPairs);
-        }
 
-        LOG.info("getSortedNeighborPairs: exit, returning {} pairs", neighborPairs.size());
-
-        return new ArrayList<>(neighborPairs);
-    }
-
-    @Nonnull
-    private Map<Double, TileBoundsRTree> buildRTrees(final List<Double> zValues)
-            throws IOException {
-
-        final Map<Double, TileBoundsRTree> zToTreeMap = new LinkedHashMap<>();
-
-        long totalTileCount = 0;
-        long filteredTileCount = 0;
-
-        for (final Double z : zValues) {
-
-            List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
-
-            if (includeClient != null) {
-
-                final int beforeFilterCount = tileBoundsList.size();
-
-                final List<TileBounds> includeList = includeClient.getTileBounds(includeStack.getStack(), z);
-                final Set<String> includeTileIds = new HashSet<>(includeList.size() * 2);
-                for (final TileBounds bounds : includeList) {
-                    includeTileIds.add(bounds.getTileId());
-                }
-
-                for (final Iterator<TileBounds> i = tileBoundsList.iterator(); i.hasNext();) {
-                    if (! includeTileIds.contains(i.next().getTileId())) {
-                        i.remove();
+            if (neighborPairs.size() > parameters.maxPairsPerFile) {
+                final List<OrderedCanvasIdPair> neighborPairsList = new ArrayList<>(neighborPairs);
+                int fromIndex = 0;
+                for (; ; fromIndex += parameters.maxPairsPerFile) {
+                    final int toIndex = fromIndex + parameters.maxPairsPerFile;
+                    if (toIndex <= neighborPairs.size()) {
+                        savePairs(neighborPairsList.subList(fromIndex, toIndex),
+                                  renderParametersUrlTemplate,
+                                  getOutputFileName());
+                        numberOfOutputFiles++;
+                        totalSavedPairCount += parameters.maxPairsPerFile;
+                    } else {
+                        break;
                     }
                 }
 
-                if (beforeFilterCount > tileBoundsList.size()) {
-                    LOG.info("buildRTrees: removed {} tiles not found in {}",
-                             (beforeFilterCount - tileBoundsList.size()), includeStack);
-                }
+                neighborPairs.clear();
+                neighborPairs.addAll(neighborPairsList.subList(fromIndex, neighborPairsList.size()));
 
             }
 
-            TileBoundsRTree tree = new TileBoundsRTree(z, tileBoundsList);
-
-            totalTileCount += tileBoundsList.size();
-
-            if (filterTilesWithBox) {
-
-                final int unfilteredCount = tileBoundsList.size();
-
-                tileBoundsList = tree.findTilesInBox(parameters.minX, parameters.minY,
-                                                     parameters.maxX, parameters.maxY);
-
-                if (unfilteredCount > tileBoundsList.size()) {
-
-                    LOG.info("buildRTrees: removed {} tiles outside of bounding box",
-                             (unfilteredCount - tileBoundsList.size()));
-
-                    tree = new TileBoundsRTree(z, tileBoundsList);
-                }
-            }
-
-            if (parameters.excludeCompletelyObscuredTiles) {
-
-                final int unfilteredCount = tileBoundsList.size();
-
-                tileBoundsList = tree.findVisibleTiles();
-
-                if (unfilteredCount > tileBoundsList.size()) {
-
-                    LOG.info("buildRTrees: removed {} completely obscured tiles",
-                             (unfilteredCount - tileBoundsList.size()));
-
-                    tree = new TileBoundsRTree(z, tileBoundsList);
-                }
-            }
-
-            zToTreeMap.put(z, tree);
-
-            filteredTileCount += tileBoundsList.size();
         }
 
-        LOG.info("buildRTrees: added bounds for {} out of {} tiles to {} trees",
-                 filteredTileCount, totalTileCount, zToTreeMap.size());
+        if (neighborPairs.size() > 0) {
+            final List<OrderedCanvasIdPair> neighborPairsList = new ArrayList<>(neighborPairs);
+            final String outputFileName = numberOfOutputFiles == 0 ? parameters.toJson : getOutputFileName();
+            savePairs(neighborPairsList, renderParametersUrlTemplate, outputFileName);
+            totalSavedPairCount += neighborPairs.size();
+        }
 
-        return zToTreeMap;
+        LOG.info("deriveAndSaveSortedNeighborPairs: exit, saved {} total pairs", totalSavedPairCount);
+    }
+
+    @Nonnull
+    public TileBoundsRTree buildRTree(final double z)
+            throws IOException {
+
+        List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
+        final int totalTileCount = tileBoundsList.size();
+
+        if (includeClient != null) {
+
+            final List<TileBounds> includeList = includeClient.getTileBounds(includeStack.getStack(), z);
+            final Set<String> includeTileIds = new HashSet<>(includeList.size() * 2);
+            for (final TileBounds bounds : includeList) {
+                includeTileIds.add(bounds.getTileId());
+            }
+
+            for (final Iterator<TileBounds> i = tileBoundsList.iterator(); i.hasNext();) {
+                if (! includeTileIds.contains(i.next().getTileId())) {
+                    i.remove();
+                }
+            }
+
+            if (totalTileCount > tileBoundsList.size()) {
+                LOG.info("buildRTree: removed {} tiles not found in {}",
+                         (totalTileCount - tileBoundsList.size()), includeStack);
+            }
+
+        }
+
+        TileBoundsRTree tree = new TileBoundsRTree(z, tileBoundsList);
+
+        if (filterTilesWithBox) {
+
+            final int unfilteredCount = tileBoundsList.size();
+
+            tileBoundsList = tree.findTilesInBox(parameters.minX, parameters.minY,
+                                                 parameters.maxX, parameters.maxY);
+
+            if (unfilteredCount > tileBoundsList.size()) {
+
+                LOG.info("buildRTree: removed {} tiles outside of bounding box",
+                         (unfilteredCount - tileBoundsList.size()));
+
+                tree = new TileBoundsRTree(z, tileBoundsList);
+            }
+        }
+
+        if (parameters.excludeCompletelyObscuredTiles) {
+
+            final int unfilteredCount = tileBoundsList.size();
+
+            tileBoundsList = tree.findVisibleTiles();
+
+            if (unfilteredCount > tileBoundsList.size()) {
+
+                LOG.info("buildRTree: removed {} completely obscured tiles",
+                         (unfilteredCount - tileBoundsList.size()));
+
+                tree = new TileBoundsRTree(z, tileBoundsList);
+            }
+        }
+
+        LOG.info("buildRTree: added bounds for {} out of {} tiles for z {}",
+                 tileBoundsList.size(), totalTileCount, z);
+
+        return tree;
     }
 
     private Set<OrderedCanvasIdPair> getExistingPairs()
@@ -473,47 +523,15 @@ public class TilePairClient {
         return existingPairs;
     }
 
-    public static void savePairs(final Parameters parameters,
-                                 final String renderParametersUrlTemplate,
-                                 final List<OrderedCanvasIdPair> neighborPairs)
-            throws IOException {
-
-        if (neighborPairs.size() > parameters.maxPairsPerFile) {
-
-            String outPrefix = parameters.toJson;
-            String outSuffix = "";
-            final Matcher m = OUT_FILE_PATTERN.matcher(parameters.toJson);
-            if (m.matches() && (m.groupCount() == 2)) {
-                outPrefix = m.group(1);
-                outSuffix = "." + m.group(2);
-            }
-
-            for (int fromIndex = 0; fromIndex < neighborPairs.size(); fromIndex += parameters.maxPairsPerFile) {
-
-                int toIndex = fromIndex + parameters.maxPairsPerFile;
-                if (toIndex > neighborPairs.size()) {
-                    toIndex = neighborPairs.size();
-                }
-
-                final String outputFileName = String.format("%s_p%08d%s", outPrefix, fromIndex, outSuffix);
-
-                savePairsForChunk(neighborPairs.subList(fromIndex, toIndex),
-                                  renderParametersUrlTemplate,
-                                  outputFileName);
-            }
-
-        } else {
-
-            savePairsForChunk(neighborPairs,
-                              renderParametersUrlTemplate,
-                              parameters.toJson);
-        }
+    private String getOutputFileName() {
+        return String.format("%s_p%03d%s", outputFileNamePrefix, numberOfOutputFiles, outputFileNameSuffix);
     }
 
-    private static void savePairsForChunk(final List<OrderedCanvasIdPair> neighborPairs,
-                                          final String renderParametersUrlTemplate,
-                                          final String outputFileName)
+    private void savePairs(final List<OrderedCanvasIdPair> neighborPairs,
+                           final String renderParametersUrlTemplate,
+                           final String outputFileName)
             throws IOException {
+
         final RenderableCanvasIdPairs renderableCanvasIdPairs =
                 new RenderableCanvasIdPairs(renderParametersUrlTemplate,
                                             neighborPairs);
