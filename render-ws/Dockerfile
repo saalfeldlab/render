@@ -4,6 +4,8 @@ MAINTAINER Forrest Collman (forrestc@alleninstitute.org)
 # see https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws.md
 
 #RUN apt-get update
+ENV MONGO_HOST="localhost"
+ENV MONGO_PORT="27107"
 ENV LOGBACK_VERSION="1.1.5"
 ENV SLF4J_VERSION="1.7.16"
 ENV SWAGGER_UI_VERSION="2.1.4"
@@ -63,4 +65,5 @@ COPY docker_jetty/lib/logging/*.jar $JETTY_LIB_LOGGING
 COPY target/render-ws-*.war webapps/render-ws.war
 RUN mkdir -p logs && chgrp jetty logs && chmod 777 logs
 #RUN echo y | java -jar "$JETTY_HOME/start.jar" --add-to-startd=logging-log4j 
-
+COPY render-config-entrypoint.sh /render-config-entrypoint.sh
+ENTRYPOINT ["/render-config-entrypoint.sh"]
