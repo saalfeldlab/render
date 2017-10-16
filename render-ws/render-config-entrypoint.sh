@@ -2,7 +2,13 @@
 set -e
 sed -i "s/servers=.*/servers=${MONGO_HOST}/g" $JETTY_BASE/logs/render-db.properties
 sed -i "s/port=.*/servers=${MONGO_PORT}/g" $JETTY_BASE/logs/render-db.properties
-if [ -z "$MONGO_USERNAME" ]; then
+if [ ! -z "${NDVIZHOST}" ]; then
+	sed -i "s/NDVIZHOST/$NDVIZHOST:$NDVIZPORT/g" $JETTY_BASE/etc/jetty-rewrite.xml
+else
+	sed -i "s/ndvizHost=NDVIZHOST//g" $JETTY_BASE/etc/jetty-rewrite.xml
+fi
+
+if [ ! -z "${MONGO_USERNAME}" ]; then
      sed -i "s/#authenticationDatabase=admin.*/authenticationDatabase=admin/g" $JETTY_BASE/logs/render-db.properties
      sed -i "s/#userName=.*/userName=${MONGO_USERNAME}/g" $JETTY_BASE/logs/render-db.properties
      sed -i "s/#password=.*/password=${MONGO_PASSWORD}/g" $JETTY_BASE/logs/render-db.properties

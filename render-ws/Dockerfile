@@ -59,12 +59,17 @@ ENV JAVA_OPTIONS="-Xms3g -Xmx3g -server -Djava.awt.headless=true"
 #CMD ["/usr/bin/supervisord"]
 
 # clone render repo
-WORKDIR /var/lib/jetty
+WORKDIR $JETTY_BASE
+RUN echo --module=rewrite>>$JETTY_BASE/start.d/start.ini
+RUN mkdir -p $JETTY_BASE/logs && chown -R jetty:jetty $JETTY_BASE/logs
+
 COPY docker_jetty/ .
 COPY docker_jetty/lib/logging/*.jar $JETTY_LIB_LOGGING
 COPY docker_jetty/resources/root-context.xml $JETTY_BASE/webapps/root-context.xml
+
 COPY target/render-ws-*.war webapps/render-ws.war
-RUN mkdir -p logs && chgrp jetty logs && chmod 777 logs
 #RUN echo y | java -jar "$JETTY_HOME/start.jar" --add-to-startd=logging-log4j 
 COPY render-config-entrypoint.sh /render-config-entrypoint.sh
+RUN chown -R jetty:jetty $JETTY_BASE 
+USER jetty
 ENTRYPOINT ["/render-config-entrypoint.sh"]
