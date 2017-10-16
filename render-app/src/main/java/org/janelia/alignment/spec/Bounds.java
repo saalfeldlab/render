@@ -78,6 +78,22 @@ public class Bounds implements Serializable {
         return maxY - minY;
     }
 
+    public int getRoundedMinX() {
+        return getRoundedValue(minX);
+    }
+
+    public int getRoundedMinY() {
+        return getRoundedValue(minY);
+    }
+
+    public int getRoundedDeltaX() {
+        return getRoundedValue(getDeltaX());
+    }
+
+    public int getRoundedDeltaY() {
+        return getRoundedValue(getDeltaY());
+    }
+
     @Override
     public String toString() {
         return toJson();
@@ -85,6 +101,10 @@ public class Bounds implements Serializable {
 
     public String toJson() {
         return JSON_HELPER.toJson(this);
+    }
+
+    private int getRoundedValue(final Double value) {
+        return (int) (value + 0.5);
     }
 
     public static Bounds fromJson(final String json) {
