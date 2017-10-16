@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 sed -i "s/servers=.*/servers=${MONGO_HOST}/g" $JETTY_BASE/logs/render-db.properties
-sed -i "s/port=.*/servers=${MONGO_PORT}/g" $JETTY_BASE/logs/render-db.properties
+sed -i "s/port=.*/port=${MONGO_PORT}/g" $JETTY_BASE/logs/render-db.properties
 if [ ! -z "${NDVIZHOST}" ]; then
 	sed -i "s/NDVIZHOST/$NDVIZHOST:$NDVIZPORT/g" $JETTY_BASE/etc/jetty-rewrite.xml
 else
