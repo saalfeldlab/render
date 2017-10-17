@@ -99,13 +99,13 @@ public class TileBoundsRTreeTest {
         final TileBounds centerTile = tileBoundsList.get(4);
 
         Set<OrderedCanvasIdPair> pairs =
-                TileBoundsRTree.getDistinctPairs(centerTile, tileBoundsList, false, false);
+                TileBoundsRTree.getDistinctPairs(centerTile, tileBoundsList, false, false, false);
         int expectedNumberOfCombinations = tileBoundsList.size() - 1; // all tiles except the center
         Assert.assertEquals("incorrect number of combinations (with corner neighbors) in " + pairs,
                             expectedNumberOfCombinations, pairs.size());
 
         expectedNumberOfCombinations = expectedNumberOfCombinations - 4; // remove the 4 corner tiles
-        pairs = TileBoundsRTree.getDistinctPairs(centerTile, tileBoundsList, true, false);
+        pairs = TileBoundsRTree.getDistinctPairs(centerTile, tileBoundsList, true, false, true);
         Assert.assertEquals("incorrect number of combinations (without corner neighbors) in " + pairs,
                             expectedNumberOfCombinations, pairs.size());
     }

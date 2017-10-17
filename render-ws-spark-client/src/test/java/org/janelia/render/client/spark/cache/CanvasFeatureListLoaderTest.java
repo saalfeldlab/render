@@ -14,18 +14,25 @@ import org.junit.Test;
  */
 public class CanvasFeatureListLoaderTest {
 
-        @Test
-        public void testGetRenderParametersUrl() throws Exception {
+    private String tileId = "aaa";
 
-            testTemplate("http://render:8080/render-ws/v1/tile/{id}/render-parameters",
-                         "http://render:8080/render-ws/v1/tile/aaa/render-parameters");
+    @Test
+    public void testGetRenderParametersUrl() throws Exception {
 
-            testTemplate("http://render:8080/render-ws/v1/z/{groupId}/render-parameters",
-                         "http://render:8080/render-ws/v1/z/99.0/render-parameters");
 
-            testTemplate("http://render:8080/render-ws/v1/z/{groupId}/tile/{id}/render-parameters",
-                         "http://render:8080/render-ws/v1/z/99.0/tile/aaa/render-parameters");
-        }
+        testTemplate("http://render:8080/render-ws/v1/tile/{id}/render-parameters",
+                     "http://render:8080/render-ws/v1/tile/aaa/render-parameters");
+
+        testTemplate("http://render:8080/render-ws/v1/z/{groupId}/render-parameters",
+                     "http://render:8080/render-ws/v1/z/99.0/render-parameters");
+
+        testTemplate("http://render:8080/render-ws/v1/z/{groupId}/tile/{id}/render-parameters",
+                     "http://render:8080/render-ws/v1/z/99.0/tile/aaa/render-parameters");
+
+        tileId = "z_1.0_box_12769_7558_13654_18227_0.1";
+        testTemplate("http://render:8080/render-ws/v1/z/{groupId}/box/{id}/render-parameters",
+                     "http://render:8080/render-ws/v1/z/99.0/box/12769,7558,13654,18227,0.1/render-parameters");
+    }
 
     private void testTemplate(final String template,
                               final String expectedResult) {
@@ -35,7 +42,7 @@ public class CanvasFeatureListLoaderTest {
 
         final CanvasFeatureListLoader loader = new CanvasFeatureListLoader(template, extractor);
 
-        final CanvasId canvasId = new CanvasId("99.0", "aaa");
+        final CanvasId canvasId = new CanvasId("99.0", tileId);
 
         Assert.assertEquals("failed to parse template " + template,
                             expectedResult,

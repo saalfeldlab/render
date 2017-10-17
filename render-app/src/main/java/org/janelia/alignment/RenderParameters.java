@@ -389,6 +389,28 @@ public class RenderParameters implements Serializable {
     }
 
     /**
+     * Adjusts these parameters to clip for montage pair point match rendering.
+     *
+     * @param  clipOffsets  full scale x[0] and y[1] offsets for clipped area.
+     * @param  clipWidth    number of full scale pixels to include in clipped members of left/right pairs.
+     * @param  clipHeight   number of full scale pixels to include in clipped members of top/bottom pairs.
+     */
+    public void clipForMontagePair(final double[] clipOffsets,
+                                   final Integer clipWidth,
+                                   final Integer clipHeight) {
+        if (clipOffsets != null) {
+            if (clipWidth != null) {
+                x = x + clipOffsets[0];
+                width = clipWidth;
+            }
+            if (clipHeight != null) {
+                y = y + clipOffsets[1];
+                height = clipHeight;
+            }
+        }
+    }
+
+    /**
      * Initialize derived parameter values.
      */
     public void initializeDerivedValues() {

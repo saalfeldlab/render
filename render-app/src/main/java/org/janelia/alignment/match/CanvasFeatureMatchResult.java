@@ -52,12 +52,16 @@ public class CanvasFeatureMatchResult implements Serializable {
     }
 
     /**
-     * @param renderScale     scale of rendered canvases (needed to return matches in full scale coordinates).
+     * @param  renderScale  scale of rendered canvases (needed to return matches in full scale coordinates).
+     * @param  pOffsets     full scale x[0] and y[1] offset for all pCanvas matches.
+     * @param  qOffsets     full scale x[0] and y[1] offset for all qCanvas matches.
      *
      * @return collection of inlier matches.
      */
-    public Matches getInlierMatches(final Double renderScale) {
-        return convertPointMatchListToMatches(inliers, renderScale);
+    public Matches getInlierMatches(final Double renderScale,
+                                    final double[] pOffsets,
+                                    final double[] qOffsets) {
+        return convertPointMatchListToMatches(inliers, renderScale, pOffsets, qOffsets);
     }
 
     /**
@@ -83,6 +87,21 @@ public class CanvasFeatureMatchResult implements Serializable {
      */
     public static Matches convertPointMatchListToMatches(final List<PointMatch> pointMatchList,
                                                          final double renderScale) {
+        return convertPointMatchListToMatches(pointMatchList, renderScale, CanvasId.ZERO_OFFSETS, CanvasId.ZERO_OFFSETS);
+    }
+
+    /**
+     * @param  pointMatchList  list of point matches to convert.
+     * @param  renderScale     scale of rendered canvases (needed to return matches in full scale coordinates).
+     * @param  pOffsets        full scale x[0] and y[1] offset for all pCanvas matches.
+     * @param  qOffsets        full scale x[0] and y[1] offset for all qCanvas matches.
+     *
+     * @return the specified point match list in {@link Matches} form.
+     */
+    public static Matches convertPointMatchListToMatches(final List<PointMatch> pointMatchList,
+                                                         final double renderScale,
+                                                         final double[] pOffsets,
+                                                         final double[] qOffsets) {
 
         final Matches matches;
 
@@ -112,13 +131,13 @@ public class CanvasFeatureMatchResult implements Serializable {
                 local2 = p2.getL();
 
                 for (int j = 0; j < dimensionCount; j++) {
+                    // point matches must be stored in full scale world coordinates
                     if (renderScale == 1.0) {
-                        p[j][i] = local1[j];
-                        q[j][i] = local2[j];
+                        p[j][i] = local1[j] + pOffsets[j];
+                        q[j][i] = local2[j] + qOffsets[j];
                     } else {
-                        // point matches must be stored in full scale coordinates
-                        p[j][i] = local1[j] / renderScale;
-                        q[j][i] = local2[j] / renderScale;
+                        p[j][i] = (local1[j] / renderScale) + pOffsets[j];
+                        q[j][i] = (local2[j] / renderScale) + qOffsets[j];
                     }
                 }
 

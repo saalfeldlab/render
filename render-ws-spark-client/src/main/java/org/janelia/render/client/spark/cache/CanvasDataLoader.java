@@ -24,6 +24,8 @@ public abstract class CanvasDataLoader
         extends CacheLoader<CanvasId, CachedCanvasData> implements Serializable {
 
     private final String renderParametersUrlTemplate;
+    private Integer clipWidth;
+    private Integer clipHeight;
     private final Class dataClass;
 
     private final boolean templateContainsIdReference;
@@ -39,11 +41,30 @@ public abstract class CanvasDataLoader
         this.renderParametersUrlTemplate = renderParametersUrlTemplate;
         this.templateContainsIdReference = renderParametersUrlTemplate.contains(TEMPLATE_ID_TOKEN);
         this.templateContainsGroupIdReference = renderParametersUrlTemplate.contains(TEMPLATE_GROUP_ID_TOKEN);
+
+        this.clipWidth = null;
+        this.clipHeight = null;
+
         this.dataClass = dataClass;
     }
 
     public Class getDataClass() {
         return dataClass;
+    }
+
+    /**
+     * Save information for clipping rendered canvases based upon their relative montage position.
+     *
+     * @param  clipWidth                    number of full scale left/right pixels to include in rendered montage clips
+     *                                      (or null to if entire canvas width is to be rendered).
+     *
+     * @param  clipHeight                   number of full scale top/bottom pixels to include in rendered montage clips
+     *                                      (or null to if entire canvas height is to be rendered).
+     */
+    public void setClipInfo(final Integer clipWidth,
+                            final Integer clipHeight) {
+        this.clipWidth = clipWidth;
+        this.clipHeight = clipHeight;
     }
 
     /**
@@ -56,19 +77,22 @@ public abstract class CanvasDataLoader
         // TODO: determine whether we need to worry about encoding
         if (templateContainsIdReference) {
 
-            final Matcher idMatcher = ID_TOKEN_PATTERN.matcher(url);
-            url = idMatcher.replaceAll(canvasId.getId());
+            String idValue = canvasId.getId();
 
-            if (templateContainsGroupIdReference) {
-                final Matcher groupIMatcher = GROUP_ID_TOKEN_PATTERN.matcher(url);
-                url = groupIMatcher.replaceAll(canvasId.getGroupId());
+            // hack to convert encoded box ids - should revisit this
+            final Matcher boxIdMatcher = BOX_ID_PATTERN.matcher(idValue);
+            if (boxIdMatcher.matches() && (boxIdMatcher.groupCount() == 1)) {
+                // convert z_1.0_box_12769_7558_13654_18227_0.1 to 12769,7558,13654,18227,0.1
+                idValue = boxIdMatcher.group(1).replace('_', ',');
             }
 
-        } else if (templateContainsGroupIdReference) {
+            final Matcher idMatcher = ID_TOKEN_PATTERN.matcher(url);
+            url = idMatcher.replaceAll(idValue);
+        }
 
+        if (templateContainsGroupIdReference) {
             final Matcher groupIMatcher = GROUP_ID_TOKEN_PATTERN.matcher(url);
             url = groupIMatcher.replaceAll(canvasId.getGroupId());
-
         }
 
         return url;
@@ -76,13 +100,24 @@ public abstract class CanvasDataLoader
 
     public RenderParameters getRenderParameters(final CanvasId canvasId)
             throws IllegalArgumentException {
-        return RenderParameters.loadFromUrl(getRenderParametersUrl(canvasId));
+
+        final RenderParameters renderParameters = RenderParameters.loadFromUrl(getRenderParametersUrl(canvasId));
+
+        if ((clipWidth != null) || (clipHeight != null)) {
+            // TODO: setting the canvas offsets here is hack-y, probably want a cleaner way
+            canvasId.setClipOffsets(renderParameters.getWidth(), renderParameters.getHeight(), clipWidth, clipHeight);
+            renderParameters.clipForMontagePair(canvasId.getClipOffsets(), clipWidth, clipHeight);
+        }
+
+        return renderParameters;
     }
 
-    private static final Pattern ID_TOKEN_PATTERN =
-            Pattern.compile("\\" + TEMPLATE_ID_TOKEN.substring(0, TEMPLATE_ID_TOKEN.length() - 1) + "\\}");
+    private static Pattern buildTokenPattern(final String token) {
+        return Pattern.compile("\\" + token.substring(0, token.length() - 1) + "\\}");
+    }
 
-    private static final Pattern GROUP_ID_TOKEN_PATTERN =
-            Pattern.compile("\\" + TEMPLATE_GROUP_ID_TOKEN.substring(0, TEMPLATE_GROUP_ID_TOKEN.length() - 1) + "\\}");
+    private static final Pattern ID_TOKEN_PATTERN = buildTokenPattern(TEMPLATE_ID_TOKEN);
+    private static final Pattern GROUP_ID_TOKEN_PATTERN = buildTokenPattern(TEMPLATE_GROUP_ID_TOKEN);
+    private static final Pattern BOX_ID_PATTERN = Pattern.compile("z_.*_box_(.*)");
 
 }

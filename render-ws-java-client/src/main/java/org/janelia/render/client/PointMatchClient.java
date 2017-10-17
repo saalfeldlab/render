@@ -21,8 +21,11 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
+import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.ModelType;
+import org.janelia.alignment.match.MontageRelativePosition;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
@@ -130,6 +133,12 @@ public class PointMatchClient {
 
         @Parameter(names = "--renderScale", description = "Render canvases at this scale", required = false)
         private Double renderScale = 1.0;
+
+        @Parameter(names = "--clipHeight", description = "Number of full scale pixels to include in rendered clips of TOP/BOTTOM oriented montage tiles", required = false)
+        private Integer clipHeight;
+
+        @Parameter(names = "--clipWidth", description = "Number of full scale pixels to include in rendered clips of LEFT/RIGHT oriented montage tiles", required = false)
+        private Integer clipWidth;
 
         @Parameter(description = "canvas_1_URL canvas_2_URL [canvas_p_URL canvas_q_URL] ... (each URL pair identifies render parameters for canvas pairs)", required = true)
         private List<String> renderParameterUrls;
@@ -283,6 +292,30 @@ public class PointMatchClient {
                                                                             canvasUrlToDataMap.size(),
                                                                             clientParameters));
             }
+        }
+
+        if ((parameters.clipWidth != null) || (parameters.clipHeight != null)) {
+
+            if (canvasUrlToDataMap.size() != 2) {
+                throw new IllegalArgumentException("clipping is only supported for single pair runs");
+            }
+
+            final List<CanvasData> canvasDataValues = new ArrayList<>(canvasUrlToDataMap.values());
+
+            final CanvasData pData = canvasDataValues.get(0);
+            final Bounds pBounds = pData.getBounds();
+
+            final CanvasData qData = canvasDataValues.get(1);
+            final Bounds qBounds = qData.getBounds();
+
+            final MontageRelativePosition[] relativePositions =
+                    MontageRelativePosition.getRelativePositions(pBounds, qBounds);
+            pData.canvasId.setRelativePosition(relativePositions[0]);
+            qData.canvasId.setRelativePosition(relativePositions[1]);
+
+            pData.clipForMontagePair(pBounds, parameters.clipWidth, parameters.clipHeight);
+            qData.clipForMontagePair(qBounds, parameters.clipWidth, parameters.clipHeight);
+
         }
 
         this.renderDataClient = new RenderDataClient(clientParameters.baseDataUrl,
@@ -449,8 +482,7 @@ public class PointMatchClient {
 
         private final RenderParameters renderParameters;
         private final double renderScale;
-        private final String canvasGroupId;
-        private final String canvasId;
+        private final CanvasId canvasId;
         private List<Feature> featureList;
 
         public CanvasData(final String canvasUrl,
@@ -461,21 +493,53 @@ public class PointMatchClient {
             this.renderParameters = RenderParameters.loadFromUrl(canvasUrl);
             this.renderParameters.setScale(renderScale);
             this.renderScale = renderScale;
-            this.canvasGroupId = clientParameters.getCanvasGroupId(this.renderParameters);
+            final String groupId = clientParameters.getCanvasGroupId(this.renderParameters);
             final String canvasName = "c_" + String.format("%05d", canvasIndex);
-            this.canvasId = clientParameters.getCanvasId(this.renderParameters, canvasName);
+            final String id = clientParameters.getCanvasId(this.renderParameters, canvasName);
+            this.canvasId = new CanvasId(groupId, id);
             this.featureList = null;
+        }
+
+        public Bounds getBounds() {
+
+            // default to render bounds
+            Bounds bounds = new Bounds(renderParameters.x,
+                                       renderParameters.y,
+                                       renderParameters.x + renderParameters.width,
+                                       renderParameters.y + renderParameters.height);
+
+            // override with stage bounds if they are available
+            final List<TileSpec> tileSpecs = renderParameters.getTileSpecs();
+            if (tileSpecs.size() == 1) {
+                final TileSpec tileSpec = tileSpecs.get(0);
+                final LayoutData layoutData = tileSpec.getLayout();
+                if (layoutData != null) {
+                    final Double stageX = layoutData.getStageX();
+                    final Double stageY = layoutData.getStageY();
+                    final int width = tileSpec.getWidth();
+                    final int height = tileSpec.getHeight();
+                    if ((stageX != null) && (stageY != null) && (width != -1) && (height != -1)) {
+                        bounds = new Bounds(stageX, stageY, stageX + width, stageY + height);
+                    }
+                }
+
+            }
+
+            return bounds;
+        }
+
+        public void clipForMontagePair(final Bounds bounds,
+                                       final Integer clipWidth,
+                                       final Integer clipHeight) {
+            canvasId.setClipOffsets(bounds.getDeltaX().intValue(), bounds.getDeltaY().intValue(), clipWidth, clipHeight);
+            renderParameters.clipForMontagePair(canvasId.getClipOffsets(), clipWidth, clipHeight);
         }
 
         public void setFeatureList(final List<Feature> featureList) {
             this.featureList = featureList;
         }
 
-        public String getCanvasGroupId() {
-            return canvasGroupId;
-        }
-
-        public String getCanvasId() {
+        public CanvasId getCanvasId() {
             return canvasId;
         }
 
@@ -485,7 +549,7 @@ public class PointMatchClient {
 
         @Override
         public String toString() {
-            return canvasGroupId + "__" + canvasId;
+            return canvasId.getGroupId() + "__" + canvasId.getId();
         }
     }
 
@@ -502,7 +566,7 @@ public class PointMatchClient {
                                             final Parameters clientParameters) {
 
             this.canvasData = canvasData;
-            this.renderFile = clientParameters.getCanvasFile(canvasData.canvasId);
+            this.renderFile = clientParameters.getCanvasFile(canvasData.canvasId.getId());
 
             final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
             siftParameters.fdSize = clientParameters.fdSize;
@@ -553,11 +617,13 @@ public class PointMatchClient {
         }
 
         public CanvasMatches getMatches() {
-            return new CanvasMatches(pCanvasData.canvasGroupId,
-                                     pCanvasData.canvasId,
-                                     qCanvasData.canvasGroupId,
-                                     qCanvasData.canvasId,
-                                     matchResult.getInlierMatches(pCanvasData.renderScale));
+            return new CanvasMatches(pCanvasData.canvasId.getGroupId(),
+                                     pCanvasData.canvasId.getId(),
+                                     qCanvasData.canvasId.getGroupId(),
+                                     qCanvasData.canvasId.getId(),
+                                     matchResult.getInlierMatches(pCanvasData.renderScale,
+                                                                  pCanvasData.canvasId.getClipOffsets(),
+                                                                  qCanvasData.canvasId.getClipOffsets()));
         }
 
         @Override
