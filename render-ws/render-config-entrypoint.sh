@@ -1,8 +1,6 @@
 #!/bin/sh
 set -e
-temp="${JAVA_OPTIONS%\"}"
-temp="${temp#\"}"
-export JAVA_OPTIONS=$temp
+JAVA_OPTIONS=$(sed -e 's/^"//' -e 's/"$//' <<<"$JAVA_OPTIONS")
 sed -i "s/servers=.*/servers=${MONGO_HOST}/g" $JETTY_BASE/logs/render-db.properties
 sed -i "s/port=.*/port=${MONGO_PORT}/g" $JETTY_BASE/logs/render-db.properties
 if [ ! -z "${NDVIZHOST}" ]; then
