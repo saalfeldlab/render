@@ -322,10 +322,6 @@ public class TileDataService {
                                                                   final Boolean excludeAllTransforms,
                                                                   final TileSpec tileSpec) {
 
-        // final Boolean excludeAll,
-        // final Set<String> excludeAfterLastLabels,
-        // final Set<String> excludeFirstAndAllAfterLabels
-
         // Flatten and (if requested) normalize the tile's list of transforms for rendering.
         // Normalization is typically achieved by removing all non-lens correction transformations.
 

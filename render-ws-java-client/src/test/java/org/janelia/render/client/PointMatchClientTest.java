@@ -52,8 +52,8 @@ public class PointMatchClientTest {
         final PointMatchClient.CanvasData firstCanvasData = new ArrayList<>(canvasDataMap.values()).get(0);
         final String expectedCanvasGroupId = "99.0";
         final String expectedCanvasId = "160102030405111111.99.0";
-        Assert.assertEquals("invalid derived canvasGroupId", expectedCanvasGroupId, firstCanvasData.getCanvasGroupId());
-        Assert.assertEquals("invalid derived canvasId", expectedCanvasId, firstCanvasData.getCanvasId());
+        Assert.assertEquals("invalid derived canvasGroupId", expectedCanvasGroupId, firstCanvasData.getCanvasId().getGroupId());
+        Assert.assertEquals("invalid derived canvasId", expectedCanvasId, firstCanvasData.getCanvasId().getId());
 
         client.extractFeatures();
 

@@ -51,9 +51,9 @@ public class SharedMongoClient {
         final List<MongoCredential> credentialsList;
         if (dbConfig.hasCredentials()) {
             final MongoCredential credential =
-                    MongoCredential.createMongoCRCredential(dbConfig.getUserName(),
-                                                            dbConfig.getAuthenticationDatabase(),
-                                                            dbConfig.getPassword());
+                    MongoCredential.createCredential(dbConfig.getUserName(),
+                                                     dbConfig.getAuthenticationDatabase(),
+                                                     dbConfig.getPassword());
             credentialsList = Collections.singletonList(credential);
         } else {
             credentialsList = Collections.emptyList();

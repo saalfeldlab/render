@@ -97,11 +97,8 @@ public class CanvasFeatureExtractor implements Serializable {
      * @param  bufferedImage  image to process.
      *
      * @return list of extracted features.
-     *
-     * @throws IllegalStateException
-     *   if no features are found.
      */
-    public List<Feature> extractFeaturesFromImage(final BufferedImage bufferedImage) throws IllegalStateException {
+    public List<Feature> extractFeaturesFromImage(final BufferedImage bufferedImage) {
 
         final Timer timer = new Timer();
         timer.start();
@@ -157,7 +154,7 @@ public class CanvasFeatureExtractor implements Serializable {
                 sb.append(siftParameters.steps).append(")");
             }
 
-            throw new IllegalStateException(sb.toString());
+            LOG.warn(sb.toString());
         }
 
         LOG.info("extractFeatures: exit, extracted " + featureList.size() +

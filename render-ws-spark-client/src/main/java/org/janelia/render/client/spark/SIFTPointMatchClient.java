@@ -118,6 +118,12 @@ public class SIFTPointMatchClient
         @Parameter(names = "--maxFeatureCacheGb", description = "Maximum number of gigabytes of features to cache", required = false)
         private Integer maxFeatureCacheGb = 2;
 
+        @Parameter(names = "--clipHeight", description = "Number of full scale pixels to include in rendered clips of TOP/BOTTOM oriented montage tiles", required = false)
+        private Integer clipHeight;
+
+        @Parameter(names = "--clipWidth", description = "Number of full scale pixels to include in rendered clips of LEFT/RIGHT oriented montage tiles", required = false)
+        private Integer clipWidth;
+
     }
 
     public static void main(final String[] args) {
@@ -188,6 +194,8 @@ public class SIFTPointMatchClient
                         renderParametersUrlTemplateForRun,
                         getCanvasFeatureExtractor());
 
+        featureLoader.setClipInfo(parameters.clipWidth, parameters.clipHeight);
+
         final double renderScale = parameters.renderScale;
 
         // broadcast to all nodes
@@ -241,7 +249,7 @@ public class SIFTPointMatchClient
 
                             matchResult = featureMatcher.deriveMatchResult(pFeatures, qFeatures);
 
-                            inlierMatches = matchResult.getInlierMatches(renderScale);
+                            inlierMatches = matchResult.getInlierMatches(renderScale, p.getClipOffsets(), q.getClipOffsets());
 
                             if (inlierMatches.getWs().length > 0) {
                                 matchList.add(new CanvasMatches(p.getGroupId(), p.getId(),

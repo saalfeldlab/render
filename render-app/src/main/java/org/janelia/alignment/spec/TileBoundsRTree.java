@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -182,13 +183,15 @@ public class TileBoundsRTree {
                 searchResults = findTilesInCircle(circle);
 
                 neighborTileIdPairs.addAll(
-                        getDistinctPairs(tileBounds, searchResults, excludeCornerNeighbors, excludeSameSectionNeighbors));
+                        getDistinctPairs(tileBounds, searchResults,
+                                         excludeCornerNeighbors, excludeSameSectionNeighbors, true));
             }
 
             for (final TileBoundsRTree neighborTree : neighborTrees) {
                 searchResults = neighborTree.findTilesInCircle(circle);
                 neighborTileIdPairs.addAll(
-                        getDistinctPairs(tileBounds, searchResults, excludeCornerNeighbors, excludeSameSectionNeighbors));
+                        getDistinctPairs(tileBounds, searchResults,
+                                         excludeCornerNeighbors, excludeSameSectionNeighbors, false));
             }
         }
 
@@ -229,7 +232,8 @@ public class TileBoundsRTree {
     public static Set<OrderedCanvasIdPair> getDistinctPairs(final TileBounds fromTile,
                                                             final List<TileBounds> toTiles,
                                                             final boolean excludeCornerNeighbors,
-                                                            final boolean excludeSameSectionNeighbors) {
+                                                            final boolean excludeSameSectionNeighbors,
+                                                            final boolean includeRelativePosition) {
         final Set<OrderedCanvasIdPair> pairs = new HashSet<>(toTiles.size() * 2);
         final String pTileId = fromTile.getTileId();
 
@@ -240,6 +244,7 @@ public class TileBoundsRTree {
 
         final CanvasId p = new CanvasId(fromTile.getSectionId(), pTileId);
         String qTileId;
+        MontageRelativePosition[] relativePositions;
         for (final TileBounds toTile : toTiles) {
             qTileId = toTile.getTileId();
             if (! pTileId.equals(qTileId)) {
@@ -250,7 +255,18 @@ public class TileBoundsRTree {
                         isNeighborCenterInRange(fromMinX, fromMaxX, toTile.getMinX(), toTile.getMaxX()) ||
                         isNeighborCenterInRange(fromMinY, fromMaxY, toTile.getMinY(), toTile.getMaxY())) {
 
-                        pairs.add(new OrderedCanvasIdPair(p, new CanvasId(toTile.getSectionId(), qTileId)));
+                        if (includeRelativePosition) {
+                            relativePositions = MontageRelativePosition.getRelativePositions(fromTile, toTile);
+                            pairs.add(
+                                    new OrderedCanvasIdPair(
+                                            new CanvasId(fromTile.getSectionId(), pTileId, relativePositions[0]),
+                                            new CanvasId(toTile.getSectionId(), qTileId, relativePositions[1])));
+                        } else {
+                            pairs.add(
+                                    new OrderedCanvasIdPair(
+                                            p,
+                                            new CanvasId(toTile.getSectionId(), qTileId)));
+                        }
                     }
 
                 }

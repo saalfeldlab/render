@@ -6,6 +6,7 @@ import javax.annotation.Nonnull;
 
 import mpicbg.imagefeatures.Feature;
 
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasId;
 import org.slf4j.Logger;
@@ -34,9 +35,12 @@ public class CanvasFeatureListLoader
     @Override
     public CachedCanvasFeatures load(@Nonnull final CanvasId canvasId) throws Exception {
 
-        LOG.info("load: extracting features for {}", canvasId);
+        final RenderParameters renderParameters = getRenderParameters(canvasId);
+        final double[] offsets = canvasId.getClipOffsets();
 
-        final List<Feature> featureList = featureExtractor.extractFeatures(getRenderParameters(canvasId), null);
+        LOG.info("load: extracting features for {} with offsets ({}, {})", canvasId, offsets[0], offsets[1]);
+
+        final List<Feature> featureList = featureExtractor.extractFeatures(renderParameters, null);
 
         LOG.info("load: exit");
 
