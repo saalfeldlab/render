@@ -1070,7 +1070,7 @@ public class RenderDao {
         final Document tileHeight = new Document("$subtract", buildBasicDBList(new String[] {"$maxY","$minY" }));
         final Document tileValues = new Document("z", "$z").append(
                 "minX", "$minX").append("minY", "$minY").append("maxX", "$maxX").append("maxY", "$maxY").append(
-                "width", tileWidth).append("height", tileHeight);
+                "width", tileWidth).append("height", tileHeight).append("channels","$channels.name");
 
         final Document projectStage = new Document("$project", tileValues);
 
