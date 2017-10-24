@@ -8,6 +8,12 @@
 # USAGE: $0 <memory> <main-class> [client-arg-0] ... [client-arg-n]
 #
 #########################################
+if [[ "$OSTYPE" == "darwin"* ]]; then
+        # Mac OSX
+      readl() { greadlink $@; } 
+else
+      readl() { readlink $@; } 
+fi
 
 if (( $# < 2 )); then
   echo """
@@ -24,8 +30,8 @@ MEMORY="$1"
 MAIN_CLASS="$2"
 shift 2
 
-ABSOLUTE_SCRIPT=`readlink -m $0`
+ABSOLUTE_SCRIPT=`readl -m $0`
 SCRIPTS_DIR=`dirname ${ABSOLUTE_SCRIPT}`
 . ${SCRIPTS_DIR}/setup_java_env.sh ${MEMORY}
-
+echo ${MAIN_CLASS}
 runJavaCommandAndExit ${MAIN_CLASS} $*

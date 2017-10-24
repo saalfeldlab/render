@@ -7,7 +7,12 @@
 # USAGE: $0 [--memory memory] <render-arg-0> ... <render-arg-n>
 #
 #########################################
-
+if [[ "$OSTYPE" == "darwin"* ]]; then
+        # Mac OSX
+      readl() { greadlink $@; } 
+else
+      readl() { readlink $@; } 
+fi
 if [[ $1 = "--memory" ]]; then
   if (($# > 1)); then
     MEMORY="$2"
@@ -19,7 +24,7 @@ fi
 
 MAIN_CLASS="org.janelia.alignment.ArgbRenderer"
 
-ABSOLUTE_SCRIPT=`readlink -m $0`
+ABSOLUTE_SCRIPT=`readl -m $0`
 SCRIPTS_DIR=`dirname ${ABSOLUTE_SCRIPT}`
 . ${SCRIPTS_DIR}/setup_java_env.sh ${MEMORY}
 
