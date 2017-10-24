@@ -5,9 +5,11 @@ import com.beust.jcommander.Parameter;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -333,6 +335,13 @@ public class TilePairClient {
 
         final List<Double> zValues = getZValues();
 
+        final ExistingMatchHelper existingMatchHelper;
+        if (parameters.excludePairsInMatchCollection == null) {
+            existingMatchHelper = null;
+        } else {
+            existingMatchHelper = new ExistingMatchHelper(parameters, renderDataClient);
+        }
+
         final Map<Double, TileBoundsRTree> zToTreeMap = new LinkedHashMap<>(zValues.size());
 
         // load the first zNeighborDistance trees
@@ -340,9 +349,11 @@ public class TilePairClient {
         for (int zIndex = 0; (zIndex < zValues.size()) && (zIndex < parameters.zNeighborDistance); zIndex++) {
             z = zValues.get(zIndex);
             zToTreeMap.put(z, buildRTree(z));
+            if (existingMatchHelper != null) {
+                existingMatchHelper.addExistingPairs(z);
+            }
         }
 
-        final Set<OrderedCanvasIdPair> existingPairs = getExistingPairs();
         final Set<OrderedCanvasIdPair> neighborPairs = new TreeSet<>();
 
         int totalSavedPairCount = 0;
@@ -366,6 +377,9 @@ public class TilePairClient {
                     zToTreeMap.remove(completedZ);
                 }
                 zToTreeMap.put(maxNeighborZ, buildRTree(maxNeighborZ));
+                if (existingMatchHelper != null) {
+                    existingMatchHelper.addExistingPairs(maxNeighborZ);
+                }
             }
 
             currentZTree = zToTreeMap.get(z);
@@ -385,11 +399,8 @@ public class TilePairClient {
                                                                    parameters.excludeCornerNeighbors,
                                                                    parameters.excludeSameLayerNeighbors,
                                                                    parameters.excludeSameSectionNeighbors);
-            if (existingPairs.size() > 0) {
-                final int beforeSize = currentNeighborPairs.size();
-                currentNeighborPairs.removeAll(existingPairs);
-                final int afterSize = currentNeighborPairs.size();
-                LOG.info("removed {} existing pairs for z {}", (beforeSize - afterSize), z);
+            if (existingMatchHelper != null) {
+                existingMatchHelper.removeExistingPairs(z, currentNeighborPairs);
             }
 
             neighborPairs.addAll(currentNeighborPairs);
@@ -494,41 +505,6 @@ public class TilePairClient {
         return tree;
     }
 
-    private Set<OrderedCanvasIdPair> getExistingPairs()
-            throws IOException {
-
-        final Set<OrderedCanvasIdPair> existingPairs = new HashSet<>(8192);
-
-        if (parameters.excludePairsInMatchCollection != null) {
-
-            final List<SectionData> stackSectionDataList =
-                    renderDataClient.getStackSectionData(parameters.stack,
-                                                         parameters.minZ,
-                                                         parameters.maxZ);
-
-            final RenderDataClient matchDataClient =
-                    new RenderDataClient(parameters.baseDataUrl,
-                                         parameters.getExistingMatchOwner(),
-                                         parameters.excludePairsInMatchCollection);
-
-            String pGroupId;
-            for (final SectionData sectionData: stackSectionDataList) {
-                pGroupId = sectionData.getSectionId();
-                for (final CanvasMatches canvasMatches : matchDataClient.getMatchesWithPGroupId(pGroupId)) {
-                    if (canvasMatches.size() > parameters.minExistingMatchCount) {
-                        existingPairs.add(
-                                new OrderedCanvasIdPair(
-                                        new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),
-                                        new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId())));
-                    }
-                }
-            }
-
-        }
-
-        return existingPairs;
-    }
-
     private String getOutputFileName() {
         return String.format("%s_p%03d%s", outputFileNamePrefix, numberOfOutputFiles, outputFileNameSuffix);
     }
@@ -542,6 +518,88 @@ public class TilePairClient {
                 new RenderableCanvasIdPairs(renderParametersUrlTemplate,
                                             neighborPairs);
         FileUtil.saveJsonFile(outputFileName, renderableCanvasIdPairs);
+    }
+
+    private class ExistingMatchHelper {
+
+        final List<SectionData> stackSectionDataList;
+        final Map<Double, List<String>> zToSectionIdMap;
+        final RenderDataClient matchDataClient;
+        final Set<OrderedCanvasIdPair> existingPairs;
+
+        public ExistingMatchHelper(final Parameters clientParameters,
+                                   final RenderDataClient renderDataClient)
+                throws IOException {
+
+            stackSectionDataList = renderDataClient.getStackSectionData(clientParameters.stack,
+                                                                        clientParameters.minZ,
+                                                                        clientParameters.maxZ);
+
+            zToSectionIdMap = new HashMap<>(stackSectionDataList.size());
+            for (final SectionData sectionData : stackSectionDataList) {
+                List<String> sectionIdList = zToSectionIdMap.get(sectionData.getZ());
+                if (sectionIdList == null) {
+                    sectionIdList = new ArrayList<>();
+                    zToSectionIdMap.put(sectionData.getZ(), sectionIdList);
+                }
+                sectionIdList.add(sectionData.getSectionId());
+            }
+
+            matchDataClient = new RenderDataClient(clientParameters.baseDataUrl,
+                                                   clientParameters.getExistingMatchOwner(),
+                                                   clientParameters.excludePairsInMatchCollection);
+
+            existingPairs = new LinkedHashSet<>(8192); // order is important for later removal of matches
+        }
+
+        public void addExistingPairs(final double z)
+                throws IOException {
+
+            final List<String> groupIds = zToSectionIdMap.get(z);
+            if (groupIds != null) {
+                for (final String pGroupId : groupIds) {
+                    for (final CanvasMatches canvasMatches : matchDataClient.getMatchesWithPGroupId(pGroupId)) {
+                        if (canvasMatches.size() > parameters.minExistingMatchCount) {
+                            existingPairs.add(
+                                    new OrderedCanvasIdPair(
+                                            new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),
+                                            new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId())));
+                        }
+                    }
+                }
+            }
+        }
+
+        public void removeExistingPairs(final double currentZ,
+                                        final Set<OrderedCanvasIdPair> currentNeighborPairs) {
+
+            int beforeSize = currentNeighborPairs.size();
+            currentNeighborPairs.removeAll(existingPairs);
+
+            LOG.info("removeExistingPairs: removed {} existing pairs for z {}",
+                     (beforeSize - currentNeighborPairs.size()), currentZ);
+
+            final List<String> groupIds = zToSectionIdMap.get(currentZ);
+            if (groupIds != null) {
+
+                beforeSize = existingPairs.size();
+
+                final Set<String> groupIdsToRemove = new HashSet<>(groupIds);
+
+                for (final Iterator<OrderedCanvasIdPair> i = existingPairs.iterator(); i.hasNext();) {
+                    final OrderedCanvasIdPair pair = i.next();
+                    if (groupIdsToRemove.contains(pair.getP().getGroupId())) {
+                        i.remove();
+                    } else {
+                        break;
+                    }
+                }
+
+                LOG.info("removeExistingPairs: stopped tracking {} pairs with pGroupIds {}",
+                         beforeSize - existingPairs.size(), groupIdsToRemove);
+            }
+
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TilePairClient.class);
