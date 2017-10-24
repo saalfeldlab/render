@@ -1,17 +1,23 @@
 #!/bin/bash
+if [[ "$OSTYPE" == "darwin"* ]]; then
+        # Mac OSX
+      readl() { greadlink $@; } 
+else
+      readl() { readlink $@; } 
+fi
 
-ABSOLUTE_ENV_SCRIPT=`readlink -m $0`
+ABSOLUTE_ENV_SCRIPT=`readl -m $0`
 
 export SCRIPTS_DIR=`dirname ${ABSOLUTE_ENV_SCRIPT}`
-export REPO_DIR=`readlink -m ${SCRIPTS_DIR}/../../../..`
-export INSTALL_DIR=`readlink -m ${REPO_DIR}/deploy`
+export REPO_DIR=`readl -m ${SCRIPTS_DIR}/../../../..`
+export INSTALL_DIR=`readl -m ${REPO_DIR}/deploy`
 
 if [ -z "$RENDER_CLIENT_JAR" ]
 then
-    export RENDER_CLIENT_JAR=`readlink -m ${REPO_DIR}/render-ws-java-client/target/render-ws-java-client-*-standalone.jar`
+    export RENDER_CLIENT_JAR=`readl -m ${REPO_DIR}/render-ws-java-client/target/render-ws-java-client-*-standalone.jar`
 fi
 if [ -z "$RENDER_JAVA_HOME" ]; then
-    export JAVA_HOME=`readlink -m ${REPO_DIR}/deploy/jdk*`
+    export JAVA_HOME=`readl -m ${REPO_DIR}/deploy/jdk*`
 else
     export JAVA_HOME="$RENDER_JAVA_HOME"
 fi
