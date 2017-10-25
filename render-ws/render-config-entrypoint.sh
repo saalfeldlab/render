@@ -12,10 +12,10 @@ if [ ! -z "${NDVIZHOST}" ]; then
 	sed -i "s/NDVIZHOST/$NDVIZHOST:$NDVIZPORT/g" $JETTY_BASE/etc/jetty-rewrite.xml
 else
 	sed -i "s/ndvizHost=NDVIZHOST//g" $JETTY_BASE/etc/jetty-rewrite.xml
-
-fi [ ! -z "${NDVIZ_URL}" ]; then
+fi
+if [ ! -z "${NDVIZ_URL}" ]; then
 	sed -i "s/NDVIZHOST/$NDVIZ_URL/g" $JETTY_BASE/etc/jetty-rewrite.xml
-if 
+fi 
 
 if [ ! -z "${MONGO_USERNAME}" ]; then
      sed -i "s/#authenticationDatabase=admin.*/authenticationDatabase=admin/g" $JETTY_BASE/logs/render-db.properties
