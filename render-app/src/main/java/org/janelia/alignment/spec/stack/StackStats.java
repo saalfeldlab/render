@@ -1,10 +1,10 @@
 package org.janelia.alignment.spec.stack;
 
 import java.io.Serializable;
+import java.util.Set;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
-import java.util.ArrayList;
 
 /**
  * Derived stats for a stack.
@@ -23,7 +23,7 @@ public class StackStats
     private final Integer maxTileWidth;
     private final Integer minTileHeight;
     private final Integer maxTileHeight;
-    private final ArrayList channels;
+    private final Set<String> channelNames;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
@@ -37,28 +37,9 @@ public class StackStats
         this.maxTileWidth = null;
         this.minTileHeight = null;
         this.maxTileHeight = null;
-        this.channels = null;
+        this.channelNames = null;
     }
-    public StackStats(final Bounds stackBounds,
-            final Long sectionCount,
-            final Long nonIntegralSectionCount,
-            final Long tileCount,
-            final Long transformCount,
-            final Integer minTileWidth,
-            final Integer maxTileWidth,
-            final Integer minTileHeight,
-            final Integer maxTileHeight) {
-        this.stackBounds = stackBounds;
-        this.sectionCount = sectionCount;
-        this.nonIntegralSectionCount = nonIntegralSectionCount;
-        this.tileCount = tileCount;
-        this.transformCount = transformCount;
-        this.minTileWidth = minTileWidth;
-        this.maxTileWidth = maxTileWidth;
-        this.minTileHeight = minTileHeight;
-        this.maxTileHeight = maxTileHeight;
-        this.channels = null;
-    }
+
     public StackStats(final Bounds stackBounds,
                       final Long sectionCount,
                       final Long nonIntegralSectionCount,
@@ -68,7 +49,7 @@ public class StackStats
                       final Integer maxTileWidth,
                       final Integer minTileHeight,
                       final Integer maxTileHeight,
-                      final ArrayList channels) {
+                      final Set<String> channelNames) {
         this.stackBounds = stackBounds;
         this.sectionCount = sectionCount;
         this.nonIntegralSectionCount = nonIntegralSectionCount;
@@ -78,7 +59,7 @@ public class StackStats
         this.maxTileWidth = maxTileWidth;
         this.minTileHeight = minTileHeight;
         this.maxTileHeight = maxTileHeight;
-        this.channels = channels;
+        this.channelNames = channelNames;
     }
 
     public Bounds getStackBounds() {
@@ -116,9 +97,11 @@ public class StackStats
     public Integer getMaxTileHeight() {
         return maxTileHeight;
     }
-    public ArrayList getChannels() {
-        return channels;
+
+    public Set<String> getChannelNames() {
+        return channelNames;
     }
+
     @Override
     public String toString() {
         return toJson();

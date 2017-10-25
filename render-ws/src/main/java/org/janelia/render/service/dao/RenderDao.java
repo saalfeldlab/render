@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1115,9 +1116,9 @@ public class RenderDao {
                                             "The aggregation query was " + MongoUtil.fullName(tileCollection) +
                                             ".aggregate(" + pipeline + ") .");
         }
-        ArrayList<String> channels = tileCollection.distinct("channels.name",String.class).into(new ArrayList<String>());
 
-
+        final List<String> channelNames = tileCollection.distinct("channels.name", String.class).into(new ArrayList<>());
+        Collections.sort(channelNames);
 
         final Bounds stackBounds = new Bounds(aggregateResult.get(minXKey, Double.class),
                                               aggregateResult.get(minYKey, Double.class),
@@ -1140,7 +1141,7 @@ public class RenderDao {
                                                 maxTileWidth,
                                                 minTileHeight,
                                                 maxTileHeight,
-                                                channels);
+                                                new LinkedHashSet<>(channelNames));
         stackMetaData.setStats(stats);
 
         LOG.debug("ensureIndexesAndDeriveStats: completed stat derivation for {}, stats={}", stackId, stats);
