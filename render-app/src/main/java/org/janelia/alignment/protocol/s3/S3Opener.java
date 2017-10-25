@@ -1,6 +1,11 @@
 package org.janelia.alignment.protocol.s3;
 
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.google.common.net.MediaType;
 
 import ij.ImagePlus;
@@ -11,7 +16,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
-import java.net.URLStreamHandler;
 import java.util.Locale;
 
 import javax.imageio.ImageIO;
@@ -26,11 +30,11 @@ import org.slf4j.LoggerFactory;
  */
 public class S3Opener extends ij.io.Opener {
 
-    private final AWSCredentialsProvider credentialsProvider;
+    private S3Handler handler;
 
-    public S3Opener(final AWSCredentialsProvider credentialsProvider) {
+    public S3Opener() {
         super();
-        this.credentialsProvider = credentialsProvider;
+        this.handler = null;
     }
 
     @Override
@@ -48,7 +52,10 @@ public class S3Opener extends ij.io.Opener {
 
             try {
 
-                final URLStreamHandler handler = new S3Handler(credentialsProvider);
+                if (handler == null) {
+                    buildS3Handler();
+                }
+
                 final URL u = new URL(null, url, handler);
                 final URLConnection uc = u.openConnection();
 
@@ -93,13 +100,27 @@ public class S3Opener extends ij.io.Opener {
         return new ImagePlus(title, img);
     }
 
-    ImagePlus openPngUsingURL(final String title,
-                              final URL url)
+    private ImagePlus openPngUsingURL(final String title,
+                                      final URL url)
             throws IOException {
         final Image img;
         final InputStream in = url.openStream();
         img = ImageIO.read(in);
         return new ImagePlus(title, img);
+    }
+
+    private synchronized void buildS3Handler() throws IOException {
+        if (handler == null) {
+            try {
+                final AWSCredentialsProvider credentialsProvider = new DefaultAWSCredentialsProviderChain();
+                final AmazonS3 s3Client = AmazonS3ClientBuilder.standard().withCredentials(credentialsProvider).build();
+                handler = new S3Handler(s3Client);
+            } catch (final AmazonServiceException ase) {
+                throw new IOException("Amazon S3 service failure for error type " + ase.getErrorType(), ase);
+            } catch (final AmazonClientException ace) {
+                throw new IOException("Amazon S3 client failure", ace);
+            }
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(S3Opener.class);
