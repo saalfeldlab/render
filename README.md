@@ -17,3 +17,4 @@ A collection of Java tools and HTTP services (APIs) for rendering transformed im
   [render application]: <docs/src/site/markdown/render-app.md>
   [render web services]: <docs/src/site/markdown/render-ws.md>
   [RESTful APIs]: <docs/src/site/markdown/render-ws-api/render-ws-api.md>
+  [render-ws docker]: <docs/src/site/markdown/render-ws-docker.md>
