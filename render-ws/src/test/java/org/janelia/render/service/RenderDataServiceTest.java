@@ -113,6 +113,7 @@ public class RenderDataServiceTest {
                                       testStackId.getProject(),
                                       testStackId.getStack(),
                                       Z,
+                                      null,
                                       uriInfo,
                                       resolvedTiles);
 
@@ -141,6 +142,7 @@ public class RenderDataServiceTest {
                                       testStackId.getProject(),
                                       testStackId.getStack(),
                                       Z,
+                                      null,
                                       uriInfo,
                                       resolvedTestTiles);
 

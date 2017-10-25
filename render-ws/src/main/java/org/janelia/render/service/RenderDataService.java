@@ -2,6 +2,7 @@ package org.janelia.render.service;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,6 +35,7 @@ import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.dao.TileSpecLayout;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
@@ -531,9 +533,10 @@ public class RenderDataService {
     public Response saveResolvedTiles(@PathParam("owner") final String owner,
                                       @PathParam("project") final String project,
                                       @PathParam("stack") final String stack,
+                                      @QueryParam("deriveData") final Boolean deriveData,
                                       @Context final UriInfo uriInfo,
                                       final ResolvedTileSpecCollection resolvedTiles) {
-        return saveResolvedTilesForZ(owner, project, stack, null, uriInfo, resolvedTiles);
+        return saveResolvedTilesForZ(owner, project, stack, null, deriveData, uriInfo, resolvedTiles);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/resolvedTiles")
@@ -550,6 +553,7 @@ public class RenderDataService {
                                           @PathParam("project") final String project,
                                           @PathParam("stack") final String stack,
                                           @PathParam("z") final Double z,
+                                          @QueryParam("deriveData") final Boolean deriveData,
                                           @Context final UriInfo uriInfo,
                                           final ResolvedTileSpecCollection resolvedTiles) {
 
@@ -568,6 +572,24 @@ public class RenderDataService {
                 throw new IllegalStateException("Resolved tiles can only be saved to stacks in the " +
                                                 LOADING + " state, but this stack's state is " +
                                                 stackMetaData.getState() + ".");
+            }
+
+            if ((deriveData != null) && deriveData) {
+                final ProcessTimer timer = new ProcessTimer();
+                int tileSpecCount = 0;
+                final Collection<TileSpec> tileSpecs = resolvedTiles.getTileSpecs();
+                for (final TileSpec tileSpec : tileSpecs) {
+                    tileSpecCount++;
+                    tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
+
+                    if (timer.hasIntervalPassed()) {
+                        LOG.info("saveResolvedTilesForZ: derived bounding box for {} out of {} tiles",
+                                 tileSpecCount, tileSpecs.size());
+                    }
+                }
+
+                LOG.info("saveResolvedTilesForZ: derived bounding box for {} tiles, elapsedSeconds={}",
+                         tileSpecCount, timer.getElapsedSeconds());
             }
 
             resolvedTiles.validateCollection(z);
