@@ -24,8 +24,11 @@ Here are the present environment variables and their default values
 
 * MONGO_HOST=localhost
 * MONGO_PORT=27017
-* NDVIZ_HOST=
-* NDVIZ_PORT=
+* MONGO_USERNAME= (default is no authentication)
+* MONGO_PASSWORD= (default is no authenticaiton)
+* NDVIZHOST= (default blank)
+* NDVIZPORT= (default blank)
+* NDVIZ_URL= (default blank, use either NDVIZHOST:NDVIZPORT or NDVIZ_URL if you want to specify https)
 * JAVA_OPTIONS="-Xms3g -Xmx3g -server -Djava.awt.headless=true"
 
 
