@@ -1,6 +1,7 @@
 package org.janelia.alignment.spec.stack;
 
 import java.io.Serializable;
+import java.util.Set;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
@@ -22,6 +23,7 @@ public class StackStats
     private final Integer maxTileWidth;
     private final Integer minTileHeight;
     private final Integer maxTileHeight;
+    private final Set<String> channelNames;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
@@ -35,6 +37,7 @@ public class StackStats
         this.maxTileWidth = null;
         this.minTileHeight = null;
         this.maxTileHeight = null;
+        this.channelNames = null;
     }
 
     public StackStats(final Bounds stackBounds,
@@ -45,7 +48,8 @@ public class StackStats
                       final Integer minTileWidth,
                       final Integer maxTileWidth,
                       final Integer minTileHeight,
-                      final Integer maxTileHeight) {
+                      final Integer maxTileHeight,
+                      final Set<String> channelNames) {
         this.stackBounds = stackBounds;
         this.sectionCount = sectionCount;
         this.nonIntegralSectionCount = nonIntegralSectionCount;
@@ -55,6 +59,7 @@ public class StackStats
         this.maxTileWidth = maxTileWidth;
         this.minTileHeight = minTileHeight;
         this.maxTileHeight = maxTileHeight;
+        this.channelNames = channelNames;
     }
 
     public Bounds getStackBounds() {
@@ -91,6 +96,10 @@ public class StackStats
 
     public Integer getMaxTileHeight() {
         return maxTileHeight;
+    }
+
+    public Set<String> getChannelNames() {
+        return channelNames;
     }
 
     @Override
