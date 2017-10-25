@@ -4,6 +4,7 @@ import java.io.Serializable;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
+import java.util.ArrayList;
 
 /**
  * Derived stats for a stack.
@@ -22,6 +23,7 @@ public class StackStats
     private final Integer maxTileWidth;
     private final Integer minTileHeight;
     private final Integer maxTileHeight;
+    private final ArrayList channels;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
@@ -35,17 +37,17 @@ public class StackStats
         this.maxTileWidth = null;
         this.minTileHeight = null;
         this.maxTileHeight = null;
+        this.channels = null;
     }
-
     public StackStats(final Bounds stackBounds,
-                      final Long sectionCount,
-                      final Long nonIntegralSectionCount,
-                      final Long tileCount,
-                      final Long transformCount,
-                      final Integer minTileWidth,
-                      final Integer maxTileWidth,
-                      final Integer minTileHeight,
-                      final Integer maxTileHeight) {
+            final Long sectionCount,
+            final Long nonIntegralSectionCount,
+            final Long tileCount,
+            final Long transformCount,
+            final Integer minTileWidth,
+            final Integer maxTileWidth,
+            final Integer minTileHeight,
+            final Integer maxTileHeight) {
         this.stackBounds = stackBounds;
         this.sectionCount = sectionCount;
         this.nonIntegralSectionCount = nonIntegralSectionCount;
@@ -55,6 +57,28 @@ public class StackStats
         this.maxTileWidth = maxTileWidth;
         this.minTileHeight = minTileHeight;
         this.maxTileHeight = maxTileHeight;
+        this.channels = null;
+    }
+    public StackStats(final Bounds stackBounds,
+                      final Long sectionCount,
+                      final Long nonIntegralSectionCount,
+                      final Long tileCount,
+                      final Long transformCount,
+                      final Integer minTileWidth,
+                      final Integer maxTileWidth,
+                      final Integer minTileHeight,
+                      final Integer maxTileHeight,
+                      final ArrayList channels) {
+        this.stackBounds = stackBounds;
+        this.sectionCount = sectionCount;
+        this.nonIntegralSectionCount = nonIntegralSectionCount;
+        this.tileCount = tileCount;
+        this.transformCount = transformCount;
+        this.minTileWidth = minTileWidth;
+        this.maxTileWidth = maxTileWidth;
+        this.minTileHeight = minTileHeight;
+        this.maxTileHeight = maxTileHeight;
+        this.channels = channels;
     }
 
     public Bounds getStackBounds() {
@@ -92,7 +116,9 @@ public class StackStats
     public Integer getMaxTileHeight() {
         return maxTileHeight;
     }
-
+    public ArrayList getChannels() {
+        return channels;
+    }
     @Override
     public String toString() {
         return toJson();

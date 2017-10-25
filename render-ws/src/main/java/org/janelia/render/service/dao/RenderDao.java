@@ -1096,7 +1096,6 @@ public class RenderDao {
         minAndMaxValues.append(maxWidthKey, new Document(QueryOperators.MAX, "$width"));
         minAndMaxValues.append(minHeightKey, new Document(QueryOperators.MIN, "$height"));
         minAndMaxValues.append(maxHeightKey, new Document(QueryOperators.MAX, "$height"));
-
         final Document groupStage = new Document("$group", minAndMaxValues);
 
         final List<Document> pipeline = new ArrayList<>();
@@ -1107,7 +1106,6 @@ public class RenderDao {
         // mongodb java 3.0 driver notes:
         // -- need to set cursor batchSize to prevent NPE from cursor creation
         final Document aggregateResult = tileCollection.aggregate(pipeline).batchSize(1).first();
-
         if (aggregateResult == null) {
             String cause = "";
             if (tileCollection.count() == 0) {
@@ -1117,6 +1115,9 @@ public class RenderDao {
                                             "The aggregation query was " + MongoUtil.fullName(tileCollection) +
                                             ".aggregate(" + pipeline + ") .");
         }
+        ArrayList<String> channels = tileCollection.distinct("channels.name",String.class).into(new ArrayList<String>());
+
+
 
         final Bounds stackBounds = new Bounds(aggregateResult.get(minXKey, Double.class),
                                               aggregateResult.get(minYKey, Double.class),
@@ -1138,7 +1139,8 @@ public class RenderDao {
                                                 minTileWidth,
                                                 maxTileWidth,
                                                 minTileHeight,
-                                                maxTileHeight);
+                                                maxTileHeight,
+                                                channels);
         stackMetaData.setStats(stats);
 
         LOG.debug("ensureIndexesAndDeriveStats: completed stat derivation for {}, stats={}", stackId, stats);
