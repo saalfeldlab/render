@@ -9,12 +9,12 @@ NDVIZ_URL=$(echo $NDVIZ_URL | sed -e 's/^"//' -e 's/"$//')
 sed -i "s/servers=.*/servers=${MONGO_HOST}/g" $JETTY_BASE/logs/render-db.properties
 sed -i "s/port=.*/port=${MONGO_PORT}/g" $JETTY_BASE/logs/render-db.properties
 if [ ! -z "${NDVIZHOST}" ]; then
-	sed -i "s/NDVIZHOST/$NDVIZHOST:$NDVIZPORT/g" $JETTY_BASE/etc/jetty-rewrite.xml
+	sed -i "s@NDVIZHOST@$NDVIZHOST:$NDVIZPORT@g" $JETTY_BASE/etc/jetty-rewrite.xml
 else
 	sed -i "s/ndvizHost=NDVIZHOST//g" $JETTY_BASE/etc/jetty-rewrite.xml
 fi
 if [ ! -z "${NDVIZ_URL}" ]; then
-	sed -i "s/NDVIZHOST/$NDVIZ_URL/g" $JETTY_BASE/etc/jetty-rewrite.xml
+	sed -i "s@NDVIZHOST@$NDVIZ_URL@g" $JETTY_BASE/etc/jetty-rewrite.xml
 fi 
 
 if [ ! -z "${MONGO_USERNAME}" ]; then
