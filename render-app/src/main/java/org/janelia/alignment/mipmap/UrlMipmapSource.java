@@ -107,6 +107,11 @@ public class UrlMipmapSource
             final int currentMipmapLevel = mipmapEntry.getKey();
             if (currentMipmapLevel < mipmapLevel) {
                 downSampleLevels = mipmapLevel - currentMipmapLevel;
+            } else if (currentMipmapLevel > mipmapLevel) {
+                throw new IllegalArgumentException(
+                        "The highest resolution mipmap for " + imageAndMask.getImageUrl() + " is level " +
+                        currentMipmapLevel + " but a level " + mipmapLevel +
+                        " mipmap is needed.  Upscaling is not currently supported.");
             }
 
             final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),

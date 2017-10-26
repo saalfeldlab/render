@@ -39,7 +39,7 @@ public class HierarchicalStackTest {
 
         Assert.assertEquals(
                 "invalid box path for root tier",
-                "/owner/test_owner/project/test_project_canvas_rough/stack/A/z/1.0/box/100.0,200.0,1000.0,2000.0,0.1",
+                "/owner/test_owner/project/test_project/stack/rough/z/1.0/box/100,200,1000,2000,0.1",
                 rootStack.getLayerBoxPath(1));
 
         final List<HierarchicalStack> tier3StackList = new ArrayList<>();
