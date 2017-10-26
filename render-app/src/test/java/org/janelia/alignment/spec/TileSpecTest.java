@@ -125,6 +125,19 @@ public class TileSpecTest {
         tileSpec.validate();
     }
 
+    @Test
+    public void testDeriveBoundingBox() throws Exception {
+        final byte[] jsonBytes = Files.readAllBytes(Paths.get("src/test/resources/tile-test/tile_with_only_affine_transforms.json"));
+        final String json = new String(jsonBytes);
+        final TileSpec tileSpec = TileSpec.fromJson(json);
+        tileSpec.deriveBoundingBox(64, true);
+
+        Assert.assertEquals("incorrect minX", 1108.0, tileSpec.getMinX(), 0.0);
+        Assert.assertEquals("incorrect minY", 1957.0, tileSpec.getMinY(), 0.0);
+        Assert.assertEquals("incorrect maxX", 3773.0, tileSpec.getMaxX(), 0.0);
+        Assert.assertEquals("incorrect maxY", 4264.0, tileSpec.getMaxY(), 0.0);
+    }
+
     private static final String EXPECTED_TILE_ID = "test-tile-id";
     private static final int EXPECTED_WIDTH = 99;
     private static final double MAX_DOUBLE_DELTA = 0.1;
