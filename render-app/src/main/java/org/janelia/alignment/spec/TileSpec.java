@@ -64,7 +64,7 @@ public class TileSpec implements Serializable {
     private Double minIntensity;
     @SuppressWarnings("unused")   // older JSON specs without channels might have maxIntensity explicitly specified
     private Double maxIntensity;
-    private final TreeMap<Integer, ImageAndMask> mipmapLevels;
+    private TreeMap<Integer, ImageAndMask> mipmapLevels;
     private List<ChannelSpec> channels;
     private MipmapPathBuilder mipmapPathBuilder;
     private ListTransformSpec transforms;
@@ -376,6 +376,33 @@ public class TileSpec implements Serializable {
             }
         }
         return channelList;
+    }
+
+    /**
+     * Converts legacy single channel tile spec mipmap data to a channel spec with the specified name.
+     *
+     * @param  channelName  name of the single channel.
+     *
+     * @throws IllegalStateException
+     *   if this tile spec already has defined channels.
+     */
+    @SuppressWarnings("unused")
+    public void convertLegacyToChannel(final String channelName)
+            throws IllegalStateException {
+        if (channels == null) {
+            channels = new ArrayList<>();
+            channels.add(new ChannelSpec(channelName,
+                                         minIntensity,
+                                         maxIntensity,
+                                         mipmapLevels,
+                                         mipmapPathBuilder));
+            this.minIntensity = null;
+            this.maxIntensity = null;
+            this.mipmapLevels = null;
+            this.mipmapPathBuilder = null;
+        } else {
+            throw new IllegalStateException("channels already defined");
+        }
     }
 
     public void addChannel(final ChannelSpec channelSpec) {
