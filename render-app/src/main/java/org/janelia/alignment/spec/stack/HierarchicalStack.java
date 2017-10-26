@@ -1,8 +1,11 @@
 package org.janelia.alignment.spec.stack;
 
+import java.awt.geom.AffineTransform;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+
+import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.janelia.alignment.spec.Bounds;
 
@@ -56,7 +59,8 @@ public class HierarchicalStack implements Serializable {
 
         this.bounds = roughTilesStackBounds;
 
-        final String canvasProjectName = roughTilesStackId.getProject() + "_canvas_" + roughTilesStackId.getStack();
+        final String canvasProjectName =
+                roughTilesStackId.getProject() + "_" + roughTilesStackId.getStack() + "_canvases";
         this.stackId = new StackId(roughTilesStackId.getOwner(), canvasProjectName, "A");
 
         this.alignmentQuality = null;
@@ -133,9 +137,24 @@ public class HierarchicalStack implements Serializable {
      * @return web service box path for the specified layer in this stack.
      */
     public String getLayerBoxPath(final double z) {
-        return "/owner/" + stackId.getOwner() + "/project/" + stackId.getProject() + "/stack/" + stackId.getStack() +
-               "/z/" + z + "/box/" +  bounds.getMinX() + ',' + bounds.getMinY() + ',' + bounds.getDeltaX() + ',' +
-               bounds.getDeltaY() + ',' + scale;
+        return "/owner/" + roughTilesStackId.getOwner() + "/project/" + roughTilesStackId.getProject() +
+               "/stack/" + roughTilesStackId.getStack() + "/z/" + z +
+               "/box/" +  bounds.getRoundedMinX() + ',' + bounds.getRoundedMinY() + ',' +
+               bounds.getRoundedDeltaX() + ',' + bounds.getRoundedDeltaY() + ',' + scale;
+    }
+
+    public AffineModel2D getRelativeModel(final AffineModel2D alignedLayerTransformModel,
+                                          final double alignedFirstLayerTranslateX,
+                                          final double alignedFirstLayerTranslateY) {
+
+        final AffineTransform affine = new AffineTransform();
+        affine.scale(1 / scale, 1 / scale);
+        affine.translate(-alignedFirstLayerTranslateX, -alignedFirstLayerTranslateY);
+        affine.concatenate(alignedLayerTransformModel.createAffine());
+        affine.scale(scale, scale);
+        final AffineModel2D model = new AffineModel2D();
+        model.set(affine);
+        return model;
     }
 
     /**
@@ -166,8 +185,8 @@ public class HierarchicalStack implements Serializable {
         final double childScale = scale * rowAndColumnCount;
 
         final HierarchicalStack rootStack = getRootTierStack();
-        final double childColumnWidth = rootStack.bounds.getDeltaX() / childTierColumnCount;
-        final double childRowHeight = rootStack.bounds.getDeltaY() / childTierRowCount;
+        final int childColumnWidth = (int) ((rootStack.bounds.getDeltaX() / childTierColumnCount) + 0.5);
+        final int childRowHeight = (int) ((rootStack.bounds.getDeltaY() / childTierRowCount) + 0.5);
 
         final int firstChildRow = row * rowAndColumnCount;
         final int lastChildRow = firstChildRow + rowAndColumnCount;
@@ -247,5 +266,26 @@ public class HierarchicalStack implements Serializable {
         }
 
         return parentStackName + tierStackName;
+    }
+
+    public static void main(final String[] args) {
+
+        final HierarchicalStack tier0 = new HierarchicalStack(new StackId("flyTEM", "trautmane_test", "rough_tiles"),
+                                                              new Bounds(54954.0, 58314.0, 69539.0, 76856.0),
+                                                              0.1);
+        printInfo(tier0);
+        for (final HierarchicalStack tier1 : tier0.partition(2)) {
+            printInfo(tier1);
+            for (final HierarchicalStack tier2 : tier1.partition(2)) {
+                printInfo(tier2);
+            }
+        }
+
+    }
+
+    private static void printInfo(final HierarchicalStack stack) {
+        System.out.println(stack.getStackId());
+        System.out.println(stack.getLayerBoxPath(1));
+        System.out.println();
     }
 }
