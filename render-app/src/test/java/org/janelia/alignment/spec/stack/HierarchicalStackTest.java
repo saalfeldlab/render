@@ -62,7 +62,7 @@ public class HierarchicalStackTest {
         Assert.assertEquals("invalid row",
                             tierRow.intValue(), tier2Stack.getTierRow());
         Assert.assertEquals("invalid column",
-                            tierRow.intValue(), tier2Stack.getTierColumn());
+                            tierColumn.intValue(), tier2Stack.getTierColumn());
         Assert.assertEquals("invalid row count",
                             totalTierRowCount.intValue(), tier2Stack.getTotalTierRowCount());
         Assert.assertEquals("invalid column count",
