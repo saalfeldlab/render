@@ -30,6 +30,7 @@ import javax.ws.rs.core.UriInfo;
 import org.bson.types.ObjectId;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.ReconstructionCycle;
 import org.janelia.alignment.spec.stack.StackId;
@@ -644,6 +645,79 @@ public class StackMetaDataService {
         }
 
         return cycle;
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/hierarchicalData")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Stack Data APIs",
+            value = "The hierarchical alignment context for the specified stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Stack not found")
+    })
+    public HierarchicalStack getHierarchicalData(@PathParam("owner") final String owner,
+                                                 @PathParam("project") final String project,
+                                                 @PathParam("stack") final String stack) {
+
+        LOG.info("getHierarchicalData: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        HierarchicalStack hierarchicalStack = null;
+        try {
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            hierarchicalStack = stackMetaData.getHierarchicalData();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return hierarchicalStack;
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/hierarchicalData")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs"},
+            value = "Saves hierarchical alignment context for stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "hierarchicalData successfully saved"),
+            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response saveHierarchicalData(@PathParam("owner") final String owner,
+                                         @PathParam("project") final String project,
+                                         @PathParam("stack") final String stack,
+                                         final HierarchicalStack hierarchicalStack) {
+
+        LOG.info("saveHierarchicalData: entry, owner={}, project={}, stack={}, hierarchicalStack={}",
+                 owner, project, stack, hierarchicalStack);
+
+        try {
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            validateStackIsModifiable(stackMetaData);
+            stackMetaData.setHierarchicalData(hierarchicalStack);
+            renderDao.saveStackMetaData(stackMetaData);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return Response.ok().build();
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/hierarchicalData")
+    @DELETE
+    @ApiOperation(
+            tags = {"Section Data APIs", "Stack Management APIs"},
+            value = "Deletes hierarchical alignment context for stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response deleteHierarchicalData(@PathParam("owner") final String owner,
+                                           @PathParam("project") final String project,
+                                           @PathParam("stack") final String stack) {
+        return saveHierarchicalData(owner, project, stack, null);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/cycle")

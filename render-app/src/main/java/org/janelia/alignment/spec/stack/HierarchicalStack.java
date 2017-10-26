@@ -1,9 +1,9 @@
 package org.janelia.alignment.spec.stack;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.awt.geom.AffineTransform;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
@@ -23,96 +23,107 @@ import org.janelia.alignment.spec.Bounds;
 public class HierarchicalStack implements Serializable {
 
     private final StackId roughTilesStackId;
-    private final HierarchicalStack parent;
-    private final int row;
-    private final int column;
-    private final int rowCount;
-    private final int columnCount;
-    private final double scale;
-    private final Bounds bounds;
-    private final StackId stackId;
+    private final StackId parentTierStackId;
+    private final StackId warpTilesStackId;
+    private final Integer tierRow;
+    private final Integer tierColumn;
+    private final Integer totalTierRowCount;
+    private final Integer totalTierColumnCount;
+    private final Double scale;
+    private final Bounds fullScaleBounds;
     private Double alignmentQuality;
 
+    // no-arg constructor needed for JSON deserialization
+    @SuppressWarnings("unused")
+    private HierarchicalStack() {
+        this(null, null, null, null, null, null, null, null, null);
+    }
+
     /**
-     * Constructs a root tier stack.
      *
-     * @param  roughTilesStackId      identifies the source render stack with roughly aligned montage tiles.
-     *
-     * @param  roughTilesStackBounds  bounds for the roughly aligned stack (and this root tier).
-     *
-     * @param  rootTierScale          scale for rendering root tier layer 'scapes'.
-     *                                This must be small enough so that each layer is renderable.
-     *                                Full scale is 1.0, half scale is 0.5, ....
+     * @param  roughTilesStackId     identifies the source render stack with roughly aligned montage tiles.
+     * @param  parentTierStackId     identifies the n-1 tier stack from which this stack was derived.
+     * @param  warpTilesStackId      identifies warp tiles stack to which this stack's alignment results should be applied.
+     * @param  tierRow               row of this stack within its tier.
+     * @param  tierColumn            column of this stack within its tier.
+     * @param  totalTierRowCount     total number of rows in this stack's tier.
+     * @param  totalTierColumnCount  total number of columns in this stack's tier.
+     * @param  scale                 scale for rendering layers in this stack (and tier).
+     * @param  fullScaleBounds       (rough tiles stack) world coordinate bounds for all layers in this stack.
      */
     public HierarchicalStack(final StackId roughTilesStackId,
-                             final Bounds roughTilesStackBounds,
-                             final double rootTierScale) {
-
+                             final StackId parentTierStackId,
+                             final StackId warpTilesStackId,
+                             final Integer tierRow,
+                             final Integer tierColumn,
+                             final Integer totalTierRowCount,
+                             final Integer totalTierColumnCount,
+                             final Double scale,
+                             final Bounds fullScaleBounds) {
         this.roughTilesStackId = roughTilesStackId;
-        this.parent = null;
-        this.row = 0;
-        this.column = 0;
-        this.rowCount = 1;
-        this.columnCount = 1;
-
-        this.scale = rootTierScale;
-
-        this.bounds = roughTilesStackBounds;
-
-        final String canvasProjectName =
-                roughTilesStackId.getProject() + "_" + roughTilesStackId.getStack() + "_canvases";
-        this.stackId = new StackId(roughTilesStackId.getOwner(), canvasProjectName, "A");
-
+        this.parentTierStackId = parentTierStackId;
+        this.warpTilesStackId = warpTilesStackId;
+        this.tierRow = tierRow;
+        this.tierColumn = tierColumn;
+        this.totalTierRowCount = totalTierRowCount;
+        this.totalTierColumnCount = totalTierColumnCount;
+        this.scale = scale;
+        this.fullScaleBounds = fullScaleBounds;
         this.alignmentQuality = null;
     }
 
-    /**
-     * @return row for this stack within its tier.
-     */
-    public int getRow() {
-        return row;
+    public StackId getParentTierStackId() {
+        return parentTierStackId;
+    }
+
+    public StackId getRoughTilesStackId() {
+        return roughTilesStackId;
+    }
+
+    public StackId getWarpTilesStackId() {
+        return warpTilesStackId;
     }
 
     /**
-     * @return column for this stack within its tier.
+     * @return row of this stack within its tier.
      */
-    public int getColumn() {
-        return column;
+    public int getTierRow() {
+        return tierRow;
+    }
+
+    /**
+     * @return column of this stack within its tier.
+     */
+    public int getTierColumn() {
+        return tierColumn;
     }
 
     /**
      * @return total number of rows in this stack's tier.
      */
-    public int getRowCount() {
-        return rowCount;
+    public int getTotalTierRowCount() {
+        return totalTierRowCount;
     }
 
     /**
      * @return total number of columns in this stack's tier.
      */
-    public int getColumnCount() {
-        return columnCount;
+    public int getTotalTierColumnCount() {
+        return totalTierColumnCount;
     }
 
     /**
-     * @return scale for rendering layers in this stack.
+     * @return scale for rendering layers in this stack (and tier).
      */
     public double getScale() {
         return scale;
     }
 
     /**
-     * @return world coordinate bounds for all layers in this stack.
+     * @return (rough tiles stack) world coordinate bounds for all layers in this stack.
      */
-    public Bounds getBounds() {
-        return bounds;
-    }
-
-    /**
-     * @return identifier for this stack.
-     */
-    public StackId getStackId() {
-        return stackId;
+    public Bounds getFullScaleBounds() {
+        return fullScaleBounds;
     }
 
     /**
@@ -126,23 +137,20 @@ public class HierarchicalStack implements Serializable {
         this.alignmentQuality = alignmentQuality;
     }
 
-    @Override
-    public String toString() {
-        return stackId.toString();
-    }
-
     /**
      * @param  z  layer z value.
      *
-     * @return web service box path for the specified layer in this stack.
+     * @return "source" rough tiles box path for the specified layer of this stack.
      */
+    @JsonIgnore
     public String getLayerBoxPath(final double z) {
         return "/owner/" + roughTilesStackId.getOwner() + "/project/" + roughTilesStackId.getProject() +
                "/stack/" + roughTilesStackId.getStack() + "/z/" + z +
-               "/box/" +  bounds.getRoundedMinX() + ',' + bounds.getRoundedMinY() + ',' +
-               bounds.getRoundedDeltaX() + ',' + bounds.getRoundedDeltaY() + ',' + scale;
+               "/box/" +  fullScaleBounds.getRoundedMinX() + ',' + fullScaleBounds.getRoundedMinY() + ',' +
+               fullScaleBounds.getRoundedDeltaX() + ',' + fullScaleBounds.getRoundedDeltaY() + ',' + scale;
     }
 
+    @JsonIgnore
     public AffineModel2D getRelativeModel(final AffineModel2D alignedLayerTransformModel,
                                           final double alignedFirstLayerTranslateX,
                                           final double alignedFirstLayerTranslateY) {
@@ -157,135 +165,4 @@ public class HierarchicalStack implements Serializable {
         return model;
     }
 
-    /**
-     * @return the root tier stack 'parent' of this stack.
-     */
-    public HierarchicalStack getRootTierStack() {
-        HierarchicalStack stack = this;
-        while (stack.parent != null) {
-            stack = stack.parent;
-        }
-        return stack;
-    }
-
-    /**
-     * Derives information for the next tier of child stacks by partitioning this stack
-     * into the specified number of rows and columns.
-     *
-     * @param  rowAndColumnCount  number of rows and columns into which this stack should be divided.
-     *
-     * @return list of next tier child stacks resulting from partitioning.
-     */
-    public List<HierarchicalStack> partition(final int rowAndColumnCount) {
-
-        final String stackName = getStackId().getStack();
-
-        final int childTierRowCount = rowCount * rowAndColumnCount;
-        final int childTierColumnCount = columnCount * rowAndColumnCount;
-        final double childScale = scale * rowAndColumnCount;
-
-        final HierarchicalStack rootStack = getRootTierStack();
-        final int childColumnWidth = (int) ((rootStack.bounds.getDeltaX() / childTierColumnCount) + 0.5);
-        final int childRowHeight = (int) ((rootStack.bounds.getDeltaY() / childTierRowCount) + 0.5);
-
-        final int firstChildRow = row * rowAndColumnCount;
-        final int lastChildRow = firstChildRow + rowAndColumnCount;
-        final int firstChildColumn = column * rowAndColumnCount;
-        final int lastChildColumn = firstChildColumn + rowAndColumnCount;
-
-        final int childCount = rowAndColumnCount * rowAndColumnCount;
-        final List<HierarchicalStack> children = new ArrayList<>(childCount);
-        double childMinX;
-        double childMinY;
-        Bounds childBounds;
-        String childStackName;
-        int childIndex = 0;
-        for (int childRow = firstChildRow; childRow < lastChildRow; childRow++) {
-
-            childMinY = rootStack.bounds.getMinY() + (childRow * childRowHeight);
-
-            for (int childColumn = firstChildColumn; childColumn < lastChildColumn; childColumn++) {
-
-                childMinX = rootStack.bounds.getMinX() + (childColumn * childColumnWidth);
-                childBounds = new Bounds(childMinX,
-                                         childMinY,
-                                         (childMinX + childColumnWidth),
-                                         (childMinY + childRowHeight));
-
-                childStackName = getTierStackName(stackName, childIndex, childCount);
-
-                children.add(new HierarchicalStack(this,
-                                                   childRow,
-                                                   childColumn,
-                                                   childTierRowCount,
-                                                   childTierColumnCount,
-                                                   childScale,
-                                                   childBounds,
-                                                   childStackName));
-                childIndex++;
-            }
-        }
-
-        return children;
-    }
-
-    private HierarchicalStack(final HierarchicalStack parent,
-                              final int row,
-                              final int column,
-                              final int rowCount,
-                              final int columnCount,
-                              final double scale,
-                              final Bounds bounds,
-                              final String stackName) {
-
-        this.roughTilesStackId = parent.roughTilesStackId;
-        this.parent = parent;
-        this.row = row;
-        this.column = column;
-        this.rowCount = rowCount;
-        this.columnCount = columnCount;
-        this.scale = scale;
-        this.bounds = bounds;
-
-        this.stackId = new StackId(parent.stackId.getOwner(), parent.stackId.getProject(), stackName);
-
-        this.alignmentQuality = null;
-    }
-
-    private static String getTierStackName(final String parentStackName,
-                                           final int childIndex,
-                                           final int childCount) {
-
-        final String tierStackName;
-        if (childCount < 27) {
-            tierStackName = String.valueOf((char) ('A' + childIndex));
-        } else {
-            final int pad = String.valueOf(childCount).length();
-            final String format = "_%0" + pad + "d";
-            tierStackName = String.format(format, childIndex);
-        }
-
-        return parentStackName + tierStackName;
-    }
-
-    public static void main(final String[] args) {
-
-        final HierarchicalStack tier0 = new HierarchicalStack(new StackId("flyTEM", "trautmane_test", "rough_tiles"),
-                                                              new Bounds(54954.0, 58314.0, 69539.0, 76856.0),
-                                                              0.1);
-        printInfo(tier0);
-        for (final HierarchicalStack tier1 : tier0.partition(2)) {
-            printInfo(tier1);
-            for (final HierarchicalStack tier2 : tier1.partition(2)) {
-                printInfo(tier2);
-            }
-        }
-
-    }
-
-    private static void printInfo(final HierarchicalStack stack) {
-        System.out.println(stack.getStackId());
-        System.out.println(stack.getLayerBoxPath(1));
-        System.out.println();
-    }
 }

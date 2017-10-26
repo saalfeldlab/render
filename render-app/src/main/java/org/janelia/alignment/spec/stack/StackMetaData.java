@@ -25,6 +25,7 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
     private Integer currentVersionNumber;
     private final StackVersion currentVersion;
     private StackStats stats;
+    private HierarchicalStack hierarchicalData;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
@@ -35,6 +36,7 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         this.currentVersionNumber = null;
         this.currentVersion = null;
         this.stats = null;
+        this.hierarchicalData = null;
     }
 
     public StackMetaData(final StackId stackId,
@@ -45,6 +47,7 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         this.currentVersionNumber = 0;
         this.currentVersion = currentVersion;
         this.stats = null;
+        this.hierarchicalData = null;
     }
 
     public StackId getStackId() {
@@ -263,6 +266,14 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         if (currentVersion != null) {
             currentVersion.setMipmapPathBuilder(mipmapPathBuilder);
         }
+    }
+
+    public HierarchicalStack getHierarchicalData() {
+        return hierarchicalData;
+    }
+
+    public void setHierarchicalData(final HierarchicalStack hierarchicalData) {
+        this.hierarchicalData = hierarchicalData;
     }
 
     @SuppressWarnings({"ConstantConditions", "NullableProblems"})
