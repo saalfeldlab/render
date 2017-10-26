@@ -1,0 +1,27 @@
+[
+    {
+        "tileId": "134",
+        "z": 3903.0,
+        "minX": 0.0,
+        "minY": 0.0,
+        "maxX": 2559.0,
+        "maxY": 2159.0,
+        "width": 2560.0,
+        "height": 2160.0,
+        "mipmapLevels": {
+            "3": {
+                "imageUrl": "src/test/resources/mipmap-test/scaled-images/col0060_row0140_cam0.tif_level_3_mipmap.jpg",
+                "maskUrl": "src/test/resources/mipmap-test/scaled-images/49.134.zip_level_3_mipmap.jpg"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "1 0 0 1 0 0"
+                }
+            ]
+        }
+    }
+]

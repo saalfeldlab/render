@@ -227,6 +227,29 @@ public class ArgbRendererTest {
     }
 
     @Test
+    public void testUpScaledImage() throws Exception {
+
+        final String[] args = {
+                "--tile_spec_url", "src/test/resources/mipmap-test/upscale_test.json",
+                "--out", outputFile.getAbsolutePath(),
+                "--x", "0",
+                "--y", "0",
+                "--width", "2560",
+                "--height", "2160",
+                "--scale", "1.0"
+        };
+
+        try {
+            ArgbRenderer.renderUsingCommandLineArguments(args);
+            Assert.fail("attempt to render upscale image should throw exception");
+        } catch (final IllegalArgumentException iae) {
+            Assert.assertTrue("invalid exception message",
+                              iae.getMessage().startsWith("The highest resolution mipmap"));
+        }
+
+    }
+
+    @Test
     public void testCaching() throws Exception {
 
         final File expectedFile =
