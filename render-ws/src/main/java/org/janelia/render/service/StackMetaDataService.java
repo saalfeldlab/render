@@ -2,11 +2,12 @@ package org.janelia.render.service;
 
 import com.google.common.collect.Maps;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -61,6 +62,7 @@ public class StackMetaDataService {
 
     private final RenderDao renderDao;
     private Map<String, String> versionInfo;
+    private Map<String, String> viewParameters;
 
     @SuppressWarnings("UnusedDeclaration")
     public StackMetaDataService()
@@ -72,6 +74,7 @@ public class StackMetaDataService {
             throws UnknownHostException {
         this.renderDao = renderDao;
         this.versionInfo = null;
+        this.viewParameters = null;
     }
 
     @Path("v1/versionInfo")
@@ -82,7 +85,6 @@ public class StackMetaDataService {
 
         if (versionInfo == null) {
             // load version info created by maven build process if it is available
-            Map<String, String> versionInfo = new HashMap<>();
             try {
                 final InputStream infoStream = getClass().getClassLoader().getResourceAsStream("git.properties");
                 if (infoStream != null) {
@@ -103,11 +105,33 @@ public class StackMetaDataService {
             } catch (final Throwable t) {
                 LOG.warn("getVersionInfo: failed to load version info", t);
             }
-
-            this.versionInfo = versionInfo;
         }
 
         return versionInfo;
+    }
+
+    @Path("v1/viewParameters")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "The default view parameters for this deployed instance")
+    public Map<String, String> getViewParameters() {
+
+        if (viewParameters == null) {
+            try {
+                final Properties p = new Properties();
+                final File propertiesFile = new File("logs/view-parameters.properties");
+                if (propertiesFile.exists()) {
+                    final FileInputStream in = new FileInputStream(propertiesFile);
+                    p.load(in);
+                    LOG.info("getViewParameters: loaded {}", propertiesFile.getAbsolutePath());
+                }
+                viewParameters = Maps.fromProperties(p);
+            } catch (final Throwable t) {
+                LOG.warn("getViewParameters: failed to load version info", t);
+            }
+        }
+
+        return viewParameters;
     }
 
     @Path("v1/likelyUniqueId")

@@ -128,4 +128,8 @@ public class ChannelSpec {
         mipmapLevels.values().forEach(ImageAndMask::validate);
     }
 
+    public Map<Integer, ImageAndMask> getMipmapLevels() {
+
+        return mipmapLevels;
+    }
 }
