@@ -132,10 +132,10 @@ public class TileSpecTest {
         final TileSpec tileSpec = TileSpec.fromJson(json);
         tileSpec.deriveBoundingBox(64, true);
 
-        Assert.assertEquals("incorrect minX", 1108.0, tileSpec.getMinX(), 0.0);
-        Assert.assertEquals("incorrect minY", 1957.0, tileSpec.getMinY(), 0.0);
-        Assert.assertEquals("incorrect maxX", 3773.0, tileSpec.getMaxX(), 0.0);
-        Assert.assertEquals("incorrect maxY", 4264.0, tileSpec.getMaxY(), 0.0);
+        Assert.assertEquals("incorrect minX", 1108.0, tileSpec.getMinX(), 1.0);
+        Assert.assertEquals("incorrect minY", 1957.0, tileSpec.getMinY(), 1.0);
+        Assert.assertEquals("incorrect maxX", 3773.0, tileSpec.getMaxX(), 1.0);
+        Assert.assertEquals("incorrect maxY", 4264.0, tileSpec.getMaxY(), 1.0);
     }
 
     private static final String EXPECTED_TILE_ID = "test-tile-id";

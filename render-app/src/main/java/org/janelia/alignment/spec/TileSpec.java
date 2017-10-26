@@ -16,8 +16,6 @@
  */
 package org.janelia.alignment.spec;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
 import java.io.IOException;
@@ -31,16 +29,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.stack.MipmapPathBuilder;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.CoordinateTransformMesh;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.trakem2.transform.TransformMesh;
-
-import org.janelia.alignment.ImageAndMask;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.json.JsonUtils;
-import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 
 /**
  * Specifies a set of mipmap level images and masks along with
@@ -195,6 +195,66 @@ public class TileSpec implements Serializable {
                                            height);
     }
 
+
+    /**
+     * Derives this tile's bounding box attributes.
+     *
+     * @param  force  if true, attributes will always be derived;
+     *                otherwise attributes will only be derived if they do not already exist.
+     *
+     * @throws IllegalStateException
+     *   if width or height have not been defined for this tile.
+     */
+    public void deriveBoundingBox(final double meshCellSize, final boolean force, final boolean sloppy)
+            throws IllegalStateException {
+
+        if (force || (!isBoundingBoxDefined(meshCellSize))) {
+            if (sloppy) {
+                if (! hasWidthAndHeightDefined()) {
+                    throw new IllegalStateException("width and height must be set to create a bounding box");
+                }
+
+                final CoordinateTransformList<CoordinateTransform> ctList = getTransformList();
+                final ArrayList<double[]> borderSamples = new ArrayList<>();
+
+                /* top and bottom */
+                for (double x = 0; x <= width; x += meshCellSize) {
+                    borderSamples.add(new double[]{x, 0});
+                    borderSamples.add(new double[]{x, height});
+                }
+
+                /* left and right */
+                for (double y = 0; y < height; y += meshCellSize) {
+                    borderSamples.add(new double[]{0, y});
+                    borderSamples.add(new double[]{width, y});
+                }
+
+                double xMin = Double.MAX_VALUE;
+                double yMin = Double.MAX_VALUE;
+
+                double xMax = -Double.MAX_VALUE;
+                double yMax = -Double.MAX_VALUE;
+
+                for (final double[] point : borderSamples) {
+                    ctList.applyInPlace(point);
+
+                    if ( point[ 0 ] < xMin ) xMin = point[ 0 ];
+                    if ( point[ 0 ] > xMax ) xMax = point[ 0 ];
+                    if ( point[ 1 ] < yMin ) yMin = point[ 1 ];
+                    if ( point[ 1 ] > yMax ) yMax = point[ 1 ];
+                }
+
+                setBoundingBox(new Rectangle((int)xMin, (int)yMin, (int)Math.ceil(xMax - xMin), (int)Math.ceil(yMax - yMin)), meshCellSize);
+//                setBoundingBox(new Rectangle((int)xMin, (int)yMin, (int)(xMax - xMin), (int)(yMax - yMin)), meshCellSize);
+
+            } else {
+                final TransformMesh mesh = getTransformMesh(meshCellSize);
+                setBoundingBox(mesh.getBoundingBox(), meshCellSize);
+            }
+        }
+    }
+
+
     /**
      * Derives this tile's bounding box attributes.
      *
@@ -206,10 +266,8 @@ public class TileSpec implements Serializable {
      */
     public void deriveBoundingBox(final double meshCellSize, final boolean force)
             throws IllegalStateException {
-        if (force || (!isBoundingBoxDefined(meshCellSize))) {
-            final TransformMesh mesh = getTransformMesh(meshCellSize);
-            setBoundingBox(mesh.getBoundingBox(), meshCellSize);
-        }
+
+        deriveBoundingBox(meshCellSize, force, true);
     }
 
 
