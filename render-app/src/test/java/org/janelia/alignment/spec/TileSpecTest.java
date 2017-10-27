@@ -24,6 +24,8 @@ import java.util.TreeMap;
 import org.janelia.alignment.ImageAndMask;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tests the {@link org.janelia.alignment.spec.TileSpec} class.
@@ -146,13 +148,49 @@ public class TileSpecTest {
         final byte[] jsonBytes = Files.readAllBytes(Paths.get("src/test/resources/tile-test/tile_with_only_affine_transforms.json"));
         final String json = new String(jsonBytes);
         final TileSpec tileSpec = TileSpec.fromJson(json);
-        tileSpec.deriveBoundingBox(64, true);
 
-        Assert.assertEquals("incorrect minX", 1108.0, tileSpec.getMinX(), 1.0);
-        Assert.assertEquals("incorrect minY", 1957.0, tileSpec.getMinY(), 1.0);
-        Assert.assertEquals("incorrect maxX", 3773.0, tileSpec.getMaxX(), 1.0);
-        Assert.assertEquals("incorrect maxY", 4264.0, tileSpec.getMaxY(), 1.0);
+        final double minX = 1108.0;
+        final double minY = 1957.0;
+        final double maxX = 3774.0;
+        final double maxY = 4265.0;
+
+        // mesh
+        tileSpec.deriveBoundingBox(64, true, false);
+
+        Assert.assertEquals("incorrect minX", minX, tileSpec.getMinX(), MAX_DOUBLE_DELTA);
+        Assert.assertEquals("incorrect minY", minY, tileSpec.getMinY(), MAX_DOUBLE_DELTA);
+        final double hackedDeltaUntilMPICBGLibIsFixed = 1.0;
+        Assert.assertEquals("incorrect maxX", maxX, tileSpec.getMaxX(), hackedDeltaUntilMPICBGLibIsFixed);
+        Assert.assertEquals("incorrect maxY", maxY, tileSpec.getMaxY(), hackedDeltaUntilMPICBGLibIsFixed);
+
+        // sloppy
+        tileSpec.deriveBoundingBox(64, true, true);
+
+        Assert.assertEquals("incorrect minX", minX, tileSpec.getMinX(), MAX_DOUBLE_DELTA);
+        Assert.assertEquals("incorrect minY", minY, tileSpec.getMinY(), MAX_DOUBLE_DELTA);
+        Assert.assertEquals("incorrect maxX", maxX, tileSpec.getMaxX(), MAX_DOUBLE_DELTA);
+        Assert.assertEquals("incorrect maxY", maxY, tileSpec.getMaxY(), MAX_DOUBLE_DELTA);
+
+        final int iterations = 100;
+        final long sloppyTime = getDerivationTime(tileSpec, true, iterations);
+        final long meshTime = getDerivationTime(tileSpec, false, iterations);
+        Assert.assertTrue("sloppy derivation is not faster than mesh derivation", (sloppyTime < meshTime));
+
+        LOG.info("testDeriveBoundingBox: {} iterations, sloppy time: {}ms, mesh time: {}ms",
+                 iterations, sloppyTime, meshTime);
     }
+
+    private long getDerivationTime(final TileSpec tileSpec,
+                                   final boolean sloppy,
+                                   final int iterations) {
+        final long start = System.currentTimeMillis();
+        for (int i = 0; i < iterations; i++) {
+            tileSpec.deriveBoundingBox(64, true, sloppy);
+        }
+        return System.currentTimeMillis() - start;
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(TileSpecTest.class);
 
     private static final String EXPECTED_TILE_ID = "test-tile-id";
     private static final int EXPECTED_WIDTH = 99;
