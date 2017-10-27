@@ -19,6 +19,7 @@ package org.janelia.alignment.spec;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.janelia.alignment.ImageAndMask;
 import org.junit.Assert;
@@ -123,6 +124,21 @@ public class TileSpecTest {
         Assert.assertEquals("invalid width parsed", EXPECTED_WIDTH, tileSpec.getWidth());
 
         tileSpec.validate();
+    }
+
+    @Test
+    public void testGetFirstChannel() throws Exception {
+
+        final TileSpec tileSpec = TileSpec.fromJson(JSON_WITH_UNSORTED_MIPMAP_LEVELS);
+        Assert.assertNull("incorrect first channel name with no channels", tileSpec.getFirstChannelName());
+
+        final String firstName = "DAPI";
+        tileSpec.convertLegacyToChannel(firstName);
+        Assert.assertEquals("incorrect first channel name with 1 channel", firstName, tileSpec.getFirstChannelName());
+
+        tileSpec.addChannel(new ChannelSpec("TdTomato", 0.0, 0.0, new TreeMap<>(), null));
+        tileSpec.addChannel(new ChannelSpec("ACQTdtomato", 0.0, 0.0, new TreeMap<>(), null));
+        Assert.assertEquals("incorrect first channel name with 3 channels", firstName, tileSpec.getFirstChannelName());
     }
 
     @Test

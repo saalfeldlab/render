@@ -436,6 +436,15 @@ public class TileSpec implements Serializable {
         return channelList;
     }
 
+    public String getFirstChannelName() {
+        String firstChannelName = null;
+        final List<ChannelSpec> channelSpecs = getAllChannels();
+        if (channelSpecs.size() > 0) {
+            firstChannelName = channelSpecs.get(0).getName();
+        }
+        return firstChannelName;
+    }
+
     /**
      * Converts legacy single channel tile spec mipmap data to a channel spec with the specified name.
      *
@@ -444,7 +453,6 @@ public class TileSpec implements Serializable {
      * @throws IllegalStateException
      *   if this tile spec already has defined channels.
      */
-    @SuppressWarnings("unused")
     public void convertLegacyToChannel(final String channelName)
             throws IllegalStateException {
         if (channels == null) {

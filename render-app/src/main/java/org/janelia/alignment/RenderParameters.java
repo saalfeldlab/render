@@ -417,7 +417,7 @@ public class RenderParameters implements Serializable {
         if (! initialized) {
             parseTileSpecs();
             applyMipmapPathBuilderToTileSpecs();
-            channelNamesAndWeights = ChannelNamesAndWeights.fromSpec(channels);
+            channelNamesAndWeights = ChannelNamesAndWeights.fromSpec(channels, getFirstChannelName());
             initialized = true;
         }
     }
@@ -561,6 +561,14 @@ public class RenderParameters implements Serializable {
         return namesAndWeights.getNames();
     }
 
+    public String getFirstChannelName() {
+        String firstChannelName = null;
+        if ((tileSpecs != null) && (tileSpecs.size() > 0)) {
+            firstChannelName = tileSpecs.get(0).getFirstChannelName();
+        }
+        return firstChannelName;
+    }
+
     public ChannelNamesAndWeights getChannelNamesAndWeights()
             throws IllegalArgumentException {
         if (channelNamesAndWeights == null) {
@@ -577,7 +585,7 @@ public class RenderParameters implements Serializable {
 
     public void deriveChannelNamesAndWeights()
             throws IllegalArgumentException {
-        this.channelNamesAndWeights = ChannelNamesAndWeights.fromSpec(channels);
+        this.channelNamesAndWeights = ChannelNamesAndWeights.fromSpec(channels, getFirstChannelName());
     }
 
     public boolean hasTileSpecs() {

@@ -41,21 +41,23 @@ public class ChannelNamesAndWeights
      * Weights are expected to range between 0.0 and 1.0.
      * The sum of all weights must be less than 1.0.
      *
-     * @param  spec  text specification of the channels and weights.
+     * @param  spec              text specification of the channels and weights.
+     * @param  firstChannelName  name of the first channel (or null if there are no named channels).
      *
      * @return a map parsed from the specification.
      *
      * @throws IllegalArgumentException
      *   if the specification cannot be parsed or the sum of all weights is greater than 1.0.
      */
-    public static ChannelNamesAndWeights fromSpec(final String spec)
+    public static ChannelNamesAndWeights fromSpec(final String spec,
+                                                  final String firstChannelName)
             throws IllegalArgumentException {
 
         final ChannelNamesAndWeights channelNamesAndWeights = new ChannelNamesAndWeights();
 
         if (spec == null) {
 
-            channelNamesAndWeights.add(null, 1.0);
+            channelNamesAndWeights.add(firstChannelName, 1.0);
 
         } else {
 
