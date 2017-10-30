@@ -1,7 +1,15 @@
 #!/bin/bash
 if [[ "$OSTYPE" == "darwin"* ]]; then
         # Mac OSX
-      readl() { greadlink $@; } 
+      type greadlink 1>/dev/null 2>/dev/null
+      READLINK_RC=$?
+      if [ ${READLINK_RC} -ne 0 ]; then
+          echo "ERROR: greadlink not available on Mac, use homebrew to install (e.g. brew install coreutils)"
+          exit ${RC}
+      fi
+      unset READLINK_RC
+
+      readl() { greadlink $@; }
 else
       readl() { readlink $@; } 
 fi
