@@ -221,6 +221,7 @@ public class TileSpecTest {
             "    \"type\": \"list\",\n" +
             "    \"specList\": [\n" +
             "      {\n" +
+            "        \"metaData\": { \"labels\": [\"lens\"] },\n" +
             "        \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
             "        \"dataString\": \"1 0 0 1 0 0\"\n" +
             "      }\n" +
