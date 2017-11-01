@@ -133,8 +133,8 @@ public class TileBoundsRTree {
     /**
      * @param  neighborTrees         list of trees for all neighboring sections to include in the pairing process.
      *
-     * @param  neighborRadiusFactor  If not null, applied to max(width, height) of each tile
-     *                               to determine radius for locating neighbor tiles.
+     * @param  neighborRadiusFactor  If explicitRadius is null, this factor is applied to max(width, height) of
+     *                               each tile to determine radius for locating neighbor tiles.
      *
      * @param  explicitRadius        explicit radius in full scale pixels for locating neighbor tiles.
      *                               If set, will override neighborRadiusFactor.
@@ -150,7 +150,7 @@ public class TileBoundsRTree {
      * @return set of distinct neighbor pairs between this tree's tiles and the specified neighbor trees' tiles.
      */
     public Set<OrderedCanvasIdPair> getCircleNeighbors(final List<TileBoundsRTree> neighborTrees,
-                                                       final Double neighborRadiusFactor,
+                                                       final double neighborRadiusFactor,
                                                        final Double explicitRadius,
                                                        final boolean excludeCornerNeighbors,
                                                        final boolean excludeSameLayerNeighbors,
