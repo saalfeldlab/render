@@ -68,7 +68,7 @@ public class TileBoundsRTreeTest {
                                                               buildListForZ(3.0));
         final List<TileBoundsRTree> neighborTrees = Arrays.asList(treeForZ2, treeForZ3);
 
-        final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(neighborTrees, 1.1, false, false, false);
+        final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(neighborTrees, 1.1, null, false, false, false);
 
         // these are short-hand names for the pairs to clarify how many pairs are expected
         final String[] expectedPairs = {
@@ -81,6 +81,22 @@ public class TileBoundsRTreeTest {
 
         Assert.assertEquals("invalid number of pairs found, pairs are " + new TreeSet<>(neighborPairs),
                             expectedPairs.length, neighborPairs.size());
+
+        // all test tiles have width 10 and overlap by 1 pixel, radius of 1 should pair only tiles in same column
+        final Double explicitRadius = 1.0;
+        final Set<OrderedCanvasIdPair> neighborPairsWithExplicitRadius =
+                treeForZ1.getCircleNeighbors(neighborTrees, 1.1, explicitRadius, false, false, false);
+
+        final String[] expectedPairsForExplicitRadius = {
+                "z1-0,z2-0",
+                "z1-0,z3-0",
+                "z1-1,z2-1",
+                "z1-1,z3-1"
+        };
+
+        Assert.assertEquals("invalid number of pairs found, pairs are " + new TreeSet<>(neighborPairsWithExplicitRadius),
+                            expectedPairsForExplicitRadius.length, neighborPairsWithExplicitRadius.size());
+
     }
 
     @Test

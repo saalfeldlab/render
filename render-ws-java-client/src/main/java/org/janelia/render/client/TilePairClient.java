@@ -76,6 +76,12 @@ public class TilePairClient {
         private Double xyNeighborFactor = 0.9;
 
         @Parameter(
+                names = "--explicitRadius",
+                description = "Explit radius in full scale pixels for locating neighbor tiles (if set, will override --xyNeighborFactor)",
+                required = false)
+        private Double explicitRadius;
+
+        @Parameter(
                 names = "--zNeighborDistance",
                 description = "Look for neighbor tiles with z values less than or equal to this distance from the current tile's z value",
                 required = false)
@@ -396,6 +402,7 @@ public class TilePairClient {
 
             currentNeighborPairs = currentZTree.getCircleNeighbors(neighborTreeList,
                                                                    parameters.xyNeighborFactor,
+                                                                   parameters.explicitRadius,
                                                                    parameters.excludeCornerNeighbors,
                                                                    parameters.excludeSameLayerNeighbors,
                                                                    parameters.excludeSameSectionNeighbors);

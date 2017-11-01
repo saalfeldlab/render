@@ -133,8 +133,12 @@ public class TileBoundsRTree {
     /**
      * @param  neighborTrees         list of trees for all neighboring sections to include in the pairing process.
      *
-     * @param  neighborRadiusFactor  applied to max(width, height) of each tile
+     * @param  neighborRadiusFactor  If not null, applied to max(width, height) of each tile
      *                               to determine radius for locating neighbor tiles.
+     *
+     * @param  explicitRadius        explicit radius in full scale pixels for locating neighbor tiles.
+     *                               If set, will override neighborRadiusFactor.
+     *                               Specify as null to use neighborRadiusFactor.
      *
      * @param  excludeCornerNeighbors if true, exclude neighbor tiles whose center x and y is outside the
      *                               source tile's x and y range respectively.
@@ -146,7 +150,8 @@ public class TileBoundsRTree {
      * @return set of distinct neighbor pairs between this tree's tiles and the specified neighbor trees' tiles.
      */
     public Set<OrderedCanvasIdPair> getCircleNeighbors(final List<TileBoundsRTree> neighborTrees,
-                                                       final double neighborRadiusFactor,
+                                                       final Double neighborRadiusFactor,
+                                                       final Double explicitRadius,
                                                        final boolean excludeCornerNeighbors,
                                                        final boolean excludeSameLayerNeighbors,
                                                        final boolean excludeSameSectionNeighbors) {
@@ -175,7 +180,11 @@ public class TileBoundsRTree {
 
             centerX = tileBounds.getMinX() + (tileWidth / 2);
             centerY = tileBounds.getMinY() + (tileHeight / 2);
-            radius = Math.max(tileWidth, tileHeight) * neighborRadiusFactor;
+            if (explicitRadius == null) {
+                radius = Math.max(tileWidth, tileHeight) * neighborRadiusFactor;
+            } else {
+                radius = explicitRadius;
+            }
 
             circle = Geometries.circle(centerX, centerY, radius);
 
