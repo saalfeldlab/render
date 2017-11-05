@@ -1,6 +1,7 @@
 package org.janelia.render.client.spark;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,11 +25,13 @@ import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
-import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.MatchDataClientParameters;
+import org.janelia.render.client.CommandLineParameters;
+import org.janelia.render.client.parameters.MatchDataClientParameters;
+import org.janelia.render.client.parameters.MatchDerivationParameters;
+import org.janelia.render.client.parameters.MatchRenderParameters;
 import org.janelia.render.client.spark.cache.CanvasDataCache;
 import org.janelia.render.client.spark.cache.CanvasFileLoader;
 import org.slf4j.Logger;
@@ -42,91 +45,60 @@ import org.slf4j.LoggerFactory;
 public class DMeshPointMatchClient
         implements Serializable {
 
-    @SuppressWarnings("ALL")
-    public static class Parameters extends MatchDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --collection parameters defined in MatchDataClientParameters
+        @ParametersDelegate
+        public MatchDataClientParameters matchClient = new MatchDataClientParameters();
 
-        @Parameter(names = "--pairJson", description = "JSON file where tile pairs are stored (.json, .gz, or .zip)", required = true)
-        private String pairJson;
+        @ParametersDelegate
+        public MatchRenderParameters matchRender = new MatchRenderParameters();
 
-        @Parameter(
-                names = "--renderWithoutMask",
-                description = "Render tiles without a mask",
-                required = false,
-                arity = 1)
-        private boolean renderWithoutMask = true;
-
-        @Parameter(names = "--renderFullScaleWidth", description = "Full scale width for all rendered tiles", required = false)
-        private Integer renderFullScaleWidth;
-
-        @Parameter(names = "--renderFullScaleHeight", description = "Full scale height for all rendered tiles", required = false)
-        private Integer renderFullScaleHeight;
-
-        @Parameter(names = "--renderScale", description = "Render tiles at this scale", required = false)
-        private Double renderScale = 1.0;
+        @ParametersDelegate
+        public MatchDerivationParameters match = new MatchDerivationParameters();
 
         @Parameter(
-                names = "--fillWithNoise",
-                description = "Fill each canvas image with noise before rendering to improve point match derivation",
-                required = false,
-                arity = 1)
-        private boolean fillWithNoise = false;
+                names = "--pairJson",
+                description = "JSON file where tile pairs are stored (.json, .gz, or .zip)",
+                required = true,
+                order = 5)
+        public String pairJson;
 
-        @Parameter(names = "--format", description = "Format for rendered canvases ('jpg', 'png', 'tif')", required = false)
-        private String format = Utils.PNG_FORMAT;
+        @Parameter(
+                names = "--format",
+                description = "Format for rendered canvases ('jpg', 'png', 'tif')",
+                required = false)
+        public String format = Utils.PNG_FORMAT;
 
-        @Parameter(names = "--dMeshScript", description = "", required = false)
-        private String dMeshScript = "/groups/flyTEM/flyTEM/match/dmesh/run_ptest.sh";
+        @Parameter(
+                names = "--dMeshScript",
+                description = "Script for launching DMesh",
+                required = false)
+        public String dMeshScript = "/groups/flyTEM/flyTEM/match/dmesh/run_ptest.sh";
 
-        @Parameter(names = "--dMeshParameters", description = "", required = false)
-        private String dMeshParameters = "/groups/flyTEM/flyTEM/match/dmesh/matchparams.txt";
+        @Parameter(
+                names = "--dMeshParameters",
+                description = "File containing DMesh parameters",
+                required = false)
+        public String dMeshParameters = "/groups/flyTEM/flyTEM/match/dmesh/matchparams.txt";
 
         @Parameter(
                 names = "--dMeshLogToolOutput",
                 description = "Log DMesh tool output even when processing is successful",
                 required = false,
                 arity = 1)
-        private boolean dMeshLogToolOutput = false;
+        public boolean dMeshLogToolOutput = false;
 
         @Parameter(
                 names = "--filterMatches",
                 description = "Use RANSAC to filter matches",
                 required = false,
                 arity = 1)
-        private boolean filterMatches = false;
-
-        @Parameter(names = "--matchRod", description = "Ratio of distances for matches", required = false)
-        private Float matchRod = 0.92f;
-
-        @Parameter(names = "--matchModelType", description = "Type of model for match filtering", required = false)
-        private ModelType matchModelType = ModelType.AFFINE;
-
-        @Parameter(names = "--matchIterations", description = "Match filter iterations", required = false)
-        private Integer matchIterations = 1000;
-
-        @Parameter(names = "--matchMaxEpsilon", description = "Minimal allowed transfer error for match filtering", required = false)
-        private Float matchMaxEpsilon = 20.0f;
-
-        @Parameter(names = "--matchMinInlierRatio", description = "Minimal ratio of inliers to candidates for match filtering", required = false)
-        private Float matchMinInlierRatio = 0.0f;
-
-        @Parameter(names = "--matchMinNumInliers", description = "Minimal absolute number of inliers for match filtering", required = false)
-        private Integer matchMinNumInliers = 4;
-
-        @Parameter(names = "--matchMaxTrust", description = "Reject match candidates with a cost larger than maxTrust * median cost", required = false)
-        private Double matchMaxTrust = 3.0;
-
-        @Parameter(names = "--matchMaxNumInliers", description = "Maximum number of inliers for match filtering", required = false)
-        private Integer matchMaxNumInliers;
-
-        @Parameter(names = "--maxImageCacheGb", description = "Maximum number of gigabytes of canvas images to cache", required = false)
-        private Integer maxImageCacheGb = 20;
+        public boolean filterMatches = false;
 
         @Parameter(names = "--imageCacheParentDirectory",
                 description = "Parent directory for cached (rendered) canvases",
                 required = false)
-        private String imageCacheParentDirectory = "/dev/shm";
+        public String imageCacheParentDirectory = "/dev/shm";
     }
 
     public static void main(final String[] args) {
@@ -136,6 +108,11 @@ public class DMeshPointMatchClient
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
+
+                // override SIFT parameter defaults
+                parameters.matchRender.renderWithFilter = false;
+                parameters.match.maxCacheGb = 20;
+
                 parameters.parse(args, DMeshPointMatchClient.class);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
@@ -172,19 +149,19 @@ public class DMeshPointMatchClient
         final String renderParametersUrlTemplateForRun =
                 RenderableCanvasIdPairsUtilities.getRenderParametersUrlTemplateForRun(
                         renderableCanvasIdPairs,
-                        parameters.baseDataUrl,
-                        parameters.renderFullScaleWidth,
-                        parameters.renderFullScaleHeight,
-                        parameters.renderScale,
-                        false,
-                        parameters.renderWithoutMask);
+                        parameters.matchClient.baseDataUrl,
+                        parameters.matchRender.renderFullScaleWidth,
+                        parameters.matchRender.renderFullScaleHeight,
+                        parameters.matchRender.renderScale,
+                        parameters.matchRender.renderWithFilter,
+                        parameters.matchRender.renderWithoutMask);
 
-        final long cacheMaxKilobytes = parameters.maxImageCacheGb * 1000000;
+        final long cacheMaxKilobytes = parameters.match.maxCacheGb * 1000000;
 
         final CanvasFileLoader fileLoader =
                 new CanvasFileLoader(
                         renderParametersUrlTemplateForRun,
-                        parameters.fillWithNoise,
+                        parameters.matchRender.fillWithNoise,
                         parameters.format,
                         new File(parameters.imageCacheParentDirectory));
 
@@ -192,17 +169,17 @@ public class DMeshPointMatchClient
                                                   new File(parameters.dMeshParameters),
                                                   parameters.dMeshLogToolOutput);
 
-        final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(parameters.matchRod,
-                                                                             parameters.matchModelType,
-                                                                             parameters.matchIterations,
-                                                                             parameters.matchMaxEpsilon,
-                                                                             parameters.matchMinInlierRatio,
-                                                                             parameters.matchMinNumInliers,
-                                                                             parameters.matchMaxTrust,
-                                                                             parameters.matchMaxNumInliers,
+        final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(parameters.match.matchRod,
+                                                                             parameters.match.matchModelType,
+                                                                             parameters.match.matchIterations,
+                                                                             parameters.match.matchMaxEpsilon,
+                                                                             parameters.match.matchMinInlierRatio,
+                                                                             parameters.match.matchMinNumInliers,
+                                                                             parameters.match.matchMaxTrust,
+                                                                             parameters.match.matchMaxNumInliers,
                                                                              parameters.filterMatches);
 
-        final double renderScale = parameters.renderScale;
+        final double renderScale = parameters.matchRender.renderScale;
 
         // broadcast to all nodes
         final Broadcast<Long> broadcastCacheMaxKilobytes = sparkContext.broadcast(cacheMaxKilobytes);
@@ -215,91 +192,87 @@ public class DMeshPointMatchClient
         final JavaRDD<OrderedCanvasIdPair> rddCanvasIdPairs =
                 sparkContext.parallelize(renderableCanvasIdPairs.getNeighborPairs());
 
-        final JavaRDD<CanvasMatches> rddMatches = rddCanvasIdPairs.mapPartitionsWithIndex(
-                new Function2<Integer, Iterator<OrderedCanvasIdPair>, Iterator<CanvasMatches>>() {
+        final JavaRDD<CanvasMatches> rddMatches =
+                rddCanvasIdPairs.mapPartitionsWithIndex(
+                        (Function2<Integer, Iterator<OrderedCanvasIdPair>, Iterator<CanvasMatches>>)
+                                (partitionIndex, pairIterator) -> {
 
-                    @Override
-                    public Iterator<CanvasMatches> call(final Integer partitionIndex,
-                                                        final Iterator<OrderedCanvasIdPair> pairIterator)
-                            throws Exception {
+                    LogUtilities.setupExecutorLog4j("partition " + partitionIndex);
 
-                        LogUtilities.setupExecutorLog4j("partition " + partitionIndex);
+                    final Logger log = LoggerFactory.getLogger(DMeshPointMatchClient.class);
 
-                        final Logger log = LoggerFactory.getLogger(DMeshPointMatchClient.class);
-
-                        final CanvasFileLoader fileLoader = broadcastFileLoader.getValue();
-                        final CanvasDataCache dataCache =
-                                CanvasDataCache.getSharedCache(broadcastCacheMaxKilobytes.getValue(),
-                                                               fileLoader);
-                        final DMeshTool dMeshTool = broadcastDMeshTool.getValue();
-                        final CanvasFeatureMatcher featureMatcher = broadcastFeatureMatcher.getValue();
+                    final CanvasFileLoader fileLoader1 = broadcastFileLoader.getValue();
+                    final CanvasDataCache dataCache =
+                            CanvasDataCache.getSharedCache(broadcastCacheMaxKilobytes.getValue(),
+                                                           fileLoader1);
+                    final DMeshTool dMeshTool1 = broadcastDMeshTool.getValue();
+                    final CanvasFeatureMatcher featureMatcher1 = broadcastFeatureMatcher.getValue();
 
 
-                        final List<CanvasMatches> matchList = new ArrayList<>();
-                        int pairCount = 0;
+                    final List<CanvasMatches> matchList = new ArrayList<>();
+                    int pairCount = 0;
 
-                        OrderedCanvasIdPair pair;
-                        CanvasId p;
-                        CanvasId q;
-                        File pFile;
-                        RenderParameters pRenderParameters;
-                        File qFile;
-                        RenderParameters qRenderParameters;
-                        CanvasMatches pairMatches;
-                        Matches inlierMatches;
-                        while (pairIterator.hasNext()) {
+                    OrderedCanvasIdPair pair;
+                    CanvasId p;
+                    CanvasId q;
+                    File pFile;
+                    RenderParameters pRenderParameters;
+                    File qFile;
+                    RenderParameters qRenderParameters;
+                    CanvasMatches pairMatches;
+                    Matches inlierMatches;
+                    while (pairIterator.hasNext()) {
 
-                            pair = pairIterator.next();
-                            pairCount++;
+                        pair = pairIterator.next();
+                        pairCount++;
 
-                            p = pair.getP();
-                            q = pair.getQ();
+                        p = pair.getP();
+                        q = pair.getQ();
 
-                            pFile = dataCache.getRenderedImage(p);
-                            pRenderParameters = dataCache.getRenderParameters(p);
+                        pFile = dataCache.getRenderedImage(p);
+                        pRenderParameters = dataCache.getRenderParameters(p);
 
-                            qFile = dataCache.getRenderedImage(q);
-                            qRenderParameters = dataCache.getRenderParameters(q);
+                        qFile = dataCache.getRenderedImage(q);
+                        qRenderParameters = dataCache.getRenderParameters(q);
 
-                            pairMatches = dMeshTool.run(p, pFile, pRenderParameters, q, qFile, qRenderParameters);
+                        pairMatches = dMeshTool1.run(p, pFile, pRenderParameters, q, qFile, qRenderParameters);
 
-                            if (pairMatches.size() > 0) {
+                        if (pairMatches.size() > 0) {
 
-                                if (featureMatcher.isFilterMatches()) {
-                                    inlierMatches = featureMatcher.filterMatches(pairMatches.getMatches(),
-                                                                                 new AffineModel2D(),
-                                                                                 renderScale);
-                                } else {
-                                    inlierMatches = pairMatches.getMatches();
+                            if (featureMatcher1.isFilterMatches()) {
+                                inlierMatches = featureMatcher1.filterMatches(pairMatches.getMatches(),
+                                                                              new AffineModel2D(),
+                                                                              renderScale);
+                            } else {
+                                inlierMatches = pairMatches.getMatches();
 
-                                    // point matches must be stored in full scale coordinates
-                                    if (renderScale != 1.0) {
-                                        scalePoints(inlierMatches.getPs(), renderScale);
-                                        scalePoints(inlierMatches.getQs(), renderScale);
-                                    }
-                                }
-
-                                if (inlierMatches.getWs().length > 0) {
-                                    matchList.add(new CanvasMatches(p.getGroupId(), p.getId(),
-                                                                    q.getGroupId(), q.getId(),
-                                                                    inlierMatches));
+                                // point matches must be stored in full scale coordinates
+                                if (renderScale != 1.0) {
+                                    scalePoints(inlierMatches.getPs(), renderScale);
+                                    scalePoints(inlierMatches.getQs(), renderScale);
                                 }
                             }
+
+                            if (inlierMatches.getWs().length > 0) {
+                                matchList.add(new CanvasMatches(p.getGroupId(), p.getId(),
+                                                                q.getGroupId(), q.getId(),
+                                                                inlierMatches));
+                            }
                         }
-
-                        log.info("rddMatches: derived matches for {} out of {} pairs, cache stats are {}",
-                                 matchList.size(), pairCount, dataCache.stats());
-
-                        return matchList.iterator();
                     }
+
+                    log.info("rddMatches: derived matches for {} out of {} pairs, cache stats are {}",
+                             matchList.size(), pairCount, dataCache.stats());
+
+                    return matchList.iterator();
                 },
                 true
         );
 
         final JavaRDD<Integer> rddSavedMatchPairCounts = rddMatches.mapPartitionsWithIndex(
-                new MatchStorageFunction(parameters.baseDataUrl,
-                                         parameters.owner,
-                                         parameters.collection),
+                new MatchStorageFunction(parameters.matchClient.baseDataUrl,
+                                         parameters.matchClient.owner,
+                                         parameters.matchClient.collection),
                 true
         );
 
@@ -323,19 +296,13 @@ public class DMeshPointMatchClient
         }
         final JavaRDD<Boolean> rddCleanupList = sparkContext.parallelize(cleanupList, numPartitions);
         final JavaRDD<Integer> rddCleanupPartitionIndexes = rddCleanupList.mapPartitionsWithIndex(
-                new Function2<Integer, Iterator<Boolean>, Iterator<Integer>>() {
+                (Function2<Integer, Iterator<Boolean>, Iterator<Integer>>) (partitionIndex, v2) -> {
+                    LogUtilities.setupExecutorLog4j("partition " + partitionIndex);
 
-                    @Override
-                    public Iterator<Integer> call(final Integer partitionIndex,
-                                                  final Iterator<Boolean> v2)
-                            throws Exception {
-                        LogUtilities.setupExecutorLog4j("partition " + partitionIndex);
+                    final CanvasFileLoader fileLoader1 = broadcastFileLoader.getValue();
+                    fileLoader1.deleteRootDirectory();
 
-                        final CanvasFileLoader fileLoader = broadcastFileLoader.getValue();
-                        fileLoader.deleteRootDirectory();
-
-                        return Collections.singletonList(partitionIndex).iterator();
-                    }
+                    return Collections.singletonList(partitionIndex).iterator();
                 },
                 true
         );

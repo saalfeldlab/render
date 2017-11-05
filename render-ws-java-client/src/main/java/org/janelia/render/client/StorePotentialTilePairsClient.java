@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -15,6 +16,7 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
+import org.janelia.render.client.parameters.MatchDataClientParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,13 +28,13 @@ import org.slf4j.LoggerFactory;
  */
 public class StorePotentialTilePairsClient {
 
-    @SuppressWarnings("ALL")
-    public static class Parameters extends MatchDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --collection parameters defined in MatchDataClientParameters
+        @ParametersDelegate
+        public MatchDataClientParameters matchClient = new MatchDataClientParameters();
 
         @Parameter(names = "--pairJson", description = "JSON file where potential tile pairs are stored (.json, .gz, or .zip)", required = true)
-        private List<String> pairJson;
+        public List<String> pairJson;
 
     }
 
@@ -62,9 +64,9 @@ public class StorePotentialTilePairsClient {
     public StorePotentialTilePairsClient(final Parameters parameters) throws IllegalArgumentException {
 
         this.parameters = parameters;
-        this.matchStorageClient = new RenderDataClient(parameters.baseDataUrl,
-                                                       parameters.owner,
-                                                       parameters.collection);
+        this.matchStorageClient = new RenderDataClient(parameters.matchClient.baseDataUrl,
+                                                       parameters.matchClient.owner,
+                                                       parameters.matchClient.collection);
     }
 
     public void run() throws IOException, URISyntaxException {

@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -23,11 +24,13 @@ import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.render.client.parameters.MatchClipParameters;
+import org.janelia.render.client.parameters.MatchDataClientParameters;
+import org.janelia.render.client.parameters.MatchDerivationParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +41,7 @@ import org.slf4j.LoggerFactory;
  */
 public class PointMatchClient {
 
-    private enum CanvasGroupIdAlgorithm {
+    public enum CanvasGroupIdAlgorithm {
 
         /** Assign canvas group id based upon the sectionId value of the first rendered tile. */
         FIRST_TILE_SECTION_ID,
@@ -50,7 +53,7 @@ public class PointMatchClient {
         COLLECTION
     }
 
-    private enum CanvasIdAlgorithm {
+    public enum CanvasIdAlgorithm {
 
         /** Assign canvas id based upon the id of the first rendered tile. */
         FIRST_TILE_ID,
@@ -62,86 +65,79 @@ public class PointMatchClient {
         CANVAS_NAME
     }
 
-    private enum RenderFileFormat {
+    public enum RenderFileFormat {
         JPG,
         PNG,
         TIF
     }
 
-    @SuppressWarnings("ALL")
-    public static class Parameters extends MatchDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --collection parameters defined in MatchDataClientParameters
+        @ParametersDelegate
+        public MatchDataClientParameters matchClient = new MatchDataClientParameters();
 
-        @Parameter(names = "--fillWithNoise", description = "Fill each canvas image with noise before rendering to improve point match derivation", required = false, arity = 1)
-        private boolean fillWithNoise = true;
+        @ParametersDelegate
+        public MatchDerivationParameters match = new MatchDerivationParameters();
 
-        @Parameter(names = "--SIFTfdSize", description = "SIFT feature descriptor size: how many samples per row and column", required = false)
-        private Integer fdSize = 8;
+        @ParametersDelegate
+        public MatchClipParameters matchClip = new MatchClipParameters();
 
-        @Parameter(names = "--SIFTminScale", description = "SIFT minimum scale: minSize * minScale < size < maxSize * maxScale", required = false)
-        private Double minScale = 0.5;
+        @Parameter(
+                names = "--renderScale",
+                description = "Render canvases at this scale",
+                required = false,
+                order = 10)
+        public Double renderScale = 1.0;
 
-        @Parameter(names = "--SIFTmaxScale", description = "SIFT maximum scale: minSize * minScale < size < maxSize * maxScale", required = false)
-        private Double maxScale = 0.85;
+        @Parameter(names = "--fillWithNoise",
+                description = "Fill each canvas image with noise before rendering to improve point match derivation",
+                required = false,
+                arity = 1,
+                order = 15)
+        public boolean fillWithNoise = true;
 
-        @Parameter(names = "--SIFTsteps", description = "SIFT steps per scale octave", required = false)
-        private Integer steps = 3;
+        @Parameter(
+                names = "--renderFileFormat",
+                description = "Format for saved canvases (only relevant if debugDirectory is specified)",
+                required = false,
+                order = 16)
+        public RenderFileFormat renderFileFormat = RenderFileFormat.JPG;
 
-        @Parameter(names = "--matchRod", description = "Ratio of distances for matches", required = false)
-        private Float matchRod = 0.92f;
+        @Parameter(
+                names = "--numberOfThreads",
+                description = "Number of threads to use for processing",
+                required = false)
+        public int numberOfThreads = 1;
 
-        @Parameter(names = "--matchModelType", description = "Type of model for match filtering", required = false)
-        private ModelType matchModelType = ModelType.AFFINE;
+        @Parameter(
+                names = "--matchStorageFile",
+                description = "File to store matches (omit if matches should be stored through web service)",
+                required = false)
+        public String matchStorageFile = null;
 
-        @Parameter(names = "--matchIterations", description = "Match filter iterations", required = false)
-        private Integer matchIterations = 1000;
+        @Parameter(
+                names = "--canvasGroupIdAlgorithm",
+                description = "Algorithm for deriving canvas group ids",
+                required = false)
+        public CanvasGroupIdAlgorithm canvasGroupIdAlgorithm = CanvasGroupIdAlgorithm.FIRST_TILE_SECTION_ID;
 
-        @Parameter(names = "--matchMaxEpsilon", description = "Minimal allowed transfer error for match filtering", required = false)
-        private Float matchMaxEpsilon = 20.0f;
+        @Parameter(
+                names = "--canvasIdAlgorithm",
+                description = "Algorithm for deriving canvas ids",
+                required = false)
+        public CanvasIdAlgorithm canvasIdAlgorithm = CanvasIdAlgorithm.FIRST_TILE_ID;
 
-        @Parameter(names = "--matchMinInlierRatio", description = "Minimal ratio of inliers to candidates for match filtering", required = false)
-        private Float matchMinInlierRatio = 0.0f;
+        @Parameter(
+                names = "--debugDirectory",
+                description = "Directory to save rendered canvases for debugging (omit to keep rendered data in memory only)",
+                required = false)
+        public String debugDirectory = null;
+        public File validatedDebugDirectory = null;
 
-        @Parameter(names = "--matchMinNumInliers", description = "Minimal absolute number of inliers for match filtering", required = false)
-        private Integer matchMinNumInliers = 4;
-
-        @Parameter(names = "--matchMaxTrust", description = "Reject match candidates with a cost larger than maxTrust * median cost", required = false)
-        private Double matchMaxTrust = 3.0;
-
-        @Parameter(names = "--matchMaxNumInliers", description = "Maximum number of inliers for match filtering", required = false)
-        private Integer matchMaxNumInliers;
-
-        @Parameter(names = "--numberOfThreads", description = "Number of threads to use for processing", required = false)
-        private int numberOfThreads = 1;
-
-        @Parameter(names = "--matchStorageFile", description = "File to store matches (omit if macthes should be stored through web service)", required = false)
-        private String matchStorageFile = null;
-
-        @Parameter(names = "--canvasGroupIdAlgorithm", description = "Algorithm for deriving canvas group ids", required = false)
-        private CanvasGroupIdAlgorithm canvasGroupIdAlgorithm = CanvasGroupIdAlgorithm.FIRST_TILE_SECTION_ID;
-
-        @Parameter(names = "--canvasIdAlgorithm", description = "Algorithm for deriving canvas ids", required = false)
-        private CanvasIdAlgorithm canvasIdAlgorithm = CanvasIdAlgorithm.FIRST_TILE_ID;
-
-        @Parameter(names = "--debugDirectory", description = "Directory to save rendered canvases for debugging (omit to keep rendered data in memory only)", required = false)
-        private String debugDirectory = null;
-        private File validatedDebugDirectory = null;
-
-        @Parameter(names = "--renderFileFormat", description = "Format for saved canvases (only relevant if debugDirectory is specified)", required = false)
-        private RenderFileFormat renderFileFormat = RenderFileFormat.JPG;
-
-        @Parameter(names = "--renderScale", description = "Render canvases at this scale", required = false)
-        private Double renderScale = 1.0;
-
-        @Parameter(names = "--clipHeight", description = "Number of full scale pixels to include in rendered clips of TOP/BOTTOM oriented montage tiles", required = false)
-        private Integer clipHeight;
-
-        @Parameter(names = "--clipWidth", description = "Number of full scale pixels to include in rendered clips of LEFT/RIGHT oriented montage tiles", required = false)
-        private Integer clipWidth;
-
-        @Parameter(description = "canvas_1_URL canvas_2_URL [canvas_p_URL canvas_q_URL] ... (each URL pair identifies render parameters for canvas pairs)", required = true)
-        private List<String> renderParameterUrls;
+        @Parameter(
+                description = "canvas_1_URL canvas_2_URL [canvas_p_URL canvas_q_URL] ... (each URL pair identifies render parameters for canvas pairs)",
+                required = true)
+        public List<String> renderParameterUrls;
 
         /**
          * @param  matchId  derived match id for canvas.
@@ -167,15 +163,15 @@ public class PointMatchClient {
             if (renderParameters.hasTileSpecs()) {
                 switch (canvasGroupIdAlgorithm) {
                     case FIRST_TILE_SECTION_ID:
-                        matchGroupId = getTileSectionId(renderParameters.getTileSpecs().get(0), collection);
+                        matchGroupId = getTileSectionId(renderParameters.getTileSpecs().get(0), matchClient.collection);
                         break;
                     case FIRST_TILE_Z:
-                        matchGroupId = getTileZId(renderParameters.getTileSpecs().get(0), collection);
+                        matchGroupId = getTileZId(renderParameters.getTileSpecs().get(0), matchClient.collection);
                         break;
                 }
             }
             if (matchGroupId == null) {
-                matchGroupId = collection;
+                matchGroupId = matchClient.collection;
             }
             return matchGroupId;
         }
@@ -186,7 +182,7 @@ public class PointMatchClient {
          *
          * @return match id derived using the {@link #canvasIdAlgorithm}.
          */
-        public String getCanvasId(RenderParameters renderParameters,
+        public String getCanvasId(final RenderParameters renderParameters,
                                   final String canvasName) {
             String matchId = null;
             if (renderParameters.hasTileSpecs()) {
@@ -294,7 +290,7 @@ public class PointMatchClient {
             }
         }
 
-        if ((parameters.clipWidth != null) || (parameters.clipHeight != null)) {
+        if ((parameters.matchClip.clipWidth != null) || (parameters.matchClip.clipHeight != null)) {
 
             if (canvasUrlToDataMap.size() != 2) {
                 throw new IllegalArgumentException("clipping is only supported for single pair runs");
@@ -313,14 +309,14 @@ public class PointMatchClient {
             pData.canvasId.setRelativePosition(relativePositions[0]);
             qData.canvasId.setRelativePosition(relativePositions[1]);
 
-            pData.clipForMontagePair(pBounds, parameters.clipWidth, parameters.clipHeight);
-            qData.clipForMontagePair(qBounds, parameters.clipWidth, parameters.clipHeight);
+            pData.clipForMontagePair(pBounds, parameters.matchClip.clipWidth, parameters.matchClip.clipHeight);
+            qData.clipForMontagePair(qBounds, parameters.matchClip.clipWidth, parameters.matchClip.clipHeight);
 
         }
 
-        this.renderDataClient = new RenderDataClient(clientParameters.baseDataUrl,
-                                                     clientParameters.owner,
-                                                     clientParameters.collection);
+        this.renderDataClient = new RenderDataClient(clientParameters.matchClient.baseDataUrl,
+                                                     clientParameters.matchClient.owner,
+                                                     clientParameters.matchClient.collection);
     }
 
     public Map<String, CanvasData> getCanvasUrlToDataMap() {
@@ -372,14 +368,14 @@ public class PointMatchClient {
 
         final List<CanvasFeatureMatcherThread> matcherList = new ArrayList<>(parameters.renderParameterUrls.size());
 
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(parameters.matchRod,
-                                                                      parameters.matchModelType,
-                                                                      parameters.matchIterations,
-                                                                      parameters.matchMaxEpsilon,
-                                                                      parameters.matchMinInlierRatio,
-                                                                      parameters.matchMinNumInliers,
-                                                                      parameters.matchMaxTrust,
-                                                                      parameters.matchMaxNumInliers,
+        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(parameters.match.matchRod,
+                                                                      parameters.match.matchModelType,
+                                                                      parameters.match.matchIterations,
+                                                                      parameters.match.matchMaxEpsilon,
+                                                                      parameters.match.matchMinInlierRatio,
+                                                                      parameters.match.matchMinNumInliers,
+                                                                      parameters.match.matchMaxTrust,
+                                                                      parameters.match.matchMaxNumInliers,
                                                                       true);
 
         String pUrlString;
@@ -569,12 +565,12 @@ public class PointMatchClient {
             this.renderFile = clientParameters.getCanvasFile(canvasData.canvasId.getId());
 
             final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
-            siftParameters.fdSize = clientParameters.fdSize;
-            siftParameters.steps = clientParameters.steps;
+            siftParameters.fdSize = clientParameters.match.fdSize;
+            siftParameters.steps = clientParameters.match.steps;
 
             this.extractor = new CanvasFeatureExtractor(siftParameters,
-                                                        clientParameters.minScale,
-                                                        clientParameters.maxScale,
+                                                        clientParameters.match.minScale,
+                                                        clientParameters.match.maxScale,
                                                         clientParameters.fillWithNoise);
         }
 

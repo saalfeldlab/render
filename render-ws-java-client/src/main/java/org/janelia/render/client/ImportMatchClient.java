@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -10,6 +11,7 @@ import java.util.List;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.util.ProcessTimer;
+import org.janelia.render.client.parameters.MatchDataClientParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,16 +22,21 @@ import org.slf4j.LoggerFactory;
  */
 public class ImportMatchClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends MatchDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --collection parameters defined in MatchDataClientParameters
+        @ParametersDelegate
+        public MatchDataClientParameters matchClient = new MatchDataClientParameters();
 
-        @Parameter(names = "--batchSize", description = "maximum number of matches to batch in a single request", required = false)
-        private Integer batchSize = 10000;
+        @Parameter(
+                names = "--batchSize",
+                description = "maximum number of matches to batch in a single request",
+                required = false)
+        public Integer batchSize = 10000;
 
-        @Parameter(description = "list of canvas match data files, each file (.json, .gz, or .zip) can contain an arbitrary set of matches", required = true)
-        private List<String> canvasMatchesFiles;
+        @Parameter(
+                description = "list of canvas match data files, each file (.json, .gz, or .zip) can contain an arbitrary set of matches",
+                required = true)
+        public List<String> canvasMatchesFiles;
     }
 
     public static void main(final String[] args) {
@@ -58,9 +65,9 @@ public class ImportMatchClient {
     public ImportMatchClient(final Parameters parameters)
             throws IOException {
         this.parameters = parameters;
-        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                     parameters.owner,
-                                                     parameters.collection);
+        this.renderDataClient = new RenderDataClient(parameters.matchClient.baseDataUrl,
+                                                     parameters.matchClient.owner,
+                                                     parameters.matchClient.collection);
     }
 
     public void importMatchData(final String dataFile) throws Exception {

@@ -20,7 +20,11 @@ import org.slf4j.LoggerFactory;
 @Parameters
 public class CommandLineParameters implements Serializable {
 
-    @Parameter(names = "--help", description = "Display this note", help = true)
+    @Parameter(
+            names = "--help",
+            description = "Display this note",
+            help = true,
+            order = 0)
     protected transient boolean help;
 
     private transient JCommander jCommander;

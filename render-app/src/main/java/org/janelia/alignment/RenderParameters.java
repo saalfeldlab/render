@@ -56,9 +56,8 @@ import org.slf4j.LoggerFactory;
 @Parameters
 public class RenderParameters implements Serializable {
 
-    @SuppressWarnings("FieldMayBeFinal")
     @Parameter(names = "--help", description = "Display this note", help = true)
-    private transient boolean help;
+    public transient boolean help;
 
     @Parameter(names = "--tile_spec_url", description = "URL to JSON tile spec", required = false)
     private String tileSpecUrl;
@@ -118,7 +117,7 @@ public class RenderParameters implements Serializable {
     public boolean excludeMask;
 
     @Parameter(names = "--parameters_url", description = "URL to base JSON parameters file (to be applied to any unspecified or default parameters)", required = false)
-    private final String parametersUrl;
+    public String parametersUrl;
 
     @Parameter(names = "--do_filter", description = "ad hoc filters to support alignment", required = false)
     private boolean doFilter;
@@ -614,9 +613,7 @@ public class RenderParameters implements Serializable {
     }
 
     public void flattenTransforms() {
-        for (final TileSpec spec : tileSpecs) {
-            spec.flattenTransforms();
-        }
+        tileSpecs.forEach(TileSpec::flattenTransforms);
     }
 
     public boolean hasMipmapPathBuilder() {
@@ -661,9 +658,7 @@ public class RenderParameters implements Serializable {
             throw new IllegalStateException("derived parameters have not been initialized");
         }
 
-        for (final TileSpec tileSpec : tileSpecs) {
-            tileSpec.validate();
-        }
+        tileSpecs.forEach(TileSpec::validate);
     }
 
     /**

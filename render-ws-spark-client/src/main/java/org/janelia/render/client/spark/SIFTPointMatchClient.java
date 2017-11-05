@@ -1,6 +1,7 @@
 package org.janelia.render.client.spark;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -23,11 +24,14 @@ import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
-import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.MatchDataClientParameters;
+import org.janelia.render.client.CommandLineParameters;
+import org.janelia.render.client.parameters.MatchClipParameters;
+import org.janelia.render.client.parameters.MatchDataClientParameters;
+import org.janelia.render.client.parameters.MatchDerivationParameters;
+import org.janelia.render.client.parameters.MatchRenderParameters;
 import org.janelia.render.client.spark.cache.CanvasDataCache;
 import org.janelia.render.client.spark.cache.CanvasFeatureListLoader;
 import org.slf4j.Logger;
@@ -41,88 +45,26 @@ import org.slf4j.LoggerFactory;
 public class SIFTPointMatchClient
         implements Serializable {
 
-    @SuppressWarnings("ALL")
-    public static class Parameters extends MatchDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --collection parameters defined in MatchDataClientParameters
+        @ParametersDelegate
+        public MatchDataClientParameters matchClient = new MatchDataClientParameters();
 
-        @Parameter(names = "--pairJson", description = "JSON file where tile pairs are stored (.json, .gz, or .zip)", required = true)
-        private List<String> pairJson;
+        @ParametersDelegate
+        public MatchRenderParameters matchRender = new MatchRenderParameters();
 
-        @Parameter(
-                names = "--renderWithFilter",
-                description = "Render tiles using a filter for intensity correction",
-                required = false,
-                arity = 1)
-        private boolean renderWithFilter = true;
+        @ParametersDelegate
+        public MatchDerivationParameters match = new MatchDerivationParameters();
 
-        @Parameter(
-                names = "--renderWithoutMask",
-                description = "Render tiles without a mask",
-                required = false,
-                arity = 1)
-        private boolean renderWithoutMask = true;
-
-        @Parameter(names = "--renderFullScaleWidth", description = "Full scale width for all rendered tiles", required = false)
-        private Integer renderFullScaleWidth;
-
-        @Parameter(names = "--renderFullScaleHeight", description = "Full scale height for all rendered tiles", required = false)
-        private Integer renderFullScaleHeight;
-
-        @Parameter(names = "--renderScale", description = "Render tiles at this scale", required = false)
-        private Double renderScale = 1.0;
+        @ParametersDelegate
+        public MatchClipParameters matchClip = new MatchClipParameters();
 
         @Parameter(
-                names = "--fillWithNoise",
-                description = "Fill each canvas image with noise before rendering to improve point match derivation",
-                required = false,
-                arity = 1)
-        private boolean fillWithNoise = true;
-
-        @Parameter(names = "--SIFTfdSize", description = "SIFT feature descriptor size: how many samples per row and column", required = false)
-        private Integer fdSize = 8;
-
-        @Parameter(names = "--SIFTminScale", description = "SIFT minimum scale: minSize * minScale < size < maxSize * maxScale", required = false)
-        private Double minScale = 0.5;
-
-        @Parameter(names = "--SIFTmaxScale", description = "SIFT maximum scale: minSize * minScale < size < maxSize * maxScale", required = false)
-        private Double maxScale = 0.85;
-
-        @Parameter(names = "--SIFTsteps", description = "SIFT steps per scale octave", required = false)
-        private Integer steps = 3;
-
-        @Parameter(names = "--matchRod", description = "Ratio of distances for matches", required = false)
-        private Float matchRod = 0.92f;
-
-        @Parameter(names = "--matchModelType", description = "Type of model for match filtering", required = false)
-        private ModelType matchModelType = ModelType.AFFINE;
-
-        @Parameter(names = "--matchIterations", description = "Match filter iterations", required = false)
-        private Integer matchIterations = 1000;
-
-        @Parameter(names = "--matchMaxEpsilon", description = "Minimal allowed transfer error for match filtering", required = false)
-        private Float matchMaxEpsilon = 20.0f;
-
-        @Parameter(names = "--matchMinInlierRatio", description = "Minimal ratio of inliers to candidates for match filtering", required = false)
-        private Float matchMinInlierRatio = 0.0f;
-
-        @Parameter(names = "--matchMinNumInliers", description = "Minimal absolute number of inliers for match filtering", required = false)
-        private Integer matchMinNumInliers = 4;
-
-        @Parameter(names = "--matchMaxTrust", description = "Reject match candidates with a cost larger than maxTrust * median cost", required = false)
-        private Double matchMaxTrust = 3.0;
-
-        @Parameter(names = "--matchMaxNumInliers", description = "Maximum number of inliers for match filtering", required = false)
-        private Integer matchMaxNumInliers;
-
-        @Parameter(names = "--maxFeatureCacheGb", description = "Maximum number of gigabytes of features to cache", required = false)
-        private Integer maxFeatureCacheGb = 2;
-
-        @Parameter(names = "--clipHeight", description = "Number of full scale pixels to include in rendered clips of TOP/BOTTOM oriented montage tiles", required = false)
-        private Integer clipHeight;
-
-        @Parameter(names = "--clipWidth", description = "Number of full scale pixels to include in rendered clips of LEFT/RIGHT oriented montage tiles", required = false)
-        private Integer clipWidth;
+                names = "--pairJson",
+                description = "JSON file where tile pairs are stored (.json, .gz, or .zip)",
+                required = true,
+                order = 5)
+        public List<String> pairJson;
 
     }
 
@@ -177,111 +119,120 @@ public class SIFTPointMatchClient
 
         final RenderableCanvasIdPairs renderableCanvasIdPairs =
                 RenderableCanvasIdPairsUtilities.load(pairJsonFileName);
+        generateMatchesForPairs(sparkContext,
+                                renderableCanvasIdPairs,
+                                parameters.matchClient,
+                                parameters.matchRender,
+                                parameters.match,
+                                parameters.matchClip);
+    }
+
+    public static long generateMatchesForPairs(final JavaSparkContext sparkContext,
+                                               final RenderableCanvasIdPairs renderableCanvasIdPairs,
+                                               final MatchDataClientParameters matchClientParameters,
+                                               final MatchRenderParameters matchRenderParameters,
+                                               final MatchDerivationParameters matchParameters,
+                                               final MatchClipParameters clipParameters)
+            throws IOException, URISyntaxException {
 
         final String renderParametersUrlTemplateForRun =
                 RenderableCanvasIdPairsUtilities.getRenderParametersUrlTemplateForRun(
                         renderableCanvasIdPairs,
-                        parameters.baseDataUrl,
-                        parameters.renderFullScaleWidth,
-                        parameters.renderFullScaleHeight,
-                        parameters.renderScale,
-                        parameters.renderWithFilter,
-                        parameters.renderWithoutMask);
+                        matchClientParameters.baseDataUrl,
+                        matchRenderParameters.renderFullScaleWidth,
+                        matchRenderParameters.renderFullScaleHeight,
+                        matchRenderParameters.renderScale,
+                        matchRenderParameters.renderWithFilter,
+                        matchRenderParameters.renderWithoutMask);
 
-        final long cacheMaxKilobytes = parameters.maxFeatureCacheGb * 1000000;
+        final long cacheMaxKilobytes = matchParameters.maxCacheGb * 1000000;
         final CanvasFeatureListLoader featureLoader =
                 new CanvasFeatureListLoader(
                         renderParametersUrlTemplateForRun,
-                        getCanvasFeatureExtractor());
+                        getCanvasFeatureExtractor(matchParameters, matchRenderParameters));
 
-        featureLoader.setClipInfo(parameters.clipWidth, parameters.clipHeight);
+        featureLoader.setClipInfo(clipParameters.clipWidth, clipParameters.clipHeight);
 
-        final double renderScale = parameters.renderScale;
+        final double renderScale = matchRenderParameters.renderScale;
 
         // broadcast to all nodes
         final Broadcast<Long> broadcastCacheMaxKilobytes = sparkContext.broadcast(cacheMaxKilobytes);
         final Broadcast<CanvasFeatureListLoader> broadcastFeatureLoader = sparkContext.broadcast(featureLoader);
         final Broadcast<CanvasFeatureMatcher> broadcastFeatureMatcher =
-                sparkContext.broadcast(getCanvasFeatureMatcher());
+                sparkContext.broadcast(getCanvasFeatureMatcher(matchParameters));
 
         final JavaRDD<OrderedCanvasIdPair> rddCanvasIdPairs =
                 sparkContext.parallelize(renderableCanvasIdPairs.getNeighborPairs());
 
         final JavaRDD<CanvasMatches> rddMatches = rddCanvasIdPairs.mapPartitionsWithIndex(
-                new Function2<Integer, Iterator<OrderedCanvasIdPair>, Iterator<CanvasMatches>>() {
+                (Function2<Integer, Iterator<OrderedCanvasIdPair>, Iterator<CanvasMatches>>) (partitionIndex, pairIterator) -> {
 
-                    @Override
-                    public Iterator<CanvasMatches> call(final Integer partitionIndex,
-                                                        final Iterator<OrderedCanvasIdPair> pairIterator)
-                            throws Exception {
+                    LogUtilities.setupExecutorLog4j("partition " + partitionIndex);
 
-                        LogUtilities.setupExecutorLog4j("partition " + partitionIndex);
+                    final Logger log = LoggerFactory.getLogger(SIFTPointMatchClient.class);
 
-                        final Logger log = LoggerFactory.getLogger(SIFTPointMatchClient.class);
+                    final CanvasDataCache dataCache =
+                            CanvasDataCache.getSharedCache(broadcastCacheMaxKilobytes.getValue(),
+                                                           broadcastFeatureLoader.getValue());
+                    final CanvasFeatureMatcher featureMatcher = broadcastFeatureMatcher.getValue();
 
-                        final CanvasDataCache dataCache =
-                                CanvasDataCache.getSharedCache(broadcastCacheMaxKilobytes.getValue(),
-                                                               broadcastFeatureLoader.getValue());
-                        final CanvasFeatureMatcher featureMatcher = broadcastFeatureMatcher.getValue();
+                    final List<CanvasMatches> matchList = new ArrayList<>();
+                    int pairCount = 0;
 
-                        final List<CanvasMatches> matchList = new ArrayList<>();
-                        int pairCount = 0;
+                    OrderedCanvasIdPair pair;
+                    CanvasId p;
+                    CanvasId q;
+                    List<Feature> pFeatures;
+                    List<Feature> qFeatures;
+                    CanvasFeatureMatchResult matchResult;
+                    Matches inlierMatches;
+                    while (pairIterator.hasNext()) {
 
-                        OrderedCanvasIdPair pair;
-                        CanvasId p;
-                        CanvasId q;
-                        List<Feature> pFeatures;
-                        List<Feature> qFeatures;
-                        CanvasFeatureMatchResult matchResult;
-                        Matches inlierMatches;
-                        while (pairIterator.hasNext()) {
+                        pair = pairIterator.next();
+                        pairCount++;
 
-                            pair = pairIterator.next();
-                            pairCount++;
+                        p = pair.getP();
+                        q = pair.getQ();
 
-                            p = pair.getP();
-                            q = pair.getQ();
+                        pFeatures = dataCache.getFeatureList(p);
+                        qFeatures = dataCache.getFeatureList(q);
 
-                            pFeatures = dataCache.getFeatureList(p);
-                            qFeatures = dataCache.getFeatureList(q);
+                        log.info("derive matches between {} and {}", p, q);
 
-                            log.info("derive matches between {} and {}", p, q);
+                        matchResult = featureMatcher.deriveMatchResult(pFeatures, qFeatures);
 
-                            matchResult = featureMatcher.deriveMatchResult(pFeatures, qFeatures);
+                        inlierMatches = matchResult.getInlierMatches(renderScale, p.getClipOffsets(), q.getClipOffsets());
 
-                            inlierMatches = matchResult.getInlierMatches(renderScale, p.getClipOffsets(), q.getClipOffsets());
-
-                            if (inlierMatches.getWs().length > 0) {
-                                matchList.add(new CanvasMatches(p.getGroupId(), p.getId(),
-                                                                q.getGroupId(), q.getId(),
-                                                                inlierMatches));
-                            }
+                        if (inlierMatches.getWs().length > 0) {
+                            matchList.add(new CanvasMatches(p.getGroupId(), p.getId(),
+                                                            q.getGroupId(), q.getId(),
+                                                            inlierMatches));
                         }
-
-                        log.info("rddMatches: derived matches for {} out of {} pairs, cache stats are {}",
-                                 matchList.size(), pairCount, dataCache.stats());
-
-                        return matchList.iterator();
                     }
+
+                    log.info("derived matches for {} out of {} pairs, cache stats are {}",
+                             matchList.size(), pairCount, dataCache.stats());
+
+                    return matchList.iterator();
                 },
                 true
         );
 
         final JavaRDD<Integer> rddSavedMatchPairCounts = rddMatches.mapPartitionsWithIndex(
-                new MatchStorageFunction(parameters.baseDataUrl,
-                                         parameters.owner,
-                                         parameters.collection),
+                new MatchStorageFunction(matchClientParameters.baseDataUrl,
+                                         matchClientParameters.owner,
+                                         matchClientParameters.collection),
                 true
         );
 
         final int numPartitions = rddSavedMatchPairCounts.getNumPartitions();
 
-        LOG.info("run: {} partitions, debug string is: \n{}",
+        LOG.info("generateMatchesForPairs: {} partitions, debug string is: \n{}",
                  numPartitions, rddSavedMatchPairCounts.toDebugString());
 
         final List<Integer> matchPairCountList = rddSavedMatchPairCounts.collect();
 
-        LOG.info("run: collected stats");
+        LOG.info("generateMatchesForPairs: collected stats");
 
         long totalSaved = 0;
         for (final Integer matchCount : matchPairCountList) {
@@ -291,31 +242,34 @@ public class SIFTPointMatchClient
         final long totalProcessed = renderableCanvasIdPairs.size();
         final int percentSaved = (int) ((totalSaved / (double) totalProcessed) * 100);
 
-        LOG.info("run: saved matches for {} out of {} pairs ({}%) on {} partitions",
+        LOG.info("generateMatchesForPairs: saved matches for {} out of {} pairs ({}%) on {} partitions",
                  totalSaved, totalProcessed, percentSaved, matchPairCountList.size());
+
+        return totalSaved;
     }
 
-    private CanvasFeatureExtractor getCanvasFeatureExtractor() {
+    private static CanvasFeatureExtractor getCanvasFeatureExtractor(final MatchDerivationParameters matchParameters,
+                                                                    final MatchRenderParameters matchRenderParameters) {
 
         final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
-        siftParameters.fdSize = parameters.fdSize;
-        siftParameters.steps = parameters.steps;
+        siftParameters.fdSize = matchParameters.fdSize;
+        siftParameters.steps = matchParameters.steps;
 
         return new CanvasFeatureExtractor(siftParameters,
-                                          parameters.minScale,
-                                          parameters.maxScale,
-                                          parameters.fillWithNoise);
+                                          matchParameters.minScale,
+                                          matchParameters.maxScale,
+                                          matchRenderParameters.fillWithNoise);
     }
 
-    private CanvasFeatureMatcher getCanvasFeatureMatcher() {
-        return new CanvasFeatureMatcher(parameters.matchRod,
-                                        parameters.matchModelType,
-                                        parameters.matchIterations,
-                                        parameters.matchMaxEpsilon,
-                                        parameters.matchMinInlierRatio,
-                                        parameters.matchMinNumInliers,
-                                        parameters.matchMaxTrust,
-                                        parameters.matchMaxNumInliers,
+    private static CanvasFeatureMatcher getCanvasFeatureMatcher(final MatchDerivationParameters matchParameters) {
+        return new CanvasFeatureMatcher(matchParameters.matchRod,
+                                        matchParameters.matchModelType,
+                                        matchParameters.matchIterations,
+                                        matchParameters.matchMaxEpsilon,
+                                        matchParameters.matchMinInlierRatio,
+                                        matchParameters.matchMinNumInliers,
+                                        matchParameters.matchMaxTrust,
+                                        matchParameters.matchMaxNumInliers,
                                         true);
     }
 
