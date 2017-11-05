@@ -42,6 +42,10 @@ public class RenderWebServiceUrls {
         return baseDataUrl + "/owner/" + owner + "/stackIds";
     }
 
+    public String getOwnerMatchCollectionsUrlString() {
+        return getOwnerUrlString() + "/matchCollections";
+    }
+
     public String getMatchCollectionUrlString() {
         return getOwnerUrlString() + "/matchCollection/" + matchCollection;
     }
