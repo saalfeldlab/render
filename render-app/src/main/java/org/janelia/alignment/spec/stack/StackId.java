@@ -1,6 +1,7 @@
 package org.janelia.alignment.spec.stack;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Objects;
 
 import java.io.Serializable;
 
@@ -66,6 +67,25 @@ public class StackId implements Comparable<StackId>, Serializable {
 
     public String toJson() {
         return JSON_HELPER.toJson(this);
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final StackId stackId = (StackId) o;
+        return Objects.equal(stack, stackId.stack) &&
+               Objects.equal(project, stackId.project) &&
+               Objects.equal(owner, stackId.owner);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(stack, project, owner);
     }
 
     @SuppressWarnings("NullableProblems")
