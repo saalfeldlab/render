@@ -1,5 +1,6 @@
 package org.janelia.alignment.spec;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
@@ -12,7 +13,7 @@ import org.janelia.alignment.spec.stack.MipmapPathBuilder;
  *
  * @author Eric Trautman
  */
-public class ChannelSpec {
+public class ChannelSpec implements Serializable {
 
     private final String name;
     private final Double minIntensity;
@@ -130,9 +131,7 @@ public class ChannelSpec {
     }
 
     /**
-     * Return or produce and as complete as possible copy of the map of mipmap levels.
-     *
-     * @return
+     * @return an as-complete-as-possible copy of the map of mipmap levels.
      */
     public Map<Integer, ImageAndMask> getMipmapLevels() {
 
@@ -142,7 +141,8 @@ public class ChannelSpec {
         if (mipmapPathBuilder != null)
             for (int level = 0; level < mipmapPathBuilder.getNumberOfLevels(); ++level)
                 if (!completeMipmapLevels.containsKey(level)) {
-                    Entry<Integer, ImageAndMask> entry = mipmapPathBuilder.deriveImageAndMask(level, mipmapLevels.firstEntry(), true);
+                    final Entry<Integer, ImageAndMask> entry =
+                            mipmapPathBuilder.deriveImageAndMask(level, mipmapLevels.firstEntry(), true);
                     if (entry != null)
                         completeMipmapLevels.put(entry.getKey(), entry.getValue());
                 }
