@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
@@ -21,6 +22,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
@@ -48,6 +50,7 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
  */
 public class RenderDataClient {
 
+    private final String project;
     private final RenderWebServiceUrls urls;
     private final CloseableHttpClient httpClient;
 
@@ -61,6 +64,7 @@ public class RenderDataClient {
     public RenderDataClient(final String baseDataUrl,
                             final String owner,
                             final String project) {
+        this.project = project;
         this.urls = new RenderWebServiceUrls(baseDataUrl, owner, project);
         this.httpClient = HttpClientBuilder.create().setRetryHandler(new WaitingRetryHandler()).build();
     }
@@ -124,6 +128,55 @@ public class RenderDataClient {
         LOG.info("getOwnerStacks: submitting {}", requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
+    }
+
+    public List<MatchCollectionMetaData> getOwnerMatchCollections() throws IOException {
+        final URI uri = getUri(urls.getOwnerMatchCollectionsUrlString());
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final TypeReference<List<MatchCollectionMetaData>> collectionsTypeReference =
+                new TypeReference<List<MatchCollectionMetaData>>(){};
+
+        final JsonUtils.GenericHelper<List<MatchCollectionMetaData>> helper =
+                new JsonUtils.GenericHelper<>(collectionsTypeReference);
+        final JsonResponseHandler<List<MatchCollectionMetaData>> responseHandler =
+                new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getOwnerMatchCollections: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
+     * Deletes the specified match collection.
+     *
+     * @param  collectionName  collection to delete (or null to use this client's project as the collection name).
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void deleteMatchCollection(final String collectionName)
+            throws IOException {
+
+        final URI uri;
+        if (collectionName == null) {
+            uri = getUri(urls.getMatchCollectionUrlString());
+        } else {
+            uri = getUri(urls.getOwnerUrlString() + "/matchCollection/" + collectionName);
+        }
+        final String requestContext = "DELETE " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpDelete httpDelete = new HttpDelete(uri);
+
+        LOG.info("deleteMatchCollection: submitting {}", requestContext);
+
+        httpClient.execute(httpDelete, responseHandler);
+    }
+
+    public List<StackId> getProjectStacks() throws IOException {
+        return getOwnerStacks().stream().filter(
+                stackId -> project.equals(stackId.getProject())).collect(Collectors.toList());
     }
 
     /**
@@ -618,6 +671,20 @@ public class RenderDataClient {
         LOG.info("deleteStackSection: submitting {}", requestContext);
 
         httpClient.execute(httpDelete, responseHandler);
+    }
+
+    /**
+     * Deletes all stacks in this client's project.
+     * BE CAREFUL with this!
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void deleteAllStacksInProject()
+            throws IOException {
+        for (final StackId stackId : getProjectStacks()) {
+            deleteStack(stackId.getStack(), null);
+        }
     }
 
     /**
