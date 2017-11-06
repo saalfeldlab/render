@@ -105,7 +105,7 @@ public class Converter {
             trakEm2XmlStream = new FileInputStream(trakEM2XmlFile);
             jsonStream = new FileOutputStream(jsonFile);
             LOG.info("xmlToJson: reading TrakEM2 XML from " + trakEM2XmlFile.getAbsolutePath());
-            Converter.xmlToJson(trakEm2XmlStream, projectPath, jsonStream, validateConvertedTileSpecs);
+            Converter.xmlToJson(trakEm2XmlStream, projectPath, jsonStream, validateConvertedTileSpecs, useTitleForTileId);
             LOG.info("xmlToJson: wrote JSON to " + jsonFile.getAbsolutePath());
         } catch (final Throwable t) {
             LOG.error("failed to convert " + trakEM2XmlFile.getAbsolutePath(), t);
@@ -132,9 +132,9 @@ public class Converter {
             final OutputStream jsonStream,
             final boolean validateConvertedTileSpecs)
      throws JAXBException, IOException, ParserConfigurationException, SAXException {
-    	xmlToJson(trakEM2XmlStream,rawProjectPath,jsonStream,validateConvertedTileSpecs,false);	
+    	xmlToJson(trakEM2XmlStream,rawProjectPath,jsonStream,validateConvertedTileSpecs,false);
     }
-    
+
     /**
      * Converts the specified TrakEM2 XML project file data into Render Service JSON.
      *
