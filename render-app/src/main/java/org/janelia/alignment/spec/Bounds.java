@@ -1,11 +1,13 @@
 package org.janelia.alignment.spec;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
 
 import org.janelia.alignment.json.JsonUtils;
 
 /**
- * Coordinate bounds for arbitrary group of tiles.
+ * Coordinate bound ranges.
  *
  * @author Eric Trautman
  */
@@ -66,32 +68,19 @@ public class Bounds implements Serializable {
         return minZ;
     }
 
+    @JsonIgnore
     public boolean isBoundingBoxDefined() {
         return ((minX != null) && (minY != null) && (maxX != null) && (maxY != null));
     }
 
+    @JsonIgnore
     public Double getDeltaX() {
         return maxX - minX;
     }
 
+    @JsonIgnore
     public Double getDeltaY() {
         return maxY - minY;
-    }
-
-    public int getRoundedMinX() {
-        return getRoundedValue(minX);
-    }
-
-    public int getRoundedMinY() {
-        return getRoundedValue(minY);
-    }
-
-    public int getRoundedDeltaX() {
-        return getRoundedValue(getDeltaX());
-    }
-
-    public int getRoundedDeltaY() {
-        return getRoundedValue(getDeltaY());
     }
 
     @Override
@@ -101,10 +90,6 @@ public class Bounds implements Serializable {
 
     public String toJson() {
         return JSON_HELPER.toJson(this);
-    }
-
-    private int getRoundedValue(final Double value) {
-        return (int) (value + 0.5);
     }
 
     public static Bounds fromJson(final String json) {

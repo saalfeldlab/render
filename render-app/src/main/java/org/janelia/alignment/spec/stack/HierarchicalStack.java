@@ -4,9 +4,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.awt.geom.AffineTransform;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
+import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.spec.Bounds;
 
 /**
@@ -23,27 +27,80 @@ import org.janelia.alignment.spec.Bounds;
 public class HierarchicalStack implements Serializable {
 
     private final StackId roughTilesStackId;
-    private final StackId parentTierStackId;
-    private final StackId warpTilesStackId;
+    private StackId parentTierStackId;
+    private StackId alignedStackId;
+    private StackId warpTilesStackId;
+    private final Integer tier;
     private final Integer tierRow;
     private final Integer tierColumn;
     private final Integer totalTierRowCount;
     private final Integer totalTierColumnCount;
     private final Double scale;
     private final Bounds fullScaleBounds;
+    private MatchCollectionId matchCollectionId;
+    private Long savedMatchPairCount;
     private Double alignmentQuality;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
-    private HierarchicalStack() {
-        this(null, null, null, null, null, null, null, null, null);
+    protected HierarchicalStack() {
+        this(null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     /**
+     * Constructs metadata from specified parameters and conventional naming patterns.
+     *
+     * @param  roughTilesStackId     identifies the source render stack with roughly aligned montage tiles.
+     * @param  tierRow               row of this stack within its tier.
+     * @param  tierColumn            column of this stack within its tier.
+     * @param  totalTierRowCount     total number of rows in this stack's tier.
+     * @param  totalTierColumnCount  total number of columns in this stack's tier.
+     * @param  scale                 scale for rendering layers in this stack (and tier).
+     * @param  fullScaleBounds       (rough tiles stack) world coordinate bounds for all layers in this stack.
+     */
+    public HierarchicalStack(final StackId roughTilesStackId,
+                             final int tier,
+                             final int tierRow,
+                             final int tierColumn,
+                             final int totalTierRowCount,
+                             final int totalTierColumnCount,
+                             final double scale,
+                             final Bounds fullScaleBounds) {
+
+        this(roughTilesStackId,
+             null,
+             null,
+             null,
+             tier,
+             tierRow,
+             tierColumn,
+             totalTierRowCount,
+             totalTierColumnCount,
+             scale,
+             fullScaleBounds,
+             null);
+
+        this.parentTierStackId = deriveParentTierStackId(roughTilesStackId, tier);
+
+        final StackId splitStackId = this.getSplitStackId();
+
+        this.alignedStackId = new StackId(splitStackId.getOwner(),
+                                          splitStackId.getProject(),
+                                          splitStackId.getStack() + "_align");
+
+        this.warpTilesStackId = deriveWarpStackIdForTier(roughTilesStackId, tier);
+
+        final String collectionName = splitStackId.getProject() + "_" + splitStackId.getStack();
+        this.matchCollectionId = new MatchCollectionId(splitStackId.getOwner(), collectionName);
+    }
+
+    /**
+     * Constructs metadata from explicitly specified values.
      *
      * @param  roughTilesStackId     identifies the source render stack with roughly aligned montage tiles.
      * @param  parentTierStackId     identifies the n-1 tier stack from which this stack was derived.
      * @param  warpTilesStackId      identifies warp tiles stack to which this stack's alignment results should be applied.
+     * @param  tier                  tier for this stack.
      * @param  tierRow               row of this stack within its tier.
      * @param  tierColumn            column of this stack within its tier.
      * @param  totalTierRowCount     total number of rows in this stack's tier.
@@ -53,35 +110,51 @@ public class HierarchicalStack implements Serializable {
      */
     public HierarchicalStack(final StackId roughTilesStackId,
                              final StackId parentTierStackId,
+                             final StackId alignedStackId,
                              final StackId warpTilesStackId,
+                             final Integer tier,
                              final Integer tierRow,
                              final Integer tierColumn,
                              final Integer totalTierRowCount,
                              final Integer totalTierColumnCount,
                              final Double scale,
-                             final Bounds fullScaleBounds) {
+                             final Bounds fullScaleBounds,
+                             final MatchCollectionId matchCollectionId) {
+
         this.roughTilesStackId = roughTilesStackId;
         this.parentTierStackId = parentTierStackId;
+        this.alignedStackId = alignedStackId;
         this.warpTilesStackId = warpTilesStackId;
+        this.tier = tier;
         this.tierRow = tierRow;
         this.tierColumn = tierColumn;
         this.totalTierRowCount = totalTierRowCount;
         this.totalTierColumnCount = totalTierColumnCount;
         this.scale = scale;
         this.fullScaleBounds = fullScaleBounds;
+        this.matchCollectionId = matchCollectionId;
+        this.savedMatchPairCount = null;
         this.alignmentQuality = null;
-    }
-
-    public StackId getParentTierStackId() {
-        return parentTierStackId;
     }
 
     public StackId getRoughTilesStackId() {
         return roughTilesStackId;
     }
 
+    public StackId getParentTierStackId() {
+        return parentTierStackId;
+    }
+
+    public StackId getAlignedStackId() {
+        return alignedStackId;
+    }
+
     public StackId getWarpTilesStackId() {
         return warpTilesStackId;
+    }
+
+    public Integer getTier() {
+        return tier;
     }
 
     /**
@@ -126,6 +199,40 @@ public class HierarchicalStack implements Serializable {
         return fullScaleBounds;
     }
 
+    public MatchCollectionId getMatchCollectionId() {
+        return matchCollectionId;
+    }
+
+    public void updateDerivedData(final HierarchicalStack storedData) {
+        if (storedData != null) {
+            this.savedMatchPairCount = storedData.savedMatchPairCount;
+            this.alignmentQuality = storedData.alignmentQuality;
+        }
+    }
+
+    @JsonIgnore
+    public boolean requiresMatchDerivation() {
+        return (savedMatchPairCount == null);
+    }
+
+    @JsonIgnore
+    public boolean hasMatchPairs() {
+        return (savedMatchPairCount != null) && (savedMatchPairCount > 0);
+    }
+
+    public Long getSavedMatchPairCount() {
+        return savedMatchPairCount;
+    }
+
+    public void setSavedMatchPairCount(final Long savedMatchPairCount) {
+        this.savedMatchPairCount = savedMatchPairCount;
+    }
+
+    @JsonIgnore
+    public boolean requiresAlignment() {
+        return (alignmentQuality == null);
+    }
+
     /**
      * @return alignment quality metric for this stack (or null if no metric has been derived).
      */
@@ -138,16 +245,42 @@ public class HierarchicalStack implements Serializable {
     }
 
     /**
-     * @param  z  layer z value.
-     *
-     * @return "source" rough tiles box path for the specified layer of this stack.
+     * @return conventional id for this stack.
      */
     @JsonIgnore
-    public String getLayerBoxPath(final double z) {
-        return "/owner/" + roughTilesStackId.getOwner() + "/project/" + roughTilesStackId.getProject() +
-               "/stack/" + roughTilesStackId.getStack() + "/z/" + z +
-               "/box/" +  fullScaleBounds.getRoundedMinX() + ',' + fullScaleBounds.getRoundedMinY() + ',' +
-               fullScaleBounds.getRoundedDeltaX() + ',' + fullScaleBounds.getRoundedDeltaY() + ',' + scale;
+    public StackId getSplitStackId() {
+        final String project = deriveProjectForTier(roughTilesStackId, tier);
+        final int splitStackIndex = deriveSplitStackIndex(tierRow, tierColumn, totalTierRowCount);
+        final String stack = String.format("%04dx%04d_%06d",
+                                           totalTierRowCount, totalTierColumnCount, splitStackIndex);
+        return new StackId(roughTilesStackId.getOwner(), project, stack);
+    }
+
+    /**
+     * @param  z  layer z value.
+     *
+     * @return conventional tile id for the specified layer in this stack.
+     */
+    @JsonIgnore
+    public String getTileIdForZ(final double z) {
+        return String.format("z_%2.1f_box_%d_%d_%d_%d_%f",
+                             z,
+                             floor(fullScaleBounds.getMinX()), floor(fullScaleBounds.getMinY()),
+                             ceil(fullScaleBounds.getDeltaX()), ceil(fullScaleBounds.getDeltaY()),
+                             scale);
+    }
+
+    /**
+     * @param  z  layer z value.
+     *
+     * @return path that references parent tier box for the specified layer of this stack.
+     */
+    @JsonIgnore
+    public String getBoxPathForZ(final double z) {
+        return "/owner/" + parentTierStackId.getOwner() + "/project/" + parentTierStackId.getProject() +
+               "/stack/" + parentTierStackId.getStack() + "/z/" + z + "/box/" +
+               floor(fullScaleBounds.getMinX()) + ',' + floor(fullScaleBounds.getMinY()) + ',' +
+               ceil(fullScaleBounds.getDeltaX()) + ',' + ceil(fullScaleBounds.getDeltaY()) + ',' + scale;
     }
 
     @JsonIgnore
@@ -164,5 +297,119 @@ public class HierarchicalStack implements Serializable {
         model.set(affine);
         return model;
     }
+
+    public String toJson() {
+        return JSON_HELPER.toJson(this);
+    }
+
+    public static HierarchicalStack fromJson(final String json) {
+        return JSON_HELPER.fromJson(json);
+    }
+
+    public static String deriveProjectForTier(final StackId roughTilesStackId,
+                                              final int tier) {
+        return roughTilesStackId.getProject() + "_" + roughTilesStackId.getStack() + "_tier_" + tier;
+    }
+
+    public static StackId deriveWarpStackIdForTier(final StackId roughTilesStackId,
+                                                   final int tier) {
+        final String warpStack = roughTilesStackId.getStack() + "_tier_" + tier + "_warp";
+        return new StackId(roughTilesStackId.getOwner(),
+                                            roughTilesStackId.getProject(),
+                           warpStack);
+    }
+
+    public static StackId deriveParentTierStackId(final StackId roughTilesStackId,
+                                                  final int tier) {
+        final StackId parentTierStackId;
+        if (tier > 1) {
+            parentTierStackId = deriveWarpStackIdForTier(roughTilesStackId, (tier - 1));
+        } else {
+            parentTierStackId = roughTilesStackId;
+        }
+        return parentTierStackId;
+    }
+
+    public static int deriveSplitStackIndex(final Integer tierRow,
+                                            final Integer tierColumn,
+                                            final Integer totalTierRowCount) {
+        return (tierRow * totalTierRowCount) + tierColumn;
+    }
+
+    public static int deriveRowsAndColumnsForTier(final int tier) {
+        final int[] primeCandidates = { 1, 3, 7, 17, 37, 79, 163, 331, 673, 1361, 2729, 5471, 10949, 21911 };
+        final int rowsAndColumns;
+        if (tier < primeCandidates.length) {
+            rowsAndColumns = primeCandidates[tier];
+        } else {
+            final int extraTiers = tier - primeCandidates.length + 1;
+            rowsAndColumns = (primeCandidates[primeCandidates.length - 1] * 2 * extraTiers) + 1;
+        }
+        return rowsAndColumns;
+    }
+
+    public static int ceilIntDivide(final int numerator,
+                                    final int denominator) {
+        return (int) Math.ceil((double) numerator / denominator);
+    }
+
+    public static List<HierarchicalStack> splitTier(final StackId roughTilesStackId,
+                                                    final Bounds parentStackBounds,
+                                                    final int maxPixelsPerDimension,
+                                                    final int tier) {
+
+        final List<HierarchicalStack> splitStacks = new ArrayList<>();
+
+        final int parentWidth = (int) Math.ceil(parentStackBounds.getDeltaX());
+        final int parentHeight = (int) Math.ceil(parentStackBounds.getDeltaY());
+        final int rowsAndColumns = deriveRowsAndColumnsForTier(tier);
+        final int maxDimension = Math.max(parentWidth, parentHeight);
+        final int maxDimensionPerCell = ceilIntDivide(maxDimension, rowsAndColumns);
+
+        final int cellWidth = ceilIntDivide(parentWidth, rowsAndColumns);
+        final int cellHeight = ceilIntDivide(parentHeight, rowsAndColumns);
+
+        final double scale = (double) maxPixelsPerDimension / maxDimensionPerCell;
+
+        int row = 0;
+        int column;
+        Bounds splitStackBounds;
+        final int parentMinX = parentStackBounds.getMinX().intValue();
+        final int parentMinY = parentStackBounds.getMinY().intValue();
+        final double parentMinZ = parentStackBounds.getMinZ();
+        final int parentMaxX = (int) Math.ceil(parentStackBounds.getMaxX());
+        final int parentMaxY = (int) Math.ceil(parentStackBounds.getMaxY());
+        final double parentMaxZ = parentStackBounds.getMaxZ();
+        for (int y = parentMinY; y < parentMaxY; y += cellHeight) {
+            column = 0;
+            for (int x = parentMinX; x < parentMaxX; x += cellWidth) {
+                splitStackBounds = new Bounds((double) x,             (double) y,              parentMinZ,
+                                              (double) x + cellWidth, (double) y + cellHeight, parentMaxZ);
+                splitStacks.add(new HierarchicalStack(roughTilesStackId,
+                                                      tier,
+                                                      row,
+                                                      column,
+                                                      rowsAndColumns,
+                                                      rowsAndColumns,
+                                                      scale,
+                                                      splitStackBounds));
+                column++;
+            }
+            row++;
+        }
+
+        return splitStacks;
+    }
+
+    private static int floor(final double value) {
+        return (int) Math.floor(value);
+    }
+
+    private static int ceil(final double value) {
+        return (int) Math.ceil(value);
+    }
+
+    private static final JsonUtils.Helper<HierarchicalStack> JSON_HELPER =
+            new JsonUtils.Helper<>(HierarchicalStack.class);
 
 }

@@ -29,6 +29,7 @@ import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -616,6 +617,33 @@ public class RenderDataClient {
         httpPut.setEntity(stringEntity);
 
         LOG.info("setMipmapPathBuilder: submitting {}", requestContext);
+
+        httpClient.execute(httpPut, responseHandler);
+    }
+
+    /**
+     * Updates the hierarchical data for the specified stack.
+     *
+     * @param  stack             stack to change.
+     * @param  hierarchicalData  hierarchical data to save.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void setHierarchicalData(final String stack,
+                                    final HierarchicalStack hierarchicalData)
+            throws IOException {
+
+        final String json = hierarchicalData.toJson();
+        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+        final URI uri = getUri(urls.getStackUrlString(stack) + "/hierarchicalData");
+        final String requestContext = "PUT " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        LOG.info("setHierarchicalData: submitting {}", requestContext);
 
         httpClient.execute(httpPut, responseHandler);
     }
