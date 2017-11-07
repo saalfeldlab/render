@@ -1,7 +1,6 @@
 package org.janelia.render.client.parameter;
 
 import com.beust.jcommander.Parameter;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serializable;
 
