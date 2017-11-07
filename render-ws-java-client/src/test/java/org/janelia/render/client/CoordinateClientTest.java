@@ -14,6 +14,8 @@ import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.alignment.util.FileUtil;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -31,8 +33,13 @@ public class CoordinateClientTest {
     @After
     public void tearDown() throws Exception {
         if (targetSwcDirectory != null) {
-            MipmapClientTest.deleteRecursive(targetSwcDirectory);
+            FileUtil.deleteRecursive(targetSwcDirectory);
         }
+    }
+
+    @Test
+    public void testParameterParsing() throws Exception {
+        CommandLineParameters.parseHelp(new CoordinateClient.Parameters());
     }
 
     @Test
@@ -216,7 +223,7 @@ public class CoordinateClientTest {
             worldListOfLists.add(Collections.singletonList(worldCoord));
         }
 
-        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(new ArrayList<TransformSpec>(),
+        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(new ArrayList<>(),
                                                                                 tileSpecList);
         final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
 

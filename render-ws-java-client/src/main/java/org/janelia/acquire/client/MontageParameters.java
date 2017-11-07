@@ -8,7 +8,7 @@ import java.nio.file.Paths;
 import java.util.Map;
 
 import org.janelia.alignment.json.JsonUtils;
-import org.janelia.render.client.FileUtil;
+import org.janelia.alignment.util.FileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

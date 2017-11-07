@@ -1,6 +1,7 @@
 package org.janelia.render.client.spark;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -28,7 +29,11 @@ import org.janelia.alignment.warp.AbstractWarpTransformBuilder;
 import org.janelia.alignment.warp.ThinPlateSplineBuilder;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.RenderDataClientParametersWithValidator;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.TileSpecValidatorParameters;
+import org.janelia.render.client.parameter.WarpStackParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,91 +45,29 @@ import org.slf4j.LoggerFactory;
 public class WarpTransformClient
         implements Serializable {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParametersWithValidator {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
-        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(
-                names = "--stack",
-                description = "Montage stack name",
-                required = true)
-        private String montageStack;
+        @ParametersDelegate
+        public TileSpecValidatorParameters tileSpecValidator = new TileSpecValidatorParameters();
 
-        @Parameter(
-                names = "--alignOwner",
-                description = "Name of align stack owner (default is same as montage stack owner)",
-                required = false)
-        private String alignOwner;
+        @ParametersDelegate
+        public WarpStackParameters warp = new WarpStackParameters();
 
-        @Parameter(
-                names = "--alignProject",
-                description = "Name of align stack project (default is same as montage stack project)",
-                required = false)
-        private String alignProject;
-
-        @Parameter(
-                names = "--alignStack",
-                description = "Align stack name",
-                required = true)
-        private String alignStack;
-
-        @Parameter(
-                names = "--targetOwner",
-                description = "Name of target stack owner (default is same as montage stack owner)",
-                required = false)
-        private String targetOwner;
-
-        @Parameter(
-                names = "--targetProject",
-                description = "Name of target stack project (default is same as montage stack project)",
-                required = false)
-        private String targetProject;
-
-        @Parameter(
-                names = "--targetStack",
-                description = "Target stack name",
-                required = true)
-        private String targetStack;
-
-        @Parameter(
-                names = "--minZ",
-                description = "Minimum Z value for sections to be processed",
-                required = false)
-        private Double minZ;
-
-        @Parameter(
-                names = "--maxZ",
-                description = "Maximum Z value for sections to be processed",
-                required = false)
-        private Double maxZ;
+        @ParametersDelegate
+        public ZRangeParameters layerRange = new ZRangeParameters();
 
         @Parameter(
                 names = "--z",
                 description = "Explicit z values for sections to be processed",
                 required = false,
                 variableArity = true) // e.g. --z 20.0 21.0 22.0
-        private List<Double> zValues;
+        public List<Double> zValues;
 
         public Set<Double> getZValues() {
-            return (zValues == null) ? Collections.emptySet() : new HashSet<Double>(zValues);
-        }
-
-        public String getAlignOwner() {
-            return alignOwner == null ? owner : alignOwner;
-        }
-
-        public String getAlignProject() {
-            return alignProject == null ? project : alignProject;
-        }
-
-        public String getTargetOwner() {
-            return targetOwner == null ? owner : targetOwner;
-        }
-
-        public String getTargetProject() {
-            return targetProject == null ? project : targetProject;
+            return (zValues == null) ? Collections.emptySet() : new HashSet<>(zValues);
         }
 
     }
@@ -135,7 +78,8 @@ public class WarpTransformClient
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, WarpTransformClient.class);
+                parameters.parse(args);
+                parameters.warp.initDefaultValues(parameters.renderWeb);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -164,13 +108,11 @@ public class WarpTransformClient
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
 
-        final RenderDataClient sourceDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                       parameters.owner,
-                                                                       parameters.project);
+        final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
 
-        final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(parameters.montageStack,
-                                                                                       parameters.minZ,
-                                                                                       parameters.maxZ,
+        final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(parameters.warp.montageStack,
+                                                                                       parameters.layerRange.minZ,
+                                                                                       parameters.layerRange.maxZ,
                                                                                        parameters.getZValues());
         if (sectionDataList.size() == 0) {
             throw new IllegalArgumentException("montage stack does not contain any matching z values");
@@ -181,12 +123,10 @@ public class WarpTransformClient
         final LayerDistributor layerDistributor = new LayerDistributor(numberOfCores);
         final List<List<Double>> batchedZValues = layerDistributor.distribute(sectionDataList);
 
-        final RenderDataClient targetDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                       parameters.getTargetOwner(),
-                                                                       parameters.getTargetProject());
+        final RenderDataClient targetDataClient = parameters.warp.getTargetDataClient();
 
-        final StackMetaData montageStackMetaData = sourceDataClient.getStackMetaData(parameters.montageStack);
-        targetDataClient.setupDerivedStack(montageStackMetaData, parameters.targetStack);
+        final StackMetaData montageStackMetaData = sourceDataClient.getStackMetaData(parameters.warp.montageStack);
+        targetDataClient.setupDerivedStack(montageStackMetaData, parameters.warp.targetStack);
 
         final JavaRDD<List<Double>> rddZValues = sparkContext.parallelize(batchedZValues);
 
@@ -205,24 +145,15 @@ public class WarpTransformClient
                 LOG.info("warpFunction: processing layer {} of {}, remaining layer z values are {}",
                          i + 1, zBatch.size(), zBatch.subList(i+1, zBatch.size()));
 
-                final TileSpecValidator tileSpecValidator = parameters.getValidatorInstance();
-
-                final RenderDataClient montageDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                                parameters.owner,
-                                                                                parameters.project);
-
-                final RenderDataClient alignDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                              parameters.getAlignOwner(),
-                                                                              parameters.getAlignProject());
-
-                final RenderDataClient targetDataClient1 = new RenderDataClient(parameters.baseDataUrl,
-                                                                                parameters.getTargetOwner(),
-                                                                                parameters.getTargetProject());
+                final TileSpecValidator tileSpecValidator = parameters.tileSpecValidator.getValidatorInstance();
+                final RenderDataClient montageDataClient = parameters.renderWeb.getDataClient();
+                final RenderDataClient alignDataClient = parameters.warp.getAlignDataClient();
+                final RenderDataClient targetDataClient1 = parameters.warp.getTargetDataClient();
 
                 final ResolvedTileSpecCollection montageTiles =
-                        montageDataClient.getResolvedTiles(parameters.montageStack, z);
+                        montageDataClient.getResolvedTiles(parameters.warp.montageStack, z);
                 final ResolvedTileSpecCollection alignTiles =
-                        alignDataClient.getResolvedTiles(parameters.alignStack, z);
+                        alignDataClient.getResolvedTiles(parameters.warp.alignStack, z);
 
                 final TransformSpec warpTransformSpec = buildTransform(montageTiles.getTileSpecs(),
                                                                        alignTiles.getTileSpecs(),
@@ -247,7 +178,7 @@ public class WarpTransformClient
                     throw new IllegalStateException("no tiles left to save after filtering invalid tiles");
                 }
 
-                targetDataClient1.saveResolvedTiles(montageTiles, parameters.targetStack, z);
+                targetDataClient1.saveResolvedTiles(montageTiles, parameters.warp.targetStack, z);
 
                 processedTileCount += montageTiles.getTileCount();
             }

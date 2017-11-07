@@ -1,7 +1,10 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,19 +15,19 @@ import org.slf4j.LoggerFactory;
  */
 public class SectionUpdateClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
         @Parameter(names = "--stack", description = "Stack name", required = true)
-        private String stack;
+        public String stack;
 
         @Parameter(names = "--sectionId", description = "Section ID", required = true)
-        private String sectionId;
+        public String sectionId;
 
         @Parameter(names = "--z", description = "Z value", required = true)
-        private Double z;
+        public Double z;
     }
 
     /**
@@ -36,7 +39,7 @@ public class SectionUpdateClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, SectionUpdateClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -52,9 +55,7 @@ public class SectionUpdateClient {
 
     public SectionUpdateClient(final Parameters parameters) {
         this.parameters = parameters;
-        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                     parameters.owner,
-                                                     parameters.project);
+        this.renderDataClient = parameters.renderWeb.getDataClient();
     }
 
     public void updateZ()

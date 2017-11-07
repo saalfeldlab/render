@@ -11,6 +11,7 @@ import org.janelia.acquire.client.model.AcquisitionTileList;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -54,6 +55,11 @@ public class LowLatencyMontageClientTest {
     private static void deleteMontageWorkDirectory()
             throws IOException {
         FileUtils.deleteDirectory(montageWorkDirectory);
+    }
+
+    @Test
+    public void testParameterParsing() throws Exception {
+        CommandLineParameters.parseHelp(new LowLatencyMontageClient.Parameters());
     }
 
     @Test

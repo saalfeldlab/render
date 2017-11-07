@@ -4,6 +4,7 @@ import junit.framework.Assert;
 
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.FileUtil;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,7 +39,7 @@ public class MipmapGeneratorTest {
 
     @After
     public void tearDown() throws Exception {
-        deleteRecursive(baseMipmapDirectory);
+        FileUtil.deleteRecursive(baseMipmapDirectory);
     }
 
     @Test
@@ -123,29 +124,6 @@ public class MipmapGeneratorTest {
             Assert.assertNotSame("level " + level + " mask for tile " + specIndex + " should NOT have been consolidated",
                                  consolidatedImageAndMask.getMaskUrl(), imageAndMask.getMaskUrl());
         }
-    }
-
-    private static boolean deleteRecursive(final File file) {
-
-        boolean deleteSuccessful = true;
-
-        if (file.isDirectory()){
-            final File[] files = file.listFiles();
-            if (files != null) {
-                for (final File f : files) {
-                    deleteSuccessful = deleteSuccessful && deleteRecursive(f);
-                }
-            }
-        }
-
-        if (file.delete()) {
-            LOG.info("deleted " + file.getAbsolutePath());
-        } else {
-            LOG.warn("failed to delete " + file.getAbsolutePath());
-            deleteSuccessful = false;
-        }
-
-        return deleteSuccessful;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MipmapGeneratorTest.class);

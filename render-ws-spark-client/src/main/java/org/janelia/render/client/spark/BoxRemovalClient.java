@@ -1,6 +1,7 @@
 package org.janelia.render.client.spark;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -13,7 +14,9 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.RenderDataClientParameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,45 +30,38 @@ import org.slf4j.LoggerFactory;
  */
 public class BoxRemovalClient implements Serializable {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
+
+        @ParametersDelegate
+        public ZRangeParameters layerRange = new ZRangeParameters();
 
         @Parameter(
                 names = "--stack",
                 description = "Stack name",
                 required = true)
-        private String stack;
+        public String stack;
 
         @Parameter(
                 names = "--stackDirectory",
-                description = "Stack directory containing boxes to remove (e.g. /tier2/flyTEM/nobackup/rendered_boxes/FAFB00/v7_align_tps/8192x8192)", required = true)
-        private String stackDirectory;
+                description = "Stack directory containing boxes to remove (e.g. /tier2/flyTEM/nobackup/rendered_boxes/FAFB00/v7_align_tps/8192x8192)",
+                required = true)
+        public String stackDirectory;
 
         @Parameter(
                 names = "--minLevel",
                 description = "Minimum mipmap level to remove",
                 required = false)
-        private int minLevel = 0;
+        public int minLevel = 0;
 
         @Parameter(
                 names = "--maxLevel",
                 description = "Maximum mipmap level to remove (values > 8 will also delete small overview images)",
                 required = false)
-        private int maxLevel = 9;
+        public int maxLevel = 9;
 
-        @Parameter(
-                names = "--minZ",
-                description = "Minimum Z value for boxes to be removed",
-                required = false)
-        private Double minZ;
-
-        @Parameter(
-                names = "--maxZ",
-                description = "Maximum Z value for boxes to be removed",
-                required = false)
-        private Double maxZ;
     }
 
     public static void main(final String[] args) {
@@ -74,7 +70,7 @@ public class BoxRemovalClient implements Serializable {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, BoxRemovalClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -102,13 +98,11 @@ public class BoxRemovalClient implements Serializable {
 
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
-        final RenderDataClient sourceDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                       parameters.owner,
-                                                                       parameters.project);
+        final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
 
         final List<Double> zValues = sourceDataClient.getStackZValues(parameters.stack,
-                                                                      parameters.minZ,
-                                                                      parameters.maxZ);
+                                                                      parameters.layerRange.minZ,
+                                                                      parameters.layerRange.maxZ);
 
         if (zValues.size() == 0) {
             throw new IllegalArgumentException("stack does not contain any matching z values");
@@ -117,22 +111,16 @@ public class BoxRemovalClient implements Serializable {
 
         final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
 
-        final Function<Double, Integer> generateBoxesFunction = new Function<Double, Integer>() {
+        final Function<Double, Integer> generateBoxesFunction = (Function<Double, Integer>) z -> {
 
-            final
-            @Override
-            public Integer call(final Double z)
-                    throws Exception {
+            LogUtilities.setupExecutorLog4j("z " + z);
 
-                LogUtilities.setupExecutorLog4j("z " + z);
-
-                final org.janelia.render.client.BoxRemovalClient boxRemovalClient =
-                        new org.janelia.render.client.BoxRemovalClient(parameters.stackDirectory,
-                                                                       parameters.minLevel,
-                                                                       parameters.maxLevel);
-                boxRemovalClient.removeBoxesForZ(z);
-                return 1;
-            }
+            final org.janelia.render.client.BoxRemovalClient boxRemovalClient =
+                    new org.janelia.render.client.BoxRemovalClient(parameters.stackDirectory,
+                                                                   parameters.minLevel,
+                                                                   parameters.maxLevel);
+            boxRemovalClient.removeBoxesForZ(z);
+            return 1;
         };
 
         final JavaRDD<Integer> rddLayerCounts = rddZValues.map(generateBoxesFunction);

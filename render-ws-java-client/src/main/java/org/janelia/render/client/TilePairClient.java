@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,6 +28,10 @@ import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.util.FileUtil;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.LayerBoundsParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,13 +42,13 @@ import org.slf4j.LoggerFactory;
  */
 public class TilePairClient {
 
-    @SuppressWarnings("ALL")
-    public static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
         @Parameter(names = "--stack", description = "Stack name", required = true)
-        private String stack;
+        public String stack;
 
         @Parameter(names =
                 "--baseOwner",
@@ -64,135 +69,100 @@ public class TilePairClient {
         private String baseStack;
 
         @Parameter(names = "--minZ", description = "Minimum Z value for all tiles", required = true)
-        private Double minZ;
+        public Double minZ;
 
         @Parameter(names = "--maxZ", description = "Maximum Z value for all tiles", required = true)
-        private Double maxZ;
+        public Double maxZ;
 
         @Parameter(
                 names = "--xyNeighborFactor",
                 description = "Multiply this by max(width, height) of each tile to determine radius for locating neighbor tiles",
                 required = false)
-        private Double xyNeighborFactor = 0.9;
+        public Double xyNeighborFactor = 0.9;
 
         @Parameter(
                 names = "--explicitRadius",
                 description = "Explit radius in full scale pixels for locating neighbor tiles (if set, will override --xyNeighborFactor)",
                 required = false)
-        private Double explicitRadius;
+        public Double explicitRadius;
 
         @Parameter(
                 names = "--zNeighborDistance",
                 description = "Look for neighbor tiles with z values less than or equal to this distance from the current tile's z value",
                 required = false)
-        private Integer zNeighborDistance = 2;
+        public Integer zNeighborDistance = 2;
 
         @Parameter(
                 names = "--excludeCornerNeighbors",
                 description = "Exclude neighbor tiles whose center x and y is outside the source tile's x and y range respectively",
                 required = false,
                 arity = 1)
-        private boolean excludeCornerNeighbors = true;
+        public boolean excludeCornerNeighbors = true;
 
         @Parameter(
                 names = "--excludeCompletelyObscuredTiles",
                 description = "Exclude tiles that are completely obscured by reacquired tiles",
                 required = false,
                 arity = 1)
-        private boolean excludeCompletelyObscuredTiles = true;
+        public boolean excludeCompletelyObscuredTiles = true;
 
         @Parameter(
                 names = "--excludeSameLayerNeighbors",
                 description = "Exclude neighbor tiles in the same layer (z) as the source tile",
                 required = false,
                 arity = 1)
-        private boolean excludeSameLayerNeighbors = false;
+        public boolean excludeSameLayerNeighbors = false;
 
         @Parameter(
                 names = "--excludeSameSectionNeighbors",
                 description = "Exclude neighbor tiles with the same sectionId as the source tile",
                 required = false,
                 arity = 1)
-        private boolean excludeSameSectionNeighbors = false;
+        public boolean excludeSameSectionNeighbors = false;
 
         @Parameter(
                 names = "--excludePairsInMatchCollection",
                 description = "Name of match collection whose existing pairs should be excluded from the generated list (default is to include all pairs)",
                 required = false)
-        private String excludePairsInMatchCollection;
+        public String excludePairsInMatchCollection;
 
         @Parameter(
                 names = "--existingMatchOwner",
                 description = "Owner of match collection whose existing pairs should be excluded from the generated list (default is owner)",
                 required = false)
-        private String existingMatchOwner;
+        public String existingMatchOwner;
 
         @Parameter(names = "--minExistingMatchCount", description = "Minimum number of existing matches to trigger pair exclusion", required = false)
-        private Integer minExistingMatchCount = 0;
+        public Integer minExistingMatchCount = 0;
 
         @Parameter(
                 names = "--onlyIncludeTilesFromStack",
                 description = "Name of match collection whose existing pairs should be excluded from the generated list (default is to include all pairs)",
                 required = false)
-        private String onlyIncludeTilesFromStack;
+        public String onlyIncludeTilesFromStack;
 
         @Parameter(names = "--toJson", description = "JSON file where tile pairs are to be stored (.json, .gz, or .zip)", required = true)
-        private String toJson;
+        public String toJson;
 
         @Parameter(names = "--maxPairsPerFile", description = "Maximum number of pairs to include in each file.", required = false)
-        private Integer maxPairsPerFile = 100000;
+        public Integer maxPairsPerFile = 100000;
 
-        @Parameter(names = "--minX", description = "Minimum X value for all tiles", required = false)
-        private Double minX;
-
-        @Parameter(names = "--maxX", description = "Maximum X value for all tiles", required = false)
-        private Double maxX;
-
-        @Parameter(names = "--minY", description = "Minimum Y value for all tiles", required = false)
-        private Double minY;
-
-        @Parameter(names = "--maxY", description = "Maximum Y value for all tiles", required = false)
-        private Double maxY;
+        @ParametersDelegate
+        public LayerBoundsParameters bounds = new LayerBoundsParameters();
 
         public Parameters() {
         }
 
-        public Parameters(final String baseDataUrl,
-                          final String owner,
-                          final String project,
-                          final String stack,
-                          final Double minZ,
-                          final Double maxZ,
-                          final Double xyNeighborFactor,
-                          final Integer zNeighborDistance,
-                          final Double minX,
-                          final Double maxX,
-                          final Double minY,
-                          final Double maxY) {
-            this.baseDataUrl = baseDataUrl;
-            this.owner = owner;
-            this.project = project;
-            this.stack = stack;
-            this.minZ = minZ;
-            this.maxZ = maxZ;
-            this.xyNeighborFactor = xyNeighborFactor;
-            this.zNeighborDistance = zNeighborDistance;
-            this.minX = minX;
-            this.maxX = maxX;
-            this.minY = minY;
-            this.maxY = maxY;
-        }
-
         public String getBaseOwner() {
             if (baseOwner == null) {
-                baseOwner = owner;
+                baseOwner = renderWeb.owner;
             }
             return baseOwner;
         }
 
         public String getBaseProject() {
             if (baseProject == null) {
-                baseProject = project;
+                baseProject = renderWeb.project;
             }
             return baseProject;
         }
@@ -206,35 +176,11 @@ public class TilePairClient {
 
         public String getExistingMatchOwner() {
             if (existingMatchOwner == null) {
-                existingMatchOwner = owner;
+                existingMatchOwner = renderWeb.owner;
             }
             return existingMatchOwner;
         }
 
-        public void validateStackBounds() throws IllegalArgumentException {
-
-            if (minZ > maxZ) {
-                throw new IllegalArgumentException("minZ (" + minZ + ") is greater than maxX (" + maxZ + ")");
-            }
-
-            if ((minX != null) || (maxX != null) || (minY != null) || (maxY != null)) {
-
-                if ((minX == null) || (maxX == null) || (minY == null) || (maxY == null)) {
-                    throw new IllegalArgumentException("since one or more of minX (" + minX + "), maxX (" + maxX +
-                                                       "), minY (" + minY + "), maxY (" + maxY +
-                                                       ") is specified, all must be specified");
-                }
-
-                if (minX > maxX) {
-                    throw new IllegalArgumentException("minX (" + minX + ") is greater than maxX (" + maxX + ")");
-                }
-
-                if (minY > maxY) {
-                    throw new IllegalArgumentException("minY (" + minY + ") is greater than maxY (" + maxY + ")");
-                }
-            }
-
-        }
     }
 
     public static void main(final String[] args) {
@@ -244,7 +190,8 @@ public class TilePairClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, TilePairClient.class);
+                parameters.parse(args);
+                parameters.bounds.validate();
 
                 File toFile = new File(parameters.toJson).getAbsoluteFile();
                 if (! toFile.exists()) {
@@ -277,23 +224,19 @@ public class TilePairClient {
 
     public TilePairClient(final Parameters parameters) throws IllegalArgumentException {
 
-        parameters.validateStackBounds();
-
         this.parameters = parameters;
-        this.filterTilesWithBox = (parameters.minX != null);
+        this.filterTilesWithBox = (parameters.bounds.minX != null);
 
-        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                     parameters.owner,
-                                                     parameters.project);
+        this.renderDataClient = parameters.renderWeb.getDataClient();
 
         if (parameters.onlyIncludeTilesFromStack == null) {
             includeClient = null;
             includeStack = null;
         } else {
             includeStack = StackId.fromNameString(parameters.onlyIncludeTilesFromStack,
-                                                  parameters.owner,
-                                                  parameters.project);
-            includeClient = new RenderDataClient(parameters.baseDataUrl,
+                                                  parameters.renderWeb.owner,
+                                                  parameters.renderWeb.project);
+            includeClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                  includeStack.getOwner(),
                                                  includeStack.getProject());
         }
@@ -316,11 +259,12 @@ public class TilePairClient {
     }
 
     public String getRenderParametersUrlTemplate() {
-        final RenderWebServiceUrls urls = new RenderWebServiceUrls(parameters.baseDataUrl,
+        final RenderWebServiceUrls urls = new RenderWebServiceUrls(parameters.renderWeb.baseDataUrl,
                                                                    parameters.getBaseOwner(),
                                                                    parameters.getBaseProject());
         final String currentStackUrlString = urls.getStackUrlString(parameters.getBaseStack());
-        final String relativeStackUrlString = currentStackUrlString.substring(parameters.baseDataUrl.length());
+        final String relativeStackUrlString =
+                currentStackUrlString.substring(parameters.renderWeb.baseDataUrl.length());
         return RenderableCanvasIdPairs.TEMPLATE_BASE_DATA_URL_TOKEN + relativeStackUrlString +
                "/tile/" + RenderableCanvasIdPairs. TEMPLATE_ID_TOKEN + "/render-parameters";
     }
@@ -479,8 +423,8 @@ public class TilePairClient {
 
             final int unfilteredCount = tileBoundsList.size();
 
-            tileBoundsList = tree.findTilesInBox(parameters.minX, parameters.minY,
-                                                 parameters.maxX, parameters.maxY);
+            tileBoundsList = tree.findTilesInBox(parameters.bounds.minX, parameters.bounds.minY,
+                                                 parameters.bounds.maxX, parameters.bounds.maxY);
 
             if (unfilteredCount > tileBoundsList.size()) {
 
@@ -552,7 +496,7 @@ public class TilePairClient {
                 sectionIdList.add(sectionData.getSectionId());
             }
 
-            matchDataClient = new RenderDataClient(clientParameters.baseDataUrl,
+            matchDataClient = new RenderDataClient(clientParameters.renderWeb.baseDataUrl,
                                                    clientParameters.getExistingMatchOwner(),
                                                    clientParameters.excludePairsInMatchCollection);
 

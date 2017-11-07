@@ -1,4 +1,4 @@
-package org.janelia.render.client;
+package org.janelia.render.client.parameter;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -23,9 +23,8 @@ public class CommandLineParameters implements Serializable {
     @Parameter(
             names = "--help",
             description = "Display this note",
-            help = true,
-            order = 0)
-    protected transient boolean help;
+            help = true)
+    public transient boolean help;
 
     private transient JCommander jCommander;
 
@@ -34,11 +33,16 @@ public class CommandLineParameters implements Serializable {
         this.jCommander = null;
     }
 
+    public void parse(final String[] args) throws IllegalArgumentException {
+        parse(args, this.getClass().getEnclosingClass(), true);
+    }
+
     public void parse(final String[] args,
-                      final Class programClass) throws IllegalArgumentException {
+                      final Class programClass,
+                      final boolean exitOnHelpOrFailure) throws IllegalArgumentException {
 
         jCommander = new JCommander(this);
-        jCommander.setProgramName("java -cp current-ws-standalone.jar " + programClass.getName());
+        jCommander.setProgramName("java -cp <render-module>-standalone.jar " + programClass.getName());
 
         boolean parseFailed = true;
         try {
@@ -53,7 +57,9 @@ public class CommandLineParameters implements Serializable {
         if (help || parseFailed) {
             JCommander.getConsole().println("");
             jCommander.usage();
-            System.exit(1);
+            if (exitOnHelpOrFailure) {
+                System.exit(1);
+            }
         }
     }
 
@@ -67,6 +73,17 @@ public class CommandLineParameters implements Serializable {
         } catch (final JsonProcessingException e) {
             throw new IllegalArgumentException(e);
         }
+    }
+
+    /**
+     * Helper (no pun intended) for testing parameter parsing.
+     *
+     * @param  parameters  parameters instance to test.
+     */
+    public static void parseHelp(final CommandLineParameters parameters) {
+        parameters.parse(new String[] { "--help" },
+                         parameters.getClass().getEnclosingClass(),
+                         false);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CommandLineParameters.class);

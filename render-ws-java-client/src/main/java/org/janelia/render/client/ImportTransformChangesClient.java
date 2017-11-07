@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -16,7 +17,11 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TileTransform;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ProcessTimer;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,17 +34,19 @@ public class ImportTransformChangesClient {
 
     public enum ChangeMode { APPEND, REPLACE_LAST, REPLACE_ALL }
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParametersWithValidator {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
-        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
+
+        @ParametersDelegate
+        public TileSpecValidatorParameters tileSpecValidator = new TileSpecValidatorParameters();
 
         @Parameter(
                 names = "--stack",
                 description = "Name of source stack containing base tile specifications",
                 required = true)
-        private String stack;
+        public String stack;
 
         @Parameter(names =
                 "--targetOwner",
@@ -63,24 +70,24 @@ public class ImportTransformChangesClient {
                 names = "--transformFile",
                 description = "File containing list of transform changes (.json, .gz, or .zip).  For best performance, changes for all tiles with the same z should be grouped into the same file.",
                 required = true)
-        private String transformFile;
+        public String transformFile;
 
         @Parameter(
                 names = "--changeMode",
                 description = "Specifies how the transforms should be applied to existing data",
                 required = false)
-        private ChangeMode changeMode = ChangeMode.REPLACE_LAST;
+        public ChangeMode changeMode = ChangeMode.REPLACE_LAST;
 
         public String getTargetOwner() {
             if (targetOwner == null) {
-                targetOwner = owner;
+                targetOwner = renderWeb.owner;
             }
             return targetOwner;
         }
 
         public String getTargetProject() {
             if (targetProject == null) {
-                targetProject = project;
+                targetProject = renderWeb.project;
             }
             return targetProject;
         }
@@ -93,7 +100,7 @@ public class ImportTransformChangesClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, ImportTransformChangesClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -116,13 +123,11 @@ public class ImportTransformChangesClient {
     public ImportTransformChangesClient(final Parameters parameters) {
 
         this.parameters = parameters;
-        this.tileSpecValidator = parameters.getValidatorInstance();
+        this.tileSpecValidator = parameters.tileSpecValidator.getValidatorInstance();
 
-        this.sourceRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                           parameters.owner,
-                                                           parameters.project);
+        this.sourceRenderDataClient = parameters.renderWeb.getDataClient();
 
-        this.targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
+        this.targetRenderDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                            parameters.getTargetOwner(),
                                                            parameters.getTargetProject());
 

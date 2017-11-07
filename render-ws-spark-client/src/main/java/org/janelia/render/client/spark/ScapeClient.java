@@ -1,6 +1,7 @@
 package org.janelia.render.client.spark;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import ij.ImagePlus;
 import ij.ImageStack;
@@ -23,6 +24,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+import mpicbg.ij.util.Util;
+
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -34,11 +37,13 @@ import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.FileUtil;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.RenderDataClientParameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,113 +56,104 @@ import org.slf4j.LoggerFactory;
 public class ScapeClient
         implements Serializable {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
+
+        @ParametersDelegate
+        public ZRangeParameters layerRange = new ZRangeParameters();
 
         @Parameter(
                 names = "--stack",
                 description = "Stack name",
                 required = true)
-        private String stack;
+        public String stack;
 
         @Parameter(
                 names = "--rootDirectory",
                 description = "Root directory for rendered layers (e.g. /groups/flyTEM/flyTEM/rendered_scapes)",
                 required = true)
-        private String rootDirectory;
+        public String rootDirectory;
 
         @Parameter(
                 names = "--maxImagesPerDirectory",
                 description = "Maximum number of images to render in one directory",
                 required = false)
-        private Integer maxImagesPerDirectory = 1000;
+        public Integer maxImagesPerDirectory = 1000;
 
         @Parameter(
                 names = "--scale",
                 description = "Scale for each rendered layer",
                 required = false)
-        private Double scale = 0.02;
+        public Double scale = 0.02;
 
         @Parameter(
                 names = "--zScale",
                 description = "Ratio of z to xy resolution for creating isotropic layer projections (omit to skip projection)",
                 required = false)
-        private Double zScale;
+        public Double zScale;
 
         @Parameter(
                 names = "--format",
                 description = "Format for rendered boxes",
                 required = false)
-        private String format = Utils.JPEG_FORMAT;
+        public String format = Utils.JPEG_FORMAT;
 
         @Parameter(
                 names = "--doFilter",
                 description = "Use ad hoc filter to support alignment",
                 required = false)
-        private boolean doFilter = false;
+        public boolean doFilter = false;
 
         @Parameter(
                 names = "--channels",
                 description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3')",
                 required = false)
-        private String channels;
+        public String channels;
 
         @Parameter(
                 names = "--fillWithNoise",
                 description = "Fill image with noise before rendering to improve point match derivation",
                 required = false)
-        private boolean fillWithNoise = false;
+        public boolean fillWithNoise = false;
 
         @Parameter(
                 names = "--useLayerBounds",
                 description = "Base each scape on layer bounds instead of on stack bounds (e.g. for unaligned data)",
                 required = false,
                 arity = 1)
-        private boolean useLayerBounds = false;
+        public boolean useLayerBounds = false;
 
         @Parameter(
                 names = "--minX",
                 description = "Left most pixel coordinate in world coordinates.  Default is minX of stack (or layer when --useLayerBounds true)",
                 required = false)
-        private Double minX;
+        public Double minX;
 
         @Parameter(
                 names = "--minY",
                 description = "Top most pixel coordinate in world coordinates.  Default is minY of stack (or layer when --useLayerBounds true)",
                 required = false)
-        private Double minY;
+        public Double minY;
 
         @Parameter(
                 names = "--width",
                 description = "Width in world coordinates.  Default is maxX - minX of stack (or layer when --useLayerBounds true)",
                 required = false)
-        private Double width;
+        public Double width;
 
         @Parameter(
                 names = "--height",
                 description = "Height in world coordinates.  Default is maxY - minY of stack (or layer when --useLayerBounds true)",
                 required = false)
-        private Double height;
-
-        @Parameter(
-                names = "--minZ",
-                description = "Minimum Z value for sections to be rendered",
-                required = false)
-        private Double minZ;
-
-        @Parameter(
-                names = "--maxZ",
-                description = "Maximum Z value for sections to be rendered",
-                required = false)
-        private Double maxZ;
+        public Double height;
 
         public File getSectionRootDirectory() {
 
             final String scapeDir = "scape_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
             final Path sectionRootPath = Paths.get(rootDirectory,
-                                                   project,
+                                                   renderWeb.project,
                                                    stack,
                                                    scapeDir).toAbsolutePath();
             return sectionRootPath.toFile();
@@ -195,7 +191,7 @@ public class ScapeClient
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, ScapeClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -223,13 +219,11 @@ public class ScapeClient
 
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
-        final RenderDataClient sourceDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                       parameters.owner,
-                                                                       parameters.project);
+        final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
 
         final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(parameters.stack,
-                                                                                       parameters.minZ,
-                                                                                       parameters.maxZ);
+                                                                                       parameters.layerRange.minZ,
+                                                                                       parameters.layerRange.maxZ);
 
         // projection process depends upon z ordering, so sort section data results by z ...
         Collections.sort(sectionDataList, SectionData.Z_COMPARATOR);
@@ -250,83 +244,76 @@ public class ScapeClient
 
         final JavaRDD<RenderSection> rddSectionData = sparkContext.parallelize(renderSectionList);
 
-        final Function<RenderSection, Integer> generateScapeFunction = new Function<RenderSection, Integer>() {
+        final Function<RenderSection, Integer> generateScapeFunction =
+                (Function<RenderSection, Integer>) renderSection -> {
 
-            final
-            @Override
-            public Integer call(final RenderSection renderSection)
-                    throws Exception {
+                    final Double z = renderSection.getFirstZ();
+                    LogUtilities.setupExecutorLog4j("z " + z);
 
-                final Double z = renderSection.getFirstZ();
-                LogUtilities.setupExecutorLog4j("z " + z);
+                    final RenderDataClient sourceDataClient1 = parameters.renderWeb.getDataClient();
 
-                final RenderDataClient sourceDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                               parameters.owner,
-                                                                               parameters.project);
+                    // set cache size to 50MB so that masks get cached but most of RAM is left for target image
+                    final int maxCachedPixels = 50 * 1000000;
+                    final ImageProcessorCache imageProcessorCache =
+                            new ImageProcessorCache(maxCachedPixels, false, false);
 
-                // set cache size to 50MB so that masks get cached but most of RAM is left for target image
-                final int maxCachedPixels = 50 * 1000000;
-                final ImageProcessorCache imageProcessorCache =
-                        new ImageProcessorCache(maxCachedPixels, false, false);
+                    final boolean isProjectionNeeded = renderSection.isProjectionNeeded();
+                    BufferedImage sectionImage = null;
+                    ImageStack projectedStack = null;
 
-                final boolean isProjectionNeeded = renderSection.isProjectionNeeded();
-                BufferedImage sectionImage = null;
-                ImageStack projectedStack = null;
+                    for (final SectionData sectionData : renderSection.getSectionDataList()) {
 
-                for (final SectionData sectionData : renderSection.getSectionDataList()) {
+                        final String parametersUrl =
+                                sourceDataClient1.getRenderParametersUrlString(parameters.stack,
+                                                                               sectionData.getMinX(),
+                                                                               sectionData.getMinY(),
+                                                                               sectionData.getZ(),
+                                                                               sectionData.getWidth(),
+                                                                               sectionData.getHeight(),
+                                                                               parameters.scale);
 
-                    final String parametersUrl =
-                            sourceDataClient.getRenderParametersUrlString(parameters.stack,
-                                                                          sectionData.getMinX(),
-                                                                          sectionData.getMinY(),
-                                                                          sectionData.getZ(),
-                                                                          sectionData.getWidth(),
-                                                                          sectionData.getHeight(),
-                                                                          parameters.scale);
+                        LOG.debug("generateScapeFunction: loading {}", parametersUrl);
 
-                    LOG.debug("generateScapeFunction: loading {}", parametersUrl);
+                        final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
+                        renderParameters.setDoFilter(parameters.doFilter);
+                        renderParameters.setChannels(parameters.channels);
 
-                    final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
-                    renderParameters.setDoFilter(parameters.doFilter);
-                    renderParameters.setChannels(parameters.channels);
+                        sectionImage = renderParameters.openTargetImage();
 
-                    sectionImage = renderParameters.openTargetImage();
+                        if (isProjectionNeeded && (projectedStack == null)) {
+                            projectedStack = new ImageStack(sectionImage.getWidth(), sectionImage.getHeight());
+                        }
 
-                    if (isProjectionNeeded && (projectedStack == null)) {
-                        projectedStack = new ImageStack(sectionImage.getWidth(), sectionImage.getHeight());
+                        if (parameters.fillWithNoise) {
+                            final ByteProcessor ip = new ByteProcessor(sectionImage.getWidth(), sectionImage.getHeight());
+                            Util.fillWithNoise(ip);
+                            sectionImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
+                        }
+
+                        ArgbRenderer.render(renderParameters, sectionImage, imageProcessorCache);
+
+                        if (isProjectionNeeded) {
+                            projectedStack.addSlice(new ColorProcessor(sectionImage).convertToByteProcessor());
+                        }
                     }
 
-                    if (parameters.fillWithNoise) {
-                        final ByteProcessor ip = new ByteProcessor(sectionImage.getWidth(), sectionImage.getHeight());
-                        mpicbg.ij.util.Util.fillWithNoise(ip);
-                        sectionImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
+                    if (projectedStack != null) {
+
+                        LOG.debug("projecting {} sections", projectedStack.getSize());
+
+                        final ZProjector projector = new ZProjector(new ImagePlus("", projectedStack));
+                        projector.setMethod(ZProjector.AVG_METHOD);
+                        projector.doProjection();
+                        final ImageProcessor ip = projector.getProjection().getProcessor();
+                        sectionImage = ip.getBufferedImage();
                     }
 
-                    ArgbRenderer.render(renderParameters, sectionImage, imageProcessorCache);
+                    final File sectionFile = renderSection.getOutputFile(parameters.format);
 
-                    if (isProjectionNeeded) {
-                        projectedStack.addSlice(new ColorProcessor(sectionImage).convertToByteProcessor());
-                    }
-                }
+                    Utils.saveImage(sectionImage, sectionFile.getAbsolutePath(), parameters.format, true, 0.85f);
 
-                if (projectedStack != null) {
-
-                    LOG.debug("projecting {} sections", projectedStack.getSize());
-
-                    final ZProjector projector = new ZProjector(new ImagePlus("", projectedStack));
-                    projector.setMethod(ZProjector.AVG_METHOD);
-                    projector.doProjection();
-                    final ImageProcessor ip = projector.getProjection().getProcessor();
-                    sectionImage = ip.getBufferedImage();
-                }
-
-                final File sectionFile = renderSection.getOutputFile(parameters.format);
-
-                Utils.saveImage(sectionImage, sectionFile.getAbsolutePath(), parameters.format, true, 0.85f);
-
-                return 1;
-            }
-        };
+                    return 1;
+                };
 
         final JavaRDD<Integer> rddLayerCounts = rddSectionData.map(generateScapeFunction);
 

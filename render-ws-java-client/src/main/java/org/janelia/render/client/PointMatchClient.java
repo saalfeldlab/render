@@ -28,9 +28,10 @@ import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.render.client.parameters.MatchClipParameters;
-import org.janelia.render.client.parameters.MatchDataClientParameters;
-import org.janelia.render.client.parameters.MatchDerivationParameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchClipParameters;
+import org.janelia.render.client.parameter.MatchDerivationParameters;
+import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +75,7 @@ public class PointMatchClient {
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MatchDataClientParameters matchClient = new MatchDataClientParameters();
+        public MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
 
         @ParametersDelegate
         public MatchDerivationParameters match = new MatchDerivationParameters();
@@ -85,22 +86,19 @@ public class PointMatchClient {
         @Parameter(
                 names = "--renderScale",
                 description = "Render canvases at this scale",
-                required = false,
-                order = 10)
+                required = false)
         public Double renderScale = 1.0;
 
         @Parameter(names = "--fillWithNoise",
                 description = "Fill each canvas image with noise before rendering to improve point match derivation",
                 required = false,
-                arity = 1,
-                order = 15)
+                arity = 1)
         public boolean fillWithNoise = true;
 
         @Parameter(
                 names = "--renderFileFormat",
                 description = "Format for saved canvases (only relevant if debugDirectory is specified)",
-                required = false,
-                order = 16)
+                required = false)
         public RenderFileFormat renderFileFormat = RenderFileFormat.JPG;
 
         @Parameter(
@@ -235,7 +233,7 @@ public class PointMatchClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, PointMatchClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 

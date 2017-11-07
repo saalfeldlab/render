@@ -21,19 +21,18 @@ import ij.process.ImageProcessor;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.Map;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.FileUtil;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Tests the {@link MipmapClient} class.
@@ -51,17 +50,22 @@ public class MipmapClientTest {
 
     @After
     public void tearDown() throws Exception {
-        deleteRecursive(mipmapRootDirectory);
+        FileUtil.deleteRecursive(mipmapRootDirectory);
+    }
+
+    @Test
+    public void testParameterParsing() throws Exception {
+        CommandLineParameters.parseHelp(new MipmapClient.Parameters());
     }
 
     @Test
     public void testGenerateMissingMipmapFiles() throws Exception {
 
-        MipmapClient.CommonParameters commonParameters =
-                new MipmapClient.CommonParameters(mipmapRootDirectory.getAbsolutePath(),
-                                                  2);
-        MipmapClient.Parameters parameters = new MipmapClient.Parameters(commonParameters, new ArrayList<Double>());
-        MipmapClient mipmapClient = new MipmapClient(parameters);
+        final MipmapClient.Parameters parameters = new MipmapClient.Parameters();
+        parameters.mipmap.rootDirectory = mipmapRootDirectory.getAbsolutePath();
+        parameters.mipmap.maxLevel = 2;
+
+        MipmapClient mipmapClient = new MipmapClient(parameters.renderWeb, parameters.mipmap);
 
         final ImageAndMask sourceImageAndMask = new ImageAndMask("src/test/resources/col0060_row0140_cam0.tif",
                                                                  "src/test/resources/mask.tif");
@@ -117,10 +121,9 @@ public class MipmapClientTest {
         final File previouslyGeneratedImageFile = new File(imageAndMask.getImageFilePath());
         final long expectedLastModified = previouslyGeneratedImageFile.lastModified();
 
-        commonParameters = new MipmapClient.CommonParameters(mipmapRootDirectory.getAbsolutePath(),
-                                                             level);
-        parameters = new MipmapClient.Parameters(commonParameters, new ArrayList<Double>());
-        mipmapClient = new MipmapClient(parameters);
+        parameters.mipmap.rootDirectory = mipmapRootDirectory.getAbsolutePath();
+        parameters.mipmap.maxLevel = level;
+        mipmapClient = new MipmapClient(parameters.renderWeb, parameters.mipmap);
         tileSpec.setMipmapPathBuilder(mipmapClient.getMipmapPathBuilder());
 
         mipmapClient.generateMissingMipmapFiles(tileSpec);
@@ -162,28 +165,4 @@ public class MipmapClientTest {
         return testDirectory;
     }
 
-    public static boolean deleteRecursive(final File file) {
-
-        boolean deleteSuccessful = true;
-
-        if (file.isDirectory()){
-            final File[] files = file.listFiles();
-            if (files != null) {
-                for (final File f : files) {
-                    deleteSuccessful = deleteSuccessful && deleteRecursive(f);
-                }
-            }
-        }
-
-        if (file.delete()) {
-            LOG.info("deleted " + file.getAbsolutePath());
-        } else {
-            LOG.warn("failed to delete " + file.getAbsolutePath());
-            deleteSuccessful = false;
-        }
-
-        return deleteSuccessful;
-    }
-
-    private static final Logger LOG = LoggerFactory.getLogger(MipmapClientTest.class);
 }

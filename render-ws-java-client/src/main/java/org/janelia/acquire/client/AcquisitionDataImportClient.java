@@ -1,7 +1,23 @@
 package org.janelia.acquire.client;
 
 import com.beust.jcommander.Parameter;
-import org.janelia.acquire.client.model.*;
+import com.beust.jcommander.ParametersDelegate;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+
+import org.janelia.acquire.client.model.Acquisition;
+import org.janelia.acquire.client.model.AcquisitionTile;
+import org.janelia.acquire.client.model.AcquisitionTileIdList;
+import org.janelia.acquire.client.model.AcquisitionTileList;
+import org.janelia.acquire.client.model.AcquisitionTileState;
+import org.janelia.acquire.client.model.Calibration;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -12,12 +28,11 @@ import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.ImportJsonClient;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.RenderDataClientParametersWithValidator;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.*;
 
 /**
  * Java client that pulls tile data from an acquisition system and stores it in the render database.
@@ -26,11 +41,13 @@ import java.util.*;
  */
 public class AcquisitionDataImportClient {
 
-    @SuppressWarnings("ALL")
-    static class Parameters extends RenderDataClientParametersWithValidator {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, --project, --validatorClass, and --validatorData parameters defined in RenderDataClientParameters
-        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
+        @ParametersDelegate
+        RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
+
+        @ParametersDelegate
+        TileSpecValidatorParameters tileSpecValidator = new TileSpecValidatorParameters();
 
         @Parameter(names = "--finalStackState", description = "State render stack should have after import (default is COMPLETE)", required = false)
         StackMetaData.StackState finalStackState;
@@ -85,7 +102,7 @@ public class AcquisitionDataImportClient {
             @Override
             public void runClient(final String[] args) throws Exception {
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, AcquisitionDataImportClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -121,7 +138,7 @@ public class AcquisitionDataImportClient {
     public AcquisitionDataImportClient(final Parameters parameters)
             throws IOException {
         this.parameters = parameters;
-        this.tileSpecValidator = parameters.getValidatorInstance();
+        this.tileSpecValidator = parameters.tileSpecValidator.getValidatorInstance();
 
         this.acquisitionDataClient = new AcquisitionDataClient(parameters.baseAcquisitionUrl);
 
@@ -199,7 +216,7 @@ public class AcquisitionDataImportClient {
         try {
             String ownerName = acquisition.getProjectOwner();
             if (parameters.overrideOwnerFromParameter) {
-                ownerName = parameters.owner;
+                ownerName = parameters.renderWeb.owner;
             }
             if (ownerName == null || ownerName.trim().length() == 0) {
                 throw new IllegalArgumentException("Owner for acquisition " + acqId + " is null");
@@ -218,7 +235,7 @@ public class AcquisitionDataImportClient {
 
             final String acquireStackName = baseStackName + "_acquire";
 
-            final RenderDataClient renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+            final RenderDataClient renderDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                                            ownerName,
                                                                            projectName);
 

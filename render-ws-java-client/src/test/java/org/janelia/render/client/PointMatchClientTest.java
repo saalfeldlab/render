@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -16,6 +18,11 @@ import org.junit.Test;
 public class PointMatchClientTest {
 
     @Test
+    public void testParameterParsing() throws Exception {
+        CommandLineParameters.parseHelp(new PointMatchClient.Parameters());
+    }
+
+    @Ignore
     public void testMultiThreadedClient()
             throws Exception {
         testClient(3);
@@ -41,7 +48,7 @@ public class PointMatchClientTest {
         };
 
         final PointMatchClient.Parameters clientParameters = new PointMatchClient.Parameters();
-        clientParameters.parse(args, PointMatchClient.class);
+        clientParameters.parse(args);
 
         final PointMatchClient client = new PointMatchClient(clientParameters);
 

@@ -2,21 +2,22 @@ package org.janelia.render.client;
 
 import org.janelia.alignment.spec.validator.TemTileSpecValidator;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
+import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * Tests the {@link RenderDataClientParametersWithValidator} class.
+ * Tests the {@link TileSpecValidatorParameters} class.
  *
  * @author Eric Trautman
  */
-public class RenderDataClientParametersWithValidatorTest {
+public class RenderWebServiceParametersWithValidatorTest {
 
     @Test
     public void testGetValidator()
             throws Exception {
 
-        final RenderDataClientParametersWithValidator p = new RenderDataClientParametersWithValidator();
+        final TileSpecValidatorParameters p = new TileSpecValidatorParameters();
         p.validatorClass = "org.janelia.alignment.spec.validator.TemTileSpecValidator";
         p.validatorData = "minCoordinate:0,maxCoordinate:100000,minSize:100,maxSize:20000";
 

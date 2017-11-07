@@ -1,10 +1,15 @@
 package org.janelia.alignment.match;
 
+import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.util.FileUtil;
+import org.slf4j.LoggerFactory;
 
 /**
  * List of {@link OrderedCanvasIdPair} objects with a common render parameters URL template.
@@ -61,11 +66,36 @@ public class RenderableCanvasIdPairs
         return neighborPairs;
     }
 
+    /**
+     * @return pairs object loaded from the specified file.
+     */
+    public static RenderableCanvasIdPairs load(final String dataFile)
+            throws IOException, IllegalArgumentException {
+
+        final RenderableCanvasIdPairs renderableCanvasIdPairs;
+
+        final Path path = FileSystems.getDefault().getPath(dataFile).toAbsolutePath();
+
+        LOG.info("load: entry, path={}", path);
+
+        try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(path.toString())) {
+            renderableCanvasIdPairs = RenderableCanvasIdPairs.fromJson(reader);
+        }
+
+        LOG.info("load: exit, loaded {} pairs", renderableCanvasIdPairs.size());
+
+
+        return renderableCanvasIdPairs;
+    }
+
+
     public static RenderableCanvasIdPairs fromJson(final Reader json) {
         return JSON_HELPER.fromJson(json);
     }
 
     private static final JsonUtils.Helper<RenderableCanvasIdPairs> JSON_HELPER =
             new JsonUtils.Helper<>(RenderableCanvasIdPairs.class);
+
+    private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(RenderableCanvasIdPairs.class);
 
 }

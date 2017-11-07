@@ -1,11 +1,15 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.util.List;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,17 +20,25 @@ import org.slf4j.LoggerFactory;
  */
 public class ValidateTilesClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParametersWithValidator {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
-        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(names = "--stack", description = "Stack name", required = true)
-        private String stack;
+        @ParametersDelegate
+        public TileSpecValidatorParameters tileSpecValidator = new TileSpecValidatorParameters();
 
-        @Parameter(description = "Z values", required = true)
-        private List<String> zValues;
+
+        @Parameter(
+                names = "--stack",
+                description = "Stack name",
+                required = true)
+        public String stack;
+
+        @Parameter(
+                description = "Z values",
+                required = true)
+        public List<String> zValues;
     }
 
     public static void main(final String[] args) {
@@ -35,7 +47,7 @@ public class ValidateTilesClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, ValidateTilesClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -55,11 +67,9 @@ public class ValidateTilesClient {
 
     public ValidateTilesClient(final Parameters parameters) {
         this.parameters = parameters;
-        this.tileSpecValidator = parameters.getValidatorInstance();
+        this.tileSpecValidator = parameters.tileSpecValidator.getValidatorInstance();
 
-        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                     parameters.owner,
-                                                     parameters.project);
+        this.renderDataClient = parameters.renderWeb.getDataClient();
     }
 
     public void validateTilesForZ(final Double z)

@@ -1,20 +1,20 @@
-package org.janelia.render.client;
+package org.janelia.render.client.parameter;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.lang.reflect.Constructor;
+import java.io.Serializable;
 
-import org.janelia.alignment.spec.validator.TileSpecValidator;
+import org.janelia.render.client.RenderDataClient;
 
 /**
- * Base parameters for all render web service clients.
+ * Parameters for render web service clients.
  *
  * @author Eric Trautman
  */
 @Parameters
-public class RenderDataClientParameters
-        extends CommandLineParameters {
+public class RenderWebServiceParameters implements Serializable {
 
     @Parameter(
             names = "--baseDataUrl",
@@ -34,15 +34,8 @@ public class RenderDataClientParameters
             required = true)
     public String project;
 
-    public RenderDataClientParameters() {
-        this(null, null, null);
-    }
-
-    public RenderDataClientParameters(final String baseDataUrl,
-                                      final String owner,
-                                      final String project) {
-        this.baseDataUrl = baseDataUrl;
-        this.owner = owner;
-        this.project = project;
+    @JsonIgnore
+    public RenderDataClient getDataClient() {
+        return new RenderDataClient(baseDataUrl, owner, project);
     }
 }

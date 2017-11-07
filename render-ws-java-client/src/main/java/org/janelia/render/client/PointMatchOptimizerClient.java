@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,7 +15,8 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
-import org.janelia.alignment.match.ModelType;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchDerivationParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +28,6 @@ import org.slf4j.LoggerFactory;
  */
 public class PointMatchOptimizerClient {
 
-    @SuppressWarnings("ALL")
     public static class Parameters extends CommandLineParameters {
 
         @Parameter(
@@ -51,79 +52,28 @@ public class PointMatchOptimizerClient {
                 names = "--renderScaleStep",
                 description = "Amount to adjust render scale for each iteration during optimization",
                 required = false)
-        private Double renderScaleStep = 0.1;
+        public Double renderScaleStep = 0.1;
 
         @Parameter(
                 names = "--minFeatureCount",
                 description = "Minimum number features for optimal render scale",
                 required = false)
-        private Integer minFeatureCount = 3000;
+        public Integer minFeatureCount = 3000;
 
         @Parameter(
                 names = "--maxFeatureCount",
                 description = "Maximum number features for optimal render scale",
                 required = false)
-        private Integer maxFeatureCount = 6000;
+        public Integer maxFeatureCount = 6000;
 
-        @Parameter(
-                names = "--SIFTfdSize",
-                description = "SIFT feature descriptor size: how many samples per row and column",
-                required = false)
-        private Integer fdSize = 8;
-
-        @Parameter(
-                names = "--SIFTsteps",
-                description = "SIFT steps per scale octave",
-                required = false)
-        private Integer steps = 2;
-
-        @Parameter(
-                names = "--matchModelType",
-                description = "Type of model for match filtering",
-                required = false)
-        private ModelType matchModelType = ModelType.AFFINE;
-
-        @Parameter(
-                names = "--matchIterations",
-                description = "Match filter iterations",
-                required = false)
-        private Integer matchIterations = 1000;
-
-        @Parameter(
-                names = "--matchMaxEpsilon",
-                description = "Minimal allowed transfer error for match filtering",
-                required = false)
-        private Float matchMaxEpsilon = 20.0f;
-
-        @Parameter(
-                names = "--matchMinInlierRatio",
-                description = "Minimal ratio of inliers to candidates for match filtering",
-                required = false)
-        private Float matchMinInlierRatio = 0.0f;
-
-        @Parameter(
-                names = "--matchMinNumInliers",
-                description = "Minimal absolute number of inliers for match filtering",
-                required = false)
-        private Integer matchMinNumInliers = 4;
-
-        @Parameter(
-                names = "--matchMaxTrust",
-                description = "Reject match candidates with a cost larger than maxTrust * median cost",
-                required = false)
-        private Double matchMaxTrust = 3.0;
-
-        @Parameter(
-                names = "--matchMaxNumInliers",
-                description = "Maximum number of inliers for match filtering",
-                required = false)
-        private Integer matchMaxNumInliers = 20;
+        @ParametersDelegate
+        public MatchDerivationParameters match = new MatchDerivationParameters();
 
         @Parameter(
                 names = "--matchRodStep",
                 description = "Amount to adjust ratio of distances for each iteration during optimization",
                 required = false)
-        private Double matchRodStep = 0.05;
+        public Double matchRodStep = 0.05;
 
     }
 
@@ -136,7 +86,7 @@ public class PointMatchOptimizerClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, PointMatchOptimizerClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -225,21 +175,21 @@ public class PointMatchOptimizerClient {
             LOG.info("run: testing match rod {}", rod);
 
             matcher = new CanvasFeatureMatcher(rod,
-                                               parameters.matchModelType,
-                                               parameters.matchIterations,
-                                               parameters.matchMaxEpsilon,
-                                               parameters.matchMinInlierRatio,
-                                               parameters.matchMinNumInliers,
-                                               parameters.matchMaxTrust,
+                                               parameters.match.matchModelType,
+                                               parameters.match.matchIterations,
+                                               parameters.match.matchMaxEpsilon,
+                                               parameters.match.matchMinInlierRatio,
+                                               parameters.match.matchMinNumInliers,
+                                               parameters.match.matchMaxTrust,
                                                null,
                                                true);
             matchResult = matcher.deriveMatchResult(pFeatureList, qFeatureList);
 
             inlierCount = matchResult.getInlierPointMatchList().size();
 
-            if (inlierCount < parameters.matchMinNumInliers) {
+            if (inlierCount < parameters.match.matchMinNumInliers) {
 
-                if (previousInlierCount >= parameters.matchMinNumInliers) {
+                if (previousInlierCount >= parameters.match.matchMinNumInliers) {
                     optimalRod = previousRod;
                     inlierCount = previousInlierCount;
                 } else {
@@ -247,7 +197,7 @@ public class PointMatchOptimizerClient {
                     rod += parameters.matchRodStep;
                 }
 
-            } else if (inlierCount > parameters.matchMaxNumInliers) {
+            } else if (inlierCount > parameters.match.matchMaxNumInliers) {
 
                 previousRod = rod;
                 rod -= parameters.matchRodStep;
@@ -277,8 +227,8 @@ public class PointMatchOptimizerClient {
         LOG.info("extractFeaturesForScale: entry, scale={}", renderScale);
 
         final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
-        siftParameters.fdSize = parameters.fdSize;
-        siftParameters.steps = parameters.steps;
+        siftParameters.fdSize = parameters.match.fdSize;
+        siftParameters.steps = parameters.match.steps;
 
         final CanvasFeatureExtractor extractor = new CanvasFeatureExtractor(siftParameters,
                                                                             renderScale - 0.02,

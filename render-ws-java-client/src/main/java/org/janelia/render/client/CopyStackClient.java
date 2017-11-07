@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -11,6 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
@@ -25,6 +27,9 @@ import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import org.janelia.alignment.util.ProcessTimer;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.LayerBoundsParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,13 +40,16 @@ import org.slf4j.LoggerFactory;
  */
 public class CopyStackClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(names = "--fromStack", description = "Name of source stack", required = true)
-        private String fromStack;
+        @Parameter(
+                names = "--fromStack",
+                description = "Name of source stack",
+                required = true)
+        public String fromStack;
 
         @Parameter(
                 names = "--toOwner",
@@ -55,82 +63,63 @@ public class CopyStackClient {
                 required = false)
         private String toProject;
 
-        @Parameter(names = "--toStack", description = "Name of target stack", required = true)
+        @Parameter(
+                names = "--toStack",
+                description = "Name of target stack",
+                required = true)
         private String toStack;
 
-        @Parameter(names = "--z", description = "Z value of section to be copied", required = true)
-        private List<Double> zValues;
+        @Parameter(
+                names = "--z",
+                description = "Z value of section to be copied",
+                required = true)
+        public List<Double> zValues;
 
-        @Parameter(names = "--minX", description = "Minimum X value for all tiles", required = false)
-        private Double minX;
-
-        @Parameter(names = "--maxX", description = "Maximum X value for all tiles", required = false)
-        private Double maxX;
-
-        @Parameter(names = "--minY", description = "Minimum Y value for all tiles", required = false)
-        private Double minY;
-
-        @Parameter(names = "--maxY", description = "Maximum Y value for all tiles", required = false)
-        private Double maxY;
+        @ParametersDelegate
+        public LayerBoundsParameters layerBounds = new LayerBoundsParameters();
 
         @Parameter(
                 names = "--keepExisting",
                 description = "Keep any existing target stack tiles with the specified z (default is to remove them)",
-                required = false, arity = 0)
-        private boolean keepExisting = false;
+                required = false,
+                arity = 0)
+        public boolean keepExisting = false;
 
         @Parameter(
                 names = "--completeToStackAfterCopy",
                 description = "Complete the to stack after copying all layers",
-                required = false, arity = 0)
-        private boolean completeToStackAfterCopy = false;
+                required = false,
+                arity = 0)
+        public boolean completeToStackAfterCopy = false;
 
         @Parameter(
                 names = "--replaceLastTransformWithStage",
                 description = "Replace the last transform in each tile space with a 'stage identity' transform",
-                required = false, arity = 0)
-        private boolean replaceLastTransformWithStage = false;
+                required = false,
+                arity = 0)
+        public boolean replaceLastTransformWithStage = false;
 
         @Parameter(
                 names = "--splitMergedSections",
                 description = "Reset z values for tiles so that original sections are separated",
-                required = false, arity = 0)
-        private boolean splitMergedSections = false;
+                required = false,
+                arity = 0)
+        public boolean splitMergedSections = false;
 
         public String getToOwner() {
             if (toOwner == null) {
-                toOwner = owner;
+                toOwner = renderWeb.owner;
             }
             return toOwner;
         }
 
         public String getToProject() {
             if (toProject == null) {
-                toProject = project;
+                toProject = renderWeb.project;
             }
             return toProject;
         }
 
-        public void validateStackBounds() throws IllegalArgumentException {
-
-            if ((minX != null) || (maxX != null) || (minY != null) || (maxY != null)) {
-
-                if ((minX == null) || (maxX == null) || (minY == null) || (maxY == null)) {
-                    throw new IllegalArgumentException("since one or more of minX (" + minX + "), maxX (" + maxX +
-                                                       "), minY (" + minY + "), maxY (" + maxY +
-                                                       ") is specified, all must be specified");
-                }
-
-                if (minX > maxX) {
-                    throw new IllegalArgumentException("minX (" + minX + ") is greater than maxX (" + maxX + ")");
-                }
-
-                if (minY > maxY) {
-                    throw new IllegalArgumentException("minY (" + minY + ") is greater than maxY (" + maxY + ")");
-                }
-            }
-
-        }
     }
 
     public static void main(final String[] args) {
@@ -139,8 +128,8 @@ public class CopyStackClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, CopyStackClient.class);
-                parameters.validateStackBounds();
+                parameters.parse(args);
+                parameters.layerBounds.validate();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -169,11 +158,9 @@ public class CopyStackClient {
 
         this.parameters = parameters;
 
-        this.fromDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                   parameters.owner,
-                                                   parameters.project);
+        this.fromDataClient = parameters.renderWeb.getDataClient();
 
-        this.toDataClient = new RenderDataClient(parameters.baseDataUrl,
+        this.toDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                  parameters.getToOwner(),
                                                  parameters.getToProject());
 
@@ -198,7 +185,7 @@ public class CopyStackClient {
         final ResolvedTileSpecCollection sourceCollection =
                 fromDataClient.getResolvedTiles(parameters.fromStack, z);
 
-        if (parameters.minX != null) {
+        if (parameters.layerBounds.minX != null) {
             final Set<String> tileIdsToKeep = getIdsForTilesInBox(z);
             sourceCollection.filterSpecs(tileIdsToKeep);
         }
@@ -239,10 +226,12 @@ public class CopyStackClient {
 
         final Set<String> tileIdsToKeep = new HashSet<>(tileBoundsList.size());
 
-        for (final TileBounds tileBounds : tree.findTilesInBox(parameters.minX, parameters.minY,
-                                                               parameters.maxX, parameters.maxY)) {
-            tileIdsToKeep.add(tileBounds.getTileId());
-        }
+        tileIdsToKeep.addAll(
+                tree.findTilesInBox(parameters.layerBounds.minX,
+                                    parameters.layerBounds.minY,
+                                    parameters.layerBounds.maxX,
+                                    parameters.layerBounds.maxY).stream().map(
+                        TileBounds::getTileId).collect(Collectors.toList()));
 
         if (tileBoundsList.size() > tileIdsToKeep.size()) {
             LOG.info("getIdsForTilesInBox: removed {} tiles outside of bounding box",
@@ -284,16 +273,12 @@ public class CopyStackClient {
     private Map<String, Integer> getSectionIdToIntegralZMap()
             throws IOException {
 
-        final Comparator<SectionData> sectionComparator = new Comparator<SectionData>() {
-            @Override
-            public int compare(final SectionData o1,
-                               final SectionData o2) {
-                int result = o1.getZ().compareTo(o2.getZ());
-                if (result == 0) {
-                    result = o1.getSectionId().compareTo(o2.getSectionId());
-                }
-                return result;
+        final Comparator<SectionData> sectionComparator = (o1, o2) -> {
+            int result = o1.getZ().compareTo(o2.getZ());
+            if (result == 0) {
+                result = o1.getSectionId().compareTo(o2.getSectionId());
             }
+            return result;
         };
 
         final List<SectionData> orderedSectionDataList =

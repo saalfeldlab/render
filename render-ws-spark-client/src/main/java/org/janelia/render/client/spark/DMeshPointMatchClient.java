@@ -28,10 +28,10 @@ import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.CommandLineParameters;
-import org.janelia.render.client.parameters.MatchDataClientParameters;
-import org.janelia.render.client.parameters.MatchDerivationParameters;
-import org.janelia.render.client.parameters.MatchRenderParameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchDerivationParameters;
+import org.janelia.render.client.parameter.MatchRenderParameters;
+import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.janelia.render.client.spark.cache.CanvasDataCache;
 import org.janelia.render.client.spark.cache.CanvasFileLoader;
 import org.slf4j.Logger;
@@ -48,7 +48,7 @@ public class DMeshPointMatchClient
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MatchDataClientParameters matchClient = new MatchDataClientParameters();
+        public MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
 
         @ParametersDelegate
         public MatchRenderParameters matchRender = new MatchRenderParameters();
@@ -113,7 +113,7 @@ public class DMeshPointMatchClient
                 parameters.matchRender.renderWithFilter = false;
                 parameters.match.maxCacheGb = 20;
 
-                parameters.parse(args, DMeshPointMatchClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -144,7 +144,7 @@ public class DMeshPointMatchClient
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
         final RenderableCanvasIdPairs renderableCanvasIdPairs =
-                RenderableCanvasIdPairsUtilities.load(parameters.pairJson);
+                RenderableCanvasIdPairs.load(parameters.pairJson);
 
         final String renderParametersUrlTemplateForRun =
                 RenderableCanvasIdPairsUtilities.getRenderParametersUrlTemplateForRun(

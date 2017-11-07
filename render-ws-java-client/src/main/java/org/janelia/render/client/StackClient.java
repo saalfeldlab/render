@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -10,6 +11,8 @@ import java.util.List;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,64 +27,120 @@ public class StackClient {
 
     public enum Action { CREATE, CLONE, RENAME, SET_STATE, DELETE }
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(names = "--stack", description = "Stack name", required = true)
-        private String stack;
+        @Parameter(
+                names = "--stack",
+                description = "Stack name",
+                required = true)
+        public String stack;
 
-        @Parameter(names = "--action", description = "Management action to perform", required = true)
-        private Action action;
+        @Parameter(
+                names = "--action",
+                description = "Management action to perform",
+                required = true)
+        public Action action;
 
-        @Parameter(names = "--stackState", description = "New state for stack", required = false)
-        private StackState stackState;
+        @Parameter(
+                names = "--stackState",
+                description = "New state for stack",
+                required = false)
+        public StackState stackState;
 
-        @Parameter(names = "--versionNotes", description = "Notes about the version being created", required = false)
-        private String versionNotes;
+        @Parameter(
+                names = "--versionNotes",
+                description = "Notes about the version being created",
+                required = false)
+        public String versionNotes;
 
-        @Parameter(names = "--cycleNumber", description = "Processing cycle number", required = false)
-        private Integer cycleNumber;
+        @Parameter(
+                names = "--cycleNumber",
+                description = "Processing cycle number",
+                required = false)
+        public Integer cycleNumber;
 
-        @Parameter(names = "--cycleStepNumber", description = "Processing cycle step number", required = false)
-        private Integer cycleStepNumber;
+        @Parameter(
+                names = "--cycleStepNumber",
+                description = "Processing cycle step number",
+                required = false)
+        public Integer cycleStepNumber;
 
-        @Parameter(names = "--stackResolutionX", description = "X resoution (in nanometers) for the stack", required = false)
-        private Double stackResolutionX;
+        @Parameter(
+                names = "--stackResolutionX",
+                description = "X resoution (in nanometers) for the stack",
+                required = false)
+        public Double stackResolutionX;
 
-        @Parameter(names = "--stackResolutionY", description = "Y resoution (in nanometers) for the stack", required = false)
-        private Double stackResolutionY;
+        @Parameter(
+                names = "--stackResolutionY",
+                description = "Y resoution (in nanometers) for the stack",
+                required = false)
+        public Double stackResolutionY;
 
-        @Parameter(names = "--stackResolutionZ", description = "Z resoution (in nanometers) for the stack", required = false)
-        private Double stackResolutionZ;
+        @Parameter(
+                names = "--stackResolutionZ",
+                description = "Z resoution (in nanometers) for the stack",
+                required = false)
+        public Double stackResolutionZ;
 
-        @Parameter(names = "--materializedBoxRootPath", description = "Root path for materialized boxes", required = false)
-        private String materializedBoxRootPath;
+        @Parameter(
+                names = "--materializedBoxRootPath",
+                description = "Root path for materialized boxes",
+                required = false)
+        public String materializedBoxRootPath;
 
-        @Parameter(names = "--cloneResultProject", description = "Name of project for stack created by clone operation (default is to use source project)", required = false)
-        private String cloneResultProject;
+        @Parameter(
+                names = "--cloneResultProject",
+                description = "Name of project for stack created by clone operation (default is to use source project)",
+                required = false)
+        public String cloneResultProject;
 
-        @Parameter(names = "--cloneResultStack", description = "Name of stack created by clone operation", required = false)
-        private String cloneResultStack;
+        @Parameter(
+                names = "--cloneResultStack",
+                description = "Name of stack created by clone operation",
+                required = false)
+        public String cloneResultStack;
 
-        @Parameter(names = "--renamedOwner", description = "Name of renamed stack owner (default is to use source owner)", required = false)
-        private String renamedOwner;
+        @Parameter(
+                names = "--renamedOwner",
+                description = "Name of renamed stack owner (default is to use source owner)",
+                required = false)
+        public String renamedOwner;
 
-        @Parameter(names = "--renamedProject", description = "Name of renamed stack project (default is to use source project)", required = false)
-        private String renamedProject;
+        @Parameter(
+                names = "--renamedProject",
+                description = "Name of renamed stack project (default is to use source project)",
+                required = false)
+        public String renamedProject;
 
-        @Parameter(names = "--renamedStack", description = "Name of renamed stack", required = false)
-        private String renamedStack;
+        @Parameter(
+                names = "--renamedStack",
+                description = "Name of renamed stack",
+                required = false)
+        public String renamedStack;
 
-        @Parameter(names = "--sectionId", description = "The sectionId to delete", required = false)
-        private String sectionId;
+        @Parameter(
+                names = "--sectionId",
+                description = "The sectionId to delete",
+                required = false)
+        public String sectionId;
 
-        @Parameter(names = "--skipSharedTransformClone", description = "Only clone tiles, skipping clone of shared transforms (default is false)", required = false, arity = 0)
-        private Boolean skipSharedTransformClone;
+        @Parameter(
+                names = "--skipSharedTransformClone",
+                description = "Only clone tiles, skipping clone of shared transforms (default is false)",
+                required = false,
+                arity = 0)
+        public Boolean skipSharedTransformClone;
 
-        @Parameter(names = "--zValues", description = "Z values for filtering", required = false, variableArity = true)
-        private List<String> zValues;
+        @Parameter(
+                names = "--zValues",
+                description = "Z values for filtering",
+                required = false,
+                variableArity = true)
+        public List<String> zValues;
 
     }
 
@@ -94,7 +153,7 @@ public class StackClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, StackClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -127,9 +186,7 @@ public class StackClient {
 
         this.parameters = parameters;
         this.stack = parameters.stack;
-        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                     parameters.owner,
-                                                     parameters.project);
+        this.renderDataClient = parameters.renderWeb.getDataClient();
     }
 
     public void createStackVersion()
@@ -194,14 +251,18 @@ public class StackClient {
             throw new IllegalArgumentException("missing --renamedStack value");
         }
 
-        final String toOwner = parameters.renamedOwner == null ? parameters.owner : parameters.renamedOwner;
-        final String toProject = parameters.renamedProject == null ? parameters.project : parameters.renamedProject;
+        final String toOwner = parameters.renamedOwner == null ?
+                               parameters.renderWeb.owner : parameters.renamedOwner;
+        final String toProject = parameters.renamedProject == null ?
+                                 parameters.renderWeb.project : parameters.renamedProject;
 
         final StackId toStackId = new StackId(toOwner, toProject, parameters.renamedStack);
 
         renderDataClient.renameStack(stack, toStackId);
 
-        final RenderDataClient renamedDataClient = new RenderDataClient(parameters.baseDataUrl, toOwner, toProject);
+        final RenderDataClient renamedDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                                        toOwner,
+                                                                        toProject);
 
         logMetaData("renameStack: after rename", renamedDataClient, parameters.renamedStack);
     }

@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -26,6 +27,8 @@ import org.janelia.alignment.spec.validator.TemTileSpecValidator;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.ImportTransformChangesClient.ChangeMode;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,13 +39,13 @@ import org.slf4j.LoggerFactory;
  */
 public class ImportMETClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
         @Parameter(names = "--stack", description = "Name of source stack containing base tile specifications", required = true)
-        private String stack;
+        public String stack;
 
         @Parameter(
                 names = "--targetOwner",
@@ -56,34 +59,47 @@ public class ImportMETClient {
                 required = false)
         private String targetProject;
 
-        @Parameter(names = "--targetStack", description = "Name of target (align, montage, etc.) stack that will contain imported transforms", required = true)
+        @Parameter(
+                names = "--targetStack",
+                description = "Name of target (align, montage, etc.) stack that will contain imported transforms",
+                required = true)
         private String targetStack;
 
-        @Parameter(names = "--metFile", description = "MET file for section", required = true)
-        private String metFile;
+        @Parameter(
+                names = "--metFile",
+                description = "MET file for section",
+                required = true)
+        public String metFile;
 
-        @Parameter(names = "--formatVersion", description = "MET format version ('v1', v2', 'v3', ...)", required = false)
-        private String formatVersion = "v1";
+        @Parameter(
+                names = "--formatVersion",
+                description = "MET format version ('v1', v2', 'v3', ...)",
+                required = false)
+        public String formatVersion = "v1";
 
         @Parameter(
                 names = "--changeMode",
                 description = "Specifies how the transforms should be applied to existing data",
                 required = false)
-        private ChangeMode changeMode = ChangeMode.REPLACE_LAST;
+        public ChangeMode changeMode = ChangeMode.REPLACE_LAST;
 
-        @Parameter(names = "--disableValidation", description = "Disable flyTEM tile validation", required = false, arity = 0)
-        private boolean disableValidation;
+        @Parameter(
+                names = "--disableValidation",
+                description = "Disable flyTEM tile validation",
+                required = false,
+                arity = 0)
+        public boolean disableValidation;
 
         public String getTargetOwner() {
             if (targetOwner == null) {
-                targetOwner = owner;
+                targetOwner = renderWeb.owner;
             }
             return targetOwner;
         }
 
         public String getTargetProject() {
             if (targetProject == null) {
-                targetProject = project;
+                targetProject = renderWeb.project;
             }
             return targetProject;
         }
@@ -96,7 +112,7 @@ public class ImportMETClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, ImportMETClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -125,11 +141,9 @@ public class ImportMETClient {
             this.tileSpecValidator = new TemTileSpecValidator();
         }
 
-        this.sourceRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                           parameters.owner,
-                                                           parameters.project);
+        this.sourceRenderDataClient = parameters.renderWeb.getDataClient();
 
-        this.targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
+        this.targetRenderDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                            parameters.getTargetOwner(),
                                                            parameters.getTargetProject());
 

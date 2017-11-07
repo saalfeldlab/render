@@ -1,6 +1,7 @@
 package org.janelia.render.client.spark;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -16,7 +17,9 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.RenderDataClientParameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,10 +30,13 @@ import org.slf4j.LoggerFactory;
  */
 public class TransformSectionClient implements Serializable {
 
-    @SuppressWarnings("unused")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
+
+        @ParametersDelegate
+        public ZRangeParameters layerRange = new ZRangeParameters();
 
         @Parameter(
                 names = "--stack",
@@ -54,40 +60,28 @@ public class TransformSectionClient implements Serializable {
                 names = "--targetStack",
                 description = "Name of target stack",
                 required = false)
-        private String targetStack;
-
-        @Parameter(
-                names = "--minZ",
-                description = "Minimum Z value for sections to be copied",
-                required = false)
-        private Double minZ;
-
-        @Parameter(
-                names = "--maxZ",
-                description = "Maximum Z value for sections to be copied",
-                required = false)
-        private Double maxZ;
+        public String targetStack;
 
         @Parameter(names = "--transformId", description = "Identifier for tranformation", required = true)
-        private String transformId;
+        public String transformId;
 
         @Parameter(names = "--transformClass", description = "Name of transformation implementation (java) class", required = true)
-        private String transformClass;
+        public String transformClass;
 
         // TODO: figure out less hacky way to handle spaces in transform data string
         @Parameter(names = "--transformData", description = "Data with which transformation implementation should be initialized (expects values to be separated by ',' instead of ' ')", required = true)
-        private String transformData;
+        public String transformData;
 
         public String getTargetOwner() {
             if (targetOwner == null) {
-                targetOwner = owner;
+                targetOwner = renderWeb.owner;
             }
             return targetOwner;
         }
 
         public String getTargetProject() {
             if (targetProject == null) {
-                targetProject = project;
+                targetProject = renderWeb.project;
             }
             return targetProject;
         }
@@ -107,7 +101,7 @@ public class TransformSectionClient implements Serializable {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, TransformSectionClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -136,19 +130,17 @@ public class TransformSectionClient implements Serializable {
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
 
-        final RenderDataClient sourceDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                       parameters.owner,
-                                                                       parameters.project);
+        final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
 
         final List<Double> zValues = sourceDataClient.getStackZValues(parameters.stack,
-                                                                      parameters.minZ,
-                                                                      parameters.maxZ);
+                                                                      parameters.layerRange.minZ,
+                                                                      parameters.layerRange.maxZ);
 
         if (zValues.size() == 0) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 
-        final RenderDataClient targetDataClient = new RenderDataClient(parameters.baseDataUrl,
+        final RenderDataClient targetDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                                        parameters.getTargetOwner(),
                                                                        parameters.getTargetProject());
 
@@ -162,36 +154,29 @@ public class TransformSectionClient implements Serializable {
 //      make RDD
         final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
 
-        final Function<Double, Integer> transformFunction = new Function<Double, Integer>() {
+        final Function<Double, Integer> transformFunction = (Function<Double, Integer>) z -> {
 
-            final
-            @Override
-            public Integer call(final Double z)
-                    throws Exception {
+            LogUtilities.setupExecutorLog4j("z " + z);
+            //get the source client
+            final RenderDataClient sourceDataClient1 = parameters.renderWeb.getDataClient();
 
-                LogUtilities.setupExecutorLog4j("z " + z);
-                //get the source client
-                final RenderDataClient sourceDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                               parameters.owner,
-                                                                               parameters.project);
-                //get the target client(which can be the same as the source)
-                final RenderDataClient targetDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                               parameters.getTargetOwner(),
-                                                                               parameters.getTargetProject());
+            //get the target client(which can be the same as the source)
+            final RenderDataClient targetDataClient1 = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                                            parameters.getTargetOwner(),
+                                                                            parameters.getTargetProject());
 
-                final ResolvedTileSpecCollection sourceCollection =
-                        sourceDataClient.getResolvedTiles(parameters.stack, z);
+            final ResolvedTileSpecCollection sourceCollection =
+                    sourceDataClient1.getResolvedTiles(parameters.stack, z);
 
-                sourceCollection.addTransformSpecToCollection(stackTransform);
-                sourceCollection.addReferenceTransformToAllTiles(stackTransform.getId(), false);
+            sourceCollection.addTransformSpecToCollection(stackTransform);
+            sourceCollection.addReferenceTransformToAllTiles(stackTransform.getId(), false);
 
-                //vs tile spec validation?
-                sourceCollection.removeUnreferencedTransforms();
+            //vs tile spec validation?
+            sourceCollection.removeUnreferencedTransforms();
 
-                targetDataClient.saveResolvedTiles(sourceCollection, parameters.getTargetStack(), z);
+            targetDataClient1.saveResolvedTiles(sourceCollection, parameters.getTargetStack(), z);
 
-                return sourceCollection.getTileCount();
-            }
+            return sourceCollection.getTileCount();
         };
 
         // assign a transformation to the RDD

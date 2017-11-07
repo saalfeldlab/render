@@ -14,6 +14,7 @@ import javax.annotation.Nonnull;
 
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,6 +50,11 @@ public class TilePairClientTest {
                 }
             }
         });
+    }
+
+    @Test
+    public void testParameterParsing() throws Exception {
+        CommandLineParameters.parseHelp(new TilePairClient.Parameters());
     }
 
     @Test
@@ -108,7 +114,7 @@ public class TilePairClientTest {
                                  "--excludeCornerNeighbors false --maxPairsPerFile 3 " +
                                  "--zNeighborDistance " + zNeighborDistance +
                                  " --toJson " + toJson;
-        p.parse(argString.split(" "), TilePairClient.class);
+        p.parse(argString.split(" "));
         return p;
     }
 

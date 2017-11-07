@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import ij.ImagePlus;
 import ij.io.Opener;
@@ -11,7 +12,6 @@ import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +25,9 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MipmapParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,112 +39,18 @@ import org.slf4j.LoggerFactory;
  */
 public class MipmapClient {
 
-    @SuppressWarnings("ALL")
-    public static class CommonParameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
+
+        @ParametersDelegate
+        public MipmapParameters mipmap = new MipmapParameters();
 
         @Parameter(
-                names = "--stack",
-                description = "Stack name",
+                description = "Z values for layers to render",
                 required = true)
-        public String stack;
-
-        @Parameter(
-                names = "--rootDirectory",
-                description = "Root directory for mipmaps (e.g. /nrs/flyTEM/rendered_mipmaps/FAFB00)",
-                required = true)
-        protected String rootDirectory;
-
-        @Parameter(
-                names = "--minLevel",
-                description = "Minimum mipmap level to generate",
-                required = false)
-        protected Integer minLevel = 1;
-
-        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to generate", required = false)
-        protected Integer maxLevel = 6;
-
-        @Parameter(names = "--format", description = "Format for mipmaps (tiff, jpg, png)", required = false)
-        protected String format = Utils.TIFF_FORMAT;
-
-        @Parameter(names = "--forceGeneration", description = "Regenerate mipmaps even if they already exist", required = false, arity = 0)
-        protected boolean forceGeneration = false;
-
-        public CommonParameters() {
-            this(null, null, null, null, null, Utils.TIFF_FORMAT, 1, 6, false);
-        }
-
-        public CommonParameters(final String rootDirectory,
-                                final Integer maxLevel) {
-            this(null, null, null, null, rootDirectory, Utils.TIFF_FORMAT, 1, maxLevel, false);
-        }
-
-        public CommonParameters(final String baseDataUrl,
-                                final String owner,
-                                final String project,
-                                final String stack,
-                                final String rootDirectory,
-                                final String format,
-                                final Integer minLevel,
-                                final Integer maxLevel,
-                                final boolean forceGeneration) {
-            super(baseDataUrl, owner, project);
-            this.stack = stack;
-            this.rootDirectory = rootDirectory;
-            this.format = format;
-            this.minLevel = minLevel;
-            this.maxLevel = maxLevel;
-            this.forceGeneration = forceGeneration;
-        }
-
-        public MipmapPathBuilder getMipmapPathBuilder()
-                throws IOException {
-
-            final File dir = new File(rootDirectory).getCanonicalFile();
-
-            if (! dir.exists()) {
-                throw new IOException("missing root directory " + rootDirectory);
-            }
-
-            if (! dir.canWrite()) {
-                throw new IOException("not allowed to write to root directory " + rootDirectory);
-            }
-
-            String extension = format;
-            // map 'tiff' format to 'tif' extension so that {@link ij.io.Opener#openURL(String)} method will work.
-            if (Utils.TIFF_FORMAT.equals(format)) {
-                extension = "tif";
-            }
-
-            return new MipmapPathBuilder(dir.getPath(), maxLevel, extension);
-        }
-    }
-
-    @SuppressWarnings("ALL")
-    public static class Parameters extends CommonParameters {
-
-        @Parameter(names = "--renderGroup", description = "Index (1-n) that identifies portion of layer to render (omit if only one job is being used)", required = false)
-        private Integer renderGroup = 1;
-
-        @Parameter(names = "--numberOfRenderGroups", description = "Total number of parallel jobs being used to render this layer (omit if only one job is being used)", required = false)
-        private Integer numberOfRenderGroups = 1;
-
-        @Parameter(description = "Z values for layers to render", required = true)
-        private List<Double> zValues;
-
-        public Parameters() {
-            this(new CommonParameters(), new ArrayList<Double>());
-        }
-
-        public Parameters(final CommonParameters commonParameters,
-                          final List<Double> zValues) {
-            super(commonParameters.baseDataUrl,
-                  commonParameters.owner, commonParameters.project, commonParameters.stack,
-                  commonParameters.rootDirectory, commonParameters.format,
-                  commonParameters.minLevel, commonParameters.maxLevel, commonParameters.forceGeneration);
-            this.zValues = zValues;
-        }
+        public List<Double> zValues;
 
     }
 
@@ -154,11 +63,12 @@ public class MipmapClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, MipmapClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final MipmapClient client = new MipmapClient(parameters);
+                final MipmapClient client = new MipmapClient(parameters.renderWeb,
+                                                             parameters.mipmap);
                 for (final Double z : parameters.zValues) {
                     client.generateMipmapsForZ(z);
                 }
@@ -168,13 +78,14 @@ public class MipmapClient {
         clientRunner.run();
     }
 
-    private final Parameters parameters;
+    private final MipmapParameters parameters;
 
     private final String stack;
     private final MipmapPathBuilder mipmapPathBuilder;
     private final RenderDataClient renderDataClient;
 
-    public MipmapClient(final Parameters parameters)
+    public MipmapClient(final RenderWebServiceParameters renderWebParameters,
+                        final MipmapParameters parameters)
             throws IOException {
 
         this.parameters = parameters;
@@ -204,9 +115,7 @@ public class MipmapClient {
                     "renderGroup (1-n) must be specified when numberOfRenderGroups are specified");
         }
 
-        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                     parameters.owner,
-                                                     parameters.project);
+        this.renderDataClient = renderWebParameters.getDataClient();
     }
 
     public MipmapPathBuilder getMipmapPathBuilder() {

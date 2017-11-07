@@ -27,11 +27,11 @@ import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.CommandLineParameters;
-import org.janelia.render.client.parameters.MatchClipParameters;
-import org.janelia.render.client.parameters.MatchDataClientParameters;
-import org.janelia.render.client.parameters.MatchDerivationParameters;
-import org.janelia.render.client.parameters.MatchRenderParameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchClipParameters;
+import org.janelia.render.client.parameter.MatchDerivationParameters;
+import org.janelia.render.client.parameter.MatchRenderParameters;
+import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.janelia.render.client.spark.cache.CanvasDataCache;
 import org.janelia.render.client.spark.cache.CanvasFeatureListLoader;
 import org.slf4j.Logger;
@@ -48,7 +48,7 @@ public class SIFTPointMatchClient
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MatchDataClientParameters matchClient = new MatchDataClientParameters();
+        public MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
 
         @ParametersDelegate
         public MatchRenderParameters matchRender = new MatchRenderParameters();
@@ -75,7 +75,7 @@ public class SIFTPointMatchClient
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, SIFTPointMatchClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -117,8 +117,7 @@ public class SIFTPointMatchClient
 
         LOG.info("generateMatchesForPairFile: pairJsonFileName is {}", pairJsonFileName);
 
-        final RenderableCanvasIdPairs renderableCanvasIdPairs =
-                RenderableCanvasIdPairsUtilities.load(pairJsonFileName);
+        final RenderableCanvasIdPairs renderableCanvasIdPairs = RenderableCanvasIdPairs.load(pairJsonFileName);
         generateMatchesForPairs(sparkContext,
                                 renderableCanvasIdPairs,
                                 parameters.matchClient,
@@ -129,7 +128,7 @@ public class SIFTPointMatchClient
 
     public static long generateMatchesForPairs(final JavaSparkContext sparkContext,
                                                final RenderableCanvasIdPairs renderableCanvasIdPairs,
-                                               final MatchDataClientParameters matchClientParameters,
+                                               final MatchWebServiceParameters matchClientParameters,
                                                final MatchRenderParameters matchRenderParameters,
                                                final MatchDerivationParameters matchParameters,
                                                final MatchClipParameters clipParameters)

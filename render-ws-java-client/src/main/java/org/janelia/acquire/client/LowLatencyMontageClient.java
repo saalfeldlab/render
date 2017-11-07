@@ -1,6 +1,7 @@
 package org.janelia.acquire.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,7 +30,9 @@ import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.ImportJsonClient;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.RenderDataClientParametersWithValidator;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,41 +44,73 @@ import org.slf4j.LoggerFactory;
  */
 public class LowLatencyMontageClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParametersWithValidator {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, --project, --validatorClass, and --validatorData parameters defined in RenderDataClientParameters
-        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(names = "--finalStackState", description = "State render stack should have after import (default is COMPLETE)", required = false)
-        private StackMetaData.StackState finalStackState;
+        @ParametersDelegate
+        public TileSpecValidatorParameters tileSpecValidator = new TileSpecValidatorParameters();
 
-        @Parameter(names = "--transformFile", description = "File containing shared JSON transform specs (.json, .gz, or .zip)", required = false)
-        private String transformFile;
+        @Parameter(
+                names = "--finalStackState",
+                description = "State render stack should have after import (default is COMPLETE)",
+                required = false)
+        public StackMetaData.StackState finalStackState;
 
-        @Parameter(names = "--baseAcquisitionUrl", description = "Base URL for acquisiiton data (e.g. http://host[:port]/???/v1)", required = true)
-        private String baseAcquisitionUrl;
+        @Parameter(
+                names = "--transformFile",
+                description = "File containing shared JSON transform specs (.json, .gz, or .zip)",
+                required = false)
+        public String transformFile;
 
-        @Parameter(names = "--acquisitionId", description = "Acquisition identifier for limiting tiles to a known acquisition", required = false)
-        private Long acquisitionId;
+        @Parameter(
+                names = "--baseAcquisitionUrl",
+                description = "Base URL for acquisiiton data (e.g. http://host[:port]/???/v1)",
+                required = true)
+        public String baseAcquisitionUrl;
 
-        @Parameter(names = "--acquisitionTileState", description = "Only process acquisition tiles that are in this state (default is READY)", required = false)
-        private AcquisitionTileState acquisitionTileState = AcquisitionTileState.READY;
+        @Parameter(
+                names = "--acquisitionId",
+                description = "Acquisition identifier for limiting tiles to a known acquisition",
+                required = false)
+        public Long acquisitionId;
 
-        @Parameter(names = "--acquisitionTileCount", description = "Maximum number of acquisition tiles to retrieve in each request", required = false)
-        private Integer acquisitionTileCount = 1;
+        @Parameter(
+                names = "--acquisitionTileState",
+                description = "Only process acquisition tiles that are in this state (default is READY)",
+                required = false)
+        public AcquisitionTileState acquisitionTileState = AcquisitionTileState.READY;
 
-        @Parameter(names = "--waitSeconds", description = "Number of seconds to wait before checking for newly acquired tiles (default 5)", required = false)
-        private int waitSeconds = 5;
+        @Parameter(
+                names = "--acquisitionTileCount",
+                description = "Maximum number of acquisition tiles to retrieve in each request",
+                required = false)
+        public Integer acquisitionTileCount = 1;
 
-        @Parameter(names = "--montageScript", description = "Full path of the montage generator script (e.g. /groups/flyTEM/.../montage_section_SL)", required = false)
-        private String montageScript;
+        @Parameter(
+                names = "--waitSeconds",
+                description = "Number of seconds to wait before checking for newly acquired tiles (default 5)",
+                required = false)
+        public int waitSeconds = 5;
 
-        @Parameter(names = "--montageParametersFile", description = "File containing JSON parameters for montage generation", required = false)
-        private String montageParametersFile;
+        @Parameter(
+                names = "--montageScript",
+                description = "Full path of the montage generator script (e.g. /groups/flyTEM/.../montage_section_SL)",
+                required = false)
+        public String montageScript;
 
-        @Parameter(names = "--montageWorkDirectory", description = "Parent directory for montage input data files (e.g. /nobackup/flyTEM/montage_work)", required = false)
-        private String montageWorkDirectory;
+        @Parameter(
+                names = "--montageParametersFile",
+                description = "File containing JSON parameters for montage generation",
+                required = false)
+        public String montageParametersFile;
+
+        @Parameter(
+                names = "--montageWorkDirectory",
+                description = "Parent directory for montage input data files (e.g. /nobackup/flyTEM/montage_work)",
+                required = false)
+        public String montageWorkDirectory;
 
         public void validate()
                 throws IllegalArgumentException {
@@ -99,7 +134,7 @@ public class LowLatencyMontageClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, LowLatencyMontageClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -136,7 +171,7 @@ public class LowLatencyMontageClient {
     public LowLatencyMontageClient(final Parameters parameters)
             throws IOException {
         this.parameters = parameters;
-        this.tileSpecValidator = parameters.getValidatorInstance();
+        this.tileSpecValidator = parameters.tileSpecValidator.getValidatorInstance();
 
         this.acquisitionDataClient = new AcquisitionDataClient(parameters.baseAcquisitionUrl);
 
@@ -228,7 +263,7 @@ public class LowLatencyMontageClient {
             final String acquireStackName = baseStackName + "_acquire";
             final String montageStackName = baseStackName + "_montage";
 
-            final RenderDataClient renderDataClient = new RenderDataClient(parameters.baseDataUrl,
+            final RenderDataClient renderDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                                            ownerName,
                                                                            projectName);
 
@@ -314,13 +349,13 @@ public class LowLatencyMontageClient {
         transformSpecsCopy.addAll(transformSpecs);
         final ResolvedTileSpecCollection resolvedTiles =
                 new ResolvedTileSpecCollection(transformSpecsCopy,
-                                               new ArrayList<TileSpec>(8192));
+                                               new ArrayList<>(8192));
         resolvedTiles.setTileSpecValidator(tileSpecValidator);
 
         final AcquisitionTileIdList completedTileIds = new AcquisitionTileIdList(AcquisitionTileState.COMPLETE,
-                                                                                 new ArrayList<String>(8192));
+                                                                                 new ArrayList<>(8192));
         final AcquisitionTileIdList failedTileIds = new AcquisitionTileIdList(AcquisitionTileState.FAILED,
-                                                                              new ArrayList<String>());
+                                                                              new ArrayList<>());
 
         final ProcessTimer timer = new ProcessTimer();
         AcquisitionTileList acquisitionTileList;
@@ -443,11 +478,11 @@ public class LowLatencyMontageClient {
         final MontageParameters montageParameters = MontageParameters.load(parameters.montageParametersFile);
 
         montageParameters.setSourceCollection(
-                new AlignmentRenderCollection(parameters.baseDataUrl,
+                new AlignmentRenderCollection(parameters.renderWeb.baseDataUrl,
                                               owner, project, acquireStack));
 
         montageParameters.setTargetCollection(
-                new AlignmentRenderCollection(parameters.baseDataUrl,
+                new AlignmentRenderCollection(parameters.renderWeb.baseDataUrl,
                                               owner, project, montageStack));
 
         final File montageWorkStackDir = Paths.get(parameters.montageWorkDirectory,

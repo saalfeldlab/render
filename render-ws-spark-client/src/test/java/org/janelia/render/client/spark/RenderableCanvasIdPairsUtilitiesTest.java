@@ -15,7 +15,7 @@ public class RenderableCanvasIdPairsUtilitiesTest {
     public void testLoad() throws Exception {
 
         final RenderableCanvasIdPairs renderableCanvasIdPairs =
-                RenderableCanvasIdPairsUtilities.load("src/test/resources/tile_pairs_v12_acquire_merged_1_5.json");
+                RenderableCanvasIdPairs.load("src/test/resources/tile_pairs_v12_acquire_merged_1_5.json");
 
         Assert.assertNotNull("pairs not loaded", renderableCanvasIdPairs);
 

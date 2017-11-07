@@ -1,4 +1,4 @@
-package org.janelia.render.client;
+package org.janelia.alignment.util;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Utility for reading and writing files.
+ * Shared file management utilities.
  *
  * @author Eric Trautman
  */
@@ -110,7 +110,33 @@ public class FileUtil {
         }
     }
 
+    public static boolean deleteRecursive(final File file) {
+
+        // could use Apache Commons FileUtils.delete but to have the logging, need to implement here
+
+        boolean deleteSuccessful = true;
+
+        if (file.isDirectory()){
+            final File[] files = file.listFiles();
+            if (files != null) {
+                for (final File f : files) {
+                    deleteSuccessful = deleteSuccessful && deleteRecursive(f);
+                }
+            }
+        }
+
+        if (file.delete()) {
+            LOG.info("deleted " + file.getAbsolutePath());
+        } else {
+            LOG.warn("failed to delete " + file.getAbsolutePath());
+            deleteSuccessful = false;
+        }
+
+        return deleteSuccessful;
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(FileUtil.class);
 
     private static final int DEFAULT_BUFFER_SIZE = 65536;
+
 }

@@ -4,10 +4,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.net.URISyntaxException;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +13,8 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
-import org.janelia.render.client.parameters.MatchDataClientParameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,9 +29,12 @@ public class StorePotentialTilePairsClient {
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MatchDataClientParameters matchClient = new MatchDataClientParameters();
+        public MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
 
-        @Parameter(names = "--pairJson", description = "JSON file where potential tile pairs are stored (.json, .gz, or .zip)", required = true)
+        @Parameter(
+                names = "--pairJson",
+                description = "JSON file where potential tile pairs are stored (.json, .gz, or .zip)",
+                required = true)
         public List<String> pairJson;
 
     }
@@ -45,7 +46,7 @@ public class StorePotentialTilePairsClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, StorePotentialTilePairsClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -80,7 +81,7 @@ public class StorePotentialTilePairsClient {
 
         LOG.info("storeEmptyMatchesForPairFile: pairJsonFileName is {}", pairJsonFileName);
 
-        final RenderableCanvasIdPairs renderableCanvasIdPairs = load(pairJsonFileName);
+        final RenderableCanvasIdPairs renderableCanvasIdPairs = RenderableCanvasIdPairs.load(pairJsonFileName);
         final List<OrderedCanvasIdPair> pairList = renderableCanvasIdPairs.getNeighborPairs();
         final List<CanvasMatches> matchesList = new ArrayList<>(pairList.size());
         final Matches emptyMatches = new Matches(new double[1][0], new double[1][0], new double[0]);
@@ -98,30 +99,6 @@ public class StorePotentialTilePairsClient {
         }
 
         LOG.info("storeEmptyMatchesForPairFile: exit");
-    }
-
-    /**
-     * @return pairs object loaded from the specified file.
-     */
-    private static RenderableCanvasIdPairs load(final String dataFile)
-            throws IOException, IllegalArgumentException {
-
-        // TODO: this was cut-and-pasted from spark client module, but should be refactored into render-app for common use
-
-        final RenderableCanvasIdPairs renderableCanvasIdPairs;
-
-        final Path path = FileSystems.getDefault().getPath(dataFile).toAbsolutePath();
-
-        LOG.info("load: entry, path={}", path);
-
-        try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(path.toString())) {
-            renderableCanvasIdPairs = RenderableCanvasIdPairs.fromJson(reader);
-        }
-
-        LOG.info("load: exit, loaded {} pairs", renderableCanvasIdPairs.size());
-
-
-        return renderableCanvasIdPairs;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(StorePotentialTilePairsClient.class);

@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.util.List;
@@ -9,6 +10,9 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,14 +23,19 @@ import org.slf4j.LoggerFactory;
  */
 public class TransformSectionClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParametersWithValidator {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
-        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(names = "--stack", description = "Stack name", required = true)
-        private String stack;
+        @ParametersDelegate
+        public TileSpecValidatorParameters tileSpecValidator = new TileSpecValidatorParameters();
+
+        @Parameter(
+                names = "--stack",
+                description = "Stack name",
+                required = true)
+        public String stack;
 
         @Parameter(
                 names = "--targetProject",
@@ -40,21 +49,36 @@ public class TransformSectionClient {
                 required = false)
         private String targetStack;
 
-        @Parameter(names = "--transformId", description = "Identifier for tranformation", required = true)
-        private String transformId;
+        @Parameter(
+                names = "--transformId",
+                description = "Identifier for transformation",
+                required = true)
+        public String transformId;
 
-        @Parameter(names = "--transformClass", description = "Name of transformation implementation (java) class", required = true)
-        private String transformClass;
+        @Parameter(
+                names = "--transformClass",
+                description = "Name of transformation implementation (java) class",
+                required = true)
+        public String transformClass;
 
         // TODO: figure out less hacky way to handle spaces in transform data string
-        @Parameter(names = "--transformData", description = "Data with which transformation implementation should be initialized (expects values to be separated by ',' instead of ' ')", required = true)
-        private String transformData;
+        @Parameter(
+                names = "--transformData",
+                description = "Data with which transformation implementation should be initialized (expects values to be separated by ',' instead of ' ')",
+                required = true)
+        public String transformData;
 
-        @Parameter(names = "--replaceLast", description = "Replace each tile's last transform with this one (default is to append new transform)", required = false, arity = 0)
-        private boolean replaceLast;
+        @Parameter(
+                names = "--replaceLast",
+                description = "Replace each tile's last transform with this one (default is to append new transform)",
+                required = false,
+                arity = 0)
+        public boolean replaceLast;
 
-        @Parameter(description = "Z values", required = true)
-        private List<String> zValues;
+        @Parameter(
+                description = "Z values",
+                required = true)
+        public List<String> zValues;
 
         public String getTargetStack() {
             if ((targetStack == null) || (targetStack.trim().length() == 0)) {
@@ -70,7 +94,7 @@ public class TransformSectionClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, TransformSectionClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -102,19 +126,17 @@ public class TransformSectionClient {
                                                     parameters.transformClass,
                                                     parameters.transformData.replace(',', ' '));
 
-        this.tileSpecValidator = parameters.getValidatorInstance();
+        this.tileSpecValidator = parameters.tileSpecValidator.getValidatorInstance();
 
-        this.sourceRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                           parameters.owner,
-                                                           parameters.project);
+        this.sourceRenderDataClient = parameters.renderWeb.getDataClient();
 
         if ((parameters.targetProject == null) ||
             (parameters.targetProject.trim().length() == 0) ||
-            (parameters.targetProject.equals(parameters.project))) {
+            (parameters.targetProject.equals(parameters.renderWeb.project))) {
             this.targetRenderDataClient = sourceRenderDataClient;
         } else {
-            this.targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                               parameters.owner,
+            this.targetRenderDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                               parameters.renderWeb.owner,
                                                                parameters.targetProject);
         }
 

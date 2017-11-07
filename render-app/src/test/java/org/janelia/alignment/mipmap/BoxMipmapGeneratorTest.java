@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.util.LabelImageProcessorCache;
@@ -85,7 +86,8 @@ public class BoxMipmapGeneratorTest {
 
     @After
     public void tearDown() throws Exception {
-        deleteRecursive(testDirectory);
+
+        FileUtil.deleteRecursive(testDirectory);
     }
 
     @Test
@@ -217,30 +219,6 @@ public class BoxMipmapGeneratorTest {
                            overviewFile.exists());
 
         return nextLevelGenerator;
-    }
-
-    // TODO: replace with Apache Commons FileUtils.delete
-    public static boolean deleteRecursive(final File file) {
-
-        boolean deleteSuccessful = true;
-
-        if (file.isDirectory()){
-            final File[] files = file.listFiles();
-            if (files != null) {
-                for (final File f : files) {
-                    deleteSuccessful = deleteSuccessful && deleteRecursive(f);
-                }
-            }
-        }
-
-        if (file.delete()) {
-            LOG.info("deleted " + file.getAbsolutePath());
-        } else {
-            LOG.warn("failed to delete " + file.getAbsolutePath());
-            deleteSuccessful = false;
-        }
-
-        return deleteSuccessful;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(BoxMipmapGeneratorTest.class);

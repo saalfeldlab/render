@@ -1,6 +1,7 @@
 package org.janelia.render.client.spark;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -28,7 +29,9 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.RenderDataClientParameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,16 +42,19 @@ import org.slf4j.LoggerFactory;
  */
 public class CopyStackClient implements Serializable {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
+
+        @ParametersDelegate
+        public ZRangeParameters layerRange = new ZRangeParameters();
 
         @Parameter(
                 names = "--stack",
                 description = "Name of source stack",
                 required = true)
-        private String stack;
+        public String stack;
 
         @Parameter(
                 names = "--targetOwner",
@@ -66,29 +72,17 @@ public class CopyStackClient implements Serializable {
                 names = "--targetStack",
                 description = "Name of target stack",
                 required = true)
-        private String targetStack;
-
-        @Parameter(
-                names = "--minZ",
-                description = "Minimum Z value for sections to be copied",
-                required = false)
-        private Double minZ;
-
-        @Parameter(
-                names = "--maxZ",
-                description = "Maximum Z value for sections to be copied",
-                required = false)
-        private Double maxZ;
+        public String targetStack;
 
         @Parameter(
                 names = "--z",
                 description = "Explicit z values for sections to be processed",
                 required = false,
                 variableArity = true) // e.g. --z 20.0 21.0 22.0
-        private List<Double> zValues;
+        public List<Double> zValues;
 
         public Set<Double> getZValues() {
-            return (zValues == null) ? Collections.emptySet() : new HashSet<Double>(zValues);
+            return (zValues == null) ? Collections.emptySet() : new HashSet<>(zValues);
         }
 
         @Parameter(
@@ -96,25 +90,25 @@ public class CopyStackClient implements Serializable {
                 description = "If necessary, translate copied stack so that it's minX and minY are near the origin (default is to copy exact location)",
                 required = false,
                 arity = 0)
-        private boolean moveToOrigin = false;
+        public boolean moveToOrigin = false;
 
         @Parameter(
                 names = "--excludeTileIdsMissingFromStacks",
                 description = "Name(s) of stack(s) that contain ids of tiles to be included in target stack (assumes owner and project are same as source stack).",
                 variableArity = true,
                 required = false)
-        private List<String> excludeTileIdsMissingFromStacks;
+        public List<String> excludeTileIdsMissingFromStacks;
 
         public String getTargetOwner() {
             if (targetOwner == null) {
-                targetOwner = owner;
+                targetOwner = renderWeb.owner;
             }
             return targetOwner;
         }
 
         public String getTargetProject() {
             if (targetProject == null) {
-                targetProject = project;
+                targetProject = renderWeb.project;
             }
             return targetProject;
         }
@@ -127,7 +121,7 @@ public class CopyStackClient implements Serializable {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, CopyStackClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -156,14 +150,13 @@ public class CopyStackClient implements Serializable {
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
 
-        final RenderDataClient sourceDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                       parameters.owner,
-                                                                       parameters.project);
+        final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
 
-        final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(parameters.stack,
-                                                                                       parameters.minZ,
-                                                                                       parameters.maxZ,
-                                                                                       parameters.getZValues());
+        final List<SectionData> sectionDataList =
+                sourceDataClient.getStackSectionData(parameters.stack,
+                                                     parameters.layerRange.minZ,
+                                                     parameters.layerRange.maxZ,
+                                                     parameters.getZValues());
         if (sectionDataList.size() == 0) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
@@ -173,7 +166,7 @@ public class CopyStackClient implements Serializable {
         final LayerDistributor layerDistributor = new LayerDistributor(numberOfCores);
         final List<List<Double>> batchedZValues = layerDistributor.distribute(sectionDataList);
 
-        final RenderDataClient targetDataClient = new RenderDataClient(parameters.baseDataUrl,
+        final RenderDataClient targetDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                                        parameters.getTargetOwner(),
                                                                        parameters.getTargetProject());
 
@@ -211,11 +204,9 @@ public class CopyStackClient implements Serializable {
 
         final Function<List<Double>, Long> copyFunction = (Function<List<Double>, Long>) zBatch -> {
 
-            final RenderDataClient localSourceDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                                parameters.owner,
-                                                                                parameters.project);
+            final RenderDataClient localSourceDataClient = parameters.renderWeb.getDataClient();
 
-            final RenderDataClient localTargetDataClient = new RenderDataClient(parameters.baseDataUrl,
+            final RenderDataClient localTargetDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                                                 parameters.getTargetOwner(),
                                                                                 parameters.getTargetProject());
 

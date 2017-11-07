@@ -1,11 +1,10 @@
 package org.janelia.render.client.spark;
 
-import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.URISyntaxException;
-import java.util.Collections;
 import java.util.List;
 
 import org.apache.spark.SparkConf;
@@ -14,6 +13,10 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MipmapParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,22 +29,16 @@ import org.slf4j.LoggerFactory;
 public class MipmapClient
         implements Serializable {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends org.janelia.render.client.MipmapClient.CommonParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: most parameters defined in MipmapClient.CommonParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(
-                names = "--minZ",
-                description = "Minimum Z value for mipmap tiles",
-                required = false)
-        private Double minZ;
+        @ParametersDelegate
+        public MipmapParameters mipmap = new MipmapParameters();
 
-        @Parameter(
-                names = "--maxZ",
-                description = "Maximum Z value for mipmap tiles",
-                required = false)
-        private Double maxZ;
+        @ParametersDelegate
+        public ZRangeParameters layerRange = new ZRangeParameters();
 
     }
 
@@ -51,7 +48,7 @@ public class MipmapClient
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, MipmapClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -80,13 +77,11 @@ public class MipmapClient
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
 
-        final RenderDataClient sourceDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                       parameters.owner,
-                                                                       parameters.project);
+        final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
 
-        final List<Double> zValues = sourceDataClient.getStackZValues(parameters.stack,
-                                                                      parameters.minZ,
-                                                                      parameters.maxZ);
+        final List<Double> zValues = sourceDataClient.getStackZValues(parameters.mipmap.stack,
+                                                                      parameters.layerRange.minZ,
+                                                                      parameters.layerRange.maxZ);
 
         if (zValues.size() == 0) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
@@ -94,17 +89,12 @@ public class MipmapClient
 
         final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
 
-        final Function<Double, Integer> mipmapFunction = new Function<Double, Integer>() {
-
-            final
-            @Override
-            public Integer call(final Double z)
-                    throws Exception {
-
-                LogUtilities.setupExecutorLog4j("z " + z);
-                final org.janelia.render.client.MipmapClient mc = getCoreMipmapClient(parameters, z);
-                return mc.generateMipmapsForZ(z);
-            }
+        final Function<Double, Integer> mipmapFunction = (Function<Double, Integer>) z -> {
+            LogUtilities.setupExecutorLog4j("z " + z);
+            final org.janelia.render.client.MipmapClient mc =
+                    new org.janelia.render.client.MipmapClient(parameters.renderWeb,
+                                                               parameters.mipmap);
+            return mc.generateMipmapsForZ(z);
         };
 
         final JavaRDD<Integer> rddTileCounts = rddZValues.map(mipmapFunction);
@@ -118,20 +108,12 @@ public class MipmapClient
         LOG.info("run: collected stats");
         LOG.info("run: generated mipmaps for {} tiles", total);
 
-        final org.janelia.render.client.MipmapClient mc = getCoreMipmapClient(parameters, null);
+        final org.janelia.render.client.MipmapClient mc =
+                new org.janelia.render.client.MipmapClient(parameters.renderWeb,
+                                                           parameters.mipmap);
         mc.updateMipmapPathBuilderForStack();
 
         sparkContext.stop();
-    }
-
-    private static org.janelia.render.client.MipmapClient getCoreMipmapClient(final Parameters parameters,
-                                                                              final Double z)
-            throws IOException {
-
-        final org.janelia.render.client.MipmapClient.Parameters p =
-                new org.janelia.render.client.MipmapClient.Parameters(parameters,
-                                                                      Collections.singletonList(z));
-        return new org.janelia.render.client.MipmapClient(p);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MipmapClient.class);

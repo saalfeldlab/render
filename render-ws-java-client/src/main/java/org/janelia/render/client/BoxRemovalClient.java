@@ -7,6 +7,7 @@ import java.io.Serializable;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,20 +21,30 @@ import org.slf4j.LoggerFactory;
  */
 public class BoxRemovalClient implements Serializable {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends CommandLineParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        @Parameter(names = "--stackDirectory", description = "Stack directory containing boxes to remove (e.g. /tier2/flyTEM/nobackup/rendered_boxes/FAFB00/v7_align_tps/8192x8192)", required = true)
-        private String stackDirectory;
+        @Parameter(
+                names = "--stackDirectory",
+                description = "Stack directory containing boxes to remove (e.g. /tier2/flyTEM/nobackup/rendered_boxes/FAFB00/v7_align_tps/8192x8192)",
+                required = true)
+        public String stackDirectory;
 
-        @Parameter(names = "--minLevel", description = "Minimum mipmap level to remove", required = false)
-        private int minLevel = 0;
+        @Parameter(
+                names = "--minLevel",
+                description = "Minimum mipmap level to remove",
+                required = false)
+        public int minLevel = 0;
 
-        @Parameter(names = "--maxLevel", description = "Maximum mipmap level to remove (values > 8 will also delete small overview images)", required = false)
-        private int maxLevel = 9;
+        @Parameter(
+                names = "--maxLevel",
+                description = "Maximum mipmap level to remove (values > 8 will also delete small overview images)",
+                required = false)
+        public int maxLevel = 9;
 
-        @Parameter(description = "Z values for layers to remove", required = true)
-        private List<Double> zValues;
+        @Parameter(
+                description = "Z values for layers to remove",
+                required = true)
+        public List<Double> zValues;
 
     }
 
@@ -46,7 +57,7 @@ public class BoxRemovalClient implements Serializable {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, BoxRemovalClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 

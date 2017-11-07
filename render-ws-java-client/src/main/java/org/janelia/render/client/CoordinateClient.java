@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -29,7 +30,10 @@ import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ProcessTimer;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,63 +47,88 @@ import org.slf4j.LoggerFactory;
  */
 public class CoordinateClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(names = "--stack", description = "Stack name", required = true)
-        private String stack;
-
-        @Parameter(names = "--z", description = "Z value for all source coordinates", required = false)
-        private Double z;
+        @Parameter(
+                names = "--stack",
+                description = "Stack name",
+                required = true)
+        public String stack;
 
         @Parameter(
                 names = "--toOwner",
                 description = "Name of target stack owner (for round trip mapping, default is source owner)",
                 required = false)
-        private String toOwner;
+        public String toOwner;
 
         @Parameter(
                 names = "--toProject",
                 description = "Name of target stack project (for round trip mapping, default is source owner)",
                 required = false)
-        private String toProject;
+        public String toProject;
 
         @Parameter(
                 names = "--toStack",
                 description = "Name of target stack (for round trip mapping, omit for one way mapping)",
                 required = false)
-        private String toStack;
+        public String toStack;
 
-        @Parameter(names = "--fromSwcDirectory", description = "directory containing source .swc files", required = false)
-        private String fromSwcDirectory;
+        @Parameter(
+                names = "--z",
+                description = "Z value for all source coordinates",
+                required = false)
+        public Double z;
 
-        @Parameter(names = "--toSwcDirectory", description = "directory to write target .swc files with mapped coordinates", required = false)
-        private String toSwcDirectory;
+        @Parameter(
+                names = "--fromJson",
+                description = "JSON file containing coordinates to be mapped (.json, .gz, or .zip)",
+                required = false)
+        public String fromJson;
 
-        @Parameter(names = "--fromJson", description = "JSON file containing coordinates to be mapped (.json, .gz, or .zip)", required = false)
-        private String fromJson;
-
-        @Parameter(names = "--toJson", description = "JSON file where mapped coordinates are to be stored (.json, .gz, or .zip)", required = false)
+        @Parameter(
+                names = "--toJson",
+                description = "JSON file where mapped coordinates are to be stored (.json, .gz, or .zip)",
+                required = false)
         private String toJson;
 
-        @Parameter(names = "--localToWorld", description = "Convert from local to world coordinates (default is to convert from world to local)", required = false, arity = 0)
-        private boolean localToWorld = false;
+        @Parameter(
+                names = "--localToWorld",
+                description = "Convert from local to world coordinates (default is to convert from world to local)",
+                required = false,
+                arity = 0)
+        public boolean localToWorld = false;
 
-        @Parameter(names = "--numberOfThreads", description = "Number of threads to use for conversion", required = false)
-        private int numberOfThreads = 1;
+        @Parameter(
+                names = "--fromSwcDirectory",
+                description = "directory containing source .swc files",
+                required = false)
+        public String fromSwcDirectory;
+
+        @Parameter(
+                names = "--toSwcDirectory",
+                description = "directory to write target .swc files with mapped coordinates",
+                required = false)
+        public String toSwcDirectory;
+
+        @Parameter(
+                names = "--numberOfThreads",
+                description = "Number of threads to use for conversion",
+                required = false)
+        public int numberOfThreads = 1;
 
         public String getToOwner() {
             if (toOwner == null) {
-                toOwner = owner;
+                toOwner = renderWeb.owner;
             }
             return toOwner;
         }
 
         public String getToProject() {
             if (toProject == null) {
-                toProject = project;
+                toProject = renderWeb.project;
             }
             return toProject;
         }
@@ -170,14 +199,12 @@ public class CoordinateClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, CoordinateClient.class);
+                parameters.parse(args);
                 parameters.validateInputAndOutput();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final RenderDataClient renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                               parameters.owner,
-                                                                               parameters.project);
+                final RenderDataClient renderDataClient = parameters.renderWeb.getDataClient();
 
                 final CoordinateClient client = new CoordinateClient(parameters.stack,
                                                                      parameters.z,
@@ -200,9 +227,10 @@ public class CoordinateClient {
                 } else {
 
 
-                    final RenderDataClient targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                                         parameters.getToOwner(),
-                                                                                         parameters.getToProject());
+                    final RenderDataClient targetRenderDataClient =
+                            new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                 parameters.getToOwner(),
+                                                 parameters.getToProject());
 
                     final CoordinateClient targetClient = new CoordinateClient(parameters.toStack,
                                                                                null,

@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -14,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,16 +27,22 @@ import org.slf4j.LoggerFactory;
  */
 public class ImportTileZValuesClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(names = "--stack", description = "Name of stack containing tile specifications", required = true)
-        private String stack;
+        @Parameter(
+                names = "--stack",
+                description = "Name of stack containing tile specifications",
+                required = true)
+        public String stack;
 
-        @Parameter(names = "--dataFile", description = "File containing tileId to z value mappings", required = true)
-        private String dataFile;
+        @Parameter(
+                names = "--dataFile",
+                description = "File containing tileId to z value mappings",
+                required = true)
+        public String dataFile;
 
     }
 
@@ -43,7 +52,7 @@ public class ImportTileZValuesClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, ImportTileZValuesClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -65,9 +74,7 @@ public class ImportTileZValuesClient {
             throws IOException {
         this.parameters = parameters;
 
-        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                     parameters.owner,
-                                                     parameters.project);
+        this.renderDataClient = parameters.renderWeb.getDataClient();
 
         this.renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
 

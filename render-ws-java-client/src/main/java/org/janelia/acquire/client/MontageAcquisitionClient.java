@@ -1,6 +1,7 @@
 package org.janelia.acquire.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,7 +18,9 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.RenderDataClientParametersWithValidator;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,42 +31,78 @@ import org.slf4j.LoggerFactory;
  */
 public class MontageAcquisitionClient {
 
-    @SuppressWarnings("ALL")
-    static class Parameters extends RenderDataClientParametersWithValidator {
+    static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, --project, --validatorClass, and --validatorData parameters defined in RenderDataClientParameters
-        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(names = "--stackId", description = "identifier of the stack to be processed", required = false)
-        private String stackId;
+        @ParametersDelegate
+        public TileSpecValidatorParameters tileSpecValidator = new TileSpecValidatorParameters();
 
-        @Parameter(names = "--stackFilter", description = "Regex the must be satisified by the stacks that need to be processed")
-        private String stackFilter = "\\d+_acquire";
+        @Parameter(
+                names = "--stackId",
+                description = "identifier of the stack to be processed",
+                required = false)
+        public String stackId;
 
-        @Parameter(names = "--aggregatedAcquireStack", description = "The name of the aggregated acquire stack", required = true)
-        private String aggregatedAcquireStack = null;
+        @Parameter(
+                names = "--stackFilter",
+                description = "Regex the must be satisified by the stacks that need to be processed")
+        public String stackFilter = "\\d+_acquire";
 
-        @Parameter(names = "--targetOwner", description = "owner of the montaged collection", required = false)
-        private String targetOwner = null;
+        @Parameter(
+                names = "--aggregatedAcquireStack",
+                description = "The name of the aggregated acquire stack",
+                required = true)
+        public String aggregatedAcquireStack = null;
 
-        @Parameter(names = "--targetProject", description = "project of the montaged collection", required = false)
-        private String targetProject = null;
+        @Parameter(
+                names = "--targetOwner",
+                description = "owner of the montaged collection",
+                required = false)
+        public String targetOwner = null;
 
-        @Parameter(names = "--targetStack", description = "stack of the montaged collection", required = false)
-        private String targetStack = null;
+        @Parameter(
+                names = "--targetProject",
+                description = "project of the montaged collection",
+                required = false)
+        public String targetProject = null;
 
-        @Parameter(names = "--montageScript", description = "Full path of the montage generator script (e.g. /groups/flyTEM/.../montage_section_SL)", required = false)
-        private String montageScript;
+        @Parameter(
+                names = "--targetStack",
+                description = "stack of the montaged collection",
+                required = false)
+        public String targetStack = null;
 
-        @Parameter(names = "--montageParametersFile", description = "File containing JSON parameters for montage generation", required = false)
-        private String montageParametersFile;
+        @Parameter(
+                names = "--montageScript",
+                description = "Full path of the montage generator script (e.g. /groups/flyTEM/.../montage_section_SL)",
+                required = false)
+        public String montageScript;
 
-        @Parameter(names = "--montageWorkDirectory", description = "Parent directory for montage input data files (e.g. /nobackup/flyTEM/montage_work)", required = false)
-        private String montageWorkDirectory;
+        @Parameter(
+                names = "--montageParametersFile",
+                description = "File containing JSON parameters for montage generation",
+                required = false)
+        public String montageParametersFile;
 
-        @Parameter(names = "--waitSeconds", description = "Number of seconds to wait before checking for newly acquired tiles (default 5)", required = false)
-        private int waitSeconds = 5;
-        @Parameter(names = "--doNotAggregateSources", arity = 0, description = "If the parameter is true it leaves the source collection as is and it will not aggregate it into a bigger collection", required = false)
+        @Parameter(
+                names = "--montageWorkDirectory",
+                description = "Parent directory for montage input data files (e.g. /nobackup/flyTEM/montage_work)",
+                required = false)
+        public String montageWorkDirectory;
+
+        @Parameter(
+                names = "--waitSeconds",
+                description = "Number of seconds to wait before checking for newly acquired tiles (default 5)",
+                required = false)
+        public int waitSeconds = 5;
+
+        @Parameter(
+                names = "--doNotAggregateSources",
+                arity = 0,
+                description = "If the parameter is true it leaves the source collection as is and it will not aggregate it into a bigger collection",
+                required = false)
         Boolean doNotAggregateSources;
 
         Boolean aggregateSources() {
@@ -88,7 +127,7 @@ public class MontageAcquisitionClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, MontageAcquisitionClient.class);
+                parameters.parse(args);
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 parameters.validate();
@@ -122,9 +161,7 @@ public class MontageAcquisitionClient {
 
     public MontageAcquisitionClient(final Parameters parameters)
             throws IOException {
-        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                parameters.owner,
-                parameters.project);
+        this.renderDataClient = parameters.renderWeb.getDataClient();
         this.parameters = parameters;
         this.failedStackIds = new HashSet<>();
     }
@@ -154,7 +191,7 @@ public class MontageAcquisitionClient {
     public List<StackId> retrieveStackIds(final MontageAcquisitionClient.Parameters stackFilter) throws IOException {
         final List<StackId> stackIds = renderDataClient.getOwnerStacks();
         return stackIds.stream()
-                .filter(s -> s.getProject().equals(stackFilter.project) && s.getStack().matches(stackFilter.stackFilter))
+                .filter(s -> s.getProject().equals(stackFilter.renderWeb.project) && s.getStack().matches(stackFilter.stackFilter))
                 .filter(s -> stackFilter.stackId == null || s.getStack().equals(stackFilter.stackId))
                 .collect(Collectors.toList());
     }
@@ -168,7 +205,11 @@ public class MontageAcquisitionClient {
         final MontageParameters montageParameters = MontageParameters.load(parameters.montageParametersFile);
 
         montageParameters.setSourceCollection(
-                new AlignmentRenderCollection(parameters.baseDataUrl, parameters.owner, parameters.project, stackId.getStack()));
+                new AlignmentRenderCollection(parameters.renderWeb.baseDataUrl,
+                                              parameters.renderWeb.owner,
+                                              parameters.renderWeb.project,
+                                              stackId.getStack()));
+
         if (parameters.targetOwner != null && parameters.targetOwner.trim().length() > 0) {
             montageParameters.getTargetCollection().setOwner(parameters.targetOwner.trim());
         }
@@ -188,8 +229,8 @@ public class MontageAcquisitionClient {
         }
 
         final File montageWorkStackDir = Paths.get(parameters.montageWorkDirectory,
-                parameters.project,
-                stackId.getStack()).toAbsolutePath().toFile();
+                                                   parameters.renderWeb.project,
+                                                   stackId.getStack()).toAbsolutePath().toFile();
 
         if (! montageWorkStackDir.exists()) {
             if (! montageWorkStackDir.mkdirs()) {

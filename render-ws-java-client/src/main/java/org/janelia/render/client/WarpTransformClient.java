@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.util.Collection;
 import java.util.List;
@@ -16,6 +17,10 @@ import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.warp.AbstractWarpTransformBuilder;
 import org.janelia.alignment.warp.MovingLeastSquaresBuilder;
 import org.janelia.alignment.warp.ThinPlateSplineBuilder;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.TileSpecValidatorParameters;
+import org.janelia.render.client.parameter.WarpStackParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,29 +31,34 @@ import org.slf4j.LoggerFactory;
  */
 public class WarpTransformClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParametersWithValidator {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
-        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(names = "--alignStack", description = "Align stack name", required = true)
-        private String alignStack;
+        @ParametersDelegate
+        public TileSpecValidatorParameters tileSpecValidator = new TileSpecValidatorParameters();
 
-        @Parameter(names = "--montageStack", description = "Montage stack name", required = true)
-        private String montageStack;
+        @ParametersDelegate
+        public WarpStackParameters warp = new WarpStackParameters();
 
-        @Parameter(names = "--targetStack", description = "Target stack (tps or mls) name", required = true)
-        private String targetStack;
+        @Parameter(
+                names = "--alpha",
+                description = "Alpha value for MLS transform",
+                required = false)
+        public Double alpha;
 
-        @Parameter(names = "--alpha", description = "Alpha value for MLS transform", required = false)
-        private Double alpha;
+        @Parameter(
+                names = "--deriveMLS",
+                description = "Derive moving least squares transforms instead of thin plate spline transforms",
+                required = false,
+                arity = 0)
+        public boolean deriveMLS;
 
-        @Parameter(names = "--deriveMLS", description = "Derive moving least squares transforms instead of thin plate spline transforms", required = false, arity = 0)
-        private boolean deriveMLS;
-
-        @Parameter(description = "Z values", required = true)
-        private List<String> zValues;
+        @Parameter(
+                description = "Z values",
+                required = true)
+        public List<String> zValues;
     }
 
     public static void main(final String[] args) {
@@ -57,7 +67,8 @@ public class WarpTransformClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, WarpTransformClient.class);
+                parameters.parse(args);
+                parameters.warp.initDefaultValues(parameters.renderWeb);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -76,20 +87,21 @@ public class WarpTransformClient {
     private final Parameters parameters;
     private final TileSpecValidator tileSpecValidator;
 
-    private final RenderDataClient renderDataClient;
+    private final RenderDataClient montageDataClient;
+    private final RenderDataClient alignDataClient;
+    private final RenderDataClient targetDataClient;
 
     public WarpTransformClient(final Parameters parameters) {
         this.parameters = parameters;
-        this.tileSpecValidator = parameters.getValidatorInstance();
-
-        this.renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                     parameters.owner,
-                                                     parameters.project);
+        this.tileSpecValidator = parameters.tileSpecValidator.getValidatorInstance();
+        this.montageDataClient = parameters.renderWeb.getDataClient();
+        this.alignDataClient = parameters.warp.getAlignDataClient();
+        this.targetDataClient = parameters.warp.getTargetDataClient();
     }
 
     public void setUpDerivedStack() throws Exception {
-        final StackMetaData montageStackMetaData = renderDataClient.getStackMetaData(parameters.montageStack);
-        renderDataClient.setupDerivedStack(montageStackMetaData, parameters.targetStack);
+        final StackMetaData montageStackMetaData = montageDataClient.getStackMetaData(parameters.warp.montageStack);
+        targetDataClient.setupDerivedStack(montageStackMetaData, parameters.warp.targetStack);
     }
 
     public void generateStackDataForZ(final Double z,
@@ -98,8 +110,10 @@ public class WarpTransformClient {
 
         LOG.info("generateStackDataForZ: entry, z={}, alpha={}", z, alpha);
 
-        final ResolvedTileSpecCollection montageTiles = renderDataClient.getResolvedTiles(parameters.montageStack, z);
-        final ResolvedTileSpecCollection alignTiles = renderDataClient.getResolvedTiles(parameters.alignStack, z);
+        final ResolvedTileSpecCollection montageTiles =
+                montageDataClient.getResolvedTiles(parameters.warp.montageStack, z);
+        final ResolvedTileSpecCollection alignTiles =
+                alignDataClient.getResolvedTiles(parameters.warp.alignStack, z);
 
         final TransformSpec warpTransformSpec = buildTransform(montageTiles.getTileSpecs(),
                                                                alignTiles.getTileSpecs(),
@@ -125,7 +139,7 @@ public class WarpTransformClient {
             throw new IllegalStateException("no tiles left to save after filtering invalid tiles");
         }
 
-        renderDataClient.saveResolvedTiles(montageTiles, parameters.targetStack, z);
+        targetDataClient.saveResolvedTiles(montageTiles, parameters.warp.targetStack, z);
 
         LOG.info("generateStackDataForZ: exit, saved tiles and transforms for {}", z);
     }

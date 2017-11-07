@@ -1,6 +1,7 @@
 package org.janelia.render.client.spark;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -24,7 +25,9 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.RenderDataClientParameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,16 +40,19 @@ import org.slf4j.LoggerFactory;
 public class AddMaskUrlClient
         implements Serializable {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
+
+        @ParametersDelegate
+        public ZRangeParameters layerRange = new ZRangeParameters();
 
         @Parameter(
                 names = "--stack",
                 description = "Name of source stack",
                 required = true)
-        private String stack;
+        public String stack;
 
         @Parameter(
                 names = "--targetOwner",
@@ -64,42 +70,30 @@ public class AddMaskUrlClient
                 names = "--targetStack",
                 description = "Name of target stack",
                 required = false)
-        private String targetStack;
-
-        @Parameter(
-                names = "--minZ",
-                description = "Minimum Z value for sections to be changed",
-                required = false)
-        private Double minZ;
-
-        @Parameter(
-                names = "--maxZ",
-                description = "Maximum Z value for sections to be changed",
-                required = false)
-        private Double maxZ;
+        public String targetStack;
 
         @Parameter(
                 names = "--maskListFile",
                 description = "File containing paths of different sized mask files",
                 required = true)
-        private String maskListFile;
+        public String maskListFile;
 
         @Parameter(
                 names = "--completeTargetStack",
                 description = "Complete the target stack after adding masks",
                 required = false, arity = 0)
-        private boolean completeTargetStack = false;
+        public boolean completeTargetStack = false;
 
         public String getTargetOwner() {
             if (targetOwner == null) {
-                targetOwner = owner;
+                targetOwner = renderWeb.owner;
             }
             return targetOwner;
         }
 
         public String getTargetProject() {
             if (targetProject == null) {
-                targetProject = project;
+                targetProject = renderWeb.project;
             }
             return targetProject;
         }
@@ -139,7 +133,7 @@ public class AddMaskUrlClient
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, AddMaskUrlClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -185,19 +179,17 @@ public class AddMaskUrlClient
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
 
-        final RenderDataClient sourceDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                       parameters.owner,
-                                                                       parameters.project);
+        final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
 
         final List<Double> zValues = sourceDataClient.getStackZValues(parameters.stack,
-                                                                      parameters.minZ,
-                                                                      parameters.maxZ);
+                                                                      parameters.layerRange.minZ,
+                                                                      parameters.layerRange.maxZ);
 
         if (zValues.size() == 0) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 
-        final RenderDataClient targetDataClient = new RenderDataClient(parameters.baseDataUrl,
+        final RenderDataClient targetDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                                        parameters.getTargetOwner(),
                                                                        parameters.getTargetProject());
 
@@ -209,54 +201,47 @@ public class AddMaskUrlClient
 
         final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
 
-        final Function<Double, Integer> addMaskFunction = new Function<Double, Integer>() {
+        final Function<Double, Integer> addMaskFunction = (Function<Double, Integer>) z -> {
 
-            final
-            @Override
-            public Integer call(final Double z)
-                    throws Exception {
+            LogUtilities.setupExecutorLog4j("z " + z);
+            //get the source client
+            final RenderDataClient sourceDataClient1 = parameters.renderWeb.getDataClient();
 
-                LogUtilities.setupExecutorLog4j("z " + z);
-                //get the source client
-                final RenderDataClient sourceDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                               parameters.owner,
-                                                                               parameters.project);
-                //get the target client(which can be the same as the source)
-                final RenderDataClient targetDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                               parameters.getTargetOwner(),
-                                                                               parameters.getTargetProject());
+            //get the target client(which can be the same as the source)
+            final RenderDataClient targetDataClient1 = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                                            parameters.getTargetOwner(),
+                                                                            parameters.getTargetProject());
 
-                final ResolvedTileSpecCollection sourceCollection =
-                        sourceDataClient.getResolvedTiles(parameters.stack, z);
+            final ResolvedTileSpecCollection sourceCollection =
+                    sourceDataClient1.getResolvedTiles(parameters.stack, z);
 
-                boolean updatedAtLeastOneSpec = false;
+            boolean updatedAtLeastOneSpec = false;
 
-                ImageAndMask imageAndMask;
-                ImageAndMask fixedImageAndMask;
-                String maskUrl;
-                for (final TileSpec tileSpec : sourceCollection.getTileSpecs()) {
-                    final Map.Entry<Integer, ImageAndMask> firstMipmapEntry = tileSpec.getFirstMipmapEntry();
-                    if (firstMipmapEntry != null) {
-                        imageAndMask = firstMipmapEntry.getValue();
-                        if (imageAndMask != null) {
-                            maskUrl = getMaskUrl(imageAndMask, maskDataList);
-                            fixedImageAndMask = new ImageAndMask(imageAndMask.getImageUrl(), maskUrl);
-                            fixedImageAndMask.validate();
-                            for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
-                                channelSpec.putMipmap(firstMipmapEntry.getKey(), fixedImageAndMask);
-                            }
-                            updatedAtLeastOneSpec = true;
+            ImageAndMask imageAndMask;
+            ImageAndMask fixedImageAndMask;
+            String maskUrl;
+            for (final TileSpec tileSpec : sourceCollection.getTileSpecs()) {
+                final Map.Entry<Integer, ImageAndMask> firstMipmapEntry = tileSpec.getFirstMipmapEntry();
+                if (firstMipmapEntry != null) {
+                    imageAndMask = firstMipmapEntry.getValue();
+                    if (imageAndMask != null) {
+                        maskUrl = getMaskUrl(imageAndMask, maskDataList);
+                        fixedImageAndMask = new ImageAndMask(imageAndMask.getImageUrl(), maskUrl);
+                        fixedImageAndMask.validate();
+                        for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
+                            channelSpec.putMipmap(firstMipmapEntry.getKey(), fixedImageAndMask);
                         }
+                        updatedAtLeastOneSpec = true;
                     }
                 }
-                if (updatedAtLeastOneSpec) {
-                    targetDataClient.saveResolvedTiles(sourceCollection, parameters.getTargetStack(), z);
-                } else {
-                    LOG.info("no changes necessary for z {}", z);
-                }
-
-                return sourceCollection.getTileCount();
             }
+            if (updatedAtLeastOneSpec) {
+                targetDataClient1.saveResolvedTiles(sourceCollection, parameters.getTargetStack(), z);
+            } else {
+                LOG.info("no changes necessary for z {}", z);
+            }
+
+            return sourceCollection.getTileCount();
         };
 
         final JavaRDD<Integer> rddTileCounts = rddZValues.map(addMaskFunction);

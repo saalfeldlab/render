@@ -1,7 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -29,6 +27,8 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.LabelImageProcessorCache;
+import org.janelia.render.client.parameter.MaterializedBoxParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,133 +53,8 @@ import org.slf4j.LoggerFactory;
  */
 public class BoxGenerator implements Serializable {
 
-    @SuppressWarnings("ALL")
-    public static class Parameters extends RenderDataClientParameters {
-
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
-
-        @Parameter(
-                names = "--stack",
-                description = "Stack name",
-                required = true)
-        public String stack;
-
-        @Parameter(
-                names = "--rootDirectory",
-                description = "Root directory for rendered tiles (e.g. /tier2/flyTEM/nobackup/rendered_boxes)",
-                required = true)
-        private String rootDirectory;
-
-        @Parameter(
-                names = "--width",
-                description = "Width of each box",
-                required = true)
-        private Integer width;
-
-        @Parameter(
-                names = "--height",
-                description = "Height of each box",
-                required = true)
-        private Integer height;
-
-        @Parameter(
-                names = "--maxLevel",
-                description = "Maximum mipmap level to generate",
-                required = false)
-        private Integer maxLevel = 0;
-
-        @Parameter(
-                names = "--format",
-                description = "Format for rendered boxes",
-                required = false)
-        private String format = Utils.PNG_FORMAT;
-
-        @Parameter(
-                names = "--maxOverviewWidthAndHeight",
-                description = "Max width and height of layer overview image (omit or set to zero to disable overview generation)",
-                required = false)
-        private Integer maxOverviewWidthAndHeight;
-
-        @Parameter(
-                names = "--skipInterpolation",
-                description = "skip interpolation (e.g. for DMG data)",
-                required = false,
-                arity = 0)
-        private boolean skipInterpolation = false;
-
-        @Parameter(
-                names = "--binaryMask",
-                description = "use binary mask (e.g. for DMG data)",
-                required = false,
-                arity = 0)
-        private boolean binaryMask = false;
-
-        @Parameter(
-                names = "--label",
-                description = "Generate single color tile labels instead of actual tile images",
-                required = false,
-                arity = 0)
-        private boolean label = false;
-
-        @Parameter(
-                names = "--createIGrid",
-                description = "create an IGrid file",
-                required = false,
-                arity = 0)
-        private boolean createIGrid = false;
-
-        @Parameter(
-                names = "--forceGeneration",
-                description = "Regenerate boxes even if they already exist",
-                required = false,
-                arity = 0)
-        private boolean forceGeneration = false;
-
-        @Parameter(
-                names = "--renderGroup",
-                description = "Index (1-n) that identifies portion of layer to render (omit if only one job is being used)",
-                required = false)
-        public Integer renderGroup;
-
-        @Parameter(
-                names = "--numberOfRenderGroups",
-                description = "Total number of parallel jobs being used to render this layer (omit if only one job is being used)",
-                required = false)
-        public Integer numberOfRenderGroups;
-
-        public boolean isOverviewNeeded() {
-            return ((maxOverviewWidthAndHeight != null) && (maxOverviewWidthAndHeight > 0));
-        }
-
-        public Parameters getInstanceForRenderGroup(final int group,
-                                                    final int numberOfGroups) {
-            Parameters p = new Parameters();
-
-            p.baseDataUrl = this.baseDataUrl;
-            p.owner = this.owner;
-            p.project = this.project;
-            p.stack = this.stack;
-            p.rootDirectory = this.rootDirectory;
-            p.width = this.width;
-            p.height = this.height;
-            p.maxLevel = this.maxLevel;
-            p.format = this.format;
-            p.maxOverviewWidthAndHeight = this.maxOverviewWidthAndHeight;
-            p.skipInterpolation = this.skipInterpolation;
-            p.binaryMask = this.binaryMask;
-            p.label = this.label;
-            p.createIGrid = this.createIGrid;
-            p.forceGeneration = this.forceGeneration;
-
-            p.renderGroup = group;
-            p.numberOfRenderGroups = numberOfGroups;
-
-            return p;
-        }
-
-    }
-
-    private final Parameters parameters;
+    private final RenderWebServiceParameters renderWebParameters;
+    private final MaterializedBoxParameters boxParameters;
 
     private final String stack;
     private final String format;
@@ -192,27 +67,29 @@ public class BoxGenerator implements Serializable {
 
     private transient RenderDataClient rdc;
 
-    public BoxGenerator(final Parameters parameters)
+    public BoxGenerator(final RenderWebServiceParameters renderWebParameters,
+                        final MaterializedBoxParameters boxParameters)
             throws IOException {
 
-        this.parameters = parameters;
+        this.renderWebParameters = renderWebParameters;
+        this.boxParameters = boxParameters;
 
-        this.stack = parameters.stack;
-        this.format = parameters.format;
-        this.boxWidth = parameters.width;
-        this.boxHeight = parameters.height;
+        this.stack = boxParameters.stack;
+        this.format = boxParameters.format;
+        this.boxWidth = boxParameters.width;
+        this.boxHeight = boxParameters.height;
 
         String boxName = this.boxWidth + "x" + this.boxHeight;
-        if (parameters.label) {
+        if (boxParameters.label) {
             boxName += "-label";
             this.backgroundRGBColor = Color.WHITE.getRGB();
         } else {
             this.backgroundRGBColor = null;
         }
 
-        final Path boxPath = Paths.get(parameters.rootDirectory,
-                                       parameters.project,
-                                       parameters.stack,
+        final Path boxPath = Paths.get(boxParameters.rootDirectory,
+                                       renderWebParameters.project,
+                                       boxParameters.stack,
                                        boxName).toAbsolutePath();
 
         this.boxDirectory = boxPath.toFile();
@@ -235,24 +112,24 @@ public class BoxGenerator implements Serializable {
         this.emptyImageFile = new File(boxDirectory.getAbsolutePath(),
                                        "empty." + format.toLowerCase());
 
-        if (parameters.renderGroup != null) {
+        if (boxParameters.renderGroup != null) {
 
-            if (parameters.numberOfRenderGroups == null) {
+            if (boxParameters.numberOfRenderGroups == null) {
                 throw new IllegalArgumentException(
                         "numberOfRenderGroups must be specified when renderGroup is specified");
             }
 
-            if (parameters.renderGroup < 1) {
+            if (boxParameters.renderGroup < 1) {
                 throw new IllegalArgumentException("renderGroup values start at 1");
             }
 
-            if (parameters.renderGroup > parameters.numberOfRenderGroups) {
+            if (boxParameters.renderGroup > boxParameters.numberOfRenderGroups) {
                 throw new IllegalArgumentException(
-                        "numberOfRenderGroups (" + parameters.numberOfRenderGroups +
-                        ") must be greater than the renderGroup (" + parameters.renderGroup + ")");
+                        "numberOfRenderGroups (" + boxParameters.numberOfRenderGroups +
+                        ") must be greater than the renderGroup (" + boxParameters.renderGroup + ")");
             }
 
-        } else if (parameters.numberOfRenderGroups != null) {
+        } else if (boxParameters.numberOfRenderGroups != null) {
             throw new IllegalArgumentException(
                     "renderGroup (1-n) must be specified when numberOfRenderGroups are specified");
         }
@@ -268,9 +145,9 @@ public class BoxGenerator implements Serializable {
 
     public RenderDataClient getRenderDataClient() {
         if (rdc == null) {
-            rdc = new RenderDataClient(parameters.baseDataUrl,
-                                       parameters.owner,
-                                       parameters.project);
+            rdc = new RenderDataClient(renderWebParameters.baseDataUrl,
+                                       renderWebParameters.owner,
+                                       renderWebParameters.project);
         }
         return rdc;
     }
@@ -286,7 +163,7 @@ public class BoxGenerator implements Serializable {
 
             final BufferedImage emptyImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
 
-            if (parameters.label) {
+            if (boxParameters.label) {
 
                 final Graphics2D targetGraphics = emptyImage.createGraphics();
                 targetGraphics.setBackground(new Color(backgroundRGBColor));
@@ -321,13 +198,13 @@ public class BoxGenerator implements Serializable {
         final Bounds layerBounds = getRenderDataClient().getLayerBounds(stack, z);
         final SectionBoxBounds boxBounds = new SectionBoxBounds(z, boxWidth, boxHeight, layerBounds);
 
-        if (parameters.renderGroup != null) {
-            boxBounds.setRenderGroup(parameters.renderGroup, parameters.numberOfRenderGroups, parameters.maxLevel);
+        if (boxParameters.renderGroup != null) {
+            boxBounds.setRenderGroup(boxParameters.renderGroup, boxParameters.numberOfRenderGroups, boxParameters.maxLevel);
         }
 
         final int tileCount;
         final ImageProcessorCache imageProcessorCache;
-        if (parameters.label) {
+        if (boxParameters.label) {
 
             // retrieve all tile specs for layer so that imageUrls can be consistently mapped to label colors
             // (this allows label runs to be resumed after failures)
@@ -352,7 +229,7 @@ public class BoxGenerator implements Serializable {
                  z, layerBounds, boxBounds, tileCount);
 
         BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z.intValue(),
-                                                                       parameters.label,
+                                                                       boxParameters.label,
                                                                        format,
                                                                        boxWidth,
                                                                        boxHeight,
@@ -362,9 +239,9 @@ public class BoxGenerator implements Serializable {
                                                                        boxBounds.getLastRow(),
                                                                        boxBounds.getFirstColumn(),
                                                                        boxBounds.getLastColumn(),
-                                                                       parameters.forceGeneration);
+                                                                       boxParameters.forceGeneration);
         final IGridPaths iGridPaths;
-        if (parameters.createIGrid) {
+        if (boxParameters.createIGrid) {
             iGridPaths = new IGridPaths(boxBounds.getNumberOfRows(), boxBounds.getNumberOfColumns());
         } else {
             iGridPaths = null;
@@ -385,16 +262,16 @@ public class BoxGenerator implements Serializable {
         final Path overviewDirPath = Paths.get(boxDirectory.getAbsolutePath(), "small");
         final String overviewFileName = z.intValue() + "." + format.toLowerCase();
         final File overviewFile = new File(overviewDirPath.toFile(), overviewFileName).getAbsoluteFile();
-        boolean isOverviewGenerated = (! parameters.forceGeneration) && overviewFile.exists();
+        boolean isOverviewGenerated = (! boxParameters.forceGeneration) && overviewFile.exists();
 
         if (isOverviewGenerated) {
             LOG.info("generateBoxesForZ: {}, overview {} already generated", z, overviewFile.getAbsolutePath());
         }
 
-        for (int level = 0; level < parameters.maxLevel; level++) {
+        for (int level = 0; level < boxParameters.maxLevel; level++) {
             boxMipmapGenerator = boxMipmapGenerator.generateNextLevel();
-            if (parameters.isOverviewNeeded() && (! isOverviewGenerated)) {
-                isOverviewGenerated = boxMipmapGenerator.generateOverview(parameters.maxOverviewWidthAndHeight,
+            if (boxParameters.isOverviewNeeded() && (! isOverviewGenerated)) {
+                isOverviewGenerated = boxMipmapGenerator.generateOverview(boxParameters.maxOverviewWidthAndHeight,
                                                                           stackBounds,
                                                                           overviewFile);
             }
@@ -434,7 +311,7 @@ public class BoxGenerator implements Serializable {
                                                                     row,
                                                                     column);
 
-                    if (parameters.forceGeneration || (!levelZeroFile.exists())) {
+                    if (boxParameters.forceGeneration || (!levelZeroFile.exists())) {
 
                         renderParameters = generateLevelZeroBox(x, y, z,
                                                                 imageProcessorCache,
@@ -518,14 +395,14 @@ public class BoxGenerator implements Serializable {
                                                   final int column)
             throws IOException {
 
-        final String parametersUrl =
+        final String boxParametersUrl =
                 getRenderDataClient().getRenderParametersUrlString(stack, x, y, z, boxWidth, boxHeight, 1.0);
 
-        LOG.info("generateLevelZeroBox: loading {}", parametersUrl);
+        LOG.info("generateLevelZeroBox: loading {}", boxParametersUrl);
 
-        final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
-        renderParameters.setSkipInterpolation(parameters.skipInterpolation);
-        renderParameters.setBinaryMask(parameters.binaryMask);
+        final RenderParameters renderParameters = RenderParameters.loadFromUrl(boxParametersUrl);
+        renderParameters.setSkipInterpolation(boxParameters.skipInterpolation);
+        renderParameters.setBinaryMask(boxParameters.binaryMask);
         renderParameters.setBackgroundRGBColor(backgroundRGBColor);
 
         if (renderParameters.hasTileSpecs()) {
@@ -536,7 +413,7 @@ public class BoxGenerator implements Serializable {
 
             BoxMipmapGenerator.saveImage(levelZeroImage,
                                          levelZeroFile,
-                                         parameters.label,
+                                         boxParameters.label,
                                          format);
 
             boxMipmapGenerator.addSource(row, column, levelZeroFile);

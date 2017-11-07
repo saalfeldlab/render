@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import ij.process.ByteProcessor;
 
@@ -14,7 +15,10 @@ import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,52 +30,95 @@ import org.slf4j.LoggerFactory;
  */
 public class RenderSectionClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(names = "--stack", description = "Stack name", required = true)
-        private String stack;
+        @Parameter(
+                names = "--stack",
+                description = "Stack name",
+                required = true)
+        public String stack;
 
-        @Parameter(names = "--rootDirectory", description = "Root directory for rendered layers (e.g. /tier2/flyTEM/nobackup/rendered_boxes)", required = true)
-        private String rootDirectory;
+        @Parameter(
+                names = "--rootDirectory",
+                description = "Root directory for rendered layers (e.g. /tier2/flyTEM/nobackup/rendered_boxes)",
+                required = true)
+        public String rootDirectory;
 
-        @Parameter(names = "--scale", description = "Scale for each rendered layer", required = false)
-        private Double scale = 0.02;
+        @Parameter(
+                names = "--scale",
+                description = "Scale for each rendered layer",
+                required = false)
+        public Double scale = 0.02;
 
-        @Parameter(names = "--format", description = "Format for rendered boxes", required = false)
-        private String format = Utils.PNG_FORMAT;
+        @Parameter(
+                names = "--format",
+                description = "Format for rendered boxes",
+                required = false)
+        public String format = Utils.PNG_FORMAT;
 
-        @Parameter(names = "--doFilter", description = "Use ad hoc filter to support alignment", required = false, arity = 1)
-        private boolean doFilter = true;
+        @Parameter(
+                names = "--doFilter",
+                description = "Use ad hoc filter to support alignment",
+                required = false,
+                arity = 1)
+        public boolean doFilter = true;
 
-        @Parameter(names = "--channels", description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3')", required = false)
-        private String channels;
+        @Parameter(
+                names = "--channels",
+                description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3')",
+                required = false)
+        public String channels;
 
-        @Parameter(names = "--fillWithNoise", description = "Fill image with noise before rendering to improve point match derivation", required = false, arity = 1)
-        private boolean fillWithNoise = true;
+        @Parameter(
+                names = "--fillWithNoise",
+                description = "Fill image with noise before rendering to improve point match derivation",
+                required = false,
+                arity = 1)
+        public boolean fillWithNoise = true;
 
-        @Parameter(description = "Z values for sections to render", required = true)
-        private List<Double> zValues;
+        @Parameter(
+                description = "Z values for sections to render",
+                required = true)
+        public List<Double> zValues;
 
-        @Parameter(names = "--bounds", description = "Bounds used for all layers: xmin, xmax, ymin,ymax", required = false)
-        private List<Integer> bounds;
+        @Parameter(
+                names = "--bounds",
+                description = "Bounds used for all layers: xmin, xmax, ymin,ymax",
+                required = false)
+        public List<Integer> bounds;
 
-        @Parameter(names = "--customOutputFolder", description = "Custom named folder for output. Overrides the default format 'sections_at_#' folder", required = false)
-        private String customOutputFolder;
+        @Parameter(
+                names = "--customOutputFolder",
+                description = "Custom named folder for output. Overrides the default format 'sections_at_#' folder",
+                required = false)
+        public String customOutputFolder;
 
-        @Parameter(names = "--customSubFolder", description = "Name for subfolder to customOutputFolder, if used", required = false)
-        private String customSubFolder;
+        @Parameter(
+                names = "--customSubFolder",
+                description = "Name for subfolder to customOutputFolder, if used",
+                required = false)
+        public String customSubFolder;
 
-        @Parameter(names = "--padFileNamesWithZeros", description = "Pad outputfilenames with leading zeroes, i.e. 12.tiff -> 00012.tiff", required = false)
-        private boolean padFileNameWithZeroes;
+        @Parameter(
+                names = "--padFileNamesWithZeros",
+                description = "Pad outputfilenames with leading zeroes, i.e. 12.tiff -> 00012.tiff",
+                required = false)
+        public boolean padFileNameWithZeroes;
 
-        @Parameter(names = "--maxIntensity",description = "Max intensity to render image", required = false)
-        private Integer maxIntensity;
+        @Parameter(
+                names = "--maxIntensity",
+                description = "Max intensity to render image",
+                required = false)
+        public Integer maxIntensity;
 
-        @Parameter(names = "--minIntensity",description = "Min intensity to render image", required = false)
-        private Integer minIntensity;
+        @Parameter(
+                names = "--minIntensity",
+                description = "Min intensity to render image",
+                required = false)
+        public Integer minIntensity;
     }
 
     /**
@@ -83,7 +130,7 @@ public class RenderSectionClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, RenderSectionClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -120,7 +167,7 @@ public class RenderSectionClient {
         } else {
             final String sectionsAtScaleName = "sections_at_" + clientParameters.scale;
             sectionPath = Paths.get(clientParameters.rootDirectory,
-                                    clientParameters.project,
+                                    clientParameters.renderWeb.project,
                                     clientParameters.stack,
                                     sectionsAtScaleName);
         }
@@ -133,9 +180,7 @@ public class RenderSectionClient {
         final int maxCachedPixels = 50 * 1000000;
         this.imageProcessorCache = new ImageProcessorCache(maxCachedPixels, false, false);
 
-        this.renderDataClient = new RenderDataClient(clientParameters.baseDataUrl,
-                                                     clientParameters.owner,
-                                                     clientParameters.project);
+        this.renderDataClient = clientParameters.renderWeb.getDataClient();
     }
 
     public void generateImageForZ(final Double z)

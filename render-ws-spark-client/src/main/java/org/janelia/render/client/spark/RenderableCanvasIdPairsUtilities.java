@@ -1,17 +1,12 @@
 package org.janelia.render.client.spark;
 
-import java.io.IOException;
-import java.io.Reader;
 import java.net.URISyntaxException;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
 
 import javax.annotation.Nonnull;
 
 import org.apache.http.client.utils.URIBuilder;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
-import org.janelia.render.client.FileUtil;
 import org.janelia.render.client.spark.cache.CachedCanvasData;
 import org.janelia.render.client.spark.cache.CanvasDataLoader;
 import org.slf4j.LoggerFactory;
@@ -22,28 +17,6 @@ import org.slf4j.LoggerFactory;
  * @author Eric Trautman
  */
 public class RenderableCanvasIdPairsUtilities {
-
-    /**
-     * @return pairs object loaded from the specified file.
-     */
-    public static RenderableCanvasIdPairs load(final String dataFile)
-            throws IOException, IllegalArgumentException {
-
-        final RenderableCanvasIdPairs renderableCanvasIdPairs;
-
-        final Path path = FileSystems.getDefault().getPath(dataFile).toAbsolutePath();
-
-        LOG.info("load: entry, path={}", path);
-
-        try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(path.toString())) {
-            renderableCanvasIdPairs = RenderableCanvasIdPairs.fromJson(reader);
-        }
-
-        LOG.info("load: exit, loaded {} pairs", renderableCanvasIdPairs.size());
-
-
-        return renderableCanvasIdPairs;
-    }
 
     /**
      * Looks the generic template from the specified pairs object and returns

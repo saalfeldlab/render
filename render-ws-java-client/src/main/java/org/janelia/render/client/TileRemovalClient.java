@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -12,6 +13,9 @@ import java.util.Set;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
+import org.janelia.alignment.util.FileUtil;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,63 +26,63 @@ import org.slf4j.LoggerFactory;
  */
 public class TileRemovalClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParameters {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParametersWithValidator
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
         @Parameter(
                 names = "--stack",
                 description = "Stack name",
                 required = true)
-        private String stack;
+        public String stack;
 
         @Parameter(
                 names = "--tileIdJson",
                 description = "JSON file containing array of tileIds to be removed (.json, .gz, or .zip)",
                 required = false)
-        private String tileIdJson;
+        public String tileIdJson;
 
         @Parameter(
                 description = "tileIds_to_remove",
                 required = false)
-        private List<String> tileIdList;
+        public List<String> tileIdList;
 
         @Parameter(
                 names = "--hiddenTilesWithZ",
                 description = "Z value for all hidden tiles to be removed",
                 required = false)
-        private Double hiddenTilesWithZ;
+        public Double hiddenTilesWithZ;
 
         @Parameter(
                 names = "--keepZ",
                 description = "Z value for all tiles to be kept",
                 required = false)
-        private Double keepZ;
+        public Double keepZ;
 
         @Parameter(
                 names = "--keepMinX",
                 description = "Minimum X value for all tiles to be kept",
                 required = false)
-        private Double keepMinX;
+        public Double keepMinX;
 
         @Parameter(
                 names = "--keepMinY",
                 description = "Minimum Y value for all tiles to be kept",
                 required = false)
-        private Double keepMinY;
+        public Double keepMinY;
 
         @Parameter(
                 names = "--keepMaxX",
                 description = "Maximum X value for all tiles to be kept",
                 required = false)
-        private Double keepMaxX;
+        public Double keepMaxX;
 
         @Parameter(
                 names = "--keepMaxY",
                 description = "Maximum Y value for all tiles to be kept",
                 required = false)
-        private Double keepMaxY;
+        public Double keepMaxY;
 
         private boolean isKeepBoxSpecified() {
             return ((keepZ != null) && (keepMinX != null) && (keepMaxX != null) &&
@@ -175,13 +179,11 @@ public class TileRemovalClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, TileRemovalClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final RenderDataClient renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                               parameters.owner,
-                                                                               parameters.project);
+                final RenderDataClient renderDataClient = parameters.renderWeb.getDataClient();
 
                 renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
 

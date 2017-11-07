@@ -1,6 +1,7 @@
 package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.util.List;
 
@@ -9,6 +10,9 @@ import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,44 +23,46 @@ import org.slf4j.LoggerFactory;
  */
 public class FixAutoLoaderScaleClient {
 
-    @SuppressWarnings("ALL")
-    private static class Parameters extends RenderDataClientParametersWithValidator {
+    public static class Parameters extends CommandLineParameters {
 
-        // NOTE: --baseDataUrl, --owner, and --project parameters defined in RenderDataClientParameters
-        // NOTE: --validatorClass and --validatorData parameters defined in RenderDataClientParametersWithValidator
+        @ParametersDelegate
+        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
+
+        @ParametersDelegate
+        public TileSpecValidatorParameters tileSpecValidator = new TileSpecValidatorParameters();
 
         @Parameter(
                 names = "--stack",
                 description = "Name of source stack containing base tile specifications",
                 required = true)
-        private String stack;
+        public String stack;
 
         @Parameter(
                 names = "--targetProject",
                 description = "Name of target project that will contain imported transforms (default is to reuse source project)",
                 required = false)
-        private String targetProject;
+        public String targetProject;
 
         @Parameter(
                 names = "--targetStack",
                 description = "Name of target (align, montage, etc.) stack that will contain imported transforms",
                 required = true)
-        private String targetStack;
+        public String targetStack;
 
         @Parameter(
                 names = "--newScale",
                 description = "Corrected scale",
                 required = true)
-        private Double newScale;
+        public Double newScale;
 
         @Parameter(
                 names = "--oldScale",
                 description = "Current scale to be replaced",
                 required = false)
-        private Double oldScale = 0.935;
+        public Double oldScale = 0.935;
 
         @Parameter(description = "Z values of layers with tiles needing correction", required = true)
-        private List<Double> zValues;
+        public List<Double> zValues;
     }
 
     public static void main(final String[] args) {
@@ -65,7 +71,7 @@ public class FixAutoLoaderScaleClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, FixAutoLoaderScaleClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -91,19 +97,17 @@ public class FixAutoLoaderScaleClient {
     public FixAutoLoaderScaleClient(final Parameters parameters) {
 
         this.parameters = parameters;
-        this.tileSpecValidator = parameters.getValidatorInstance();
+        this.tileSpecValidator = parameters.tileSpecValidator.getValidatorInstance();
 
-        this.sourceRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                           parameters.owner,
-                                                           parameters.project);
+        this.sourceRenderDataClient = parameters.renderWeb.getDataClient();
 
         if ((parameters.targetProject == null) ||
             (parameters.targetProject.trim().length() == 0) ||
-            (parameters.targetProject.equals(parameters.project))){
+            (parameters.targetProject.equals(parameters.renderWeb.project))){
             this.targetRenderDataClient = sourceRenderDataClient;
         } else {
-            this.targetRenderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                               parameters.owner,
+            this.targetRenderDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                               parameters.renderWeb.owner,
                                                                parameters.targetProject);
         }
 

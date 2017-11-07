@@ -10,8 +10,10 @@ import java.nio.file.Path;
 import java.util.List;
 
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ProcessTimer;
-import org.janelia.render.client.parameters.MatchDataClientParameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +27,7 @@ public class ImportMatchClient {
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MatchDataClientParameters matchClient = new MatchDataClientParameters();
+        public MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
 
         @Parameter(
                 names = "--batchSize",
@@ -45,7 +47,7 @@ public class ImportMatchClient {
             public void runClient(final String[] args) throws Exception {
 
                 final Parameters parameters = new Parameters();
-                parameters.parse(args, ImportMatchClient.class);
+                parameters.parse(args);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 

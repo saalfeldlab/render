@@ -1,8 +1,9 @@
-package org.janelia.render.client;
+package org.janelia.render.client.parameter;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 
+import java.io.Serializable;
 import java.lang.reflect.Constructor;
 
 import org.janelia.alignment.spec.validator.TileSpecValidator;
@@ -10,13 +11,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Base parameters for all render web service clients that support tile validation.
+ * Parameters for specifying a tile validator instance.
  *
  * @author Eric Trautman
  */
 @Parameters
-public class RenderDataClientParametersWithValidator
-        extends RenderDataClientParameters {
+public class TileSpecValidatorParameters implements Serializable {
 
     @Parameter(
             names = "--validatorClass",
@@ -77,12 +77,6 @@ public class RenderDataClientParametersWithValidator
         return validatorInstance;
     }
 
-    public RenderDataClientParametersWithValidator() {
-        super();
-        this.validatorClass = null;
-        this.validatorData = null;
-    }
-
-    private static final Logger LOG = LoggerFactory.getLogger(RenderDataClientParametersWithValidator.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TileSpecValidatorParameters.class);
 
 }
