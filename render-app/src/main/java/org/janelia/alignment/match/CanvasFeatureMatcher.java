@@ -136,6 +136,13 @@ public class CanvasFeatureMatcher implements Serializable {
                 LOG.warn("failed to filter outliers", e);
             }
 
+            // TODO: remove this extra check once RANSAC filter issue is fixed
+            if ((inliers.size() > 0) && (inliers.size() < minNumInliers)) {
+                LOG.warn("removing {} inliers that mysteriously did not get removed with minNumInliers value of {}",
+                         inliers.size(), minNumInliers);
+                inliers.clear();
+            }
+
             if ((maxNumInliers != null) && (maxNumInliers > 0) && (inliers.size() > maxNumInliers)) {
                 LOG.info("filterMatches: randomly selecting {} of {} inliers", maxNumInliers, inliers.size());
                 // randomly select maxNumInliers elements by shuffling and then remove excess elements
