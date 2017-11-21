@@ -16,6 +16,8 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.log4j.MDC;
 import org.apache.log4j.PatternLayout;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility methods for managing logging on Spark nodes.
@@ -76,6 +78,14 @@ public class LogUtilities {
     }
 
     /**
+     * @return JSON formatted executors information for the specified context.
+     */
+    public static String getExecutorsApiJson(final JavaSparkContext sparkContext) {
+        return getExecutorsApiJson(sparkContext.getConf().getAppId(),
+                                   sparkContext.sc().uiWebUrl().get());
+    }
+
+    /**
      * @return JSON formatted executors information for the specified app and URL.
      */
     public static String getExecutorsApiJson(final String appId,
@@ -100,10 +110,23 @@ public class LogUtilities {
         return json;
     }
 
+    /**
+     * Logs Spark executor data for specified context.
+     *
+     * @param  sparkContext  context for current Spark job.
+     */
+    public static void logSparkClusterInfo(final JavaSparkContext sparkContext) {
+        final String sparkAppId = sparkContext.getConf().getAppId();
+        final String executorsJson = getExecutorsApiJson(sparkContext);
+        LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
+    }
+
     private static String getErrorJson(final String errorMessage,
                                        final Throwable cause) {
         return JSON_ERROR_PREFIX + errorMessage + "\", \"exception_message\": \"" + cause.getMessage() + "\" } ]";
     }
+
+    private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(LogUtilities.class);
 
     private static final String JSON_ERROR_PREFIX = "[ { \"error\": \"";
 }
