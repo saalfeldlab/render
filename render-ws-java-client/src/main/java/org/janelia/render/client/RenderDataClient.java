@@ -70,6 +70,13 @@ public class RenderDataClient {
         this.httpClient = HttpClientBuilder.create().setRetryHandler(new WaitingRetryHandler()).build();
     }
 
+    /**
+     * @return the URL helper for this data client.
+     */
+    public RenderWebServiceUrls getUrls() {
+        return urls;
+    }
+
     @Override
     public String toString() {
         return String.valueOf(urls);
