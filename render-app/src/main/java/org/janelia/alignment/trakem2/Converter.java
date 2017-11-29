@@ -421,7 +421,7 @@ public class Converter {
 
             // TODO: determine why these min and max values differ from what beanshell script pulls
             final ChannelSpec channelSpec =
-                    new ChannelSpec('TrakEM2',
+                    new ChannelSpec("TrakEM2",
                                     min,     // xml: 48.0, beanshell: 0.0
                                     max);    // xml: 207.0, beanshell: 255.0
 
