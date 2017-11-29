@@ -74,6 +74,10 @@ public class CanvasId
         return id;
     }
 
+    public MontageRelativePosition getRelativePosition() {
+        return relativePosition;
+    }
+
     public void setRelativePosition(final MontageRelativePosition relativePosition) {
         this.relativePosition = relativePosition;
     }

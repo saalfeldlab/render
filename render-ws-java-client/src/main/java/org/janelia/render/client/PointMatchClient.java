@@ -526,7 +526,7 @@ public class PointMatchClient {
                                        final Integer clipWidth,
                                        final Integer clipHeight) {
             canvasId.setClipOffsets(bounds.getDeltaX().intValue(), bounds.getDeltaY().intValue(), clipWidth, clipHeight);
-            renderParameters.clipForMontagePair(canvasId.getClipOffsets(), clipWidth, clipHeight);
+            renderParameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
         }
 
         public void setFeatureList(final List<Feature> featureList) {

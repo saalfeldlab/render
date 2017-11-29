@@ -16,6 +16,8 @@
  */
 package org.janelia.alignment;
 
+import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
@@ -115,5 +117,43 @@ public class RenderParametersTest {
         final File jsonFile = new File("src/test/resources/render-parameters-test/extraneous-comma-render.json");
         RenderParameters.parseJson(jsonFile);
     }
+
+    @Test
+    public void testClipForMontagePair() {
+
+        final int fullWidth = 3840;
+        final int fullHeight = 3840;
+
+        final int clipWidth = 20;
+        final int clipHeight = 10;
+
+        final double leftXOffset = fullWidth - clipWidth;
+        final double topYOffset = fullHeight - clipHeight;
+
+        final Object[][] testData = {
+                // relative position,             expectedWidth, expectedHeight, expectedX,   expectedY
+                { MontageRelativePosition.TOP,    fullWidth,     clipHeight,     0.0,         topYOffset },
+                { MontageRelativePosition.BOTTOM, fullWidth,     clipHeight,     0.0,         0.0        },
+                { MontageRelativePosition.LEFT,   clipWidth,     fullHeight,     leftXOffset, 0.0        },
+                { MontageRelativePosition.RIGHT,  clipWidth,     fullHeight,     0.0,         0.0        }
+        };
+
+        for (final Object[] data : testData) {
+
+            final RenderParameters parameters =
+                    new RenderParameters("renderer-test.json", 0, 0, fullWidth, fullHeight, 1.0);
+
+            final CanvasId canvasId = new CanvasId("groupA", "tileB", (MontageRelativePosition) data[0]);
+            canvasId.setClipOffsets(fullWidth, fullHeight, clipWidth, clipHeight);
+
+            parameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
+
+            Assert.assertEquals("invalid clipped width for " + canvasId, data[1], parameters.getWidth());
+            Assert.assertEquals("invalid clipped height for " + canvasId, data[2], parameters.getHeight());
+            Assert.assertEquals("invalid x for " + canvasId, (Double) data[3], parameters.getX(), 0.001);
+            Assert.assertEquals("invalid y for " + canvasId, (Double) data[4], parameters.getY(), 0.001);
+        }
+    }
+
 
 }

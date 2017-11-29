@@ -41,6 +41,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.spec.ChannelNamesAndWeights;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
@@ -390,23 +392,38 @@ public class RenderParameters implements Serializable {
     /**
      * Adjusts these parameters to clip for montage pair point match rendering.
      *
-     * @param  clipOffsets  full scale x[0] and y[1] offsets for clipped area.
+     * @param  canvasId     canvas information.
      * @param  clipWidth    number of full scale pixels to include in clipped members of left/right pairs.
      * @param  clipHeight   number of full scale pixels to include in clipped members of top/bottom pairs.
      */
-    public void clipForMontagePair(final double[] clipOffsets,
+    public void clipForMontagePair(final CanvasId canvasId,
                                    final Integer clipWidth,
                                    final Integer clipHeight) {
-        if (clipOffsets != null) {
-            if (clipWidth != null) {
-                x = x + clipOffsets[0];
-                width = clipWidth;
-            }
-            if (clipHeight != null) {
-                y = y + clipOffsets[1];
-                height = clipHeight;
+
+        final MontageRelativePosition relativePosition = canvasId.getRelativePosition();
+
+        if (relativePosition != null) {
+
+            final double[] clipOffsets = canvasId.getClipOffsets();
+
+            switch (relativePosition) {
+                case TOP:
+                case BOTTOM:
+                    if (clipHeight != null) {
+                        y = y + clipOffsets[1];
+                        height = clipHeight;
+                    }
+                    break;
+                case LEFT:
+                case RIGHT:
+                    if (clipWidth != null) {
+                        x = x + clipOffsets[0];
+                        width = clipWidth;
+                    }
+                    break;
             }
         }
+
     }
 
     /**

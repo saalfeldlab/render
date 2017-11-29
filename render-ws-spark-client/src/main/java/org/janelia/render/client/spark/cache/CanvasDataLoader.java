@@ -106,7 +106,7 @@ public abstract class CanvasDataLoader
         if ((clipWidth != null) || (clipHeight != null)) {
             // TODO: setting the canvas offsets here is hack-y, probably want a cleaner way
             canvasId.setClipOffsets(renderParameters.getWidth(), renderParameters.getHeight(), clipWidth, clipHeight);
-            renderParameters.clipForMontagePair(canvasId.getClipOffsets(), clipWidth, clipHeight);
+            renderParameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
         }
 
         return renderParameters;
