@@ -32,6 +32,11 @@ public class ChannelSpec implements Serializable {
 
     public ChannelSpec(final String name,
                        final Double minIntensity,
+                       final Double maxIntensity) {
+        this(name, maxIntensity, minIntensity, new TreeMap<>(), null);      
+    }
+    public ChannelSpec(final String name,
+                       final Double minIntensity,
                        final Double maxIntensity,
                        final TreeMap<Integer, ImageAndMask> mipmapLevels,
                        final MipmapPathBuilder mipmapPathBuilder) {
