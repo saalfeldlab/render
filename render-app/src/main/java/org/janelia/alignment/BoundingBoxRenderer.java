@@ -1,8 +1,10 @@
 package org.janelia.alignment;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.Stroke;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
@@ -23,9 +25,16 @@ public class BoundingBoxRenderer {
     private final double scale;
     private final Color foregroundColor;
     private final Color backgroundColor;
+    private final Stroke stroke;
 
     public BoundingBoxRenderer(final RenderParameters renderParameters,
                                final Color foregroundColor) {
+        this(renderParameters, foregroundColor, 1);
+    }
+
+    public BoundingBoxRenderer(final RenderParameters renderParameters,
+                               final Color foregroundColor,
+                               final float lineWidth) {
 
         this.tileSpecs = renderParameters.getTileSpecs();
         this.xOffset = renderParameters.getX();
@@ -39,6 +48,8 @@ public class BoundingBoxRenderer {
         } else {
             this.backgroundColor = new Color(renderParameters.getBackgroundRGBColor());
         }
+
+        this.stroke = new BasicStroke(lineWidth);
     }
 
     public void render(final BufferedImage targetImage)
@@ -47,6 +58,7 @@ public class BoundingBoxRenderer {
         final Graphics2D targetGraphics = targetImage.createGraphics();
 
         targetGraphics.setColor(foregroundColor);
+        targetGraphics.setStroke(stroke);
 
         if (backgroundColor != null) {
             targetGraphics.setBackground(backgroundColor);
