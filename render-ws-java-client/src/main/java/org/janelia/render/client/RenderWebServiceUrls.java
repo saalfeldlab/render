@@ -1,5 +1,7 @@
 package org.janelia.render.client;
 
+import java.io.Serializable;
+
 import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 
 /**
@@ -7,7 +9,7 @@ import org.janelia.alignment.spec.stack.StackMetaData.StackState;
  *
  * @author Eric Trautman
  */
-public class RenderWebServiceUrls {
+public class RenderWebServiceUrls implements Serializable {
 
     private final String baseDataUrl;
     private final String owner;
