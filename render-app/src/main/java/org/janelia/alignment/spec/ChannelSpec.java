@@ -27,7 +27,7 @@ public class ChannelSpec implements Serializable {
 
     public ChannelSpec(final Double minIntensity,
                        final Double maxIntensity) {
-        this(null, maxIntensity, minIntensity, new TreeMap<>(), null);
+        this(null, minIntensity, maxIntensity, new TreeMap<>(), null);
     }
 
     public ChannelSpec(final String name,
