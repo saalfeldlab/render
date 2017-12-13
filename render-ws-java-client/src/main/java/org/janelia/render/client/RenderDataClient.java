@@ -6,9 +6,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.http.client.methods.HttpDelete;
@@ -34,6 +34,7 @@ import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.request.WaitingRetryHandler;
 import org.janelia.render.client.response.EmptyResponseHandler;
 import org.janelia.render.client.response.JsonResponseHandler;
@@ -68,13 +69,6 @@ public class RenderDataClient {
         this.project = project;
         this.urls = new RenderWebServiceUrls(baseDataUrl, owner, project);
         this.httpClient = HttpClientBuilder.create().setRetryHandler(new WaitingRetryHandler()).build();
-    }
-
-    /**
-     * @return the URL helper for this data client.
-     */
-    public RenderWebServiceUrls getUrls() {
-        return urls;
     }
 
     @Override
@@ -243,6 +237,45 @@ public class RenderDataClient {
     }
 
     /**
+     * @param  stack            name of stack.
+     * @param  minZ             (optional) minimum value to include in list.
+     * @param  maxZ             (optional) maximum value to include in list.
+     * @param  explicitZValues  (optional) collection of z values to explicitly include.
+     *
+     * @return z values for the specified stack.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<Double> getStackZValues(final String stack,
+                                        final Double minZ,
+                                        final Double maxZ,
+                                        final Collection<Double> explicitZValues)
+            throws IOException {
+
+        final List<Double> zList;
+
+        if ((explicitZValues == null) || (explicitZValues.size() == 0)) {
+
+            zList = getStackZValues(stack, minZ, maxZ);
+
+        } else {
+
+            final ZFilter zFilter = new ZFilter(minZ, maxZ, explicitZValues);
+            final List<Double> allZList = getStackZValues(stack);
+            zList = new ArrayList<>(allZList.size());
+            zList.addAll(
+                    allZList.stream()
+                            .filter(zFilter::accept)
+                            .collect(Collectors.toList()));
+
+            LOG.info("getStackZValues: returning values for {} (filtered) layers", zList.size());
+        }
+
+        return zList;
+    }
+
+    /**
      * @param  stack  name of stack.
      * @param  minZ   (optional) only include layers with z values greater than or equal to this minimum.
      * @param  maxZ   (optional) only include layers with z values less than or equal to this maximum.
@@ -288,7 +321,7 @@ public class RenderDataClient {
      * @param  stack            name of stack.
      * @param  minZ             (optional) only include layers with z values greater than or equal to this minimum.
      * @param  maxZ             (optional) only include layers with z values less than or equal to this maximum.
-     * @param  explicitZValues  (optional) set of z values to explicitly include.
+     * @param  explicitZValues  (optional) collection of z values to explicitly include.
      *
      * @return section data for set of layers in the specified stack.
      *
@@ -298,7 +331,7 @@ public class RenderDataClient {
     public List<SectionData> getStackSectionData(final String stack,
                                                  final Double minZ,
                                                  final Double maxZ,
-                                                 final Set<Double> explicitZValues)
+                                                 final Collection<Double> explicitZValues)
             throws IOException {
 
         final List<SectionData> sectionDataList;
@@ -309,26 +342,15 @@ public class RenderDataClient {
 
         } else {
 
-            // if range is specified in any way, include everything in range plus explicit z values
-            double min = (minZ == null) ? -Double.MAX_VALUE : minZ;
-            final double max = (maxZ == null) ? Double.MAX_VALUE : maxZ;
-
-            // if range is not specified, exclude everything except explicit z values
-            if ((minZ == null) && (maxZ == null)) {
-                min = Double.MAX_VALUE;
-            }
-
+            final ZFilter zFilter = new ZFilter(minZ, maxZ, explicitZValues);
             final List<SectionData> allSectionDataList = getStackSectionData(stack, null, null);
             sectionDataList = new ArrayList<>(allSectionDataList.size());
-            for (final SectionData sectionData : allSectionDataList) {
-                final Double z = sectionData.getZ();
-                if ( explicitZValues.contains(z) || ((z >= min) && (z <= max)) ) {
-                    sectionDataList.add(sectionData);
-                }
-            }
+            sectionDataList.addAll(
+                    allSectionDataList.stream()
+                            .filter(sectionData -> zFilter.accept(sectionData.getZ()))
+                            .collect(Collectors.toList()));
 
             LOG.info("getStackSectionData: returning data for {} (filtered) sections", sectionDataList.size());
-
         }
 
         return sectionDataList;

@@ -35,6 +35,13 @@
 
     <dependencies>
 
+        <!-- explicitly reference desired Guava version here to override older version brought in by swagger2markup library -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava-version}</version>
+        </dependency>
+
         <dependency>
             <groupId>io.github.robwin</groupId>
             <artifactId>swagger2markup</artifactId>

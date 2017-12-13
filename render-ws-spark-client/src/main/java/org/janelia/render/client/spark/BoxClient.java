@@ -175,6 +175,8 @@ public class BoxClient implements Serializable {
         final String renderGroupsName = parameters.box.numberOfRenderGroups == null ? "layers" : "render groups";
         LOG.info("run: generated boxes for {} {}", total, renderGroupsName);
 
+        LogUtilities.logSparkClusterInfo(sparkContext); // log cluster info again here to add run stats to driver log
+
         sparkContext.stop();
     }
 

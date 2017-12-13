@@ -6,8 +6,11 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
+import org.janelia.alignment.betterbox.BoxData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +61,23 @@ public class IGridPaths {
         }
 
         pathList.add(imageFile.getAbsolutePath());
+    }
+
+    public void addBoxes(final String baseBoxPath,
+                         final String pathSuffix,
+                         final List<BoxData> boxes)
+            throws IllegalArgumentException {
+
+        boxes.stream()
+                .sorted((o1, o2) -> {
+                    int result = Integer.compare(o1.getRow(), o2.getRow());
+                    if (result == 0) {
+                        result = Integer.compare(o1.getColumn(), o2.getColumn());
+                    }
+                    return result; })
+                .forEach(box -> addImage(box.getAbsoluteLevelFile(baseBoxPath, pathSuffix),
+                                         box.getRow(),
+                                         box.getColumn()));
     }
 
     public File saveToFile(final File parentDirectory,
