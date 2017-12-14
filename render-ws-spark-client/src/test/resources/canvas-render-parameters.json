@@ -1,0 +1,28 @@
+{
+    "x": 0,
+    "y": 0,
+    "width": 2560,
+    "height": 2160,
+    "scale": 0.3,
+    "tileSpecs": [
+        {
+            "tileId": "151215054802008008.3.0",
+            "z": 3,
+            "minX": 0,
+            "minY": 0,
+            "maxX": 2559,
+            "maxY": 2159,
+            "width": 2560,
+            "height": 2160,
+            "mipmapLevels": {
+                "0": {
+                    "imageUrl": "src/test/resources/col0075_row0021_cam1.png"
+                }
+            },
+            "transforms": {
+                "type": "list",
+                "specList": []
+            }
+        }
+    ]
+}

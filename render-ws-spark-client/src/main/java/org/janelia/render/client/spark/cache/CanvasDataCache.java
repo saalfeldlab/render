@@ -5,18 +5,14 @@ import com.google.common.cache.CacheStats;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalListeners;
-import com.google.common.cache.RemovalNotification;
 import com.google.common.cache.Weigher;
 
 import java.io.File;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-
-import mpicbg.imagefeatures.Feature;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasId;
@@ -131,13 +127,10 @@ public class CanvasDataCache {
         final ExecutorService removalService = Executors.newFixedThreadPool(4);
 
         final RemovalListener<CanvasId, CachedCanvasData> removalListener =
-                new RemovalListener<CanvasId, CachedCanvasData>() {
-                    @Override
-                    public void onRemoval(@Nonnull final RemovalNotification<CanvasId, CachedCanvasData> removal) {
-                        final CachedCanvasData cachedCanvasData = removal.getValue();
-                        if (cachedCanvasData != null) {
-                            cachedCanvasData.remove();
-                        }
+                removal -> {
+                    final CachedCanvasData cachedCanvasData = removal.getValue();
+                    if (cachedCanvasData != null) {
+                        cachedCanvasData.remove();
                     }
                 };
 
@@ -219,18 +212,17 @@ public class CanvasDataCache {
     }
 
     /**
-     * @return the feature list for the specified canvas.
+     * @return the cached feature data for the specified canvas.
      *
      * @throws IllegalStateException
-     *   if the feature list cannot be cached locally.
+     *   if the data cannot be cached locally.
      *
      * @throws ClassCastException
      *   if this cache is not managing {@link CachedCanvasFeatures} data.
      */
-    public List<Feature> getFeatureList(final CanvasId canvasId)
+    public CachedCanvasFeatures getCanvasFeatures(final CanvasId canvasId)
             throws IllegalStateException, ClassCastException {
-        final CachedCanvasFeatures cachedCanvasFeatures = (CachedCanvasFeatures) getData(canvasId);
-        return cachedCanvasFeatures.getFeatureList();
+        return (CachedCanvasFeatures) getData(canvasId);
     }
 
     @Override

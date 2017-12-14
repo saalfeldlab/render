@@ -44,7 +44,7 @@ public class CanvasFeatureListLoader
 
         LOG.info("load: exit");
 
-        return new CachedCanvasFeatures(featureList);
+        return new CachedCanvasFeatures(featureList, offsets);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureListLoader.class);

@@ -12,13 +12,20 @@ import mpicbg.imagefeatures.Feature;
 public class CachedCanvasFeatures implements CachedCanvasData {
 
     private final List<Feature> featureList;
+    private final double[] clipOffsets;
 
-    public CachedCanvasFeatures(final List<Feature> featureList) {
+    public CachedCanvasFeatures(final List<Feature> featureList,
+                                final double[] clipOffsets) {
         this.featureList = featureList;
+        this.clipOffsets = clipOffsets;
     }
 
     public List<Feature> getFeatureList() {
         return featureList;
+    }
+
+    public double[] getClipOffsets() {
+        return clipOffsets;
     }
 
     public long getKilobytes() {

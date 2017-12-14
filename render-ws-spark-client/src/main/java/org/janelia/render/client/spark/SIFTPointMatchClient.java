@@ -32,6 +32,7 @@ import org.janelia.render.client.parameter.MatchClipParameters;
 import org.janelia.render.client.parameter.MatchDerivationParameters;
 import org.janelia.render.client.parameter.MatchRenderParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
+import org.janelia.render.client.spark.cache.CachedCanvasFeatures;
 import org.janelia.render.client.spark.cache.CanvasDataCache;
 import org.janelia.render.client.spark.cache.CanvasFeatureListLoader;
 import org.slf4j.Logger;
@@ -181,8 +182,8 @@ public class SIFTPointMatchClient
                     OrderedCanvasIdPair pair;
                     CanvasId p;
                     CanvasId q;
-                    List<Feature> pFeatures;
-                    List<Feature> qFeatures;
+                    CachedCanvasFeatures pFeatures;
+                    CachedCanvasFeatures qFeatures;
                     CanvasFeatureMatchResult matchResult;
                     Matches inlierMatches;
                     while (pairIterator.hasNext()) {
@@ -193,16 +194,17 @@ public class SIFTPointMatchClient
                         p = pair.getP();
                         q = pair.getQ();
 
-                        pFeatures = dataCache.getFeatureList(p);
-                        qFeatures = dataCache.getFeatureList(q);
+                        pFeatures = dataCache.getCanvasFeatures(p);
+                        qFeatures = dataCache.getCanvasFeatures(q);
 
                         log.info("derive matches between {} and {}", p, q);
 
-                        matchResult = featureMatcher.deriveMatchResult(pFeatures, qFeatures);
+                        matchResult = featureMatcher.deriveMatchResult(pFeatures.getFeatureList(),
+                                                                       qFeatures.getFeatureList());
 
                         // TODO: remove offset debug logging when no longer needed
-                        final double[] pClipOffsets = p.getClipOffsets();
-                        final double[] qClipOffsets = q.getClipOffsets();
+                        final double[] pClipOffsets = pFeatures.getClipOffsets();
+                        final double[] qClipOffsets = qFeatures.getClipOffsets();
                         log.debug("after feature derivation, {} offsets are {}, {}", p, pClipOffsets[0], pClipOffsets[1]);
                         log.debug("after feature derivation, {} offsets are {}, {}", q, qClipOffsets[0], qClipOffsets[1]);
 
