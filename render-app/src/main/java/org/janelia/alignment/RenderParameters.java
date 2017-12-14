@@ -406,6 +406,9 @@ public class RenderParameters implements Serializable {
 
             final double[] clipOffsets = canvasId.getClipOffsets();
 
+            // TODO: remove offset debug logging when no longer needed
+            LOG.debug("clipForMontagePair: {} offsets are {}, {}", canvasId, clipOffsets[0], clipOffsets[1]);
+
             switch (relativePosition) {
                 case TOP:
                 case BOTTOM:

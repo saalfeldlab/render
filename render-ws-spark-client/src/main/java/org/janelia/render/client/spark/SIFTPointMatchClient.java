@@ -200,7 +200,13 @@ public class SIFTPointMatchClient
 
                         matchResult = featureMatcher.deriveMatchResult(pFeatures, qFeatures);
 
-                        inlierMatches = matchResult.getInlierMatches(renderScale, p.getClipOffsets(), q.getClipOffsets());
+                        // TODO: remove offset debug logging when no longer needed
+                        final double[] pClipOffsets = p.getClipOffsets();
+                        final double[] qClipOffsets = q.getClipOffsets();
+                        log.debug("after feature derivation, {} offsets are {}, {}", p, pClipOffsets[0], pClipOffsets[1]);
+                        log.debug("after feature derivation, {} offsets are {}, {}", q, qClipOffsets[0], qClipOffsets[1]);
+
+                        inlierMatches = matchResult.getInlierMatches(renderScale, pClipOffsets, qClipOffsets);
 
                         if (inlierMatches.getWs().length > 0) {
                             matchList.add(new CanvasMatches(p.getGroupId(), p.getId(),
