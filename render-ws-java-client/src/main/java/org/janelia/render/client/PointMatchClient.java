@@ -84,6 +84,12 @@ public class PointMatchClient {
         public MatchClipParameters matchClip = new MatchClipParameters();
 
         @Parameter(
+                names = "--firstCanvasPosition",
+                description = "When clipping, identifies the relative position of the first canvas to the second canvas",
+                required = false)
+        public MontageRelativePosition firstCanvasPosition;
+
+        @Parameter(
                 names = "--renderScale",
                 description = "Render canvases at this scale",
                 required = false)
@@ -302,10 +308,19 @@ public class PointMatchClient {
             final CanvasData qData = canvasDataValues.get(1);
             final Bounds qBounds = qData.getBounds();
 
-            final MontageRelativePosition[] relativePositions =
-                    MontageRelativePosition.getRelativePositions(pBounds, qBounds);
-            pData.canvasId.setRelativePosition(relativePositions[0]);
-            qData.canvasId.setRelativePosition(relativePositions[1]);
+            if (parameters.firstCanvasPosition == null) {
+                throw new IllegalArgumentException("--firstCanvasPosition must be specified for clipping");
+            }
+
+            MontageRelativePosition secondCanvasPosition = null;
+            switch (parameters.firstCanvasPosition) {
+                case TOP: secondCanvasPosition = MontageRelativePosition.BOTTOM; break;
+                case BOTTOM: secondCanvasPosition = MontageRelativePosition.TOP; break;
+                case LEFT: secondCanvasPosition = MontageRelativePosition.RIGHT; break;
+                case RIGHT: secondCanvasPosition = MontageRelativePosition.LEFT; break;
+            }
+            pData.canvasId.setRelativePosition(parameters.firstCanvasPosition);
+            qData.canvasId.setRelativePosition(secondCanvasPosition);
 
             pData.clipForMontagePair(pBounds, parameters.matchClip.clipWidth, parameters.matchClip.clipHeight);
             qData.clipForMontagePair(qBounds, parameters.matchClip.clipWidth, parameters.matchClip.clipHeight);
@@ -495,31 +510,10 @@ public class PointMatchClient {
         }
 
         public Bounds getBounds() {
-
-            // default to render bounds
-            Bounds bounds = new Bounds(renderParameters.x,
-                                       renderParameters.y,
-                                       renderParameters.x + renderParameters.width,
-                                       renderParameters.y + renderParameters.height);
-
-            // override with stage bounds if they are available
-            final List<TileSpec> tileSpecs = renderParameters.getTileSpecs();
-            if (tileSpecs.size() == 1) {
-                final TileSpec tileSpec = tileSpecs.get(0);
-                final LayoutData layoutData = tileSpec.getLayout();
-                if (layoutData != null) {
-                    final Double stageX = layoutData.getStageX();
-                    final Double stageY = layoutData.getStageY();
-                    final int width = tileSpec.getWidth();
-                    final int height = tileSpec.getHeight();
-                    if ((stageX != null) && (stageY != null) && (width != -1) && (height != -1)) {
-                        bounds = new Bounds(stageX, stageY, stageX + width, stageY + height);
-                    }
-                }
-
-            }
-
-            return bounds;
+            return new Bounds(renderParameters.x,
+                              renderParameters.y,
+                              renderParameters.x + renderParameters.width,
+                              renderParameters.y + renderParameters.height);
         }
 
         public void clipForMontagePair(final Bounds bounds,
