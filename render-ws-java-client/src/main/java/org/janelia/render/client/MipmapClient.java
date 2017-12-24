@@ -166,7 +166,7 @@ public class MipmapClient {
 
         final ResolvedTileSpecCollection tiles = renderDataClient.getResolvedTiles(stack, z);
         final int tileCount = tiles.getTileCount();
-        final int tilesPerGroup = (tileCount / parameters.numberOfRenderGroups) + 1;
+        final int tilesPerGroup = (int) Math.ceil((double) tileCount / parameters.numberOfRenderGroups);
         final int startTile = (parameters.renderGroup - 1) * tilesPerGroup;
         final int stopTile = startTile + tilesPerGroup ;
 
