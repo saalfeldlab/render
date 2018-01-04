@@ -12,6 +12,7 @@ import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -170,20 +171,17 @@ public class MipmapClient {
         final int startTile = (parameters.renderGroup - 1) * tilesPerGroup;
         final int stopTile = startTile + tilesPerGroup ;
 
-        int count = 0;
-        int rendered = 0;
-        for (final TileSpec tileSpec : tiles.getTileSpecs()) {
-            if ((count >= startTile) && (count < stopTile)) {
-                generateMissingMipmapFiles(tileSpec);
-                rendered++;
-            }
-            count++;
+        final List<TileSpec> tileSpecsToRender = new ArrayList<>(tiles.getTileSpecs()).subList(startTile, stopTile);
+        for (final TileSpec tileSpec : tileSpecsToRender) {
+            generateMissingMipmapFiles(tileSpec);
         }
-        LOG.info("generateMipmapsForZ: tileCount {} tilesPerGroup {} numberOfRenderGroups {} startTile {} stopTile {}",
-            tileCount, tilesPerGroup, parameters.numberOfRenderGroups, startTile, stopTile);
-        LOG.info("generateMipmapsForZ: exit, generated mipmaps for {} tiles with z {}", rendered, z);
 
-        return count;
+        final int renderedTileCount = tileSpecsToRender.size();
+
+        LOG.info("generateMipmapsForZ: exit, generated mipmaps for {} tiles with z {} in group {} ({} to {} of {})",
+                 renderedTileCount, z, parameters.renderGroup, startTile, stopTile - 1, tileCount);
+
+        return renderedTileCount;
     }
 
     public void generateMissingMipmapFiles(final TileSpec tileSpec)
