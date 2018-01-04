@@ -21,19 +21,50 @@ import org.slf4j.LoggerFactory;
  */
 public class DbConfig {
 
+    private final String connectionString;
     private final List<ServerAddress> serverAddressList;
     private final String userName;
     private final String authenticationDatabase;
     private final String password;
-    private int maxConnectionsPerHost;
-    private int maxConnectionIdleTime;
+    private Integer maxConnectionsPerHost;
+    private Integer maxConnectionIdleTime;
     private final ReadPreference readPreference;
 
+    /**
+     * Configure everything from a single connection string like:
+     *
+     * <pre>
+     *     mongodb://temApp:password@render-mongodb2.int.janelia.org,render-mongodb3.int.janelia.org/?
+     *               authSource=admin&maxPoolSize=100&maxIdleTimeMS=600000
+     * </pre>
+     *
+     * The Connection String URI Format is documented at
+     * <a href="https://docs.mongodb.com/manual/reference/connection-string">
+     *   https://docs.mongodb.com/manual/reference/connection-string
+     * </a>.
+     *
+     * @param  connectionString  connection string.
+     */
+    public DbConfig(final String connectionString) {
+        this.connectionString = connectionString;
+        this.serverAddressList = null;
+        this.userName = null;
+        this.authenticationDatabase = null;
+        this.password = null;
+        this.maxConnectionsPerHost = null;
+        this.maxConnectionIdleTime = null;
+        this.readPreference = null;
+    }
+
+    /**
+     * Configure using the specified parameters.
+     */
     public DbConfig(final List<ServerAddress> serverAddressList,
                     final String userName,
                     final String authenticationDatabase,
                     final String password,
                     final ReadPreference readPreference) {
+        this.connectionString = null;
         this.serverAddressList = new ArrayList<>(serverAddressList);
         this.userName = userName;
         this.authenticationDatabase = authenticationDatabase;
@@ -41,6 +72,14 @@ public class DbConfig {
         this.maxConnectionsPerHost = new MongoClientOptions.Builder().build().getConnectionsPerHost(); // 100
         this.maxConnectionIdleTime = 600000; // 10 minutes
         this.readPreference = readPreference;
+    }
+
+    public boolean hasConnectionString() {
+        return connectionString != null;
+    }
+
+    public String getConnectionString() {
+        return connectionString;
     }
 
     public List<ServerAddress> getServerAddressList() {
@@ -88,63 +127,77 @@ public class DbConfig {
             in = new FileInputStream(file);
             properties.load(in);
 
-            final String commaSeparatedServers = getRequiredProperty("servers", properties, path);
-            final List<ServerAddress> serverAddressList = new ArrayList<>();
-            int endHost;
-            int startPort;
-            int port;
-            for (final String server : commaSeparatedServers.split(",")) {
-                endHost = server.indexOf(':');
-                startPort = endHost + 1;
-                if ((endHost > 0) && (server.length() > startPort)) {
-                    try {
-                        port = Integer.parseInt(server.substring(startPort));
-                    } catch (final NumberFormatException e) {
-                        throw new IllegalArgumentException("invalid port value for server address '" + server +
-                                                           "' specified in " + path, e);
+            final String connectionString = properties.getProperty("connectionString");
+
+            if (connectionString == null) {
+
+                LOG.info("fromFile: using explicit parameters specified in {}", file.getAbsolutePath());
+
+                final String commaSeparatedServers = getRequiredProperty("servers", properties, path);
+                final List<ServerAddress> serverAddressList = new ArrayList<>();
+                int endHost;
+                int startPort;
+                int port;
+                for (final String server : commaSeparatedServers.split(",")) {
+                    endHost = server.indexOf(':');
+                    startPort = endHost + 1;
+                    if ((endHost > 0) && (server.length() > startPort)) {
+                        try {
+                            port = Integer.parseInt(server.substring(startPort));
+                        } catch (final NumberFormatException e) {
+                            throw new IllegalArgumentException("invalid port value for server address '" + server +
+                                                               "' specified in " + path, e);
+                        }
+                        serverAddressList.add(new ServerAddress(server.substring(0, endHost), port));
+                    } else {
+                        serverAddressList.add(new ServerAddress(server));
                     }
-                    serverAddressList.add(new ServerAddress(server.substring(0, endHost), port));
+                }
+
+                final String userName = properties.getProperty("userName");
+                String userNameSource = null;
+                String password = null;
+                if (userName == null) {
+                    LOG.info("fromFile: skipping load of database credentials because no userName is defined in {}", path);
                 } else {
-                    serverAddressList.add(new ServerAddress(server));
+                    userNameSource = getRequiredProperty("authenticationDatabase", properties, path);
+                    password = getRequiredProperty("password", properties, path);
                 }
-            }
 
-            final String userName = properties.getProperty("userName");
-            String userNameSource = null;
-            String password = null;
-            if (userName == null) {
-                LOG.info("fromFile: skipping load of database credentials because no userName is defined in {}", path);
+                final String readPreferenceName = properties.getProperty("readPreference");
+                ReadPreference readPreference = ReadPreference.primary();
+                if (readPreferenceName != null) {
+                    readPreference = ReadPreference.valueOf(readPreferenceName);
+                }
+
+                dbConfig = new DbConfig(serverAddressList, userName, userNameSource, password, readPreference);
+
+                final String maxConnectionsPerHostStr = properties.getProperty("maxConnectionsPerHost");
+                if (maxConnectionsPerHostStr != null) {
+                    try {
+                        dbConfig.maxConnectionsPerHost = Integer.parseInt(maxConnectionsPerHostStr);
+                    } catch (final NumberFormatException e) {
+                        throw new IllegalArgumentException("invalid maxConnectionsPerHost value (" +
+                                                           maxConnectionsPerHostStr + ") specified in " + path, e);
+                    }
+                }
+
+                final String maxConnectionIdleTimeStr = properties.getProperty("maxConnectionIdleTime");
+                if (maxConnectionIdleTimeStr != null) {
+                    try {
+                        dbConfig.maxConnectionIdleTime = Integer.parseInt(maxConnectionIdleTimeStr);
+                    } catch (final NumberFormatException e) {
+                        throw new IllegalArgumentException("invalid maxConnectionIdleTime value (" +
+                                                           maxConnectionIdleTimeStr + ") specified in " + path, e);
+                    }
+                }
+
             } else {
-                userNameSource = getRequiredProperty("authenticationDatabase", properties, path);
-                password = getRequiredProperty("password", properties, path);
-            }
 
-            final String readPreferenceName = properties.getProperty("readPreference");
-            ReadPreference readPreference = ReadPreference.primary();
-            if (readPreferenceName != null) {
-                readPreference = ReadPreference.valueOf(readPreferenceName);
-            }
+                LOG.info("fromFile: using connectionString specified in {}", file.getAbsolutePath());
 
-            dbConfig = new DbConfig(serverAddressList, userName, userNameSource, password, readPreference);
+                dbConfig = new DbConfig(connectionString);
 
-            final String maxConnectionsPerHostStr = properties.getProperty("maxConnectionsPerHost");
-            if (maxConnectionsPerHostStr != null) {
-                try {
-                    dbConfig.maxConnectionsPerHost = Integer.parseInt(maxConnectionsPerHostStr);
-                } catch (final NumberFormatException e) {
-                    throw new IllegalArgumentException("invalid maxConnectionsPerHost value (" +
-                                                       maxConnectionsPerHostStr + ") specified in " + path, e);
-                }
-            }
-
-            final String maxConnectionIdleTimeStr = properties.getProperty("maxConnectionIdleTime");
-            if (maxConnectionIdleTimeStr != null) {
-                try {
-                    dbConfig.maxConnectionIdleTime = Integer.parseInt(maxConnectionIdleTimeStr);
-                } catch (final NumberFormatException e) {
-                    throw new IllegalArgumentException("invalid maxConnectionIdleTime value (" +
-                                                       maxConnectionIdleTimeStr + ") specified in " + path, e);
-                }
             }
 
         } catch (final IllegalArgumentException e) {

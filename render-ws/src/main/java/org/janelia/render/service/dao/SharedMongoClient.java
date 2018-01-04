@@ -2,6 +2,7 @@ package org.janelia.render.service.dao;
 
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientOptions;
+import com.mongodb.MongoClientURI;
 import com.mongodb.MongoCredential;
 
 import java.io.File;
@@ -48,28 +49,40 @@ public class SharedMongoClient {
     public SharedMongoClient(final DbConfig dbConfig)
             throws UnknownHostException {
 
-        final List<MongoCredential> credentialsList;
-        if (dbConfig.hasCredentials()) {
-            final MongoCredential credential =
-                    MongoCredential.createCredential(dbConfig.getUserName(),
-                                                     dbConfig.getAuthenticationDatabase(),
-                                                     dbConfig.getPassword());
-            credentialsList = Collections.singletonList(credential);
+        if (dbConfig.hasConnectionString()) {
+
+            // use connectionString for everything (see https://docs.mongodb.com/manual/reference/connection-string )
+
+            final MongoClientURI mongoClientURI = new MongoClientURI(dbConfig.getConnectionString());
+            client = new MongoClient(mongoClientURI);
+
         } else {
-            credentialsList = Collections.emptyList();
+
+            // use explicitly configured  parameters
+
+            final List<MongoCredential> credentialsList;
+            if (dbConfig.hasCredentials()) {
+                final MongoCredential credential =
+                        MongoCredential.createCredential(dbConfig.getUserName(),
+                                                         dbConfig.getAuthenticationDatabase(),
+                                                         dbConfig.getPassword());
+                credentialsList = Collections.singletonList(credential);
+            } else {
+                credentialsList = Collections.emptyList();
+            }
+
+            final MongoClientOptions options = new MongoClientOptions.Builder()
+                    .connectionsPerHost(dbConfig.getMaxConnectionsPerHost())
+                    .maxConnectionIdleTime(dbConfig.getMaxConnectionIdleTime())
+                    .readPreference(dbConfig.getReadPreference())
+                    .build();
+
+            client = new MongoClient(dbConfig.getServerAddressList(), credentialsList, options);
         }
 
-        final MongoClientOptions options = new MongoClientOptions.Builder()
-                .connectionsPerHost(dbConfig.getMaxConnectionsPerHost())
-                .maxConnectionIdleTime(dbConfig.getMaxConnectionIdleTime())
-                .readPreference(dbConfig.getReadPreference())
-                .build();
+        LOG.info("created {} client for server(s) {} with {}",
+                 getMongoClientVersion(), client.getServerAddressList(), client.getMongoClientOptions());
 
-        LOG.info("creating {} client for server(s) {} with {}",
-                 getMongoClientVersion(), dbConfig.getServerAddressList(), options);
-
-
-        client = new MongoClient(dbConfig.getServerAddressList(), credentialsList, options);
     }
 
     private static synchronized void setSharedMongoClient()
