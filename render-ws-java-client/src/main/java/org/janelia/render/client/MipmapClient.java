@@ -166,19 +166,22 @@ public class MipmapClient {
 
         final ResolvedTileSpecCollection tiles = renderDataClient.getResolvedTiles(stack, z);
         final int tileCount = tiles.getTileCount();
-        final int tilesPerGroup = (tileCount / parameters.numberOfRenderGroups) + 1;
+        final int tilesPerGroup = (int) Math.ceil((double) tileCount / parameters.numberOfRenderGroups);
         final int startTile = (parameters.renderGroup - 1) * tilesPerGroup;
-        final int stopTile = startTile + tilesPerGroup - 1;
+        final int stopTile = startTile + tilesPerGroup ;
 
         int count = 0;
+        int rendered = 0;
         for (final TileSpec tileSpec : tiles.getTileSpecs()) {
             if ((count >= startTile) && (count < stopTile)) {
                 generateMissingMipmapFiles(tileSpec);
+                rendered++;
             }
             count++;
         }
-
-        LOG.info("generateMipmapsForZ: exit, generated mipmaps for {} tiles with z {}", count, z);
+        LOG.info("generateMipmapsForZ: tileCount {} tilesPerGroup {} numberOfRenderGroups {} startTile {} stopTile {}",
+            tileCount, tilesPerGroup, parameters.numberOfRenderGroups, startTile, stopTile);
+        LOG.info("generateMipmapsForZ: exit, generated mipmaps for {} tiles with z {}", rendered, z);
 
         return count;
     }
