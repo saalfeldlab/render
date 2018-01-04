@@ -178,23 +178,21 @@ public class Converter {
                                     final boolean isFirstPatch) {
 
                 final StringBuilder json = new StringBuilder(16 * 1024);
-                if (patch.isVisible){
-                    if (! isFirstPatch) {
-                        json.append(",\n");
-                    }
+                if (! isFirstPatch) {
+                    json.append(",\n");
+                }
 
                 final TileSpec tileSpec = patch.getTileSpec(projectPath, baseMaskPath, layer.z,useTitleForTileId);
                 if (validateConvertedTileSpecs) {
                     tileSpec.validate();
                 }
 
-                    json.append(tileSpec.toJson());
+                json.append(tileSpec.toJson());
 
-                    try {
-                        jsonStream.write(json.toString().getBytes());
-                    } catch (final IOException e) {
-                        throw new RuntimeException("failed to write to JSON stream", e);
-                    }
+                try {
+                    jsonStream.write(json.toString().getBytes());
+                } catch (final IOException e) {
+                    throw new RuntimeException("failed to write to JSON stream", e);
                 }
             }
         };
@@ -515,9 +513,11 @@ public class Converter {
             patches = new ArrayList<T2Patch>() {
                 @Override
                 public boolean add(final T2Patch patch) {
-                    final boolean isFirstPatch = isFirstLayer && (numberOfPatches == 0);
-                    l.handlePatch(baseMaskPath, T2Layer.this, patch, isFirstPatch);
-                    numberOfPatches++;
+                    if (patch.isVisible) {
+                        final boolean isFirstPatch = isFirstLayer && (numberOfPatches == 0);
+                        l.handlePatch(baseMaskPath, T2Layer.this, patch, isFirstPatch);
+                        numberOfPatches++;
+                    }
                     return false;
                 }
             };
