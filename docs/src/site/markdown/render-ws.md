@@ -41,28 +41,56 @@ mvn package
 # assumes current directory is still the cloned render repository root (./render)
 cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war
 ```
-### 6. Install MongoDB
-> These instructions were taken from <https://docs.mongodb.org/v3.0/tutorial/install-mongodb-on-ubuntu/>
+### 6. Install MongoDB 3.2
+> These instructions were taken from <https://docs.mongodb.com/v3.2/tutorial/install-mongodb-on-ubuntu/>
 
 ```bash
 # import MongoDB public GPG key
-sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
+sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927
 
 # create a list file for MongoDB
-echo "deb http://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
+echo "deb http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.2.list
 
 # reload local package database
 sudo apt-get update
 
+# install default MongoDB (2.6) packages
+# NOTE: This step is not documented on the MongoDB web site, but for some reason is required to avoid "mongod: unrecognized service" errors later
+#       See https://github.com/Microsoft/WSL/issues/1822 for details
+sudo apt-get install -y mongodb
+
 # install MongoDB packages (this should also start the mongod process)
-sudo apt-get install -y mongodb-org=3.0.9 mongodb-org-server=3.0.9 mongodb-org-shell=3.0.9 mongodb-org-mongos=3.0.9 mongodb-org-tools=3.0.9
+sudo apt-get install -y mongodb-org=3.2.18 mongodb-org-server=3.2.18 mongodb-org-shell=3.2.18 mongodb-org-mongos=3.2.18 mongodb-org-tools=3.2.18
+
+# Pin specific version of MongoDB
+echo "mongodb-org hold" | sudo dpkg --set-selections
+echo "mongodb-org-server hold" | sudo dpkg --set-selections
+echo "mongodb-org-shell hold" | sudo dpkg --set-selections
+echo "mongodb-org-mongos hold" | sudo dpkg --set-selections
+echo "mongodb-org-tools hold" | sudo dpkg --set-selections
+
+# Create systemd service file
+# NOTE: This file has to be named mongodb.service (instead of mongod.service) for some reason
+sudo echo """
+[Unit]
+Description=High-performance, schema-free document-oriented database
+After=network.target
+Documentation=https://docs.mongodb.org/manual
+
+[Service]
+User=mongodb
+Group=mongodb
+ExecStart=/usr/bin/mongod --quiet --config /etc/mongod.conf
+
+[Install]
+WantedBy=multi-user.target
+""" > /lib/systemd/system/mongodb.service
 ```
 
 ### 7. Start MongoDB
-> The install process should start mongod, but you can be sure by running this.
-
 ```bash
-sudo service mongod start
+# NOTE: The service has to be mongodb (instead of mongod) for some reason.
+sudo service mongodb start
 ```
 
 ### 8. Start Jetty
