@@ -14,7 +14,7 @@ machines that are tuned for their specific purpose.
 
 ## Basic Installation
 These installation instructions cover setup of an evaluation instance with a collocated web server and 
-database running on the most recent stable release of Ubuntu (14.04 precise).  
+database running on Ubuntu 16.04.  
 
 ### 1. Install Git and Maven
 ```bash
