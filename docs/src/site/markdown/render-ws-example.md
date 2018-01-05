@@ -104,7 +104,7 @@ of the multi-layer-mosaic alignment of the v1_align stack.
 ${CLIENT_SCRIPTS}/manage_stacks.sh ${EXAMPLE_1_PARAMS} --stack v1_align_tps --action CREATE --cycleNumber 1 --cycleStepNumber 4
 
 # warp v1_montage stack to v1_align stack, storing results in v1_align_tps stack
-${CLIENT_SCRIPTS}/generate_warp_transforms.sh ${EXAMPLE_1_PARAMS} --alignStack v1_align --montageStack v1_montage --targetStack v1_align_tps 3407 3408  
+${CLIENT_SCRIPTS}/generate_warp_transforms.sh ${EXAMPLE_1_PARAMS} --stack v1_montage --alignStack v1_align --targetStack v1_align_tps 3407 3408  
 
 # complete v1_align_tps stack
 ${CLIENT_SCRIPTS}/manage_stacks.sh ${EXAMPLE_1_PARAMS} --stack v1_align_tps --action SET_STATE --stackState COMPLETE
