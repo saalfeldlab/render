@@ -37,6 +37,7 @@ public abstract class ClientRunner {
         try {
             runClient(args);
             LOG.info("run: exit, processing completed in {}", processTimer);
+            System.exit(0);
         } catch (final Throwable t) {
             LOG.error("run: caught exception", t);
             LOG.info("run: exit, processing failed after {}", processTimer);
