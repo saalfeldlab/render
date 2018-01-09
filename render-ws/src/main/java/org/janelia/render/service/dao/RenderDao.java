@@ -918,6 +918,21 @@ public class RenderDao {
      */
     public List<StackMetaData> getStackMetaDataListForOwner(final String owner)
             throws IllegalArgumentException {
+        return getStackMetaDataListForOwner(owner, null);
+    }
+
+    /**
+     * @param  owner    owner for all stacks.
+     * @param  project  project for all stacks (or null to include all projects).
+     *
+     * @return list of stack meta data objects for the specified owner and project.
+     *
+     * @throws IllegalArgumentException
+     *   if required parameters are not specified.
+     */
+    public List<StackMetaData> getStackMetaDataListForOwner(final String owner,
+                                                            final String project)
+            throws IllegalArgumentException {
 
         MongoUtil.validateRequiredParameter("owner", owner);
 
@@ -925,6 +940,10 @@ public class RenderDao {
 
         final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
         final Document query = new Document("stackId.owner", owner);
+        if (project != null) {
+            query.append("stackId.project", project);
+        }
+
         final Document sortCriteria = new Document(
                 "stackId.project", 1).append(
                 "currentVersion.cycleNumber", -1).append(
