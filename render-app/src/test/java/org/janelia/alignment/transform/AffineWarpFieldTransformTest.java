@@ -47,7 +47,9 @@ public class AffineWarpFieldTransformTest {
         affineWarpField.set(1, 0, new double[] {1, 0, 0, 1,  0, 0});
         affineWarpField.set(1, 1, new double[] {1, 0, 0, 1, 29, 29});
 
-        final AffineWarpFieldTransform transform = new AffineWarpFieldTransform(affineWarpField);
+        final AffineWarpFieldTransform transform =
+                new AffineWarpFieldTransform(AffineWarpFieldTransform.EMPTY_OFFSETS,
+                                             affineWarpField);
 
         final String dataString = transform.toDataString();
 
@@ -69,6 +71,27 @@ public class AffineWarpFieldTransformTest {
     }
 
     @Test
+    public void testOffsetWarpField() throws Exception {
+
+        final AffineWarpFieldTransform affineWarpFieldTransform = new AffineWarpFieldTransform();
+
+        final String valuesString = "1.0 1.0 1.0 1.0   0.0 0.0 0.0 0.0   0.0 0.0 0.0 0.0   1.0 1.0 1.0 1.0   11.0 0.0 0.0 0.0   22.0 0.0 0.0 0.0";
+        affineWarpFieldTransform.init("50000.0 60000.0 100.0 100.0 2 2 net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory none " + valuesString);
+
+        double[] world = { 50075, 60075 };
+
+        double[] result = affineWarpFieldTransform.apply(world);
+        Assert.assertEquals("invalid x result for row 1 column 1", world[0], result[0], 0.001);
+        Assert.assertEquals("invalid y result for row 1 column 1", world[1], result[1], 0.001);
+
+        world = new double[] { 5500, 6600 };
+
+        result = affineWarpFieldTransform.apply(world);
+        Assert.assertEquals("invalid x result for row 0 column 0", world[0] + 11, result[0], 0.001);
+        Assert.assertEquals("invalid y result for row 0 column 0", world[1] + 22, result[1], 0.001);
+    }
+
+    @Test
     public void testApply() throws Exception {
         testApplyForOffset(0, 0);
         testApplyForOffset(500, 0);
@@ -76,8 +99,8 @@ public class AffineWarpFieldTransformTest {
         testApplyForOffset(500, 500);
     }
 
-    public void testApplyForOffset(final double x,
-                                   final double y) throws Exception {
+    private void testApplyForOffset(final double x,
+                                    final double y) throws Exception {
 
         final TranslationModel2D offsetModel = new TranslationModel2D();
         offsetModel.init(x + " " + y);
@@ -90,7 +113,10 @@ public class AffineWarpFieldTransformTest {
         affineWarpField.set(1, 0, new double[] {1, 0, 0, 1,  0,  0});
         affineWarpField.set(1, 1, new double[] {1, 0, 0, 1, 20, 20});
 
-        final AffineWarpFieldTransform warpFieldTransform = new AffineWarpFieldTransform(affineWarpField);
+        final AffineWarpFieldTransform warpFieldTransform =
+                new AffineWarpFieldTransform(AffineWarpFieldTransform.EMPTY_OFFSETS,
+                                             affineWarpField);
+
         System.out.println(warpFieldTransform.toDataString());
 
         final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList<>();
