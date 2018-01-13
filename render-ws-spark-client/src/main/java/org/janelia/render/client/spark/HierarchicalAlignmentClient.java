@@ -168,7 +168,9 @@ public class HierarchicalAlignmentClient
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final HierarchicalAlignmentClient client = new HierarchicalAlignmentClient(parameters);
+                final SparkConf sparkConf = new SparkConf().setAppName("HierarchicalAlignmentClient");
+                final HierarchicalAlignmentClient client = new HierarchicalAlignmentClient(parameters,
+                                                                                           sparkConf);
                 client.run();
 
             }
@@ -183,19 +185,17 @@ public class HierarchicalAlignmentClient
 
     private final StackId roughTilesStackId;
     private final List<Double> zValues;
-    private RenderDataClient driverTierRender;
+    private String tierProject;
+    private StackId tierParentStackId;
     private final List<HierarchicalStack> tierStacks;
+    private RenderDataClient driverTierRender;
 
-
-    public HierarchicalAlignmentClient(final Parameters parameters) throws IllegalArgumentException {
+    public HierarchicalAlignmentClient(final Parameters parameters,
+                                       final SparkConf sparkConf) throws IllegalArgumentException {
         this.parameters = parameters;
+        this.sparkContext = new JavaSparkContext(sparkConf);
 
-        final SparkConf conf = new SparkConf().setAppName("HierarchicalAlignmentClient");
-        this.sparkContext = new JavaSparkContext(conf);
-        final String sparkAppId = sparkContext.getConf().getAppId();
-        final String executorsJson = LogUtilities.getExecutorsApiJson(sparkAppId);
-
-        LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
+        LogUtilities.logSparkClusterInfo(sparkContext);
 
         this.driverRoughRender = parameters.renderWeb.getDataClient();
 
@@ -216,11 +216,11 @@ public class HierarchicalAlignmentClient
             final StackId parentTilesStackId = HierarchicalStack.deriveParentTierStackId(roughTilesStackId, tier);
             final StackMetaData parentStackMetaData = driverRoughRender.getStackMetaData(parentTilesStackId.getStack());
 
-            setupSplitStacksForTier(tier, parentStackMetaData);
+            setupStacksForTier(tier, parentStackMetaData);
             createStacksForTier(tier, parentStackMetaData);
             generateMatchesForTier();
             alignTier();
-            createWarpStackForTier();
+            createWarpStackForTier(tier);
 
             // after the first requested tier is processed,
             // remove the keepExisting flag so that subsequent tiers are processed in their entirety
@@ -232,11 +232,14 @@ public class HierarchicalAlignmentClient
         sparkContext.stop();
     }
 
-    private StackMetaData setupSplitStacksForTier(final int tier,
-                                                  final StackMetaData parentStackMetaData)
+    private StackMetaData setupStacksForTier(final int tier,
+                                             final StackMetaData parentStackMetaData)
             throws IOException {
 
-        LOG.info("setupSplitStacksForTier: entry, tier={}", tier);
+        LOG.info("setupStacksForTier: entry, tier={}", tier);
+
+        tierProject = HierarchicalStack.deriveProjectForTier(roughTilesStackId, tier);
+        tierParentStackId = parentStackMetaData.getStackId();
 
         final Bounds parentStackBounds = parentStackMetaData.getStats().getStackBounds();
 
@@ -262,7 +265,6 @@ public class HierarchicalAlignmentClient
 
         final ProcessTimer timer = new ProcessTimer();
 
-        final String tierProject = HierarchicalStack.deriveProjectForTier(roughTilesStackId, tier);
         driverTierRender = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                 parameters.renderWeb.owner,
                                                 tierProject);
@@ -443,15 +445,6 @@ public class HierarchicalAlignmentClient
 
         LOG.info("alignTier: entry");
 
-        // broadcast EM_aligner tool to ensure that solver is run serially on each node
-        final EMAlignerTool solver = new EMAlignerTool(new File(parameters.solverScript),
-                                                       new File(parameters.solverParametersTemplate));
-        final Broadcast<EMAlignerTool> broadcastEMAlignerTool = sparkContext.broadcast(solver);
-
-        final HierarchicalTierSolveFunction solveStacksFunction =
-                new HierarchicalTierSolveFunction(parameters.boxBaseDataUrl,
-                                                  broadcastEMAlignerTool);
-
         final List<HierarchicalStack> stacksWithMatches =
                 tierStacks.stream().
                         filter(HierarchicalStack::hasMatchPairs).
@@ -474,25 +467,49 @@ public class HierarchicalAlignmentClient
 
         if (stacksToAlign.size() > 0) {
 
+            // broadcast EM_aligner tool to ensure that solver is run serially on each node
+            final EMAlignerTool solver = new EMAlignerTool(new File(parameters.solverScript),
+                                                           new File(parameters.solverParametersTemplate));
+            final Broadcast<EMAlignerTool> broadcastEMAlignerTool = sparkContext.broadcast(solver);
+
+            final HierarchicalTierSolveFunction solveStacksFunction =
+                    new HierarchicalTierSolveFunction(parameters.boxBaseDataUrl,
+                                                      broadcastEMAlignerTool);
+
             // remove any pre-existing alignment results ...
-            for (final HierarchicalStack splitStack : stacksToAlign) {
-                driverTierRender.deleteStack(splitStack.getAlignedStackId().getStack(), null);
+            for (final HierarchicalStack tierStack : stacksToAlign) {
+                driverTierRender.deleteStack(tierStack.getAlignedStackId().getStack(), null);
             }
 
-            final JavaRDD<HierarchicalStack> rddStacksToAlign = sparkContext.parallelize(stacksToAlign);
+            final JavaRDD<HierarchicalStack> rddTierStacksToAlign = sparkContext.parallelize(stacksToAlign);
 
-            final JavaRDD<HierarchicalStack> rddAlignedStacks = rddStacksToAlign.map(solveStacksFunction);
+            final JavaRDD<HierarchicalStack> rddTierStacksAfterAlignment =
+                    rddTierStacksToAlign.map(solveStacksFunction);
 
-            final List<HierarchicalStack> alignedStackList = rddAlignedStacks.collect();
+            final List<HierarchicalStack> tierStacksAfterAlignment = rddTierStacksAfterAlignment.collect();
 
             LOG.info("alignTier: processing results");
 
-            for (final HierarchicalStack splitStack : alignedStackList) {
-                final String splitStackName = splitStack.getSplitStackId().getStack();
-                LOG.info("alignTier: stack {} has alignment quality {}",
-                         splitStackName, splitStack.getAlignmentQuality());
+            final Map<String, HierarchicalStack> nameToUpdatedStackMap =
+                    new HashMap<>(tierStacksAfterAlignment.size() * 2);
 
-                driverTierRender.setHierarchicalData(splitStackName, splitStack);
+            for (final HierarchicalStack tierStack : tierStacksAfterAlignment) {
+                final String tierStackName = tierStack.getSplitStackId().getStack();
+                LOG.info("alignTier: stack {} has alignment quality {}",
+                         tierStackName, tierStack.getAlignmentQuality());
+                driverTierRender.setHierarchicalData(tierStackName, tierStack); // persist alignment metadata
+                nameToUpdatedStackMap.put(tierStackName, tierStack);
+            }
+
+            // update local hierarchical stack data with alignment metadata
+            HierarchicalStack tierStack;
+            HierarchicalStack updatedStack;
+            for (int i = 0; i < tierStacks.size(); i++) {
+                tierStack = tierStacks.get(i);
+                updatedStack = nameToUpdatedStackMap.get(tierStack.getSplitStackId().getStack());
+                if (updatedStack != null) {
+                    tierStacks.set(i, updatedStack);
+                }
             }
 
         } else {
@@ -502,10 +519,61 @@ public class HierarchicalAlignmentClient
         LOG.info("alignTier: exit");
     }
 
-    private void createWarpStackForTier() {
+    private void createWarpStackForTier(final int tier)
+            throws IOException {
+
         LOG.info("createWarpStackForTier: entry");
-        // TODO: fetch align stack affines, create warp field transform, and apply to rough tiles
-        LOG.info("createWarpStackForTier: exit");
+
+        final ProcessTimer timer = new ProcessTimer();
+
+        final Set<StackId> existingRoughProjectStackIds = new HashSet<>(driverRoughRender.getProjectStacks());
+
+        final StackId warpStackId = HierarchicalStack.deriveWarpStackIdForTier(roughTilesStackId, tier);
+
+        boolean generateWarpStack = true;
+        if (existingRoughProjectStackIds.contains(warpStackId) &&
+            parameters.keepExisting(PipelineStep.WARP)) {
+            generateWarpStack = false;
+        }
+
+        if (generateWarpStack) {
+
+            // remove any existing warp stack results
+            driverRoughRender.deleteStack(warpStackId.getStack(), null);
+
+            final StackMetaData roughTilesStackMetaData =
+                    driverRoughRender.getStackMetaData(roughTilesStackId.getStack());
+
+            driverRoughRender.setupDerivedStack(roughTilesStackMetaData, warpStackId.getStack());
+
+            final String projectForTier = this.tierProject;
+
+            final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
+            final HierarchicalWarpFieldStackFunction warpFieldStackFunction
+                    = new HierarchicalWarpFieldStackFunction(parameters.renderWeb.baseDataUrl,
+                                                             parameters.renderWeb.owner,
+                                                             tier,
+                                                             projectForTier,
+                                                             tierParentStackId,
+                                                             warpStackId.getStack());
+
+            final JavaRDD<Integer> rddTileCounts = rddZValues.map(warpFieldStackFunction);
+
+            final List<Integer> tileCountList = rddTileCounts.collect();
+
+            LOG.info("createWarpStackForTier: counting results");
+
+            long total = 0;
+            for (final Integer tileCount : tileCountList) {
+                total += tileCount;
+            }
+
+            LOG.info("createWarpStackForTier: added {} tile specs to {}", total, warpStackId);
+
+            driverRoughRender.setStackState(warpStackId.getStack(), StackMetaData.StackState.COMPLETE);
+        }
+
+        LOG.info("createWarpStackForTier: exit, processing took {} seconds", timer.getElapsedSeconds());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(HierarchicalAlignmentClient.class);

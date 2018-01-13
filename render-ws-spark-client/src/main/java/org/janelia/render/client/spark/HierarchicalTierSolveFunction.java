@@ -28,21 +28,21 @@ public class HierarchicalTierSolveFunction
     }
 
     @Override
-    public HierarchicalStack call(final HierarchicalStack splitStack)
+    public HierarchicalStack call(final HierarchicalStack tierStack)
             throws Exception {
 
-        final StackId splitStackId = splitStack.getSplitStackId();
+        final StackId splitStackId = tierStack.getSplitStackId();
 
         LogUtilities.setupExecutorLog4j(splitStackId.getStack());
 
-        final Bounds bounds = splitStack.getFullScaleBounds();
+        final Bounds bounds = tierStack.getFullScaleBounds();
         final EMAlignerTool nodeSolver = broadcastEMAlignerTool.getValue();
 
         final String parametersFileName = String.format("solve_%s_%s.json",
                                                         splitStackId.getStack(), new Date().getTime());
         final File parametersFile = new File(System.getProperty("spark.local.dir"), parametersFileName);
 
-        final MatchCollectionId matchCollectionId = splitStack.getMatchCollectionId();
+        final MatchCollectionId matchCollectionId = tierStack.getMatchCollectionId();
 
         nodeSolver.generateParametersFile(baseDataUrl,
                                           splitStackId,
@@ -50,7 +50,7 @@ public class HierarchicalTierSolveFunction
                                           bounds.getMaxZ(),
                                           matchCollectionId.getOwner(),
                                           matchCollectionId.getName(),
-                                          splitStack.getAlignedStackId(),
+                                          tierStack.getAlignedStackId(),
                                           parametersFile);
 
         final int returnCode = nodeSolver.run(parametersFile);
@@ -58,8 +58,8 @@ public class HierarchicalTierSolveFunction
         // TODO: handle return code, how to handle missing matches? drill down one more tier? two empty tiers == stop?
 
         // TODO: properly calculate alignment quality - hack here just saves return code (pass/fail)
-        splitStack.setAlignmentQuality((double) returnCode);
+        tierStack.setAlignmentQuality((double) returnCode);
 
-        return splitStack;
+        return tierStack;
     }
 }
