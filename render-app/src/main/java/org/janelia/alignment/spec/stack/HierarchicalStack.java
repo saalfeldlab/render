@@ -7,7 +7,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import mpicbg.trakem2.transform.AffineModel2D;
+import mpicbg.models.AffineModel2D;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.MatchCollectionId;
@@ -179,10 +179,24 @@ public class HierarchicalStack implements Serializable {
     }
 
     /**
+     * @return full scale pixel height for this stack's tier.
+     */
+    public double getTotalTierFullScaleHeight() {
+        return fullScaleBounds.getDeltaY() * totalTierRowCount;
+    }
+
+    /**
      * @return total number of columns in this stack's tier.
      */
     public int getTotalTierColumnCount() {
         return totalTierColumnCount;
+    }
+
+    /**
+     * @return full scale pixel width for this stack's tier.
+     */
+    public double getTotalTierFullScaleWidth() {
+        return fullScaleBounds.getDeltaX() * totalTierColumnCount;
     }
 
     /**
@@ -283,14 +297,24 @@ public class HierarchicalStack implements Serializable {
                ceil(fullScaleBounds.getDeltaX()) + ',' + ceil(fullScaleBounds.getDeltaY()) + ',' + scale;
     }
 
+    /**
+     * Uses this stack's scale and the specified aligned stack bounds to convert the specified affine to a
+     * full scale version that can be used in an {@link org.janelia.alignment.transform.AffineWarpFieldTransform}.
+     *
+     * @param  alignedLayerTransformModel  scaled aligned model to convert.
+     * @param  alignedStackMinX            minimum X value for the (scaled) aligned stack.
+     * @param  alignedStackMinY            minimum Y value for the (scaled) aligned stack.
+     *
+     * @return full scale relative version of the specified model.
+     */
     @JsonIgnore
-    public AffineModel2D getRelativeModel(final AffineModel2D alignedLayerTransformModel,
-                                          final double alignedFirstLayerTranslateX,
-                                          final double alignedFirstLayerTranslateY) {
+    public AffineModel2D getFullScaleRelativeModel(final AffineModel2D alignedLayerTransformModel,
+                                                   final double alignedStackMinX,
+                                                   final double alignedStackMinY) {
 
         final AffineTransform affine = new AffineTransform();
         affine.scale(1 / scale, 1 / scale);
-        affine.translate(-alignedFirstLayerTranslateX, -alignedFirstLayerTranslateY);
+        affine.translate(-alignedStackMinX, -alignedStackMinY);
         affine.concatenate(alignedLayerTransformModel.createAffine());
         affine.scale(scale, scale);
         final AffineModel2D model = new AffineModel2D();

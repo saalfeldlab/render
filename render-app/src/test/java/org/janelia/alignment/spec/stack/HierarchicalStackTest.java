@@ -18,7 +18,7 @@ package org.janelia.alignment.spec.stack;
 
 import java.util.List;
 
-import mpicbg.trakem2.transform.AffineModel2D;
+import mpicbg.models.AffineModel2D;
 
 import org.janelia.alignment.spec.Bounds;
 import org.junit.Assert;
@@ -90,25 +90,51 @@ public class HierarchicalStackTest {
         Assert.assertEquals("invalid quality", quality, tier2Stack.getAlignmentQuality(), DOUBLE_DELTA);
 
         Assert.assertNotNull("invalid box path", tier2Stack.getBoxPathForZ(1.0));
-        Assert.assertNotNull("invalid model", tier2Stack.getRelativeModel(new AffineModel2D(), 0.0, 0.0));
     }
 
-    public void foo(final double v) {
-        System.out.println("ceil " + v + " is " + Math.ceil(v));
+    @Test
+    public void testGetFullScaleRelativeModel() throws Exception {
+
+        final int tier = 1;
+        final Integer tierRow = 0;
+        final Integer tierColumn = 1;
+        final Integer totalTierRowCount = 3;
+        final Integer totalTierColumnCount = 3;
+        final Double scale = 0.33133797120207087;
+        final Bounds fullScaleBounds = new Bounds(59816.0, 64495.0, 1.0, 64678.0, 70676.0, 3.0);
+
+        final StackId roughTilesStackId = new StackId("testOwner", "tilesProject", "roughTiles");
+
+        final HierarchicalStack tier1Stack =
+                new HierarchicalStack(roughTilesStackId,
+                                      tier,
+                                      tierRow,
+                                      tierColumn,
+                                      totalTierRowCount,
+                                      totalTierColumnCount,
+                                      scale,
+                                      fullScaleBounds);
+
+        final AffineModel2D model = getModel(1.000018855057, -0.000005117870,
+                                             -0.000003681924, 1.000001492098,
+                                             26.995723857002,  6.610488526292);
+
+        final double[] expectedArray = new double[6];
+        model.toArray(expectedArray);
+        expectedArray[4] = expectedArray[4] / scale;
+        expectedArray[5] = expectedArray[5] / scale;
+
+        final AffineModel2D relativeModel = tier1Stack.getFullScaleRelativeModel(model, 0, 0);
+        final double[] array = new double[6];
+        relativeModel.toArray(array);
+
+        for (int i = 0; i < expectedArray.length; i++) {
+            Assert.assertEquals("invalid value for index " + i, expectedArray[i], array[i], 0.0001);
+        }
     }
 
     @Test
     public void testSplitTier() throws Exception {
-
-        foo(1.1);
-        foo(1.4);
-        foo(1.5);
-        foo(1.6);
-        foo(2.0);
-        foo(2.1);
-        foo(2.4);
-        foo(2.5);
-        foo(2.6);
 
         final StackId roughTilesStackId = new StackId("testOwner", "tilesProject", "roughTiles");
         final StackId warpTilesStackId = new StackId("testOwner", "tilesProject", "roughTiles_tier_1_warp");
@@ -156,6 +182,17 @@ public class HierarchicalStackTest {
         Assert.assertEquals(message + " minY", expected.getMinY(), actual.getMinY(), DOUBLE_DELTA);
         Assert.assertEquals(message + " maxX", expected.getMaxX(), actual.getMaxX(), DOUBLE_DELTA);
         Assert.assertEquals(message + " maxY", expected.getMaxY(), actual.getMaxY(), DOUBLE_DELTA);
+    }
+
+    private AffineModel2D getModel(final double m00,
+                                   final double m10,
+                                   final double m01,
+                                   final double m11,
+                                   final double m02,
+                                   final double m12) {
+        final AffineModel2D model = new AffineModel2D();
+        model.set(m00, m10, m01, m11, m02, m12);
+        return model;
     }
 
     private final double DOUBLE_DELTA = 0.0001;
