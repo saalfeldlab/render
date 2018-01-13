@@ -24,17 +24,25 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.CoordinateTransform;
+
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LastTileTransform;
+import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackStats;
+import org.janelia.alignment.transform.AffineWarpField;
+import org.janelia.alignment.transform.AffineWarpFieldTransform;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.dao.TileSpecLayout;
@@ -732,6 +740,148 @@ public class RenderDataService {
         return transformSpec;
     }
 
+    @Path("v1/owner/{owner}/project/{project}/z/{z}/affineWarpFieldTransform")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Transform Data APIs",
+            value = "Build affine warp field transform spec for layer",
+            notes = "Extracts affine data from aligned stacks in the specified 'tier' project to populate " +
+                    "a warp field transform and then returns the corresponding transform specification.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "invalid affine data found for one of the aligned stacks"),
+            @ApiResponse(code = 404, message = "no aligned stacks exist for the specified project")
+    })
+    public LeafTransformSpec buildAffineWarpFieldTransform(@PathParam("owner") final String owner,
+                                                           @PathParam("project") final String project,
+                                                           @PathParam("z") final Double z) {
+
+        LOG.info("buildAffineWarpFieldTransform: entry, owner={}, project={}, z={}",
+                 owner, project, z);
+
+        LeafTransformSpec transformSpec = null;
+
+        try {
+            final List<StackMetaData> projectStacks = renderDao.getStackMetaDataListForOwner(owner, project);
+            final Map<String, StackMetaData> projectStackNamesToMetadataMap = new HashMap<>(projectStacks.size() * 2);
+            for (final StackMetaData stackMetaData : projectStacks) {
+                projectStackNamesToMetadataMap.put(stackMetaData.getStackId().getStack(), stackMetaData);
+            }
+
+            final List<HierarchicalStack> alignedTierStacks = new ArrayList<>(projectStacks.size());
+
+            HierarchicalStack hierarchicalStack;
+            for (final StackMetaData stackMetaData : projectStacks) {
+                hierarchicalStack = stackMetaData.getHierarchicalData();
+                if ((hierarchicalStack != null) &&
+                    (projectStackNamesToMetadataMap.containsKey(hierarchicalStack.getAlignedStackId().getStack()))) {
+                    alignedTierStacks.add(hierarchicalStack);
+                }
+            }
+
+            StackId alignedStackId;
+            StackStats alignedStackStats;
+            Bounds alignedStackBounds;
+            AffineModel2D relativeAlignedModel;
+
+            TileSpec tileSpecForZ;
+            TransformSpec lastTransformSpec;
+            CoordinateTransform lastTransform;
+            final double[] affineMatrixElements = new double[6];
+
+            if (alignedTierStacks.size() > 0) {
+
+                LOG.info("buildAffineWarpFieldTransform: retrieving data for z {} from {} aligned stacks",
+                         z, alignedTierStacks.size());
+
+                AffineWarpField warpField = null;
+                double[] locationOffsets = AffineWarpFieldTransform.EMPTY_OFFSETS;
+
+                for (final HierarchicalStack tierStack : alignedTierStacks) {
+
+                    if (warpField == null) {
+                        warpField = new AffineWarpField(tierStack.getTotalTierFullScaleWidth(),
+                                                        tierStack.getTotalTierFullScaleHeight(),
+                                                        tierStack.getTotalTierRowCount(),
+                                                        tierStack.getTotalTierColumnCount(),
+                                                        AffineWarpField.getDefaultInterpolatorFactory());
+
+                        final StackMetaData parentStackMetadata = getStackMetaData(tierStack.getParentTierStackId());
+                        final StackStats parentStats = parentStackMetadata.getStats();
+                        if (parentStats != null) {
+                            final Bounds parentBounds = parentStats.getStackBounds();
+                            locationOffsets = new double[] { parentBounds.getMinX(), parentBounds.getMinY() };
+                        }
+                    }
+
+                    alignedStackId = tierStack.getAlignedStackId();
+                    alignedStackBounds = null;
+
+                    alignedStackStats = projectStackNamesToMetadataMap.get(alignedStackId.getStack()).getStats();
+
+                    if (alignedStackStats != null) {
+                        alignedStackBounds = alignedStackStats.getStackBounds();
+                    }
+
+                    if (alignedStackBounds == null) {
+                        throw new IllegalArgumentException(
+                                "Cannot calculate affine translation offsets for z " + z +
+                                ".  No bounds available for " + alignedStackId +
+                                ".  Make sure stack state is COMPLETE");
+                    }
+
+                    tileSpecForZ = renderDao.getTileSpec(alignedStackId, tierStack.getTileIdForZ(z), false);
+                    lastTransformSpec = tileSpecForZ.getLastTransform();
+
+                    if (lastTransformSpec != null) {
+
+                        lastTransform = lastTransformSpec.getNewInstance();
+
+                        if (lastTransform instanceof AffineModel2D) {
+
+                            relativeAlignedModel = tierStack.getFullScaleRelativeModel((AffineModel2D) lastTransform,
+                                                                                       alignedStackBounds.getMinX(),
+                                                                                       alignedStackBounds.getMinY());
+                            relativeAlignedModel.toArray(affineMatrixElements);
+                            warpField.set(tierStack.getTierRow(), tierStack.getTierColumn(), affineMatrixElements);
+
+                        } else {
+                            throw new IllegalArgumentException(
+                                    "Invalid affine data for z " + z +
+                                    ".  Last transform for tile '" + tileSpecForZ.getTileId() + "' in " +
+                                    alignedStackId + " is not a 2D affine.  Tile spec is " + tileSpecForZ.toJson());
+                        }
+
+                    } else {
+                        throw new IllegalArgumentException(
+                                "Invalid affine data for z " + z +
+                                ".  No transforms found for tile '" + tileSpecForZ.getTileId() + "' in " +
+                                alignedStackId + ".  Tile spec is " + tileSpecForZ.toJson());
+                    }
+
+                }
+
+                final String warpFieldTransformId = z + "_AFFINE_WARP_FIELD";
+
+                final AffineWarpFieldTransform warpFieldTransform =
+                        new AffineWarpFieldTransform(locationOffsets, warpField);
+
+                transformSpec = new LeafTransformSpec(warpFieldTransformId,
+                                                      null,
+                                                      AffineWarpFieldTransform.class.getName(),
+                                                      warpFieldTransform.toDataString());
+            } else {
+                throw new ObjectNotFoundException("No aligned stacks exist for owner '" + owner +
+                                                  "' and project '"+ project + "'.");
+            }
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return transformSpec;
+    }
+
     /**
      * @return number of tiles within the specified bounding box.
      */
@@ -824,8 +974,7 @@ public class RenderDataService {
     }
 
     /**
-     * @return list of tile specs for specified layer with flattened (and therefore resolved)
-     *         transform specs suitable for external use.
+     * @return list containing the last transform for each tile spec with the specified z.
      */
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/last-tile-transforms")
     @GET

@@ -24,6 +24,7 @@ import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
@@ -1133,6 +1134,28 @@ public class RenderDataClient {
         LOG.info("getTileIdsForCoordinates: submitting {}", requestContext);
 
         return httpClient.execute(httpPut, responseHandler);
+    }
+
+    /**
+     * @param  z  z value for layer.
+     *
+     * @return affine warp field transform spec for the specified layer.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public LeafTransformSpec getAffineWarpFieldTransform(final Double z)
+            throws IOException {
+
+        final URI uri = getUri(urls.getOwnerUrlString() + "/project/" + project + "/z/" + z + "/affineWarpFieldTransform");
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonUtils.Helper<LeafTransformSpec> helper = new JsonUtils.Helper<>(LeafTransformSpec.class);
+        final JsonResponseHandler<LeafTransformSpec> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getAffineWarpFieldTransform: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
     }
 
     /**
