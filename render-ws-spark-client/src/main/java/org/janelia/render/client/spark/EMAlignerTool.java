@@ -91,6 +91,8 @@ public class EMAlignerTool
         //   "last_section": 3,
         //   "solver_options": {
         //     ...
+        //     "dir_scratch": "/scratch/trautmane",
+        //     ...
         //   },
         //   "source_collection": {
         //     "owner": "flyTEM",
@@ -117,10 +119,14 @@ public class EMAlignerTool
         final Map<String, Object> parameters = JsonUtils.MAPPER.readValue(scriptParametersTemplateFile,
                                                                           new TypeReference<Map<String, Object>>(){});
 
+        final Map<String, Object> solverOptions = getNestedMap(parameters, "solver_options");
         final Map<String, Object> sourceCollection = getNestedMap(parameters, "source_collection");
         final Map<String, Object> targetCollection = getNestedMap(parameters, "target_collection");
         final Map<String, Object> sourceMatchCollection = getNestedMap(parameters, "source_point_match_collection");
 
+        final File scratchDirectory = new File(parametersFile.getParent(),
+                                               "solver_scratch_" + targetStack.getStack());
+        setParameter(solverOptions, "dir_scratch", scratchDirectory.getAbsolutePath());
 
         setParameter(parameters, "first_section", firstZ);
         setParameter(parameters, "last_section", lastZ);
@@ -140,11 +146,6 @@ public class EMAlignerTool
     /**
      * Runs the solver using the specified parameters.
      *
-     * Note that this method is synchronized to prevent concurrent runs by the
-     * same tool instance (effectively serializing their execution).
-     * For Spark usages, a tool instance can be broadcast (per node) so that the
-     * solver is run serially on the node.
-     *
      * TODO: Consider other serial run options.
      *       There is significant (15-30 seconds?) startup time when launching
      *       Matlab Compiled Runtime processes.  For runs with larger numbers
@@ -161,7 +162,7 @@ public class EMAlignerTool
      * @throws InterruptedException
      *   if the solver run gets interrupted.
      */
-    public synchronized int run(final File parametersFile)
+    public int run(final File parametersFile)
             throws IOException, InterruptedException {
 
         final ProcessTimer timer = new ProcessTimer();
