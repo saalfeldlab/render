@@ -37,7 +37,6 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchClipParameters;
 import org.janelia.render.client.parameter.MatchDerivationParameters;
 import org.janelia.render.client.parameter.MatchRenderParameters;
-import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -332,6 +331,29 @@ public class HierarchicalAlignmentClient
 
         final int n = zValues.size();
         final List<OrderedCanvasIdPair> neighborPairs = new ArrayList<>(n * parameters.zNeighborDistance);
+
+        final StackId parentTierStackId = tierStack.getParentTierStackId();
+        final String renderUrlTemplate =
+                String.format("{baseDataUrl}/owner/%s/project/%s/stack/%s/z/{groupId}/box/{id}/render-parameters",
+                              parentTierStackId.getOwner(),
+                              parentTierStackId.getProject(),
+                              parentTierStackId.getStack());
+
+        final RenderableCanvasIdPairs renderableCanvasIdPairs = new RenderableCanvasIdPairs(renderUrlTemplate,
+                                                                                            neighborPairs);
+        addCanvasPairsForStack(tierStack, renderableCanvasIdPairs);
+
+        LOG.info("getRenderablePairsForStack: exit, returning {} pairs with template {}",
+                 renderableCanvasIdPairs.size(), renderUrlTemplate);
+
+        return renderableCanvasIdPairs;
+    }
+
+    private void addCanvasPairsForStack(final HierarchicalStack tierStack,
+                                        final RenderableCanvasIdPairs renderablePairs) {
+
+        final int n = zValues.size();
+        final List<OrderedCanvasIdPair> neighborPairs = new ArrayList<>(n * parameters.zNeighborDistance);
         Double pz;
         Double qz;
         CanvasId p;
@@ -347,20 +369,9 @@ public class HierarchicalAlignmentClient
         }
 
         if (neighborPairs.size() > 0) {
-            LOG.info("getRenderablePairsForStack: first neighbor pair is {}", neighborPairs.get(0));
+            LOG.info("addCanvasPairsForStack: first pair is {}", neighborPairs.get(0));
+            renderablePairs.addNeighborPairs(neighborPairs);
         }
-
-        final StackId parentTierStackId = tierStack.getParentTierStackId();
-        final String renderUrlTemplate =
-                String.format("{baseDataUrl}/owner/%s/project/%s/stack/%s/z/{groupId}/box/{id}/render-parameters",
-                              parentTierStackId.getOwner(),
-                              parentTierStackId.getProject(),
-                              parentTierStackId.getStack());
-
-        LOG.info("getRenderablePairsForStack: exit, returning {} pairs with template {}",
-                 neighborPairs.size(), renderUrlTemplate);
-
-        return new RenderableCanvasIdPairs(renderUrlTemplate, neighborPairs);
     }
 
     private void generateMatchesForTier()
@@ -368,10 +379,17 @@ public class HierarchicalAlignmentClient
 
         LOG.info("generateMatchesForTier: entry");
 
-        final MatchWebServiceParameters matchWebServiceParameters = new MatchWebServiceParameters();
-        matchWebServiceParameters.baseDataUrl = parameters.renderWeb.baseDataUrl;
-        matchWebServiceParameters.owner = parameters.renderWeb.owner;
-        // match collection changed for each split stack below
+        final RenderDataClient driverMatchClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                                        parameters.renderWeb.owner,
+                                                                        "not_applicable");
+        final Map<String, Long> existingMatchCollectionPairCounts =
+                getExistingMatchCollectionPairCounts(driverMatchClient);
+
+        if (parameters.keepExisting(PipelineStep.MATCH)) {
+            updateSavedMatchPairCounts(existingMatchCollectionPairCounts, false);
+        } else {
+            deleteExistingMatchCollectionsForTier(driverMatchClient, existingMatchCollectionPairCounts);
+        }
 
         final MatchRenderParameters matchRenderParameters = new MatchRenderParameters();
         matchRenderParameters.fillWithNoise = parameters.fillWithNoise;
@@ -381,63 +399,159 @@ public class HierarchicalAlignmentClient
 
         final MatchClipParameters emptyClipParameters = new MatchClipParameters(); // no need to clip scapes
 
-        final RenderDataClient driverMatchClient = new RenderDataClient(matchWebServiceParameters.baseDataUrl,
-                                                                        matchWebServiceParameters.owner,
-                                                                        "not_applicable");
+        final int numberOfLayers = zValues.size();
+        final long potentialPairsPerStack;
+        if (parameters.zNeighborDistance >= numberOfLayers) {
+            potentialPairsPerStack = getTriangularNumber(numberOfLayers);
+        } else {
+            potentialPairsPerStack = (numberOfLayers * parameters.zNeighborDistance) -
+                                     getTriangularNumber(parameters.zNeighborDistance);
+        }
+        final long totalPotentialPairs = potentialPairsPerStack * tierStacks.size();
 
-        final Map<String, Long> existingMatchCollections = new HashMap<>();
-        for (final MatchCollectionMetaData metaData : driverMatchClient.getOwnerMatchCollections()) {
-            existingMatchCollections.put(metaData.getCollectionId().getName(), metaData.getPairCount());
+        if ((totalPotentialPairs < 1000) ||
+            ( (potentialPairsPerStack < sparkContext.defaultParallelism()) && (totalPotentialPairs < 100000) )) {
+
+            // TODO: make sure potentialPairsPerStack ... is the check we want to use single batch processing
+            generateTierMatchesInOneBatch(matchRenderParameters, emptyClipParameters, driverMatchClient);
+
+        } else {
+
+            generateTierMatchesByStack(matchRenderParameters, emptyClipParameters);
+
         }
 
-        // TODO: need to generate matches for split stacks in parallel
-        //       if we created one giant pool of pairs, we'd need to somehow track the collection for each pair (tuple?)
-        //       (everything else is shared)
+        LOG.info("generateMatchesForTier: exit");
+    }
 
-        // TODO: do match parameters need to be tuned per tier?
+    private Map<String, Long> getExistingMatchCollectionPairCounts(final RenderDataClient driverMatchClient)
+            throws IOException {
+
+        final Map<String, Long> existingMatchCollectionPairCounts = new HashMap<>();
+        for (final MatchCollectionMetaData metaData : driverMatchClient.getOwnerMatchCollections()) {
+            existingMatchCollectionPairCounts.put(metaData.getCollectionId().getName(), metaData.getPairCount());
+        }
+
+        return existingMatchCollectionPairCounts;
+    }
+
+    private void updateSavedMatchPairCounts(final Map<String, Long> existingMatchCollectionPairCounts,
+                                            final boolean persistResults)
+            throws IOException {
+
+        for (final HierarchicalStack tierStack : tierStacks) {
+            final String matchCollectionName = tierStack.getMatchCollectionId().getName();
+            if (existingMatchCollectionPairCounts.containsKey(matchCollectionName)) {
+                tierStack.setSavedMatchPairCount(
+                        existingMatchCollectionPairCounts.get(matchCollectionName));
+                if (persistResults) {
+                    driverTierRender.setHierarchicalData(tierStack.getSplitStackId().getStack(), tierStack);
+                }
+            }
+        }
+    }
+
+    private void deleteExistingMatchCollectionsForTier(final RenderDataClient driverMatchClient,
+                                                       final Map<String, Long> existingMatchCollectionPairCounts)
+            throws IOException {
+
+        for (final HierarchicalStack tierStack : tierStacks) {
+            final String matchCollectionName = tierStack.getMatchCollectionId().getName();
+            if (existingMatchCollectionPairCounts.containsKey(matchCollectionName)) {
+                driverMatchClient.deleteMatchCollection(matchCollectionName);
+            }
+        }
+    }
+
+    private void generateTierMatchesInOneBatch(final MatchRenderParameters matchRenderParameters,
+                                               final MatchClipParameters emptyClipParameters,
+                                               final RenderDataClient driverMatchClient)
+            throws IOException, URISyntaxException {
+
+        final MultiCollectionMatchStorageFunction matchStorageFunction =
+                new MultiCollectionMatchStorageFunction(parameters.renderWeb.baseDataUrl,
+                                                        parameters.renderWeb.owner);
+
+        RenderableCanvasIdPairs renderableCanvasIdPairs = null;
 
         for (final HierarchicalStack tierStack : tierStacks) {
 
-            final MatchCollectionId matchCollectionId = tierStack.getMatchCollectionId();
-            matchWebServiceParameters.owner = matchCollectionId.getOwner();
-            matchWebServiceParameters.collection = matchCollectionId.getName();
+            if (tierStack.requiresMatchDerivation()) {
 
-            if (existingMatchCollections.containsKey(matchWebServiceParameters.collection)) {
+                final String matchCollectionName = tierStack.getMatchCollectionId().getName();
 
-                if (parameters.keepExisting(PipelineStep.MATCH)) {
-
-                    LOG.info("generateMatchesForTier: skipping generation of {} because it already exists",
-                             matchWebServiceParameters.collection);
-
-                    tierStack.setSavedMatchPairCount(
-                            existingMatchCollections.get(matchWebServiceParameters.collection));
-
+                int fromIndex = 0;
+                if (renderableCanvasIdPairs == null) {
+                    renderableCanvasIdPairs = getRenderablePairsForStack(tierStack);
                 } else {
-
-                    driverMatchClient.deleteMatchCollection(matchWebServiceParameters.collection);
-
+                    fromIndex = renderableCanvasIdPairs.size();
+                    addCanvasPairsForStack(tierStack, renderableCanvasIdPairs);
                 }
+
+                final List<OrderedCanvasIdPair> tierPairs =
+                        renderableCanvasIdPairs.getNeighborPairs().subList(fromIndex,
+                                                                           renderableCanvasIdPairs.size());
+                for (final OrderedCanvasIdPair tierPair : tierPairs) {
+                    matchStorageFunction.mapPIdToCollection(tierPair.getP().getId(), matchCollectionName);
+                }
+
             }
+        }
+
+        if (renderableCanvasIdPairs != null) {
+
+            LOG.info("generateAllMatches: generating matches for {} pairs", renderableCanvasIdPairs.size());
+
+            // TODO: do match parameters need to be tuned per tier?
+
+            final long savedMatchPairCount =
+                    SIFTPointMatchClient.generateMatchesForPairs(sparkContext,
+                                                                 renderableCanvasIdPairs,
+                                                                 parameters.renderWeb.baseDataUrl,
+                                                                 matchRenderParameters,
+                                                                 parameters.match,
+                                                                 emptyClipParameters,
+                                                                 matchStorageFunction);
+
+            LOG.info("generateAllMatches: saved matches for {} pairs", savedMatchPairCount);
+
+            updateSavedMatchPairCounts(getExistingMatchCollectionPairCounts(driverMatchClient), true);
+        }
+    }
+
+    private void generateTierMatchesByStack(final MatchRenderParameters matchRenderParameters,
+                                            final MatchClipParameters emptyClipParameters)
+            throws IOException, URISyntaxException {
+
+        for (final HierarchicalStack tierStack : tierStacks) {
 
             if (tierStack.requiresMatchDerivation()) {
 
-                LOG.info("generateMatchesForTier: generating {}", matchWebServiceParameters.collection);
+                final MatchCollectionId matchCollectionId = tierStack.getMatchCollectionId();
+
+                LOG.info("generateTierMatchesByStack: generating {}", matchCollectionId.getName());
+
+                final MatchStorageFunction matchStorageFunction =
+                        new MatchStorageFunction(parameters.renderWeb.baseDataUrl,
+                                                 matchCollectionId.getOwner(),
+                                                 matchCollectionId.getName());
+
+                // TODO: do match parameters need to be tuned per tier?
 
                 final long savedMatchPairCount =
                         SIFTPointMatchClient.generateMatchesForPairs(sparkContext,
                                                                      getRenderablePairsForStack(tierStack),
-                                                                     matchWebServiceParameters,
+                                                                     parameters.renderWeb.baseDataUrl,
                                                                      matchRenderParameters,
                                                                      parameters.match,
-                                                                     emptyClipParameters);
+                                                                     emptyClipParameters,
+                                                                     matchStorageFunction);
 
                 tierStack.setSavedMatchPairCount(savedMatchPairCount);
                 driverTierRender.setHierarchicalData(tierStack.getSplitStackId().getStack(), tierStack);
 
             }
         }
-
-        LOG.info("generateMatchesForTier: exit");
     }
 
     private void alignTier()
@@ -574,6 +688,10 @@ public class HierarchicalAlignmentClient
         }
 
         LOG.info("createWarpStackForTier: exit, processing took {} seconds", timer.getElapsedSeconds());
+    }
+
+    private static long getTriangularNumber(final int n) {
+        return n * (n + 1) / 2;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(HierarchicalAlignmentClient.class);

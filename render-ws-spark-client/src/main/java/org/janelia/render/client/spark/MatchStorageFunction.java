@@ -28,6 +28,14 @@ public class MatchStorageFunction implements Function2<Integer, Iterator<CanvasM
         this.collection = collection;
     }
 
+    public String getBaseDataUrl() {
+        return baseDataUrl;
+    }
+
+    public String getOwner() {
+        return owner;
+    }
+
     @Override
     public Iterator<Integer> call(final Integer partitionIndex,
                                   final Iterator<CanvasMatches> matchesIterator)

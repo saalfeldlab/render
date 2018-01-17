@@ -5,6 +5,7 @@ import java.io.Reader;
 import java.io.Serializable;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
@@ -64,6 +65,10 @@ public class RenderableCanvasIdPairs
 
     public List<OrderedCanvasIdPair> getNeighborPairs() {
         return neighborPairs;
+    }
+
+    public void addNeighborPairs(final Collection<OrderedCanvasIdPair> pairs) {
+        this.neighborPairs.addAll(pairs);
     }
 
     /**

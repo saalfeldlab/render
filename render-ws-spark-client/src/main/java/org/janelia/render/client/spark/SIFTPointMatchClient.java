@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 import org.apache.spark.SparkConf;
@@ -119,26 +118,32 @@ public class SIFTPointMatchClient
         LOG.info("generateMatchesForPairFile: pairJsonFileName is {}", pairJsonFileName);
 
         final RenderableCanvasIdPairs renderableCanvasIdPairs = RenderableCanvasIdPairs.load(pairJsonFileName);
+
+        final MatchStorageFunction matchStorageFunction = new MatchStorageFunction(parameters.matchClient.baseDataUrl,
+                                                                                   parameters.matchClient.owner,
+                                                                                   parameters.matchClient.collection);
         generateMatchesForPairs(sparkContext,
                                 renderableCanvasIdPairs,
-                                parameters.matchClient,
+                                parameters.matchClient.baseDataUrl,
                                 parameters.matchRender,
                                 parameters.match,
-                                parameters.matchClip);
+                                parameters.matchClip,
+                                matchStorageFunction);
     }
 
     public static long generateMatchesForPairs(final JavaSparkContext sparkContext,
                                                final RenderableCanvasIdPairs renderableCanvasIdPairs,
-                                               final MatchWebServiceParameters matchClientParameters,
+                                               final String baseDataUrl,
                                                final MatchRenderParameters matchRenderParameters,
                                                final MatchDerivationParameters matchParameters,
-                                               final MatchClipParameters clipParameters)
+                                               final MatchClipParameters clipParameters,
+                                               final MatchStorageFunction matchStorageFunction)
             throws IOException, URISyntaxException {
 
         final String renderParametersUrlTemplateForRun =
                 RenderableCanvasIdPairsUtilities.getRenderParametersUrlTemplateForRun(
                         renderableCanvasIdPairs,
-                        matchClientParameters.baseDataUrl,
+                        baseDataUrl,
                         matchRenderParameters.renderFullScaleWidth,
                         matchRenderParameters.renderFullScaleHeight,
                         matchRenderParameters.renderScale,
@@ -225,12 +230,7 @@ public class SIFTPointMatchClient
                 true
         );
 
-        final JavaRDD<Integer> rddSavedMatchPairCounts = rddMatches.mapPartitionsWithIndex(
-                new MatchStorageFunction(matchClientParameters.baseDataUrl,
-                                         matchClientParameters.owner,
-                                         matchClientParameters.collection),
-                true
-        );
+        final JavaRDD<Integer> rddSavedMatchPairCounts = rddMatches.mapPartitionsWithIndex(matchStorageFunction, true);
 
         final int numPartitions = rddSavedMatchPairCounts.getNumPartitions();
 
