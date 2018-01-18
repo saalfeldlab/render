@@ -77,11 +77,16 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetStackMetaDataListForOwner() throws Exception {
-        final List<StackMetaData> list = dao.getStackMetaDataListForOwner(stackId.getOwner());
+    public void testGetStackMetaDataList() throws Exception {
+        List<StackMetaData> list = dao.getStackMetaDataList(stackId.getOwner(), null);
 
-        Assert.assertNotNull("null list retrieved", list);
-        Assert.assertEquals("invalid number of stacks found", 3, list.size());
+        Assert.assertNotNull("null list retrieved for owner", list);
+        Assert.assertEquals("invalid number of stacks found for owner", 3, list.size());
+
+        list = dao.getStackMetaDataList(stackId.getOwner(), stackId.getProject());
+
+        Assert.assertNotNull("null list retrieved for project", list);
+        Assert.assertEquals("invalid number of stacks found for project", 1, list.size());
     }
 
     @Test

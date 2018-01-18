@@ -40,8 +40,13 @@ public class RenderWebServiceUrls implements Serializable {
         return baseDataUrl + "/owner/" + owner;
     }
 
-    public String getOwnerStackIdsUrlString() {
-        return baseDataUrl + "/owner/" + owner + "/stackIds";
+    public String getStackIdsUrlString(final String project) {
+        final StringBuilder urlString = new StringBuilder(baseDataUrl).append("/owner/").append(owner);
+        if (project != null) {
+            urlString.append("/project/").append(project);
+        }
+        urlString.append("/stackIds");
+        return urlString.toString();
     }
 
     public String getOwnerMatchCollectionsUrlString() {

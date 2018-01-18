@@ -157,11 +157,20 @@ public class StackMetaDataService {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "List of stack identifiers for the specified owner")
-    public List<StackId> getStackIds(@PathParam("owner") final String owner) {
+    public List<StackId> getStackIdsForOwner(@PathParam("owner") final String owner) {
+        return getStackIdsForProject(owner, null);
+    }
 
-        LOG.info("getStackIds: entry, owner={}", owner);
+    @Path("v1/owner/{owner}/project/{project}/stackIds")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "List of stack identifiers for the specified project")
+    public List<StackId> getStackIdsForProject(@PathParam("owner") final String owner,
+                                               @PathParam("project") final String project) {
 
-        final List<StackMetaData> stackMetaDataList = getStackMetaDataListForOwner(owner);
+        LOG.info("getStackIdsForProject: entry, owner={}, project={}", owner, project);
+
+        final List<StackMetaData> stackMetaDataList = getStackMetaDataListForProject(owner, project);
         final List<StackId> list = new ArrayList<>(stackMetaDataList.size());
         for (final StackMetaData stackMetaData : stackMetaDataList) {
             list.add(stackMetaData.getStackId());
@@ -175,12 +184,21 @@ public class StackMetaDataService {
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "List of stack metadata for the specified owner")
     public List<StackMetaData> getStackMetaDataListForOwner(@PathParam("owner") final String owner) {
+        return getStackMetaDataListForProject(owner, null);
+    }
 
-        LOG.info("getStackMetaDataListForOwner: entry, owner={}", owner);
+    @Path("v1/owner/{owner}/project/{project}/stacks")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "List of stack metadata for the specified project")
+    public List<StackMetaData> getStackMetaDataListForProject(@PathParam("owner") final String owner,
+                                                              @PathParam("project") final String project) {
+
+        LOG.info("getStackMetaDataListForProject: entry, owner={}, project={}", owner, project);
 
         List<StackMetaData> list = null;
         try {
-            list = renderDao.getStackMetaDataListForOwner(owner);
+            list = renderDao.getStackMetaDataList(owner, project);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }

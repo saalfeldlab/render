@@ -911,17 +911,6 @@ public class RenderDao {
     }
 
     /**
-     * @return list of stack meta data objects for the specified owner.
-     *
-     * @throws IllegalArgumentException
-     *   if required parameters are not specified.
-     */
-    public List<StackMetaData> getStackMetaDataListForOwner(final String owner)
-            throws IllegalArgumentException {
-        return getStackMetaDataListForOwner(owner, null);
-    }
-
-    /**
      * @param  owner    owner for all stacks.
      * @param  project  project for all stacks (or null to include all projects).
      *
@@ -930,8 +919,8 @@ public class RenderDao {
      * @throws IllegalArgumentException
      *   if required parameters are not specified.
      */
-    public List<StackMetaData> getStackMetaDataListForOwner(final String owner,
-                                                            final String project)
+    public List<StackMetaData> getStackMetaDataList(final String owner,
+                                                    final String project)
             throws IllegalArgumentException {
 
         MongoUtil.validateRequiredParameter("owner", owner);
@@ -958,7 +947,7 @@ public class RenderDao {
             }
         }
 
-        LOG.debug("getStackMetaDataListForOwner: returning {} values for {}.find({}).sort({})",
+        LOG.debug("getStackMetaDataList: returning {} values for {}.find({}).sort({})",
                   list.size(), stackMetaDataCollection.getNamespace().getFullName(),
                   query.toJson(), sortCriteria.toJson());
 

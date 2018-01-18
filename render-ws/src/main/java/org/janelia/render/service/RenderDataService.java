@@ -762,7 +762,7 @@ public class RenderDataService {
         LeafTransformSpec transformSpec = null;
 
         try {
-            final List<StackMetaData> projectStacks = renderDao.getStackMetaDataListForOwner(owner, project);
+            final List<StackMetaData> projectStacks = renderDao.getStackMetaDataList(owner, project);
             final Map<String, StackMetaData> projectStackNamesToMetadataMap = new HashMap<>(projectStacks.size() * 2);
             for (final StackMetaData stackMetaData : projectStacks) {
                 projectStackNamesToMetadataMap.put(stackMetaData.getStackId().getStack(), stackMetaData);

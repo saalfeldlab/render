@@ -120,7 +120,15 @@ public class RenderDataClient {
     }
 
     public List<StackId> getOwnerStacks() throws IOException {
-        final URI uri = getUri(urls.getOwnerStackIdsUrlString());
+        return getStackIds(null);
+    }
+
+    public List<StackId> getProjectStacks() throws IOException {
+        return getStackIds(project);
+    }
+
+    public List<StackId> getStackIds(final String project) throws IOException {
+        final URI uri = getUri(urls.getStackIdsUrlString(project));
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final TypeReference<List<StackId>> stackIdsTypeReference = new TypeReference<List<StackId>>(){};
@@ -128,7 +136,7 @@ public class RenderDataClient {
         final JsonUtils.GenericHelper<List<StackId>> helper = new JsonUtils.GenericHelper<>(stackIdsTypeReference);
         final JsonResponseHandler<List<StackId>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
-        LOG.info("getOwnerStacks: submitting {}", requestContext);
+        LOG.info("getStackIds: submitting {}", requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
     }
@@ -175,11 +183,6 @@ public class RenderDataClient {
         LOG.info("deleteMatchCollection: submitting {}", requestContext);
 
         httpClient.execute(httpDelete, responseHandler);
-    }
-
-    public List<StackId> getProjectStacks() throws IOException {
-        return getOwnerStacks().stream().filter(
-                stackId -> project.equals(stackId.getProject())).collect(Collectors.toList());
     }
 
     /**
