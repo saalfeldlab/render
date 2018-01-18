@@ -244,7 +244,7 @@ public class HierarchicalStack implements Serializable {
 
     @JsonIgnore
     public boolean requiresAlignment() {
-        return (alignmentQuality == null);
+        return hasMatchPairs() && (alignmentQuality == null);
     }
 
     /**
@@ -393,7 +393,7 @@ public class HierarchicalStack implements Serializable {
         final int cellWidth = ceilIntDivide(parentWidth, rowsAndColumns);
         final int cellHeight = ceilIntDivide(parentHeight, rowsAndColumns);
 
-        final double scale = (double) maxPixelsPerDimension / maxDimensionPerCell;
+        final double scale = Math.min(1.0, (double) maxPixelsPerDimension / maxDimensionPerCell);
 
         int row = 0;
         int column;
