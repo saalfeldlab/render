@@ -696,14 +696,16 @@ public class RenderParameters implements Serializable {
         }
         return hasMasks;
     }
-
+    public BufferedImage openTargetImage() {
+        return openTargetImage(BufferedImage.TYPE_INT_ARGB);
+    }
     /**
      * Opens the target/input image specified by these parameters or
      * creates a new (in-memory) image if no input image was specified.
      *
      * @return {@link BufferedImage} representation of the image.
      */
-    public BufferedImage openTargetImage() {
+    public BufferedImage openTargetImage(final int imageType) {
 
         BufferedImage targetImage = null;
 
@@ -715,11 +717,12 @@ public class RenderParameters implements Serializable {
             final double derivedScale = getScale();
             final int targetWidth = (int) (derivedScale * width);
             final int targetHeight = (int) (derivedScale * height);
-            targetImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
+            targetImage = new BufferedImage(targetWidth, targetHeight, imageType);
         }
 
         return targetImage;
     }
+
 
     /**
      * @return string representation of these parameters (only non-default values are included).
