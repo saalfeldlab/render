@@ -27,11 +27,12 @@ public class StackVersion
 
     private String materializedBoxRootPath;
     private MipmapPathBuilder mipmapPathBuilder;
+    private final Double alignmentQuality;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private StackVersion() {
-        this(null, null, null, null, null, null, null, null, null);
+        this(null, null, null, null, null, null, null, null, null, null);
     }
 
     public StackVersion(final Date createTimestamp,
@@ -43,6 +44,21 @@ public class StackVersion
                         final Double stackResolutionZ,
                         final String materializedBoxRootPath,
                         final MipmapPathBuilder mipmapPathBuilder) {
+        this(createTimestamp, versionNotes, cycleNumber, cycleStepNumber,
+             stackResolutionX, stackResolutionY, stackResolutionZ,
+             materializedBoxRootPath, mipmapPathBuilder, null);
+    }
+
+    public StackVersion(final Date createTimestamp,
+                        final String versionNotes,
+                        final Integer cycleNumber,
+                        final Integer cycleStepNumber,
+                        final Double stackResolutionX,
+                        final Double stackResolutionY,
+                        final Double stackResolutionZ,
+                        final String materializedBoxRootPath,
+                        final MipmapPathBuilder mipmapPathBuilder,
+                        final Double alignmentQuality) {
         this.createTimestamp = createTimestamp;
         this.versionNotes = versionNotes;
         this.cycleNumber = cycleNumber;
@@ -52,6 +68,7 @@ public class StackVersion
         this.stackResolutionZ = stackResolutionZ;
         this.materializedBoxRootPath = materializedBoxRootPath;
         this.mipmapPathBuilder = mipmapPathBuilder;
+        this.alignmentQuality = alignmentQuality;
     }
 
     public Date getCreateTimestamp() {
@@ -146,6 +163,10 @@ public class StackVersion
                                                            mipmapPathBuilder.getNumberOfLevels(),
                                                            mipmapPathBuilder.getExtension());
         }
+    }
+
+    public Double getAlignmentQuality() {
+        return alignmentQuality;
     }
 
     @Override

@@ -93,6 +93,12 @@ public class StackClient {
         public String materializedBoxRootPath;
 
         @Parameter(
+                names = "--alignmentQuality",
+                description = "Metric for aligned stacks",
+                required = false)
+        public Double alignmentQuality;
+
+        @Parameter(
                 names = "--cloneResultProject",
                 description = "Name of project for stack created by clone operation (default is to use source project)",
                 required = false)
@@ -202,7 +208,8 @@ public class StackClient {
                                                            parameters.stackResolutionY,
                                                            parameters.stackResolutionZ,
                                                            parameters.materializedBoxRootPath,
-                                                           null);
+                                                           null,
+                                                           parameters.alignmentQuality);
 
         renderDataClient.saveStackVersion(stack, stackVersion);
 
