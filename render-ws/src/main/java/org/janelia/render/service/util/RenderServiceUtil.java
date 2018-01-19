@@ -9,6 +9,7 @@ import javax.ws.rs.core.Response;
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.BoundingBoxRenderer;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.ShortRenderer;
 import org.janelia.alignment.Utils;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ServiceException;
@@ -87,20 +88,35 @@ public class RenderServiceUtil {
     }
 
     public static Response renderTiffImage(final RenderParameters renderParameters,
+    final Integer maxTileSpecsToRender,
+    final ResponseHelper responseHelper) {
+return renderTiffImage(renderParameters, maxTileSpecsToRender, responseHelper, false);
+}
+
+    public static Response renderTiffImage(final RenderParameters renderParameters,
                                            final Integer maxTileSpecsToRender,
-                                           final ResponseHelper responseHelper) {
+                                           final ResponseHelper responseHelper,
+                                           final boolean render16bit) {
         return renderImageStream(renderParameters,
                                  Utils.TIFF_FORMAT,
                                  IMAGE_TIFF_MIME_TYPE,
                                  maxTileSpecsToRender,
-                                 responseHelper);
+                                 responseHelper,
+                                 render16bit);
     }
-
+    public static Response renderImageStream(final RenderParameters renderParameters,
+    final String format,
+    final String mimeType,
+    final Integer maxTileSpecsToRender,
+    final ResponseHelper responseHelper) {
+        return renderImageStream(renderParameters, format, mimeType, maxTileSpecsToRender, responseHelper,false);
+    }
     public static Response renderImageStream(final RenderParameters renderParameters,
                                              final String format,
                                              final String mimeType,
                                              final Integer maxTileSpecsToRender,
-                                             final ResponseHelper responseHelper) {
+                                             final ResponseHelper responseHelper,
+                                             final boolean render16bit) {
 
         LOG.info("renderImageStream: entry, format={}, mimeType={}", format, mimeType);
 
@@ -114,7 +130,8 @@ public class RenderServiceUtil {
                                                     (renderParameters.numberOfTileSpecs() > maxTileSpecsToRender);
 
             final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters,
-                                                                               renderBoundingBoxesOnly);
+                                                                               renderBoundingBoxesOnly,
+                                                                               render16bit);
             final BufferedImageStreamingOutput out =
                     new BufferedImageStreamingOutput(targetImage,
                                                      format,
@@ -149,9 +166,13 @@ public class RenderServiceUtil {
 
         return response;
     }
-
     private static BufferedImage validateParametersAndRenderImage(final RenderParameters renderParameters,
-                                                                  final boolean renderBoundingBoxesOnly)
+                                                                  final boolean renderBoundingBoxesOnly){
+        return validateParametersAndRenderImage(renderParameters, renderBoundingBoxesOnly,false);
+    }
+    private static BufferedImage validateParametersAndRenderImage(final RenderParameters renderParameters,
+                                                                  final boolean renderBoundingBoxesOnly,
+                                                                  final boolean render16bit)
             throws IllegalArgumentException, IllegalStateException {
 
         LOG.info("validateParametersAndRenderImage: entry, renderParameters={}", renderParameters);
@@ -160,20 +181,29 @@ public class RenderServiceUtil {
         renderParameters.validate();
         renderParameters.setNumberOfThreads(1); // service requests should always be single threaded
 
-        final BufferedImage targetImage = renderParameters.openTargetImage();
+        final BufferedImage targetImage;
 
         if (renderBoundingBoxesOnly) {
-
+            targetImage = renderParameters.openTargetImage();
             final BoundingBoxRenderer boundingBoxRenderer = new BoundingBoxRenderer(renderParameters, Color.GREEN);
             boundingBoxRenderer.render(targetImage);
 
         } else {
 
             // otherwise render the real thing ...
-
-            ArgbRenderer.render(renderParameters,
-                                targetImage,
-                                SharedImageProcessorCache.getInstance());
+            if (render16bit) {
+                targetImage = renderParameters.openTargetImage(BufferedImage.TYPE_USHORT_GRAY);
+                ShortRenderer.render(renderParameters,
+                                     targetImage,
+                                     SharedImageProcessorCache.getInstance());
+            }
+            else{
+                targetImage = renderParameters.openTargetImage();
+                ArgbRenderer.render(renderParameters,
+                                    targetImage,
+                                    SharedImageProcessorCache.getInstance());
+            }
+            
 
         }
 
