@@ -51,7 +51,7 @@ public class MatchService {
     @SuppressWarnings("UnusedDeclaration")
     public MatchService()
             throws UnknownHostException {
-        this(buildMatchDao());
+        this(MatchDao.build());
     }
 
     public MatchService(final MatchDao matchDao) {
@@ -570,11 +570,5 @@ public class MatchService {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MatchService.class);
-
-    private static MatchDao buildMatchDao()
-            throws UnknownHostException {
-        final MongoClient mongoClient = SharedMongoClient.getInstance();
-        return new MatchDao(mongoClient);
-    }
 
 }

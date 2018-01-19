@@ -8,9 +8,12 @@ import java.io.InputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -28,6 +31,7 @@ import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 
 import org.bson.types.ObjectId;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.HierarchicalStack;
@@ -37,6 +41,7 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.render.service.dao.MatchDao;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ObjectNotFoundException;
@@ -62,18 +67,21 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState.*;
 public class StackMetaDataService {
 
     private final RenderDao renderDao;
+    private final MatchDao matchDao;
     private Map<String, String> versionInfo;
     private Map<String, String> viewParameters;
 
     @SuppressWarnings("UnusedDeclaration")
     public StackMetaDataService()
             throws UnknownHostException {
-        this(RenderDao.build());
+        this(RenderDao.build(), MatchDao.build());
     }
 
-    public StackMetaDataService(final RenderDao renderDao)
+    public StackMetaDataService(final RenderDao renderDao,
+                                final MatchDao matchDao)
             throws UnknownHostException {
         this.renderDao = renderDao;
+        this.matchDao = matchDao;
         this.versionInfo = null;
         this.viewParameters = null;
     }
@@ -412,6 +420,95 @@ public class StackMetaDataService {
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
+
+        return response;
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/tierData")
+    @DELETE
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Stack Management APIs", "Point Match APIs"},
+            value = "Deletes stack and match data for one hierarchical tier",
+            notes = "Looks at hierarchical metadata for split stacks in the specified tier project " +
+                    "to delete all split stack, align stack, and match collection data for the tier.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "at least one tier split stack is READ_ONLY")
+    })
+    public Response deleteTierData(@PathParam("owner") final String owner,
+                                   @PathParam("project") final String project) {
+
+        LOG.info("deleteTierData: entry, owner={}, project={}", owner, project);
+
+        String message = null;
+
+        Response response = null;
+        try {
+
+            // Double check project is defined in case method was called internally (not via REST API).
+            // A null project value would remove all tier data for an owner - probably a bad thing.
+            if (project == null) {
+                throw new IllegalArgumentException("project must be specified");
+            }
+
+            final List<StackMetaData> projectStackMetaDataList = renderDao.getStackMetaDataList(owner, project);
+            final Set<String> existingStackNames = new HashSet<>(projectStackMetaDataList.size() * 2);
+
+            final List<String> existingTierStackNames = new ArrayList<>(projectStackMetaDataList.size());
+            final List<String> alignStackNames = new ArrayList<>(projectStackMetaDataList.size());
+            final List<String> tierCollectionNames = new ArrayList<>(projectStackMetaDataList.size());
+
+            for (final StackMetaData projectStackMetaData : projectStackMetaDataList) {
+
+                final String projectStackName = projectStackMetaData.getStackId().getStack();
+                existingStackNames.add(projectStackName);
+
+                final HierarchicalStack hierarchicalData = projectStackMetaData.getHierarchicalData();
+                if (hierarchicalData != null) {
+                    validateStackIsModifiable(projectStackMetaData);
+                    existingTierStackNames.add(projectStackName);
+                    // not bothering to validate whether align stacks are modifiable, assume that's okay
+                    alignStackNames.add(hierarchicalData.getAlignedStackId().getStack());
+                    tierCollectionNames.add(hierarchicalData.getMatchCollectionId().getName());
+                }
+            }
+
+            existingTierStackNames.addAll(
+                    alignStackNames.stream()
+                            .filter(existingStackNames::contains)
+                            .collect(Collectors.toList()));
+
+            // Remove match collections, align stacks, and then tier stacks in that order so that tier stack
+            // hierarchical data is not lost if match collection or align stack removal fails.
+            int numberOfRemovedCollections = 0;
+            int numberOfSkippedCollections = 0;
+            for (final String matchCollectionName : tierCollectionNames) {
+                try {
+                    matchDao.removeAllMatches(new MatchCollectionId(owner, matchCollectionName));
+                    numberOfRemovedCollections++;
+                } catch (final ObjectNotFoundException e) {
+                    numberOfSkippedCollections++;
+                }
+            }
+
+            if (numberOfSkippedCollections > 0) {
+                LOG.info("skipped removal of {} non-existent collections", numberOfSkippedCollections);
+            }
+
+            // remove stacks in reverse order so align stacks are removed first
+            for (int i = existingTierStackNames.size() - 1; i >= 0; i--) {
+                renderDao.removeStack(new StackId(owner, project, existingTierStackNames.get(i)), true);
+            }
+
+            message = "removed " + existingTierStackNames.size() + " stacks and " + numberOfRemovedCollections +
+                      " match collections for project '" + project + "' owned by '" + owner + "'";
+
+            response = Response.ok(message, MediaType.TEXT_PLAIN_TYPE).build();
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        LOG.info("deleteTierData: exit, {}", message);
 
         return response;
     }

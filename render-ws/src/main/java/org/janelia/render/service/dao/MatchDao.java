@@ -14,6 +14,7 @@ import com.mongodb.client.result.DeleteResult;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -37,6 +38,12 @@ import org.slf4j.LoggerFactory;
 public class MatchDao {
 
     public static final String MATCH_DB_NAME = "match";
+
+    public static MatchDao build()
+            throws UnknownHostException {
+        final MongoClient mongoClient = SharedMongoClient.getInstance();
+        return new MatchDao(mongoClient);
+    }
 
     private final MongoDatabase matchDatabase;
 
