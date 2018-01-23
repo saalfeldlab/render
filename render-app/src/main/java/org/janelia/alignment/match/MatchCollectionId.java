@@ -1,5 +1,6 @@
 package org.janelia.alignment.match;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Objects;
 
 import java.io.Serializable;
@@ -46,6 +47,7 @@ public class MatchCollectionId
         return name;
     }
 
+    @JsonIgnore
     public String getDbCollectionName() throws IllegalArgumentException {
         if (dbCollectionName == null) {
             setDbCollectionName();
@@ -55,8 +57,7 @@ public class MatchCollectionId
 
     @Override
     public String toString() {
-        return "{'owner': '" + owner +
-               "', 'name': '" + name + "'}";
+        return "match collection with owner '" + owner + "', and name '" + name + "'";
     }
 
     @Override
