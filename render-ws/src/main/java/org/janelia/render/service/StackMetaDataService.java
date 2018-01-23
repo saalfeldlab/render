@@ -1143,11 +1143,11 @@ public class StackMetaDataService {
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "stack, match collection, or tile not found")
     })
-    public ResidualCalculator.Result calculateResidual(@PathParam("owner") final String owner,
-                                                       @PathParam("project") final String project,
-                                                       @PathParam("stack") final String stack,
-                                                       @Context final UriInfo uriInfo,
-                                                       final ResidualCalculator.InputData inputData) {
+    public ResidualCalculator.Result calculateResidualDistances(@PathParam("owner") final String owner,
+                                                                @PathParam("project") final String project,
+                                                                @PathParam("stack") final String stack,
+                                                                @Context final UriInfo uriInfo,
+                                                                final ResidualCalculator.InputData inputData) {
 
         LOG.info("calculateResidual: entry, owner={}, project={}, stack={}",
                  owner, project, stack);
