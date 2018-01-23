@@ -108,6 +108,11 @@ public class TileSpec implements Serializable {
         this.z = z;
     }
 
+    @JsonIgnore
+    public String getSectionId() {
+        return layout == null ? null : layout.getSectionId();
+    }
+
     public Double getMinX() {
         return minX;
     }
