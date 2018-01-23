@@ -1,7 +1,5 @@
 package org.janelia.render.service;
 
-import com.mongodb.MongoClient;
-
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -26,7 +24,6 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.render.service.dao.MatchDao;
-import org.janelia.render.service.dao.SharedMongoClient;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
@@ -308,11 +305,11 @@ public class MatchService {
             @ApiResponse(code = 404, message = "Match collection not found")
     })
     public Response getMatchesFromObjectToGroup(@PathParam("owner") final String owner,
-                                             @PathParam("matchCollection") final String matchCollection,
-                                             @PathParam("pGroupId") final String pGroupId,
-                                             @PathParam("pId") final String pId,
-                                             @PathParam("qGroupId") final String qGroupId,
-                                             @QueryParam("mergeCollection") final List<String> mergeCollectionList) {
+                                                @PathParam("matchCollection") final String matchCollection,
+                                                @PathParam("pGroupId") final String pGroupId,
+                                                @PathParam("pId") final String pId,
+                                                @PathParam("qGroupId") final String qGroupId,
+                                                @QueryParam("mergeCollection") final List<String> mergeCollectionList) {
 
         LOG.info("getMatchesFromObjectToGroup: entry, owner={}, matchCollection={}, pGroupId={}, pId={}, qGroupId={}, mergeCollectionList={}",
                  owner, matchCollection, pGroupId, pId, qGroupId, mergeCollectionList);
@@ -320,7 +317,7 @@ public class MatchService {
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
         final StreamingOutput responseOutput =
-                output -> matchDao.writeMatchesBetweenObjectandGroup(collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId, output);
+                output -> matchDao.writeMatchesBetweenObjectAndGroup(collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId, output);
 
         return streamResponse(responseOutput);
     }

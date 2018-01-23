@@ -278,7 +278,7 @@ public class MatchDaoTest {
         final String sourceId = "tile1.1";
         final String qGroupId = "section1";
 
-        dao.writeMatchesBetweenObjectandGroup(collectionId, null, groupId, sourceId,qGroupId, outputStream);
+        dao.writeMatchesBetweenObjectAndGroup(collectionId, null, groupId, sourceId,qGroupId, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 

@@ -175,12 +175,12 @@ public class MatchDao {
         writeMatches(collectionList, query, outputStream);
     }
 
-    public void writeMatchesBetweenObjectandGroup(final MatchCollectionId collectionId,
-                                           final List<MatchCollectionId> mergeCollectionIdList,
-                                           final String pGroupId,
-                                           final String pId,
-                                           final String qGroupId,
-                                           final OutputStream outputStream)
+    public void writeMatchesBetweenObjectAndGroup(final MatchCollectionId collectionId,
+                                                  final List<MatchCollectionId> mergeCollectionIdList,
+                                                  final String pGroupId,
+                                                  final String pId,
+                                                  final String qGroupId,
+                                                  final OutputStream outputStream)
             throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
         LOG.debug("writeMatchesBetweenObjectandGroup: entry, collectionId={}, mergeCollectionIdList={}, pGroupId={}, pId={}, qGroupId={}",
@@ -192,12 +192,52 @@ public class MatchDao {
         MongoUtil.validateRequiredParameter("pId", pId);
         MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
 
-        final String noTileId = "";
-        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, pId, qGroupId,noTileId, null);
-        final Document query = getInvolvingObjectAndGroupQuery(pGroupId,pId,qGroupId);
+        final Document query = getInvolvingObjectAndGroupQuery(pGroupId, pId, qGroupId);
 
         writeMatches(collectionList, query, outputStream);
     }
+
+    public CanvasMatches getMatchesBetweenObjects(final MatchCollectionId collectionId,
+                                                  final String pGroupId,
+                                                  final String pId,
+                                                  final String qGroupId,
+                                                  final String qId)
+            throws IllegalArgumentException, IOException, ObjectNotFoundException {
+
+        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
+        MongoUtil.validateRequiredParameter("pId", pId);
+        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
+        MongoUtil.validateRequiredParameter("qId", qId);
+
+        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, pId, qGroupId, qId, null);
+        final Document query = new Document(
+                "pGroupId", normalizedCriteria.getpGroupId()).append(
+                "pId", normalizedCriteria.getpId()).append(
+                "qGroupId", normalizedCriteria.getqGroupId()).append(
+                "qId", normalizedCriteria.getqId());
+
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+
+        int matchCount = 0;
+        CanvasMatches canvasMatches = null;
+        try (MongoCursor<Document> cursor = collection.find(query).iterator()) {
+            if (cursor.hasNext()) {
+                canvasMatches = CanvasMatches.fromJson(cursor.next().toJson());
+                matchCount = canvasMatches.size();
+            }
+        }
+
+        if (matchCount == 0) {
+            throw new ObjectNotFoundException(collectionId + " does not contain matches between " +
+                                              pId + " and " + qId);
+        }
+
+        LOG.debug("getMatchesBetweenObjects: returning {} matches for {}.find({})",
+                  matchCount, collection.getNamespace().getFullName(), query.toJson());
+
+        return canvasMatches;
+    }
+
     public void writeMatchesBetweenObjects(final MatchCollectionId collectionId,
                                            final List<MatchCollectionId> mergeCollectionIdList,
                                            final String pGroupId,
@@ -226,6 +266,7 @@ public class MatchDao {
 
         writeMatches(collectionList, query, outputStream);
     }
+
     public void writeMatchesInvolvingObject(final MatchCollectionId collectionId,
                                             final List<MatchCollectionId> mergeCollectionIdList,
                                             final String groupId,

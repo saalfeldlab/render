@@ -30,7 +30,11 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 
+import mpicbg.models.PointMatch;
+
 import org.bson.types.ObjectId;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileSpec;
@@ -41,6 +45,7 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.alignment.util.ResidualCalculator;
 import org.janelia.render.service.dao.MatchDao;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
@@ -1126,6 +1131,91 @@ public class StackMetaDataService {
         }
 
         return tileSpecList;
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/residualCalculation")
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = { "Stack Data APIs" },
+            value = "Calculate alignment residual stats")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack, match collection, or tile not found")
+    })
+    public ResidualCalculator.Result calculateResidual(@PathParam("owner") final String owner,
+                                                       @PathParam("project") final String project,
+                                                       @PathParam("stack") final String stack,
+                                                       @Context final UriInfo uriInfo,
+                                                       final ResidualCalculator.InputData inputData) {
+
+        LOG.info("calculateResidual: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        ResidualCalculator.Result result = null;
+        try {
+            final StackId matchStackId = inputData.getMatchRenderStackId();
+
+            String pTileId = inputData.getPTileId();
+            String qTileId = inputData.getQTileId();
+
+            TileSpec pMatchTileSpec = getMatchTileSpec(matchStackId, pTileId);
+            TileSpec qMatchTileSpec = getMatchTileSpec(matchStackId, qTileId);
+
+            final CanvasMatches canvasMatches = matchDao.getMatchesBetweenObjects(inputData.getMatchCollectionId(),
+                                                                                  pMatchTileSpec.getSectionId(),
+                                                                                  pMatchTileSpec.getTileId(),
+                                                                                  qMatchTileSpec.getSectionId(),
+                                                                                  qMatchTileSpec.getTileId());
+            if (! pTileId.equals(canvasMatches.getpId())) {
+                final String swapTileId = pTileId;
+                pTileId = qTileId;
+                qTileId = swapTileId;
+
+                final TileSpec swapMatchTileSpec = pMatchTileSpec;
+                pMatchTileSpec = qMatchTileSpec;
+                qMatchTileSpec = swapMatchTileSpec;
+
+                LOG.info("calculateResidual: normalized tile ordering, now pTileId is {} and qTileId is {}",
+                         pTileId, qTileId);
+            }
+
+            final List<PointMatch> worldMatchList = canvasMatches.getMatches().createPointMatches();
+            final List<PointMatch> localMatchList =
+                    ResidualCalculator.convertMatchesToLocal(worldMatchList, pMatchTileSpec, qMatchTileSpec);
+
+            if (localMatchList.size() == 0) {
+                throw new IllegalArgumentException(inputData.getMatchCollectionId() + " has " +
+                                                   worldMatchList.size() + " matches between " + pTileId + " and " +
+                                                   qTileId + " but none of them are invertible");
+            }
+
+            final StackId alignedStackId = new StackId(owner, project, stack);
+            final TileSpec pAlignedTileSpec = renderDao.getTileSpec(alignedStackId, pTileId, true);
+            final TileSpec qAlignedTileSpec = renderDao.getTileSpec(alignedStackId, qTileId, true);
+
+            final ResidualCalculator residualCalculator = new ResidualCalculator();
+            result = residualCalculator.run(alignedStackId,
+                                            inputData,
+                                            localMatchList,
+                                            pAlignedTileSpec,
+                                            qAlignedTileSpec);
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return result;
+    }
+
+    private TileSpec getMatchTileSpec(final StackId matchStackId,
+                                      final String tileId) {
+        final TileSpec matchTileSpec = renderDao.getTileSpec(matchStackId, tileId, true);
+        // TODO: handle all tile normalization options (this lazily assumes the legacy method)
+        final RenderParameters matchRenderParameters =
+                TileDataService.getCoreTileRenderParameters(
+                        null, null, null, true, null, null, null, matchTileSpec);
+        return matchRenderParameters.getTileSpecs().get(0);
     }
 
     public static ObjectNotFoundException getStackNotFoundException(final String owner,
