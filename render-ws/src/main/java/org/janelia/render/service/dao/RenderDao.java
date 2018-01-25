@@ -911,6 +911,28 @@ public class RenderDao {
     }
 
     /**
+     * @return list of stack projects for the specified owner.
+     *
+     * @throws IllegalArgumentException
+     *   if required parameters are not specified.
+     */
+    public List<String> getProjects(final String owner)
+            throws IllegalArgumentException {
+
+        MongoUtil.validateRequiredParameter("owner", owner);
+
+        final List<String> list = new ArrayList<>();
+
+        final MongoCollection<Document> stackMetaDataCollection = getStackMetaDataCollection();
+        final Document query = new Document("stackId.owner", owner);
+        for (final String project : stackMetaDataCollection.distinct("stackId.project", query, String.class)) {
+            list.add(project);
+        }
+
+        return list;
+    }
+
+    /**
      * @param  owner    owner for all stacks.
      * @param  project  project for all stacks (or null to include all projects).
      *

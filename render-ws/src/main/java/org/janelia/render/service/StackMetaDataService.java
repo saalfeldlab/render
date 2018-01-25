@@ -166,6 +166,20 @@ public class StackMetaDataService {
         return renderDao.getOwners();
     }
 
+    @Path("v1/owner/{owner}/projects")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "List of projects for the specified owner")
+    public List<String> getProjectsForOwner(@PathParam("owner") final String owner) {
+        List<String> list = null;
+        try {
+            list = renderDao.getProjects(owner);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+        return list;
+    }
+
     @Path("v1/owner/{owner}/stackIds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
