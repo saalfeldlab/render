@@ -1,6 +1,5 @@
 package org.janelia.render.client.spark;
 
-import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -14,7 +13,6 @@ import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.ImageAndMask;
-import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
@@ -120,11 +118,6 @@ public class HierarchicalStackCreationFunction
 
             tierDataClient.setHierarchicalData(stack, splitStack);
 
-            final Bounds fullScaleBounds = splitStack.getFullScaleBounds();
-            final int scaledCellWidth = (int) Math.ceil(splitStack.getScale() * fullScaleBounds.getDeltaX());
-            final int scaledCellHeight = (int) Math.ceil(splitStack.getScale() * fullScaleBounds.getDeltaY());
-            final Rectangle scaledCellBoundingBox = new Rectangle(0, 0, scaledCellWidth, scaledCellHeight);
-
             final TransformSpecMetaData transformSpecMetaData = new TransformSpecMetaData();
             transformSpecMetaData.addLabel("regular");
             final List<TransformSpec> regularTransform =
@@ -146,9 +139,7 @@ public class HierarchicalStackCreationFunction
                 tileSpec.setLayout(new LayoutData(String.valueOf(z), "n/a", "n/a", 0, 0, 0.0, 0.0, 0.0));
                 tileSpec.setZ(z);
 
-                tileSpec.setWidth((double) scaledCellWidth);
-                tileSpec.setHeight((double) scaledCellHeight);
-                tileSpec.setBoundingBox(scaledCellBoundingBox, tileSpec.getMeshCellSize());
+                splitStack.setTileSpecBounds(tileSpec);
 
                 channelSpec = new ChannelSpec(channel,
                                               minIntensity,

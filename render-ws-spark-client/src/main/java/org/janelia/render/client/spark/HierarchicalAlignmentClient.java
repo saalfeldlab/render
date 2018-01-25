@@ -21,7 +21,6 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.broadcast.Broadcast;
-import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
@@ -329,8 +328,8 @@ public class HierarchicalAlignmentClient
 
     private RenderableCanvasIdPairs getRenderablePairsForStack(final HierarchicalStack tierStack) {
 
-        final int n = zValues.size();
-        final List<OrderedCanvasIdPair> neighborPairs = new ArrayList<>(n * parameters.zNeighborDistance);
+        final List<OrderedCanvasIdPair> neighborPairs = tierStack.getNeighborPairs(zValues,
+                                                                                   parameters.zNeighborDistance);
 
         final StackId parentTierStackId = tierStack.getParentTierStackId();
         final String renderUrlTemplate =
@@ -341,37 +340,10 @@ public class HierarchicalAlignmentClient
 
         final RenderableCanvasIdPairs renderableCanvasIdPairs = new RenderableCanvasIdPairs(renderUrlTemplate,
                                                                                             neighborPairs);
-        addCanvasPairsForStack(tierStack, renderableCanvasIdPairs);
-
         LOG.info("getRenderablePairsForStack: exit, returning {} pairs with template {}",
                  renderableCanvasIdPairs.size(), renderUrlTemplate);
 
         return renderableCanvasIdPairs;
-    }
-
-    private void addCanvasPairsForStack(final HierarchicalStack tierStack,
-                                        final RenderableCanvasIdPairs renderablePairs) {
-
-        final int n = zValues.size();
-        final List<OrderedCanvasIdPair> neighborPairs = new ArrayList<>(n * parameters.zNeighborDistance);
-        Double pz;
-        Double qz;
-        CanvasId p;
-        CanvasId q;
-        for (int i = 0; i < n; i++) {
-            pz = zValues.get(i);
-            p = new CanvasId(pz.toString(), tierStack.getTileIdForZ(pz));
-            for (int k = i + 1; k < n && k < i + parameters.zNeighborDistance; k++) {
-                qz = zValues.get(k);
-                q = new CanvasId(qz.toString(), tierStack.getTileIdForZ(qz));
-                neighborPairs.add(new OrderedCanvasIdPair(p, q));
-            }
-        }
-
-        if (neighborPairs.size() > 0) {
-            LOG.info("addCanvasPairsForStack: first pair is {}", neighborPairs.get(0));
-            renderablePairs.addNeighborPairs(neighborPairs);
-        }
     }
 
     private void generateMatchesForTier()
@@ -489,7 +461,8 @@ public class HierarchicalAlignmentClient
                     renderableCanvasIdPairs = getRenderablePairsForStack(tierStack);
                 } else {
                     fromIndex = renderableCanvasIdPairs.size();
-                    addCanvasPairsForStack(tierStack, renderableCanvasIdPairs);
+                    renderableCanvasIdPairs.addNeighborPairs(tierStack.getNeighborPairs(zValues,
+                                                                                        parameters.zNeighborDistance));
                 }
 
                 final List<OrderedCanvasIdPair> tierPairs =

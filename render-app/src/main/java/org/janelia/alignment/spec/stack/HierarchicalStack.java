@@ -2,6 +2,7 @@ package org.janelia.alignment.spec.stack;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -10,8 +11,11 @@ import java.util.List;
 import mpicbg.models.AffineModel2D;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.MatchCollectionId;
+import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.TileSpec;
 
 /**
  * Hierarchical alignment involves recursive partitioning and scaling of a roughly aligned stack of montage tiles.
@@ -285,6 +289,17 @@ public class HierarchicalStack implements Serializable {
     }
 
     /**
+     * Sets the width, height, and bounding box for the specified tile spec based upon this stack's dimensions.
+     *
+     * @param  tileSpec  spec to update.
+     */
+    @JsonIgnore
+    public void setTileSpecBounds(final TileSpec tileSpec) {
+        // TODO: consider caching scaledCellBoundingBox rather than re-calculating it for each tile
+        setTileSpecBounds(tileSpec, scale, fullScaleBounds);
+    }
+
+    /**
      * @param  z  layer z value.
      *
      * @return path that references parent tier box for the specified layer of this stack.
@@ -295,6 +310,30 @@ public class HierarchicalStack implements Serializable {
                "/stack/" + parentTierStackId.getStack() + "/z/" + z + "/box/" +
                floor(fullScaleBounds.getMinX()) + ',' + floor(fullScaleBounds.getMinY()) + ',' +
                ceil(fullScaleBounds.getDeltaX()) + ',' + ceil(fullScaleBounds.getDeltaY()) + ',' + scale;
+    }
+
+    @JsonIgnore
+    public List<OrderedCanvasIdPair> getNeighborPairs(final List<Double> zValues,
+                                                      final int zNeighborDistance) {
+
+        final int n = zValues.size();
+        final List<OrderedCanvasIdPair> neighborPairs = new ArrayList<>(n * zNeighborDistance);
+
+        Double pz;
+        Double qz;
+        CanvasId p;
+        CanvasId q;
+        for (int i = 0; i < n; i++) {
+            pz = zValues.get(i);
+            p = new CanvasId(pz.toString(), getTileIdForZ(pz));
+            for (int k = i + 1; k < n && k < i + zNeighborDistance; k++) {
+                qz = zValues.get(k);
+                q = new CanvasId(qz.toString(), getTileIdForZ(qz));
+                neighborPairs.add(new OrderedCanvasIdPair(p, q));
+            }
+        }
+
+        return neighborPairs;
     }
 
     /**
@@ -339,7 +378,7 @@ public class HierarchicalStack implements Serializable {
                                                    final int tier) {
         final String warpStack = roughTilesStackId.getStack() + "_tier_" + tier + "_warp";
         return new StackId(roughTilesStackId.getOwner(),
-                                            roughTilesStackId.getProject(),
+                           roughTilesStackId.getProject(),
                            warpStack);
     }
 
@@ -425,15 +464,28 @@ public class HierarchicalStack implements Serializable {
         return splitStacks;
     }
 
-    private static int floor(final double value) {
+    public static void setTileSpecBounds(final TileSpec tileSpec,
+                                         final double scale,
+                                         final Bounds fullScaleBounds) {
+        final int scaledCellWidth = (int) Math.ceil(scale * fullScaleBounds.getDeltaX());
+        final int scaledCellHeight = (int) Math.ceil(scale * fullScaleBounds.getDeltaY());
+        final Rectangle scaledCellBoundingBox = new Rectangle(0, 0, scaledCellWidth, scaledCellHeight);
+
+        tileSpec.setWidth((double) scaledCellWidth);
+        tileSpec.setHeight((double) scaledCellHeight);
+        tileSpec.setBoundingBox(scaledCellBoundingBox, tileSpec.getMeshCellSize());
+
+    }
+
+    public static int floor(final double value) {
         return (int) Math.floor(value);
     }
 
-    private static int ceil(final double value) {
+    public static int ceil(final double value) {
         return (int) Math.ceil(value);
     }
 
-    private static final JsonUtils.Helper<HierarchicalStack> JSON_HELPER =
+    public static final JsonUtils.Helper<HierarchicalStack> JSON_HELPER =
             new JsonUtils.Helper<>(HierarchicalStack.class);
 
 }
