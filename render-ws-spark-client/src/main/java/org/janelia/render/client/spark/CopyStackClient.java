@@ -26,6 +26,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -98,6 +99,14 @@ public class CopyStackClient implements Serializable {
                 variableArity = true,
                 required = false)
         public List<String> excludeTileIdsMissingFromStacks;
+
+        @Parameter(
+                names = "--completeToStackAfterCopy",
+                description = "Complete the to stack after copying all layers",
+                required = false,
+                arity = 0)
+        public boolean completeToStackAfterCopy = false;
+
 
         public String getTargetOwner() {
             if (targetOwner == null) {
@@ -277,6 +286,13 @@ public class CopyStackClient implements Serializable {
 
         LOG.info("run: collected stats");
         LOG.info("run: copied {} tiles", total);
+
+        if (parameters.completeToStackAfterCopy) {
+            final RenderDataClient driverTargetDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                                                 parameters.getTargetOwner(),
+                                                                                 parameters.getTargetProject());
+            driverTargetDataClient.setStackState(parameters.targetStack, StackState.COMPLETE);
+        }
 
         sparkContext.stop();
     }
