@@ -2,6 +2,7 @@ package org.janelia.render.service.util;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.awt.image.DataBufferUShort;
 import java.awt.image.SinglePixelPackedSampleModel;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -86,34 +87,60 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
                                      final OutputStream outputStream)
             throws IOException {
 
-        if (bufferedImage.getType() != BufferedImage.TYPE_INT_ARGB) {
-            throw new IOException("invalid image type (" + bufferedImage.getType() +
-                                  "), must be BufferedImage.TYPE_INT_ARGB");
-        }
 
-        final ImageInfo imageInfo = new ImageInfo(bufferedImage.getWidth(), bufferedImage.getHeight(), 8, true);
 
-        final PngWriter pngWriter = new PngWriter(outputStream, imageInfo);
-        pngWriter.setCompLevel(compressionLevel);
-        pngWriter.setFilterType(filterType);
+        if (bufferedImage.getType() == BufferedImage.TYPE_INT_ARGB) {
+            // Existing code for TYPE_INT_ARGB
+            final ImageInfo imageInfo = new ImageInfo(bufferedImage.getWidth(), bufferedImage.getHeight(), 8, true);
 
-        final DataBufferInt dataBuffer =((DataBufferInt) bufferedImage.getRaster().getDataBuffer());
-        if (dataBuffer.getNumBanks() != 1) {
-            throw new IOException("invalid number of banks (" + dataBuffer.getNumBanks() + "), must be 1");
-        }
+            final PngWriter pngWriter = new PngWriter(outputStream, imageInfo);
+            pngWriter.setCompLevel(compressionLevel);
+            pngWriter.setFilterType(filterType);
 
-        final SinglePixelPackedSampleModel sampleModel = (SinglePixelPackedSampleModel) bufferedImage.getSampleModel();
-        final ImageLineInt line = new ImageLineInt(imageInfo);
-        final int[] data = dataBuffer.getData();
-        for (int row = 0; row < imageInfo.rows; row++) {
-            int elem = sampleModel.getOffset(0, row);
-            for (int col = 0; col < imageInfo.cols; col++) {
-                final int sample = data[elem++];
-                ImageLineHelper.setPixelRGBA8(line, col, sample);
+            final DataBufferInt dataBuffer =((DataBufferInt) bufferedImage.getRaster().getDataBuffer());
+            if (dataBuffer.getNumBanks() != 1) {
+                throw new IOException("invalid number of banks (" + dataBuffer.getNumBanks() + "), must be 1");
             }
-            pngWriter.writeRow(line, row);
+
+            final SinglePixelPackedSampleModel sampleModel = (SinglePixelPackedSampleModel) bufferedImage.getSampleModel();
+            final ImageLineInt line = new ImageLineInt(imageInfo);
+            final int[] data = dataBuffer.getData();
+            for (int row = 0; row < imageInfo.rows; row++) {
+                int elem = sampleModel.getOffset(0, row);
+                for (int col = 0; col < imageInfo.cols; col++) {
+                    final int sample = data[elem++];
+                    ImageLineHelper.setPixelRGBA8(line, col, sample);
+                }
+                pngWriter.writeRow(line, row);
+            }
+            pngWriter.end();
+
+        } else if (bufferedImage.getType() == BufferedImage.TYPE_USHORT_GRAY) {
+            // Modified code to avoid "java.awt.image.DataBufferUShort cannot be cast to java.awt.image.DataBufferInt"
+            final ImageInfo imageInfo = new ImageInfo(bufferedImage.getWidth(), bufferedImage.getHeight(), 16, false, true, false);
+            final PngWriter pngWriter = new PngWriter(outputStream, imageInfo);
+            pngWriter.setCompLevel(compressionLevel);
+            pngWriter.setFilterType(filterType);
+
+            final DataBufferUShort dataBuffer = (DataBufferUShort) bufferedImage.getRaster().getDataBuffer();
+            if (dataBuffer.getNumBanks() != 1) {
+                throw new IOException("invalid number of banks (" + dataBuffer.getNumBanks() + "), must be 1");
+            }
+
+            final int [] scanline = new int[imageInfo.cols];
+            ImageLineInt line = new ImageLineInt(imageInfo, scanline);
+
+            for (int row = 0; row < imageInfo.rows; row++) {
+                for (int col = 0; col < imageInfo.cols; col++) {
+                    scanline[col] = dataBuffer.getData()[row * imageInfo.cols + col];
+                }
+                pngWriter.writeRow(line, row);
+            }
+            pngWriter.end();
+        } else {
+            throw new IOException("invalid image type (" + bufferedImage.getType() +
+                    "), must be BufferedImage.TYPE_INT_ARGB or BufferedImage.TYPE_USHORT_GRAY");
         }
-        pngWriter.end();
 
 //        // This looked like a nicer option, but only works for DataBufferByte (not DataBufferInt)
 //        final ImageLineSetARGBbi lines = new ImageLineSetARGBbi(bufferedImage, imageInfo);

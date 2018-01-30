@@ -79,19 +79,28 @@ public class RenderServiceUtil {
 
     public static Response renderPngImage(final RenderParameters renderParameters,
                                           final Integer maxTileSpecsToRender,
-                                          final ResponseHelper responseHelper) {
+                                          final ResponseHelper responseHelper)
+    {
+        return renderPngImage(renderParameters, maxTileSpecsToRender, responseHelper, false);
+
+    }
+    public static Response renderPngImage(final RenderParameters renderParameters,
+                                          final Integer maxTileSpecsToRender,
+                                          final ResponseHelper responseHelper,
+                                          final boolean render16bit) {
         return renderImageStream(renderParameters,
                                  Utils.PNG_FORMAT,
                                  IMAGE_PNG_MIME_TYPE,
                                  maxTileSpecsToRender,
-                                 responseHelper);
+                                 responseHelper,
+                                 render16bit);
     }
 
     public static Response renderTiffImage(final RenderParameters renderParameters,
-    final Integer maxTileSpecsToRender,
-    final ResponseHelper responseHelper) {
-return renderTiffImage(renderParameters, maxTileSpecsToRender, responseHelper, false);
-}
+                                           final Integer maxTileSpecsToRender,
+                                           final ResponseHelper responseHelper) {
+        return renderTiffImage(renderParameters, maxTileSpecsToRender, responseHelper, false);
+    }
 
     public static Response renderTiffImage(final RenderParameters renderParameters,
                                            final Integer maxTileSpecsToRender,
@@ -104,6 +113,7 @@ return renderTiffImage(renderParameters, maxTileSpecsToRender, responseHelper, f
                                  responseHelper,
                                  render16bit);
     }
+
     public static Response renderImageStream(final RenderParameters renderParameters,
     final String format,
     final String mimeType,
