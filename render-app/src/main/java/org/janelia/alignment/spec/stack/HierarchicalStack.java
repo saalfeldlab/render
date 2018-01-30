@@ -312,6 +312,14 @@ public class HierarchicalStack implements Serializable {
                ceil(fullScaleBounds.getDeltaX()) + ',' + ceil(fullScaleBounds.getDeltaY()) + ',' + scale;
     }
 
+    /**
+     * Pairs each specified layer (z value) with the specified number of adjacent layers.
+     *
+     * @param  zValues            ordered list of z values for this stack.
+     * @param  zNeighborDistance  number of adjacent layers to pair with each layer.
+     *
+     * @return list of layer pair identifiers.
+     */
     @JsonIgnore
     public List<OrderedCanvasIdPair> getNeighborPairs(final List<Double> zValues,
                                                       final int zNeighborDistance) {
@@ -326,7 +334,7 @@ public class HierarchicalStack implements Serializable {
         for (int i = 0; i < n; i++) {
             pz = zValues.get(i);
             p = new CanvasId(pz.toString(), getTileIdForZ(pz));
-            for (int k = i + 1; k < n && k < i + zNeighborDistance; k++) {
+            for (int k = i + 1; k < n && k <= i + zNeighborDistance; k++) {
                 qz = zValues.get(k);
                 q = new CanvasId(qz.toString(), getTileIdForZ(qz));
                 neighborPairs.add(new OrderedCanvasIdPair(p, q));
