@@ -585,7 +585,7 @@ public class HierarchicalAlignmentClient
             final Broadcast<EMAlignerTool> broadcastEMAlignerTool = sparkContext.broadcast(solver);
 
             final HierarchicalTierSolveFunction solveStacksFunction =
-                    new HierarchicalTierSolveFunction(parameters.boxBaseDataUrl,
+                    new HierarchicalTierSolveFunction(parameters.renderWeb.baseDataUrl,
                                                       broadcastEMAlignerTool);
 
             // remove any pre-existing alignment results ...
