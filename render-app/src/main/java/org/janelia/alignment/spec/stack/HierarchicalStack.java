@@ -369,6 +369,31 @@ public class HierarchicalStack implements Serializable {
         return model;
     }
 
+    /**
+     * Uses this stack's scale and the specified montage layer bounds to convert the specified affine to a
+     * full scale version that can be used for rough alignment of all tiles in a layer.
+     *
+     * @param  alignedLayerTransformModel  scaled aligned model to convert.
+     * @param  montageLayerMinX            minimum X value for the montage layer.
+     * @param  montageLayerMinY            minimum Y value for the montage layer.
+     *
+     * @return full scale (and translated) version of the specified model for a layer.
+     */
+    @JsonIgnore
+    public AffineModel2D getFullScaleRoughModel(final AffineModel2D alignedLayerTransformModel,
+                                                final double montageLayerMinX,
+                                                final double montageLayerMinY) {
+
+        final AffineTransform affine = new AffineTransform();
+        affine.scale(1 / scale, 1 / scale);
+        affine.concatenate(alignedLayerTransformModel.createAffine());
+        affine.scale(scale, scale);
+        affine.translate(-montageLayerMinX, -montageLayerMinY);
+        final AffineModel2D model = new AffineModel2D();
+        model.set(affine);
+        return model;
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }

@@ -1,7 +1,7 @@
 package org.janelia.render.client.spark;
 
-import mpicbg.models.CoordinateTransform;
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.CoordinateTransform;
 
 import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.spec.Bounds;
@@ -10,7 +10,6 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackId;
-import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.TierZeroStack;
 import org.janelia.render.client.RenderDataClient;
 
@@ -41,15 +40,21 @@ public class HierarchicalRoughStackFunction
 
         LogUtilities.setupExecutorLog4j(z.toString());
 
+        final StackId montageStackId = tierZeroStack.getParentTierStackId();
+
+        final RenderDataClient montageDataClient =
+                new RenderDataClient(baseDataUrl,
+                                     montageStackId.getOwner(),
+                                     montageStackId.getProject());
+
+        final Bounds montageLayerBounds = montageDataClient.getLayerBounds(montageStackId.getStack(), z);
+
         final StackId alignedStackId = tierZeroStack.getAlignedStackId();
 
         final RenderDataClient alignedDataClient =
                 new RenderDataClient(baseDataUrl,
                                      alignedStackId.getOwner(),
                                      alignedStackId.getProject());
-
-        final StackMetaData alignedStackMetaData = alignedDataClient.getStackMetaData(alignedStackId.getStack());
-        final Bounds alignedStackBounds = alignedStackMetaData.getStats().getStackBounds();
 
         final ResolvedTileSpecCollection tileSpecCollection =
                 alignedDataClient.getResolvedTiles(alignedStackId.getStack(), z);
@@ -68,14 +73,12 @@ public class HierarchicalRoughStackFunction
 
         if (transformInstance instanceof AffineModel2D) {
             final AffineModel2D scaledAffineModel = (AffineModel2D) transformInstance;
-            final AffineModel2D fullScaleRelativeModel =
-                    tierZeroStack.getFullScaleRelativeModel(scaledAffineModel,
-                                                            alignedStackBounds.getMinX(),
-                                                            alignedStackBounds.getMinY());
-            final double[] affineMatrixElements = new double[6];
-            fullScaleRelativeModel.toArray(affineMatrixElements);
+            final AffineModel2D fullScaleRoughModel =
+                    tierZeroStack.getFullScaleRoughModel(scaledAffineModel,
+                                                         montageLayerBounds.getMinX(),
+                                                         montageLayerBounds.getMinY());
             final mpicbg.trakem2.transform.AffineModel2D specModel = new mpicbg.trakem2.transform.AffineModel2D();
-            specModel.set(fullScaleRelativeModel);
+            specModel.set(fullScaleRoughModel);
 
             final String roughTransformId = "z_" + z + "_ROUGH_ALIGN";
             roughAlignmentTransform = new LeafTransformSpec(roughTransformId,
@@ -86,13 +89,6 @@ public class HierarchicalRoughStackFunction
             throw new IllegalArgumentException("last transform for tileId '" + layerTileSpec.getTileId() +
                                                "' is a " + transformInstance.getClass().getName() + " instance");
         }
-
-        final StackId montageStackId = tierZeroStack.getParentTierStackId();
-
-        final RenderDataClient montageDataClient =
-                new RenderDataClient(baseDataUrl,
-                                     montageStackId.getOwner(),
-                                     montageStackId.getProject());
 
         final ResolvedTileSpecCollection tileCollection =
                 montageDataClient.getResolvedTiles(montageStackId.getStack(), z);
