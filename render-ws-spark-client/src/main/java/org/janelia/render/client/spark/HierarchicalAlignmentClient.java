@@ -586,6 +586,7 @@ public class HierarchicalAlignmentClient
 
             final HierarchicalTierSolveFunction solveStacksFunction =
                     new HierarchicalTierSolveFunction(parameters.renderWeb.baseDataUrl,
+                                                      parameters.zNeighborDistance,
                                                       broadcastEMAlignerTool);
 
             // remove any pre-existing alignment results ...

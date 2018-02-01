@@ -24,11 +24,14 @@ public class HierarchicalTierSolveFunction
         implements Function<HierarchicalStack, HierarchicalStack> {
 
     private final String baseDataUrl;
+    private final Integer zNeighborDistance;
     private final Broadcast<EMAlignerTool> broadcastEMAlignerTool;
 
     public HierarchicalTierSolveFunction(final String baseDataUrl,
+                                         final Integer zNeighborDistance,
                                          final Broadcast<EMAlignerTool> broadcastEMAlignerTool) {
         this.baseDataUrl = baseDataUrl;
+        this.zNeighborDistance = zNeighborDistance;
         this.broadcastEMAlignerTool = broadcastEMAlignerTool;
     }
 
@@ -55,6 +58,7 @@ public class HierarchicalTierSolveFunction
                                           bounds.getMaxZ(),
                                           matchCollectionId.getOwner(),
                                           matchCollectionId.getName(),
+                                          zNeighborDistance,
                                           tierStack.getAlignedStackId(),
                                           parametersFile);
 

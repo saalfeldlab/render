@@ -78,6 +78,7 @@ public class EMAlignerTool
                                        final Double lastZ,
                                        final String matchOwner,
                                        final String matchCollection,
+                                       final Integer zNeighborDistance,
                                        final StackId targetStack,
                                        final File parametersFile)
             throws IOException {
@@ -90,6 +91,8 @@ public class EMAlignerTool
         //   "first_section": 1,
         //   "last_section": 3,
         //   "solver_options": {
+        //     ...
+        //     "nbrs": 1
         //     ...
         //     "dir_scratch": "/scratch/trautmane",
         //     ...
@@ -124,6 +127,7 @@ public class EMAlignerTool
         final Map<String, Object> targetCollection = getNestedMap(parameters, "target_collection");
         final Map<String, Object> sourceMatchCollection = getNestedMap(parameters, "source_point_match_collection");
 
+        setParameter(solverOptions, "nbrs", zNeighborDistance);
         final File scratchDirectory = new File(parametersFile.getParent(),
                                                "solver_scratch_" + targetStack.getStack());
         setParameter(solverOptions, "dir_scratch", scratchDirectory.getAbsolutePath());

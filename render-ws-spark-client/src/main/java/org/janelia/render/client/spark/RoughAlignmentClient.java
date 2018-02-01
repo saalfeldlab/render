@@ -490,6 +490,7 @@ public class RoughAlignmentClient
 
             final HierarchicalTierSolveFunction solveStacksFunction =
                     new HierarchicalTierSolveFunction(parameters.renderWeb.baseDataUrl,
+                                                      parameters.zNeighborDistance,
                                                       broadcastEMAlignerTool);
 
             // remove any pre-existing alignment results ...
