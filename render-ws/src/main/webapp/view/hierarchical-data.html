@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hierarchical Alignment Data</title>
+
+    <link rel="stylesheet" href="../css/render.css">
+
+    <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
+    <script type="text/javascript" src="../script/janelia-render.js?v=20170205_001"></script>
+    <script type="text/javascript" src="../script/janelia-hierarchical-data.js?v=20180205_001"></script>
+    <script type="text/javascript">
+
+        var hierarchicalData;
+
+        $( document ).ready(function() {
+
+            $('#splitStackPopUp').hide();
+
+            var util = new JaneliaScriptUtilities();
+            var queryParameters = new JaneliaQueryParameters();
+
+            //var baseUrl = util.getServicesBaseUrl();
+
+            // TODO: remove this and defaults below when done debugging on localhost
+            var baseUrl = "http://renderer-dev:8080/render-ws/v1";
+
+            var owner = queryParameters.get('renderStackOwner', 'flyTEM');
+            var project = queryParameters.get('renderStackProject', 'trautmane_fafb_fold');
+            var stack = queryParameters.get('renderStack', 'rough_tiles_i');
+            var z = queryParameters.get('z', '2214');
+
+            var tileBoundsCanvas = document.getElementById('tileBoundsCanvas');
+            var tilePixelsCanvas = document.getElementById('tilePixelsCanvas');
+            var tierCanvas = document.getElementById('tierCanvas');
+
+            hierarchicalData = new JaneliaHierarchicalData(baseUrl, owner, project, stack, z, 'renderStack', 'tierProject', 'layerSelect', tileBoundsCanvas, tilePixelsCanvas, tierCanvas);
+            hierarchicalData.loadAllData();
+
+            $('#renderOwner').html(hierarchicalData.owner);
+
+            var baseViewUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/')) + '/view';
+            var projectStacksUrl = baseViewUrl + '/stacks.html?renderStackOwner=' + owner + '&renderStackProject=' + project;
+            $('#renderProject').html('<a href="' + projectStacksUrl + '" target="_blank">' + project + '</a>');
+            $('#renderStack').html(hierarchicalData.stack);
+
+            //noinspection JSUnusedLocalSymbols
+            $('#layerSelect').change(function (e) {
+                hierarchicalData.setLayer(util.getSelectedValue('layerSelect'));
+            });
+
+            $('#tileBoundsCanvas').click(function (e) {
+                var canvasLayersOffset = $('#canvasLayers').offset();
+                var canvasX = e.pageX - canvasLayersOffset.left;
+                var canvasY = e.pageY - canvasLayersOffset.top;
+
+                var popUp = $('#splitStackPopUp');
+                popUp.hide();
+
+                var popUpDetails = $('#splitStackPopUpDetails');
+                popUpDetails.html('');
+
+                var selectedSplitStack = hierarchicalData.selectSplitStack(canvasX, canvasY, popUpDetails);
+
+                if (selectedSplitStack !== undefined) {
+                    popUp.css({
+                                  top: e.pageY + "px",
+                                  left: e.pageX + "px"
+                              });
+                    popUp.show();
+                }
+            });
+
+            //noinspection JSUnusedLocalSymbols
+            $('#tierProject').change(function (e) {
+                hierarchicalData.selectTierProject(util.getSelectedValue('tierProject'))
+            });
+
+            //noinspection JSUnusedLocalSymbols
+            $('#splitStackPopUpClose').click(function (e) {
+                $('#splitStackPopUp').hide();
+            });
+
+            $('#qualitySlider').change(function (e) {
+                var value = parseFloat((e.target.value * 0.01).toFixed(2));
+                hierarchicalData.setQualityThreshold(value);
+            });
+
+            //noinspection JSUnusedLocalSymbols
+            $("input[name='tileView']").change(function (e) {
+                var displayTileBounds = $('#boundsTileView').is(':checked');
+                hierarchicalData.setDisplayTileBounds(displayTileBounds);
+            });
+
+        });
+
+    </script>
+
+</head>
+<body>
+
+<h3>Hierarchical Alignment Data</h3>
+
+<span id="message" class="error"></span>
+
+<div id="headerDiv" class="header_div">
+    <table>
+        <tr>
+            <td>
+                <label for="renderOwner">Owner:</label>
+                <span id="renderOwner"></span>
+                <label for="renderProject" class="controlLabel">Project:</label>
+                <span id="renderProject"></span>
+                <label for="renderStack" class="controlLabel">Parent Stack:</label>
+                <span id="renderStack"></span>
+                <label for="tierProject" class="controlLabel">Tier:</label>
+                <select id="tierProject" name="tierProject"></select>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label for="layerSelect">Layer Z:</label>
+                <select id="layerSelect" name="layerSelect"></select>
+                <label for="layerViewType" class="controlLabel">Layer View:</label>
+                <form id="layerViewType" onsubmit="return false" class="controlForm">
+                    <input id="boundsTileView" type="radio" name="tileView" value="bounds" checked><label for="boundsTileView" class="radioLabel">bounds</label>
+                    <input id="pixelsTileView" type="radio" name="tileView" value="pixels"><label for="pixelsTileView" class="radioLabel">pixels</label>
+                </form>
+                <form oninput="quality.value=(parseFloat(qualitySlider.value)*0.01).toFixed(2)"  onsubmit="return false" class="controlForm">
+                    <label for="qualitySlider" class="controlLabel">Quality:</label>
+                    <input id="qualitySlider" name="qualitySlider" type="range" min="0" max="1000" value="1000">
+                    <output id="quality" name="x" for="qualitySlider">10.00</output>
+                </form>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div id="canvasLayers" style="position: relative;">
+    <canvas id="tileBoundsCanvas" width="1000" height="800"
+            style="position: absolute; left: 0; top: 0; z-index: 2;"></canvas>
+    <canvas id="tierCanvas" width="1000" height="800"
+            style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
+    <canvas id="tilePixelsCanvas" width="1000" height="800"
+            style="position: absolute; left: 0; top: 0; z-index: 0;"></canvas>
+</div>
+
+<div id="splitStackPopUp" class="popup">
+    <p id="splitStackPopUpDetails">
+    </p>
+    <a id="splitStackPopUpClose" href="#">Close</a>
+</div>
+
+</body>
+</html>

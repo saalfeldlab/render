@@ -58,6 +58,14 @@ ul {
     margin: 20px;
 }
 
+.controlLabel {
+    margin-left: 20px;
+}
+
+.controlForm {
+    display: inline-block;
+}
+
 .number {
     text-align: right;
     font-family: monospace;
@@ -133,4 +141,16 @@ ul {
 /* Change the background color of the drop-down button when the drop-down content is shown */
 .dropdown:hover .dropbtn {
     background-color: white;
+}
+
+.popup {
+    position: absolute;
+    background: lightyellow;
+    border:  2px solid black;
+    padding: 5px;
+    z-index:100;
+}
+
+.radioLabel {
+    font-weight: normal;
 }
