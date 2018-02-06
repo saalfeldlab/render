@@ -27,6 +27,7 @@ import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.HierarchicalStack;
+import org.janelia.alignment.spec.stack.HierarchicalTierRegions;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ProcessTimer;
@@ -74,6 +75,12 @@ public class HierarchicalAlignmentClient
                 description = "Scale each tier such that the number of pixels in the largest dimension is this number",
                 required = false)
         public Integer maxPixelsPerDimension = 2048;
+
+        @Parameter(
+                names = "--maxCompleteAlignmentQuality",
+                description = "Split stacks with quality values less than this maximum do not need to be aligned in subsequent tiers",
+                required = false)
+        public Double maxCompleteAlignmentQuality;
 
         @Parameter(
                 names = "--firstTier",
@@ -183,9 +190,11 @@ public class HierarchicalAlignmentClient
 
     private final StackId roughTilesStackId;
     private final List<Double> zValues;
+    private int currentTier;
     private String tierProject;
     private StackId tierParentStackId;
-    private final List<HierarchicalStack> tierStacks;
+    private List<HierarchicalStack> tierStacks;
+    private HierarchicalTierRegions priorTierRegions;
     private RenderDataClient driverTierRender;
 
     public HierarchicalAlignmentClient(final Parameters parameters,
@@ -203,71 +212,113 @@ public class HierarchicalAlignmentClient
         this.zValues = new ArrayList<>();
 
         this.tierStacks = new ArrayList<>();
+        this.priorTierRegions = null;
     }
 
     public void run() throws IOException, URISyntaxException {
 
         this.zValues.addAll(driverRoughRender.getStackZValues(parameters.stack));
 
+        if ((parameters.firstTier > 1) && (parameters.maxCompleteAlignmentQuality != null)) {
+
+            final int priorTier = parameters.firstTier - 1;
+            final StackId parentTilesStackId = HierarchicalStack.deriveParentTierStackId(roughTilesStackId, priorTier);
+            final StackMetaData parentStackMetaData = driverRoughRender.getStackMetaData(parentTilesStackId.getStack());
+
+            setupForTier(priorTier, parentStackMetaData);
+            updateExistingDerivedData();
+
+            this.priorTierRegions =
+                    new HierarchicalTierRegions(parentStackMetaData.getStats().getStackBounds(),
+                                                tierStacks,
+                                                parameters.maxPixelsPerDimension,
+                                                parameters.maxCompleteAlignmentQuality);
+        }
+
         for (int tier = parameters.firstTier; tier <= parameters.lastTier; tier++) {
 
             final StackId parentTilesStackId = HierarchicalStack.deriveParentTierStackId(roughTilesStackId, tier);
             final StackMetaData parentStackMetaData = driverRoughRender.getStackMetaData(parentTilesStackId.getStack());
 
-            setupStacksForTier(tier, parentStackMetaData);
-            createStacksForTier(tier, parentStackMetaData);
+            setupForTier(tier, parentStackMetaData);
+            createStacksForTier(parentStackMetaData);
             generateMatchesForTier();
             alignTier();
-            createWarpStackForTier(tier);
+            createWarpStackForTier();
 
             // after the first requested tier is processed,
             // remove the keepExisting flag so that subsequent tiers are processed in their entirety
             parameters.keepExistingStep = null;
 
-            // TODO: decide whether to continue to the next tier
+            if ((tier < parameters.lastTier) && (parameters.maxCompleteAlignmentQuality != null)) {
+                this.priorTierRegions =
+                        new HierarchicalTierRegions(parentStackMetaData.getStats().getStackBounds(),
+                                                    tierStacks,
+                                                    parameters.maxPixelsPerDimension,
+                                                    parameters.maxCompleteAlignmentQuality);
+            }
+
         }
 
         sparkContext.stop();
     }
 
-    private StackMetaData setupStacksForTier(final int tier,
-                                             final StackMetaData parentStackMetaData)
+    private void setupForTier(final int tier,
+                              final StackMetaData parentStackMetaData)
             throws IOException {
 
-        LOG.info("setupStacksForTier: entry, tier={}", tier);
+        LOG.info("setupForTier: entry, tier={}", tier);
 
-        tierProject = HierarchicalStack.deriveProjectForTier(roughTilesStackId, tier);
-        tierParentStackId = parentStackMetaData.getStackId();
-
+        this.currentTier = tier;
+        this.tierProject = HierarchicalStack.deriveProjectForTier(roughTilesStackId, currentTier);
+        this.tierParentStackId = parentStackMetaData.getStackId();
         final Bounds parentStackBounds = parentStackMetaData.getStats().getStackBounds();
 
-        tierStacks.clear();
-        tierStacks.addAll(
-                HierarchicalStack.splitTier(roughTilesStackId,
-                                            parentStackBounds,
-                                            parameters.maxPixelsPerDimension,
-                                            tier));
+        this.tierStacks = HierarchicalStack.splitTier(this.roughTilesStackId,
+                                                      parentStackBounds,
+                                                      this.parameters.maxPixelsPerDimension,
+                                                      this.currentTier);
 
-        if (tierStacks.size() == 0) {
-            throw new IllegalStateException("no split stacks for tier " + tier + " of " + roughTilesStackId);
+        if (this.tierStacks.size() == 0) {
+            throw new IllegalStateException("no split stacks for tier " + tier + " of " + this.roughTilesStackId);
         }
 
-        return parentStackMetaData;
+        if (this.priorTierRegions != null) {
+            this.tierStacks = this.priorTierRegions.getIncompleteTierStacks(this.tierStacks);
+        }
+
+        this.driverTierRender = new RenderDataClient(this.parameters.renderWeb.baseDataUrl,
+                                                     this.parameters.renderWeb.owner,
+                                                     this.tierProject);
+
+        LOG.info("setupForTier: exit");
     }
 
-    private void createStacksForTier(final int tier,
-                                     final StackMetaData parentStackMetaData)
+    private void updateExistingDerivedData() throws IOException {
+
+        final Set<StackId> existingTierProjectStackIds = new HashSet<>();
+        existingTierProjectStackIds.addAll(driverTierRender.getProjectStacks());
+
+        for (final HierarchicalStack splitStack : tierStacks) {
+            final StackId splitStackId = splitStack.getSplitStackId();
+            if (existingTierProjectStackIds.contains(splitStackId)) {
+                final StackMetaData existingMetaData = driverTierRender.getStackMetaData(splitStackId.getStack());
+                splitStack.updateDerivedData(existingMetaData.getHierarchicalData());
+            }
+        }
+
+    }
+
+
+
+    private void createStacksForTier(final StackMetaData parentStackMetaData)
             throws IOException {
 
-        LOG.info("createStacksForTier: entry, tier={}", tier);
+        LOG.info("createStacksForTier: entry, tier={}", currentTier);
 
         final ProcessTimer timer = new ProcessTimer();
 
-        driverTierRender = new RenderDataClient(parameters.renderWeb.baseDataUrl,
-                                                parameters.renderWeb.owner,
-                                                tierProject);
-
-        final String versionNotes = "tier " + tier + " stack derived from " + parentStackMetaData.getStackId();
+        final String versionNotes = "tier " + currentTier + " stack derived from " + parentStackMetaData.getStackId();
 
         final Set<StackId> existingTierProjectStackIds = new HashSet<>();
         if (parameters.keepExisting(PipelineStep.SPLIT)) {
@@ -302,7 +353,7 @@ public class HierarchicalAlignmentClient
                                                       tierProject,
                                                       parentStackMetaData.getCurrentVersion(),
                                                       versionNotes,
-                                                      tier,
+                                                      currentTier,
                                                       existingTierProjectStackIds,
                                                       zValues,
                                                       parameters.channel,
@@ -323,7 +374,7 @@ public class HierarchicalAlignmentClient
         }
 
         LOG.info("createStacksForTier: exit, created {} tile specs in {} stacks for tier {} in {} seconds",
-                 total, tierStacks.size(), tier, timer.getElapsedSeconds());
+                 total, tierStacks.size(), currentTier, timer.getElapsedSeconds());
     }
 
     private RenderableCanvasIdPairs getRenderablePairsForStack(final HierarchicalStack tierStack) {
@@ -632,7 +683,7 @@ public class HierarchicalAlignmentClient
         LOG.info("alignTier: exit");
     }
 
-    private void createWarpStackForTier(final int tier)
+    private void createWarpStackForTier()
             throws IOException {
 
         LOG.info("createWarpStackForTier: entry");
@@ -641,7 +692,7 @@ public class HierarchicalAlignmentClient
 
         final Set<StackId> existingRoughProjectStackIds = new HashSet<>(driverRoughRender.getProjectStacks());
 
-        final StackId warpStackId = HierarchicalStack.deriveWarpStackIdForTier(roughTilesStackId, tier);
+        final StackId warpStackId = HierarchicalStack.deriveWarpStackIdForTier(roughTilesStackId, currentTier);
 
         boolean generateWarpStack = true;
         if (existingRoughProjectStackIds.contains(warpStackId) &&
@@ -665,7 +716,7 @@ public class HierarchicalAlignmentClient
             final HierarchicalWarpFieldStackFunction warpFieldStackFunction
                     = new HierarchicalWarpFieldStackFunction(parameters.renderWeb.baseDataUrl,
                                                              parameters.renderWeb.owner,
-                                                             tier,
+                                                             currentTier,
                                                              projectForTier,
                                                              tierParentStackId,
                                                              warpStackId.getStack());

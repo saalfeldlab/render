@@ -53,6 +53,13 @@ public class TileBoundsRTree {
     }
 
     /**
+     * @return number of tiles.
+     */
+    public int size() {
+        return tileBoundsList.size();
+    }
+
+    /**
      * Add a tile to this tree.
      *
      * @param  tileBounds  bounds for the tile.

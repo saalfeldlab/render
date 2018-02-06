@@ -262,6 +262,11 @@ public class HierarchicalStack implements Serializable {
         this.alignmentQuality = alignmentQuality;
     }
 
+    @Override
+    public String toString() {
+        return this.getSplitStackId().getStack();
+    }
+
     /**
      * @return conventional id for this stack.
      */
