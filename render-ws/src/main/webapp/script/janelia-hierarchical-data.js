@@ -31,6 +31,7 @@ var JaneliaHierarchicalData = function(baseUrl, owner, project, stack, tileZ, pa
     this.splitStackList = [];
     this.otherStackList = [];
     this.scaledBoundsList = [];
+    this.missingTierMatchLayers = {};
 };
 
 JaneliaHierarchicalData.prototype.getOwnerUrl = function() {
@@ -341,6 +342,17 @@ JaneliaHierarchicalData.prototype.selectTierProject = function(tierProjectName) 
                    console.log(xhr);
                }
            });
+
+    $.ajax({
+               url: self.getOwnerUrl() + "/project/" + tierProjectName + "/missingTierMatchLayers",
+               cache: false,
+               success: function(data) {
+                   self.loadMissingTierMatchLayers(data);
+               },
+               error: function(data, text, xhr) {
+                   console.log(xhr);
+               }
+           });
 };
 
 /**
@@ -379,6 +391,22 @@ JaneliaHierarchicalData.prototype.loadStacksInTier = function(projectStackMetaDa
 
 };
 
+/**
+ * @param stackWithZValuesList
+ * @param stackWithZValuesList.stackId
+ * @param stackWithZValuesList.zValues
+ */
+JaneliaHierarchicalData.prototype.loadMissingTierMatchLayers = function(stackWithZValuesList) {
+
+    this.missingTierMatchLayers = {};
+
+    for (var i = 0; i < stackWithZValuesList.length; i++) {
+        var stackName = stackWithZValuesList[i].stackId.stack;
+        this.missingTierMatchLayers[stackName] = stackWithZValuesList[i];
+    }
+
+};
+
 JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, splitStackPopupDetails) {
 
     var selectedSplitStack = undefined;
@@ -407,28 +435,29 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
         var matchContext = '&matchOwner=' + this.owner + '&matchCollection=' + hd.matchCollectionId.name;
         var pmeUrl = viewBaseUrl + '/point-match-explorer.html?' + hosts + alignedStackContext + matchContext;
 
-        var warpCatmaidUrl = this.getCatmaidBaseUrl(this.stackMetaData) +
+        var warpCatmaidUrl = this.getCatmaidBaseUrl(hd.fullScaleBounds) + '&s0=2' +
                              '&pid=' + hd.warpTilesStackId.project + '&sid0=' + hd.warpTilesStackId.stack;
 
-        var tierCatmaidBaseUrl = this.getCatmaidBaseUrl(selectedSplitStack);
+        var tierCatmaidBaseUrl = this.getCatmaidBaseUrl(selectedSplitStack.stats.stackBounds) + '&s0=0';
         var splitCatmaidUrl = tierCatmaidBaseUrl + '&pid=' + splitStackId.project + '&sid0=' + splitStackId.stack;
         var alignedCatmaidUrl = tierCatmaidBaseUrl + '&pid=' + hd.alignedStackId.project + '&sid0=' + hd.alignedStackId.stack;
 
         var matchPairRow;
         if ((hd.savedMatchPairCount !== undefined) && (hd.savedMatchPairCount > 0)) {
             var zPlusOne = parseInt(this.tileZ) + 1;
-            var pairBaseUrl = 'http://renderer:8080/render-ws/view/tile-pair.html?';
-            var bounds = hd.fullScaleBounds;
-            var tileIdSuffix = '.0_box_' + bounds.minX + '_' + bounds.minY + '_' +
-                               (bounds.maxX - bounds.minX) + '_' + (bounds.maxY - bounds.minY) + '_' +
-                               hd.scale.toFixed(6);
-            var plusOnePairUrl = pairBaseUrl + 'pId=z_' + this.tileZ + tileIdSuffix + '&qId=z_' + zPlusOne +
-                                 tileIdSuffix +
-                                 renderProjectContext + '&renderStack=' + splitStackId.stack + '&renderScale=1.0' +
-                                 matchContext;
+            var plusOnePairUrl = this.getPlusOnePairUrl(this.tileZ, splitStackId, hd, renderProjectContext, matchContext);
             matchPairRow = this.getPopupLinkRow('Match Pair:', plusOnePairUrl, 'matches between z ' + this.tileZ + ' and ' + zPlusOne);
         } else {
             matchPairRow = this.getPopupRow('Match Pair:', 'n/a')
+        }
+
+        var self = this;
+        var missingMatchLayers = '';
+        if (this.missingTierMatchLayers[splitStackId.stack] !== undefined) {
+            missingMatchLayers = this.missingTierMatchLayers[splitStackId.stack].zValues.map(function(z) {
+                var plusOnePairUrl = self.getPlusOnePairUrl(z, splitStackId, hd, renderProjectContext, matchContext);
+                return self.getPopupLink(plusOnePairUrl, '' + z);
+            }).join(', ');
         }
 
         var html = '<table>' +
@@ -439,6 +468,7 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
                    this.getPopupLinkRow('Match Collection:', pmeUrl, hd.matchCollectionId.name) +
                    this.getPopupRow('Match Pair Count:', hd.savedMatchPairCount) +
                    matchPairRow +
+                   this.getPopupRow('Missing Match Layers:', missingMatchLayers) +
                    this.getPopupRow('Alignment Quality:', hd.alignmentQuality) +
                    '</table>';
 
@@ -448,22 +478,35 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
     return selectedSplitStack;
 };
 
-JaneliaHierarchicalData.prototype.getCatmaidBaseUrl = function(stackMetaData) {
-    var bounds = stackMetaData.stats.stackBounds;
-    var version = stackMetaData.currentVersion;
+JaneliaHierarchicalData.prototype.getCatmaidBaseUrl = function(bounds) {
+    var version = this.stackMetaData.currentVersion;
     var xp = (bounds.minX + ((bounds.maxX - bounds.minX) / 2)) * version.stackResolutionX;
     var yp = (bounds.minY + ((bounds.maxY - bounds.minY) / 2)) * version.stackResolutionY;
     var zp = this.tileZ * version.stackResolutionZ;
-    return 'http://renderer-catmaid:8000/?tool=navigator&s0=8&zp=' + zp + '&yp=' + yp + '&xp=' + xp;
+    return 'http://renderer-catmaid:8000/?tool=navigator&zp=' + zp + '&yp=' + yp + '&xp=' + xp;
 };
 
 JaneliaHierarchicalData.prototype.getPopupRow = function(header, value) {
     return '<tr><td>' + header + '</td><td>' + value + '</td></tr>';
 };
 
+JaneliaHierarchicalData.prototype.getPopupLink = function(url, linkText) {
+    return '<a target="_blank" href="' + url + '">' + linkText + '</a>';
+};
+
 JaneliaHierarchicalData.prototype.getPopupLinkRow = function(header, url, linkText) {
-    var value = '<a target="_blank" href="' + url + '">' + linkText + '</a>';
-    return this.getPopupRow(header, value);
+    return this.getPopupRow(header, this.getPopupLink(url, linkText));
+};
+
+JaneliaHierarchicalData.prototype.getPlusOnePairUrl = function(z, splitStackId, hierarchicalData, renderProjectContext, matchContext) {
+    var zPlusOne = parseInt(z) + 1;
+    var pairBaseUrl = 'http://renderer:8080/render-ws/view/tile-pair.html?';
+    var bounds = hierarchicalData.fullScaleBounds;
+    var tileIdSuffix = '.0_box_' + bounds.minX + '_' + bounds.minY + '_' +
+                       (bounds.maxX - bounds.minX) + '_' + (bounds.maxY - bounds.minY) + '_' +
+                       hierarchicalData.scale.toFixed(6);
+    return pairBaseUrl + 'pId=z_' + z + tileIdSuffix + '&qId=z_' + zPlusOne + tileIdSuffix + renderProjectContext +
+           '&renderStack=' + splitStackId.stack + '&renderScale=1.0' + matchContext;
 };
 
 JaneliaHierarchicalData.prototype.setDisplayTileBounds = function(displayTileBounds) {

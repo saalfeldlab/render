@@ -45,6 +45,7 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.alignment.util.ResidualCalculator;
 import org.janelia.render.service.dao.MatchDao;
 import org.janelia.render.service.dao.RenderDao;
@@ -446,7 +447,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/tierData")
     @DELETE
     @ApiOperation(
-            tags = {"Stack Data APIs", "Stack Management APIs", "Point Match APIs"},
+            tags = {"Hierarchical APIs"},
             value = "Deletes stack and match data for one hierarchical tier",
             notes = "Looks at hierarchical metadata for split stacks in the specified tier project " +
                     "to delete all split stack, align stack, and match collection data for the tier.")
@@ -531,6 +532,98 @@ public class StackMetaDataService {
 
         return response;
     }
+
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/missingTierMatchLayers")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Hierarchical APIs"},
+            value = "List of tier stack layers (z values) without matches")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack does not have hierarchical data"),
+            @ApiResponse(code = 404, message = "stack or match collection does not exist")
+    })
+    public List<Double> getLayersWithMissingMatches(@PathParam("owner") final String owner,
+                                                    @PathParam("project") final String project,
+                                                    @PathParam("stack") final String stack) {
+
+        LOG.info("getLayersWithMissingMatches: entry, owner={}, project={}, stack={}", owner, project, stack);
+
+        final List<Double> layersWithMissingMatches = new ArrayList<>();
+        try {
+
+            final StackId stackId = new StackId(owner, project, stack);
+            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
+            if (stackMetaData == null) {
+                throw new ObjectNotFoundException(stackId + " does not exist");
+            }
+
+            final HierarchicalStack hierarchicalData = stackMetaData.getHierarchicalData();
+            if (hierarchicalData == null) {
+                throw new IllegalArgumentException(stackId + " does not have hierarchical data");
+            }
+
+            final Set<Double> layersWithMatches =
+                    matchDao.getDistinctGroupIds(hierarchicalData.getMatchCollectionId())
+                            .stream()
+                            .map(Double::new)
+                            .collect(Collectors.toSet());
+
+            layersWithMissingMatches.addAll(
+                    renderDao.getZValues(stackId)
+                            .stream()
+                            .filter(z -> ! layersWithMatches.contains(z))
+                            .collect(Collectors.toList()));
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return layersWithMissingMatches;
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/missingTierMatchLayers")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Hierarchical APIs"},
+            value = "List of tier stacks that have layers without matches")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack does not have hierarchical data"),
+            @ApiResponse(code = 404, message = "stack or match collection does not exist")
+    })
+    public List<StackWithZValues> getStacksWithMissingMatches(@PathParam("owner") final String owner,
+                                                              @PathParam("project") final String project) {
+
+        LOG.info("getStacksWithMissingMatches: entry, owner={}, project={}", owner, project);
+
+        final List<StackWithZValues> stacksWithMissingMatches = new ArrayList<>();
+        try {
+
+            final List<StackMetaData> projectStackMetaDataList = renderDao.getStackMetaDataList(owner, project);
+            for (final StackMetaData projectStackMetaData : projectStackMetaDataList) {
+
+                final HierarchicalStack hierarchicalData = projectStackMetaData.getHierarchicalData();
+
+                if ((hierarchicalData != null) && hierarchicalData.hasMatchPairs()) {
+                    final List<Double> layersWithMissingMatches =
+                            getLayersWithMissingMatches(owner, project, projectStackMetaData.getStackId().getStack());
+                    if (layersWithMissingMatches.size() > 0) {
+                        stacksWithMissingMatches.add(new StackWithZValues(projectStackMetaData.getStackId(),
+                                                                          layersWithMissingMatches));
+                    }
+                }
+            }
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        LOG.info("getStacksWithMissingMatches: exist, returning {} stacks", stacksWithMissingMatches.size());
+
+        return stacksWithMissingMatches;
+    }
+
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
     @GET
@@ -1152,7 +1245,7 @@ public class StackMetaDataService {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = { "Stack Data APIs" },
+            tags = { "Stack Data APIs", "Hierarchical APIs" },
             value = "Calculate alignment residual stats")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "stack, match collection, or tile not found")
