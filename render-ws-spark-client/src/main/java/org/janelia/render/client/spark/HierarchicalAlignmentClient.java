@@ -34,9 +34,11 @@ import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MatchClipParameters;
+import org.janelia.render.client.parameter.FeatureExtractionParameters;
+import org.janelia.render.client.parameter.FeatureRenderClipParameters;
+import org.janelia.render.client.parameter.FeatureStorageParameters;
 import org.janelia.render.client.parameter.MatchDerivationParameters;
-import org.janelia.render.client.parameter.MatchRenderParameters;
+import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,7 +135,10 @@ public class HierarchicalAlignmentClient
         public Double maxIntensity = 255.0;
 
         @ParametersDelegate
-        public MatchDerivationParameters match = new MatchDerivationParameters();
+        public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+
+        @ParametersDelegate
+        public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
         @Parameter(
                 names = "--solverScript",
@@ -414,13 +419,13 @@ public class HierarchicalAlignmentClient
             deleteExistingMatchDataForTier(driverMatchClient, existingMatchPairCounts);
         }
 
-        final MatchRenderParameters matchRenderParameters = new MatchRenderParameters();
-        matchRenderParameters.fillWithNoise = parameters.fillWithNoise;
-        matchRenderParameters.renderWithFilter = parameters.renderWithFilter;
-        matchRenderParameters.renderWithoutMask = false; // always include masks because we are rendering scapes
-        matchRenderParameters.renderScale = 1.0; // always render full scale because canvases are already scaled down
+        final FeatureRenderParameters featureRenderParameters = new FeatureRenderParameters();
+        featureRenderParameters.fillWithNoise = parameters.fillWithNoise;
+        featureRenderParameters.renderWithFilter = parameters.renderWithFilter;
+        featureRenderParameters.renderWithoutMask = false; // always include masks because we are rendering scapes
+        featureRenderParameters.renderScale = 1.0; // always render full scale because canvases are already scaled down
 
-        final MatchClipParameters emptyClipParameters = new MatchClipParameters(); // no need to clip scapes
+        final FeatureRenderClipParameters emptyClipParameters = new FeatureRenderClipParameters(); // no need to clip scapes
 
         final long potentialPairsPerStack = getPotentialPairsPerStack(zValues.size(), parameters.zNeighborDistance);
         final long totalPotentialPairs = potentialPairsPerStack * tierStacks.size();
@@ -432,11 +437,11 @@ public class HierarchicalAlignmentClient
             ( (potentialPairsPerStack < sparkContext.defaultParallelism()) && (totalPotentialPairs < 100000) )) {
 
             // TODO: make sure potentialPairsPerStack ... is the check we want to use single batch processing
-            generateTierMatchesInOneBatch(matchRenderParameters, emptyClipParameters, driverMatchClient);
+            generateTierMatchesInOneBatch(featureRenderParameters, emptyClipParameters, driverMatchClient);
 
         } else {
 
-            generateTierMatchesByStack(matchRenderParameters, emptyClipParameters);
+            generateTierMatchesByStack(featureRenderParameters, emptyClipParameters);
 
         }
 
@@ -488,8 +493,8 @@ public class HierarchicalAlignmentClient
         driverTierRender.setHierarchicalData(tierStack.getSplitStackId().getStack(), tierStack);
     }
 
-    private void generateTierMatchesInOneBatch(final MatchRenderParameters matchRenderParameters,
-                                               final MatchClipParameters emptyClipParameters,
+    private void generateTierMatchesInOneBatch(final FeatureRenderParameters featureRenderParameters,
+                                               final FeatureRenderClipParameters emptyClipParameters,
                                                final RenderDataClient driverMatchClient)
             throws IOException, URISyntaxException {
 
@@ -536,9 +541,11 @@ public class HierarchicalAlignmentClient
                     SIFTPointMatchClient.generateMatchesForPairs(sparkContext,
                                                                  renderableCanvasIdPairs,
                                                                  parameters.renderWeb.baseDataUrl,
-                                                                 matchRenderParameters,
-                                                                 parameters.match,
+                                                                 featureRenderParameters,
                                                                  emptyClipParameters,
+                                                                 parameters.featureExtraction,
+                                                                 new FeatureStorageParameters(),
+                                                                 parameters.matchDerivation,
                                                                  matchStorageFunction);
 
             LOG.info("generateTierMatchesInOneBatch: saved matches for {} pairs", savedMatchPairCount);
@@ -564,8 +571,8 @@ public class HierarchicalAlignmentClient
         LOG.info("generateTierMatchesInOneBatch: exit");
     }
 
-    private void generateTierMatchesByStack(final MatchRenderParameters matchRenderParameters,
-                                            final MatchClipParameters emptyClipParameters)
+    private void generateTierMatchesByStack(final FeatureRenderParameters featureRenderParameters,
+                                            final FeatureRenderClipParameters emptyClipParameters)
             throws IOException, URISyntaxException {
 
         LOG.info("generateTierMatchesByStack: entry");
@@ -589,9 +596,11 @@ public class HierarchicalAlignmentClient
                         SIFTPointMatchClient.generateMatchesForPairs(sparkContext,
                                                                      getRenderablePairsForStack(tierStack),
                                                                      parameters.renderWeb.baseDataUrl,
-                                                                     matchRenderParameters,
-                                                                     parameters.match,
+                                                                     featureRenderParameters,
                                                                      emptyClipParameters,
+                                                                     parameters.featureExtraction,
+                                                                     new FeatureStorageParameters(),
+                                                                     parameters.matchDerivation,
                                                                      matchStorageFunction);
 
                 tierStack.setSavedMatchPairCount(savedMatchPairCount);

@@ -30,7 +30,7 @@ import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchDerivationParameters;
-import org.janelia.render.client.parameter.MatchRenderParameters;
+import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.janelia.render.client.spark.cache.CanvasDataCache;
 import org.janelia.render.client.spark.cache.CanvasFileLoader;
@@ -51,10 +51,10 @@ public class DMeshPointMatchClient
         public MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
 
         @ParametersDelegate
-        public MatchRenderParameters matchRender = new MatchRenderParameters();
+        public FeatureRenderParameters featureRender = new FeatureRenderParameters();
 
         @ParametersDelegate
-        public MatchDerivationParameters match = new MatchDerivationParameters();
+        public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
         @Parameter(
                 names = "--pairJson",
@@ -95,6 +95,12 @@ public class DMeshPointMatchClient
                 arity = 1)
         public boolean filterMatches = false;
 
+        @Parameter(
+                names = { "--maxImageCacheGb" },
+                description = "Maximum number of gigabytes of DMesh images to cache",
+                required = false)
+        public Integer maxImageCacheGb = 20;
+
         @Parameter(names = "--imageCacheParentDirectory",
                 description = "Parent directory for cached (rendered) canvases",
                 required = false)
@@ -110,8 +116,7 @@ public class DMeshPointMatchClient
                 final Parameters parameters = new Parameters();
 
                 // override SIFT parameter defaults
-                parameters.matchRender.renderWithFilter = false;
-                parameters.match.maxCacheGb = 20;
+                parameters.featureRender.renderWithFilter = false;
 
                 parameters.parse(args);
 
@@ -148,20 +153,19 @@ public class DMeshPointMatchClient
 
         final String renderParametersUrlTemplateForRun =
                 RenderableCanvasIdPairsUtilities.getRenderParametersUrlTemplateForRun(
-                        renderableCanvasIdPairs,
-                        parameters.matchClient.baseDataUrl,
-                        parameters.matchRender.renderFullScaleWidth,
-                        parameters.matchRender.renderFullScaleHeight,
-                        parameters.matchRender.renderScale,
-                        parameters.matchRender.renderWithFilter,
-                        parameters.matchRender.renderWithoutMask);
+                        renderableCanvasIdPairs.getRenderParametersUrlTemplate(parameters.matchClient.baseDataUrl),
+                        parameters.featureRender.renderFullScaleWidth,
+                        parameters.featureRender.renderFullScaleHeight,
+                        parameters.featureRender.renderScale,
+                        parameters.featureRender.renderWithFilter,
+                        parameters.featureRender.renderWithoutMask);
 
-        final long cacheMaxKilobytes = parameters.match.maxCacheGb * 1000000;
+        final long cacheMaxKilobytes = parameters.maxImageCacheGb * 1000000;
 
         final CanvasFileLoader fileLoader =
                 new CanvasFileLoader(
                         renderParametersUrlTemplateForRun,
-                        parameters.matchRender.fillWithNoise,
+                        parameters.featureRender.fillWithNoise,
                         parameters.format,
                         new File(parameters.imageCacheParentDirectory));
 
@@ -169,17 +173,17 @@ public class DMeshPointMatchClient
                                                   new File(parameters.dMeshParameters),
                                                   parameters.dMeshLogToolOutput);
 
-        final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(parameters.match.matchRod,
-                                                                             parameters.match.matchModelType,
-                                                                             parameters.match.matchIterations,
-                                                                             parameters.match.matchMaxEpsilon,
-                                                                             parameters.match.matchMinInlierRatio,
-                                                                             parameters.match.matchMinNumInliers,
-                                                                             parameters.match.matchMaxTrust,
-                                                                             parameters.match.matchMaxNumInliers,
+        final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(parameters.matchDerivation.matchRod,
+                                                                             parameters.matchDerivation.matchModelType,
+                                                                             parameters.matchDerivation.matchIterations,
+                                                                             parameters.matchDerivation.matchMaxEpsilon,
+                                                                             parameters.matchDerivation.matchMinInlierRatio,
+                                                                             parameters.matchDerivation.matchMinNumInliers,
+                                                                             parameters.matchDerivation.matchMaxTrust,
+                                                                             parameters.matchDerivation.matchMaxNumInliers,
                                                                              parameters.filterMatches);
 
-        final double renderScale = parameters.matchRender.renderScale;
+        final double renderScale = parameters.featureRender.renderScale;
 
         // broadcast to all nodes
         final Broadcast<Long> broadcastCacheMaxKilobytes = sparkContext.broadcast(cacheMaxKilobytes);

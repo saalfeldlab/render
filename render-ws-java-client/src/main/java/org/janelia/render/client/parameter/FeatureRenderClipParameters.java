@@ -5,11 +5,12 @@ import com.beust.jcommander.Parameter;
 import java.io.Serializable;
 
 /**
- * Parameters for clipping rendered canvases during point match derivation.
+ * Parameters for clipping rendered canvases during feature extraction.
  *
  * @author Eric Trautman
  */
-public class MatchClipParameters implements Serializable {
+public class FeatureRenderClipParameters
+        implements Serializable {
 
     @Parameter(
             names = "--clipWidth",

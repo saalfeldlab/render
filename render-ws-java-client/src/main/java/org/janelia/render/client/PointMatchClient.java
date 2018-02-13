@@ -29,7 +29,8 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MatchClipParameters;
+import org.janelia.render.client.parameter.FeatureExtractionParameters;
+import org.janelia.render.client.parameter.FeatureRenderClipParameters;
 import org.janelia.render.client.parameter.MatchDerivationParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
@@ -81,7 +82,10 @@ public class PointMatchClient {
         public MatchDerivationParameters match = new MatchDerivationParameters();
 
         @ParametersDelegate
-        public MatchClipParameters matchClip = new MatchClipParameters();
+        public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+
+        @ParametersDelegate
+        public FeatureRenderClipParameters clip = new FeatureRenderClipParameters();
 
         @Parameter(
                 names = "--firstCanvasPosition",
@@ -294,7 +298,7 @@ public class PointMatchClient {
             }
         }
 
-        if ((parameters.matchClip.clipWidth != null) || (parameters.matchClip.clipHeight != null)) {
+        if ((parameters.clip.clipWidth != null) || (parameters.clip.clipHeight != null)) {
 
             if (canvasUrlToDataMap.size() != 2) {
                 throw new IllegalArgumentException("clipping is only supported for single pair runs");
@@ -322,8 +326,8 @@ public class PointMatchClient {
             pData.canvasId.setRelativePosition(parameters.firstCanvasPosition);
             qData.canvasId.setRelativePosition(secondCanvasPosition);
 
-            pData.clipForMontagePair(pBounds, parameters.matchClip.clipWidth, parameters.matchClip.clipHeight);
-            qData.clipForMontagePair(qBounds, parameters.matchClip.clipWidth, parameters.matchClip.clipHeight);
+            pData.clipForMontagePair(pBounds, parameters.clip.clipWidth, parameters.clip.clipHeight);
+            qData.clipForMontagePair(qBounds, parameters.clip.clipWidth, parameters.clip.clipHeight);
 
         }
 
@@ -557,12 +561,12 @@ public class PointMatchClient {
             this.renderFile = clientParameters.getCanvasFile(canvasData.canvasId.getId());
 
             final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
-            siftParameters.fdSize = clientParameters.match.fdSize;
-            siftParameters.steps = clientParameters.match.steps;
+            siftParameters.fdSize = clientParameters.featureExtraction.fdSize;
+            siftParameters.steps = clientParameters.featureExtraction.steps;
 
             this.extractor = new CanvasFeatureExtractor(siftParameters,
-                                                        clientParameters.match.minScale,
-                                                        clientParameters.match.maxScale,
+                                                        clientParameters.featureExtraction.minScale,
+                                                        clientParameters.featureExtraction.maxScale,
                                                         clientParameters.fillWithNoise);
         }
 

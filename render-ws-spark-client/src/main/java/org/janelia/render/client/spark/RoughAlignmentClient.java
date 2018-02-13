@@ -35,9 +35,11 @@ import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MatchClipParameters;
+import org.janelia.render.client.parameter.FeatureExtractionParameters;
+import org.janelia.render.client.parameter.FeatureRenderClipParameters;
+import org.janelia.render.client.parameter.FeatureStorageParameters;
 import org.janelia.render.client.parameter.MatchDerivationParameters;
-import org.janelia.render.client.parameter.MatchRenderParameters;
+import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,7 +132,10 @@ public class RoughAlignmentClient
         public Double maxIntensity = 255.0;
 
         @ParametersDelegate
-        public MatchDerivationParameters match = new MatchDerivationParameters();
+        public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+
+        @ParametersDelegate
+        public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
         @Parameter(
                 names = "--solverScript",
@@ -382,15 +387,15 @@ public class RoughAlignmentClient
             deleteExistingMatchDataForTier(driverMatchClient, existingMatchPairCounts);
         }
 
-        final MatchRenderParameters matchRenderParameters = new MatchRenderParameters();
-        matchRenderParameters.fillWithNoise = parameters.fillWithNoise;
-        matchRenderParameters.renderWithFilter = parameters.renderWithFilter;
-        matchRenderParameters.renderWithoutMask = false; // always include masks because we are rendering scapes
-        matchRenderParameters.renderScale = 1.0; // always render full scale because canvases are already scaled down
+        final FeatureRenderParameters featureRenderParameters = new FeatureRenderParameters();
+        featureRenderParameters.fillWithNoise = parameters.fillWithNoise;
+        featureRenderParameters.renderWithFilter = parameters.renderWithFilter;
+        featureRenderParameters.renderWithoutMask = false; // always include masks because we are rendering scapes
+        featureRenderParameters.renderScale = 1.0; // always render full scale because canvases are already scaled down
 
-        final MatchClipParameters emptyClipParameters = new MatchClipParameters(); // no need to clip scapes
+        final FeatureRenderClipParameters emptyClipParameters = new FeatureRenderClipParameters(); // no need to clip scapes
 
-        generateTierMatchesByStack(matchRenderParameters, emptyClipParameters);
+        generateTierMatchesByStack(featureRenderParameters, emptyClipParameters);
 
         LOG.info("generateMatchesForTier: exit");
     }
@@ -434,8 +439,8 @@ public class RoughAlignmentClient
         driverTierRender.setHierarchicalData(tierStack.getSplitStackId().getStack(), tierStack);
     }
 
-    private void generateTierMatchesByStack(final MatchRenderParameters matchRenderParameters,
-                                            final MatchClipParameters emptyClipParameters)
+    private void generateTierMatchesByStack(final FeatureRenderParameters featureRenderParameters,
+                                            final FeatureRenderClipParameters emptyClipParameters)
             throws IOException, URISyntaxException {
 
         LOG.info("generateTierMatchesByStack: entry");
@@ -457,9 +462,11 @@ public class RoughAlignmentClient
                         SIFTPointMatchClient.generateMatchesForPairs(sparkContext,
                                                                      getRenderablePairsForStack(),
                                                                      parameters.renderWeb.baseDataUrl,
-                                                                     matchRenderParameters,
-                                                                     parameters.match,
+                                                                     featureRenderParameters,
                                                                      emptyClipParameters,
+                                                                     parameters.featureExtraction,
+                                                                     new FeatureStorageParameters(),
+                                                                     parameters.matchDerivation,
                                                                      matchStorageFunction);
 
                 tierZeroStack.setSavedMatchPairCount(savedMatchPairCount);

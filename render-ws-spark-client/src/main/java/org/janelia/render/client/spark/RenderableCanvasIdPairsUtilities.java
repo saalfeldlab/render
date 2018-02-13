@@ -22,9 +22,7 @@ public class RenderableCanvasIdPairsUtilities {
      * Looks the generic template from the specified pairs object and returns
      * a template containing specifics for a run.
      *
-     * @param  renderableCanvasIdPairs  pairs object containing generic template.
-     *
-     * @param  baseDataUrl              base data URL for the current run.
+     * @param  renderParametersUrlTemplate  render URL template for the current run.
      *
      * @param  renderFullScaleWidth     full scale width for all rendered canvases.
      *
@@ -43,8 +41,7 @@ public class RenderableCanvasIdPairsUtilities {
      * @throws URISyntaxException
      *   if the template cannot be converted into a valid URL.
      */
-    public static String getRenderParametersUrlTemplateForRun(final RenderableCanvasIdPairs renderableCanvasIdPairs,
-                                                              final String baseDataUrl,
+    public static String getRenderParametersUrlTemplateForRun(final String renderParametersUrlTemplate,
                                                               final Integer renderFullScaleWidth,
                                                               final Integer renderFullScaleHeight,
                                                               final Double renderScale,
@@ -54,9 +51,7 @@ public class RenderableCanvasIdPairsUtilities {
 
 
 
-        final String template = renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl);
-
-        final CanvasDataLoader canvasDataLoader = new CanvasDataLoader(template, null) {
+        final CanvasDataLoader canvasDataLoader = new CanvasDataLoader(renderParametersUrlTemplate, null) {
             @Override
             public CachedCanvasData load(@Nonnull final CanvasId key)
                     throws Exception {

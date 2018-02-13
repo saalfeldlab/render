@@ -5,11 +5,12 @@ import com.beust.jcommander.Parameter;
 import java.io.Serializable;
 
 /**
- * Parameters for rendering canvases during point match derivation.
+ * Parameters for rendering canvases for feature extraction.
  *
  * @author Eric Trautman
  */
-public class MatchRenderParameters implements Serializable {
+public class FeatureRenderParameters
+        implements Serializable {
 
     @Parameter(
             names = "--renderScale",

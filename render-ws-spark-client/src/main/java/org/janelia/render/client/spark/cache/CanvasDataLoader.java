@@ -52,6 +52,14 @@ public abstract class CanvasDataLoader
         return dataClass;
     }
 
+    public Integer getClipWidth() {
+        return clipWidth;
+    }
+
+    public Integer getClipHeight() {
+        return clipHeight;
+    }
+
     /**
      * Save information for clipping rendered canvases based upon their relative montage position.
      *

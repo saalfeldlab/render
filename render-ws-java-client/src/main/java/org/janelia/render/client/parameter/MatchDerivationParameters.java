@@ -14,30 +14,6 @@ import org.janelia.alignment.match.ModelType;
 public class MatchDerivationParameters implements Serializable {
 
     @Parameter(
-            names = "--SIFTfdSize",
-            description = "SIFT feature descriptor size: how many samples per row and column",
-            required = false)
-    public Integer fdSize = 8;
-
-    @Parameter(
-            names = "--SIFTminScale",
-            description = "SIFT minimum scale: minSize * minScale < size < maxSize * maxScale",
-            required = false)
-    public Double minScale = 0.5;
-
-    @Parameter(
-            names = "--SIFTmaxScale",
-            description = "SIFT maximum scale: minSize * minScale < size < maxSize * maxScale",
-            required = false)
-    public Double maxScale = 0.85;
-
-    @Parameter(
-            names = "--SIFTsteps",
-            description = "SIFT steps per scale octave",
-            required = false)
-    public Integer steps = 3;
-
-    @Parameter(
             names = "--matchRod",
             description = "Ratio of distances for matches",
             required = false)
@@ -84,11 +60,5 @@ public class MatchDerivationParameters implements Serializable {
             description = "Reject match candidates with a cost larger than maxTrust * median cost",
             required = false)
     public Double matchMaxTrust = 3.0;
-
-    @Parameter(
-            names = { "--maxFeatureCacheGb", "--maxImageCacheGb" },
-            description = "Maximum number of gigabytes of features (or DMesh images) to cache",
-            required = false)
-    public Integer maxCacheGb = 2;
 
 }

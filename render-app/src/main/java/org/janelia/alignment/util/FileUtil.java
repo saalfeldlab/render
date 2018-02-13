@@ -1,5 +1,7 @@
 package org.janelia.alignment.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -77,13 +79,18 @@ public class FileUtil {
     public static void saveJsonFile(final String path,
                                     final Object data)
             throws IOException {
+        saveJsonFile(path, data, JsonUtils.MAPPER);
+    }
+
+    public static void saveJsonFile(final String path,
+                                    final Object data,
+                                    final ObjectMapper mapper)
+            throws IOException {
 
         final Path toPath = Paths.get(path).toAbsolutePath();
 
-        LOG.info("saveJsonFile: entry");
-
         try (final Writer writer = DEFAULT_INSTANCE.getExtensionBasedWriter(toPath.toString())) {
-            JsonUtils.MAPPER.writeValue(writer, data);
+            mapper.writeValue(writer, data);
         } catch (final Throwable t) {
             throw new IOException("failed to write " + toPath, t);
         }

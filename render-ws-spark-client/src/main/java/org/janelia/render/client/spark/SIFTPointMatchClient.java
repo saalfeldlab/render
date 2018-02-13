@@ -27,9 +27,11 @@ import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MatchClipParameters;
+import org.janelia.render.client.parameter.FeatureExtractionParameters;
+import org.janelia.render.client.parameter.FeatureStorageParameters;
+import org.janelia.render.client.parameter.FeatureRenderClipParameters;
 import org.janelia.render.client.parameter.MatchDerivationParameters;
-import org.janelia.render.client.parameter.MatchRenderParameters;
+import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.janelia.render.client.spark.cache.CachedCanvasFeatures;
 import org.janelia.render.client.spark.cache.CanvasDataCache;
@@ -51,13 +53,19 @@ public class SIFTPointMatchClient
         public MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
 
         @ParametersDelegate
-        public MatchRenderParameters matchRender = new MatchRenderParameters();
+        public FeatureRenderParameters featureRender = new FeatureRenderParameters();
 
         @ParametersDelegate
-        public MatchDerivationParameters match = new MatchDerivationParameters();
+        public FeatureRenderClipParameters featureRenderClip = new FeatureRenderClipParameters();
 
         @ParametersDelegate
-        public MatchClipParameters matchClip = new MatchClipParameters();
+        public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+
+        @ParametersDelegate
+        public FeatureStorageParameters featureStorage = new FeatureStorageParameters();
+
+        @ParametersDelegate
+        public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
         @Parameter(
                 names = "--pairJson",
@@ -125,46 +133,51 @@ public class SIFTPointMatchClient
         generateMatchesForPairs(sparkContext,
                                 renderableCanvasIdPairs,
                                 parameters.matchClient.baseDataUrl,
-                                parameters.matchRender,
-                                parameters.match,
-                                parameters.matchClip,
+                                parameters.featureRender,
+                                parameters.featureRenderClip,
+                                parameters.featureExtraction,
+                                parameters.featureStorage,
+                                parameters.matchDerivation,
                                 matchStorageFunction);
     }
 
     public static long generateMatchesForPairs(final JavaSparkContext sparkContext,
                                                final RenderableCanvasIdPairs renderableCanvasIdPairs,
                                                final String baseDataUrl,
-                                               final MatchRenderParameters matchRenderParameters,
-                                               final MatchDerivationParameters matchParameters,
-                                               final MatchClipParameters clipParameters,
+                                               final FeatureRenderParameters featureRenderParameters,
+                                               final FeatureRenderClipParameters featureRenderClipParameters,
+                                               final FeatureExtractionParameters featureExtractionParameters,
+                                               final FeatureStorageParameters featureStorageParameters,
+                                               final MatchDerivationParameters matchDerivationParameters,
                                                final MatchStorageFunction matchStorageFunction)
             throws IOException, URISyntaxException {
 
         final String renderParametersUrlTemplateForRun =
                 RenderableCanvasIdPairsUtilities.getRenderParametersUrlTemplateForRun(
-                        renderableCanvasIdPairs,
-                        baseDataUrl,
-                        matchRenderParameters.renderFullScaleWidth,
-                        matchRenderParameters.renderFullScaleHeight,
-                        matchRenderParameters.renderScale,
-                        matchRenderParameters.renderWithFilter,
-                        matchRenderParameters.renderWithoutMask);
+                        renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl),
+                        featureRenderParameters.renderFullScaleWidth,
+                        featureRenderParameters.renderFullScaleHeight,
+                        featureRenderParameters.renderScale,
+                        featureRenderParameters.renderWithFilter,
+                        featureRenderParameters.renderWithoutMask);
 
-        final long cacheMaxKilobytes = matchParameters.maxCacheGb * 1000000;
+        final long cacheMaxKilobytes = featureStorageParameters.maxCacheGb * 1000000;
         final CanvasFeatureListLoader featureLoader =
                 new CanvasFeatureListLoader(
                         renderParametersUrlTemplateForRun,
-                        getCanvasFeatureExtractor(matchParameters, matchRenderParameters));
+                        getCanvasFeatureExtractor(featureExtractionParameters, featureRenderParameters),
+                        featureStorageParameters.getRootFeatureDirectory(),
+                        featureStorageParameters.requireStoredFeatures);
 
-        featureLoader.setClipInfo(clipParameters.clipWidth, clipParameters.clipHeight);
+        featureLoader.setClipInfo(featureRenderClipParameters.clipWidth, featureRenderClipParameters.clipHeight);
 
-        final double renderScale = matchRenderParameters.renderScale;
+        final double renderScale = featureRenderParameters.renderScale;
 
         // broadcast to all nodes
         final Broadcast<Long> broadcastCacheMaxKilobytes = sparkContext.broadcast(cacheMaxKilobytes);
         final Broadcast<CanvasFeatureListLoader> broadcastFeatureLoader = sparkContext.broadcast(featureLoader);
         final Broadcast<CanvasFeatureMatcher> broadcastFeatureMatcher =
-                sparkContext.broadcast(getCanvasFeatureMatcher(matchParameters));
+                sparkContext.broadcast(getCanvasFeatureMatcher(matchDerivationParameters));
 
         final JavaRDD<OrderedCanvasIdPair> rddCanvasIdPairs =
                 sparkContext.parallelize(renderableCanvasIdPairs.getNeighborPairs());
@@ -210,8 +223,8 @@ public class SIFTPointMatchClient
                         // TODO: remove offset debug logging when no longer needed
                         final double[] pClipOffsets = pFeatures.getClipOffsets();
                         final double[] qClipOffsets = qFeatures.getClipOffsets();
-                        log.debug("after feature derivation, {} offsets are {}, {}", p, pClipOffsets[0], pClipOffsets[1]);
-                        log.debug("after feature derivation, {} offsets are {}, {}", q, qClipOffsets[0], qClipOffsets[1]);
+                        log.debug("after feature extraction, {} offsets are {}, {}", p, pClipOffsets[0], pClipOffsets[1]);
+                        log.debug("after feature extraction, {} offsets are {}, {}", q, qClipOffsets[0], qClipOffsets[1]);
 
                         inlierMatches = matchResult.getInlierMatches(renderScale, pClipOffsets, qClipOffsets);
 
@@ -255,17 +268,17 @@ public class SIFTPointMatchClient
         return totalSaved;
     }
 
-    private static CanvasFeatureExtractor getCanvasFeatureExtractor(final MatchDerivationParameters matchParameters,
-                                                                    final MatchRenderParameters matchRenderParameters) {
+    private static CanvasFeatureExtractor getCanvasFeatureExtractor(final FeatureExtractionParameters featureExtraction,
+                                                                    final FeatureRenderParameters featureRender) {
 
         final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
-        siftParameters.fdSize = matchParameters.fdSize;
-        siftParameters.steps = matchParameters.steps;
+        siftParameters.fdSize = featureExtraction.fdSize;
+        siftParameters.steps = featureExtraction.steps;
 
         return new CanvasFeatureExtractor(siftParameters,
-                                          matchParameters.minScale,
-                                          matchParameters.maxScale,
-                                          matchRenderParameters.fillWithNoise);
+                                          featureExtraction.minScale,
+                                          featureExtraction.maxScale,
+                                          featureRender.fillWithNoise);
     }
 
     private static CanvasFeatureMatcher getCanvasFeatureMatcher(final MatchDerivationParameters matchParameters) {

@@ -16,6 +16,7 @@ import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.FeatureExtractionParameters;
 import org.janelia.render.client.parameter.MatchDerivationParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +68,10 @@ public class PointMatchOptimizerClient {
         public Integer maxFeatureCount = 6000;
 
         @ParametersDelegate
-        public MatchDerivationParameters match = new MatchDerivationParameters();
+        public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+
+        @ParametersDelegate
+        public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
         @Parameter(
                 names = "--matchRodStep",
@@ -175,21 +179,21 @@ public class PointMatchOptimizerClient {
             LOG.info("run: testing match rod {}", rod);
 
             matcher = new CanvasFeatureMatcher(rod,
-                                               parameters.match.matchModelType,
-                                               parameters.match.matchIterations,
-                                               parameters.match.matchMaxEpsilon,
-                                               parameters.match.matchMinInlierRatio,
-                                               parameters.match.matchMinNumInliers,
-                                               parameters.match.matchMaxTrust,
+                                               parameters.matchDerivation.matchModelType,
+                                               parameters.matchDerivation.matchIterations,
+                                               parameters.matchDerivation.matchMaxEpsilon,
+                                               parameters.matchDerivation.matchMinInlierRatio,
+                                               parameters.matchDerivation.matchMinNumInliers,
+                                               parameters.matchDerivation.matchMaxTrust,
                                                null,
                                                true);
             matchResult = matcher.deriveMatchResult(pFeatureList, qFeatureList);
 
             inlierCount = matchResult.getInlierPointMatchList().size();
 
-            if (inlierCount < parameters.match.matchMinNumInliers) {
+            if (inlierCount < parameters.matchDerivation.matchMinNumInliers) {
 
-                if (previousInlierCount >= parameters.match.matchMinNumInliers) {
+                if (previousInlierCount >= parameters.matchDerivation.matchMinNumInliers) {
                     optimalRod = previousRod;
                     inlierCount = previousInlierCount;
                 } else {
@@ -197,7 +201,7 @@ public class PointMatchOptimizerClient {
                     rod += parameters.matchRodStep;
                 }
 
-            } else if (inlierCount > parameters.match.matchMaxNumInliers) {
+            } else if (inlierCount > parameters.matchDerivation.matchMaxNumInliers) {
 
                 previousRod = rod;
                 rod -= parameters.matchRodStep;
@@ -227,8 +231,8 @@ public class PointMatchOptimizerClient {
         LOG.info("extractFeaturesForScale: entry, scale={}", renderScale);
 
         final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
-        siftParameters.fdSize = parameters.match.fdSize;
-        siftParameters.steps = parameters.match.steps;
+        siftParameters.fdSize = parameters.featureExtraction.fdSize;
+        siftParameters.steps = parameters.featureExtraction.steps;
 
         final CanvasFeatureExtractor extractor = new CanvasFeatureExtractor(siftParameters,
                                                                             renderScale - 0.02,
