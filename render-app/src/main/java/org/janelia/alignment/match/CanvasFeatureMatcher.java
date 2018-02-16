@@ -121,7 +121,7 @@ public class CanvasFeatureMatcher implements Serializable {
     public List<PointMatch> filterMatches(final List<PointMatch> candidates,
                                           final Model model) {
 
-        final ArrayList<PointMatch> inliers = new ArrayList<>(candidates.size());
+        final List<PointMatch> inliers = new ArrayList<>(candidates.size());
 
         if (candidates.size() > 0) {
             try {
@@ -136,25 +136,77 @@ public class CanvasFeatureMatcher implements Serializable {
                 LOG.warn("failed to filter outliers", e);
             }
 
-            // TODO: remove this extra check once RANSAC filter issue is fixed
-            if ((inliers.size() > 0) && (inliers.size() < minNumInliers)) {
-                LOG.warn("removing {} inliers that mysteriously did not get removed with minNumInliers value of {}",
-                         inliers.size(), minNumInliers);
-                inliers.clear();
-            }
-
-            if ((maxNumInliers != null) && (maxNumInliers > 0) && (inliers.size() > maxNumInliers)) {
-                LOG.info("filterMatches: randomly selecting {} of {} inliers", maxNumInliers, inliers.size());
-                // randomly select maxNumInliers elements by shuffling and then remove excess elements
-                Collections.shuffle(inliers);
-                inliers.subList(maxNumInliers, inliers.size()).clear();
-            }
+            postProcessInliers(inliers);
 
         }
 
         LOG.info("filterMatches: filtered {} inliers from {} candidates", inliers.size(), candidates.size());
 
         return inliers;
+    }
+
+    /**
+     * Logic stolen from:
+     *
+     * <a href="https://github.com/saalfeldlab/hot-knife/blob/master/src/main/java/org/janelia/saalfeldlab/hotknife/MultiConsensusFilter.java>
+     *     Saalfeld's Hot Knife MultiConsensusFilter
+     * </a>
+     *
+     * @param  candidates  list of all candidate matches.
+     *
+     * @return list of consensus set match lists in order of quality.
+     */
+    public List<List<PointMatch>> filterConsensusMatches(final List<PointMatch> candidates) {
+
+//        final List<Model> modelList = new ArrayList<>();
+        final List<List<PointMatch>> listOfInliersLists = new ArrayList<>();
+        final int totalNumberOfCandidates = candidates.size();
+
+        boolean modelFound;
+        do {
+            final Model model = modelType.getInstance();
+            final List<PointMatch> modelInliers = new ArrayList<>();
+            try {
+                modelFound = model.filterRansac(candidates,
+                                                modelInliers,
+                                                iterations,
+                                                maxEpsilon,
+                                                minInlierRatio,
+                                                minNumInliers);
+            } catch (final NotEnoughDataPointsException e) {
+                modelFound = false;
+            }
+
+            if (modelFound) {
+//                modelList.add(model);
+                listOfInliersLists.add(modelInliers);
+                candidates.removeAll(modelInliers);
+            }
+
+        } while (modelFound);
+
+        // additional post processing of inliers is needed to apply maxNumInliers constraint and address minNumInliers bug
+
+        final List<List<PointMatch>> processedListOfInliersLists = new ArrayList<>(listOfInliersLists.size());
+        final List<Integer> consensusSetSizes = new ArrayList<>();
+        int totalNumberOfInliers = 0;
+
+        for (int i = 0; i < listOfInliersLists.size(); i++) {
+            final List<PointMatch> modelInliers = listOfInliersLists.get(i);
+            postProcessInliers(modelInliers);
+            if (modelInliers.size() > 0) {
+                processedListOfInliersLists.add(modelInliers);
+                consensusSetSizes.add(modelInliers.size());
+                totalNumberOfInliers += modelInliers.size();
+            } else {
+                LOG.warn("dropped consensus set {} because it was empty after post processing", i);
+            }
+        }
+
+        LOG.info("filterConsensusMatches: filtered {} inlier set(s) with sizes {} for a total of {} inliers from {} candidates",
+                 processedListOfInliersLists.size(), consensusSetSizes, totalNumberOfInliers, totalNumberOfCandidates);
+
+        return processedListOfInliersLists;
     }
 
     public Matches filterMatches(final Matches candidates,
@@ -165,6 +217,23 @@ public class CanvasFeatureMatcher implements Serializable {
                 CanvasFeatureMatchResult.convertMatchesToPointMatchList(candidates);
         final List<PointMatch> inliersList = filterMatches(candidatesList, model);
         return CanvasFeatureMatchResult.convertPointMatchListToMatches(inliersList, renderScale);
+    }
+
+    private void postProcessInliers(final List<PointMatch> inliers) {
+
+        // TODO: remove this extra check once RANSAC filter issue is fixed
+        if ((inliers.size() > 0) && (inliers.size() < minNumInliers)) {
+            LOG.warn("removing {} inliers that mysteriously did not get removed with minNumInliers value of {}",
+                     inliers.size(), minNumInliers);
+            inliers.clear();
+        }
+
+        if ((maxNumInliers != null) && (maxNumInliers > 0) && (inliers.size() > maxNumInliers)) {
+            LOG.info("filterMatches: randomly selecting {} of {} inliers", maxNumInliers, inliers.size());
+            // randomly select maxNumInliers elements by shuffling and then remove excess elements
+            Collections.shuffle(inliers);
+            inliers.subList(maxNumInliers, inliers.size()).clear();
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureMatcher.class);
