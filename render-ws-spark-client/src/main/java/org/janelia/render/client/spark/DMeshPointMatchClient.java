@@ -12,8 +12,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import mpicbg.models.AffineModel2D;
-
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -21,7 +19,6 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
-import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
@@ -29,7 +26,6 @@ import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MatchDerivationParameters;
 import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.janelia.render.client.spark.cache.CanvasDataCache;
@@ -52,9 +48,6 @@ public class DMeshPointMatchClient
 
         @ParametersDelegate
         public FeatureRenderParameters featureRender = new FeatureRenderParameters();
-
-        @ParametersDelegate
-        public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
         @Parameter(
                 names = "--pairJson",
@@ -87,13 +80,6 @@ public class DMeshPointMatchClient
                 required = false,
                 arity = 1)
         public boolean dMeshLogToolOutput = false;
-
-        @Parameter(
-                names = "--filterMatches",
-                description = "Use RANSAC to filter matches",
-                required = false,
-                arity = 1)
-        public boolean filterMatches = false;
 
         @Parameter(
                 names = { "--maxImageCacheGb" },
@@ -173,24 +159,12 @@ public class DMeshPointMatchClient
                                                   new File(parameters.dMeshParameters),
                                                   parameters.dMeshLogToolOutput);
 
-        final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(parameters.matchDerivation.matchRod,
-                                                                             parameters.matchDerivation.matchModelType,
-                                                                             parameters.matchDerivation.matchIterations,
-                                                                             parameters.matchDerivation.matchMaxEpsilon,
-                                                                             parameters.matchDerivation.matchMinInlierRatio,
-                                                                             parameters.matchDerivation.matchMinNumInliers,
-                                                                             parameters.matchDerivation.matchMaxTrust,
-                                                                             parameters.matchDerivation.matchMaxNumInliers,
-                                                                             parameters.filterMatches);
-
         final double renderScale = parameters.featureRender.renderScale;
 
         // broadcast to all nodes
         final Broadcast<Long> broadcastCacheMaxKilobytes = sparkContext.broadcast(cacheMaxKilobytes);
         final Broadcast<CanvasFileLoader> broadcastFileLoader = sparkContext.broadcast(fileLoader);
         final Broadcast<DMeshTool> broadcastDMeshTool = sparkContext.broadcast(dMeshTool);
-        final Broadcast<CanvasFeatureMatcher> broadcastFeatureMatcher =
-                sparkContext.broadcast(featureMatcher);
 
 
         final JavaRDD<OrderedCanvasIdPair> rddCanvasIdPairs =
@@ -210,8 +184,6 @@ public class DMeshPointMatchClient
                             CanvasDataCache.getSharedCache(broadcastCacheMaxKilobytes.getValue(),
                                                            fileLoader1);
                     final DMeshTool dMeshTool1 = broadcastDMeshTool.getValue();
-                    final CanvasFeatureMatcher featureMatcher1 = broadcastFeatureMatcher.getValue();
-
 
                     final List<CanvasMatches> matchList = new ArrayList<>();
                     int pairCount = 0;
@@ -243,18 +215,12 @@ public class DMeshPointMatchClient
 
                         if (pairMatches.size() > 0) {
 
-                            if (featureMatcher1.isFilterMatches()) {
-                                inlierMatches = featureMatcher1.filterMatches(pairMatches.getMatches(),
-                                                                              new AffineModel2D(),
-                                                                              renderScale);
-                            } else {
-                                inlierMatches = pairMatches.getMatches();
+                            inlierMatches = pairMatches.getMatches();
 
-                                // point matches must be stored in full scale coordinates
-                                if (renderScale != 1.0) {
-                                    scalePoints(inlierMatches.getPs(), renderScale);
-                                    scalePoints(inlierMatches.getQs(), renderScale);
-                                }
+                            // point matches must be stored in full scale coordinates
+                            if (renderScale != 1.0) {
+                                scalePoints(inlierMatches.getPs(), renderScale);
+                                scalePoints(inlierMatches.getQs(), renderScale);
                             }
 
                             if (inlierMatches.getWs().length > 0) {
