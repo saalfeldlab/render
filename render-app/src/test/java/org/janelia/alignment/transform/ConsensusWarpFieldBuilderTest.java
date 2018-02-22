@@ -72,6 +72,80 @@ public class ConsensusWarpFieldBuilderTest {
         LOG.info("Warp Field Data String is {}", affineWarpFieldTransform.toDataString());
     }
 
+    @Test
+    public void testMerge() throws Exception {
+
+        final int gridRes = 10;
+        final double cellSize = 1000.0;
+        final ConsensusWarpFieldBuilder builder1 = new ConsensusWarpFieldBuilder(cellSize, cellSize, gridRes, gridRes);
+        final ConsensusWarpFieldBuilder builder2 = new ConsensusWarpFieldBuilder(cellSize, cellSize, gridRes, gridRes);
+
+        final List<Point> set1A = new ArrayList<>();
+        final List<Point> set1B = new ArrayList<>();
+        final List<Point> set1C = new ArrayList<>();
+
+        int column = 0;
+        for (int row = 0; row < 10; row++) {
+            if (row < 5) {
+                addPoint(column * 100, row * 100, set1A);
+                addPoint((column + 1) * 100, row * 100, set1B);
+                column++;
+            } else {
+                addPoint(column * 100, row * 100, set1C);
+                addPoint((column - 1) * 100, row * 100, set1A);
+                column--;
+            }
+        }
+
+        for (int c = 6; c < 10; c++) {
+            addPoint(c * 100, 400, set1B);
+            addPoint(c * 100, 500, set1C);
+        }
+
+        builder1.addConsensusSetData(new AffineModel2D(), set1A);
+        builder1.addConsensusSetData(new AffineModel2D(), set1B);
+        builder1.addConsensusSetData(new AffineModel2D(), set1C);
+
+        LOG.info("Grid 1 is ...\n\n{}\n", builder1.toIndexGridString());
+
+        Assert.assertEquals("invalid number of consensus sets left in grid after nearest neighbor analysis",
+                            3, builder1.getNumberOfConsensusSetsInGrid());
+
+        final List<Point> set2A = new ArrayList<>();
+        final List<Point> set2B = new ArrayList<>();
+
+        for (column = 0; column < 10; column++) {
+            for (int row = 0; row < 10; row++) {
+                if (column < 4) {
+                    addPoint(column * 100, row * 100, set2A);
+                } else {
+                    addPoint(column * 100, row * 100, set2B);
+                }
+            }
+        }
+
+        builder2.addConsensusSetData(new AffineModel2D(), set2A);
+        builder2.addConsensusSetData(new AffineModel2D(), set2B);
+
+        LOG.info("Grid 2 is ...\n\n{}\n", builder2.toIndexGridString());
+
+        Assert.assertEquals("invalid number of consensus sets left in grid after nearest neighbor analysis",
+                            2, builder2.getNumberOfConsensusSetsInGrid());
+
+        final ConsensusWarpFieldBuilder mergedBuilder = builder1.mergeBuilders(builder2);
+
+        LOG.info("Merged Grid is ...\n\n{}\n", mergedBuilder.toIndexGridString());
+
+        Assert.assertEquals("invalid number of consensus sets left in grid after merge",
+                            6, mergedBuilder.getNumberOfConsensusSetsInGrid());
+    }
+
+    private void addPoint(final int x,
+                          final int y,
+                          final List<Point> pointList) {
+        pointList.add(new Point(new double[] { x, y }));
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(ConsensusWarpFieldBuilderTest.class);
 
 }
