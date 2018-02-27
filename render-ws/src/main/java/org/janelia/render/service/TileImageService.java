@@ -363,6 +363,7 @@ public class TileImageService {
                                                      @PathParam("tileId") final String tileId,
                                                      @QueryParam("scale") final Double scale,
                                                      @QueryParam("filter") final Boolean filter,
+                                                     @QueryParam("filterListName") final String filterListName,
                                                      @QueryParam("binaryMask") final Boolean binaryMask,
                                                      @QueryParam("convertToGray") final Boolean convertToGray,
                                                      @QueryParam("widthFactor") final Double widthFactor,
@@ -379,7 +380,8 @@ public class TileImageService {
             final RenderParameters renderParameters =
                     tileDataService.getTileWithNeighborsRenderParameters(owner, project, stack, tileId,
                                                                          widthFactor, heightFactor, scale,
-                                                                         filter, binaryMask, convertToGray, channels);
+                                                                         filter, filterListName,
+                                                                         binaryMask, convertToGray, channels);
             if ((boundingBoxesOnly != null) && boundingBoxesOnly) {
                 return RenderServiceUtil.renderJpegBoundingBoxes(renderParameters, responseHelper);
             } else {

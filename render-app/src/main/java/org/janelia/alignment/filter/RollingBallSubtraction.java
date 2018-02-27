@@ -3,51 +3,46 @@ package org.janelia.alignment.filter;
 import ij.plugin.filter.BackgroundSubtracter;
 import ij.process.ImageProcessor;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class RollingBallSubtraction implements Filter {
-    protected double radius = 250;
 
+    private double radius;
+
+    // empty constructor required to create instances from specifications
+    @SuppressWarnings("unused")
     public RollingBallSubtraction() {
+        this(250);
     }
 
     public RollingBallSubtraction(final double radius) {
-        set(radius);
-    }
-
-    public final void set(final double radius) {
         this.radius = radius;
     }
 
-    public RollingBallSubtraction(final Map<String, String> params) {
-        try {
-            set(Double.parseDouble(params.get("radius")));
-        } catch (final NumberFormatException nfe) {
-            throw new IllegalArgumentException(
-                    "Could not create RollingBallSubtraction filter!", nfe);
-        }
+    @Override
+    public void init(final Map<String, String> params) {
+        this.radius = Filter.getDoubleParameter("radius", params);
     }
 
     @Override
-    public ImageProcessor process(final ImageProcessor ip, final double scale) {
-        try {
-        	BackgroundSubtracter bgsub = new ij.plugin.filter.BackgroundSubtracter();	
-            bgsub.rollingBallBackground(ip,
-                    (double) Math.round(radius * scale),false,false,false,true,true);
-        } catch (final Exception e) {
-            e.printStackTrace();
-        }
+    public Map<String, String> toParametersMap() {
+        final Map<String, String> map = new LinkedHashMap<>();
+        map.put("radius", String.valueOf(radius));
+        return map;
+    }
+
+    @Override
+    public ImageProcessor process(final ImageProcessor ip,
+                                  final double scale) {
+        final BackgroundSubtracter backgroundSubtracter = new BackgroundSubtracter();
+        backgroundSubtracter.rollingBallBackground(ip,
+                                                   (double) Math.round(radius * scale),
+                                                   false,
+                                                   false,
+                                                   false,
+                                                   true,
+                                                   true);
         return ip;
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-        if (null == o)
-            return false;
-        if (o.getClass() == RollingBallSubtraction.class) {
-            final RollingBallSubtraction c = (RollingBallSubtraction) o;
-            return radius == c.radius && radius == c.radius;
-        }
-        return false;
     }
 }

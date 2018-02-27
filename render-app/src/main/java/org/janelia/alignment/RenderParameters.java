@@ -40,6 +40,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import org.janelia.alignment.filter.Filter;
+import org.janelia.alignment.filter.FilterFactory;
+import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.MontageRelativePosition;
@@ -131,6 +134,7 @@ public class RenderParameters implements Serializable {
     private String channels;
 
     private MipmapPathBuilder mipmapPathBuilder;
+    private List<FilterSpec> filterSpecs;
 
     /** List of tile specifications parsed from --tileSpecUrl or deserialized directly from json. */
     private List<TileSpec> tileSpecs;
@@ -203,6 +207,7 @@ public class RenderParameters implements Serializable {
 
         this.tileSpecs = new ArrayList<>();
         this.mipmapPathBuilder = null;
+        this.filterSpecs = null;
 
         this.jCommander = null;
         this.outUri = null;
@@ -558,10 +563,6 @@ public class RenderParameters implements Serializable {
         this.excludeMask = (excludeMask != null) && excludeMask;
     }
 
-    public boolean doFilter() {
-        return doFilter;
-    }
-
     public void setDoFilter(final Boolean filter) {
         doFilter = (filter != null) && filter;
     }
@@ -649,6 +650,30 @@ public class RenderParameters implements Serializable {
             for (final TileSpec spec : tileSpecs) {
                 spec.setMipmapPathBuilder(mipmapPathBuilder);
             }
+        }
+    }
+
+    public boolean hasFilters() {
+        return doFilter || (filterSpecs != null);
+    }
+
+    public List<Filter> getFilters() {
+        List<Filter> filterList = null;
+        if (filterSpecs == null) {
+            if (doFilter) {
+                filterList = FilterFactory.buildDefaultInstanceList();
+            }
+        } else {
+            filterList = FilterFactory.buildInstanceList(filterSpecs);
+        }
+        return filterList;
+    }
+
+    public void setFilterSpecs(final List<FilterSpec> filterSpecs) {
+        if (filterSpecs == null) {
+            this.filterSpecs = null;
+        } else {
+            this.filterSpecs = new ArrayList<>(filterSpecs);
         }
     }
 
@@ -741,6 +766,9 @@ public class RenderParameters implements Serializable {
 
         if (mipmapPathBuilder != null) {
             sb.append("mipmapPathBuilder=").append(mipmapPathBuilder).append(", ");
+        }
+        if (filterSpecs != null) {
+            sb.append("filterSpecs=").append(filterSpecs).append(", ");
         }
 
         if (x != DEFAULT_X_AND_Y) {
@@ -905,6 +933,7 @@ public class RenderParameters implements Serializable {
             backgroundRGBColor = mergedValue(backgroundRGBColor, baseParameters.backgroundRGBColor);
             channels = mergedValue(channels, baseParameters.channels);
             mipmapPathBuilder = mergedValue(mipmapPathBuilder, baseParameters.mipmapPathBuilder);
+            filterSpecs = mergedValue(filterSpecs, baseParameters.filterSpecs);
 
             tileSpecs.addAll(baseParameters.tileSpecs);
         }

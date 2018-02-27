@@ -1,14 +1,11 @@
 package org.janelia.alignment.mipmap;
 
-import java.util.Arrays;
 import java.util.List;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.ChannelMap;
 import org.janelia.alignment.filter.Filter;
-import org.janelia.alignment.filter.NormalizeLocalContrast;
-import org.janelia.alignment.filter.ValueToNoise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,18 +73,6 @@ public class FilteredMipmapSource
         return channels;
     }
 
-    public static List<Filter> getDefaultFilters() {
-        return DEFAULT_FILTERS;
-    }
-
     private static final Logger LOG = LoggerFactory.getLogger(FilteredMipmapSource.class);
-
-    // TODO: this is an ad-hoc filter bank for temporary use in alignment
-    private static final ValueToNoise vtnf1 = new ValueToNoise(0, 64, 191);
-    private static final ValueToNoise vtnf2 = new ValueToNoise(255, 64, 191);
-    private static final NormalizeLocalContrast nlcf = new NormalizeLocalContrast(500, 500, 3, true, true);
-//    private static final CLAHE clahe = new CLAHE(true, 250, 256, 2);
-
-    private static final List<Filter> DEFAULT_FILTERS = Arrays.asList(vtnf1, vtnf2, nlcf);
 
 }

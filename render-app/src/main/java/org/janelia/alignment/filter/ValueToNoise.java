@@ -4,92 +4,49 @@ import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
 
 public class ValueToNoise implements Filter {
-    final static public void processFloatNaN(final FloatProcessor ip,
-            final double min, final double max) {
-        final double scale = max - min;
-        final Random rnd = new Random();
-        final int n = ip.getWidth() * ip.getHeight();
-        for (int i = 0; i < n; ++i) {
-            final float v = ip.getf(i);
-            if (Float.isNaN(v))
-                ip.setf(i, (float) (rnd.nextDouble() * scale + min));
-        }
-    }
 
-    final static public void processFloat(final FloatProcessor ip,
-            final float value, final double min, final double max) {
-        final double scale = max - min;
-        final Random rnd = new Random();
-        final int n = ip.getWidth() * ip.getHeight();
-        for (int i = 0; i < n; ++i) {
-            final float v = ip.getf(i);
-            if (v == value)
-                ip.setf(i, (float) (rnd.nextDouble() * scale + min));
-        }
-    }
+    private double value;
+    private double min;
+    private double max;
 
-    final static public void processGray(final ImageProcessor ip,
-            final int value, final int min, final int max) {
-        final int scale = max - min + 1;
-        final Random rnd = new Random();
-        final int n = ip.getWidth() * ip.getHeight();
-        for (int i = 0; i < n; ++i) {
-            final int v = ip.get(i);
-            if (v == value)
-                ip.set(i, rnd.nextInt(scale) + min);
-        }
-    }
-
-    final static public void processColor(final ColorProcessor ip,
-            final int value, final int min, final int max) {
-        final int scale = max - min + 1;
-        final Random rnd = new Random();
-        final int n = ip.getWidth() * ip.getHeight();
-        for (int i = 0; i < n; ++i) {
-            final int v = ip.get(i) & 0x00ffffff;
-            if (v == value) {
-                final int r = rnd.nextInt(scale) + min;
-                final int g = rnd.nextInt(scale) + min;
-                final int b = rnd.nextInt(scale) + min;
-
-                ip.set(i, (((((0xff << 8) | r) << 8) | g) << 8) | b);
-            }
-        }
-    }
-
-    protected double value = Double.NaN, min = 0, max = 255;
-
+    // empty constructor required to create instances from specifications
+    @SuppressWarnings("unused")
     public ValueToNoise() {
+        this(Double.NaN, 0, 255);
     }
 
-    public ValueToNoise(final double value, final double min, final double max) {
-        set(value, min, max);
-    }
-
-    private final void set(final double value, final double min,
-            final double max) {
+    public ValueToNoise(final double value,
+                        final double min,
+                        final double max) {
         this.value = value;
         this.min = min;
         this.max = max;
     }
 
-    public ValueToNoise(final Map<String, String> params) {
-        try {
-            set(Double.parseDouble(params.get("value")),
-                    Double.parseDouble(params.get("min")),
-                    Double.parseDouble(params.get("max")));
-        } catch (final NumberFormatException nfe) {
-            throw new IllegalArgumentException(
-                    "Could not create ValueToNoise filter!", nfe);
-        }
+    @Override
+    public void init(final Map<String, String> params) {
+        this.value = Filter.getDoubleParameter("value", params);
+        this.min = Filter.getDoubleParameter("min", params);
+        this.max = Filter.getDoubleParameter("max", params);
     }
 
     @Override
-    public ImageProcessor process(final ImageProcessor ip, final double scale) {
+    public Map<String, String> toParametersMap() {
+        final Map<String, String> map = new LinkedHashMap<>();
+        map.put("value", String.valueOf(value));
+        map.put("min", String.valueOf(min));
+        map.put("max", String.valueOf(max));
+        return map;
+    }
+
+    @Override
+    public ImageProcessor process(final ImageProcessor ip,
+                                  final double scale) {
         try {
             if (FloatProcessor.class.isInstance(ip)) {
                 if (Double.isNaN(value))
@@ -110,15 +67,64 @@ public class ValueToNoise implements Filter {
         return ip;
     }
 
-    @Override
-    public boolean equals(final Object o) {
-        if (null == o)
-            return false;
-        if (o.getClass() == ValueToNoise.class) {
-            final ValueToNoise c = (ValueToNoise) o;
-            return (Double.isNaN(value) && Double.isNaN(c.value) || value == c.value)
-                    && min == c.min && max == c.max;
+    private static void processFloatNaN(final FloatProcessor ip,
+                                        final double min,
+                                        final double max) {
+        final double scale = max - min;
+        final Random rnd = new Random();
+        final int n = ip.getWidth() * ip.getHeight();
+        for (int i = 0; i < n; ++i) {
+            final float v = ip.getf(i);
+            if (Float.isNaN(v))
+                ip.setf(i, (float) (rnd.nextDouble() * scale + min));
         }
-        return false;
     }
+
+    private static void processFloat(final FloatProcessor ip,
+                                     final float value,
+                                     final double min,
+                                     final double max) {
+        final double scale = max - min;
+        final Random rnd = new Random();
+        final int n = ip.getWidth() * ip.getHeight();
+        for (int i = 0; i < n; ++i) {
+            final float v = ip.getf(i);
+            if (v == value)
+                ip.setf(i, (float) (rnd.nextDouble() * scale + min));
+        }
+    }
+
+    private static void processGray(final ImageProcessor ip,
+                                    final int value,
+                                    final int min,
+                                    final int max) {
+        final int scale = max - min + 1;
+        final Random rnd = new Random();
+        final int n = ip.getWidth() * ip.getHeight();
+        for (int i = 0; i < n; ++i) {
+            final int v = ip.get(i);
+            if (v == value)
+                ip.set(i, rnd.nextInt(scale) + min);
+        }
+    }
+
+    private static void processColor(final ColorProcessor ip,
+                                     final int value,
+                                     final int min,
+                                     final int max) {
+        final int scale = max - min + 1;
+        final Random rnd = new Random();
+        final int n = ip.getWidth() * ip.getHeight();
+        for (int i = 0; i < n; ++i) {
+            final int v = ip.get(i) & 0x00ffffff;
+            if (v == value) {
+                final int r = rnd.nextInt(scale) + min;
+                final int g = rnd.nextInt(scale) + min;
+                final int b = rnd.nextInt(scale) + min;
+
+                ip.set(i, (((((0xff << 8) | r) << 8) | g) << 8) | b);
+            }
+        }
+    }
+
 }

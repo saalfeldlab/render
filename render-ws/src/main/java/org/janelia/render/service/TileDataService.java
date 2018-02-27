@@ -260,6 +260,7 @@ public class TileDataService {
                                                                  @QueryParam("heightFactor") Double heightFactor,
                                                                  @QueryParam("scale") Double scale,
                                                                  @QueryParam("filter") final Boolean filter,
+                                                                 @QueryParam("filterListName") final String filterListName,
                                                                  @QueryParam("binaryMask") final Boolean binaryMask,
                                                                  @QueryParam("convertToGray") final Boolean convertToGray,
                                                                  @QueryParam("channels") final String channels) {
@@ -302,6 +303,7 @@ public class TileDataService {
                                                                        height,
                                                                        scale,
                                                                        filter,
+                                                                       filterListName,
                                                                        binaryMask,
                                                                        convertToGray,
                                                                        channels);
