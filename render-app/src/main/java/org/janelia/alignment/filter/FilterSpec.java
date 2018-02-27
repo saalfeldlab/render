@@ -114,7 +114,7 @@ public class FilterSpec {
             try {
                 clazz = Class.forName(className);
             } catch (final ClassNotFoundException e) {
-                throw new IllegalArgumentException("transform class '" + className + "' cannot be found", e);
+                throw new IllegalArgumentException("filter class '" + className + "' cannot be found", e);
             }
         }
         return clazz;
