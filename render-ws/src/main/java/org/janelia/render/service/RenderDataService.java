@@ -1048,6 +1048,7 @@ public class RenderDataService {
 
             parameters = renderDao.getParameters(stackId, z, scale);
             parameters.setDoFilter(filter);
+            setFilterSpecs(filterListName, parameters);
             parameters.setChannels(channels);
 
             final MipmapPathBuilder mipmapPathBuilder = stackMetaData.getCurrentMipmapPathBuilder();
@@ -1159,8 +1160,8 @@ public class RenderDataService {
                                                         @QueryParam("convertToGray") final Boolean convertToGray,
                                                         @QueryParam("channels") final String channels) {
 
-        LOG.info("getExternalRenderParameters: entry, owner={}, project={}, stack={}, groupId={}, x={}, y={}, z={}, width={}, height={}, scale={}, filter={}, filterListName={}, binaryMask={}, convertToGray={}",
-                 owner, project, stack, groupId, x, y, z, width, height, scale, filter, filterListName, binaryMask, convertToGray);
+        LOG.info("getExternalRenderParameters: entry, owner={}, project={}, stack={}, groupId={}, x={}, y={}, z={}, width={}, height={}, scale={}",
+                 owner, project, stack, groupId, x, y, z, width, height, scale);
 
         RenderParameters parameters = null;
         try {

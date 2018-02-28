@@ -93,6 +93,11 @@ public class FilterSpec {
         return JSON_HELPER.toJson(this);
     }
 
+    @Override
+    public String toString() {
+        return toJson();
+    }
+
     public static FilterSpec fromJson(final String json) {
         return JSON_HELPER.fromJson(json);
     }
