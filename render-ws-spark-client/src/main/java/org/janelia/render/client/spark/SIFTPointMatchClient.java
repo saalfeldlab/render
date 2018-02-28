@@ -22,16 +22,15 @@ import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.FeatureExtractionParameters;
-import org.janelia.render.client.parameter.FeatureStorageParameters;
 import org.janelia.render.client.parameter.FeatureRenderClipParameters;
-import org.janelia.render.client.parameter.MatchDerivationParameters;
 import org.janelia.render.client.parameter.FeatureRenderParameters;
+import org.janelia.render.client.parameter.FeatureStorageParameters;
+import org.janelia.render.client.parameter.MatchDerivationParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.janelia.render.client.spark.cache.CachedCanvasFeatures;
 import org.janelia.render.client.spark.cache.CanvasDataCache;
@@ -203,7 +202,6 @@ public class SIFTPointMatchClient
                     CachedCanvasFeatures pFeatures;
                     CachedCanvasFeatures qFeatures;
                     CanvasFeatureMatchResult matchResult;
-                    Matches inlierMatches;
                     while (pairIterator.hasNext()) {
 
                         pair = pairIterator.next();
@@ -220,19 +218,20 @@ public class SIFTPointMatchClient
                         matchResult = featureMatcher.deriveMatchResult(pFeatures.getFeatureList(),
                                                                        qFeatures.getFeatureList());
 
-                        // TODO: remove offset debug logging when no longer needed
                         final double[] pClipOffsets = pFeatures.getClipOffsets();
                         final double[] qClipOffsets = qFeatures.getClipOffsets();
-                        log.debug("after feature extraction, {} offsets are {}, {}", p, pClipOffsets[0], pClipOffsets[1]);
-                        log.debug("after feature extraction, {} offsets are {}, {}", q, qClipOffsets[0], qClipOffsets[1]);
 
-                        inlierMatches = matchResult.getInlierMatches(renderScale, pClipOffsets, qClipOffsets);
-
-                        if (inlierMatches.getWs().length > 0) {
-                            matchList.add(new CanvasMatches(p.getGroupId(), p.getId(),
-                                                            q.getGroupId(), q.getId(),
-                                                            inlierMatches));
+                        if (matchResult.foundMatches()) {
+                            matchList.addAll(
+                                    matchResult.getInlierMatchesList(p.getGroupId(),
+                                                                     p.getId(),
+                                                                     q.getGroupId(),
+                                                                     q.getId(),
+                                                                     renderScale,
+                                                                     pClipOffsets,
+                                                                     qClipOffsets));
                         }
+
                     }
 
                     log.info("derived matches for {} out of {} pairs, cache stats are {}",
@@ -290,7 +289,7 @@ public class SIFTPointMatchClient
                                         matchParameters.matchMinNumInliers,
                                         matchParameters.matchMaxTrust,
                                         matchParameters.matchMaxNumInliers,
-                                        true);
+                                        matchParameters.matchFilter);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(SIFTPointMatchClient.class);

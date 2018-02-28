@@ -209,7 +209,7 @@ public class CanvasFeatureMatcherTest {
                                         minNumInliers,
                                         3.0,
                                         null,
-                                        true);
+                                        CanvasFeatureMatcher.FilterType.SINGLE_SET);
     }
 
     private static List<List<PointMatch>> validateConsensusSets(final String context,

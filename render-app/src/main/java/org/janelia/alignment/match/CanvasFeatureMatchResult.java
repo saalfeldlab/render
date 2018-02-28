@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import mpicbg.models.Model;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
@@ -15,40 +14,46 @@ import mpicbg.models.PointMatch;
  */
 public class CanvasFeatureMatchResult implements Serializable {
 
-    private final boolean modelFound;
-    private final Model model;
-    private final List<PointMatch> inliers;
-    private final Double inlierRatio;
+    private final List<List<PointMatch>> consensusSetInliers;
+    private final int totalNumberOfInliers;
+    private final double inlierRatio;
 
-    public CanvasFeatureMatchResult(final boolean modelFound,
-                                    final Model model,
-                                    final List<PointMatch> inliers,
-                                    final Double inlierRatio) {
-        this.inlierRatio = inlierRatio;
-        this.model = model;
-        this.modelFound = modelFound;
-        this.inliers = inliers;
+    public CanvasFeatureMatchResult(final List<List<PointMatch>> consensusSetInliers,
+                                    final int totalNumberOfCandidates) {
+
+        this.consensusSetInliers = consensusSetInliers;
+        int totalNumberOfInliers = 0;
+        for (final List<PointMatch> setInliers : consensusSetInliers) {
+            totalNumberOfInliers += setInliers.size();
+        }
+        this.totalNumberOfInliers = totalNumberOfInliers;
+        if (totalNumberOfCandidates > 0) {
+            this.inlierRatio = totalNumberOfInliers / (double) totalNumberOfCandidates;
+        } else {
+            this.inlierRatio = 0.0;
+        }
     }
 
-    /**
-     * @return true if a filter model could be estimated; otherwise false.
-     */
-    public boolean isModelFound() {
-        return modelFound;
-    }
-
-    /**
-     * @return estimated filter model.
-     */
-    public Model getModel() {
-        return model;
+    public boolean foundMatches() {
+        return totalNumberOfInliers > 0;
     }
 
     /**
      * @return collection of inlier matches.
      */
     public List<PointMatch> getInlierPointMatchList() {
-        return inliers;
+        return consensusSetInliers.get(0);
+    }
+
+    public List<Integer> getConsensusSetSizes() {
+        final List<Integer> sizes = new ArrayList<>();
+        if (consensusSetInliers != null) {
+            //noinspection Convert2streamapi
+            for (final List<PointMatch> consensusSet : consensusSetInliers) {
+                sizes.add(consensusSet.size());
+            }
+        }
+        return sizes;
     }
 
     /**
@@ -61,22 +66,54 @@ public class CanvasFeatureMatchResult implements Serializable {
     public Matches getInlierMatches(final Double renderScale,
                                     final double[] pOffsets,
                                     final double[] qOffsets) {
-        return convertPointMatchListToMatches(inliers, renderScale, pOffsets, qOffsets);
+        return convertPointMatchListToMatches(getInlierPointMatchList(), renderScale, pOffsets, qOffsets);
     }
 
     /**
-     * @return ratio of the number of inlier matches to the number of total candidates.
+     * @param  renderScale  scale of rendered canvases (needed to return matches in full scale coordinates).
+     * @param  pOffsets     full scale x[0] and y[1] offset for all pCanvas matches.
+     * @param  qOffsets     full scale x[0] and y[1] offset for all qCanvas matches.
+     *
+     * @return collection of inlier matches.
      */
-    public Double getInlierRatio() {
-        return inlierRatio;
+    public List<CanvasMatches> getInlierMatchesList(final String pGroupId,
+                                                    final String pId,
+                                                    final String qGroupId,
+                                                    final String qId,
+                                                    final Double renderScale,
+                                                    final double[] pOffsets,
+                                                    final double[] qOffsets) {
+
+        final List<CanvasMatches> list = new ArrayList<>();
+
+        if (consensusSetInliers.size() == 1) {
+
+            list.add(new CanvasMatches(pGroupId,
+                                       pId,
+                                       qGroupId,
+                                       qId,
+                                       getInlierMatches(renderScale, pOffsets, qOffsets)));
+        } else {
+
+            int setNumber = 0;
+            for (final List<PointMatch> consensusSet : consensusSetInliers) {
+                // need to include group ids and set number to ensure id uniqueness from consensus sets for other pairs
+                final String setSuffix = "_set_" + pGroupId + "_" + qGroupId + "_" + setNumber;
+                final String pIdForSet = pId + setSuffix;
+                final String qIdForSet = qId + setSuffix;
+                final Matches matches = convertPointMatchListToMatches(consensusSet, renderScale, pOffsets, qOffsets);
+                list.add(new CanvasMatches(pGroupId, pIdForSet, qGroupId, qIdForSet, matches));
+                setNumber++;
+            }
+
+        }
+
+        return list;
     }
 
     @Override
     public String toString() {
-        return "{modelFound: " + isModelFound() +
-               "', inlierCount: " + getInlierPointMatchList().size() +
-               ", inlierRatio: " + getInlierRatio() +
-               '}';
+        return "{'consensusSetSizes' : " + getConsensusSetSizes() + ", 'inlierRatio' : " + inlierRatio + '}';
     }
 
     /**
