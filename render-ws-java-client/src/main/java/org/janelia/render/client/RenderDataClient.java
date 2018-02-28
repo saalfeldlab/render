@@ -1240,20 +1240,7 @@ public class RenderDataClient {
                                                final int height,
                                                final double scale,
                                                final String filterListName) {
-
-        String urlString = urls.getRenderParametersUrlString(stack, x, y, z, width, height, scale);
-
-        if (filterListName != null) {
-            try {
-                final URIBuilder uriBuilder = new URIBuilder(urlString);
-                uriBuilder.addParameter("filterListName", filterListName);
-                urlString = uriBuilder.toString();
-            } catch (final URISyntaxException e) {
-                throw new IllegalArgumentException("failed to add filterListName parameter to '" + urlString + "'", e);
-            }
-        }
-
-        return urlString;
+        return urls.getRenderParametersUrlString(stack, x, y, z, width, height, scale, filterListName);
     }
 
     private URI getStackUri(final String stack)
