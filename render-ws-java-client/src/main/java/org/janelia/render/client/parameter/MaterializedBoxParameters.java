@@ -56,6 +56,18 @@ public class MaterializedBoxParameters implements Serializable {
     public Integer maxOverviewWidthAndHeight;
 
     @Parameter(
+            names = "--doFilter",
+            description = "Use ad hoc filter to support alignment",
+            required = false)
+    public boolean doFilter = false;
+
+    @Parameter(
+            names = "--filterListName",
+            description = "Apply this filter list to all rendering (overrides doFilter option)",
+            required = false)
+    public String filterListName;
+
+    @Parameter(
             names = "--skipInterpolation",
             description = "skip interpolation (e.g. for DMG data)",
             required = false,

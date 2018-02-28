@@ -67,6 +67,12 @@ public class RenderSectionClient {
         public boolean doFilter = true;
 
         @Parameter(
+                names = "--filterListName",
+                description = "Apply this filter list to all rendering (overrides doFilter option)",
+                required = false)
+        public String filterListName;
+
+        @Parameter(
                 names = "--channels",
                 description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3')",
                 required = false)
@@ -202,7 +208,8 @@ public class RenderSectionClient {
                                                               z,
                                                               clientParameters.bounds.get(1) - clientParameters.bounds.get(0), //Width
                                                               clientParameters.bounds.get(3) - clientParameters.bounds.get(2), //Height
-                                                              clientParameters.scale);
+                                                              clientParameters.scale,
+                                                              clientParameters.filterListName);
 
         }
         else //Get bounds from render
@@ -215,7 +222,8 @@ public class RenderSectionClient {
                                                               z,
                                                               (int) (layerBounds.getDeltaX() + 0.5),
                                                               (int) (layerBounds.getDeltaY() + 0.5),
-                                                              clientParameters.scale);
+                                                              clientParameters.scale,
+                                                              clientParameters.filterListName);
         }
 
         if (clientParameters.minIntensity != null) {

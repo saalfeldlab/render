@@ -1238,8 +1238,22 @@ public class RenderDataClient {
                                                final double z,
                                                final int width,
                                                final int height,
-                                               final double scale) {
-        return urls.getRenderParametersUrlString(stack, x, y, z, width, height, scale);
+                                               final double scale,
+                                               final String filterListName) {
+
+        String urlString = urls.getRenderParametersUrlString(stack, x, y, z, width, height, scale);
+
+        if (filterListName != null) {
+            try {
+                final URIBuilder uriBuilder = new URIBuilder(urlString);
+                uriBuilder.addParameter("filterListName", filterListName);
+                urlString = uriBuilder.toString();
+            } catch (final URISyntaxException e) {
+                throw new IllegalArgumentException("failed to add filterListName parameter to '" + urlString + "'", e);
+            }
+        }
+
+        return urlString;
     }
 
     private URI getStackUri(final String stack)
