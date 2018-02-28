@@ -3,6 +3,7 @@ package org.janelia.render.service.dao;
 import com.mongodb.MongoClient;
 import com.mongodb.QueryOperators;
 import com.mongodb.bulk.BulkWriteResult;
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -95,6 +97,63 @@ public class MatchDao {
         groupIds.addAll(getDistinctPGroupIds(collectionId));
         groupIds.addAll(getDistinctQGroupIds(collectionId));
         return new ArrayList<>(groupIds);
+    }
+
+    /**
+     * Finds sections that have multiple (split) cross layer consensus set match pairs.
+     *
+     * @return list of pGroupIds for pGroupId/qGroupId combinations that have more than one match pair
+     *         in the specified collection.
+     */
+    public List<String> getMultiConsensusPGroupIds(final MatchCollectionId collectionId)
+            throws IllegalArgumentException {
+
+        final MongoCollection<Document> matchCollection = getExistingCollection(collectionId);
+
+        // db.<matchCollection>.aggregate(
+        //     [
+        //         { "$project" : { "pGroupId" : 1, "qGroupId" : 1,
+        //                          "diffGroup" : { "$ne" : ["$pGroupId", "$qGroupId"] } } },
+        //         { "$match" : { "diffGroup" : true } },
+        //         { "$group": { "_id": { "pGroupId": "$pGroupId", "qGroupId": "$qGroupId" },
+        //                       "pairCount": { "$sum": 1 } } },
+        //         { "$match": { "pairCount": { "$gt": 1 } } }
+        //     ]
+        // )
+
+        final Document diffComponents = new Document(QueryOperators.NE, Arrays.asList("$pGroupId", "$qGroupId"));
+        final Document projectComponents =
+                new Document("pGroupId", 1).append("qGroupId", 1).append("diffGroup", diffComponents);
+
+        final Document idComponents = new Document("pGroupId", "$pGroupId").append("qGroupId", "$qGroupId");
+        final Document groupComponents = new Document("_id", idComponents).append("pairCount", new Document("$sum", 1));
+
+        final List<Document> pipeline = new ArrayList<>();
+        pipeline.add(new Document("$project", projectComponents));
+        pipeline.add(new Document("$match", new Document("diffGroup", true)));
+        pipeline.add(new Document("$group", groupComponents));
+        pipeline.add(new Document("$match", new Document("pairCount", new Document(QueryOperators.GT, 1))));
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("getMultiConsensusPGroupIds: running {}.aggregate({})",
+                      MongoUtil.fullName(matchCollection),
+                      MongoUtil.toJson(pipeline));
+        }
+
+        // sort and reduce to distinct set of group ids here instead of in pipeline
+        final TreeSet<String> pGroupIdsWithMultiplePairs = new TreeSet<>();
+
+        // mongodb java 3.0 driver notes:
+        // -- need to set cursor batchSize to prevent NPE from cursor creation
+        final AggregateIterable<Document> iterable = matchCollection.aggregate(pipeline).batchSize(1);
+        try (MongoCursor<Document> cursor = iterable.iterator()) {
+            while (cursor.hasNext()) {
+                final Document id = cursor.next().get("_id", Document.class);
+                pGroupIdsWithMultiplePairs.add(id.getString("pGroupId"));
+            }
+        }
+
+        return new ArrayList<>(pGroupIdsWithMultiplePairs);
     }
 
     public void writeMatchesWithPGroup(final MatchCollectionId collectionId,

@@ -61,8 +61,16 @@ public class RenderWebServiceUrls implements Serializable {
         return getMatchCollectionUrlString() + "/matches";
     }
 
+    public String getMatchMultiConsensusPGroupIdsUrlString() {
+        return getMatchCollectionUrlString() + "/multiConsensusPGroupIds";
+    }
+
     public String getMatchesWithPGroupIdUrlString(final String pGroupId) {
         return getMatchCollectionUrlString() + "/pGroup/" + pGroupId + "/matches";
+    }
+
+    public String getMatchesOutsideGroupUrlString(final String groupId) {
+        return getMatchCollectionUrlString() + "/group/" + groupId + "/matchesOutsideGroup";
     }
 
     public String getStackUrlString(final String stack) {

@@ -65,6 +65,7 @@ public class MatchService {
 
         final List<MatchCollectionMetaData> metaDataList = matchDao.getMatchCollectionMetaData();
         final Set<String> owners = new LinkedHashSet<>(metaDataList.size());
+        //noinspection Convert2streamapi
         for (final MatchCollectionMetaData metaData : metaDataList) {
             owners.add(metaData.getOwner());
         }
@@ -86,6 +87,7 @@ public class MatchService {
 
         final List<MatchCollectionMetaData> metaDataList = matchDao.getMatchCollectionMetaData();
         final List<MatchCollectionMetaData> ownerMetaDataList = new ArrayList<>(metaDataList.size());
+        //noinspection Convert2streamapi
         for (final MatchCollectionMetaData metaData : metaDataList) {
             if (owner.equals(metaData.getOwner())) {
                 ownerMetaDataList.add(metaData);
@@ -99,9 +101,7 @@ public class MatchService {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            value = "List distinct pGroup identifiers",
-            response = CanvasMatches.class,
-            responseContainer="List")
+            value = "List distinct pGroup identifiers")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Match collection not found")
     })
@@ -115,13 +115,30 @@ public class MatchService {
         return matchDao.getDistinctPGroupIds(collectionId);
     }
 
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/multiConsensusPGroupIds")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "List pGroup identifiers with multiple consensus set match pairs",
+            notes = "Looks for cross layer pGroupId/qGroupId combinations that have more than one match pair")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public List<String> getMultiConsensusPGroupIds(@PathParam("owner") final String owner,
+                                                   @PathParam("matchCollection") final String matchCollection) {
+
+        LOG.info("getMultiConsensusPGroupIds: entry, owner={}, matchCollection={}",
+                 owner, matchCollection);
+
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+        return matchDao.getMultiConsensusPGroupIds(collectionId);
+    }
+
     @Path("v1/owner/{owner}/matchCollection/{matchCollection}/qGroupIds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            value = "List distinct qGroup identifiers",
-            response = CanvasMatches.class,
-            responseContainer="List")
+            value = "List distinct qGroup identifiers")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Match collection not found")
     })
@@ -139,9 +156,7 @@ public class MatchService {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            value = "List distinct group (p and q) identifiers",
-            response = CanvasMatches.class,
-            responseContainer="List")
+            value = "List distinct group (p and q) identifiers")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Match collection not found")
     })

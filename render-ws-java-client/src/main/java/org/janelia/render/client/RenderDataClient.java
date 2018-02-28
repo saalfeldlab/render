@@ -1008,6 +1008,27 @@ public class RenderDataClient {
     }
 
     /**
+     * @return list of pGroup identifiers with multiple consensus set match pairs.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<String> getMatchMultiConsensusPGroupIds()
+            throws IOException {
+
+        final URI uri = getUri(urls.getMatchMultiConsensusPGroupIdsUrlString());
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final TypeReference<List<String>> typeReference = new TypeReference<List<String>>() {};
+        final JsonUtils.GenericHelper<List<String>> helper = new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<String>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getMatchMultiConsensusPGroupIds: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
      * @param  pGroupId      pGroupId (usually the section id).
      *
      * @return list of canvas matches with the specified pGroupId.
@@ -1025,9 +1046,56 @@ public class RenderDataClient {
         final JsonUtils.GenericHelper<List<CanvasMatches>> helper = new JsonUtils.GenericHelper<>(typeReference);
         final JsonResponseHandler<List<CanvasMatches>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
-        LOG.info("getMatches: submitting {}", requestContext);
+        LOG.info("getMatchesWithPGroupId: submitting {}", requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
+     * @param  groupId      groupId (usually the section id).
+     *
+     * @return list of canvas matches between the specified groupId
+     *         and all other canvases that have a different groupId.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<CanvasMatches> getMatchesOutsideGroup(final String groupId)
+            throws IOException {
+
+        final URI uri = getUri(urls.getMatchesOutsideGroupUrlString(groupId));
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final TypeReference<List<CanvasMatches>> typeReference = new TypeReference<List<CanvasMatches>>() {};
+        final JsonUtils.GenericHelper<List<CanvasMatches>> helper = new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<CanvasMatches>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getMatchesOutsideGroup: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+
+    /**
+     * Deletes matches between the specified group id and all other canvases that have a different groupId.
+     *
+     * @param  groupId      groupId (usually the section id).
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void deleteMatchesOutsideGroup(final String groupId)
+            throws IOException {
+
+        final URI uri = getUri(urls.getMatchesOutsideGroupUrlString(groupId));
+        final String requestContext = "DELETE " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpDelete httpDelete = new HttpDelete(uri);
+
+        LOG.info("deleteMatchesOutsideGroup: submitting {}", requestContext);
+
+        httpClient.execute(httpDelete, responseHandler);
     }
 
     /**

@@ -90,10 +90,27 @@ public class MatchDaoTest {
             Assert.assertEquals("invalid owner", collectionId.getOwner(), retrievedCollectionId.getOwner());
             if (collectionId.getName().equals(retrievedCollectionId.getName())) {
                 foundFirstCollection = true;
-                Assert.assertEquals("invalid number of pairs", new Long(4), metaData.getPairCount());
+                Assert.assertEquals("invalid number of pairs", new Long(11), metaData.getPairCount());
             }
         }
         Assert.assertTrue("missing first collection", foundFirstCollection);
+    }
+
+    @Test
+    public void testGetMultiConsensusPGroupIds() throws Exception {
+
+        final List<String> pGroupList = dao.getMultiConsensusPGroupIds(collectionId);
+
+        Assert.assertEquals("invalid number of p group ids returned",
+                            2, pGroupList.size());
+
+        if (! pGroupList.contains("section10")) {
+            Assert.fail("list missing section10, values are: " + pGroupList);
+        }
+
+        if (! pGroupList.contains("section13")) {
+            Assert.fail("list missing section13, values are: " + pGroupList);
+        }
     }
 
     @Test
