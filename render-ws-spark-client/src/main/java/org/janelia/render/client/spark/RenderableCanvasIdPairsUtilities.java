@@ -46,6 +46,7 @@ public class RenderableCanvasIdPairsUtilities {
                                                               final Integer renderFullScaleHeight,
                                                               final Double renderScale,
                                                               final Boolean renderWithFilter,
+                                                              final String renderFilterListName,
                                                               final Boolean renderWithoutMask)
             throws URISyntaxException {
 
@@ -78,6 +79,10 @@ public class RenderableCanvasIdPairsUtilities {
 
         if ((renderWithFilter != null) && renderWithFilter) {
             uriBuilder.addParameter("filter", "true");
+        }
+
+        if (renderFilterListName != null) {
+            uriBuilder.addParameter("filterListName", renderFilterListName);
         }
 
         if ((renderWithoutMask != null) && renderWithoutMask) {

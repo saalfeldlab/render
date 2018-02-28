@@ -29,6 +29,7 @@ public class RenderableCanvasIdPairsUtilitiesTest {
                         null,
                         1.0,
                         false,
+                        null,
                         false);
         Assert.assertEquals("invalid template derived for basic run",
                             baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters?" +
@@ -42,10 +43,11 @@ public class RenderableCanvasIdPairsUtilitiesTest {
                         2330,
                         0.8,
                         true,
+                        "fav",
                         true);
         Assert.assertEquals("invalid template derived for scaled run",
                             baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters?" +
-                            "width=2760&height=2330&scale=0.8&filter=true&excludeMask=true&normalizeForMatching=true",
+                            "width=2760&height=2330&scale=0.8&filter=true&filterListName=fav&excludeMask=true&normalizeForMatching=true",
                             templateForRun);
     }
 

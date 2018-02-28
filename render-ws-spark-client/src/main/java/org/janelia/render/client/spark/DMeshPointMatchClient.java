@@ -144,6 +144,7 @@ public class DMeshPointMatchClient
                         parameters.featureRender.renderFullScaleHeight,
                         parameters.featureRender.renderScale,
                         parameters.featureRender.renderWithFilter,
+                        parameters.featureRender.renderFilterListName,
                         parameters.featureRender.renderWithoutMask);
 
         final long cacheMaxKilobytes = parameters.maxImageCacheGb * 1000000;

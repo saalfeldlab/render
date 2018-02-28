@@ -158,6 +158,7 @@ public class SIFTPointMatchClient
                         featureRenderParameters.renderFullScaleHeight,
                         featureRenderParameters.renderScale,
                         featureRenderParameters.renderWithFilter,
+                        featureRenderParameters.renderFilterListName,
                         featureRenderParameters.renderWithoutMask);
 
         final long cacheMaxKilobytes = featureStorageParameters.maxCacheGb * 1000000;

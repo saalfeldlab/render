@@ -159,6 +159,7 @@ public class FeatureClient
                         featureRenderParameters.renderFullScaleHeight,
                         featureRenderParameters.renderScale,
                         featureRenderParameters.renderWithFilter,
+                        featureRenderParameters.renderFilterListName,
                         featureRenderParameters.renderWithoutMask);
 
         final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
