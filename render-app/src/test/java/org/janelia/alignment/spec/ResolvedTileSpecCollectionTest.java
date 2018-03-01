@@ -70,7 +70,7 @@ public class ResolvedTileSpecCollectionTest {
                             expectedTransformCountBeforeFilter, collection.getTransformCount());
 
         collection.setTileSpecValidator(validator);
-        collection.filterInvalidSpecs();
+        collection.removeInvalidTileSpecs();
 
         Assert.assertEquals("invalid number of tile specs after filter",
                             expectedTileCountAfterFilter, collection.getTileCount());

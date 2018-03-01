@@ -128,7 +128,7 @@ public class WarpTransformClient {
         final int totalNumberOfTiles = montageTiles.getTileCount();
         if (tileSpecValidator != null) {
             montageTiles.setTileSpecValidator(tileSpecValidator);
-            montageTiles.filterInvalidSpecs();
+            montageTiles.removeInvalidTileSpecs();
         }
         final int numberOfRemovedTiles = totalNumberOfTiles - montageTiles.getTileCount();
 

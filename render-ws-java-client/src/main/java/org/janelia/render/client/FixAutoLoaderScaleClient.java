@@ -155,7 +155,7 @@ public class FixAutoLoaderScaleClient {
 
             final int tileSpecCount = tileData.getTileCount();
 
-            tileData.filterInvalidSpecs();
+            tileData.removeInvalidTileSpecs();
 
             final int removedTiles = tileSpecCount - tileData.getTileCount();
 

@@ -85,7 +85,7 @@ public class ValidateTilesClient {
         final int totalNumberOfTiles = tiles.getTileCount();
         if (tileSpecValidator != null) {
             tiles.setTileSpecValidator(tileSpecValidator);
-            tiles.filterInvalidSpecs();
+            tiles.removeInvalidTileSpecs();
         }
 
         final int numberOfRemovedTiles = totalNumberOfTiles - tiles.getTileCount();

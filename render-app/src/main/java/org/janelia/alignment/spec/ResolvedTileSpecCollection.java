@@ -277,7 +277,7 @@ public class ResolvedTileSpecCollection implements Serializable {
      *
      * @param  tileIdsToKeep  identifies which tile specs should be kept.
      */
-    public void filterSpecs(final Set<String> tileIdsToKeep) {
+    public void removeDifferentTileSpecs(final Set<String> tileIdsToKeep) {
         final Iterator<Map.Entry<String, TileSpec>> i = tileIdToSpecMap.entrySet().iterator();
         Map.Entry<String, TileSpec> entry;
         while (i.hasNext()) {
@@ -293,7 +293,7 @@ public class ResolvedTileSpecCollection implements Serializable {
     /**
      * Uses this collection's tileSpecValidator to remove any invalid tile specs.
      */
-    public void filterInvalidSpecs() {
+    public void removeInvalidTileSpecs() {
 
         if (tileSpecValidator != null) {
             final Iterator<Map.Entry<String, TileSpec>> i = tileIdToSpecMap.entrySet().iterator();

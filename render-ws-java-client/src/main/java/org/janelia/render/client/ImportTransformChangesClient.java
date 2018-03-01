@@ -256,7 +256,7 @@ public class ImportTransformChangesClient {
 
             LOG.info("updateTiles: filtering tile spec collection {}", tileSpecs);
 
-            tileSpecs.filterSpecs(tileIdToLoadedTransformMap.keySet());
+            tileSpecs.removeDifferentTileSpecs(tileIdToLoadedTransformMap.keySet());
 
             if (! tileSpecs.hasTileSpecs()) {
                 throw new IllegalArgumentException("after filtering out unreferenced source tiles, " +
@@ -301,7 +301,7 @@ public class ImportTransformChangesClient {
                 }
             }
 
-            tileSpecs.filterInvalidSpecs();
+            tileSpecs.removeInvalidTileSpecs();
 
             final int removedTiles = tileSpecCount - tileSpecs.getTileCount();
 
