@@ -34,7 +34,7 @@
     {
         "pGroupId": "section10", "pId": "tileA_set_section10_section_11_0",
         "qGroupId": "section11", "qId": "tileB_set_section10_section_11_0",
-        "consensusSetIndex": 0,
+        "consensusSetData": { "index": 0, "originalPId": "tileA", "originalQId": "tileB" },
         "matches": {
             "p": [[0.0],[1.0]],
             "q": [[2.0],[3.0]],
@@ -44,7 +44,7 @@
     {
         "pGroupId": "section10", "pId": "tileA_set_section10_section_11_1",
         "qGroupId": "section11", "qId": "tileB_set_section10_section_11_1",
-        "consensusSetIndex": 1,
+        "consensusSetData": { "index": 1, "originalPId": "tileA", "originalQId": "tileB" },
         "matches": {
             "p": [[0.0],[1.0]],
             "q": [[2.0],[3.0]],
@@ -54,7 +54,7 @@
     {
         "pGroupId": "section10", "pId": "tileA_set_section10_section_12_0",
         "qGroupId": "section12", "qId": "tileC_set_section10_section_12_0",
-        "consensusSetIndex": 0,
+        "consensusSetData": { "index": 0, "originalPId": "tileA", "originalQId": "tileC" },
         "matches": {
             "p": [[0.0],[1.0]],
             "q": [[2.0],[3.0]],
@@ -64,7 +64,7 @@
     {
         "pGroupId": "section10", "pId": "tileA_set_section10_section_12_1",
         "qGroupId": "section12", "qId": "tileC_set_section10_section_12_1",
-        "consensusSetIndex": 1,
+        "consensusSetData": { "index": 1, "originalPId": "tileA", "originalQId": "tileC" },
         "matches": {
             "p": [[0.0],[1.0]],
             "q": [[2.0],[3.0]],
@@ -74,7 +74,7 @@
     {
         "pGroupId": "section13", "pId": "tileD_set_section13_section_14_0",
         "qGroupId": "section14", "qId": "tileE_set_section13_section_14_0",
-        "consensusSetIndex": 0,
+        "consensusSetData": { "index": 0, "originalPId": "tileD", "originalQId": "tileE" },
         "matches": {
             "p": [[0.0],[1.0]],
             "q": [[2.0],[3.0]],
@@ -84,7 +84,7 @@
     {
         "pGroupId": "section13", "pId": "tileD_set_section13_section_14_1",
         "qGroupId": "section14", "qId": "tileE_set_section13_section_14_1",
-        "consensusSetIndex": 1,
+        "consensusSetData": { "index": 1, "originalPId": "tileD", "originalQId": "tileE" },
         "matches": {
             "p": [[0.0],[1.0]],
             "q": [[2.0],[3.0]],
@@ -94,7 +94,7 @@
     {
         "pGroupId": "section13", "pId": "tileD_set_section13_section_14_2",
         "qGroupId": "section14", "qId": "tileE_set_section13_section_14_2",
-        "consensusSetIndex": 2,
+        "consensusSetData": { "index": 2, "originalPId": "tileD", "originalQId": "tileE" },
         "matches": {
             "p": [[0.0],[1.0]],
             "q": [[2.0],[3.0]],

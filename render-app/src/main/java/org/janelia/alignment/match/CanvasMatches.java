@@ -41,9 +41,9 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
     @ApiModelProperty(value = "Canvas (or tile) identifier for all target coordinates", required = true)
     private String qId;
 
-    /** Index of the size-ordered consensus set for these matches (or null these are the only set of matches).  */
-    @ApiModelProperty(value = "Index of the size-ordered consensus set for these matches", required = false)
-    private Integer consensusSetIndex;
+    /** Information about this consensus set of matches (or null if there is only one set).  */
+    @ApiModelProperty(value = "Information about this consensus set of matches (omit if there is only one set)", required = false)
+    private ConsensusSetData consensusSetData;
 
     /** Weighted source-target point correspondences. */
     @ApiModelProperty(value = "Weighted source-target point correspondences", required=true)
@@ -140,26 +140,27 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
     }
 
     /**
-     * Sets the consensus set index for these matches, updating the pId and qId values to ensure uniqueness.
+     * Sets the consensus set data for these matches, updating the pId and qId values to ensure uniqueness.
      *
-     * @param  consensusSetIndex  index of the size-ordered consensus set for these matches.
+     * @param  consensusSetIndex  index of the size-ordered consensus set for these matches (0 is largest set).
      *
      * @throws IllegalStateException
-     *   if the consensus set index has already been defined.
+     *   if the consensus set data has already been defined for these matches.
      */
     public void setConsensusSetIndex(final Integer consensusSetIndex)
             throws IllegalStateException {
 
-        if (this.consensusSetIndex != null) {
-            throw new IllegalStateException("consensus set index has already been set for " + this);
+        if (this.consensusSetData != null) {
+            throw new IllegalStateException("consensus set data has already been set for " + this);
         }
 
-        // need to include group ids and set number to ensure id uniqueness from consensus sets for other pairs
+        this.consensusSetData = new ConsensusSetData(consensusSetIndex, this.pId, this.qId);
+
+        // include group ids and set number to ensure id uniqueness from consensus sets for other pairs
+        // (since these ids will likely be used for tile specs)
         final String setSuffix = "_set_" + this.pGroupId + "_" + this.qGroupId + "_" + consensusSetIndex;
         this.pId = this.pId + setSuffix;
         this.qId = this.qId + setSuffix;
-
-        this.consensusSetIndex = consensusSetIndex;
     }
 
     @Override

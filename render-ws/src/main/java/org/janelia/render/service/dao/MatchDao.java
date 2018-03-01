@@ -111,14 +111,14 @@ public class MatchDao {
 
         // db.<matchCollection>.aggregate(
         //     [
-        //         { "$match": { "consensusSetIndex": { "$exists": true } } }
+        //         { "$match": { "consensusSetData": { "$exists": true } } }
         //         { "$group": { "_id": { "pGroupId": "$pGroupId" } } },
         //     ]
         // )
 
         final List<Document> pipeline = new ArrayList<>();
         pipeline.add(new Document("$match",
-                                  new Document("consensusSetIndex",
+                                  new Document("consensusSetData",
                                                new Document(QueryOperators.EXISTS, true))));
         pipeline.add(new Document("$group",
                                   new Document("_id",
