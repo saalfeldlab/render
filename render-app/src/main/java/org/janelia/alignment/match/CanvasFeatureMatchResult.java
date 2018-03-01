@@ -95,15 +95,13 @@ public class CanvasFeatureMatchResult implements Serializable {
                                        getInlierMatches(renderScale, pOffsets, qOffsets)));
         } else {
 
-            int setNumber = 0;
+            int consensusSetIndex = 0;
             for (final List<PointMatch> consensusSet : consensusSetInliers) {
-                // need to include group ids and set number to ensure id uniqueness from consensus sets for other pairs
-                final String setSuffix = "_set_" + pGroupId + "_" + qGroupId + "_" + setNumber;
-                final String pIdForSet = pId + setSuffix;
-                final String qIdForSet = qId + setSuffix;
                 final Matches matches = convertPointMatchListToMatches(consensusSet, renderScale, pOffsets, qOffsets);
-                list.add(new CanvasMatches(pGroupId, pIdForSet, qGroupId, qIdForSet, matches));
-                setNumber++;
+                final CanvasMatches canvasMatches = new CanvasMatches(pGroupId, pId, qGroupId, qId, matches);
+                canvasMatches.setConsensusSetIndex(consensusSetIndex);
+                list.add(canvasMatches);
+                consensusSetIndex++;
             }
 
         }

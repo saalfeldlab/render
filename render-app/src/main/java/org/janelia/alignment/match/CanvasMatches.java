@@ -26,21 +26,24 @@ import io.swagger.annotations.ApiModelProperty;
 public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
 
     /** Group (or section) identifier for all source coordinates. */
-    @ApiModelProperty(value = "Group (or section) identifier for all source coordinates",
-                      required=true)
+    @ApiModelProperty(value = "Group (or section) identifier for all source coordinates", required = true)
     private String pGroupId;
 
     /** Canvas (or tile) identifier for all source coordinates. */
-    @ApiModelProperty(value = "Canvas (or tile) identifier for all source coordinates", required=true)
+    @ApiModelProperty(value = "Canvas (or tile) identifier for all source coordinates", required = true)
     private String pId;
 
     /** Group (or section) identifier for all target coordinates. */
-    @ApiModelProperty(value = "Group (or section) identifier for all target coordinates", required=true)
+    @ApiModelProperty(value = "Group (or section) identifier for all target coordinates", required = true)
     private String qGroupId;
 
     /** Canvas (or tile) identifier for all target coordinates. */
-    @ApiModelProperty(value = "Canvas (or tile) identifier for all target coordinates", required=true)
+    @ApiModelProperty(value = "Canvas (or tile) identifier for all target coordinates", required = true)
     private String qId;
+
+    /** Index of the size-ordered consensus set for these matches (or null these are the only set of matches).  */
+    @ApiModelProperty(value = "Index of the size-ordered consensus set for these matches", required = false)
+    private Integer consensusSetIndex;
 
     /** Weighted source-target point correspondences. */
     @ApiModelProperty(value = "Weighted source-target point correspondences", required=true)
@@ -136,6 +139,29 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         }
     }
 
+    /**
+     * Sets the consensus set index for these matches, updating the pId and qId values to ensure uniqueness.
+     *
+     * @param  consensusSetIndex  index of the size-ordered consensus set for these matches.
+     *
+     * @throws IllegalStateException
+     *   if the consensus set index has already been defined.
+     */
+    public void setConsensusSetIndex(final Integer consensusSetIndex)
+            throws IllegalStateException {
+
+        if (this.consensusSetIndex != null) {
+            throw new IllegalStateException("consensus set index has already been set for " + this);
+        }
+
+        // need to include group ids and set number to ensure id uniqueness from consensus sets for other pairs
+        final String setSuffix = "_set_" + this.pGroupId + "_" + this.qGroupId + "_" + consensusSetIndex;
+        this.pId = this.pId + setSuffix;
+        this.qId = this.qId + setSuffix;
+
+        this.consensusSetIndex = consensusSetIndex;
+    }
+
     @Override
     public boolean equals(final Object o) {
         final boolean result;
@@ -206,11 +232,7 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
 
     @Override
     public String toString() {
-        return "{pGroupId: " + pGroupId +
-               ", pId: '" + pId + '\'' +
-               ", qGroupId: " + qGroupId +
-               ", qId: '" + qId + '\'' +
-               '}';
+        return toJson();
     }
 
     @SuppressWarnings("UnusedDeclaration")

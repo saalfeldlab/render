@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -112,27 +111,18 @@ public class MatchDao {
 
         // db.<matchCollection>.aggregate(
         //     [
-        //         { "$project" : { "pGroupId" : 1, "qGroupId" : 1,
-        //                          "diffGroup" : { "$ne" : ["$pGroupId", "$qGroupId"] } } },
-        //         { "$match" : { "diffGroup" : true } },
-        //         { "$group": { "_id": { "pGroupId": "$pGroupId", "qGroupId": "$qGroupId" },
-        //                       "pairCount": { "$sum": 1 } } },
-        //         { "$match": { "pairCount": { "$gt": 1 } } }
+        //         { "$match": { "consensusSetIndex": { "$exists": true } } }
+        //         { "$group": { "_id": { "pGroupId": "$pGroupId" } } },
         //     ]
         // )
 
-        final Document diffComponents = new Document(QueryOperators.NE, Arrays.asList("$pGroupId", "$qGroupId"));
-        final Document projectComponents =
-                new Document("pGroupId", 1).append("qGroupId", 1).append("diffGroup", diffComponents);
-
-        final Document idComponents = new Document("pGroupId", "$pGroupId").append("qGroupId", "$qGroupId");
-        final Document groupComponents = new Document("_id", idComponents).append("pairCount", new Document("$sum", 1));
-
         final List<Document> pipeline = new ArrayList<>();
-        pipeline.add(new Document("$project", projectComponents));
-        pipeline.add(new Document("$match", new Document("diffGroup", true)));
-        pipeline.add(new Document("$group", groupComponents));
-        pipeline.add(new Document("$match", new Document("pairCount", new Document(QueryOperators.GT, 1))));
+        pipeline.add(new Document("$match",
+                                  new Document("consensusSetIndex",
+                                               new Document(QueryOperators.EXISTS, true))));
+        pipeline.add(new Document("$group",
+                                  new Document("_id",
+                                               new Document("pGroupId", "$pGroupId"))));
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("getMultiConsensusPGroupIds: running {}.aggregate({})",
