@@ -6,7 +6,7 @@ import java.io.File;
 import java.io.Serializable;
 
 /**
- * Parameters for persiting or retrieving extracted feature data to/from disk.
+ * Parameters for persisting or retrieving extracted feature data to/from disk.
  *
  * @author Eric Trautman
  */
