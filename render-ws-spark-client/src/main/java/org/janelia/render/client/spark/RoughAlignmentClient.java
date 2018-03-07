@@ -134,6 +134,12 @@ public class RoughAlignmentClient
         @ParametersDelegate
         public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
 
+        @Parameter(
+                names = { "--maxFeatureCacheGb" },
+                description = "Maximum number of gigabytes of features to cache",
+                required = false)
+        public Integer maxCacheGb = 2;
+
         @ParametersDelegate
         public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
@@ -370,6 +376,12 @@ public class RoughAlignmentClient
         return renderableCanvasIdPairs;
     }
 
+    private FeatureStorageParameters getFeatureStorageParameters() {
+        final FeatureStorageParameters storageParameters = new FeatureStorageParameters();
+        storageParameters.maxCacheGb = parameters.maxCacheGb;
+        return storageParameters;
+    }
+
     private void generateMatchesForTier()
             throws IOException, URISyntaxException {
 
@@ -465,7 +477,7 @@ public class RoughAlignmentClient
                                                                      featureRenderParameters,
                                                                      emptyClipParameters,
                                                                      parameters.featureExtraction,
-                                                                     new FeatureStorageParameters(),
+                                                                     getFeatureStorageParameters(),
                                                                      parameters.matchDerivation,
                                                                      matchStorageFunction);
 
