@@ -273,21 +273,21 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     /**
+     * Removes any tile specs identified in the provided set from this collection.
+     *
+     * @param  tileIdsToRemove  identifies which tile specs should be removed.
+     */
+    public void removeTileSpecs(final Set<String> tileIdsToRemove) {
+        removeTileSpecs(tileIdsToRemove, true);
+    }
+
+    /**
      * Removes any tile specs not identified in the provided set from this collection.
      *
      * @param  tileIdsToKeep  identifies which tile specs should be kept.
      */
     public void removeDifferentTileSpecs(final Set<String> tileIdsToKeep) {
-        final Iterator<Map.Entry<String, TileSpec>> i = tileIdToSpecMap.entrySet().iterator();
-        Map.Entry<String, TileSpec> entry;
-        while (i.hasNext()) {
-            entry = i.next();
-            if (! tileIdsToKeep.contains(entry.getKey())) {
-                i.remove();
-            }
-        }
-
-        removeUnreferencedTransforms();
+        removeTileSpecs(tileIdsToKeep, false);
     }
 
     /**
@@ -443,6 +443,20 @@ public class ResolvedTileSpecCollection implements Serializable {
                 addReferencedTransformIds((ListTransformSpec) transformSpec, referencedTransformIds);
             }
         }
+    }
+
+    private void removeTileSpecs(final Set<String> tileIds,
+                                 final boolean removeSpecsWithIds) {
+        final Iterator<Map.Entry<String, TileSpec>> i = tileIdToSpecMap.entrySet().iterator();
+        Map.Entry<String, TileSpec> entry;
+        while (i.hasNext()) {
+            entry = i.next();
+            if (tileIds.contains(entry.getKey()) == removeSpecsWithIds) {
+                i.remove();
+            }
+        }
+
+        removeUnreferencedTransforms();
     }
 
     /**
