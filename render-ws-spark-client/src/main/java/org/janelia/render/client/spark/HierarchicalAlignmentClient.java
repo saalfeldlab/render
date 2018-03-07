@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.apache.spark.SparkConf;
@@ -21,11 +22,15 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.broadcast.Broadcast;
+import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.DerivedMatchGroup;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
+import org.janelia.alignment.match.SplitCanvasHelper;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.HierarchicalTierRegions;
 import org.janelia.alignment.spec.stack.StackId;
@@ -36,9 +41,9 @@ import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.FeatureExtractionParameters;
 import org.janelia.render.client.parameter.FeatureRenderClipParameters;
+import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.FeatureStorageParameters;
 import org.janelia.render.client.parameter.MatchDerivationParameters;
-import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,6 +141,12 @@ public class HierarchicalAlignmentClient
 
         @ParametersDelegate
         public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+
+        @Parameter(
+                names = { "--maxFeatureCacheGb" },
+                description = "Maximum number of gigabytes of features to cache",
+                required = false)
+        public Integer maxCacheGb = 2;
 
         @ParametersDelegate
         public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
@@ -402,6 +413,12 @@ public class HierarchicalAlignmentClient
         return renderableCanvasIdPairs;
     }
 
+    private FeatureStorageParameters getFeatureStorageParameters() {
+        final FeatureStorageParameters storageParameters = new FeatureStorageParameters();
+        storageParameters.maxCacheGb = parameters.maxCacheGb;
+        return storageParameters;
+    }
+
     private void generateMatchesForTier()
             throws IOException, URISyntaxException {
 
@@ -544,7 +561,7 @@ public class HierarchicalAlignmentClient
                                                                  featureRenderParameters,
                                                                  emptyClipParameters,
                                                                  parameters.featureExtraction,
-                                                                 new FeatureStorageParameters(),
+                                                                 getFeatureStorageParameters(),
                                                                  parameters.matchDerivation,
                                                                  matchStorageFunction);
 
@@ -599,7 +616,7 @@ public class HierarchicalAlignmentClient
                                                                      featureRenderParameters,
                                                                      emptyClipParameters,
                                                                      parameters.featureExtraction,
-                                                                     new FeatureStorageParameters(),
+                                                                     getFeatureStorageParameters(),
                                                                      parameters.matchDerivation,
                                                                      matchStorageFunction);
 
@@ -610,6 +627,64 @@ public class HierarchicalAlignmentClient
         }
 
         LOG.info("generateTierMatchesByStack: exit");
+    }
+
+    private void deriveSplitMatchesForConsensusSetCanvases(final List<HierarchicalStack> stacksToAlign)
+            throws IOException {
+
+        for (final HierarchicalStack tierStack : stacksToAlign) {
+
+            final MatchCollectionId matchCollectionId = tierStack.getMatchCollectionId();
+
+            final RenderDataClient driverMatchClient = new RenderDataClient(this.parameters.renderWeb.baseDataUrl,
+                                                                            matchCollectionId.getOwner(),
+                                                                            matchCollectionId.getName());
+
+            final List<String> multiConsensusGroupIds = driverMatchClient.getMatchMultiConsensusPGroupIds();
+
+            LOG.info("deriveSplitMatchesForConsensusSetCanvases: found {} multi consensus group ids in {}",
+                     multiConsensusGroupIds.size(), matchCollectionId.getName());
+
+            if (multiConsensusGroupIds.size() > 0) {
+
+                final Set<CanvasMatches> multiConsensusPairs = new TreeSet<>();
+                for (final String groupId : multiConsensusGroupIds) {
+                    multiConsensusPairs.addAll(driverMatchClient.getMatchesOutsideGroup(groupId));
+                }
+
+                LOG.info("deriveSplitMatchesForConsensusSetCanvases: found {} distinct multi consensus pairs",
+                         multiConsensusPairs.size());
+
+                final String tierStackName = tierStack.getSplitStackId().getStack();
+                final SplitCanvasHelper splitCanvasHelper = new SplitCanvasHelper();
+
+                for (final String groupId : multiConsensusGroupIds) {
+                    final DerivedMatchGroup derivedMatchGroup = new DerivedMatchGroup(groupId, multiConsensusPairs);
+                    final List<CanvasMatches> derivedMatchPairs = derivedMatchGroup.getDerivedPairs();
+
+                    driverMatchClient.deleteMatchesOutsideGroup(groupId);
+                    driverMatchClient.saveMatches(derivedMatchPairs);
+
+                    splitCanvasHelper.trackSplitCanvases(derivedMatchPairs);
+                }
+
+                LOG.info("deriveSplitMatchesForConsensusSetCanvases: allocated matches to {} split canvases",
+                         splitCanvasHelper.getCanvasCount());
+
+                driverTierRender.setStackState(tierStackName, StackMetaData.StackState.LOADING);
+
+                for (final Double z : splitCanvasHelper.getSortedZValues()) {
+                    final ResolvedTileSpecCollection resolvedTiles = driverTierRender.getResolvedTiles(tierStackName, z);
+                    splitCanvasHelper.addDerivedTileSpecsToCollection(z, resolvedTiles);
+                    resolvedTiles.removeTileSpecs(splitCanvasHelper.getOriginalIdsForZ(z));
+                    driverTierRender.deleteStack(tierStackName, z);
+                    driverTierRender.saveResolvedTiles(resolvedTiles, tierStackName, z);
+                }
+
+                driverTierRender.setStackState(tierStackName, StackMetaData.StackState.COMPLETE);
+            }
+
+        }
     }
 
     private void alignTier()
@@ -638,6 +713,8 @@ public class HierarchicalAlignmentClient
         }
 
         if (stacksToAlign.size() > 0) {
+
+            deriveSplitMatchesForConsensusSetCanvases(stacksToAlign);
 
             // broadcast EM_aligner tool to ensure that solver is run serially on each node
             final EMAlignerTool solver = new EMAlignerTool(new File(parameters.solverScript),
