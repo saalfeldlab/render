@@ -99,7 +99,7 @@ public class MatchDao {
     }
 
     /**
-     * Finds sections that have multiple (split) cross layer consensus set match pairs.
+     * Finds p sections that have multiple (split) cross layer consensus set match pairs.
      *
      * @return list of pGroupIds for pGroupId/qGroupId combinations that have more than one match pair
      *         in the specified collection.
@@ -111,8 +111,8 @@ public class MatchDao {
 
         // db.<matchCollection>.aggregate(
         //     [
-        //         { "$match": { "consensusSetData": { "$exists": true } } }
-        //         { "$group": { "_id": { "pGroupId": "$pGroupId" } } },
+        //         { "$match": { "consensusSetData": { "$exists": true } } },
+        //         { "$group": { "_id": { "pGroupId": "$pGroupId" } } }
         //     ]
         // )
 
@@ -144,6 +144,55 @@ public class MatchDao {
         }
 
         return new ArrayList<>(pGroupIdsWithMultiplePairs);
+    }
+
+    /**
+     * Finds all sections that have multiple (split) cross layer consensus set match pairs.
+     *
+     * @return distinct set of p and q group ids for pGroupId/qGroupId combinations that have more than one match pair
+     *         in the specified collection.
+     */
+    public Set<String> getMultiConsensusGroupIds(final MatchCollectionId collectionId)
+            throws IllegalArgumentException {
+
+        final MongoCollection<Document> matchCollection = getExistingCollection(collectionId);
+
+        // db.<matchCollection>.aggregate(
+        //     [
+        //         { "$match": { "consensusSetData": { "$exists": true } } },
+        //         { "$group": { "_id": { "pGroupId": "$pGroupId", "qGroupId": "$qGroupId" } } }
+        //     ]
+        // )
+
+        final List<Document> pipeline = new ArrayList<>();
+        pipeline.add(new Document("$match",
+                                  new Document("consensusSetData",
+                                               new Document(QueryOperators.EXISTS, true))));
+        pipeline.add(new Document("$group",
+                                  new Document("_id",
+                                               new Document("pGroupId", "$pGroupId").append("qGroupId", "$qGroupId"))));
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("getMultiConsensusPGroupIds: running {}.aggregate({})",
+                      MongoUtil.fullName(matchCollection),
+                      MongoUtil.toJson(pipeline));
+        }
+
+        // sort and reduce to distinct set of group ids here instead of in pipeline
+        final TreeSet<String> groupIdsWithMultiplePairs = new TreeSet<>();
+
+        // mongodb java 3.0 driver notes:
+        // -- need to set cursor batchSize to prevent NPE from cursor creation
+        final AggregateIterable<Document> iterable = matchCollection.aggregate(pipeline).batchSize(1);
+        try (MongoCursor<Document> cursor = iterable.iterator()) {
+            while (cursor.hasNext()) {
+                final Document id = cursor.next().get("_id", Document.class);
+                groupIdsWithMultiplePairs.add(id.getString("pGroupId"));
+                groupIdsWithMultiplePairs.add(id.getString("qGroupId"));
+            }
+        }
+
+        return groupIdsWithMultiplePairs;
     }
 
     public void writeMatchesWithPGroup(final MatchCollectionId collectionId,
@@ -198,6 +247,22 @@ public class MatchDao {
         final Document query = getOutsideGroupQuery(groupId);
 
         writeMatches(collectionList, query, outputStream);
+    }
+
+    public List<CanvasMatches> getMatchesOutsideGroup(final MatchCollectionId collectionId,
+                                                      final String groupId)
+            throws IllegalArgumentException, IOException, ObjectNotFoundException {
+
+        LOG.debug("getMatchesOutsideGroup: entry, collectionId={}, groupId={}",
+                  collectionId, groupId);
+
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+
+        MongoUtil.validateRequiredParameter("groupId", groupId);
+
+        final Document query = getOutsideGroupQuery(groupId);
+
+        return getMatches(collection, query);
     }
 
     public void writeMatchesBetweenGroups(final MatchCollectionId collectionId,
@@ -527,6 +592,26 @@ public class MatchDao {
         }
 
         return distinctIds;
+    }
+
+    private List<CanvasMatches> getMatches(final MongoCollection<Document> collection,
+                                           final Document query)
+            throws IOException {
+
+        final List<CanvasMatches> canvasMatchesList = new ArrayList<>();
+
+        try (MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).iterator()) {
+            while (cursor.hasNext()) {
+                canvasMatchesList.add(CanvasMatches.fromJson(cursor.next().toJson()));
+            }
+        }
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("getMatches: wrote data for {} matches returned by {}.find({},{})",
+                      canvasMatchesList.size(), MongoUtil.fullName(collection), query.toJson(), EXCLUDE_MONGO_ID_KEY_JSON);
+        }
+
+        return canvasMatchesList;
     }
 
     private void writeMatches(final List<MongoCollection<Document>> collectionList,
