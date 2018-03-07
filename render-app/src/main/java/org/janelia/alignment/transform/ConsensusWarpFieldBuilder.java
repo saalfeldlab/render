@@ -9,7 +9,6 @@ import java.util.Set;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.Point;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,20 +100,16 @@ public class ConsensusWarpFieldBuilder {
      * @param  points          set of points associated with the model.
      */
     public void addConsensusSetData(final Affine2D alignmentModel,
-                                    final List<Point> points) {
+                                    final List<RealPoint> points) {
 
         final ARGBType consensusSetIndex = new ARGBType(consensusSetModelList.size());
         consensusSetModelList.add(alignmentModel);
 
-        double[] local;
         double x;
         double y;
-        for (final Point point : points) {
-
-            local = point.getL();
-            x = local[0] / pixelsPerColumn;
-            y = local[1] / pixelsPerRow;
-
+        for (final RealPoint point : points) {
+            x = point.getDoublePosition(0) / pixelsPerColumn;
+            y = point.getDoublePosition(1) / pixelsPerRow;
             consensusSetIndexSamples.add(new RealPoint(x, y), consensusSetIndex);
         }
 
@@ -190,7 +185,7 @@ public class ConsensusWarpFieldBuilder {
         validateConsistency("width", width, otherBuilder.width);
         validateConsistency("height", height, otherBuilder.height);
 
-        final Map<Integer, List<Point>> cellToPointsMap = new LinkedHashMap<>();
+        final Map<Integer, List<RealPoint>> cellToPointsMap = new LinkedHashMap<>();
         mapCellsToPoints(cellToPointsMap, consensusSetIndexSamples.cursor());
         mapCellsToPoints(cellToPointsMap, otherBuilder.consensusSetIndexSamples.cursor());
 
@@ -199,8 +194,8 @@ public class ConsensusWarpFieldBuilder {
 
         LOG.info("mergeBuilder: mapped points to {} cells", cellToPointsMap.size());
 
-        final Map<String, List<Point>> setPairToPointsMap = new LinkedHashMap<>();
-        List<Point> pointList;
+        final Map<String, List<RealPoint>> setPairToPointsMap = new LinkedHashMap<>();
+        List<RealPoint> pointList;
         for (int i = 0; i < modelIndexGrid.length; i++) {
             final String setPair = modelIndexGrid[i] + "::" + otherModelIndexGrid[i];
             pointList = setPairToPointsMap.get(setPair);
@@ -208,7 +203,7 @@ public class ConsensusWarpFieldBuilder {
                 pointList = new ArrayList<>();
                 setPairToPointsMap.put(setPair, pointList);
             }
-            final List<Point> cellPoints = cellToPointsMap.get(i);
+            final List<RealPoint> cellPoints = cellToPointsMap.get(i);
             if (cellPoints != null) {
                 pointList.addAll(cellPoints);
             }
@@ -219,17 +214,17 @@ public class ConsensusWarpFieldBuilder {
         final ConsensusWarpFieldBuilder mergedBuilder =
                 new ConsensusWarpFieldBuilder(width, height, rowCount, columnCount);
 
-        for (final List<Point> setPoints : setPairToPointsMap.values()) {
+        for (final List<RealPoint> setPoints : setPairToPointsMap.values()) {
             mergedBuilder.addConsensusSetData(new AffineModel2D(), setPoints);
         }
 
         return mergedBuilder;
     }
 
-    private void mapCellsToPoints(final Map<Integer, List<Point>> cellToPointsMap,
+    private void mapCellsToPoints(final Map<Integer, List<RealPoint>> cellToPointsMap,
                                   final RealCursor<ARGBType> cursor) {
 
-        List<Point> pointList;
+        List<RealPoint> pointList;
 
         while (cursor.hasNext()) {
 
@@ -247,7 +242,7 @@ public class ConsensusWarpFieldBuilder {
                 cellToPointsMap.put(gridIndex, pointList);
             }
 
-            pointList.add(new Point(new double[] {x, y}));
+            pointList.add(new RealPoint(x, y));
         }
     }
 

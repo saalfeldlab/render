@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
 import org.janelia.alignment.match.CanvasFeatureMatcherTest;
@@ -30,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import junit.framework.Assert;
+import net.imglib2.RealPoint;
 
 /**
  * Tests the {@link ConsensusWarpFieldBuilder} class.
@@ -50,8 +50,10 @@ public class ConsensusWarpFieldBuilderTest {
         int setNumber = 0;
         for (final List<PointMatch> pointMatchList : consensusSets) {
 
-            final List<Point> pointList = new ArrayList<>(pointMatchList.size());
-            pointList.addAll(pointMatchList.stream().map(PointMatch::getP1).collect(Collectors.toList()));
+            final List<RealPoint> pointList =
+                    pointMatchList.stream()
+                            .map(pointMatch -> new RealPoint(pointMatch.getP1().getL()))
+                            .collect(Collectors.toList());
 
             final AffineModel2D alignmentModel = new AffineModel2D();
             alignmentModel.set(1.0, 0.0, 0.0, 1.0, (setNumber * 100), (setNumber * 100));
@@ -80,9 +82,9 @@ public class ConsensusWarpFieldBuilderTest {
         final ConsensusWarpFieldBuilder builder1 = new ConsensusWarpFieldBuilder(cellSize, cellSize, gridRes, gridRes);
         final ConsensusWarpFieldBuilder builder2 = new ConsensusWarpFieldBuilder(cellSize, cellSize, gridRes, gridRes);
 
-        final List<Point> set1A = new ArrayList<>();
-        final List<Point> set1B = new ArrayList<>();
-        final List<Point> set1C = new ArrayList<>();
+        final List<RealPoint> set1A = new ArrayList<>();
+        final List<RealPoint> set1B = new ArrayList<>();
+        final List<RealPoint> set1C = new ArrayList<>();
 
         int column = 0;
         for (int row = 0; row < 10; row++) {
@@ -111,8 +113,8 @@ public class ConsensusWarpFieldBuilderTest {
         Assert.assertEquals("invalid number of consensus sets left in grid after nearest neighbor analysis",
                             3, builder1.getNumberOfConsensusSetsInGrid());
 
-        final List<Point> set2A = new ArrayList<>();
-        final List<Point> set2B = new ArrayList<>();
+        final List<RealPoint> set2A = new ArrayList<>();
+        final List<RealPoint> set2B = new ArrayList<>();
 
         for (column = 0; column < 10; column++) {
             for (int row = 0; row < 10; row++) {
@@ -142,8 +144,8 @@ public class ConsensusWarpFieldBuilderTest {
 
     private void addPoint(final int x,
                           final int y,
-                          final List<Point> pointList) {
-        pointList.add(new Point(new double[] { x, y }));
+                          final List<RealPoint> pointList) {
+        pointList.add(new RealPoint(x, y));
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ConsensusWarpFieldBuilderTest.class);
