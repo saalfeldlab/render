@@ -135,6 +135,26 @@ public class MatchService {
         return matchDao.getMultiConsensusPGroupIds(collectionId);
     }
 
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/multiConsensusGroupIds")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Hierarchical APIs",
+            value = "List p and q group identifiers with multiple consensus set match pairs",
+            notes = "Looks for cross layer pGroupId/qGroupId combinations that have more than one match pair")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public Set<String> getMultiConsensusGroupIds(@PathParam("owner") final String owner,
+                                                  @PathParam("matchCollection") final String matchCollection) {
+
+        LOG.info("getMultiConsensusGroupIds: entry, owner={}, matchCollection={}",
+                 owner, matchCollection);
+
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+        return matchDao.getMultiConsensusGroupIds(collectionId);
+    }
+
     @Path("v1/owner/{owner}/matchCollection/{matchCollection}/qGroupIds")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
