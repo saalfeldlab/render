@@ -186,7 +186,7 @@ public class PointMatchOptimizerClient {
                                                parameters.matchDerivation.matchMinNumInliers,
                                                parameters.matchDerivation.matchMaxTrust,
                                                null,
-                                               true);
+                                               CanvasFeatureMatcher.FilterType.SINGLE_SET);
             matchResult = matcher.deriveMatchResult(pFeatureList, qFeatureList);
 
             inlierCount = matchResult.getInlierPointMatchList().size();

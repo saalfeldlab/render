@@ -2,15 +2,22 @@ package org.janelia.alignment.transform;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
 import mpicbg.models.Point;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.imglib2.Cursor;
 import net.imglib2.KDTree;
 import net.imglib2.RandomAccessible;
+import net.imglib2.RealCursor;
 import net.imglib2.RealPoint;
 import net.imglib2.RealPointSampleList;
 import net.imglib2.Sampler;
@@ -176,6 +183,84 @@ public class ConsensusWarpFieldBuilder {
         return sb.toString();
     }
 
+    public ConsensusWarpFieldBuilder mergeBuilders(final ConsensusWarpFieldBuilder otherBuilder) {
+
+        validateConsistency("rowCount", rowCount, otherBuilder.rowCount);
+        validateConsistency("columnCount", columnCount, otherBuilder.columnCount);
+        validateConsistency("width", width, otherBuilder.width);
+        validateConsistency("height", height, otherBuilder.height);
+
+        final Map<Integer, List<Point>> cellToPointsMap = new LinkedHashMap<>();
+        mapCellsToPoints(cellToPointsMap, consensusSetIndexSamples.cursor());
+        mapCellsToPoints(cellToPointsMap, otherBuilder.consensusSetIndexSamples.cursor());
+
+        final int[] modelIndexGrid = buildModelIndexGrid();
+        final int[] otherModelIndexGrid = otherBuilder.buildModelIndexGrid();
+
+        LOG.info("mergeBuilder: mapped points to {} cells", cellToPointsMap.size());
+
+        final Map<String, List<Point>> setPairToPointsMap = new LinkedHashMap<>();
+        List<Point> pointList;
+        for (int i = 0; i < modelIndexGrid.length; i++) {
+            final String setPair = modelIndexGrid[i] + "::" + otherModelIndexGrid[i];
+            pointList = setPairToPointsMap.get(setPair);
+            if (pointList == null) {
+                pointList = new ArrayList<>();
+                setPairToPointsMap.put(setPair, pointList);
+            }
+            final List<Point> cellPoints = cellToPointsMap.get(i);
+            if (cellPoints != null) {
+                pointList.addAll(cellPoints);
+            }
+        }
+
+        LOG.info("mergeBuilder: merged result contains {} consensus sets", setPairToPointsMap.size());
+
+        final ConsensusWarpFieldBuilder mergedBuilder =
+                new ConsensusWarpFieldBuilder(width, height, rowCount, columnCount);
+
+        for (final List<Point> setPoints : setPairToPointsMap.values()) {
+            mergedBuilder.addConsensusSetData(new AffineModel2D(), setPoints);
+        }
+
+        return mergedBuilder;
+    }
+
+    private void mapCellsToPoints(final Map<Integer, List<Point>> cellToPointsMap,
+                                  final RealCursor<ARGBType> cursor) {
+
+        List<Point> pointList;
+
+        while (cursor.hasNext()) {
+
+            cursor.fwd();
+
+            final double x = cursor.getDoublePosition(0) * pixelsPerColumn;
+            final double y = cursor.getDoublePosition(1) * pixelsPerRow;
+            final int row = (int) ((y / height) * rowCount);
+            final int column = (int) ((x / width) * columnCount);
+            final int gridIndex = (row * rowCount) + column;
+
+            pointList = cellToPointsMap.get(gridIndex);
+            if (pointList == null) {
+                pointList = new ArrayList<>();
+                cellToPointsMap.put(gridIndex, pointList);
+            }
+
+            pointList.add(new Point(new double[] {x, y}));
+        }
+    }
+
+    private void validateConsistency(final String context,
+                                     final Object expectedValue,
+                                     final Object actualValue)
+            throws IllegalArgumentException {
+        if (! expectedValue.equals(actualValue)) {
+            throw new IllegalArgumentException(
+                    context + " is inconsistent, expected " + expectedValue + " but was " + actualValue);
+        }
+    }
+
     private int[] buildModelIndexGrid() {
 
         final int[] targetCellIndexes = new int[getNumberOfCells()];
@@ -211,5 +296,7 @@ public class ConsensusWarpFieldBuilder {
         return distinctModelIndexes.size();
 
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(ConsensusWarpFieldBuilder.class);
 
 }

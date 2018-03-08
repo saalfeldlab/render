@@ -393,7 +393,7 @@ public class PointMatchClient {
                                                                       parameters.match.matchMinNumInliers,
                                                                       parameters.match.matchMaxTrust,
                                                                       parameters.match.matchMaxNumInliers,
-                                                                      true);
+                                                                      CanvasFeatureMatcher.FilterType.SINGLE_SET);
 
         String pUrlString;
         String qUrlString;

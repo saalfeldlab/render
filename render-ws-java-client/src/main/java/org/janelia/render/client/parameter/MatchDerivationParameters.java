@@ -4,6 +4,7 @@ import com.beust.jcommander.Parameter;
 
 import java.io.Serializable;
 
+import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.ModelType;
 
 /**
@@ -60,5 +61,11 @@ public class MatchDerivationParameters implements Serializable {
             description = "Reject match candidates with a cost larger than maxTrust * median cost",
             required = false)
     public Double matchMaxTrust = 3.0;
+
+    @Parameter(
+            names = "--matchFilter",
+            description = "Identifies if and how matches should be filtered",
+            required = false)
+    public CanvasFeatureMatcher.FilterType matchFilter = CanvasFeatureMatcher.FilterType.SINGLE_SET;
 
 }

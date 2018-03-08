@@ -173,7 +173,7 @@ public class FeatureExtractionTest {
                                                                       10,
                                                                       3,
                                                                       null,
-                                                                      true);
+                                                                      CanvasFeatureMatcher.FilterType.SINGLE_SET);
         matcher.deriveMatchResult(pFeatureList, qFeatureList);
 
 
@@ -223,7 +223,7 @@ public class FeatureExtractionTest {
                                                                       10,
                                                                       3,
                                                                       null,
-                                                                      true);
+                                                                      CanvasFeatureMatcher.FilterType.SINGLE_SET);
         final CanvasFeatureMatchResult result = matcher.deriveMatchResult(pFeatureList, qFeatureList);
 
         System.out.println(result.toString());

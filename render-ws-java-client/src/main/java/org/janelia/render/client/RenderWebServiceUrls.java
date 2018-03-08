@@ -1,7 +1,9 @@
 package org.janelia.render.client;
 
 import java.io.Serializable;
+import java.net.URISyntaxException;
 
+import org.apache.http.client.utils.URIBuilder;
 import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 
 /**
@@ -61,8 +63,16 @@ public class RenderWebServiceUrls implements Serializable {
         return getMatchCollectionUrlString() + "/matches";
     }
 
+    public String getMatchMultiConsensusPGroupIdsUrlString() {
+        return getMatchCollectionUrlString() + "/multiConsensusPGroupIds";
+    }
+
     public String getMatchesWithPGroupIdUrlString(final String pGroupId) {
         return getMatchCollectionUrlString() + "/pGroup/" + pGroupId + "/matches";
+    }
+
+    public String getMatchesOutsideGroupUrlString(final String groupId) {
+        return getMatchCollectionUrlString() + "/group/" + groupId + "/matchesOutsideGroup";
     }
 
     public String getStackUrlString(final String stack) {
@@ -131,9 +141,12 @@ public class RenderWebServiceUrls implements Serializable {
                                                final double z,
                                                final int width,
                                                final int height,
-                                               final double scale) {
-        return getZUrlString(stack, z) +
-               "/box/" + x + ',' + y + ',' + width + ',' + height + ',' + scale + "/render-parameters";
+                                               final double scale,
+                                               final String filterListName) {
+        final String urlString = getZUrlString(stack, z) +
+                                 "/box/" + x + ',' + y + ',' + width + ',' + height + ',' + scale +
+                                 "/render-parameters";
+        return addParameter("filterListName", filterListName, urlString);
     }
 
     @Override
@@ -144,4 +157,22 @@ public class RenderWebServiceUrls implements Serializable {
                '}';
     }
 
+    public static String addParameter(final String parameterName,
+                                      final String parameterValue,
+                                      final String toUrlString) {
+        final String urlStringWithParameter;
+        if (parameterValue != null) {
+            try {
+                final URIBuilder uriBuilder = new URIBuilder(toUrlString);
+                uriBuilder.addParameter(parameterName, parameterValue);
+                urlStringWithParameter = uriBuilder.toString();
+            } catch (final URISyntaxException e) {
+                throw new IllegalArgumentException(
+                        "failed to add '" + parameterName + "' parameter to '" + toUrlString + "'", e);
+            }
+        } else {
+            urlStringWithParameter = toUrlString;
+        }
+        return urlStringWithParameter;
+    }
 }

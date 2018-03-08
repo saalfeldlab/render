@@ -23,8 +23,14 @@ import org.slf4j.LoggerFactory;
  */
 public class CanvasFeatureMatcher implements Serializable {
 
-    private final float rod;
+    /** Supported filtering options. */
+    public enum FilterType {
+        /** Skip filtering. */                                          NONE,
+        /** Filter inliers into a single set. */                        SINGLE_SET,
+        /** Filter inliers into potentially multiple consensus sets. */ CONSENSUS_SETS
+    }
 
+    private final float rod;
     private final ModelType modelType;
     private final int iterations;
     private final float maxEpsilon;
@@ -32,13 +38,12 @@ public class CanvasFeatureMatcher implements Serializable {
     private final double maxTrust;
     private final int minNumInliers;
     private final Integer maxNumInliers;
-    private final boolean filterMatches;
+    private final FilterType filterType;
 
     /**
      * Sets up everything that is needed to derive point matches from the feature lists of two canvases.
      *
      * @param  rod             ratio of distances (e.g. 0.92f).
-     *
      * @param  modelType       type of model to use for filter.
      * @param  iterations      filter iterations (e.g. 1000).
      * @param  maxEpsilon      minimal allowed transfer error (e.g. 20.0f).
@@ -46,7 +51,7 @@ public class CanvasFeatureMatcher implements Serializable {
      * @param  minNumInliers   minimal absolute number of inliers for matches (e.g. 10).
      * @param  maxTrust        reject candidates with a cost larger than maxTrust * median cost (e.g. 3).
      * @param  maxNumInliers   (optional) maximum number of inliers for matches; null indicates no maximum.
-     * @param  filterMatches   indicates whether matches should be filtered.
+     * @param  filterType      type of match filtering.
      */
     public CanvasFeatureMatcher(final float rod,
                                 final ModelType modelType,
@@ -56,9 +61,8 @@ public class CanvasFeatureMatcher implements Serializable {
                                 final int minNumInliers,
                                 final double maxTrust,
                                 final Integer maxNumInliers,
-                                final boolean filterMatches) {
+                                final FilterType filterType) {
         this.rod = rod;
-
         this.modelType = modelType;
         this.iterations = iterations;
         this.maxEpsilon = maxEpsilon;
@@ -66,11 +70,7 @@ public class CanvasFeatureMatcher implements Serializable {
         this.minNumInliers = minNumInliers;
         this.maxTrust = maxTrust;
         this.maxNumInliers = maxNumInliers;
-        this.filterMatches = filterMatches;
-    }
-
-    public boolean isFilterMatches() {
-        return filterMatches;
+        this.filterType = filterType;
     }
 
     /**
@@ -93,25 +93,20 @@ public class CanvasFeatureMatcher implements Serializable {
 
         FeatureTransform.matchFeatures(canvas1Features, canvas2Features, candidates, rod);
 
-        final List<PointMatch> inliers;
-        if (filterMatches) {
-            inliers = filterMatches(candidates, model);
-        } else {
-            inliers = candidates;
+        CanvasFeatureMatchResult result = null;
+        switch (filterType) {
+            case NONE:
+                result = new CanvasFeatureMatchResult(Collections.singletonList(candidates), candidates.size());
+                break;
+            case SINGLE_SET:
+                final List<PointMatch> inliers = filterMatches(candidates, model);
+                result = new CanvasFeatureMatchResult(Collections.singletonList(inliers), candidates.size());
+                break;
+            case CONSENSUS_SETS:
+                final List<List<PointMatch>> consensusMatches = filterConsensusMatches(candidates);
+                result = new CanvasFeatureMatchResult(consensusMatches, candidates.size());
+                break;
         }
-
-        final Double inlierRatio;
-        if (candidates.size() > 0) {
-            inlierRatio = (double) inliers.size() / candidates.size();
-        } else {
-            inlierRatio = 0.0;
-        }
-
-        final CanvasFeatureMatchResult result =
-                new CanvasFeatureMatchResult(inliers.size() > 0,
-                                             model,
-                                             inliers,
-                                             inlierRatio);
 
         LOG.info("deriveMatchResult: exit, result={}, elapsedTime={}s", result, (timer.stop() / 1000));
 
@@ -158,7 +153,6 @@ public class CanvasFeatureMatcher implements Serializable {
      */
     public List<List<PointMatch>> filterConsensusMatches(final List<PointMatch> candidates) {
 
-//        final List<Model> modelList = new ArrayList<>();
         final List<List<PointMatch>> listOfInliersLists = new ArrayList<>();
         final int totalNumberOfCandidates = candidates.size();
 
@@ -178,7 +172,6 @@ public class CanvasFeatureMatcher implements Serializable {
             }
 
             if (modelFound) {
-//                modelList.add(model);
                 listOfInliersLists.add(modelInliers);
                 candidates.removeAll(modelInliers);
             }
@@ -207,16 +200,6 @@ public class CanvasFeatureMatcher implements Serializable {
                  processedListOfInliersLists.size(), consensusSetSizes, totalNumberOfInliers, totalNumberOfCandidates);
 
         return processedListOfInliersLists;
-    }
-
-    public Matches filterMatches(final Matches candidates,
-                                 final Model model,
-                                 final double renderScale) {
-
-        final List<PointMatch> candidatesList =
-                CanvasFeatureMatchResult.convertMatchesToPointMatchList(candidates);
-        final List<PointMatch> inliersList = filterMatches(candidatesList, model);
-        return CanvasFeatureMatchResult.convertPointMatchListToMatches(inliersList, renderScale);
     }
 
     private void postProcessInliers(final List<PointMatch> inliers) {

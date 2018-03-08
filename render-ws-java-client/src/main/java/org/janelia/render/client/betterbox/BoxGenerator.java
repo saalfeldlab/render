@@ -391,9 +391,12 @@ public class BoxGenerator
 
             if (boxData.getLevel() == 0) {
 
-                final String boxParametersUrl = webServiceUrls.getStackUrlString(stack) +
-                                                boxData.getServicePath(boxWidth, boxHeight) +
-                                                "/render-parameters";
+                String boxParametersUrl = webServiceUrls.getStackUrlString(stack) +
+                                          boxData.getServicePath(boxWidth, boxHeight) +
+                                          "/render-parameters";
+                boxParametersUrl = RenderWebServiceUrls.addParameter("filterListName",
+                                                                     boxParameters.filterListName,
+                                                                     boxParametersUrl);
 
                 LOG.info("renderBoxFile: loading {}", boxParametersUrl);
 

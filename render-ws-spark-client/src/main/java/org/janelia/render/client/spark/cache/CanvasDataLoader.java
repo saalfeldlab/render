@@ -89,8 +89,9 @@ public abstract class CanvasDataLoader
 
             // hack to convert encoded box ids - should revisit this
             final Matcher boxIdMatcher = BOX_ID_PATTERN.matcher(idValue);
-            if (boxIdMatcher.matches() && (boxIdMatcher.groupCount() == 1)) {
-                // convert z_1.0_box_12769_7558_13654_18227_0.1 to 12769,7558,13654,18227,0.1
+            if (boxIdMatcher.matches() && (boxIdMatcher.groupCount() >= 1)) {
+                // convert z_1.0_box_12769_7558_13654_18227_0.1               to 12769,7558,13654,18227,0.1
+                // convert z_1.0_box_12769_7558_13654_18227_0.1_set_1.0_2.0_3 to 12769,7558,13654,18227,0.1
                 idValue = boxIdMatcher.group(1).replace('_', ',');
             }
 
@@ -126,6 +127,6 @@ public abstract class CanvasDataLoader
 
     private static final Pattern ID_TOKEN_PATTERN = buildTokenPattern(TEMPLATE_ID_TOKEN);
     private static final Pattern GROUP_ID_TOKEN_PATTERN = buildTokenPattern(TEMPLATE_GROUP_ID_TOKEN);
-    private static final Pattern BOX_ID_PATTERN = Pattern.compile("z_.*_box_(.*)");
+    private static final Pattern BOX_ID_PATTERN = Pattern.compile("z_.*_box_(.*)(_set_.*)?");
 
 }

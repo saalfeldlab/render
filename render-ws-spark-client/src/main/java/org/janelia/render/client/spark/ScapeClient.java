@@ -107,6 +107,12 @@ public class ScapeClient
         public boolean doFilter = false;
 
         @Parameter(
+                names = "--filterListName",
+                description = "Apply this filter list to all rendering (overrides doFilter option)",
+                required = false)
+        public String filterListName;
+
+        @Parameter(
                 names = "--channels",
                 description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3')",
                 required = false)
@@ -250,7 +256,7 @@ public class ScapeClient
                     final Double z = renderSection.getFirstZ();
                     LogUtilities.setupExecutorLog4j("z " + z);
 
-                    final RenderDataClient sourceDataClient1 = parameters.renderWeb.getDataClient();
+                    final RenderDataClient workerDataClient = parameters.renderWeb.getDataClient();
 
                     // set cache size to 50MB so that masks get cached but most of RAM is left for target image
                     final int maxCachedPixels = 50 * 1000000;
@@ -264,13 +270,14 @@ public class ScapeClient
                     for (final SectionData sectionData : renderSection.getSectionDataList()) {
 
                         final String parametersUrl =
-                                sourceDataClient1.getRenderParametersUrlString(parameters.stack,
-                                                                               sectionData.getMinX(),
-                                                                               sectionData.getMinY(),
-                                                                               sectionData.getZ(),
-                                                                               sectionData.getWidth(),
-                                                                               sectionData.getHeight(),
-                                                                               parameters.scale);
+                                workerDataClient.getRenderParametersUrlString(parameters.stack,
+                                                                              sectionData.getMinX(),
+                                                                              sectionData.getMinY(),
+                                                                              sectionData.getZ(),
+                                                                              sectionData.getWidth(),
+                                                                              sectionData.getHeight(),
+                                                                              parameters.scale,
+                                                                              parameters.filterListName);
 
                         LOG.debug("generateScapeFunction: loading {}", parametersUrl);
 

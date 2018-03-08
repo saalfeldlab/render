@@ -20,10 +20,16 @@ public class FeatureRenderParameters
 
     @Parameter(
             names = "--renderWithFilter",
-            description = "Render tiles using a filter for intensity correction",
+            description = "Render tiles using default ad-hoc filter for intensity correction",
             required = false,
             arity = 1)
     public boolean renderWithFilter = true;
+
+    @Parameter(
+            names = "--renderFilterListName",
+            description = "Apply this filter list to all rendering (overrides renderWithFilter option)",
+            required = false)
+    public String renderFilterListName;
 
     @Parameter(
             names = "--renderWithoutMask",

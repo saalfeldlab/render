@@ -396,11 +396,13 @@ public class BoxGenerator implements Serializable {
             throws IOException {
 
         final String boxParametersUrl =
-                getRenderDataClient().getRenderParametersUrlString(stack, x, y, z, boxWidth, boxHeight, 1.0);
+                getRenderDataClient().getRenderParametersUrlString(stack, x, y, z, boxWidth, boxHeight, 1.0,
+                                                                   boxParameters.filterListName);
 
         LOG.info("generateLevelZeroBox: loading {}", boxParametersUrl);
 
         final RenderParameters renderParameters = RenderParameters.loadFromUrl(boxParametersUrl);
+        renderParameters.setDoFilter(boxParameters.doFilter);
         renderParameters.setSkipInterpolation(boxParameters.skipInterpolation);
         renderParameters.setBinaryMask(boxParameters.binaryMask);
         renderParameters.setBackgroundRGBColor(backgroundRGBColor);

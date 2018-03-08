@@ -3,50 +3,41 @@ package org.janelia.alignment.filter;
 import ij.plugin.ContrastEnhancer;
 import ij.process.ImageProcessor;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class EqualizeHistogram implements Filter {
-    protected double saturatedpixels = 0.0;
 
+    private double saturatedPixels;
+
+    // empty constructor required to create instances from specifications
+    @SuppressWarnings("unused")
     public EqualizeHistogram() {
+        this(0.0);
     }
 
-    public EqualizeHistogram(final double saturatedpixels) {
-        set(saturatedpixels);
-    }
-
-    public final void set(final double saturatedpixels) {
-        this.saturatedpixels = saturatedpixels;
-    }
-
-    public EqualizeHistogram(final Map<String, String> params) {
-        try {
-            set(Double.parseDouble(params.get("saturatedpixels")));
-        } catch (final NumberFormatException nfe) {
-            throw new IllegalArgumentException(
-                    "Could not create RollingBallSubtraction filter!", nfe);
-        }
+    public EqualizeHistogram(final double saturatedPixels) {
+        this.saturatedPixels = saturatedPixels;
     }
 
     @Override
-    public ImageProcessor process(final ImageProcessor ip, final double scale) {
-        try {
-        	ContrastEnhancer eqhist = new ij.plugin.ContrastEnhancer();	
-        	eqhist.equalize(ip);
-        } catch (final Exception e) {
-            e.printStackTrace();
-        }
+    public void init(final Map<String, String> params) {
+        this.saturatedPixels = Filter.getDoubleParameter("saturatedPixels", params);
+    }
+
+    @Override
+    public Map<String, String> toParametersMap() {
+        final Map<String, String> map = new LinkedHashMap<>();
+        map.put("saturatedPixels", String.valueOf(saturatedPixels));
+        return map;
+    }
+
+    @Override
+    public ImageProcessor process(final ImageProcessor ip,
+                                  final double scale) {
+        final ContrastEnhancer contrastEnhancer = new ContrastEnhancer();
+        contrastEnhancer.equalize(ip);
         return ip;
     }
 
-    @Override
-    public boolean equals(final Object o) {
-        if (null == o)
-            return false;
-        if (o.getClass() == EqualizeHistogram.class) {
-            final EqualizeHistogram c = (EqualizeHistogram) o;
-            return saturatedpixels == c.saturatedpixels && saturatedpixels == c.saturatedpixels;
-        }
-        return false;
-    }
 }

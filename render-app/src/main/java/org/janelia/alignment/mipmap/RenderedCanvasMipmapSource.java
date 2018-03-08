@@ -218,10 +218,10 @@ public class RenderedCanvasMipmapSource
                                          renderParameters.excludeMask(),
                                          imageProcessorCache);
 
-            if (renderParameters.doFilter()) {
+            if (renderParameters.hasFilters()) {
                 source = new FilteredMipmapSource("filtered " + source.getSourceName(),
                                                   source,
-                                                  FilteredMipmapSource.getDefaultFilters());
+                                                  renderParameters.getFilters());
             }
 
             canvasList.add(new TransformableCanvas(source, tileSpec.getTransforms().getNewInstanceAsList()));

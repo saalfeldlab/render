@@ -1,0 +1,46 @@
+{
+  "namedFilterSpecLists" : {
+
+    "simpleTest" : [
+      {
+        "className" : "org.janelia.alignment.filter.CLAHE",
+        "parameters" : {
+          "fast" : "true",
+          "blockRadius" : "500",
+          "bins" : "256",
+          "slope" : "2.5"
+        }
+      }
+    ],
+
+    "default" : [
+      {
+        "className" : "org.janelia.alignment.filter.ValueToNoise",
+        "parameters" : {
+          "value" : "0.0",
+          "min" : "64.0",
+          "max" : "191.0"
+        }
+      },
+      {
+        "className" : "org.janelia.alignment.filter.ValueToNoise",
+        "parameters" : {
+          "value" : "255.0",
+          "min" : "64.0",
+          "max" : "191.0"
+        }
+      },
+      {
+        "className" : "org.janelia.alignment.filter.NormalizeLocalContrast",
+        "parameters" : {
+          "blockRadiusX" : "500",
+          "blockRadiusY" : "500",
+          "meanFactor" : "3.0",
+          "center" : "true",
+          "stretch" : "true"
+        }
+      }
+    ]
+
+  }
+}

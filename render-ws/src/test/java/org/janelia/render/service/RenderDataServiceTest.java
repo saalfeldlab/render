@@ -82,6 +82,7 @@ public class RenderDataServiceTest {
                                                     null,
                                                     null,
                                                     null,
+                                                    null,
                                                     null);
 
         Assert.assertNotNull("null parameters returned", renderParameters);

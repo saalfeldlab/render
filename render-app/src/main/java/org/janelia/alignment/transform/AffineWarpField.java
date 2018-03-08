@@ -160,6 +160,29 @@ public class AffineWarpField
     }
 
     /**
+     * Returns the affine values for a grid cell.
+     *
+     * @param  row                   cell row.
+     * @param  column                cell column.
+     *
+     * @return  affine values for the specified cell in 'java' order: m00, m10, m01, m11, m02, m12
+     */
+    public double[] get(final int row,
+                        final int column) {
+
+        final double[] affineMatrixElements = new double[VALUES_PER_AFFINE];
+        final int affineCount = rowCount * columnCount;
+        final int startIndex = (row * columnCount) + column;
+
+        for (int i = 0; i < VALUES_PER_AFFINE; i++) {
+            final int valuesIndex = startIndex + (i * affineCount);
+            affineMatrixElements[i] = values[valuesIndex];
+        }
+
+        return affineMatrixElements;
+    }
+
+    /**
      * Saves the affine values for a grid cell.
      *
      * @param  row                   row for affine.
@@ -226,6 +249,55 @@ public class AffineWarpField
     public AffineWarpField getCopy() {
         final double[] valuesCopy = Arrays.copyOf(values, values.length);
         return new AffineWarpField(width, height, rowCount, columnCount, valuesCopy, interpolatorFactory);
+    }
+
+    /**
+     * @param  divideRowsBy     number of rows to divide each existing row by.
+     * @param  divideColumnsBy  number of columns to divide each existing column by.
+     *
+     * @return a high resolution copy of this warp field where each row and column has been divided as specified.
+     */
+    public AffineWarpField getHighResolutionCopy(final int divideRowsBy,
+                                                 final int divideColumnsBy) {
+
+        final int hiResRowCount = rowCount * divideRowsBy;
+        final int hiResColumnCount = columnCount * divideColumnsBy;
+        final int hiResAffineCount = hiResRowCount * hiResColumnCount;     // number of cells in hires grid
+        final double[] hiResValues = new double[hiResAffineCount * VALUES_PER_AFFINE];
+
+        final int affineCount = rowCount * columnCount;                    // number of cells in original grid
+
+        for (int row = 0; row < rowCount; row++) {
+
+            for (int column = 0; column < columnCount; column++ ) {
+
+                final int startIndex = (row * columnCount) + column;
+                final int hiResStartRow = row * divideRowsBy;
+                final int hiResStartColumn = column * divideColumnsBy;
+
+                for (int r = 0; r < divideRowsBy; r++) {
+
+                    final int hiResRow = hiResStartRow + r;
+
+                    for (int c = 0; c < divideColumnsBy; c++) {
+
+                        final int hiResColumn = hiResStartColumn + c;
+                        final int hiResStartIndex = (hiResRow * hiResColumnCount) + hiResColumn;
+
+                        for (int i = 0; i < VALUES_PER_AFFINE; i++) {
+
+                            final int valuesIndex = startIndex + (i * affineCount);
+                            final int hiResValuesIndex = hiResStartIndex + (i * hiResAffineCount);
+
+                            hiResValues[hiResValuesIndex] = values[valuesIndex];
+                        }
+
+                    }
+                }
+            }
+        }
+
+        return new AffineWarpField(width, height, hiResRowCount, hiResColumnCount, hiResValues, interpolatorFactory);
     }
 
     /**
