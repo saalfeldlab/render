@@ -169,6 +169,10 @@ public abstract class TransformSpec implements Serializable {
         return JSON_HELPER.fromJson(json);
     }
 
+    public static TransformSpec fromJson(final Reader json) {
+        return JSON_HELPER.fromJson(json);
+    }
+
     public static List<TransformSpec> fromJsonArray(final String json) {
         // TODO: verify using Arrays.asList optimization is actually faster
         //       http://stackoverflow.com/questions/6349421/how-to-use-jackson-to-deserialise-an-array-of-objects
