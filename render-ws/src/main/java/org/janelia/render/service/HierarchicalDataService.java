@@ -29,6 +29,7 @@ import mpicbg.models.PointMatch;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.CanvasNameToPointsMap;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
@@ -54,7 +55,6 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
-import net.imglib2.RealPoint;
 
 /**
  * APIs for accessing stack meta data stored in the Render service database.
@@ -423,10 +423,9 @@ public class HierarchicalDataService {
                                 ".  Make sure stack state is COMPLETE");
                     }
 
-                    final Set<String> multiConsensusGroupIds =
-                            matchDao.getMultiConsensusGroupIds(tierStack.getMatchCollectionId());
+                    final String groupId = z.toString();
 
-                    if ((multiConsensusGroupIds.size() > 0) && (multiConsensusGroupIds.contains(z.toString()))) {
+                    if (tierStack.hasSplitGroupId(groupId)) {
 
                         final Bounds tierStackBounds = tierStack.getFullScaleBounds();
                         final ConsensusWarpFieldBuilder builder =
@@ -434,32 +433,12 @@ public class HierarchicalDataService {
                                                               tierStackBounds.getDeltaY(),
                                                               consensusRowCount,
                                                               consensusColumnCount);
-                        final String groupId = z.toString();
                         final List<CanvasMatches> canvasMatchesList =
-                                matchDao.getMatchesOutsideGroup(tierStack.getMatchCollectionId(), z.toString());
-                        final Map<String, List<RealPoint>> tileIdToPoints = new HashMap<>();
+                                matchDao.getMatchesOutsideGroup(tierStack.getMatchCollectionId(), groupId);
+                        final CanvasNameToPointsMap nameToPointsForGroup = new CanvasNameToPointsMap(1 / tierStack.getScale());
+                        nameToPointsForGroup.addPointsForGroup(groupId, canvasMatchesList);
 
-                        for (final CanvasMatches pair : canvasMatchesList) {
-
-                            final String tileId;
-                            final List<RealPoint> points;
-                            if (groupId.equals(pair.getpGroupId())) {
-                                tileId = pair.getpId();
-                                points = pair.getMatches().getPList();
-                            } else {
-                                tileId = pair.getqId();
-                                points = pair.getMatches().getQList();
-                            }
-
-                            final List<RealPoint> savedPoints = tileIdToPoints.get(tileId);
-                            if (savedPoints == null) {
-                                tileIdToPoints.put(tileId, points);
-                            } else {
-                                savedPoints.addAll(points);
-                            }
-                        }
-
-                        for (final String tileId : tileIdToPoints.keySet()) {
+                        for (final String tileId : nameToPointsForGroup.getNames()) {
 
                             tileSpecForZ = renderDao.getTileSpec(alignedStackId, tileId, false);
 
@@ -469,7 +448,7 @@ public class HierarchicalDataService {
                                                                            alignedStackBounds.getMinX(),
                                                                            alignedStackBounds.getMinY());
 
-                            builder.addConsensusSetData(relativeAlignedModel, tileIdToPoints.get(tileId));
+                            builder.addConsensusSetData(relativeAlignedModel, nameToPointsForGroup.getPoints(tileId));
                         }
 
                         tierStackToConsensusFieldMap.put(tierStack, builder.build());
