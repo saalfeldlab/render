@@ -151,6 +151,10 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         return consensusSetData == null ? pId : consensusSetData.getOriginalPId();
     }
 
+    public String getOriginalQId() {
+        return consensusSetData == null ? qId : consensusSetData.getOriginalQId();
+    }
+
     /**
      * Sets the consensus set data for these matches, updating the pId and qId values to ensure uniqueness.
      *
