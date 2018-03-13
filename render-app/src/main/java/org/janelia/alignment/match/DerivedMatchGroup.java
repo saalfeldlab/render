@@ -56,7 +56,6 @@ public class DerivedMatchGroup {
 
     private final String groupId;
     private final List<CanvasMatches> derivedPairs;
-    private final Map<CanvasId, List<CanvasId>> splitCanvasMap;
 
     /**
      * Basic constructor.
@@ -69,17 +68,8 @@ public class DerivedMatchGroup {
                              final Collection<CanvasMatches> multiConsensusPairs) {
         this.groupId = groupId;
         this.derivedPairs = new ArrayList<>();
-        this.splitCanvasMap = new HashMap<>();
 
         derivePairs(multiConsensusPairs);
-    }
-
-    /**
-     * @return map of original canvas identifiers to the corresponding list of split
-     *         canvas identifiers created by the match redistribution process.
-     */
-    public Map<CanvasId, List<CanvasId>> getSplitCanvasMap() {
-        return splitCanvasMap;
     }
 
     /**
@@ -240,13 +230,6 @@ public class DerivedMatchGroup {
 
         final boolean forP = groupId.equals(originalPair.getpGroupId());
 
-        final CanvasId originalCanvasId;
-        if (forP) {
-            originalCanvasId = new CanvasId(originalPair.getpGroupId(), originalPair.getpId());
-        } else {
-            originalCanvasId = new CanvasId(originalPair.getqGroupId(), originalPair.getqId());
-        }
-
         CanvasId splitCanvasId;
         CanvasMatches splitPair;
         final List<CanvasMatches> list = new ArrayList<>(setIndexToSplitMatches.size());
@@ -273,20 +256,9 @@ public class DerivedMatchGroup {
             splitPair.setConsensusSetData(originalPair.getConsensusSetData());
             list.add(splitPair);
 
-            addSplitCanvasToMap(originalCanvasId, splitCanvasId);
         }
 
         return list;
-    }
-
-    private void addSplitCanvasToMap(final CanvasId originalCanvasId,
-                                     final CanvasId splitCanvasId) {
-        List<CanvasId> splitCanvasList = splitCanvasMap.get(originalCanvasId);
-        if (splitCanvasList == null) {
-            splitCanvasList = new ArrayList<>();
-            splitCanvasMap.put(originalCanvasId, splitCanvasList);
-        }
-        splitCanvasList.add(splitCanvasId);
     }
 
     private static double[][] buildLocationArray(final List<RealPoint> pointList) {

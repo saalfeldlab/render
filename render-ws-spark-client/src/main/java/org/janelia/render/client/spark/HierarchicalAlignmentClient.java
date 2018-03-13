@@ -23,7 +23,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.match.DerivedMatchGroup;
+import org.janelia.alignment.match.ConsensusSetPairs;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
@@ -652,25 +652,25 @@ public class HierarchicalAlignmentClient
                     multiConsensusPairs.addAll(driverMatchClient.getMatchesOutsideGroup(groupId));
                 }
 
-                LOG.info("deriveSplitMatchesForConsensusSetCanvases: found {} distinct multi consensus pairs",
-                         multiConsensusPairs.size());
+                final ConsensusSetPairs consolidatedPairs = new ConsensusSetPairs(multiConsensusPairs);
 
-                final String tierStackName = tierStack.getSplitStackId().getStack();
+                LOG.info("deriveSplitMatchesForConsensusSetCanvases: consolidated pair info is {}", consolidatedPairs);
+
+                final List<CanvasMatches> derivedMatchPairs = consolidatedPairs.getDerivedPairs();
+
                 final SplitCanvasHelper splitCanvasHelper = new SplitCanvasHelper();
+                splitCanvasHelper.trackSplitCanvases(derivedMatchPairs);
 
                 for (final String groupId : multiConsensusGroupIds) {
-                    final DerivedMatchGroup derivedMatchGroup = new DerivedMatchGroup(groupId, multiConsensusPairs);
-                    final List<CanvasMatches> derivedMatchPairs = derivedMatchGroup.getDerivedPairs();
-
                     driverMatchClient.deleteMatchesOutsideGroup(groupId);
-                    driverMatchClient.saveMatches(derivedMatchPairs);
-
-                    splitCanvasHelper.trackSplitCanvases(derivedMatchPairs);
                 }
+
+                driverMatchClient.saveMatches(derivedMatchPairs);
 
                 LOG.info("deriveSplitMatchesForConsensusSetCanvases: allocated matches to {} split canvases",
                          splitCanvasHelper.getCanvasCount());
 
+                final String tierStackName = tierStack.getSplitStackId().getStack();
                 driverTierRender.setStackState(tierStackName, StackMetaData.StackState.LOADING);
 
                 for (final Double z : splitCanvasHelper.getSortedZValues()) {
@@ -682,6 +682,11 @@ public class HierarchicalAlignmentClient
                 }
 
                 driverTierRender.setStackState(tierStackName, StackMetaData.StackState.COMPLETE);
+
+                if (consolidatedPairs.hasSplitGroups()) {
+                    tierStack.setSplitGroupIds(consolidatedPairs.getSplitGroupIds());
+                    persistHierarchicalData(tierStack);
+                }
             }
 
         }

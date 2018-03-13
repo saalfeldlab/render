@@ -18,7 +18,6 @@ package org.janelia.alignment.match;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.Test;
 
@@ -52,10 +51,6 @@ public class DerivedMatchGroupTest {
         Assert.assertEquals("invalid number of derived match pairs",
                             10, derivedPairs.size());
 
-        final Map<CanvasId, List<CanvasId>> splitCanvasMap = derivedMatchGroup.getSplitCanvasMap();
-
-        Assert.assertEquals("invalid number of mapped canvases",
-                            3, splitCanvasMap.size());
     }
 
     private CanvasMatches buildTestMatches(final Double pZ,
