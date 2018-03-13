@@ -6,7 +6,10 @@ import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import mpicbg.models.AffineModel2D;
 
@@ -43,6 +46,7 @@ public class HierarchicalStack implements Serializable {
     private final Bounds fullScaleBounds;
     private MatchCollectionId matchCollectionId;
     private Long savedMatchPairCount;
+    private Set<String> splitGroupIds;
     private Double alignmentQuality;
 
     // no-arg constructor needed for JSON deserialization
@@ -96,6 +100,7 @@ public class HierarchicalStack implements Serializable {
 
         final String collectionName = splitStackId.getProject() + "_" + splitStackId.getStack();
         this.matchCollectionId = new MatchCollectionId(splitStackId.getOwner(), collectionName);
+        this.splitGroupIds = null;
     }
 
     /**
@@ -244,6 +249,14 @@ public class HierarchicalStack implements Serializable {
 
     public void setSavedMatchPairCount(final Long savedMatchPairCount) {
         this.savedMatchPairCount = savedMatchPairCount;
+    }
+
+    public boolean hasSplitGroupId(final String groupId) {
+        return (splitGroupIds != null) && (splitGroupIds.contains(groupId));
+    }
+
+    public void setSplitGroupIds(final Collection<String> groupIds) {
+        splitGroupIds = new LinkedHashSet<>(groupIds);
     }
 
     @JsonIgnore
