@@ -197,7 +197,11 @@ public class BoxClient
                                                         parameters.layerRange.maxZ,
                                                         parameters.zValues);
 
-        boxDataParentDirectory =  new File(boxGenerator.getBaseBoxPath() + "/box_data");
+        // insert IP address into directory name to prevent data collisions when multiple drivers (Spark jobs)
+        // are concurrently launched for the same stack (Allen Brain Institute use case)
+        final String ipAddressString = InetAddress.getLocalHost().toString();
+
+        boxDataParentDirectory =  new File(boxGenerator.getBaseBoxPath() + "/box_data/" + ipAddressString);
         final String boxDataDirectoryName = new SimpleDateFormat("yyyy_MMdd_HHmm_ss").format(new Date());
         partitionedBoxDataDirectory = new File(boxDataParentDirectory, boxDataDirectoryName);
     }
