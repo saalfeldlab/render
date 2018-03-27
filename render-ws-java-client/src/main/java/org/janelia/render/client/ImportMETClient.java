@@ -433,7 +433,7 @@ public class ImportMETClient {
 
             LOG.info("updateTiles: filtering tile spec collection {}", updatedTiles);
 
-            updatedTiles.filterSpecs(tileIdToAlignTransformMap.keySet());
+            updatedTiles.removeDifferentTileSpecs(tileIdToAlignTransformMap.keySet());
 
             if (!updatedTiles.hasTileSpecs()) {
                 throw new IllegalArgumentException("after filtering out non-aligned tiles, " +
@@ -479,7 +479,7 @@ public class ImportMETClient {
                 }
             }
 
-            updatedTiles.filterInvalidSpecs();
+            updatedTiles.removeInvalidTileSpecs();
 
             final int removedTiles = tileSpecCount - updatedTiles.getTileCount();
 

@@ -8,12 +8,9 @@ import java.io.InputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -30,24 +27,15 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 
-import mpicbg.models.PointMatch;
-
 import org.bson.types.ObjectId;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.ReconstructionCycle;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
-import org.janelia.alignment.spec.stack.StackWithZValues;
-import org.janelia.alignment.util.ResidualCalculator;
-import org.janelia.render.service.dao.MatchDao;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ObjectNotFoundException;
@@ -73,21 +61,18 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState.*;
 public class StackMetaDataService {
 
     private final RenderDao renderDao;
-    private final MatchDao matchDao;
     private Map<String, String> versionInfo;
     private Map<String, String> viewParameters;
 
     @SuppressWarnings("UnusedDeclaration")
     public StackMetaDataService()
             throws UnknownHostException {
-        this(RenderDao.build(), MatchDao.build());
+        this(RenderDao.build());
     }
 
-    public StackMetaDataService(final RenderDao renderDao,
-                                final MatchDao matchDao)
+    public StackMetaDataService(final RenderDao renderDao)
             throws UnknownHostException {
         this.renderDao = renderDao;
-        this.matchDao = matchDao;
         this.versionInfo = null;
         this.viewParameters = null;
     }
@@ -200,6 +185,7 @@ public class StackMetaDataService {
 
         final List<StackMetaData> stackMetaDataList = getStackMetaDataListForProject(owner, project);
         final List<StackId> list = new ArrayList<>(stackMetaDataList.size());
+        //noinspection Convert2streamapi
         for (final StackMetaData stackMetaData : stackMetaDataList) {
             list.add(stackMetaData.getStackId());
         }
@@ -443,187 +429,6 @@ public class StackMetaDataService {
 
         return response;
     }
-
-    @Path("v1/owner/{owner}/project/{project}/tierData")
-    @DELETE
-    @ApiOperation(
-            tags = {"Hierarchical APIs"},
-            value = "Deletes stack and match data for one hierarchical tier",
-            notes = "Looks at hierarchical metadata for split stacks in the specified tier project " +
-                    "to delete all split stack, align stack, and match collection data for the tier.")
-    @ApiResponses(value = {
-            @ApiResponse(code = 400, message = "at least one tier split stack is READ_ONLY")
-    })
-    public Response deleteTierData(@PathParam("owner") final String owner,
-                                   @PathParam("project") final String project) {
-
-        LOG.info("deleteTierData: entry, owner={}, project={}", owner, project);
-
-        String message = null;
-
-        Response response = null;
-        try {
-
-            // Double check project is defined in case method was called internally (not via REST API).
-            // A null project value would remove all tier data for an owner - probably a bad thing.
-            if (project == null) {
-                throw new IllegalArgumentException("project must be specified");
-            }
-
-            final List<StackMetaData> projectStackMetaDataList = renderDao.getStackMetaDataList(owner, project);
-            final Set<String> existingStackNames = new HashSet<>(projectStackMetaDataList.size() * 2);
-
-            final List<String> existingTierStackNames = new ArrayList<>(projectStackMetaDataList.size());
-            final List<String> alignStackNames = new ArrayList<>(projectStackMetaDataList.size());
-            final List<String> tierCollectionNames = new ArrayList<>(projectStackMetaDataList.size());
-
-            for (final StackMetaData projectStackMetaData : projectStackMetaDataList) {
-
-                final String projectStackName = projectStackMetaData.getStackId().getStack();
-                existingStackNames.add(projectStackName);
-
-                final HierarchicalStack hierarchicalData = projectStackMetaData.getHierarchicalData();
-                if (hierarchicalData != null) {
-                    validateStackIsModifiable(projectStackMetaData);
-                    existingTierStackNames.add(projectStackName);
-                    // not bothering to validate whether align stacks are modifiable, assume that's okay
-                    alignStackNames.add(hierarchicalData.getAlignedStackId().getStack());
-                    tierCollectionNames.add(hierarchicalData.getMatchCollectionId().getName());
-                }
-            }
-
-            existingTierStackNames.addAll(
-                    alignStackNames.stream()
-                            .filter(existingStackNames::contains)
-                            .collect(Collectors.toList()));
-
-            // Remove match collections, align stacks, and then tier stacks in that order so that tier stack
-            // hierarchical data is not lost if match collection or align stack removal fails.
-            int numberOfRemovedCollections = 0;
-            int numberOfSkippedCollections = 0;
-            for (final String matchCollectionName : tierCollectionNames) {
-                try {
-                    matchDao.removeAllMatches(new MatchCollectionId(owner, matchCollectionName));
-                    numberOfRemovedCollections++;
-                } catch (final ObjectNotFoundException e) {
-                    numberOfSkippedCollections++;
-                }
-            }
-
-            if (numberOfSkippedCollections > 0) {
-                LOG.info("skipped removal of {} non-existent collections", numberOfSkippedCollections);
-            }
-
-            // remove stacks in reverse order so align stacks are removed first
-            for (int i = existingTierStackNames.size() - 1; i >= 0; i--) {
-                renderDao.removeStack(new StackId(owner, project, existingTierStackNames.get(i)), true);
-            }
-
-            message = "removed " + existingTierStackNames.size() + " stacks and " + numberOfRemovedCollections +
-                      " match collections for project '" + project + "' owned by '" + owner + "'";
-
-            response = Response.ok(message, MediaType.TEXT_PLAIN_TYPE).build();
-
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        LOG.info("deleteTierData: exit, {}", message);
-
-        return response;
-    }
-
-    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/missingTierMatchLayers")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(
-            tags = {"Hierarchical APIs"},
-            value = "List of tier stack layers (z values) without matches")
-    @ApiResponses(value = {
-            @ApiResponse(code = 400, message = "stack does not have hierarchical data"),
-            @ApiResponse(code = 404, message = "stack or match collection does not exist")
-    })
-    public List<Double> getLayersWithMissingMatches(@PathParam("owner") final String owner,
-                                                    @PathParam("project") final String project,
-                                                    @PathParam("stack") final String stack) {
-
-        LOG.info("getLayersWithMissingMatches: entry, owner={}, project={}, stack={}", owner, project, stack);
-
-        final List<Double> layersWithMissingMatches = new ArrayList<>();
-        try {
-
-            final StackId stackId = new StackId(owner, project, stack);
-            final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
-            if (stackMetaData == null) {
-                throw new ObjectNotFoundException(stackId + " does not exist");
-            }
-
-            final HierarchicalStack hierarchicalData = stackMetaData.getHierarchicalData();
-            if (hierarchicalData == null) {
-                throw new IllegalArgumentException(stackId + " does not have hierarchical data");
-            }
-
-            final Set<Double> layersWithMatches =
-                    matchDao.getDistinctGroupIds(hierarchicalData.getMatchCollectionId())
-                            .stream()
-                            .map(Double::new)
-                            .collect(Collectors.toSet());
-
-            layersWithMissingMatches.addAll(
-                    renderDao.getZValues(stackId)
-                            .stream()
-                            .filter(z -> ! layersWithMatches.contains(z))
-                            .collect(Collectors.toList()));
-
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        return layersWithMissingMatches;
-    }
-
-    @Path("v1/owner/{owner}/project/{project}/missingTierMatchLayers")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(
-            tags = {"Hierarchical APIs"},
-            value = "List of tier stacks that have layers without matches")
-    @ApiResponses(value = {
-            @ApiResponse(code = 400, message = "stack does not have hierarchical data"),
-            @ApiResponse(code = 404, message = "stack or match collection does not exist")
-    })
-    public List<StackWithZValues> getStacksWithMissingMatches(@PathParam("owner") final String owner,
-                                                              @PathParam("project") final String project) {
-
-        LOG.info("getStacksWithMissingMatches: entry, owner={}, project={}", owner, project);
-
-        final List<StackWithZValues> stacksWithMissingMatches = new ArrayList<>();
-        try {
-
-            final List<StackMetaData> projectStackMetaDataList = renderDao.getStackMetaDataList(owner, project);
-            for (final StackMetaData projectStackMetaData : projectStackMetaDataList) {
-
-                final HierarchicalStack hierarchicalData = projectStackMetaData.getHierarchicalData();
-
-                if ((hierarchicalData != null) && hierarchicalData.hasMatchPairs()) {
-                    final List<Double> layersWithMissingMatches =
-                            getLayersWithMissingMatches(owner, project, projectStackMetaData.getStackId().getStack());
-                    if (layersWithMissingMatches.size() > 0) {
-                        stacksWithMissingMatches.add(new StackWithZValues(projectStackMetaData.getStackId(),
-                                                                          layersWithMissingMatches));
-                    }
-                }
-            }
-
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        LOG.info("getStacksWithMissingMatches: exist, returning {} stacks", stacksWithMissingMatches.size());
-
-        return stacksWithMissingMatches;
-    }
-
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
     @GET
@@ -872,79 +677,6 @@ public class StackMetaDataService {
         }
 
         return cycle;
-    }
-
-    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/hierarchicalData")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(
-            tags = "Stack Data APIs",
-            value = "The hierarchical alignment context for the specified stack")
-    @ApiResponses(value = {
-            @ApiResponse(code = 404, message = "Stack not found")
-    })
-    public HierarchicalStack getHierarchicalData(@PathParam("owner") final String owner,
-                                                 @PathParam("project") final String project,
-                                                 @PathParam("stack") final String stack) {
-
-        LOG.info("getHierarchicalData: entry, owner={}, project={}, stack={}",
-                 owner, project, stack);
-
-        HierarchicalStack hierarchicalStack = null;
-        try {
-            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
-            hierarchicalStack = stackMetaData.getHierarchicalData();
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        return hierarchicalStack;
-    }
-
-    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/hierarchicalData")
-    @PUT
-    @Consumes(MediaType.APPLICATION_JSON)
-    @ApiOperation(
-            tags = {"Stack Data APIs", "Stack Management APIs"},
-            value = "Saves hierarchical alignment context for stack")
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, message = "hierarchicalData successfully saved"),
-            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
-            @ApiResponse(code = 404, message = "stack not found")
-    })
-    public Response saveHierarchicalData(@PathParam("owner") final String owner,
-                                         @PathParam("project") final String project,
-                                         @PathParam("stack") final String stack,
-                                         final HierarchicalStack hierarchicalStack) {
-
-        LOG.info("saveHierarchicalData: entry, owner={}, project={}, stack={}, hierarchicalStack={}",
-                 owner, project, stack, hierarchicalStack);
-
-        try {
-            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
-            validateStackIsModifiable(stackMetaData);
-            stackMetaData.setHierarchicalData(hierarchicalStack);
-            renderDao.saveStackMetaData(stackMetaData);
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
-        }
-
-        return Response.ok().build();
-    }
-
-    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/hierarchicalData")
-    @DELETE
-    @ApiOperation(
-            tags = {"Section Data APIs", "Stack Management APIs"},
-            value = "Deletes hierarchical alignment context for stack")
-    @ApiResponses(value = {
-            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
-            @ApiResponse(code = 404, message = "stack not found")
-    })
-    public Response deleteHierarchicalData(@PathParam("owner") final String owner,
-                                           @PathParam("project") final String project,
-                                           @PathParam("stack") final String stack) {
-        return saveHierarchicalData(owner, project, stack, null);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/cycle")
@@ -1240,89 +972,17 @@ public class StackMetaDataService {
         return tileSpecList;
     }
 
-    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/residualCalculation")
-    @POST
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(
-            tags = { "Stack Data APIs", "Hierarchical APIs" },
-            value = "Calculate alignment residual stats")
-    @ApiResponses(value = {
-            @ApiResponse(code = 404, message = "stack, match collection, or tile not found")
-    })
-    public ResidualCalculator.Result calculateResidualDistances(@PathParam("owner") final String owner,
-                                                                @PathParam("project") final String project,
-                                                                @PathParam("stack") final String stack,
-                                                                @Context final UriInfo uriInfo,
-                                                                final ResidualCalculator.InputData inputData) {
+    public static StackMetaData getStackMetaData(final StackId stackId,
+                                                 final RenderDao renderDao)
+            throws ObjectNotFoundException {
 
-        LOG.info("calculateResidual: entry, owner={}, project={}, stack={}",
-                 owner, project, stack);
-
-        ResidualCalculator.Result result = null;
-        try {
-            final StackId matchStackId = inputData.getMatchRenderStackId();
-
-            String pTileId = inputData.getPTileId();
-            String qTileId = inputData.getQTileId();
-
-            TileSpec pMatchTileSpec = getMatchTileSpec(matchStackId, pTileId);
-            TileSpec qMatchTileSpec = getMatchTileSpec(matchStackId, qTileId);
-
-            final CanvasMatches canvasMatches = matchDao.getMatchesBetweenObjects(inputData.getMatchCollectionId(),
-                                                                                  pMatchTileSpec.getSectionId(),
-                                                                                  pMatchTileSpec.getTileId(),
-                                                                                  qMatchTileSpec.getSectionId(),
-                                                                                  qMatchTileSpec.getTileId());
-            if (! pTileId.equals(canvasMatches.getpId())) {
-                final String swapTileId = pTileId;
-                pTileId = qTileId;
-                qTileId = swapTileId;
-
-                final TileSpec swapMatchTileSpec = pMatchTileSpec;
-                pMatchTileSpec = qMatchTileSpec;
-                qMatchTileSpec = swapMatchTileSpec;
-
-                LOG.info("calculateResidual: normalized tile ordering, now pTileId is {} and qTileId is {}",
-                         pTileId, qTileId);
-            }
-
-            final List<PointMatch> worldMatchList = canvasMatches.getMatches().createPointMatches();
-            final List<PointMatch> localMatchList =
-                    ResidualCalculator.convertMatchesToLocal(worldMatchList, pMatchTileSpec, qMatchTileSpec);
-
-            if (localMatchList.size() == 0) {
-                throw new IllegalArgumentException(inputData.getMatchCollectionId() + " has " +
-                                                   worldMatchList.size() + " matches between " + pTileId + " and " +
-                                                   qTileId + " but none of them are invertible");
-            }
-
-            final StackId alignedStackId = new StackId(owner, project, stack);
-            final TileSpec pAlignedTileSpec = renderDao.getTileSpec(alignedStackId, pTileId, true);
-            final TileSpec qAlignedTileSpec = renderDao.getTileSpec(alignedStackId, qTileId, true);
-
-            final ResidualCalculator residualCalculator = new ResidualCalculator();
-            result = residualCalculator.run(alignedStackId,
-                                            inputData,
-                                            localMatchList,
-                                            pAlignedTileSpec,
-                                            qAlignedTileSpec);
-
-        } catch (final Throwable t) {
-            RenderServiceUtil.throwServiceException(t);
+        final StackMetaData stackMetaData = renderDao.getStackMetaData(stackId);
+        if (stackMetaData == null) {
+            throw getStackNotFoundException(stackId.getOwner(),
+                                            stackId.getProject(),
+                                            stackId.getStack());
         }
-
-        return result;
-    }
-
-    private TileSpec getMatchTileSpec(final StackId matchStackId,
-                                      final String tileId) {
-        final TileSpec matchTileSpec = renderDao.getTileSpec(matchStackId, tileId, true);
-        // TODO: handle all tile normalization options (this lazily assumes the legacy method)
-        final RenderParameters matchRenderParameters =
-                TileDataService.getCoreTileRenderParameters(
-                        null, null, null, true, null, null, null, matchTileSpec);
-        return matchRenderParameters.getTileSpecs().get(0);
+        return stackMetaData;
     }
 
     public static ObjectNotFoundException getStackNotFoundException(final String owner,

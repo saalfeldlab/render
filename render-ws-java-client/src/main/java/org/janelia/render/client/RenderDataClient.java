@@ -1008,6 +1008,27 @@ public class RenderDataClient {
     }
 
     /**
+     * @return list of p and q group identifiers with multiple consensus set match pairs.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<String> getMatchMultiConsensusGroupIds()
+            throws IOException {
+
+        final URI uri = getUri(urls.getMatchMultiConsensusGroupIdsUrlString());
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final TypeReference<List<String>> typeReference = new TypeReference<List<String>>() {};
+        final JsonUtils.GenericHelper<List<String>> helper = new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<String>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getMatchMultiConsensusGroupIds: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
      * @return list of pGroup identifiers with multiple consensus set match pairs.
      *
      * @throws IOException

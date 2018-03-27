@@ -50,7 +50,7 @@ public class MultiCollectionMatchStorageFunction extends MatchStorageFunction {
             canvasMatches = matchesIterator.next();
             if (canvasMatches.size() > 0) {
 
-                currentCollection = pIdToCollectionMap.get(canvasMatches.getpId());
+                currentCollection = pIdToCollectionMap.get(canvasMatches.getOriginalPId());
 
                 if (currentCollection == null) {
 

@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
@@ -110,6 +111,22 @@ public class MatchDaoTest {
 
         if (! pGroupList.contains("section13")) {
             Assert.fail("list missing section13, values are: " + pGroupList);
+        }
+    }
+
+    @Test
+    public void testGetMultiConsensusGroupIds() throws Exception {
+
+        final Set<String> groupList = dao.getMultiConsensusGroupIds(collectionId);
+
+        Assert.assertEquals("invalid number of p group ids returned",
+                            5, groupList.size());
+
+        for (int i = 0; i < 5; i++) {
+            final String groupId = "section1" + i;
+            if (! groupList.contains(groupId)) {
+                Assert.fail("list missing " + groupId + ", values are: " + groupList);
+            }
         }
     }
 

@@ -50,7 +50,7 @@ public class StackMetaDataServiceTest {
 
         embeddedMongoDb = new EmbeddedMongoDb(RenderDao.RENDER_DB_NAME);
         renderDao = new RenderDao(embeddedMongoDb.getMongoClient());
-        service = new StackMetaDataService(renderDao, null);
+        service = new StackMetaDataService(renderDao);
     }
 
     @Before

@@ -187,7 +187,7 @@ public class CopyStackClient {
 
         if (parameters.layerBounds.minX != null) {
             final Set<String> tileIdsToKeep = getIdsForTilesInBox(z);
-            sourceCollection.filterSpecs(tileIdsToKeep);
+            sourceCollection.removeDifferentTileSpecs(tileIdsToKeep);
         }
 
         if (parameters.replaceLastTransformWithStage) {

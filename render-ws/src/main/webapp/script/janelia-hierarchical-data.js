@@ -460,6 +460,17 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
             }).join(', ');
         }
 
+        var consensusIdsUrl = this.getOwnerUrl() + '/matchCollection/' + hd.matchCollectionId.name + '/multiConsensusGroupIds';
+        var consensusDataSpanId = 'consensusDataSpan';
+        var consensusRow = '<a target="_blank" href="' + consensusIdsUrl + '"><span id="' + consensusDataSpanId + '">...</span></a>';
+
+        var splitConsensusGroupIds;
+        if ((hd.splitGroupIds !== undefined) && (hd.splitGroupIds.length > 0)) {
+            splitConsensusGroupIds = hd.splitGroupIds.toString();
+        } else {
+            splitConsensusGroupIds = "";
+        }
+
         var html = '<table>' +
                    this.getPopupLinkRow('Warp Stack:', warpCatmaidUrl, hd.warpTilesStackId.stack + ' (CATMAID)') +
                    this.getPopupLinkRow('Tier Project:', tierProjectUrl, hd.alignedStackId.project) +
@@ -469,10 +480,24 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
                    this.getPopupRow('Match Pair Count:', hd.savedMatchPairCount) +
                    matchPairRow +
                    this.getPopupRow('Missing Match Layers:', missingMatchLayers) +
+                   this.getPopupRow('Multi Consensus Group IDs:', consensusRow) +
+                   this.getPopupRow('Split Consensus Group IDs:', splitConsensusGroupIds) +
                    this.getPopupRow('Alignment Quality:', hd.alignmentQuality) +
                    '</table>';
 
         splitStackPopupDetails.html(html);
+
+        $.ajax({
+                   url: consensusIdsUrl,
+                   cache: false,
+                   success: function(data) {
+                       console.log(data);
+                       $('#' + consensusDataSpanId).text(data.toString());
+                   },
+                   error: function(data, text, xhr) {
+                       console.log(xhr);
+                   }
+               });
     }
 
     return selectedSplitStack;

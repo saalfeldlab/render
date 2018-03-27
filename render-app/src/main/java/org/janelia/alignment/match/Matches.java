@@ -18,6 +18,7 @@ package org.janelia.alignment.match;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -27,6 +28,7 @@ import mpicbg.models.PointMatch;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import net.imglib2.RealPoint;
 
 /**
  * Collection of n-dimensional weighted source-target point correspondences.
@@ -133,4 +135,23 @@ public class Matches implements Serializable {
         }
         return matches;
     }
+
+    public List<RealPoint> getPList() {
+        return buildPointList(getPs());
+    }
+
+    public List<RealPoint> getQList() {
+        return buildPointList(getQs());
+    }
+
+    private static List<RealPoint> buildPointList(final double[][] locations) {
+        final double[] xLocations = locations[0];
+        final double[] yLocations = locations[1];
+        final List<RealPoint> pointList = new ArrayList<>(xLocations.length);
+        for (int i = 0; i < xLocations.length; i++) {
+            pointList.add(new RealPoint(xLocations[i], yLocations[i]));
+        }
+        return pointList;
+    }
+
 }

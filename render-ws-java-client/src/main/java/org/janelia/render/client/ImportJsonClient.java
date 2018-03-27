@@ -128,7 +128,7 @@ public class ImportJsonClient {
 
                 // filter out invalid specs based upon bounding box
                 resolvedTiles.setTileSpecValidator(tileSpecValidator);
-                resolvedTiles.filterInvalidSpecs();
+                resolvedTiles.removeInvalidTileSpecs();
 
             }
 
