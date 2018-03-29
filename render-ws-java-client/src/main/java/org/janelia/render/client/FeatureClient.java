@@ -1,4 +1,4 @@
-package org.janelia.render.client.spark;
+package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
@@ -12,31 +12,25 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
 
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
-import org.apache.spark.broadcast.Broadcast;
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureList;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
-import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.FeatureExtractionParameters;
-import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.FeatureRenderClipParameters;
-import org.janelia.render.client.spark.cache.CachedCanvasFeatures;
-import org.janelia.render.client.spark.cache.CanvasFeatureListLoader;
+import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Spark client for extracting and storing SIFT features for a specified set of canvas (e.g. tile) pairs.
+ * Java client for extracting and storing SIFT features for a specified set of canvas (e.g. tile) pairs.
  *
  * @author Eric Trautman
  */
@@ -73,6 +67,21 @@ public class FeatureClient
                 order = 5)
         public List<String> pairJson;
 
+        @Parameter(
+                names = "--beginIndex",
+                description = "Index of first pair to process",
+                required = false)
+        public Integer beginIndex = 0;
+
+        @Parameter(
+                names = "--endIndex",
+                description = "Index (inclusive) of last pair to process (or null to process all remaining)",
+                required = false)
+        public Integer endIndex;
+
+        public int getExclusiveEndIndex(final int totalNumberOfPairs) {
+            return endIndex == null ? totalNumberOfPairs : (endIndex + 1);
+        }
     }
 
     public static void main(final String[] args) {
@@ -87,8 +96,7 @@ public class FeatureClient
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final FeatureClient client = new FeatureClient(parameters);
-                final SparkConf conf = new SparkConf().setAppName(FeatureClient.class.getSimpleName());
-                client.run(conf);
+                client.run();
 
             }
         };
@@ -102,24 +110,13 @@ public class FeatureClient
         this.parameters = parameters;
     }
 
-    public void run(final SparkConf conf) throws IOException, URISyntaxException {
-
-        final JavaSparkContext sparkContext = new JavaSparkContext(conf);
-
-        final String sparkAppId = sparkContext.getConf().getAppId();
-        final String executorsJson = LogUtilities.getExecutorsApiJson(sparkAppId);
-
-        LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
-
+    public void run() throws IOException, URISyntaxException {
         for (final String pairJsonFileName : parameters.pairJson) {
-            generateFeatureListsForPairFile(sparkContext, pairJsonFileName);
+            generateFeatureListsForPairFile(pairJsonFileName);
         }
-
-        sparkContext.stop();
     }
 
-    private void generateFeatureListsForPairFile(final JavaSparkContext sparkContext,
-                                                 final String pairJsonFileName)
+    private void generateFeatureListsForPairFile(final String pairJsonFileName)
             throws IOException, URISyntaxException {
 
         LOG.info("generateFeatureListsForPairFile: pairJsonFileName is {}", pairJsonFileName);
@@ -128,15 +125,21 @@ public class FeatureClient
         final String renderParametersUrlTemplate =
                 renderableCanvasIdPairs.getRenderParametersUrlTemplate(parameters.baseDataUrl);
         final Set<CanvasId> canvasIdSet = new HashSet<>(renderableCanvasIdPairs.size());
-        for (final OrderedCanvasIdPair pair : renderableCanvasIdPairs.getNeighborPairs()) {
+
+        final List<OrderedCanvasIdPair> neighborPairs = renderableCanvasIdPairs.getNeighborPairs();
+        final int exclusiveEndIndex = parameters.getExclusiveEndIndex(neighborPairs.size());
+
+        OrderedCanvasIdPair pair;
+        for (int i = parameters.beginIndex; i < exclusiveEndIndex; i++) {
+            pair = neighborPairs.get(i);
             canvasIdSet.add(pair.getP());
             canvasIdSet.add(pair.getQ());
         }
 
-        LOG.info("generateFeatureListsForPairFile: found {} distinct canvasIds", canvasIdSet.size());
+        LOG.info("generateFeatureListsForPairFile: found {} distinct canvasIds for pairs ({}:{}]",
+                 canvasIdSet.size(), parameters.beginIndex, exclusiveEndIndex);
 
-        generateFeatureListsForCanvases(sparkContext,
-                                        renderParametersUrlTemplate,
+        generateFeatureListsForCanvases(renderParametersUrlTemplate,
                                         new ArrayList<>(canvasIdSet),
                                         parameters.featureRender,
                                         parameters.featureRenderClip,
@@ -144,8 +147,7 @@ public class FeatureClient
                                         new File(parameters.rootFeatureDirectory).getAbsoluteFile());
     }
 
-    public static long generateFeatureListsForCanvases(final JavaSparkContext sparkContext,
-                                                       final String renderParametersUrlTemplate,
+    public static void generateFeatureListsForCanvases(final String renderParametersUrlTemplate,
                                                        final List<CanvasId> canvasIdList,
                                                        final FeatureRenderParameters featureRenderParameters,
                                                        final FeatureRenderClipParameters featureRenderClipParameters,
@@ -175,49 +177,34 @@ public class FeatureClient
                                            featureExtractionParameters.maxScale,
                                            featureRenderParameters.fillWithNoise);
 
-        final CanvasFeatureListLoader featureLoader = new CanvasFeatureListLoader(urlTemplateForRun,
-                                                                                  featureExtractor);
-
         final double renderScale = featureRenderParameters.renderScale;
 
-        // broadcast to all nodes
-        final Broadcast<CanvasFeatureListLoader> broadcastFeatureLoader = sparkContext.broadcast(featureLoader);
+        for (final CanvasId canvasId : canvasIdList) {
 
-        final JavaRDD<CanvasId> rddCanvasIds = sparkContext.parallelize(canvasIdList);
+            final String renderParametersUrl = urlTemplateForRun.getRenderParametersUrl(canvasId);
+            final RenderParameters renderParameters = urlTemplateForRun.getRenderParameters(canvasId,
+                                                                                            renderParametersUrl);
+            final double[] offsets = canvasId.getClipOffsets(); // HACK WARNING: offsets get applied by getRenderParameters call
 
-        final JavaRDD<Integer> rddCanvasCounts = rddCanvasIds.map(
-                (Function<CanvasId, Integer>) canvasId -> {
+            LOG.info("generateFeatureListsForCanvases: extracting features for {} with offsets ({}, {})",
+                     canvasId, offsets[0], offsets[1]);
 
-                    LogUtilities.setupExecutorLog4j(canvasId.getGroupId());
+            final List<Feature> featureList = featureExtractor.extractFeatures(renderParameters, null);
 
-                    final CanvasFeatureListLoader localFeatureLoader = broadcastFeatureLoader.getValue();
-                    final CachedCanvasFeatures canvasFeatures = localFeatureLoader.load(canvasId);
-                    final CanvasFeatureList canvasFeatureList =
-                            new CanvasFeatureList(canvasId,
-                                                  localFeatureLoader.getRenderParametersUrl(canvasId),
-                                                  renderScale,
-                                                  localFeatureLoader.getClipWidth(),
-                                                  localFeatureLoader.getClipHeight(),
-                                                  canvasFeatures.getFeatureList());
-                    CanvasFeatureList.writeToStorage(rootDirectory, canvasFeatureList);
-                    return 1;
-                }
-        );
+            final CanvasFeatureList canvasFeatureList =
+                    new CanvasFeatureList(canvasId,
+                                          renderParametersUrl,
+                                          renderScale,
+                                          urlTemplateForRun.getClipWidth(),
+                                          urlTemplateForRun.getClipHeight(),
+                                          featureList);
 
-        final List<Integer> canvasCountList = rddCanvasCounts.collect();
-
-        LOG.info("generateFeatureListsForCanvases: collected stats");
-
-        long totalSaved = 0;
-        for (final Integer canvasCount : canvasCountList) {
-            totalSaved += canvasCount;
+            CanvasFeatureList.writeToStorage(rootDirectory, canvasFeatureList);
         }
 
-        LOG.info("generateFeatureListsForCanvases: saved features for {} canvases", totalSaved);
 
-        return totalSaved;
+        LOG.info("generateFeatureListsForCanvases: saved features for {} canvases", canvasIdList.size());
     }
-
 
     private static final Logger LOG = LoggerFactory.getLogger(FeatureClient.class);
 }

@@ -1,10 +1,9 @@
-package org.janelia.render.client.spark;
+package org.janelia.render.client;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.apache.spark.SparkConf;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -26,19 +25,18 @@ public class FeatureClientTest {
     public static void main(final String[] args) {
 
         final String rootDirectory = "/Users/trautmane/Desktop/feature_test_data";
-        final int numberOfConcurrentTasks = 3;
-        final String master = "local[" + numberOfConcurrentTasks + "]";
 
         try {
-            testPairs(rootDirectory, master);
-            testClippedPairs(rootDirectory, master);
+            testPairs(rootDirectory, 1, 1);
+            testClippedPairs(rootDirectory);
         } catch (final Throwable t) {
             LOG.error("caught exception", t);
         }
     }
 
     private static void testPairs(final String rootDirectory,
-                                  final String master) throws Exception {
+                                  final int beginIndex,
+                                  final int endIndex) throws Exception {
 
         final Path pairsPath = Paths.get(rootDirectory, "pairs.json");
 
@@ -71,14 +69,15 @@ public class FeatureClientTest {
         final String[] args = {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "--rootFeatureDirectory", rootDirectory,
+                "--beginIndex", String.valueOf(beginIndex),
+                "--endIndex", String.valueOf(endIndex),
                 "--pairJson", pairsPath.toString()
         };
 
-        runWithArgs(args, master);
+        runWithArgs(args);
     }
 
-    private static void testClippedPairs(final String rootDirectory,
-                                         final String master) throws Exception {
+    private static void testClippedPairs(final String rootDirectory) throws Exception {
 
         final Path pairsPath = Paths.get(rootDirectory, "pairs_clip.json");
 
@@ -119,11 +118,10 @@ public class FeatureClientTest {
                 "--pairJson", pairsPath.toString()
         };
 
-        runWithArgs(clipArgs, master);
+        runWithArgs(clipArgs);
     }
 
-    private static void runWithArgs(final String[] args,
-                                    final String master) throws Exception {
+    private static void runWithArgs(final String[] args) throws Exception {
 
         final FeatureClient.Parameters parameters = new FeatureClient.Parameters();
         parameters.parse(args);
@@ -131,11 +129,7 @@ public class FeatureClientTest {
         LOG.info("runWithArgs: entry, parameters={}", parameters);
 
         final FeatureClient featureClient = new FeatureClient(parameters);
-
-        final SparkConf sparkConf = new SparkConf()
-                .setMaster(master)
-                .setAppName(FeatureClientTest.class.getSimpleName());
-        featureClient.run(sparkConf);
+        featureClient.run();
 
         LOG.info("runWithArgs: exit");
     }

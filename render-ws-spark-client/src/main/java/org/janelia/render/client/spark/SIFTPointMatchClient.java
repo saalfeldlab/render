@@ -22,6 +22,7 @@ import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
@@ -151,8 +152,8 @@ public class SIFTPointMatchClient
                                                final MatchStorageFunction matchStorageFunction)
             throws IOException, URISyntaxException {
 
-        final String renderParametersUrlTemplateForRun =
-                RenderableCanvasIdPairsUtilities.getRenderParametersUrlTemplateForRun(
+        final CanvasRenderParametersUrlTemplate urlTemplateForRun =
+                CanvasRenderParametersUrlTemplate.getTemplateForRun(
                         renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl),
                         featureRenderParameters.renderFullScaleWidth,
                         featureRenderParameters.renderFullScaleHeight,
@@ -161,15 +162,15 @@ public class SIFTPointMatchClient
                         featureRenderParameters.renderFilterListName,
                         featureRenderParameters.renderWithoutMask);
 
+        urlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth, featureRenderClipParameters.clipHeight);
+
         final long cacheMaxKilobytes = featureStorageParameters.maxCacheGb * 1000000;
         final CanvasFeatureListLoader featureLoader =
                 new CanvasFeatureListLoader(
-                        renderParametersUrlTemplateForRun,
+                        urlTemplateForRun,
                         getCanvasFeatureExtractor(featureExtractionParameters, featureRenderParameters),
                         featureStorageParameters.getRootFeatureDirectory(),
                         featureStorageParameters.requireStoredFeatures);
-
-        featureLoader.setClipInfo(featureRenderClipParameters.clipWidth, featureRenderClipParameters.clipHeight);
 
         final double renderScale = featureRenderParameters.renderScale;
 

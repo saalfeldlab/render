@@ -7,6 +7,7 @@ import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.MontageRelativePosition;
 import org.junit.Assert;
 import org.junit.Test;
@@ -27,13 +28,14 @@ public class CanvasDataCacheTest {
 
         final CanvasFeatureExtractor featureExtractor = new CanvasFeatureExtractor(siftParameters, 0.38, 0.82, true);
 
-        final String template = "src/test/resources/canvas-render-parameters.json";
+        final String templateString = "src/test/resources/canvas-render-parameters.json";
+        final CanvasRenderParametersUrlTemplate template = new CanvasRenderParametersUrlTemplate(templateString);
 
         final long cacheMaxKilobytes = 100;
         final CanvasFeatureListLoader featureLoader = new CanvasFeatureListLoader(template, featureExtractor);
 
         final int clipSize = 800;
-        featureLoader.setClipInfo(clipSize, clipSize);
+        template.setClipInfo(clipSize, clipSize);
 
         final CanvasDataCache dataCache = CanvasDataCache.getSharedCache(cacheMaxKilobytes, featureLoader);
 
