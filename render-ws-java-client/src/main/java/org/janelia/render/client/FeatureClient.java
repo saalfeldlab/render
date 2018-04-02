@@ -80,7 +80,11 @@ public class FeatureClient
         public Integer endIndex;
 
         public int getExclusiveEndIndex(final int totalNumberOfPairs) {
-            return endIndex == null ? totalNumberOfPairs : (endIndex + 1);
+            int exclusiveEndIndex = totalNumberOfPairs;
+            if ((endIndex != null && endIndex < totalNumberOfPairs)) {
+                exclusiveEndIndex = endIndex + 1;
+            }
+            return exclusiveEndIndex;
         }
     }
 
