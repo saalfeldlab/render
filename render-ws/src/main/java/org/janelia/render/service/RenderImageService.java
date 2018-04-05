@@ -59,7 +59,8 @@ public class RenderImageService {
     @ApiOperation(
             tags = "Spec Image APIs",
             value = "Render JPEG image from a provided spec")
-    public Response renderJpegImageFromProvidedParameters(final RenderParameters renderParameters) {
+    public Response renderJpegImageFromProvidedParameters(@PathParam("owner") final String owner,
+                                                          final RenderParameters renderParameters) {
         return RenderServiceUtil.renderImageStream(renderParameters,
                                                    Utils.JPEG_FORMAT,
                                                    RenderServiceUtil.IMAGE_JPEG_MIME_TYPE,
@@ -76,7 +77,8 @@ public class RenderImageService {
     @ApiOperation(
             tags = "Spec Image APIs",
             value = "Render PNG image from a provided spec")
-    public Response renderPngImageFromProvidedParameters(final RenderParameters renderParameters) {
+    public Response renderPngImageFromProvidedParameters(@PathParam("owner") final String owner,
+                                                         final RenderParameters renderParameters) {
         return RenderServiceUtil.renderImageStream(renderParameters,
                                                    Utils.PNG_FORMAT,
                                                    RenderServiceUtil.IMAGE_PNG_MIME_TYPE,
@@ -92,7 +94,8 @@ public class RenderImageService {
     @ApiOperation(
             tags = "Spec Image APIs",
             value = "Render TIFF image from a provided spec")
-    public Response renderTiffImageFromProvidedParameters(final RenderParameters renderParameters) {
+    public Response renderTiffImageFromProvidedParameters(@PathParam("owner") final String owner,
+                                                          final RenderParameters renderParameters) {
         return RenderServiceUtil.renderImageStream(renderParameters,
                                                    Utils.TIFF_FORMAT,
                                                    RenderServiceUtil.IMAGE_TIFF_MIME_TYPE,
