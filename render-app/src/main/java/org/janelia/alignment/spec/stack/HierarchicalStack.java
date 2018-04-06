@@ -388,6 +388,35 @@ public class HierarchicalStack implements Serializable {
     }
 
     /**
+     * Uses this stack's scale and the specified aligned stack bounds to convert the specified affine to a
+     * full scale version that can be used in an {@link org.janelia.alignment.transform.AffineWarpFieldTransform}.
+     *
+     * @param  alignedLayerTransformModel  scaled aligned model to convert.
+     * @param  alignedFirstLayerBounds     bounds of the first layer in the (scaled) aligned stack.
+     * @param  alignedStackScale           scale of the aligned hierarchical stack.
+     *
+     *
+     * @return full scale relative version of the specified model.
+     */
+    @JsonIgnore
+    public static AffineModel2D getFullScaleRelativeModel(final AffineModel2D alignedLayerTransformModel,
+                                                          final Bounds alignedFirstLayerBounds,
+                                                          final double alignedStackScale) {
+
+        final double centerX = alignedFirstLayerBounds.getMinX() + (alignedFirstLayerBounds.getDeltaX() / 2);
+        final double centerY = alignedFirstLayerBounds.getMinY() + (alignedFirstLayerBounds.getDeltaY() / 2);
+
+        final AffineTransform affine = new AffineTransform();
+        affine.scale(1 / alignedStackScale, 1 / alignedStackScale);
+        affine.translate(-centerX, -centerY); // translate center to origin
+        affine.concatenate(alignedLayerTransformModel.createAffine());
+        affine.scale(alignedStackScale, alignedStackScale);
+        final AffineModel2D model = new AffineModel2D();
+        model.set(affine);
+        return model;
+    }
+
+    /**
      * Uses this stack's scale and the specified montage layer bounds to convert the specified affine to a
      * full scale version that can be used for rough alignment of all tiles in a layer.
      *
@@ -401,6 +430,8 @@ public class HierarchicalStack implements Serializable {
     public AffineModel2D getFullScaleRoughModel(final AffineModel2D alignedLayerTransformModel,
                                                 final double montageLayerMinX,
                                                 final double montageLayerMinY) {
+
+        // TODO: revisit this logic ...
 
         final AffineTransform affine = new AffineTransform();
         affine.scale(1 / scale, 1 / scale);

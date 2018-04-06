@@ -374,7 +374,7 @@ public class HierarchicalDataService {
 
             StackId alignedStackId;
             StackStats alignedStackStats;
-            Bounds alignedStackBounds;
+            Bounds alignedFirstLayerBounds;
             AffineModel2D relativeAlignedModel;
             final double[] affineMatrixElements = new double[6];
 
@@ -408,18 +408,22 @@ public class HierarchicalDataService {
                     }
 
                     alignedStackId = tierStack.getAlignedStackId();
-                    alignedStackBounds = null;
+                    alignedFirstLayerBounds = null;
 
                     alignedStackStats = projectStackNamesToMetadataMap.get(alignedStackId.getStack()).getStats();
 
                     if (alignedStackStats != null) {
-                        alignedStackBounds = alignedStackStats.getStackBounds();
+                        final Bounds alignedStackBounds = alignedStackStats.getStackBounds();
+                        if (alignedStackBounds != null) {
+                            alignedFirstLayerBounds = renderDao.getLayerBounds(alignedStackId,
+                                                                               alignedStackBounds.getMinZ());
+                        }
                     }
 
-                    if (alignedStackBounds == null) {
+                    if (alignedFirstLayerBounds == null) {
                         throw new IllegalArgumentException(
                                 "Cannot calculate affine translation offsets for z " + z +
-                                ".  No bounds available for " + alignedStackId +
+                                ".  No bounds available for first layer of " + alignedStackId +
                                 ".  Make sure stack state is COMPLETE");
                     }
 
@@ -442,11 +446,10 @@ public class HierarchicalDataService {
 
                             tileSpecForZ = renderDao.getTileSpec(alignedStackId, tileId, false);
 
-                            relativeAlignedModel = getRelativeAlignedModel(tierStack,
-                                                                           tileSpecForZ,
+                            relativeAlignedModel = getRelativeAlignedModel(tileSpecForZ,
                                                                            alignedStackId,
-                                                                           alignedStackBounds.getMinX(),
-                                                                           alignedStackBounds.getMinY());
+                                                                           alignedFirstLayerBounds,
+                                                                           tierStack.getScale());
 
                             builder.addConsensusSetData(relativeAlignedModel, nameToPointsForGroup.getPoints(tileId));
                         }
@@ -457,11 +460,10 @@ public class HierarchicalDataService {
 
                         tileSpecForZ = renderDao.getTileSpec(alignedStackId, tierStack.getTileIdForZ(z), false);
 
-                        relativeAlignedModel = getRelativeAlignedModel(tierStack,
-                                                                       tileSpecForZ,
+                        relativeAlignedModel = getRelativeAlignedModel(tileSpecForZ,
                                                                        alignedStackId,
-                                                                       alignedStackBounds.getMinX(),
-                                                                       alignedStackBounds.getMinY());
+                                                                       alignedFirstLayerBounds,
+                                                                       tierStack.getScale());
 
                         relativeAlignedModel.toArray(affineMatrixElements);
 
@@ -589,11 +591,10 @@ public class HierarchicalDataService {
         return result;
     }
 
-    private AffineModel2D getRelativeAlignedModel(final HierarchicalStack tierStack,
-                                                  final TileSpec tileSpecForZ,
+    private AffineModel2D getRelativeAlignedModel(final TileSpec tileSpecForZ,
                                                   final StackId alignedStackId,
-                                                  final double alignedStackMinX,
-                                                  final double alignedStackMinY)
+                                                  final Bounds alignedFirstLayerBounds,
+                                                  final double alignedStackScale)
             throws IllegalArgumentException {
 
         final AffineModel2D relativeAlignedModel;
@@ -605,9 +606,9 @@ public class HierarchicalDataService {
             final CoordinateTransform lastTransform = lastTransformSpec.getNewInstance();
 
             if (lastTransform instanceof AffineModel2D) {
-                relativeAlignedModel = tierStack.getFullScaleRelativeModel((AffineModel2D) lastTransform,
-                                                                           alignedStackMinX,
-                                                                           alignedStackMinY);
+                relativeAlignedModel = HierarchicalStack.getFullScaleRelativeModel((AffineModel2D) lastTransform,
+                                                                                   alignedFirstLayerBounds,
+                                                                                   alignedStackScale);
             } else {
                 throw new IllegalArgumentException(
                         "Invalid affine data for z " + tileSpecForZ.getZ() +
