@@ -75,6 +75,17 @@ public class RenderDataService {
         this.filterFactory = null;
     }
 
+    @Path("v1/owner/{owner}/namedFilterSpecLists")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Service Configuration APIs",
+            value = "Get configured rendering filters",
+            produces = MediaType.APPLICATION_JSON)
+    public FilterFactory getConfiguredNamedFilters(@PathParam("owner") final String owner) {
+        return getFilterFactory();
+    }
+
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/layoutFile")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
