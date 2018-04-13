@@ -23,26 +23,30 @@ curl "${SLF4J_URL}" | tar xz
 curl "${LOGBACK_URL}" | tar xz
 curl -L "${SWAGGER_UI_URL}" | tar xz
 
+SLF4J_SOURCE_DIR="slf4j-${SLF4J_VERSION}"
+LOGBACK_SOURCE_DIR="logback-${LOGBACK_VERSION}"
+SWAGGER_UI_SOURCE_DIR="swagger-ui-${SWAGGER_UI_VERSION}"
+
 # -------------------------------------------------------------------------------------------
 # setup logging components
 
 JETTY_LIB_EXT="${JETTY_BASE_DIR}/lib/ext"
 mkdir -p "${JETTY_BASE_DIR}/logs" "${JETTY_LIB_EXT}"
 
-mv "logback-${LOGBACK_VERSION}/logback-access-${LOGBACK_VERSION}.jar" "${JETTY_LIB_EXT}"
-mv "logback-${LOGBACK_VERSION}/logback-classic-${LOGBACK_VERSION}.jar" "${JETTY_LIB_EXT}"
-mv "logback-${LOGBACK_VERSION}/logback-core-${LOGBACK_VERSION}.jar" "${JETTY_LIB_EXT}"
+mv "${LOGBACK_SOURCE_DIR}/logback-access-${LOGBACK_VERSION}.jar" "${JETTY_LIB_EXT}"
+mv "${LOGBACK_SOURCE_DIR}/logback-classic-${LOGBACK_VERSION}.jar" "${JETTY_LIB_EXT}"
+mv "${LOGBACK_SOURCE_DIR}/logback-core-${LOGBACK_VERSION}.jar" "${JETTY_LIB_EXT}"
 
-mv "slf4j-${SLF4J_VERSION}/jcl-over-slf4j-${SLF4J_VERSION}.jar" "${JETTY_LIB_EXT}"
-mv "slf4j-${SLF4J_VERSION}/jul-to-slf4j-${SLF4J_VERSION}.jar" "${JETTY_LIB_EXT}"
-mv "slf4j-${SLF4J_VERSION}/log4j-over-slf4j-${SLF4J_VERSION}.jar" "${JETTY_LIB_EXT}"
-mv "slf4j-${SLF4J_VERSION}/slf4j-api-${SLF4J_VERSION}.jar" "${JETTY_LIB_EXT}"
+mv "${SLF4J_SOURCE_DIR}/jcl-over-slf4j-${SLF4J_VERSION}.jar" "${JETTY_LIB_EXT}"
+mv "${SLF4J_SOURCE_DIR}/jul-to-slf4j-${SLF4J_VERSION}.jar" "${JETTY_LIB_EXT}"
+mv "${SLF4J_SOURCE_DIR}/log4j-over-slf4j-${SLF4J_VERSION}.jar" "${JETTY_LIB_EXT}"
+mv "${SLF4J_SOURCE_DIR}/slf4j-api-${SLF4J_VERSION}.jar" "${JETTY_LIB_EXT}"
 
 # -------------------------------------------------------------------------------------------
 # setup swagger components
 
 SWAGGER_UI_DEPLOY_DIR="${JETTY_BASE_DIR}/webapps/swagger-ui"
-cp -r swagger-ui-${SWAGGER_UI_VERSION}/dist "${SWAGGER_UI_DEPLOY_DIR}"
+cp -r ${SWAGGER_UI_SOURCE_DIR}/dist "${SWAGGER_UI_DEPLOY_DIR}"
 
 # modify index.html to dynamically derive the swagger.json URL and sort functions by method
 SWAGGER_INDEX_HTML="${SWAGGER_UI_DEPLOY_DIR}/index.html"
@@ -60,6 +64,6 @@ sed -i '
 ' "${SWAGGER_UI_JS}"
 
 # clean-up unused downloaded stuff
-rm -rf "logback-${LOGBACK_VERSION}"
-rm -rf "slf4j-${SLF4J_VERSION}"
-rm -rf "${SWAGGER_UI_VERSION}"
+rm -rf "${SLF4J_SOURCE_DIR}"
+rm -rf "${LOGBACK_SOURCE_DIR}"
+rm -rf "${SWAGGER_UI_SOURCE_DIR}"
