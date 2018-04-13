@@ -26,10 +26,10 @@ To run the full render-ws image:
 
 ```bash
 # with database running on same host at default port
-docker run -p 8080:8080 -e "MONGO_HOST=localhost" render-ws:latest
+docker run -p 8080:8080 -e "MONGO_HOST=localhost" -rm render-ws:latest
 
-# with customized environment variables in an file
-docker run -p 8080:8080 --env-file ./env.janelia.dev render-ws:latest
+# with customized environment variables in a file (named dev.env)
+docker run -p 8080:8080 --env-file dev.env -rm render-ws:latest
 ```
 
 You must explicitly specify either the MONGO_HOST or MONGO_CONNECTION_STRING environment variables
@@ -51,6 +51,7 @@ The full render-ws image supports the following set of environment variables (sp
 
 # if a connection string is specified, other mongo connection variables are ignored
 # format details are here: https://docs.mongodb.com/manual/reference/connection-string
+# example: mongodb://<user>:<password>@replRender/render-mongodb2.int.janelia.org,render-mongodb3.int.janelia.org/admin
 MONGO_CONNECTION_STRING=  
 
 # should be 'y' if you are using a connection string that includes username and password 
@@ -68,6 +69,12 @@ MONGO_AUTH_DB=
 # Web Service JVM Parameters
  
 JAVA_OPTIONS=-Xms3g -Xmx3g -server -Djava.awt.headless=true
+
+# ---------------------------------
+# Web Service Threadpool Parameters
+
+JETTY_THREADPOOL_MIN_THREADS=10
+JETTY_THREADPOOL_MAX_THREADS=200
 
 # ---------------------------------
 # Web Service Logging Parameters
@@ -157,5 +164,3 @@ To remove all untagged (\<none\>) images (including the large build artifacts im
 ```bash
 docker image rm $(docker images --filter "dangling=true" -q --no-trunc)
 ```
-
-

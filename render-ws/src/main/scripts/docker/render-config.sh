@@ -19,6 +19,9 @@ MONGO_AUTH_DB=$(stripQuotes $MONGO_AUTH_DB)
 MONGO_CONNECTION_STRING=$(stripQuotes $MONGO_CONNECTION_STRING)
 MONGO_CONNECTION_STRING_USES_AUTH=$(stripQuotes $MONGO_CONNECTION_STRING_USES_AUTH)
 
+JETTY_THREADPOOL_MIN_THREADS=$(stripQuotes $JETTY_THREADPOOL_MIN_THREADS)
+JETTY_THREADPOOL_MAX_THREADS=$(stripQuotes $JETTY_THREADPOOL_MIN_THREADS)
+
 LOG_ACCESS_ROOT_APPENDER=$(stripQuotes $LOG_ACCESS_ROOT_APPENDER)
 LOG_JETTY_ROOT_APPENDER=$(stripQuotes $LOG_JETTY_ROOT_APPENDER)
 LOG_JETTY_ROOT_LEVEL=$(stripQuotes $LOG_JETTY_ROOT_LEVEL)
@@ -48,32 +51,45 @@ RENDER_DB_PROPERTIES="${JETTY_BASE}/resources/render-db.properties"
 
 
 if [ -z "${MONGO_HOST}" ] & [ -z "${MONGO_CONNECTION_STRING}" ]; then
-    echo "ERROR: either MONGO_HOST or MONGO_CONNECTION_STRING must be defined"
-    exit 1
+  echo "ERROR: either MONGO_HOST or MONGO_CONNECTION_STRING must be defined"
+  exit 1
 fi
 
 sed -i "s/servers=.*/servers=${MONGO_HOST}/" ${RENDER_DB_PROPERTIES}
 
 if [ -n "${MONGO_PORT}" ]; then
-     sed -i "s/#port=.*/port=${MONGO_PORT}/" ${RENDER_DB_PROPERTIES}
+  sed -i "s/#port=.*/port=${MONGO_PORT}/" ${RENDER_DB_PROPERTIES}
 fi
 
 if [ -n "${MONGO_USERNAME}" ]; then
-     sed -i """
-       s/#authenticationDatabase=/authenticationDatabase=/
-       s/#userName=.*/userName=${MONGO_USERNAME}/
-       s/#password=.*/password=${MONGO_PASSWORD}/
-     """ ${RENDER_DB_PROPERTIES}
+  sed -i """
+    s/#authenticationDatabase=/authenticationDatabase=/
+    s/#userName=.*/userName=${MONGO_USERNAME}/
+    s/#password=.*/password=${MONGO_PASSWORD}/
+  """ ${RENDER_DB_PROPERTIES}
 fi
 
 if [ -n "${MONGO_CONNECTION_STRING}" ]; then
 
-     ESCAPED_MONGO_CONNECTION_STRING=$(echo ${MONGO_CONNECTION_STRING} | sed 's/@/\\@/')
-     sed -i "s@#connectionString=.*@connectionString=${ESCAPED_MONGO_CONNECTION_STRING}@" ${RENDER_DB_PROPERTIES}
+  ESCAPED_MONGO_CONNECTION_STRING=$(echo ${MONGO_CONNECTION_STRING} | sed 's/@/\\@/')
+  sed -i "s@#connectionString=.*@connectionString=${ESCAPED_MONGO_CONNECTION_STRING}@" ${RENDER_DB_PROPERTIES}
 
-     if [ "${MONGO_CONNECTION_STRING_USES_AUTH}" == "Y" ] || [ "${MONGO_CONNECTION_STRING_USES_AUTH}" == "y" ]; then
-         sed -i "s/#authenticationDatabase=/authenticationDatabase=/" ${RENDER_DB_PROPERTIES}
-     fi
+  if [ "${MONGO_CONNECTION_STRING_USES_AUTH}" == "Y" ] || [ "${MONGO_CONNECTION_STRING_USES_AUTH}" == "y" ]; then
+    sed -i "s/#authenticationDatabase=/authenticationDatabase=/" ${RENDER_DB_PROPERTIES}
+  fi
+fi
+
+# --------------------------------------------------------------
+# Jetty thread pool config
+
+JETTY_SERVER_INI="${JETTY_BASE}/start.d/server.ini"
+
+if [ -n "${JETTY_THREADPOOL_MIN_THREADS}" ]; then
+  sed -i "s/^.*jetty.threadPool.minThreads=.*/jetty.threadPool.minThreads=${JETTY_THREADPOOL_MIN_THREADS}/" ${JETTY_SERVER_INI}
+fi
+
+if [ -n "${JETTY_THREADPOOL_MAX_THREADS}" ]; then
+  sed -i "s/^.*jetty.threadPool.maxThreads=.*/jetty.threadPool.maxThreads=${JETTY_THREADPOOL_MAX_THREADS}/" ${JETTY_SERVER_INI}
 fi
 
 # --------------------------------------------------------------
@@ -124,11 +140,11 @@ sed -i """
 
 # if NDVIZ_URL is not defined, use HOST and PORT parameters
 if [ -z "${NDVIZ_URL}" ] & [ -n "${NDVIZHOST}" ]; then
-    if [ -n "${NDVIZPORT}" ]; then
-        NDVIZ_URL="http://${NDVIZHOST}:${NDVIZPORT}"
-    else
-        NDVIZ_URL="http://${NDVIZHOST}"
-    fi
+  if [ -n "${NDVIZPORT}" ]; then
+    NDVIZ_URL="http://${NDVIZHOST}:${NDVIZPORT}"
+  else
+    NDVIZ_URL="http://${NDVIZHOST}"
+  fi
 fi
 
 sed -i """
@@ -148,57 +164,57 @@ sed -i """
 # Default view query parameters
 
 appendParameter() {
-    local PARAMETERS="$1"
-    local KEY="$2"
-    local VALUE="$3"
-    if [ -n "${PARAMETERS}" ]; then
-        PARAMETERS="${PARAMETERS}\&amp;${KEY}=${VALUE}"
-    else
-        PARAMETERS="?${KEY}=${VALUE}"
-    fi
-    echo "${PARAMETERS}"
+  local PARAMETERS="$1"
+  local KEY="$2"
+  local VALUE="$3"
+  if [ -n "${PARAMETERS}" ]; then
+    PARAMETERS="${PARAMETERS}\&amp;${KEY}=${VALUE}"
+  else
+    PARAMETERS="?${KEY}=${VALUE}"
+  fi
+  echo "${PARAMETERS}"
 }
 
 unset VIEW_PARAMETERS
 
 # NOTE: NDVIZ_URL has already been aggregated from host and port above if necessary
 if [ -n "${NDVIZ_URL}" ]; then
-    VIEW_PARAMETERS="?ndvizHost=${NDVIZ_URL}"
+  VIEW_PARAMETERS="?ndvizHost=${NDVIZ_URL}"
 fi
 
 if [ -n "${VIEW_CATMAID_HOST_AND_PORT}" ]; then
-    VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" catmaidHost "${VIEW_CATMAID_HOST_AND_PORT}")
+  VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" catmaidHost "${VIEW_CATMAID_HOST_AND_PORT}")
 fi
 
 if [ -n "${VIEW_DYNAMIC_RENDER_HOST_AND_PORT}" ]; then
-    VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" dynamicRenderHost "${VIEW_DYNAMIC_RENDER_HOST_AND_PORT}")
+  VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" dynamicRenderHost "${VIEW_DYNAMIC_RENDER_HOST_AND_PORT}")
 fi
 
 if [ -n "${VIEW_RENDER_STACK_OWNER}" ]; then
 
-    VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" renderStackOwner "${VIEW_RENDER_STACK_OWNER}")
+  VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" renderStackOwner "${VIEW_RENDER_STACK_OWNER}")
 
-    if [ -n "${VIEW_RENDER_STACK_PROJECT}" ]; then
+  if [ -n "${VIEW_RENDER_STACK_PROJECT}" ]; then
 
-        VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" renderStackProject "${VIEW_RENDER_STACK_PROJECT}")
+    VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" renderStackProject "${VIEW_RENDER_STACK_PROJECT}")
 
-        if [ -n "${VIEW_RENDER_STACK}" ]; then
+    if [ -n "${VIEW_RENDER_STACK}" ]; then
 
-            VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" renderStack "${VIEW_RENDER_STACK}")
+      VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" renderStack "${VIEW_RENDER_STACK}")
 
-        fi
     fi
+  fi
 fi
 
 if [ -n "${VIEW_MATCH_OWNER}" ]; then
 
-    VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" matchOwner "${VIEW_MATCH_OWNER}")
+  VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" matchOwner "${VIEW_MATCH_OWNER}")
 
-    if [ -n "${VIEW_MATCH_COLLECTION}" ]; then
+  if [ -n "${VIEW_MATCH_COLLECTION}" ]; then
 
-        VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" matchCollection "${VIEW_MATCH_COLLECTION}")
+    VIEW_PARAMETERS=$(appendParameter "${VIEW_PARAMETERS}" matchCollection "${VIEW_MATCH_COLLECTION}")
 
-    fi
+  fi
 fi
 
 sed -i "s@render-ws/view/index.html@render-ws/view/index.html${VIEW_PARAMETERS}@" "${JETTY_BASE}/etc/jetty-rewrite.xml"
