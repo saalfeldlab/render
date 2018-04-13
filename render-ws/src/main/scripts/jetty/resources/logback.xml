@@ -10,11 +10,11 @@
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- 
-			     The first %d token is marked as auxiliary, so the second %d token is then assumed to be primary.
-				 Rollover will occur daily (default for %d) and the folder name will depend on the year and month. 
-				 For example, during the month of November 2014, archived files will all placed 
-				 under the logs/2014-11/ folder (e.g logs/2014-11/2014-11-14-jetty.log).
-		    -->
+                 The first %d token is marked as auxiliary, so the second %d token is then assumed to be primary.
+                 Rollover will occur daily (default for %d) and the folder name will depend on the year and month.
+                 For example, during the month of November 2014, archived files will all placed
+                 under the logs/2014-11/ folder (e.g logs/2014-11/2014-11-14-jetty.log).
+            -->
             <fileNamePattern>${jetty.base}/logs/%d{yyyy-MM,aux}/%d-jetty.log.gz</fileNamePattern>
         </rollingPolicy>
 
@@ -31,6 +31,13 @@
          gets fixed.
     -->
     <logger name="org.mongodb.driver.cluster" level="WARN"/>
+
+    <!--
+         Here are some other contexts that can be useful when debugging (uncomment as needed).
+    -->
+    <!-- <logger name="org.jboss" level="DEBUG"/> -->
+    <!-- <logger name="org.eclipse.jetty.servlets" level="DEBUG"/> -->
+    <!-- <logger name="org.eclipse.jetty.server" level="DEBUG"/> -->
 
     <root level="INFO">
         <appender-ref ref="FILE" />

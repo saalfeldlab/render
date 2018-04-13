@@ -1,5 +1,6 @@
 deploy
 htmlcov
+**/site
 test-reports
 Dockerfile
 **/target

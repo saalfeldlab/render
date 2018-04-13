@@ -6,7 +6,7 @@
 <!-- http://wiki.eclipse.org/Jetty/Reference/jetty.xml_syntax        -->
 <!--                                                                 -->
 <!-- Additional configuration files are available in $JETTY_HOME/etc -->
-<!-- and can be mixed in. See start.ini file for the default         -->
+<!-- and can be mixed in. See start.d files for the default          -->
 <!-- configuration files.                                            -->
 <!--                                                                 -->
 <!-- For a description of the configuration mechanism, see the       -->
@@ -121,9 +121,11 @@
            <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
            <!-- HTTP-access log (see http://logback.qos.ch/access.html )    -->
 
+<!-- remove close comment to disable access log -->
            <Item>
              <New id="RequestLogHandler" class="org.eclipse.jetty.server.handler.RequestLogHandler"/>
            </Item>
+<!-- remove open comment to disable access log -->
 
            <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 
@@ -143,18 +145,22 @@
     <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
     <!-- HTTP-access log (see http://logback.qos.ch/access.html )    -->
 
+    <!--
+     This uses a hack (see tpounds comment on https://github.com/qos-ch/logback/pull/269 )
+     to workaround http://jira.qos.ch/browse/LOGBACK-1052 until it gets resolved.
+     Change requestLogImpl line below to this when fixed:
+     <New id="requestLogImpl" class="ch.qos.logback.access.jetty.RequestLogImpl">
+     -->
+
+<!-- remove close comment to disable access log -->
     <Ref id="RequestLogHandler">
       <Set name="requestLog">
-        <!--
-             Use hack (see tpounds comment on https://github.com/qos-ch/logback/pull/269 )
-             to workaround http://jira.qos.ch/browse/LOGBACK-1052 until it gets resolved.
-        -->
         <New id="requestLogImpl" class="org.janelia.RequestLogImpFixLogbackIssue1052">
-        <!--  <New id="requestLogImpl" class="ch.qos.logback.access.jetty.RequestLogImpl"> -->
           <Set name="fileName"><SystemProperty name="jetty.base"/>/resources/logback-access.xml</Set>
         </New>
       </Set>
     </Ref>
+<!-- remove open comment to disable access log -->
 
     <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 

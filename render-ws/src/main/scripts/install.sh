@@ -1,11 +1,8 @@
 #!/bin/bash
 
 JDK_VERSION="jdk1.8.0_131"
-JETTY_VERSION="9.3.7.v20160115"
+JETTY_VERSION="9.4.6.v20170531" # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/Dockerfile
 JETTY_DIST="jetty-distribution-${JETTY_VERSION}"
-LOGBACK_VERSION="1.1.5"
-SLF4J_VERSION="1.7.16"
-SWAGGER_UI_VERSION="2.1.4"
 
 # URL for JDK 8
 # This occasionally needs to be updated when Oracle moves things around.
@@ -15,9 +12,6 @@ JDK_URL="http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b
 
 # URLs for Jetty 9, SLF4J 1.7, Logback 1.1, and Swagger 2.1
 JETTY_URL="http://central.maven.org/maven2/org/eclipse/jetty/jetty-distribution/${JETTY_VERSION}/${JETTY_DIST}.tar.gz"
-SLF4J_URL="https://www.slf4j.org/dist/slf4j-${SLF4J_VERSION}.tar.gz"
-LOGBACK_URL="https://logback.qos.ch/dist/logback-${LOGBACK_VERSION}.tar.gz"
-SWAGGER_UI_URL="https://github.com/swagger-api/swagger-ui/archive/v${SWAGGER_UI_VERSION}.tar.gz"
 
 ABSOLUTE_SCRIPT=`readlink -m $0`
 SCRIPTS_DIR=`dirname ${ABSOLUTE_SCRIPT}`
@@ -57,45 +51,37 @@ cd ${INSTALL_DIR}
 
 
 echo """
-download JDK, Jetty, SLF4J, Logback, and Swagger UI ...
+download JDK and Jetty ...
 """
 curl -j -k -L -H "Cookie: oraclelicense=accept-securebackup-cookie" ${JDK_URL} | tar xz
 curl ${JETTY_URL} | tar xz
-curl ${SLF4J_URL} | tar xz
-curl ${LOGBACK_URL} | tar xz
-curl -L ${SWAGGER_UI_URL} | tar xz
-
 
 echo """
 configure Jetty ...
 """
-JETTY_BASE="${INSTALL_DIR}/jetty_base"
+export JETTY_BASE="${INSTALL_DIR}/jetty_base"
 mkdir -p ${JETTY_BASE}
 cd ${JETTY_BASE}
 
-mkdir -p etc lib/ext lib/logging logs modules resources webapps work
+mkdir -p etc lib/ext lib/logging modules resources webapps work
 
-cp ${SCRIPTS_DIR}/jetty/start.ini .
 cp ${SCRIPTS_DIR}/jetty/etc/* etc
-cp ${SCRIPTS_DIR}/jetty/logs/* logs
 cp ${SCRIPTS_DIR}/jetty/modules/* modules
 cp ${SCRIPTS_DIR}/jetty/resources/* resources
+cp ${SCRIPTS_DIR}/jetty/webapps/*.xml webapps
 
-# setup logging components
-JETTY_LIB_LOGGING="${JETTY_BASE}/lib/logging"
+cp -r ${SCRIPTS_DIR}/jetty/start.d .
 
-cp ${INSTALL_DIR}/logback-${LOGBACK_VERSION}/logback-access-${LOGBACK_VERSION}.jar ${JETTY_LIB_LOGGING}
-cp ${INSTALL_DIR}/logback-${LOGBACK_VERSION}/logback-classic-${LOGBACK_VERSION}.jar ${JETTY_LIB_LOGGING}
-cp ${INSTALL_DIR}/logback-${LOGBACK_VERSION}/logback-core-${LOGBACK_VERSION}.jar ${JETTY_LIB_LOGGING}
-
-cp ${INSTALL_DIR}/slf4j-${SLF4J_VERSION}/jcl-over-slf4j-${SLF4J_VERSION}.jar ${JETTY_LIB_LOGGING}
-cp ${INSTALL_DIR}/slf4j-${SLF4J_VERSION}/jul-to-slf4j-${SLF4J_VERSION}.jar ${JETTY_LIB_LOGGING}
-cp ${INSTALL_DIR}/slf4j-${SLF4J_VERSION}/log4j-over-slf4j-${SLF4J_VERSION}.jar ${JETTY_LIB_LOGGING}
-cp ${INSTALL_DIR}/slf4j-${SLF4J_VERSION}/slf4j-api-${SLF4J_VERSION}.jar ${JETTY_LIB_LOGGING}
+# remove setuid module since non-container installs may not be running as root
+rm start.d/setuid.ini
 
 # hack to fix logback access issue 1052
-cp ${SCRIPTS_DIR}/jetty/lib/logging/*.jar ${JETTY_LIB_LOGGING}
+cp ${SCRIPTS_DIR}/jetty/lib/ext/*.jar lib/ext
 
+echo """
+download and install SLF4J, Logback, and Swagger UI ...
+"""
+${SCRIPTS_DIR}/jetty/configure_web_server.sh
 
 # setup start script
 JETTY_HOME="${INSTALL_DIR}/${JETTY_DIST}"
@@ -110,14 +96,6 @@ sed "
 
 chmod 755 ${JETTY_WRAPPER_SCRIPT}
 
-# deploy Swagger UI to webapps
-SWAGGER_UI_DEPLOY_DIR="${JETTY_BASE}/webapps/swagger-ui"
-
-cp -r ${INSTALL_DIR}/swagger-ui-${SWAGGER_UI_VERSION}/dist ${SWAGGER_UI_DEPLOY_DIR}
-
-# modify index.html to dynamically derive the swagger.json URL and sort functions by method
-${SCRIPTS_DIR}\fix_swagger.sh
-
 echo """
 setup example data ...
 """
@@ -127,15 +105,18 @@ CLIENT_RESOURCES_DIR="${REPO_DIR}/render-ws-java-client/src/main/resources"
 EXAMPLE_1_SOURCE_DIR="${CLIENT_RESOURCES_DIR}/example_1"
 EXAMPLE_1_INSTALL_DIR="${REPO_DIR}/examples/example_1"
 
-mkdir -p ${EXAMPLE_1_INSTALL_DIR}
+if [ -d ${EXAMPLE_1_SOURCE_DIR} ]; then
+  mkdir -p ${EXAMPLE_1_INSTALL_DIR}
 
-cd ${EXAMPLE_1_SOURCE_DIR}
-for JSON_FILE in *.json; do
-  sed '
-    s@/tmp@'"${CLIENT_RESOURCES_DIR}"'@
-  ' ${JSON_FILE} > ${EXAMPLE_1_INSTALL_DIR}/${JSON_FILE}
-done
-
+  cd ${EXAMPLE_1_SOURCE_DIR}
+  for JSON_FILE in *.json; do
+    sed '
+      s@/tmp@'"${CLIENT_RESOURCES_DIR}"'@
+    ' ${JSON_FILE} > ${EXAMPLE_1_INSTALL_DIR}/${JSON_FILE}
+  done
+else
+  echo "no example source data found"
+fi
 
 echo """
 completed installation in ${INSTALL_DIR}
