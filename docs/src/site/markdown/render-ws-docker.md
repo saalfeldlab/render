@@ -26,10 +26,10 @@ To run the full render-ws image:
 
 ```bash
 # with database running on same host at default port
-docker run -p 8080:8080 -e "MONGO_HOST=localhost" -rm render-ws:latest
+docker run -p 8080:8080 -e "MONGO_HOST=localhost" --rm render-ws:latest
 
 # with customized environment variables in a file (named dev.env)
-docker run -p 8080:8080 --env-file dev.env -rm render-ws:latest
+docker run -p 8080:8080 --env-file dev.env --rm render-ws:latest
 ```
 
 You must explicitly specify either the MONGO_HOST or MONGO_CONNECTION_STRING environment variables
