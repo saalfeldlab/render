@@ -7,7 +7,7 @@ stripQuotes() {
 }
 
 # --------------------------------------------------------------
-# Normalize environment variables (not sure if this is necessary)
+# Strip quotes inserted by Ansible into environment variables
 
 JAVA_OPTIONS=$(stripQuotes $JAVA_OPTIONS)
 
@@ -202,8 +202,3 @@ if [ -n "${VIEW_MATCH_OWNER}" ]; then
 fi
 
 sed -i "s@render-ws/view/index.html@render-ws/view/index.html${VIEW_PARAMETERS}@" "${JETTY_BASE}/etc/jetty-rewrite.xml"
-
-# --------------------------------------------------------------
-# Finally, run the jetty docker image endpoint
-
-exec /docker-entrypoint.sh "$@"

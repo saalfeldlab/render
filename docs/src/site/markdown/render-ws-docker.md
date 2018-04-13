@@ -1,5 +1,8 @@
 # Render Web Services Docker Instructions
 
+The render web services can be built and deployed within [Docker](https://docs.docker.com/).
+You'll need to first [install Docker](https://docs.docker.com/#run-docker-anywhere) for your OS. 
+
 # Building Images
 
 To build the full render-ws image: 
@@ -26,7 +29,7 @@ To run the full render-ws image:
 docker run -p 8080:8080 -e "MONGO_HOST=localhost" render-ws:latest
 
 # with customized environment variables in an file
-docker run -p 8080:8080 --env-file ./env.janelia.mongo render-ws:latest
+docker run -p 8080:8080 --env-file ./env.janelia.dev render-ws:latest
 ```
 
 You must explicitly specify either the MONGO_HOST or MONGO_CONNECTION_STRING environment variables
@@ -38,74 +41,96 @@ The full render-ws image supports the following set of environment variables (sp
 
 ```bash
 # ---------------------------------
-# database connection parameters 
+# Docker Environment Variables File
+# 
+# NOTE: don't use quotes around values - details here:
+#       https://docs.docker.com/engine/reference/commandline/run/#set-environment-variables--e---env---env-file
+
+# ---------------------------------
+# Database Connection Parameters 
 
 # if a connection string is specified, other mongo connection variables are ignored
 # format details are here: https://docs.mongodb.com/manual/reference/connection-string
-MONGO_CONNECTION_STRING=""  
+MONGO_CONNECTION_STRING=  
 
 # should be 'y' if you are using a connection string that includes username and password 
-MONGO_CONNECTION_STRING_USES_AUTH="n"
+MONGO_CONNECTION_STRING_USES_AUTH=n
 
-MONGO_HOST=""
-MONGO_PORT=""
+MONGO_HOST=
+MONGO_PORT=
 
 # if authentication is not needed, leave these empty
-MONGO_USERNAME=""                            
-MONGO_PASSWORD=""
-MONGO_AUTH_DB=""
+MONGO_USERNAME=                            
+MONGO_PASSWORD=
+MONGO_AUTH_DB=
 
 # ---------------------------------
-# web service JVM parameters
+# Web Service JVM Parameters
  
-JAVA_OPTIONS="-Xms3g -Xmx3g -server -Djava.awt.headless=true"
+JAVA_OPTIONS=-Xms3g -Xmx3g -server -Djava.awt.headless=true
 
 # ---------------------------------
-# web service logging parameters
+# Web Service Logging Parameters
 
 # appender options are 'STDOUT', 'FILE', or 'NONE'
-LOG_ACCESS_ROOT_APPENDER="STDOUT"
-LOG_JETTY_ROOT_APPENDER="STDOUT"
+LOG_ACCESS_ROOT_APPENDER=STDOUT
+LOG_JETTY_ROOT_APPENDER=STDOUT
 
 # log level options are: 'OFF', 'ERROR', 'WARN', 'INFO', 'DEBUG', or 'TRACE'
-LOG_JETTY_ROOT_LEVEL="WARN" 
-LOG_JETTY_JANELIA_LEVEL="WARN" 
+LOG_JETTY_ROOT_LEVEL=WARN 
+LOG_JETTY_JANELIA_LEVEL=WARN 
 
 # ---------------------------------
-# web service rendering parameters
+# Web Service Rendering Parameters
 
 # use this to improve dynamic rendering speed for zoomed-out views
 # views that contain more than this number of tiles will have bounding boxes rendered instead of actual tile content 
-WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER="20"          
+WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER=20          
                                              
 # if left empty, the image processor cache will be sized at half of the memory allocated to the JVM
-WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB="" 
+WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB= 
 
 # ---------------------------------
-# viewing tools parameters
+# Viewing Tools Parameters
 
-NDVIZHOST=""                                
-NDVIZPORT=""
+NDVIZHOST=                                
+NDVIZPORT=
 
 # use the url parameter if you need https (overrides host and port parameters)
-NDVIZ_URL=""
+NDVIZ_URL=
 
 # specify without protocol (assumes http) like: 'renderer-catmaid:8080'
-VIEW_CATMAID_HOST_AND_PORT=""                
-VIEW_DYNAMIC_RENDER_HOST_AND_PORT=""
+VIEW_CATMAID_HOST_AND_PORT=                
+VIEW_DYNAMIC_RENDER_HOST_AND_PORT=
 
-VIEW_RENDER_STACK_OWNER=""
-VIEW_RENDER_STACK_PROJECT=""
-VIEW_RENDER_STACK=""
+VIEW_RENDER_STACK_OWNER=
+VIEW_RENDER_STACK_PROJECT=
+VIEW_RENDER_STACK=
 
-VIEW_MATCH_OWNER=""
-VIEW_MATCH_COLLECTION=""
+VIEW_MATCH_OWNER=
+VIEW_MATCH_COLLECTION=
 ```
 
-### Entrypoint
- 
-The default render-ws image entrypoint script is here:
-[render-config-entrypoint.sh](../../../../render-ws/src/main/scripts/docker/render-config-entrypoint.sh)
+### Entrypoints
+
+The following entrypoints are provided:
+* /render-docker/[render-run-jetty-entrypoint.sh](../../../../render-ws/src/main/scripts/docker/render-run-jetty-entrypoint.sh) (default)
+* /render-docker/[render-export-jetty-base-entrypoint.sh](../../../../render-ws/src/main/scripts/docker/render-export-jetty-base-entrypoint.sh)
+
+### Exporting JETTY_BASE for External Use
+
+If you'd like to run the render-ws application on an external jetty server (outside of Docker), you can use 
+/render-docker/[render-export-jetty-base-entrypoint.sh](../../../../render-ws/src/main/scripts/docker/render-export-jetty-base-entrypoint.sh)
+to configure a container within Docker and then export the configured JETTY_BASE to a mounted volume for external use.
+  
+```bash
+# export files to <working-directory>/jetty_base_<run-time> (change or drop --env-file as needed)
+docker run -it --mount type=bind,source="$(pwd)",target=/render-export \
+               --env-file ./env.janelia.prod \
+               --entrypoint /render-docker/render-export-jetty-base-entrypoint.sh \
+               --rm \
+               render-ws:latest
+```
 
 # Other Useful Docker Commands
 
@@ -115,10 +140,10 @@ To open a Bourne shell on the latest running render-ws container:
 docker exec -it $(docker ps --latest --quiet) /bin/sh
 ```
 
-To open a Bourne shell on a new render-ws container without running jetty: 
+To open a Bourne shell on a new render-ws container without running jetty (and remove the container on exit): 
 
 ```bash
-docker run -it --entrypoint /bin/sh render-ws:latest
+docker run -it --entrypoint /bin/sh --rm render-ws:latest
 ```
 
 To remove all stopped containers: 
@@ -127,7 +152,7 @@ To remove all stopped containers:
 docker rm $(docker ps --all --quiet)
 ```
 
-To remove all untagged \(\<none\>\) images \(including the large build artifacts image if you did not tag it\): 
+To remove all untagged (\<none\>) images (including the large build artifacts image if you did not tag it): 
 
 ```bash
 docker image rm $(docker images --filter "dangling=true" -q --no-trunc)

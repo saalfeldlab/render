@@ -43,7 +43,9 @@ RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 package && \
 # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/render-ws/src/main/scripts/install.sh
 FROM jetty:9.4.6-jre8-alpine as render-ws
 
+# add curl and coreutils (for gnu readlink) not included in alpine
 RUN apk add --update curl && \
+    apk add --update coreutils && \
     rm -rf /var/cache/apk/*
 
 WORKDIR $JETTY_BASE
@@ -54,7 +56,7 @@ RUN ls -al $JETTY_BASE/* && \
     ./configure_web_server.sh
 
 COPY --from=builder /root/render-lib/render-ws-*.war webapps/render-ws.war
-COPY render-ws/src/main/scripts/docker/render-config-entrypoint.sh /render-config-entrypoint.sh
+COPY render-ws/src/main/scripts/docker /render-docker
 RUN chown -R jetty:jetty $JETTY_BASE 
 
 EXPOSE 8080
@@ -85,4 +87,4 @@ ENV JAVA_OPTIONS="-Xms3g -Xmx3g -server -Djava.awt.headless=true" \
     WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB=""
 
 USER jetty
-ENTRYPOINT ["/render-config-entrypoint.sh"]
+ENTRYPOINT ["/render-docker/render-run-jetty-entrypoint.sh"]
