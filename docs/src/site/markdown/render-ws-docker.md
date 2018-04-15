@@ -12,6 +12,13 @@ To build the full render-ws image:
 docker build -t render-ws:latest --target render-ws .
 ```
 
+You can speed up future builds by building and tagging the build environment:
+
+```bash
+# cd to root directory of render repo (where Dockerfile is located) 
+docker build -t render-ws-build-environment:latest --target build_environment .
+```
+
 To build just the web service JARs without deploying into a Jetty container:
 
 ```bash
@@ -25,7 +32,7 @@ docker build -t render-ws:latest-build --target builder .
 To run the full render-ws image:
 
 ```bash
-# with database running on same host at default port
+# with database running on same host at default port and no authentication
 docker run -p 8080:8080 -e "MONGO_HOST=localhost" --rm render-ws:latest
 
 # with customized environment variables in a file (named dev.env)
@@ -60,7 +67,7 @@ MONGO_CONNECTION_STRING_USES_AUTH=n
 MONGO_HOST=
 MONGO_PORT=
 
-# if authentication is not needed, leave these empty
+# if authentication is not needed (or you are using a connection string), leave these empty
 MONGO_USERNAME=                            
 MONGO_PASSWORD=
 MONGO_AUTH_DB=
@@ -71,7 +78,7 @@ MONGO_AUTH_DB=
 JAVA_OPTIONS=-Xms3g -Xmx3g -server -Djava.awt.headless=true
 
 # ---------------------------------
-# Web Service Threadpool Parameters
+# Web Service Threadpool Parameters (leave these alone unless you really know what you are doing)
 
 JETTY_THREADPOOL_MIN_THREADS=10
 JETTY_THREADPOOL_MAX_THREADS=200
@@ -90,7 +97,7 @@ LOG_JETTY_JANELIA_LEVEL=WARN
 # ---------------------------------
 # Web Service Rendering Parameters
 
-# use this to improve dynamic rendering speed for zoomed-out views
+# use this to improve dynamic rendering speed for zoomed-out views,
 # views that contain more than this number of tiles will have bounding boxes rendered instead of actual tile content 
 WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER=20          
                                              

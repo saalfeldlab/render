@@ -158,6 +158,24 @@ JaneliaQueryParameters.prototype.get = function(key, defaultValue) {
     return value;
 };
 
+JaneliaQueryParameters.prototype.applyServerProperties = function(serverPropertyMap) {
+    for (var key in serverPropertyMap) {
+
+        if (! serverPropertyMap.hasOwnProperty(key)) {
+            continue; // ignore if the property is from prototype
+        } else if (! key.startsWith('view.')) {
+            continue; // ignore non-view properties
+        }
+
+        var viewKey = key.substr(5);
+
+        var queryParameterValue = this.map[viewKey];
+        if (typeof queryParameterValue == 'undefined') {
+            this.map[viewKey] = serverPropertyMap[key];
+        }
+    }
+};
+
 JaneliaQueryParameters.prototype.updateParameter = function (key, value) {
 
     if (typeof key != 'undefined') {

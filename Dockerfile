@@ -1,32 +1,38 @@
 # ======================================================================================
-# Stage 0: builder
+# Stage 0: build_environment
+#
+# Install library dependencies before actually building source.
+# This caches libraries into an image layer that can be reused when only source code has changed.
 
-FROM openjdk:8-jdk as builder
+FROM openjdk:8-jdk as build_environment
 LABEL maintainer="Forrest Collman <forrestc@alleninstitute.org>, Eric Trautman <trautmane@janelia.hhmi.org>"
 
 RUN apt-get update && apt-get install -y maven
 
-# ---------------------------------
-# Install library dependencies before actually building source.
-# This caches libraries into an image layer that can be reused when only source code has changed.
-
 WORKDIR /var/www/render/
 COPY pom.xml .
+COPY docs/pom.xml render-app/pom.xml
+COPY render-app/pom.xml render-app/pom.xml
 COPY render-ws/pom.xml render-ws/pom.xml
 COPY render-ws-java-client/pom.xml render-ws-java-client/pom.xml
 COPY render-ws-spark-client/pom.xml render-ws-spark-client/pom.xml
-COPY render-app/pom.xml render-app/pom.xml
 COPY trakem2-scripts/pom.xml trakem2-scripts/pom.xml
 COPY docs/pom.xml docs/pom.xml
+
+# use -T 1C option to multi-thread maven, using 1 thread per available core
 RUN mvn -T 1C verify clean --fail-never
 
-# ---------------------------------
+# ======================================================================================
+# Stage 1: builder
+#
 # Build the source code, save resulting jar and war files, and remove everything else
+
+FROM build_environment as builder
 
 COPY . /var/www/render/
 RUN mvn clean
 
-# use -T 1C maven option to multi-thread process
+# use -T 1C option to multi-thread maven, using 1 thread per available core
 RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 package && \
     mkdir -p /root/render-lib && \
     mv */target/*.*ar /root/render-lib && \
@@ -38,7 +44,9 @@ RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 package && \
     rm -rf /root/.embedmongo
 
 # ======================================================================================
-# Stage 1: render-ws
+# Stage 2: render-ws
+#
+# Once web service application is built, set up jetty server and deploy application to it.
 
 # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/render-ws/src/main/scripts/install.sh
 FROM jetty:9.4.6-jre8-alpine as render-ws
