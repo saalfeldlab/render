@@ -6,7 +6,6 @@ import java.nio.file.Paths;
 
 import org.apache.spark.SparkConf;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,21 +22,23 @@ public class FeatureClientTest {
         CommandLineParameters.parseHelp(new FeatureClient.Parameters());
     }
 
-    // This test is ignored by default because it requires access to remote data.
-    // Comment out the Ignore annotation and adjust data references as needed to run the test locally.
-    @Ignore
-    public void testLocalRun() throws Exception {
+    // These tests require access to remote data - adjust data references as needed to run the tests locally.
+    public static void main(final String[] args) {
 
         final String rootDirectory = "/Users/trautmane/Desktop/feature_test_data";
         final int numberOfConcurrentTasks = 3;
         final String master = "local[" + numberOfConcurrentTasks + "]";
 
-        testPairs(rootDirectory, master);
-        testClippedPairs(rootDirectory, master);
+        try {
+            testPairs(rootDirectory, master);
+            testClippedPairs(rootDirectory, master);
+        } catch (final Throwable t) {
+            LOG.error("caught exception", t);
+        }
     }
 
-    private void testPairs(final String rootDirectory,
-                           final String master) throws Exception {
+    private static void testPairs(final String rootDirectory,
+                                  final String master) throws Exception {
 
         final Path pairsPath = Paths.get(rootDirectory, "pairs.json");
 
@@ -69,15 +70,15 @@ public class FeatureClientTest {
 
         final String[] args = {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                "--rootDirectory", rootDirectory,
+                "--rootFeatureDirectory", rootDirectory,
                 "--pairJson", pairsPath.toString()
         };
 
         runWithArgs(args, master);
     }
 
-    private void testClippedPairs(final String rootDirectory,
-                                  final String master) throws Exception {
+    private static void testClippedPairs(final String rootDirectory,
+                                         final String master) throws Exception {
 
         final Path pairsPath = Paths.get(rootDirectory, "pairs_clip.json");
 
@@ -113,7 +114,7 @@ public class FeatureClientTest {
 
         final String[] clipArgs = {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                "--rootDirectory", rootDirectory,
+                "--rootFeatureDirectory", rootDirectory,
                 "--clipWidth", "500",
                 "--pairJson", pairsPath.toString()
         };
@@ -121,8 +122,8 @@ public class FeatureClientTest {
         runWithArgs(clipArgs, master);
     }
 
-    private void runWithArgs(final String[] args,
-                             final String master) throws Exception {
+    private static void runWithArgs(final String[] args,
+                                    final String master) throws Exception {
 
         final FeatureClient.Parameters parameters = new FeatureClient.Parameters();
         parameters.parse(args);
@@ -131,7 +132,9 @@ public class FeatureClientTest {
 
         final FeatureClient featureClient = new FeatureClient(parameters);
 
-        final SparkConf sparkConf = new SparkConf().setMaster(master).setAppName(this.getClass().getSimpleName());
+        final SparkConf sparkConf = new SparkConf()
+                .setMaster(master)
+                .setAppName(FeatureClientTest.class.getSimpleName());
         featureClient.run(sparkConf);
 
         LOG.info("runWithArgs: exit");

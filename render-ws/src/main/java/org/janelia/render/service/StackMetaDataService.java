@@ -1,16 +1,9 @@
 package org.janelia.render.service;
 
-import com.google.common.collect.Maps;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -61,8 +54,6 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState.*;
 public class StackMetaDataService {
 
     private final RenderDao renderDao;
-    private Map<String, String> versionInfo;
-    private Map<String, String> viewParameters;
 
     @SuppressWarnings("UnusedDeclaration")
     public StackMetaDataService()
@@ -73,65 +64,6 @@ public class StackMetaDataService {
     public StackMetaDataService(final RenderDao renderDao)
             throws UnknownHostException {
         this.renderDao = renderDao;
-        this.versionInfo = null;
-        this.viewParameters = null;
-    }
-
-    @Path("v1/versionInfo")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(value = "The build version information for deployed services")
-    public Map<String, String> getVersionInfo() {
-
-        if (versionInfo == null) {
-            // load version info created by maven build process if it is available
-            try {
-                final InputStream infoStream = getClass().getClassLoader().getResourceAsStream("git.properties");
-                if (infoStream != null) {
-                    final Properties p = new Properties();
-                    p.load(infoStream);
-
-                    // add commit URL to make it easier to cut-and-paste into a browser
-                    final String remoteOriginUrl = p.getProperty("git.remote.origin.url");
-                    final String commitId = p.getProperty("git.commit.id");
-                    if ((remoteOriginUrl != null) && (commitId != null)) {
-                        p.setProperty("git.commit.url", String.format("%s/commit/%s", remoteOriginUrl, commitId));
-                    }
-
-                    versionInfo = Maps.fromProperties(p);
-
-                    LOG.info("getVersionInfo: loaded version info");
-                }
-            } catch (final Throwable t) {
-                LOG.warn("getVersionInfo: failed to load version info", t);
-            }
-        }
-
-        return versionInfo;
-    }
-
-    @Path("v1/viewParameters")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(value = "The default view parameters for this deployed instance")
-    public Map<String, String> getViewParameters() {
-
-        if (viewParameters == null) {
-            try {
-                final Properties p = new Properties();
-                final File propertiesFile = new File("logs/view-parameters.properties");
-                if (propertiesFile.exists()) {
-                    final FileInputStream in = new FileInputStream(propertiesFile);
-                    p.load(in);
-                    LOG.info("getViewParameters: loaded {}", propertiesFile.getAbsolutePath());
-                }
-                viewParameters = Maps.fromProperties(p);
-            } catch (final Throwable t) {
-                LOG.warn("getViewParameters: failed to load version info", t);
-            }
-        }
-
-        return viewParameters;
     }
 
     @Path("v1/likelyUniqueId")

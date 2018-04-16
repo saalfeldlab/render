@@ -12,6 +12,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureList;
 import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,16 +29,16 @@ public class CanvasFeatureListLoader
     private final boolean requireStoredFeatures;
 
     /**
-     * @param  renderParametersUrlTemplate  template for deriving render parameters URL for each canvas.*
+     * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
      * @param  featureExtractor             configured feature extractor.
      */
-    public CanvasFeatureListLoader(final String renderParametersUrlTemplate,
+    public CanvasFeatureListLoader(final CanvasRenderParametersUrlTemplate urlTemplate,
                                    final CanvasFeatureExtractor featureExtractor) {
-        this(renderParametersUrlTemplate, featureExtractor, null, false);
+        this(urlTemplate, featureExtractor, null, false);
     }
 
     /**
-     * @param  renderParametersUrlTemplate  template for deriving render parameters URL for each canvas.*
+     * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
      *
      * @param  featureExtractor             configured feature extractor.
      *
@@ -50,11 +51,11 @@ public class CanvasFeatureListLoader
      *                                      if false, stored features will be loaded from disk
      *                                      but missing features will be extracted from a dynamically rendered canvas.
      */
-    public CanvasFeatureListLoader(final String renderParametersUrlTemplate,
+    public CanvasFeatureListLoader(final CanvasRenderParametersUrlTemplate urlTemplate,
                                    final CanvasFeatureExtractor featureExtractor,
                                    final File rootFeatureStorageDirectory,
                                    final boolean requireStoredFeatures) {
-        super(renderParametersUrlTemplate, CachedCanvasFeatures.class);
+        super(urlTemplate, CachedCanvasFeatures.class);
         this.featureExtractor = featureExtractor;
         this.rootFeatureStorageDirectory =rootFeatureStorageDirectory;
         this.requireStoredFeatures = requireStoredFeatures;

@@ -126,8 +126,13 @@ return renderTiffImage(renderParameters, maxTileSpecsToRender, responseHelper, f
             // if we need to optimize render time (e.g. when we're rendering a box from a database stack)
             // and there are too many tiles to dynamically render the result quickly,
             // just render the tile bounding boxes instead ...
-            final boolean renderBoundingBoxesOnly = (maxTileSpecsToRender != null) &&
-                                                    (renderParameters.numberOfTileSpecs() > maxTileSpecsToRender);
+            Integer maxTilesToRender = maxTileSpecsToRender;
+            if (maxTileSpecsToRender == null) {
+                maxTilesToRender = RenderServerProperties.getProperties().getInteger("webService.maxTileSpecsToRender");
+            }
+
+            final boolean renderBoundingBoxesOnly = (maxTilesToRender != null) &&
+                                                    (renderParameters.numberOfTileSpecs() > maxTilesToRender);
 
             final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters,
                                                                                renderBoundingBoxesOnly,

@@ -22,11 +22,20 @@ public class SharedImageProcessorCache {
 
     private static synchronized void setSharedCache() {
         if (sharedCache == null) {
+
             long maxCachedPixels = ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS;
-            final long maxMemory = Runtime.getRuntime().maxMemory();
-            if (maxMemory < Long.MAX_VALUE) {
-                maxCachedPixels = maxMemory / 2;  // TODO: consider configuring max pixels instead
+
+            final Integer maxGb = RenderServerProperties.getProperties().getInteger("webService.maxImageProcessorCacheGb");
+
+            if (maxGb == null) {
+                final long maxMemory = Runtime.getRuntime().maxMemory();
+                if (maxMemory < Long.MAX_VALUE) {
+                    maxCachedPixels = maxMemory / 2;
+                }
+            } else {
+                maxCachedPixels = maxGb * 1_000_000_000;
             }
+
             sharedCache = new ImageProcessorCache(maxCachedPixels, true, false);
 
             LOG.info("setSharedCache: exit, created {}", sharedCache);

@@ -2,6 +2,13 @@
     <!-- uncomment to display details about parsing of config file -->
     <!-- <statusListener class="ch.qos.logback.core.status.OnConsoleStatusListener" /> -->
 
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!-- combined pattern with elapsed time -->
+            <pattern>%h %l %u [%t] "%r" %s %b "%i{Referer}" "%i{User-Agent}" [%D ms]</pattern>
+        </encoder>
+    </appender>
+
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!--    

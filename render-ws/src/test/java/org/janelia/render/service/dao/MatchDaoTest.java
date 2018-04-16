@@ -492,6 +492,24 @@ public class MatchDaoTest {
                           collectionMetaData);
     }
 
+    @Test
+    public void testRenameMatchCollection() throws Exception {
+
+        final MatchCollectionId toMatchCollectionId = new MatchCollectionId(collectionId.getOwner(),
+                                                                            "new_and_improved");
+        dao.renameMatchCollection(collectionId, toMatchCollectionId);
+
+        boolean foundFromCollection = false;
+        boolean foundToCollection = false;
+        for (final MatchCollectionMetaData metaData : dao.getMatchCollectionMetaData()) {
+            foundFromCollection = (! foundFromCollection) && collectionId.equals(metaData.getCollectionId());
+            foundToCollection = (! foundToCollection) && toMatchCollectionId.equals(metaData.getCollectionId());
+        }
+
+        Assert.assertTrue("renamed collection " + toMatchCollectionId + " NOT found", foundToCollection);
+        Assert.assertFalse("original collection " + collectionId + " still exists", foundFromCollection);
+    }
+
     private MatchCollectionMetaData getCollectionMetaData(final MatchCollectionId collectionId) {
         MatchCollectionMetaData metaData = null;
         for (final MatchCollectionMetaData md : dao.getMatchCollectionMetaData()) {

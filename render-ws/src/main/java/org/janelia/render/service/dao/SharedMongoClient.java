@@ -88,7 +88,7 @@ public class SharedMongoClient {
     private static synchronized void setSharedMongoClient()
             throws UnknownHostException {
         if (sharedMongoClient == null) {
-            final File dbConfigFile = new File("logs/render-db.properties");
+            final File dbConfigFile = new File("resources/render-db.properties");
             final DbConfig dbConfig = DbConfig.fromFile(dbConfigFile);
             sharedMongoClient = new SharedMongoClient(dbConfig);
         }

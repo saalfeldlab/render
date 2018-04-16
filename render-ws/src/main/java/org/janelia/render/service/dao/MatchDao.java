@@ -548,6 +548,41 @@ public class MatchDao {
         collection.drop();
     }
 
+    /**
+     * Renames the specified match collection.
+     *
+     * @param  fromCollectionId  original match collection.
+     * @param  toCollectionId    new match collection.
+     *
+     * @throws IllegalArgumentException
+     *   if the new match collection already exists or
+     *   the original match collection cannot be renamed for any other reason.
+     *
+     * @throws ObjectNotFoundException
+     *   if the original match collection does not exist.
+     */
+    public void renameMatchCollection(final MatchCollectionId fromCollectionId,
+                                      final MatchCollectionId toCollectionId)
+            throws IllegalArgumentException, ObjectNotFoundException {
+
+        MongoUtil.validateRequiredParameter("fromCollectionId", fromCollectionId);
+        MongoUtil.validateRequiredParameter("toCollectionId", toCollectionId);
+
+        final String fromCollectionName = fromCollectionId.getDbCollectionName();
+        final boolean fromCollectionExists = MongoUtil.exists(matchDatabase, fromCollectionName);
+        if (! fromCollectionExists) {
+            throw new ObjectNotFoundException(fromCollectionId + " does not exist");
+        }
+
+        final String toCollectionName = toCollectionId.getDbCollectionName();
+        final boolean toCollectionExists = MongoUtil.exists(matchDatabase, toCollectionName);
+        if (toCollectionExists) {
+            throw new IllegalArgumentException(toCollectionId + " already exists");
+        }
+
+        MongoUtil.renameCollection(matchDatabase, fromCollectionName, toCollectionName);
+    }
+
     private MongoCollection<Document> getExistingCollection(final MatchCollectionId collectionId) {
         return MongoUtil.getExistingCollection(matchDatabase, collectionId.getDbCollectionName());
     }

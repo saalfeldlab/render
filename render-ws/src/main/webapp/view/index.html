@@ -5,7 +5,7 @@
     <title>Render Web Service Views</title>
     <link type="text/css" href="../css/render.css" rel="stylesheet" />
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
-    <script type="text/javascript" src="../script/janelia-render.js?v=20170105_001"></script>
+    <script type="text/javascript" src="../script/janelia-render.js?v=20180415_001"></script>
     <script type="text/javascript" src="../script/janelia-match.js?v=20170105_001"></script>
     <script type="text/javascript">
 
@@ -26,33 +26,53 @@
                   inputId,
                   function(changedValue) { renderWebServiceViews.updateParameter(inputId, changedValue) });
           $('#' + inputId).val(renderWebServiceViews.parameters.get(inputId));
-        }
+        },
+        loadServerDefaultParameters : function() {
+          var self = this;
+          $.ajax({
+                   url: self.util.getServicesBaseUrl() + '/serverProperties',
+                   cache: false,
+                   success: function(data) {
+                     self.parameters.applyServerProperties(data.properties);
+                     self.loadPage();
+                   },
+                   error: function(data, text, xhr) {
+                     console.log(xhr);
+                     self.loadPage();
+                   }
+                 });
+        },
+        updateSwaggerLink : function() {
+          // change API link to reference Swagger UI if it is deployed on server
+          var swaggerUiUrl = renderWebServiceViews.util.getServicesBaseUrl() + '/../../swagger-ui/';
+          $.ajax({
+                   url: swaggerUiUrl,
+                   cache: false,
+                   type: "HEAD",
+                   success: function() {
+                     $('#apiLink').attr("href", swaggerUiUrl).text('Web Service APIs');
+                   }
+                 });
+        },
+        loadPage : function() {
+          var renderUi = new JaneliaRenderServiceDataUI(renderWebServiceViews.parameters,
+                  'renderStackOwner', 'renderStackProject', 'renderStack',
+                  'message', 'urlToView');
+          renderUi.loadData();
 
+          renderWebServiceViews.setUpHostData('dynamicRenderHost');
+          renderWebServiceViews.setUpHostData('catmaidHost');
+          renderWebServiceViews.setUpHostData('ndvizHost');
+
+          new JaneliaMatchServiceDataUI(
+                  renderWebServiceViews.parameters,
+                  'matchOwner', 'matchCollection', 'matchCollectionPairCount', 'message', 'urlToView');
+        }
       };
 
       $( document ).ready(function() {
-        var renderUi = new JaneliaRenderServiceDataUI(renderWebServiceViews.parameters,
-                                                      'renderStackOwner', 'renderStackProject', 'renderStack',
-                                                      'message', 'urlToView');
-        renderUi.loadData();
-
-        renderWebServiceViews.setUpHostData('dynamicRenderHost');
-        renderWebServiceViews.setUpHostData('catmaidHost');
-
-        new JaneliaMatchServiceDataUI(
-                renderWebServiceViews.parameters, 'matchOwner', 'matchCollection', 'matchCollectionPairCount', 'message', 'urlToView');
-
-        // change API link to reference Swagger UI if it is deployed on server
-        var swaggerUiUrl = renderWebServiceViews.util.getServicesBaseUrl() + '/../../swagger-ui/';
-        $.ajax({
-                 url: swaggerUiUrl,
-                 cache: false,
-                 type: "HEAD",
-                 success: function() {
-                   $('#apiLink').attr("href", swaggerUiUrl).text('Web Service APIs');
-                 }
-               });
-
+        renderWebServiceViews.loadServerDefaultParameters();
+        renderWebServiceViews.updateSwaggerLink();
       });
 
     </script>
@@ -159,7 +179,7 @@
         <td>
         </td>
         <td>
-          <a id="apiLink" target="_blank" href="../swagger.json/">Web Service API Spec</a>
+          <a id="apiLink" target="_blank" href="../swagger.json">Web Service API Spec</a>
         </td>
       </tr>
 

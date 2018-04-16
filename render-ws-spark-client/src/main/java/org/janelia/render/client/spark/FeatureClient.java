@@ -22,6 +22,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureList;
 import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
@@ -152,8 +153,8 @@ public class FeatureClient
                                                        final File rootDirectory)
             throws IOException, URISyntaxException {
 
-        final String renderParametersUrlTemplateForRun =
-                RenderableCanvasIdPairsUtilities.getRenderParametersUrlTemplateForRun(
+        final CanvasRenderParametersUrlTemplate urlTemplateForRun =
+                CanvasRenderParametersUrlTemplate.getTemplateForRun(
                         renderParametersUrlTemplate,
                         featureRenderParameters.renderFullScaleWidth,
                         featureRenderParameters.renderFullScaleHeight,
@@ -161,6 +162,8 @@ public class FeatureClient
                         featureRenderParameters.renderWithFilter,
                         featureRenderParameters.renderFilterListName,
                         featureRenderParameters.renderWithoutMask);
+
+        urlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth, featureRenderClipParameters.clipHeight);
 
         final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
         siftParameters.fdSize = featureExtractionParameters.fdSize;
@@ -172,10 +175,8 @@ public class FeatureClient
                                            featureExtractionParameters.maxScale,
                                            featureRenderParameters.fillWithNoise);
 
-        final CanvasFeatureListLoader featureLoader = new CanvasFeatureListLoader(renderParametersUrlTemplateForRun,
+        final CanvasFeatureListLoader featureLoader = new CanvasFeatureListLoader(urlTemplateForRun,
                                                                                   featureExtractor);
-
-        featureLoader.setClipInfo(featureRenderClipParameters.clipWidth, featureRenderClipParameters.clipHeight);
 
         final double renderScale = featureRenderParameters.renderScale;
 

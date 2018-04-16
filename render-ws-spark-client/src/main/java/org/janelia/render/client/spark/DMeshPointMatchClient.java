@@ -21,6 +21,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
@@ -137,8 +138,8 @@ public class DMeshPointMatchClient
         final RenderableCanvasIdPairs renderableCanvasIdPairs =
                 RenderableCanvasIdPairs.load(parameters.pairJson);
 
-        final String renderParametersUrlTemplateForRun =
-                RenderableCanvasIdPairsUtilities.getRenderParametersUrlTemplateForRun(
+        final CanvasRenderParametersUrlTemplate urlTemplateForRun =
+                CanvasRenderParametersUrlTemplate.getTemplateForRun(
                         renderableCanvasIdPairs.getRenderParametersUrlTemplate(parameters.matchClient.baseDataUrl),
                         parameters.featureRender.renderFullScaleWidth,
                         parameters.featureRender.renderFullScaleHeight,
@@ -151,7 +152,7 @@ public class DMeshPointMatchClient
 
         final CanvasFileLoader fileLoader =
                 new CanvasFileLoader(
-                        renderParametersUrlTemplateForRun,
+                        urlTemplateForRun,
                         parameters.featureRender.fillWithNoise,
                         parameters.format,
                         new File(parameters.imageCacheParentDirectory));

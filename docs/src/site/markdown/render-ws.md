@@ -14,7 +14,9 @@ machines that are tuned for their specific purpose.
 
 ## Basic Installation
 These installation instructions cover setup of an evaluation instance with a collocated web server and 
-database running on Ubuntu 16.04.  
+database running on Ubuntu 16.04.
+
+> Note: In lieu of running these steps manually, you may prefer to use a [Docker deployment] instead. 
 
 ### 1. Install Git and Maven
 ```bash
@@ -105,6 +107,7 @@ small example project.
 
 
   [data model]: <data-model.md>
+  [Docker deployment]: <render-ws-docker.md>
   [Jetty]: <https://eclipse.org/jetty/>
   [level 2 REST APIs]: <http://martinfowler.com/articles/richardsonMaturityModel.html>
   [MongoDB]: <https://www.mongodb.org/>

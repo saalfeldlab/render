@@ -11,6 +11,7 @@ import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,16 +28,15 @@ public class CanvasFileLoader
     private final File rootDirectory;
 
     /**
-     *
-     * @param  renderParametersUrlTemplate  template for deriving render parameters URL for each canvas.
+     * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
      * @param  canvasFormat                 image format for all rendered canvas files.
      * @param  parentDirectory              parent directory for all rendered canvas files.
      */
-    public CanvasFileLoader(final String renderParametersUrlTemplate,
+    public CanvasFileLoader(final CanvasRenderParametersUrlTemplate urlTemplate,
                             final boolean fillWithNoise,
                             final String canvasFormat,
                             final File parentDirectory) {
-        super(renderParametersUrlTemplate, CachedCanvasFile.class);
+        super(urlTemplate, CachedCanvasFile.class);
         this.fillWithNoise = fillWithNoise;
         this.canvasFormat = canvasFormat;
         this.rootDirectory = new File(parentDirectory, FILE_CACHE_DIRECTORY_NAME);

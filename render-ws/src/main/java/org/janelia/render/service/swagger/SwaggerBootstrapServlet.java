@@ -31,7 +31,7 @@ public class SwaggerBootstrapServlet
     public void init(final ServletConfig config) throws ServletException {
         super.init(config);
 
-        final BeanConfig beanConfig = loadConfig(new File("logs/swagger.properties"));
+        final BeanConfig beanConfig = loadConfig(new File("resources/swagger.properties"));
         beanConfig.setVersion("v1");
         beanConfig.setSchemes(new String[]{"http"});
         beanConfig.setBasePath("/render-ws");
