@@ -32,8 +32,8 @@ FROM build_environment as builder
 COPY . /var/www/render/
 RUN mvn clean
 
-# use -T 1C option to multi-thread maven, using 1 thread per available core
-RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 package && \
+# note: cannot safely multi-thread maven for now because some unit tests are (but should not be) order dependent
+RUN mvn -Dproject.build.sourceEncoding=UTF-8 package && \
     mkdir -p /root/render-lib && \
     mv */target/*.*ar /root/render-lib && \
     printf "\nsaved the following build artifacts:\n\n" && \

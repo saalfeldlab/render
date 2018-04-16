@@ -50,7 +50,7 @@ JETTY_BASE=$(stripQuotes $JETTY_BASE)
 RENDER_DB_PROPERTIES="${JETTY_BASE}/resources/render-db.properties"
 
 
-if [ -z "${MONGO_HOST}" ] & [ -z "${MONGO_CONNECTION_STRING}" ]; then
+if [ -z "${MONGO_HOST}" ] && [ -z "${MONGO_CONNECTION_STRING}" ]; then
   echo "ERROR: either MONGO_HOST or MONGO_CONNECTION_STRING must be defined"
   exit 1
 fi
