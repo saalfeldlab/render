@@ -319,38 +319,32 @@ public class TilePairClient {
                 zToTreeMap.put(z, buildRTree(z));
             }
 
-            double maxNeighborZ = z;
+            neighborTreeList = new ArrayList<>();
+
             final double idealMaxNeighborZ = Math.min(parameters.maxZ, z + parameters.zNeighborDistance);
             for (int neighborZIndex = zIndex + 1; neighborZIndex < zValues.size(); neighborZIndex++) {
-                maxNeighborZ = zValues.get(neighborZIndex);
-                if (maxNeighborZ > idealMaxNeighborZ) {
-                    maxNeighborZ = zValues.get(neighborZIndex - 1);
+
+                neighborZ = zValues.get(neighborZIndex);
+
+                if (neighborZ > idealMaxNeighborZ) {
                     break;
                 }
-            }
 
-            if (! zToTreeMap.containsKey(maxNeighborZ)) {
-                if (zIndex > 0) {
-                    final double completedZ = zValues.get(zIndex - 1);
-                    zToTreeMap.remove(completedZ);
+                if (! zToTreeMap.containsKey(neighborZ)) {
+                    if (zIndex > 0) {
+                        final double completedZ = zValues.get(zIndex - 1);
+                        zToTreeMap.remove(completedZ);
+                    }
+                    zToTreeMap.put(neighborZ, buildRTree(neighborZ));
+                    if (existingMatchHelper != null) {
+                        existingMatchHelper.addExistingPairs(neighborZ);
+                    }
                 }
-                zToTreeMap.put(maxNeighborZ, buildRTree(maxNeighborZ));
-                if (existingMatchHelper != null) {
-                    existingMatchHelper.addExistingPairs(maxNeighborZ);
-                }
+
+                neighborTreeList.add(zToTreeMap.get(neighborZ));
             }
 
             currentZTree = zToTreeMap.get(z);
-
-            neighborTreeList = new ArrayList<>();
-
-            for (int neighborZIndex = zIndex + 1; neighborZIndex < zValues.size(); neighborZIndex++) {
-                neighborZ = zValues.get(neighborZIndex);
-                if (neighborZ > maxNeighborZ) {
-                    break;
-                }
-                neighborTreeList.add(zToTreeMap.get(neighborZ));
-            }
 
             currentNeighborPairs = currentZTree.getCircleNeighbors(neighborTreeList,
                                                                    parameters.xyNeighborFactor,

@@ -87,19 +87,19 @@ public class TilePairClientTest {
     }
 
     @Test
-    public void testCrossDeriveWithMissingLayer() throws Exception {
+    public void testCrossDeriveWithMissingLayers() throws Exception {
 
         final int zNeighborDistance = 2;
 
         // 5 double tile layers with distance 2 (and missing layer 4) =>
-        //   9 + 5 + 5 + 0 + 5 + 1 = 25 total pairs
+        //   5 + 5 + 9 + 5 + 1 = 25 total pairs
         final int expectedNumberOfPairs = 25;
 
         final String toJson = baseFileName + ".json";
 
         final MockTilePairClient client =
                 new MockTilePairClient(getTestParameters(zNeighborDistance, expectedNumberOfPairs, toJson),
-                                       1.0, 2.0, 3.0, 5.0, 6.0);
+                                       1.0, 3.0, 5.0, 6.0, 7.0);
         client.deriveAndSaveSortedNeighborPairs();
 
         final List<Path> pairFilePaths = new ArrayList<>();
