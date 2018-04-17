@@ -319,7 +319,15 @@ public class TilePairClient {
                 zToTreeMap.put(z, buildRTree(z));
             }
 
-            final double maxNeighborZ = Math.min(parameters.maxZ, z + parameters.zNeighborDistance);
+            double maxNeighborZ = z;
+            final double idealMaxNeighborZ = Math.min(parameters.maxZ, z + parameters.zNeighborDistance);
+            for (int neighborZIndex = zIndex + 1; neighborZIndex < zValues.size(); neighborZIndex++) {
+                maxNeighborZ = zValues.get(neighborZIndex);
+                if (maxNeighborZ > idealMaxNeighborZ) {
+                    maxNeighborZ = zValues.get(neighborZIndex - 1);
+                    break;
+                }
+            }
 
             if (! zToTreeMap.containsKey(maxNeighborZ)) {
                 if (zIndex > 0) {
