@@ -32,8 +32,8 @@ fi
 
 mkdir -p ${JETTY_BASE_EXPORT_DIR}
 
-# configure this container using current environment variables
-${SCRIPTS_DIR}/render-config.sh
+# configure this container using quote-stripped versions of current environment variables
+source ${SCRIPTS_DIR}/render-config.sh
 
 echo """
 exporting $(du -sh ${JETTY_BASE} | awk '{ print $1 " in " $2 }') to $(basename ${JETTY_BASE_EXPORT_DIR})
