@@ -1,5 +1,7 @@
 package org.janelia.render.client;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,6 +14,7 @@ import java.util.List;
 
 import javax.annotation.Nonnull;
 
+import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -83,12 +86,20 @@ public class TilePairClientTest {
         testDeriveAndSaveSortedNeighborPairs(zNeighborDistance, expectedNumberOfFiles);
     }
 
-    private void testDeriveAndSaveSortedNeighborPairs(final int zNeighborDistance,
-                                                      final int expectedNumberOfFiles) throws Exception {
+    @Test
+    public void testCrossDeriveWithMissingLayers() throws Exception {
+
+        final int zNeighborDistance = 2;
+
+        // 5 double tile layers with distance 2 (and missing layer 4) =>
+        //   5 + 5 + 9 + 5 + 1 = 25 total pairs
+        final int expectedNumberOfPairs = 25;
 
         final String toJson = baseFileName + ".json";
 
-        final MockTilePairClient client = new MockTilePairClient(getTestParameters(zNeighborDistance, toJson));
+        final MockTilePairClient client =
+                new MockTilePairClient(getTestParameters(zNeighborDistance, expectedNumberOfPairs, toJson),
+                                       1.0, 3.0, 5.0, 6.0, 7.0);
         client.deriveAndSaveSortedNeighborPairs();
 
         final List<Path> pairFilePaths = new ArrayList<>();
@@ -98,20 +109,43 @@ public class TilePairClientTest {
             }
         });
 
-        // 8 single tile layers with distance 2 =>
-        //   2 + 2 + 2 + 2 + 2 + 2 + 1 = 13 total pairs =>
-        //     4 files with 3 pairs + 1 file with 1 pair
+        Assert.assertEquals("invalid number of pairs files created", 1, pairFilePaths.size());
+
+        final File resultFile = pairFilePaths.get(0).toFile();
+        final FileReader resultReader = new FileReader(resultFile);
+        final RenderableCanvasIdPairs renderableCanvasIdPairs = RenderableCanvasIdPairs.fromJson(resultReader);
+
+        Assert.assertEquals("invalid number of pairs written", expectedNumberOfPairs, renderableCanvasIdPairs.size());
+    }
+
+    private void testDeriveAndSaveSortedNeighborPairs(final int zNeighborDistance,
+                                                      final int expectedNumberOfFiles) throws Exception {
+
+        final String toJson = baseFileName + ".json";
+
+        final MockTilePairClient client = new MockTilePairClient(getTestParameters(zNeighborDistance, 3, toJson),
+                                                                 1.0, 2.0, 3.0, 4.0, 5.0);
+        client.deriveAndSaveSortedNeighborPairs();
+
+        final List<Path> pairFilePaths = new ArrayList<>();
+        Files.list(Paths.get(".")).forEach(path -> {
+            if (path.getFileName().toString().startsWith(baseFileName)) {
+                pairFilePaths.add(path);
+            }
+        });
+
         Assert.assertEquals("invalid number of pairs files created", expectedNumberOfFiles, pairFilePaths.size());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TilePairClientTest.class);
 
     private static TilePairClient.Parameters getTestParameters(final int zNeighborDistance,
+                                                               final int maxPairsPerFile,
                                                                final String toJson)
             throws IllegalArgumentException {
         final TilePairClient.Parameters p = new TilePairClient.Parameters();
         final String argString = "--baseDataUrl u --owner o --project p --stack s --minZ 1 --maxZ 8 " +
-                                 "--excludeCornerNeighbors false --maxPairsPerFile 3 " +
+                                 "--excludeCornerNeighbors false --maxPairsPerFile " + maxPairsPerFile + " " +
                                  "--zNeighborDistance " + zNeighborDistance +
                                  " --toJson " + toJson;
         p.parse(argString.split(" "));
@@ -120,15 +154,19 @@ public class TilePairClientTest {
 
     private static class MockTilePairClient extends TilePairClient {
 
-        public MockTilePairClient(final TilePairClient.Parameters p)
+        private final List<Double> zValues;
+
+        public MockTilePairClient(final TilePairClient.Parameters p,
+                                  final Double... zValues)
                 throws IllegalArgumentException {
             super(p);
+            this.zValues = Arrays.asList(zValues);
         }
 
         @Override
         public List<Double> getZValues()
                 throws IOException {
-            return Arrays.asList(1.0, 2.0, 3.0, 4.0, 5.0);
+            return zValues;
         }
 
         @Nonnull
