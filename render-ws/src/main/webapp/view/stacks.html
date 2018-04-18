@@ -15,10 +15,10 @@
 
     <script type="text/javascript">
         $( document ).ready(function() {
+            $("#stackInfo").tablesorter( { } );
+
             //noinspection JSUnusedLocalSymbols
             var stacksUi = new RenderWebServiceProjectStacks('renderStackOwner', 'renderStackProject', 'message', 'urlToView');
-
-            $("#stackInfo").tablesorter( { } );
         });
 
     </script>
@@ -64,8 +64,8 @@
                 <th>Layer Count</th>
                 <th>Tile Count</th>
                 <th>Shared Transform Count</th>
-                <th>Last Modified</th>
-                <th>Actions</th>
+                <th data-sorter="usLongDate">Last Modified</th>
+                <th data-sorter="false">Actions</th>
             </tr>
         </thead>
         <tbody>

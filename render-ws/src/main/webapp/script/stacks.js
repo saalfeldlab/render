@@ -54,6 +54,8 @@ var RenderWebServiceProjectStacks = function(ownerSelectId, projectSelectId, mes
             }
         };
 
+        $.tablesorter.clearTableBody( $("#stackInfo")[0] );
+
         var projectStackMetaDataList = renderData.getProjectStackMetaDataList();
         var summaryHtml;
         for (var index = 0; index < projectStackMetaDataList.length; index++) {

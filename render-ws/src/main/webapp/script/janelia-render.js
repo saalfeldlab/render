@@ -661,7 +661,7 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
            '  <td class="number">' + values[4] + '</td>\n' +
            '  <td class="number">' + values[5] + '</td>\n' +
            '  <td class="number">' + values[6] + '</td>\n' +
-           '  <td class="number">' + values[7] + '</td>\n' +
+           '  <td>' + values[7] + '</td>\n' +
            '  <td>' + linksHtml + '</td>\n' +
            '</tr>\n';
 };
