@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="../css/render.css">
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
+    <script type="text/javascript" src="../script/jquery.tablesorter.min.js"></script>
 
     <script type="text/javascript" src="../script/janelia-render.js?v=20170808_001"></script>
     <script type="text/javascript" src="../script/stacks.js?v=20170322_001"></script>
@@ -16,6 +17,8 @@
         $( document ).ready(function() {
             //noinspection JSUnusedLocalSymbols
             var stacksUi = new RenderWebServiceProjectStacks('renderStackOwner', 'renderStackProject', 'message', 'urlToView');
+
+            $("#stackInfo").tablesorter( { } );
         });
 
     </script>
@@ -49,19 +52,25 @@
 
 <div class="m20">
 
-    <table id="stackInfo">
-        <tr>
-            <th>Cycle</th>
-            <th>Step</th>
-            <th>Name</th>
-            <th>State</th>
-            <th>First Layer</th>
-            <th>Last Layer</th>
-            <th>Layer Count</th>
-            <th>Tile Count</th>
-            <th>Shared Transform Count</th>
-            <th>Actions</th>
-        </tr>
+    <table id="stackInfo" class="tablesorter">
+        <thead>
+            <tr>
+                <th>Cycle</th>
+                <th>Step</th>
+                <th>Name</th>
+                <th>State</th>
+                <th>First Layer</th>
+                <th>Last Layer</th>
+                <th>Layer Count</th>
+                <th>Tile Count</th>
+                <th>Shared Transform Count</th>
+                <th>Last Modified</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+
+        </tbody>
     </table>
 
 </div>
