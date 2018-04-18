@@ -18,8 +18,7 @@ var RenderWebServiceProjectStacks = function(ownerSelectId, projectSelectId, mes
         }
         $('#bodyHeaderDetails').text('(' + renderData.stackCount + stackSuffix);
 
-        var stackInfoSelect = $('#stackInfo');
-        stackInfoSelect.find("tr:gt(0)").remove();
+        var stackInfoSelect = $('#stackInfo tbody');
 
         var StackNameFunctions = function(stackName) {
 
@@ -61,9 +60,11 @@ var RenderWebServiceProjectStacks = function(ownerSelectId, projectSelectId, mes
             summaryHtml = renderDataUi.getStackSummaryHtml(renderData.getOwnerUrl(),
                                                            projectStackMetaDataList[index],
                                                            true);
-            stackInfoSelect.find('tr:last').after(summaryHtml);
+            stackInfoSelect.append(summaryHtml);
             new StackNameFunctions(projectStackMetaDataList[index].stackId.stack).updateActions();
         }
+
+        $("#stackInfo").trigger("update");
 
     };
 

@@ -600,7 +600,7 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.sectionCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.tileCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.transformCount)));
-        values.push(new Date(stackInfo.lastModifiedTimestamp));
+        values.push(new Date(stackInfo.lastModifiedTimestamp).toLocaleString());
     }
 
     var stackId = stackInfo.stackId;
