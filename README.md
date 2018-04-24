@@ -8,7 +8,7 @@ A collection of Java tools and HTTP services (APIs) for rendering transformed im
     persisted collections of tile and transform specifications, and 
   - a set of [Java clients] for processing/rendering data that utilize the [render web services] 
     to retrieve and/or store persisted specifications.
-  - a [render-ws docker] for building a jetty based web-service  
+  - [Docker packaging] for building the libraries and deploying the [render web services]  
   
   ![Render Components Diagram](docs/src/site/resources/image/render-components.png)
   
@@ -18,4 +18,4 @@ A collection of Java tools and HTTP services (APIs) for rendering transformed im
   [render application]: <docs/src/site/markdown/render-app.md>
   [render web services]: <docs/src/site/markdown/render-ws.md>
   [RESTful APIs]: <docs/src/site/markdown/render-ws-api/render-ws-api.md>
-  [render-ws docker]: <docs/src/site/markdown/render-ws-docker.md>
+  [Docker packaging]: <docs/src/site/markdown/render-ws-docker.md>

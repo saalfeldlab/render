@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<!DOCTYPE Configure PUBLIC "-//Jetty//Configure//EN" "http://www.eclipse.org/jetty/configure_9_3.dtd">
+
+<!-- =============================================================== -->
+<!-- Mixin the RewriteHandler                                        -->
+<!-- =============================================================== -->
+
+
+<Configure id="Server" class="org.eclipse.jetty.server.Server">
+
+    <!-- =========================================================== -->
+    <!-- configure rewrite handler                                   -->
+    <!-- =========================================================== -->
+    <Get id="oldhandler" name="handler"/>
+
+    <Set name="handler">
+        <New id="Rewrite" class="org.eclipse.jetty.rewrite.handler.RewriteHandler">
+            <Set name="handler"><Ref refid="oldhandler"/></Set>
+            <Set name="rewriteRequestURI"><Property name="jetty.rewrite.rewriteRequestURI" deprecated="rewrite.rewriteRequestURI" default="true"/></Set>
+            <Set name="rewritePathInfo"><Property name="jetty.rewrite.rewritePathInfo" deprecated="rewrite.rewritePathInfo" default="false"/></Set>
+            <Set name="originalPathAttribute"><Property name="jetty.rewrite.originalPathAttribute" deprecated="rewrite.originalPathAttribute" default="requestedPath"/></Set>
+
+            <!-- Set DispatcherTypes  -->
+            <Set name="dispatcherTypes">
+                <Array type="javax.servlet.DispatcherType">
+                    <Item><Call class="javax.servlet.DispatcherType" name="valueOf"><Arg>REQUEST</Arg></Call></Item>
+                    <Item><Call class="javax.servlet.DispatcherType" name="valueOf"><Arg>ASYNC</Arg></Call></Item>
+                </Array>
+            </Set>
+
+            <Call name="addRule">
+                <Arg>
+                    <New class="org.eclipse.jetty.rewrite.handler.RedirectRegexRule">
+                        <Set name="regex">^(.*?)/render-ws/view/$</Set>
+                        <Set name="replacement">$1/render-ws/view/index.html</Set>
+                        <Set name="terminating">true</Set>
+                    </New>
+                </Arg>
+            </Call>
+
+            <Call name="addRule">
+                <Arg>
+                    <New class="org.eclipse.jetty.rewrite.handler.HeaderPatternRule">
+                        <Set name="pattern">/favicon.ico</Set>
+                        <Set name="name">Cache-Control</Set>
+                        <Set name="value">Max-Age=3600,public</Set>
+                        <Set name="terminating">true</Set>
+                    </New>
+                </Arg>
+            </Call>
+
+            <!-- Add Vary: Origin to let ndviz cache data from render, per jbms -->
+            <Call name="addRule">
+                <Arg>
+                    <New class="org.eclipse.jetty.rewrite.handler.HeaderPatternRule">
+                        <Set name="pattern">/*</Set>
+                        <Set name="name">Vary</Set>
+                        <Set name="value">Origin</Set>
+                        <Set name="terminating">false</Set>
+                    </New>
+                </Arg>
+            </Call>
+
+
+        </New>
+    </Set>
+</Configure>

@@ -566,6 +566,34 @@ public class MatchService {
         return response;
     }
 
+    @Path("v1/owner/{owner}/matchCollection/{fromMatchCollection}/collectionId")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Rename a match collection")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "stack successfully renamed"),
+            @ApiResponse(code = 400, message = "stack cannot be renamed"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response renameMatchCollection(@PathParam("owner") final String owner,
+                                          @PathParam("fromMatchCollection") final String fromMatchCollection,
+                                          @Context final UriInfo uriInfo,
+                                          final MatchCollectionId toCollectionId) {
+
+        LOG.info("renameMatchCollection: entry, owner={}, fromMatchCollection={}, toCollectionId={}",
+                 owner, fromMatchCollection, toCollectionId);
+
+        final MatchCollectionId fromCollectionId = getCollectionId(owner, fromMatchCollection);
+        try {
+            matchDao.renameMatchCollection(fromCollectionId, toCollectionId);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return Response.ok().build();
+    }
+
     private MatchCollectionId getCollectionId(final String owner,
                                               final String matchCollection) {
 

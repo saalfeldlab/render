@@ -1,5 +1,6 @@
 package org.janelia.render.service.dao;
 
+import com.mongodb.MongoNamespace;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -136,6 +137,20 @@ public class MongoUtil {
 
         if (value == null) {
             throw new IllegalArgumentException(context + " value must be specified");
+        }
+    }
+
+    public static void renameCollection(final MongoDatabase database,
+                                        final String fromName,
+                                        final String toName) {
+        if (exists(database, fromName)) {
+            final MongoCollection<Document> fromCollection = database.getCollection(fromName);
+            final MongoNamespace toNamespace = new MongoNamespace(database.getName(), toName);
+            fromCollection.renameCollection(toNamespace);
+
+            LOG.debug("renameCollection: exit, ran {}.renameCollection({})",
+                      MongoUtil.fullName(fromCollection),
+                      toName);
         }
     }
 

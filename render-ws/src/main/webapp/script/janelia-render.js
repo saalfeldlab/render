@@ -158,6 +158,24 @@ JaneliaQueryParameters.prototype.get = function(key, defaultValue) {
     return value;
 };
 
+JaneliaQueryParameters.prototype.applyServerProperties = function(serverPropertyMap) {
+    for (var key in serverPropertyMap) {
+
+        if (! serverPropertyMap.hasOwnProperty(key)) {
+            continue; // ignore if the property is from prototype
+        } else if (! key.startsWith('view.')) {
+            continue; // ignore non-view properties
+        }
+
+        var viewKey = key.substr(5);
+
+        var queryParameterValue = this.map[viewKey];
+        if (typeof queryParameterValue == 'undefined') {
+            this.map[viewKey] = serverPropertyMap[key];
+        }
+    }
+};
+
 JaneliaQueryParameters.prototype.updateParameter = function (key, value) {
 
     if (typeof key != 'undefined') {
@@ -563,6 +581,7 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
         values.push('');
         values.push('');
         values.push('');
+        values.push('');
     } else {
         var bounds = stats.stackBounds;
         if (typeof bounds === 'undefined') {
@@ -581,6 +600,7 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.sectionCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.tileCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.transformCount)));
+        values.push(new Date(stackInfo.lastModifiedTimestamp).toLocaleString());
     }
 
     var stackId = stackInfo.stackId;
@@ -641,6 +661,7 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
            '  <td class="number">' + values[4] + '</td>\n' +
            '  <td class="number">' + values[5] + '</td>\n' +
            '  <td class="number">' + values[6] + '</td>\n' +
+           '  <td>' + values[7] + '</td>\n' +
            '  <td>' + linksHtml + '</td>\n' +
            '</tr>\n';
 };

@@ -3,7 +3,6 @@ package org.janelia.render.service.dao;
 import com.mongodb.BasicDBList;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
-import com.mongodb.MongoNamespace;
 import com.mongodb.QueryOperators;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
@@ -1456,8 +1455,8 @@ public class RenderDao {
     /**
      * Renames the specified stack.
      *
-     * @param  fromStackId  original stack name.
-     * @param  toStackId    new stack name.
+     * @param  fromStackId  original stack.
+     * @param  toStackId    new stack.
      *
      * @throws IllegalArgumentException
      *   if the new stack already exists or the original stack cannot be renamed for any other reason.
@@ -1487,9 +1486,12 @@ public class RenderDao {
             throw new IllegalArgumentException(toStackId + " already exists");
         }
 
-        renameCollection(fromStackId.getSectionCollectionName(), toStackId.getSectionCollectionName());
-        renameCollection(fromStackId.getTransformCollectionName(), toStackId.getTransformCollectionName());
-        renameCollection(fromStackId.getTileCollectionName(), toStackId.getTileCollectionName());
+        MongoUtil.renameCollection(renderDatabase,
+                                   fromStackId.getSectionCollectionName(), toStackId.getSectionCollectionName());
+        MongoUtil.renameCollection(renderDatabase,
+                                   fromStackId.getTransformCollectionName(), toStackId.getTransformCollectionName());
+        MongoUtil.renameCollection(renderDatabase,
+                                   fromStackId.getTileCollectionName(), toStackId.getTileCollectionName());
 
         toStackMetaData = StackMetaData.buildDerivedMetaData(toStackId, fromStackMetaData);
 
@@ -1977,22 +1979,6 @@ public class RenderDao {
                   bound, MongoUtil.fullName(tileCollection), query.toJson(), tileKeys.toJson(), orderBy.toJson());
 
         return bound;
-    }
-
-    private void renameCollection(final String fromCollectionName,
-                                  final String toCollectionName) {
-
-        if (MongoUtil.exists(renderDatabase, fromCollectionName)) {
-
-            final MongoCollection<Document> fromCollection = renderDatabase.getCollection(fromCollectionName);
-            final MongoNamespace toNamespace = new MongoNamespace(renderDatabase.getName(), toCollectionName);
-            fromCollection.renameCollection(toNamespace);
-
-            LOG.debug("renameCollection: exit, ran {}.renameCollection({})",
-                      MongoUtil.fullName(fromCollection),
-                      toCollectionName);
-        }
-
     }
 
     private void cloneCollection(final MongoCollection<Document> fromCollection,

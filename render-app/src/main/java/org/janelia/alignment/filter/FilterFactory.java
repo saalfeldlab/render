@@ -168,6 +168,6 @@ public class FilterFactory implements Serializable {
             new JsonUtils.Helper<>(FilterFactory.class);
 
     private static File getSystemConfigurationFile() {
-        return new File("logs/filter_lists.json").getAbsoluteFile();
+        return new File("resources/filter_lists.json").getAbsoluteFile();
     }
 }

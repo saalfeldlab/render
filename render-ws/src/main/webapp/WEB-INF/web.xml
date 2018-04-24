@@ -28,7 +28,7 @@
          Default parameters should be sufficient unless you want to lock down access to specific origins.
          Uncomment <init-param> blocks below to configure as needed.
 
-         Note that to use the filter, the Jetty servlets module must also be enabled in start.ini
+         Note that to use the filter, the Jetty servlets module must also be enabled in start.d/servlets.ini
     -->
     <filter>
         <filter-name>cross-origin</filter-name>
