@@ -588,8 +588,8 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
             values.push('');
             values.push('');
         } else {
-            values.push(this.util.getDefinedValue(bounds.minZ));
-            values.push(this.util.getDefinedValue(bounds.maxZ));
+            values.push(this.util.numberWithCommas(this.util.getDefinedValue(bounds.minZ)));
+            values.push(this.util.numberWithCommas(this.util.getDefinedValue(bounds.maxZ)));
 
             if (typeof version !== 'undefined') {
                 xp = (bounds.minX + ((bounds.maxX - bounds.minX) / 2)) * version.stackResolutionX;
@@ -600,7 +600,7 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.sectionCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.tileCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.transformCount)));
-        values.push(new Date(stackInfo.lastModifiedTimestamp).toLocaleString());
+        values.push(new Date(stackInfo.lastModifiedTimestamp).toISOString().replace(/T/, ' ').replace(/:.......$/,''));
     }
 
     var stackId = stackInfo.stackId;
