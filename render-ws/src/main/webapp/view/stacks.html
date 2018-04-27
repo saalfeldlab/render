@@ -5,12 +5,12 @@
     <meta charset="utf-8">
     <title>Project Stacks</title>
 
-    <link rel="stylesheet" href="../css/render.css">
+    <link rel="stylesheet" href="../css/render.css?v=20180427_001">
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="../script/jquery.tablesorter.min.js"></script>
 
-    <script type="text/javascript" src="../script/janelia-render.js?v=20170808_001"></script>
+    <script type="text/javascript" src="../script/janelia-render.js?v=20180427_001"></script>
     <script type="text/javascript" src="../script/stacks.js?v=20170322_001"></script>
 
     <script type="text/javascript">
@@ -38,21 +38,17 @@
 
     <label for="renderStackOwner">Owner:</label>
     <select id="renderStackOwner" title="renderStackOwner"></select>
-
-    <a id="urlToView" class="floatRight" target="_blank">URL to this view</a>
-
-    <br/>
-    <br/>
-
+    &nbsp;&nbsp;
     <label for="renderStackProject">Project:</label>
     <select id="renderStackProject" title="renderStackProject"></select>
 
+    <a id="urlToView" class="floatRight" target="_blank">URL to this view</a>
 
 </div>
 
 <div class="m20">
 
-    <table id="stackInfo" class="tablesorter">
+    <table id="stackInfo" class="tablesorter-blue">
         <thead>
             <tr>
                 <th>Cycle</th>
