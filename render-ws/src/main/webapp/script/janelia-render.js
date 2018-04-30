@@ -556,9 +556,10 @@ JaneliaRenderServiceDataUI.prototype.buildStackQueryParameters = function(owner,
  * @param stackInfo.stats.nonIntegralSectionCount
  * @param stackInfo.stats.tileCount
  * @param stackInfo.stats.transformCount
+ * @param includeProject
  * @param includeActions
  */
-JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, stackInfo, includeActions) {
+JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, stackInfo, includeProject, includeActions) {
     var values = [];
     var version = stackInfo.currentVersion;
     if (typeof version === 'undefined') {
@@ -651,7 +652,14 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
         linksHtml = '';
     }
 
+    var projectColumn = '';
+    if (includeProject) {
+        var projectHref = 'stacks.html' + this.queryParameters.getSearch();
+        projectColumn = '  <td><a target="_blank" href="' + projectHref + '">' + this.renderServiceData.project + '</a></td>\n';
+    }
+
     return '<tr class="' + stackInfo.state + '">\n' +
+           projectColumn +
            '  <td class="number">' + values[0] + '</td>\n' +
            '  <td class="number">' + values[1] + '</td>\n' +
            '  <td>' + detailsLink + '</td>\n' +

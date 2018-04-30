@@ -27,6 +27,7 @@ var RenderWebServiceStackDetails = function(ownerSelectId, projectSelectId, stac
         var stackInfoSelect = $('#stackInfo');
         var summaryHtml = self.renderDataUi.getStackSummaryHtml(renderData.getOwnerUrl(),
                                                                 renderData.getStackMetaData(),
+                                                                true,
                                                                 false);
         stackInfoSelect.find('tr:last').after(summaryHtml);
 
