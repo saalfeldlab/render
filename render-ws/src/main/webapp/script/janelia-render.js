@@ -545,6 +545,7 @@ JaneliaRenderServiceDataUI.prototype.buildStackQueryParameters = function(owner,
  * @param stackInfo.stackId.project
  * @param stackInfo.stackId.stack
  * @param stackInfo.state
+ * @param stackInfo.lastModifiedTimestamp
  * @param stackInfo.currentVersion.cycleNumber
  * @param stackInfo.currentVersion.cycleStepNumber
  * @param stackInfo.currentVersion.stackResolutionX
