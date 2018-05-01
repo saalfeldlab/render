@@ -601,7 +601,11 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.sectionCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.tileCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.transformCount)));
-        values.push(new Date(stackInfo.lastModifiedTimestamp).toISOString().replace(/T/, ' ').replace(/:.......$/,''));
+
+        var lastModified = new Date(stackInfo.lastModifiedTimestamp);
+        var lastModifiedWithOffset = new Date(lastModified.getTime() - (lastModified.getTimezoneOffset() * 60000));
+        var formattedLastModified = lastModifiedWithOffset.toISOString().replace(/T/, ' ').replace(/:.......$/,'');
+        values.push(formattedLastModified);
     }
 
     var stackId = stackInfo.stackId;
