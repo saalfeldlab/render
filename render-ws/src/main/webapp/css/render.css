@@ -208,7 +208,7 @@ tr:hover .dropbtn:hover {
 }
 
 .tablesorter-blue td {
-    color: #3d3d3d;
+    //color: #3d3d3d;         // hide this color so that state based colors (e.g. .COMPLETE) are honored
     background-color: #fff;
     padding: 4px;
     vertical-align: top
