@@ -1,3 +1,7 @@
+body {
+    font-family: Arial, Sans-serif, serif;
+}
+
 h3 {
     background-color: gray;
     color: white;
@@ -9,7 +13,6 @@ h3 a {
 }
 
 label {
-    font-weight: bold;
     margin-right: 10px;
 }
 
