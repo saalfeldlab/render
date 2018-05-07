@@ -160,6 +160,13 @@ public class ImageProcessorCache {
     }
 
     /**
+     * Discards all entries in the cache.
+     */
+    public void invalidateAll() {
+        cache.invalidateAll();
+    }
+
+    /**
      * @return a current snapshot of this cache's cumulative statistics
      *         (will be all zeros if stat recording is not enabled for this cache).
      */

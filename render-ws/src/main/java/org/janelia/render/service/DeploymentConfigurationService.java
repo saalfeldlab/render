@@ -6,13 +6,18 @@ import java.io.InputStream;
 import java.util.Map;
 import java.util.Properties;
 
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import org.janelia.alignment.filter.FilterFactory;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.service.util.RenderServerProperties;
+import org.janelia.render.service.util.RenderServiceUtil;
+import org.janelia.render.service.util.SharedImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,6 +98,28 @@ public class DeploymentConfigurationService {
         }
 
         return versionInfo;
+    }
+
+    @Path("v1/imageProcessorCache/allEntries")
+    @DELETE
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Service Configuration APIs",
+            value = "Discards all cached images",
+            produces = MediaType.APPLICATION_JSON)
+    public Response invalidateImageProcessorCache() {
+        Response response = null;
+        try {
+            final ImageProcessorCache sharedCache = SharedImageProcessorCache.getInstance();
+            LOG.info("invalidateImageProcessorCache: entry, current shared cache stats are: {}", sharedCache.getStats());
+            sharedCache.invalidateAll();
+
+            response = Response.ok().build();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return response;
     }
 
     private FilterFactory getFilterFactory() {
