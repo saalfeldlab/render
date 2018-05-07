@@ -150,6 +150,71 @@ tr:hover .dropbtn:hover {
     font-weight: normal;
 }
 
+.chart-display {
+    border: solid black;
+    border-width: 0 3px 3px 0;
+    display: inline-block;
+    padding: 3px;
+    margin-left: 3px;
+    transform: rotate(-45deg);
+    -webkit-transform: rotate(-45deg);
+}
+
+.chart-display.hide-chart {
+    transform: rotate(45deg);
+    -webkit-transform: rotate(45deg);
+}
+
+.chart-layer-zoom {
+    padding: 0;
+    margin: 10px 0 0 0;
+}
+
+.chart-layer-zoom-label {
+    font: 12px Arial, Sans-serif;
+    padding: 0 6px 0 0;
+}
+
+.chart-layer-zoom button {
+    font: 11px Arial, Sans-serif;
+    border-radius: 4px;
+    outline: 0;
+    vertical-align: middle;
+    text-decoration: none;
+    background-color: lightgray;
+    color: black;
+    text-align: center;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.chart-layer-zoom-button-pressed {
+    background-color: lightblue!important;
+    color: black!important;
+}
+
+.loader {
+    display: inline-block;
+    border: 2px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 2px solid #3498db;
+    width: 6px;
+    height: 6px;
+    -webkit-animation: spin 2s linear infinite; /* Safari */
+    animation: spin 2s linear infinite;
+}
+
+/* Safari */
+@-webkit-keyframes spin {
+    0% { -webkit-transform: rotate(0deg); }
+    100% { -webkit-transform: rotate(360deg); }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 /* Styles from https://libraries.io/npm/tablesorter (tablesorter-2.30.1): package/dist/css/theme.blue.css */
 .tablesorter-blue {
     width: 100%;

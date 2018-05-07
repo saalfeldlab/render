@@ -17,9 +17,105 @@
 
     <script type="text/javascript">
 
+        function setupChart(chartLabel, chart) {
+
+            var controllerId = chart.chartId + 'Controller';
+            var buttonPressedClass = 'chart-layer-zoom-button-pressed';
+
+            var controllerHtml =
+                    '<hr/>' +
+                    '<div id="' + controllerId + '">' +
+                    '  <span class="chart-label">' + chartLabel + '</span>' +
+                    '  <span class="chart-display"></span>' +
+                    '  <p class="chart-layer-zoom">' +
+                    '    <span class="chart-layer-zoom-label">Layers:</span>' +
+                    '    <button class="' + buttonPressedClass + '">Sample</button>' +
+                    '    <button>All</button>' +
+                    '    <span class="loader"></span>' +
+                    '  </p>' +
+                    '</div>';
+
+            var chartSelector = $('#' + chart.chartId);
+            chartSelector.before(controllerHtml);
+
+            var labelSelector = $('#' + controllerId + ' .chart-label');
+            var arrowSelector = $('#' + controllerId + ' .chart-display');
+            var zoomSelector = $('#' + controllerId + ' .chart-layer-zoom');
+            var buttonSelector = $('#' + controllerId + ' button');
+            var loaderSelector = $('#' + controllerId + ' .loader');
+
+            chartSelector.hide();
+            zoomSelector.hide();
+            loaderSelector.hide();
+
+            var toggleChartDisplay =  function() {
+                if (chart.isSectionDataLoaded()) {
+                    if (chartSelector.is(":visible")) {
+                        arrowSelector.removeClass('hide-chart');
+                        zoomSelector.hide();
+                        chartSelector.hide();
+                    } else {
+                        arrowSelector.addClass('hide-chart');
+                        chartSelector.show();
+                        chart.redraw();
+                        if (chart.hasSamples) {
+                            zoomSelector.show();
+                        }
+                    }
+                }
+            };
+
+            labelSelector.click(toggleChartDisplay);
+            arrowSelector.click(toggleChartDisplay);
+
+            var toggleSampleDisplayCallback = function() {
+                loaderSelector.hide();
+                buttonSelector.each(function() {
+                    $(this).prop("disabled", false);
+                });
+            };
+
+            buttonSelector.click(function(event) {
+                var target = $( event.target );
+
+                if (! target.hasClass(buttonPressedClass)) {
+
+                    console.log('toggle sample display ...');
+                    loaderSelector.show();
+
+                    var buttonPressedSelector = $('#' + controllerId + ' .' + buttonPressedClass);
+                    buttonPressedSelector.each(function () {
+                        $(this).removeClass(buttonPressedClass)
+                    });
+
+                    target.addClass(buttonPressedClass);
+
+                    buttonSelector.each(function() {
+                        $(this).prop("disabled", true);
+                    });
+
+                    chart.toggleSampleDisplay(toggleSampleDisplayCallback);
+                }
+            });
+
+        }
+
         $( document ).ready(function() {
-            //noinspection JSUnusedLocalSymbols
-            var stacksUi = new RenderWebServiceStackDetails('renderStackOwner', 'renderStackProject', 'renderStack', 'sectionDataStatus', 'urlToView');
+
+            var stackDetails = new RenderWebServiceStackDetails('renderStackOwner', 'renderStackProject', 'renderStack', 'sectionDataStatus', 'urlToView');
+
+            var tileCountsChart = new RenderWebServiceTileCountsChart(stackDetails, 'tileCounts');
+            var orderingChart = new RenderWebServiceSectionOrderingChart(stackDetails, 'ordering');
+            var xBoundsChart = new RenderWebServiceSectionBoundsChart(stackDetails, 'xBounds', true);
+            var yBoundsChart = new RenderWebServiceSectionBoundsChart(stackDetails, 'yBounds', false);
+
+            Highcharts.setOptions({ lang: { thousandsSep: ',' } });
+
+            setupChart('Tile Counts', tileCountsChart);
+            setupChart('Section Ordering', orderingChart);
+            setupChart('X Bounds', xBoundsChart);
+            setupChart('Y Bounds', yBoundsChart);
+
         });
 
     </script>
@@ -47,13 +143,12 @@
         </tr>
     </table>
 
-    <hr/>
-    <p id="sectionDataStatus">loading section data ...</p>
-    <div id="sectionOrdering"></div>
-    <hr/>
-    <div id="sectionTileCounts"></div>
-    <!--<hr/>-->
-    <!--<div id="sectionBounds"></div>-->
+    <div id="sectionDataStatus">loading section data <span class="loader"></span></div>
+
+    <div id="tileCounts"></div>
+    <div id="ordering"></div>
+    <div id="xBounds"></div>
+    <div id="yBounds"></div>
 
 </div>
 
