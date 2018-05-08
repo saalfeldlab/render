@@ -509,10 +509,13 @@ function RenderWebServiceSectionOrderingChart(stackDetails, chartId) {
     };
 }
 
-function RenderWebServiceSectionBoundsChart(stackDetails, chartId, forXValues) {
+function RenderWebServiceSectionBoundsChart(stackDetails, chartId, forXValues, forDeltaValues) {
 
     var boundsType = forXValues ? 'X' : 'Y';
     var title = boundsType + ' Bounds';
+    if (forDeltaValues) {
+        title += ' Delta';
+    }
 
     RenderWebServiceChart.call(this, stackDetails, chartId, title);
 
@@ -542,7 +545,7 @@ function RenderWebServiceSectionBoundsChart(stackDetails, chartId, forXValues) {
             },
             yAxis: {
                 title: {
-                    text: boundsType + ' Bounds'
+                    text: title
                 }
             },
             tooltip: {
@@ -571,18 +574,46 @@ function RenderWebServiceSectionBoundsChart(stackDetails, chartId, forXValues) {
 
         var sectionList;
         var floatZ;
+        var previousMin = null;
+        var previousMax = null;
         for (var z in stackDetails.zToSectionDataMap) {
             if (stackDetails.zToSectionDataMap.hasOwnProperty(z)) {
+
                 sectionList = stackDetails.zToSectionDataMap[z].sectionList;
                 floatZ = parseFloat(z);
+
+                if (forDeltaValues && (previousMin == null)) {
+                    if (forXValues) {
+                        previousMin = sectionList[0].minX;
+                        previousMax = sectionList[0].maxX;
+                    } else {
+                        previousMin = sectionList[0].minY;
+                        previousMax = sectionList[0].maxY;
+                    }
+                }
+
                 for (var index = 0; index < sectionList.length; index++) {
                     if (sectionList[index].minX !== undefined) {
                         if (forXValues) {
-                            minData.push([floatZ, sectionList[index].minX]);
-                            maxData.push([floatZ, sectionList[index].maxX]);
+                            if (forDeltaValues) {
+                                minData.push([floatZ, (sectionList[index].minX - previousMin)]);
+                                maxData.push([floatZ, (sectionList[index].maxX - previousMax)]);
+                                previousMin = sectionList[index].minX;
+                                previousMax = sectionList[index].maxX;
+                            } else {
+                                minData.push([floatZ, sectionList[index].minX]);
+                                maxData.push([floatZ, sectionList[index].maxX]);
+                            }
                         } else {
-                            minData.push([floatZ, sectionList[index].minY]);
-                            maxData.push([floatZ, sectionList[index].maxY]);
+                            if (forDeltaValues) {
+                                minData.push([floatZ, (sectionList[index].minY - previousMin)]);
+                                maxData.push([floatZ, (sectionList[index].maxY - previousMax)]);
+                                previousMin = sectionList[index].minY;
+                                previousMax = sectionList[index].maxY;
+                            } else {
+                                minData.push([floatZ, sectionList[index].minY]);
+                                maxData.push([floatZ, sectionList[index].maxY]);
+                            }
                         }
                     }
                 }
