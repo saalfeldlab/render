@@ -2,7 +2,7 @@ var RenderWebServiceProjectStacks = function(ownerSelectId, projectSelectId, mes
 
     var queryParameters = new JaneliaQueryParameters();
 
-    var renderDataUi = new JaneliaRenderServiceDataUI(queryParameters, ownerSelectId, projectSelectId, undefined, messageId, urlToViewId);
+    var renderDataUi = new JaneliaRenderServiceDataUI(queryParameters, ownerSelectId, projectSelectId, 'undefined', messageId, urlToViewId);
 
     var projectChangeCallback = function () {
 
@@ -17,8 +17,6 @@ var RenderWebServiceProjectStacks = function(ownerSelectId, projectSelectId, mes
             stackSuffix = ' stack)';
         }
         $('#bodyHeaderDetails').text('(' + renderData.stackCount + stackSuffix);
-
-        var stackInfoSelect = $('#stackInfo tbody');
 
         var StackNameFunctions = function(stackName) {
 
@@ -54,19 +52,21 @@ var RenderWebServiceProjectStacks = function(ownerSelectId, projectSelectId, mes
             }
         };
 
-        $.tablesorter.clearTableBody( $("#stackInfo")[0] );
+        var stackInfoSelect = $("#stackInfo");
+        $.tablesorter.clearTableBody(stackInfoSelect[0]);
 
         var projectStackMetaDataList = renderData.getProjectStackMetaDataList();
         var summaryHtml;
         for (var index = 0; index < projectStackMetaDataList.length; index++) {
             summaryHtml = renderDataUi.getStackSummaryHtml(renderData.getOwnerUrl(),
                                                            projectStackMetaDataList[index],
+                                                           false,
                                                            true);
             stackInfoSelect.append(summaryHtml);
             new StackNameFunctions(projectStackMetaDataList[index].stackId.stack).updateActions();
         }
 
-        $("#stackInfo").trigger("update");
+        stackInfoSelect.trigger("update");
 
     };
 

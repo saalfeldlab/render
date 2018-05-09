@@ -545,6 +545,7 @@ JaneliaRenderServiceDataUI.prototype.buildStackQueryParameters = function(owner,
  * @param stackInfo.stackId.project
  * @param stackInfo.stackId.stack
  * @param stackInfo.state
+ * @param stackInfo.lastModifiedTimestamp
  * @param stackInfo.currentVersion.cycleNumber
  * @param stackInfo.currentVersion.cycleStepNumber
  * @param stackInfo.currentVersion.stackResolutionX
@@ -556,9 +557,10 @@ JaneliaRenderServiceDataUI.prototype.buildStackQueryParameters = function(owner,
  * @param stackInfo.stats.nonIntegralSectionCount
  * @param stackInfo.stats.tileCount
  * @param stackInfo.stats.transformCount
+ * @param includeProject
  * @param includeActions
  */
-JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, stackInfo, includeActions) {
+JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, stackInfo, includeProject, includeActions) {
     var values = [];
     var version = stackInfo.currentVersion;
     if (typeof version === 'undefined') {
@@ -588,8 +590,8 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
             values.push('');
             values.push('');
         } else {
-            values.push(this.util.getDefinedValue(bounds.minZ));
-            values.push(this.util.getDefinedValue(bounds.maxZ));
+            values.push(this.util.numberWithCommas(this.util.getDefinedValue(bounds.minZ)));
+            values.push(this.util.numberWithCommas(this.util.getDefinedValue(bounds.maxZ)));
 
             if (typeof version !== 'undefined') {
                 xp = (bounds.minX + ((bounds.maxX - bounds.minX) / 2)) * version.stackResolutionX;
@@ -600,7 +602,11 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.sectionCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.tileCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.transformCount)));
-        values.push(new Date(stackInfo.lastModifiedTimestamp).toLocaleString());
+
+        var lastModified = new Date(stackInfo.lastModifiedTimestamp);
+        var lastModifiedWithOffset = new Date(lastModified.getTime() - (lastModified.getTimezoneOffset() * 60000));
+        var formattedLastModified = lastModifiedWithOffset.toISOString().replace(/T/, ' ').replace(/:.......$/,'');
+        values.push(formattedLastModified);
     }
 
     var stackId = stackInfo.stackId;
@@ -651,7 +657,14 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
         linksHtml = '';
     }
 
+    var projectColumn = '';
+    if (includeProject) {
+        var projectHref = 'stacks.html' + this.queryParameters.getSearch();
+        projectColumn = '  <td><a target="_blank" href="' + projectHref + '">' + this.renderServiceData.project + '</a></td>\n';
+    }
+
     return '<tr class="' + stackInfo.state + '">\n' +
+           projectColumn +
            '  <td class="number">' + values[0] + '</td>\n' +
            '  <td class="number">' + values[1] + '</td>\n' +
            '  <td>' + detailsLink + '</td>\n' +

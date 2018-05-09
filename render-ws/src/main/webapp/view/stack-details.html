@@ -5,21 +5,121 @@
     <meta charset="utf-8">
     <title>Stack Details</title>
 
-    <link rel="stylesheet" href="../css/render.css">
+    <link rel="stylesheet" href="../css/render.css?v=20180427_001">
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
 
     <script src="https://code.highcharts.com/stock/4.2.6/highstock.js"></script>
     <script src="https://code.highcharts.com/4.2.6/modules/exporting.js"></script>
 
-    <script type="text/javascript" src="../script/janelia-render.js?v=20170808_001"></script>
-    <script type="text/javascript" src="../script/stack-details.js?v=20170105_001"></script>
+    <script type="text/javascript" src="../script/janelia-render.js?v=20180430_001"></script>
+    <script type="text/javascript" src="../script/stack-details.js?v=20180508_001"></script>
 
     <script type="text/javascript">
 
+        function setupChart(chartLabel, chart) {
+
+            var controllerId = chart.chartId + 'Controller';
+            var buttonPressedClass = 'chart-layer-zoom-button-pressed';
+
+            var controllerHtml =
+                    '<hr/>' +
+                    '<div id="' + controllerId + '">' +
+                    '  <span class="chart-label">' + chartLabel + '</span>' +
+                    '  <span class="chart-display"></span>' +
+                    '  <p class="chart-layer-zoom">' +
+                    '    <span class="chart-layer-zoom-label">Layers:</span>' +
+                    '    <button class="' + buttonPressedClass + '">Sample</button>' +
+                    '    <button>All</button>' +
+                    '    <span class="loader"></span>' +
+                    '  </p>' +
+                    '</div>';
+
+            var chartSelector = $('#' + chart.chartId);
+            chartSelector.before(controllerHtml);
+
+            var labelSelector = $('#' + controllerId + ' .chart-label');
+            var arrowSelector = $('#' + controllerId + ' .chart-display');
+            var zoomSelector = $('#' + controllerId + ' .chart-layer-zoom');
+            var buttonSelector = $('#' + controllerId + ' button');
+            var loaderSelector = $('#' + controllerId + ' .loader');
+
+            chartSelector.hide();
+            zoomSelector.hide();
+            loaderSelector.hide();
+
+            var toggleChartDisplay =  function() {
+                if (chart.isSectionDataLoaded()) {
+                    if (chartSelector.is(":visible")) {
+                        arrowSelector.removeClass('hide-chart');
+                        zoomSelector.hide();
+                        chartSelector.hide();
+                    } else {
+                        arrowSelector.addClass('hide-chart');
+                        chartSelector.show();
+                        chart.redraw();
+                        if (chart.hasSamples) {
+                            zoomSelector.show();
+                        }
+                    }
+                }
+            };
+
+            labelSelector.click(toggleChartDisplay);
+            arrowSelector.click(toggleChartDisplay);
+
+            var toggleSampleDisplayCallback = function() {
+                loaderSelector.hide();
+                buttonSelector.each(function() {
+                    $(this).prop("disabled", false);
+                });
+            };
+
+            buttonSelector.click(function(event) {
+                var target = $( event.target );
+
+                if (! target.hasClass(buttonPressedClass)) {
+
+                    console.log('toggle sample display ...');
+                    loaderSelector.show();
+
+                    var buttonPressedSelector = $('#' + controllerId + ' .' + buttonPressedClass);
+                    buttonPressedSelector.each(function () {
+                        $(this).removeClass(buttonPressedClass)
+                    });
+
+                    target.addClass(buttonPressedClass);
+
+                    buttonSelector.each(function() {
+                        $(this).prop("disabled", true);
+                    });
+
+                    chart.toggleSampleDisplay(toggleSampleDisplayCallback);
+                }
+            });
+
+        }
+
         $( document ).ready(function() {
-            //noinspection JSUnusedLocalSymbols
-            var stacksUi = new RenderWebServiceStackDetails('renderStackOwner', 'renderStackProject', 'renderStack', 'sectionDataStatus', 'urlToView');
+
+            var stackDetails = new RenderWebServiceStackDetails('renderStackOwner', 'renderStackProject', 'renderStack', 'sectionDataStatus', 'urlToView');
+
+            var tileCountsChart = new RenderWebServiceTileCountsChart(stackDetails, 'tileCounts');
+            var orderingChart = new RenderWebServiceSectionOrderingChart(stackDetails, 'ordering');
+            var xBoundsChart = new RenderWebServiceSectionBoundsChart(stackDetails, 'xBounds', true, false);
+            var yBoundsChart = new RenderWebServiceSectionBoundsChart(stackDetails, 'yBounds', false, false);
+            var xBoundsDeltaChart = new RenderWebServiceSectionBoundsChart(stackDetails, 'xBoundsDelta', true, true);
+            var yBoundsDeltaChart = new RenderWebServiceSectionBoundsChart(stackDetails, 'yBoundsDelta', false, true);
+
+            Highcharts.setOptions({ lang: { thousandsSep: ',' } });
+
+            setupChart('Tile Counts', tileCountsChart);
+            setupChart('Section Ordering', orderingChart);
+            setupChart('X Bounds', xBoundsChart);
+            setupChart('Y Bounds', yBoundsChart);
+            setupChart('X Bounds Delta', xBoundsDeltaChart);
+            setupChart('Y Bounds Delta', yBoundsDeltaChart);
+
         });
 
     </script>
@@ -30,10 +130,9 @@
 
 <div class="m20">
 
-    <h3><a id="bodyHeaderLink" target="_blank" href=""></a> <span id="bodyHeader"></span> <span id="bodyHeaderDetails"></span></h3>
-
     <table id="stackInfo">
         <tr>
+            <th>Project</th>
             <th>Cycle</th>
             <th>Step</th>
             <th>Name</th>
@@ -43,17 +142,19 @@
             <th>Layer Count</th>
             <th>Tile Count</th>
             <th>Shared Transform Count</th>
+            <th>Last Modified</th>
             <th></th>
         </tr>
     </table>
 
-    <hr/>
-    <p id="sectionDataStatus">loading section data ...</p>
-    <div id="sectionOrdering"></div>
-    <hr/>
-    <div id="sectionTileCounts"></div>
-    <!--<hr/>-->
-    <!--<div id="sectionBounds"></div>-->
+    <div id="sectionDataStatus">loading section data <span class="loader"></span></div>
+
+    <div id="tileCounts"></div>
+    <div id="ordering"></div>
+    <div id="xBounds"></div>
+    <div id="yBounds"></div>
+    <div id="xBoundsDelta"></div>
+    <div id="yBoundsDelta"></div>
 
 </div>
 

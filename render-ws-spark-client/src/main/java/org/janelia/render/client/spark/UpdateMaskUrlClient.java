@@ -4,6 +4,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.URISyntaxException;
@@ -21,6 +22,7 @@ import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.ClientRunner;
@@ -32,12 +34,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Spark client for adding maskUrl attributes to all tile specs in a stack using the tile size to
- * determine which mask (from a list of masks) is should be used for each tile.
+ * Spark client for adding or removing maskUrl attributes to all tile specs in a stack.
+ * When adding masks, tile size is used to determine which mask (from a list of masks) is should be used for each tile.
  *
  * @author Eric Trautman
  */
-public class AddMaskUrlClient
+public class UpdateMaskUrlClient
         implements Serializable {
 
     public static class Parameters extends CommandLineParameters {
@@ -75,7 +77,7 @@ public class AddMaskUrlClient
         @Parameter(
                 names = "--maskListFile",
                 description = "File containing paths of different sized mask files",
-                required = true)
+                required = false)
         public String maskListFile;
 
         @Parameter(
@@ -83,6 +85,12 @@ public class AddMaskUrlClient
                 description = "Complete the target stack after adding masks",
                 required = false, arity = 0)
         public boolean completeTargetStack = false;
+
+        @Parameter(
+                names = "--removeMasks",
+                description = "Remove all masks (instead of adding missing masks)",
+                required = false, arity = 0)
+        public boolean removeMasks = false;
 
         public String getTargetOwner() {
             if (targetOwner == null) {
@@ -105,6 +113,15 @@ public class AddMaskUrlClient
             return targetStack;
         }
 
+        public void validateMaskListFile() {
+
+            if (! removeMasks) {
+                if ((maskListFile == null) || ! new File(maskListFile).exists()) {
+                    throw new IllegalArgumentException("--maskListFile parameter must identify existing file when adding masks");
+                }
+            }
+
+        }
     }
 
     private static class MaskData implements Serializable {
@@ -134,10 +151,11 @@ public class AddMaskUrlClient
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
+                parameters.validateMaskListFile();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final AddMaskUrlClient client = new AddMaskUrlClient(parameters);
+                final UpdateMaskUrlClient client = new UpdateMaskUrlClient(parameters);
                 client.run();
             }
         };
@@ -146,7 +164,7 @@ public class AddMaskUrlClient
 
     private final Parameters parameters;
 
-    public AddMaskUrlClient(final Parameters parameters) {
+    public UpdateMaskUrlClient(final Parameters parameters) {
         this.parameters = parameters;
     }
 
@@ -168,9 +186,9 @@ public class AddMaskUrlClient
     }
 
     public void run()
-            throws IOException, URISyntaxException {
+            throws IOException, URISyntaxException, InterruptedException {
 
-        final SparkConf conf = new SparkConf().setAppName("AddMaskUrlClient");
+        final SparkConf conf = new SparkConf().setAppName("UpdateMaskUrlClient");
         final JavaSparkContext sparkContext = new JavaSparkContext(conf);
 
         final String sparkAppId = sparkContext.getConf().getAppId();
@@ -178,14 +196,13 @@ public class AddMaskUrlClient
 
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
-
         final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
 
-        final List<Double> zValues = sourceDataClient.getStackZValues(parameters.stack,
-                                                                      parameters.layerRange.minZ,
-                                                                      parameters.layerRange.maxZ);
-
-        if (zValues.size() == 0) {
+        final List<SectionData> sectionDataList =
+                sourceDataClient.getStackSectionData(parameters.stack,
+                                                     parameters.layerRange.minZ,
+                                                     parameters.layerRange.maxZ);
+        if (sectionDataList.size() == 0) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 
@@ -196,55 +213,26 @@ public class AddMaskUrlClient
         final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
         targetDataClient.setupDerivedStack(sourceStackMetaData, parameters.getTargetStack());
 
-        final List<MaskData> maskDataList = loadMaskData(parameters.maskListFile);
-        LOG.info("loaded {} from {}", maskDataList, parameters.maskListFile);
+        // Batch layers by tile count in attempt to distribute work load as evenly as possible across cores.
 
-        final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
+        // For stacks with many thousands of single (or few) tile layers,
+        // this also prevents TCP TIME_WAIT issues on the server by reusing the same HTTP client for many layers.
 
-        final Function<Double, Integer> addMaskFunction = (Function<Double, Integer>) z -> {
+        final int numberOfCores = sparkContext.defaultParallelism();
+        final LayerDistributor layerDistributor = new LayerDistributor(numberOfCores);
+        final List<List<Double>> batchedZValues = layerDistributor.distribute(sectionDataList);
 
-            LogUtilities.setupExecutorLog4j("z " + z);
-            //get the source client
-            final RenderDataClient sourceDataClient1 = parameters.renderWeb.getDataClient();
+        final JavaRDD<List<Double>> rddZValues = sparkContext.parallelize(batchedZValues);
 
-            //get the target client(which can be the same as the source)
-            final RenderDataClient targetDataClient1 = new RenderDataClient(parameters.renderWeb.baseDataUrl,
-                                                                            parameters.getTargetOwner(),
-                                                                            parameters.getTargetProject());
+        final JavaRDD<Integer> rddTileCounts;
 
-            final ResolvedTileSpecCollection sourceCollection =
-                    sourceDataClient1.getResolvedTiles(parameters.stack, z);
+        List<MaskData> maskDataList = null;
+        if (! parameters.removeMasks) {
+            maskDataList = loadMaskData(parameters.maskListFile);
+            LOG.info("loaded {} from {}", maskDataList, parameters.maskListFile);
+        }
 
-            boolean updatedAtLeastOneSpec = false;
-
-            ImageAndMask imageAndMask;
-            ImageAndMask fixedImageAndMask;
-            String maskUrl;
-            for (final TileSpec tileSpec : sourceCollection.getTileSpecs()) {
-                final Map.Entry<Integer, ImageAndMask> firstMipmapEntry = tileSpec.getFirstMipmapEntry();
-                if (firstMipmapEntry != null) {
-                    imageAndMask = firstMipmapEntry.getValue();
-                    if (imageAndMask != null) {
-                        maskUrl = getMaskUrl(imageAndMask, maskDataList);
-                        fixedImageAndMask = new ImageAndMask(imageAndMask.getImageUrl(), maskUrl);
-                        fixedImageAndMask.validate();
-                        for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
-                            channelSpec.putMipmap(firstMipmapEntry.getKey(), fixedImageAndMask);
-                        }
-                        updatedAtLeastOneSpec = true;
-                    }
-                }
-            }
-            if (updatedAtLeastOneSpec) {
-                targetDataClient1.saveResolvedTiles(sourceCollection, parameters.getTargetStack(), z);
-            } else {
-                LOG.info("no changes necessary for z {}", z);
-            }
-
-            return sourceCollection.getTileCount();
-        };
-
-        final JavaRDD<Integer> rddTileCounts = rddZValues.map(addMaskFunction);
+        rddTileCounts = rddZValues.map(getUpdateMaskFunction(maskDataList));
 
         // use an action to get the results
         final List<Integer> tileCountList = rddTileCounts.collect();
@@ -278,5 +266,73 @@ public class AddMaskUrlClient
                                            imageAndMask.getImageFilePath());
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(AddMaskUrlClient.class);
+    private Function<List<Double>, Integer> getUpdateMaskFunction(final List<MaskData> maskDataList) {
+
+        return (Function<List<Double>, Integer>) zBatch -> {
+
+            int tileCount = 0;
+
+            // use same source and target clients for each zBatch to prevent TCP TIME_WAIT issues on the server
+            final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
+
+            final RenderDataClient targetDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                                           parameters.getTargetOwner(),
+                                                                           parameters.getTargetProject());
+            for (final Double z : zBatch) {
+
+                LogUtilities.setupExecutorLog4j("z " + z);
+
+                final ResolvedTileSpecCollection sourceCollection =
+                        sourceDataClient.getResolvedTiles(parameters.stack, z);
+
+                boolean updatedAtLeastOneSpec = false;
+
+                ImageAndMask imageAndMask;
+                ImageAndMask fixedImageAndMask;
+                String maskUrl;
+                for (final TileSpec tileSpec : sourceCollection.getTileSpecs()) {
+                    final Map.Entry<Integer, ImageAndMask> firstMipmapEntry = tileSpec.getFirstMipmapEntry();
+                    if (firstMipmapEntry != null) {
+                        imageAndMask = firstMipmapEntry.getValue();
+                        if (imageAndMask != null) {
+
+                            if (parameters.removeMasks) {
+
+                                if (imageAndMask.getMaskUrl() != null) {
+                                    fixedImageAndMask = new ImageAndMask(imageAndMask.getImageUrl(), null);
+                                    for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
+                                        channelSpec.putMipmap(firstMipmapEntry.getKey(), fixedImageAndMask);
+                                    }
+                                    updatedAtLeastOneSpec = true;
+                                }
+
+                            } else {
+
+                                maskUrl = getMaskUrl(imageAndMask, maskDataList);
+                                fixedImageAndMask = new ImageAndMask(imageAndMask.getImageUrl(), maskUrl);
+                                fixedImageAndMask.validate();
+                                for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
+                                    channelSpec.putMipmap(firstMipmapEntry.getKey(), fixedImageAndMask);
+                                }
+                                updatedAtLeastOneSpec = true;
+
+                            }
+                        }
+                    }
+                }
+
+                if (updatedAtLeastOneSpec) {
+                    targetDataClient.saveResolvedTiles(sourceCollection, parameters.getTargetStack(), z);
+                    tileCount += sourceCollection.getTileCount();
+                } else {
+                    LOG.info("no changes necessary for z {}", z);
+                }
+            }
+
+            return tileCount;
+        };
+
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(UpdateMaskUrlClient.class);
 }

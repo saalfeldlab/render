@@ -142,9 +142,9 @@ sed -i """
 # if NDVIZ_URL is not defined, use HOST and PORT parameters
 if [ -z "${NDVIZ_URL}" ] & [ -n "${NDVIZHOST}" ]; then
   if [ -n "${NDVIZPORT}" ]; then
-    NDVIZ_URL="http://${NDVIZHOST}:${NDVIZPORT}"
+    NDVIZ_URL="${NDVIZHOST}:${NDVIZPORT}"
   else
-    NDVIZ_URL="http://${NDVIZHOST}"
+    NDVIZ_URL="${NDVIZHOST}"
   fi
 fi
 

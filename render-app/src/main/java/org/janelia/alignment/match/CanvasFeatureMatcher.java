@@ -25,9 +25,17 @@ public class CanvasFeatureMatcher implements Serializable {
 
     /** Supported filtering options. */
     public enum FilterType {
-        /** Skip filtering. */                                          NONE,
-        /** Filter inliers into a single set. */                        SINGLE_SET,
-        /** Filter inliers into potentially multiple consensus sets. */ CONSENSUS_SETS
+        /** Skip filtering. */
+        NONE,
+
+        /** Filter inliers into a single set. */
+        SINGLE_SET,
+
+        /** Filter inliers into potentially multiple consensus sets. */
+        CONSENSUS_SETS,
+
+        /** Filter inliers into potentially multiple consensus sets and then aggregate them back into one set. */
+        AGGREGATED_CONSENSUS_SETS
     }
 
     private final float rod;
@@ -105,6 +113,12 @@ public class CanvasFeatureMatcher implements Serializable {
             case CONSENSUS_SETS:
                 final List<List<PointMatch>> consensusMatches = filterConsensusMatches(candidates);
                 result = new CanvasFeatureMatchResult(consensusMatches, candidates.size());
+                break;
+            case AGGREGATED_CONSENSUS_SETS:
+                final List<PointMatch> aggregatedMatches = new ArrayList<>(candidates.size());
+                filterConsensusMatches(candidates).forEach(aggregatedMatches::addAll);
+
+                result = new CanvasFeatureMatchResult(Collections.singletonList(aggregatedMatches), candidates.size());
                 break;
         }
 

@@ -9,6 +9,7 @@ var RenderWebServiceStackDetails = function(ownerSelectId, projectSelectId, stac
     this.zToSectionDataMap = {};
     this.sectionFloatToZMap = {};
     this.minZForStack = undefined;
+    this.isSectionDataLoaded = false;
 
     var self = this;
 
@@ -27,6 +28,7 @@ var RenderWebServiceStackDetails = function(ownerSelectId, projectSelectId, stac
         var stackInfoSelect = $('#stackInfo');
         var summaryHtml = self.renderDataUi.getStackSummaryHtml(renderData.getOwnerUrl(),
                                                                 renderData.getStackMetaData(),
+                                                                true,
                                                                 false);
         stackInfoSelect.find('tr:last').after(summaryHtml);
 
@@ -37,7 +39,7 @@ var RenderWebServiceStackDetails = function(ownerSelectId, projectSelectId, stac
                    url: sectionDataUrl,
                    cache: false,
                    success: function(data) {
-                       self.drawSectionDataCharts(data, renderData.owner, renderData.project, renderData.stack);
+                       self.loadAndMapSectionData(data);
                    },
                    error: function(data, text, xhr) {
                        renderData.handleAjaxError(data, text, xhr);
@@ -114,6 +116,10 @@ RenderWebServiceStackDetails.prototype.loadAndMapSectionData = function(data) {
     } else {
         this.minZForStack = 0;
     }
+
+    this.isSectionDataLoaded = true;
+
+    $('#sectionDataStatus').hide();
 };
 
 RenderWebServiceStackDetails.prototype.joinSectionIds = function(sectionList) {
@@ -132,7 +138,14 @@ RenderWebServiceStackDetails.prototype.isOriginalSection = function(sectionId) {
     return isOriginal;
 };
 
-RenderWebServiceStackDetails.prototype.getLinksForZ = function(baseDataUrl, baseRenderUrl, owner, project, stack, z) {
+RenderWebServiceStackDetails.prototype.getLinksForZ = function(z) {
+
+    var baseRenderUrl = this.renderDataUi.getDynamicRenderBaseUrl();
+    var baseDataUrl = '../v1';
+    var owner = this.renderData.owner;
+    var project = this.renderData.project;
+    var stack = this.renderData.stack;
+
     var dataServiceZBase = '<a target="_blank" href="' + baseDataUrl + '/owner/' +
                            owner + '/project/' + project + '/stack/' + stack + '/z/' + z;
     var links = [
@@ -153,323 +166,461 @@ RenderWebServiceStackDetails.prototype.getLinksForZ = function(baseDataUrl, base
     return links.join(', ');
 };
 
-RenderWebServiceStackDetails.prototype.getOrderData = function() {
+function RenderWebServiceChart(stackDetails, chartId, title) {
 
-    var originalData = [];
-    var reorderedData = [];
-    var mergedData = [];
-    var missingData = [];
+    this.stackDetails = stackDetails;
+    this.chartId = chartId;
+    this.title = title;
 
-    var z;
-    var zFloat;
-    var sectionList;
-    var zInteger;
-    var sectionFloat;
-    var sectionInteger;
+    this.maxNumberOfItems = 8000;
+    this.series = [];
+    this.sampledSeries = [];
+    this.numberOfItems = 0;
+    this.hasSamples = false;
+    this.sampleSize = 1;
+    this.displaySamples = true;
 
-    for (z in this.zToSectionDataMap) {
-
-        if (this.zToSectionDataMap.hasOwnProperty(z)) {
-
-            zFloat = parseFloat(z);
-            sectionList = this.zToSectionDataMap[z].sectionList;
-
-            if (sectionList.length > 1) {
-
-                zInteger = parseInt(z);
-                sectionFloat = parseFloat(sectionList[0].sectionId);
-                sectionInteger = parseInt(sectionFloat);
-
-                if (zInteger == sectionInteger) {
-                    mergedData.push([zFloat, 1]);
-                } else {
-                    reorderedData.push([sectionFloat, 0]);
-                    reorderedData.push([zFloat, 1]);
-                    reorderedData.push([null, null]);
-                }
-
-            } else if (sectionList.length > 0) {
-
-                zInteger = parseInt(z);
-                sectionFloat = parseFloat(sectionList[0].sectionId);
-                sectionInteger = parseInt(sectionFloat);
-
-                if (zInteger == sectionInteger) {
-                    originalData.push([zFloat, 1]);
-                } else {
-                    reorderedData.push([sectionFloat, 0]);
-                    reorderedData.push([zFloat, 1]);
-                    reorderedData.push([null, null]);
-                }
-
-            } else {
-                missingData.push([zFloat, 1]);
-            }
-
-        }
-    }
-
-    return [
-        { 'name': 'Original', 'data': originalData },
-        { 'name': 'Reordered', 'data': reorderedData, lineWidth: 1 },
-        { 'name': 'Merged', 'data': mergedData },
-        { 'name': 'Missing', 'data': missingData }
-    ];
-};
-
-RenderWebServiceStackDetails.prototype.getTileCountData = function() {
-
-    var originalData = [];
-    var reacquiredData = [];
-    var mergedData = [];
-    var missingData = [];
-
-    var dataObject;
-    var sectionList;
-    for (var z in this.zToSectionDataMap) {
-
-        if (this.zToSectionDataMap.hasOwnProperty(z)) {
-
-            dataObject = [parseFloat(z), this.zToSectionDataMap[z].zTileCount];
-            sectionList = this.zToSectionDataMap[z].sectionList;
-
-            if (sectionList.length > 1) {
-
-                mergedData.push(dataObject);
-
-            } else if (sectionList.length > 0) {
-
-                if (this.isOriginalSection(sectionList[0].sectionId)) {
-                    originalData.push(dataObject);
-                } else {
-                    reacquiredData.push(dataObject);
-                }
-
-            } else {
-                missingData.push(dataObject);
-            }
-        }
-    }
-
-    return [
-        { 'name': 'Original ( .0)', 'data': originalData },
-        { 'name': 'Reacquired ( .1+)', 'data': reacquiredData },
-        { 'name': 'Merged', 'data': mergedData },
-        { 'name': 'Missing', 'data': missingData }
-    ];
-};
-
-RenderWebServiceStackDetails.prototype.getBoundsData = function() {
-
-    var minXData = [];
-    var maxXData = [];
-    var minYData = [];
-    var maxYData = [];
-
-    var sectionList;
-    var floatZ;
-    for (var z in this.zToSectionDataMap) {
-        if (this.zToSectionDataMap.hasOwnProperty(z)) {
-            sectionList = this.zToSectionDataMap[z].sectionList;
-            floatZ = parseFloat(z);
-            for (var index = 0; index < sectionList.length; index++) {
-                if (sectionList[index].minX !== undefined) {
-                    minXData.push([floatZ, sectionList[index].minX]);
-                    maxXData.push([floatZ, sectionList[index].maxX]);
-                    minYData.push([floatZ, sectionList[index].minY]);
-                    maxYData.push([floatZ, sectionList[index].maxY]);
-                }
-            }
-        }
-    }
-
-    return [
-        { 'name': 'minX', 'data': minXData },
-        { 'name': 'maxX', 'data': maxXData },
-        { 'name': 'minY', 'data': minYData },
-        { 'name': 'maxY', 'data': maxYData }
-    ];
-};
-
-RenderWebServiceStackDetails.prototype.drawSectionDataCharts = function(data, owner, project, stack) {
+    this.chart = undefined;
+    this.chartOptions = undefined;
 
     var self = this;
-    self.loadAndMapSectionData(data);
 
-    //noinspection JSJQueryEfficiency
-    $('#sectionDataStatus').text('building section ordering chart ...');
-
-    Highcharts.setOptions({
-        lang: {
-            thousandsSep: ','
-        }
-    });
-
-    var baseRenderUrl = self.renderDataUi.getDynamicRenderBaseUrl();
-    var baseDataUrl = '../v1';
-
-    var sectionOrderingTooltipFormatter = function() {
-        var z = parseFloat(this.x);
-        var toZ = z;
-        if (this.y == 0) {
-            toZ = self.sectionFloatToZMap[z];
-        }
-        var sectionIds = self.joinSectionIds(self.zToSectionDataMap[toZ].sectionList);
-        if (sectionIds.length > 0) {
-            sectionIds = sectionIds + ' --> ';
-        }
-        var links = self.getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, toZ);
-        return '<span>' + this.series.name + ' Section</span><br/>' +
-               '<span>' + sectionIds + toZ + '</span><br/>' +
-               links;
+    this.isSectionDataLoaded = function() {
+        return self.stackDetails.isSectionDataLoaded;
     };
 
-    $('#sectionOrdering').highcharts({
-        title: {
-            text: 'Section Ordering'
-        },
-        subtitle: {
-            text: project + ' ' + stack
-        },
-        chart: {
-            type: 'scatter',
-            zoomType: 'x',
-            height: 250
-        },
-        scrollbar: {
-            enabled: true
-        },
-        xAxis: {
-            title: {
-                text: 'Z'
-            },
-            min: self.minZForStack
-        },
-        yAxis: {
-            title: {
-                text: ''
-            },
-            categories: ['From', 'To', ''],
-            max: 2
-        },
-        tooltip: {
-            formatter: sectionOrderingTooltipFormatter,
-            useHTML: true,
-            shared : true
-        },
-        legend: {
-            layout: 'vertical',
-            align: 'right',
-            verticalAlign: 'middle',
-            borderWidth: 0,
-            width: 130
-        },
-        series: self.getOrderData()
-    });
+    this.addSeries = function(name, data, lineWidth) {
+        var seriesData = {name: name, data: data};
+        if (typeof(lineWidth) != 'undefined') {
+            seriesData.lineWidth = lineWidth;
+        }
+        self.series.push(seriesData);
+        self.numberOfItems = Math.max(self.numberOfItems, data.length);
+    };
 
-    //noinspection JSJQueryEfficiency
-    $('#sectionDataStatus').text('building tile counts chart ...');
+    this.sampleAllSeries = function() {
+        self.sampledSeries = [];
 
-    var sectionTileCountsTooltipFormatter = function() {
+        if (self.numberOfItems > self.maxNumberOfItems) {
+            self.sampleSize = Math.ceil(self.numberOfItems / self.maxNumberOfItems);
+            for (var i = 0; i < self.series.length; i++) {
+                var fullData = self.series[i].data;
+                var sampledData = [];
+                for (var j = 0; j < fullData.length; j += self.sampleSize) {
+                    sampledData.push(fullData[j]);
+                }
+                if (self.numberOfItems % this.maxNumberOfItems > 0) {
+                    sampledData.push(fullData[fullData.length - 1]);
+                }
+                self.sampledSeries.push({name: self.series[i].name, data: sampledData})
+            }
+            self.hasSamples = true;
+        } else {
+            self.sampledSeries = self.series;
+        }
+    };
+
+    this.toggleSampleDisplay = function(successCallback) {
+        if (self.hasSamples) {
+            self.displaySamples = ! self.displaySamples;
+
+            self.destroy();
+
+            // delay redraw so that chart clears immediately
+            setTimeout(function() {
+                self.redraw();
+                successCallback();
+            }, 100);
+        } else {
+            successCallback();
+        }
+    };
+
+    this.buildChartOptions = function() {
+        return undefined; // should be implemented by specific chart
+    };
+
+    this.buildSeries = function() {
+        // should be implemented by specific chart
+    };
+
+    this.getEffectiveSeries = function() {
+        if (self.isSectionDataLoaded()) {
+            if (self.series.length == 0) {
+                self.buildSeries();
+                self.sampleAllSeries();
+            }
+        }
+
+        return self.displaySamples ? self.sampledSeries : self.series;
+    };
+
+    this.getEffectiveSubtitle = function() {
+        var subtitle = 'project: ' + self.stackDetails.renderData.project +
+                       ', stack: ' + self.stackDetails.renderData.stack;
+        if (self.displaySamples && (self.sampleSize > 1)) {
+            subtitle += ', sample size: ' + self.sampleSize;
+        }
+        return subtitle;
+    };
+
+    this.destroy = function() {
+        if (self.chart !== undefined) {
+            self.chart.destroy();
+        }
+    };
+
+    this.redraw = function() {
+
+        if (self.chart === undefined) {
+            self.chartOptions = self.buildChartOptions();
+            self.chartOptions.title = {text: self.title};
+        }
+
+        self.chartOptions.series = null;
+        self.chartOptions.series = self.getEffectiveSeries();
+        // add subtitle after series data because it relies upon that data
+        self.chartOptions.subtitle = {text: self.getEffectiveSubtitle()};
+
+        console.log('building ' + self.title + ' chart ...');
+        self.chart = Highcharts.chart(self.chartId, self.chartOptions);
+        console.log(self.title + ' chart is ready');
+    };
+
+}
+
+function RenderWebServiceTileCountsChart(stackDetails, chartId) {
+
+    RenderWebServiceChart.call(this, stackDetails, chartId, 'Tile Counts');
+
+    var tooltipFormatter = function () {
         var z = parseFloat(this.x);
-        var sectionIds = self.joinSectionIds(self.zToSectionDataMap[z].sectionList);
-        var links = self.getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, z);
+        var sectionIds = stackDetails.joinSectionIds(stackDetails.zToSectionDataMap[z].sectionList);
+        var links = stackDetails.getLinksForZ(z);
         return '<span>Z: ' + z + '</span><br/>' +
                '<span>Sections: ' + sectionIds + '</span><br/>' +
                '<span>Type: ' + this.series.name + '</span><br/>' +
                '<span>Tile Count: ' + this.y + '</span><br/>' +
                links;
+
     };
 
-    $('#sectionTileCounts').highcharts({
-        title: {
-            text: 'Tile Counts'
-        },
-        subtitle: {
-            text: project + ' ' + stack
-        },
-        chart: {
-            type: 'scatter',
-            zoomType: 'x'
-        },
-        scrollbar: {
-            enabled: true
-        },
-        xAxis: {
-            title: {
-                text: 'Z'
+    this.buildChartOptions = function () {
+        return {
+            chart: {
+                type: 'scatter',
+                zoomType: 'x'
+            },
+            scrollbar: {
+                enabled: true
+            },
+            xAxis: {
+                title: {
+                    text: 'Z'
+                }
+            },
+            yAxis: {
+                title: {
+                    text: 'Tile Count'
+                }
+            },
+            tooltip: {
+                formatter: tooltipFormatter,
+                useHTML: true,
+                shared: true
+            },
+            legend: {
+                layout: 'vertical',
+                align: 'right',
+                verticalAlign: 'middle',
+                borderWidth: 0,
+                width: 130
             }
-        },
-        yAxis: {
-            title: {
-                text: 'Tile Count'
+        };
+    };
+
+    var self = this;
+
+    this.buildSeries = function() {
+
+        self.series = [];
+
+        var originalData = [];
+        var reacquiredData = [];
+        var mergedData = [];
+        var missingData = [];
+
+        var dataObject;
+        var sectionList;
+        for (var z in stackDetails.zToSectionDataMap) {
+
+            if (stackDetails.zToSectionDataMap.hasOwnProperty(z)) {
+
+                dataObject = [parseFloat(z), stackDetails.zToSectionDataMap[z].zTileCount];
+                sectionList = stackDetails.zToSectionDataMap[z].sectionList;
+
+                if (sectionList.length > 1) {
+
+                    mergedData.push(dataObject);
+
+                } else if (sectionList.length > 0) {
+
+                    if (stackDetails.isOriginalSection(sectionList[0].sectionId)) {
+                        originalData.push(dataObject);
+                    } else {
+                        reacquiredData.push(dataObject);
+                    }
+
+                } else {
+                    missingData.push(dataObject);
+                }
             }
-        },
-        tooltip: {
-            formatter: sectionTileCountsTooltipFormatter,
-            useHTML: true,
-            shared: true
-        },
-        legend: {
-            layout: 'vertical',
-            align: 'right',
-            verticalAlign: 'middle',
-            borderWidth: 0,
-            width: 130
-        },
-        series: self.getTileCountData()
-    });
+        }
 
-    //noinspection JSJQueryEfficiency
-    //$('#sectionDataStatus').text('building bounds chart ...');
-    //
-    //$('#sectionBounds').highcharts({
-    //    title: {
-    //        text: 'Section Bounds'
-    //    },
-    //    subtitle: {
-    //        text: project + ' ' + stack
-    //    },
-    //    chart: {
-    //        type: 'scatter',
-    //        zoomType: 'x'
-    //    },
-    //    scrollbar: {
-    //        enabled: true
-    //    },
-    //    xAxis: {
-    //        title: {
-    //            text: 'Z'
-    //        }
-    //    },
-    //    yAxis: {
-    //        title: {
-    //            text: 'Bounds'
-    //        }
-    //    },
-    //    tooltip: {
-    //        formatter: function() {
-    //            var z = parseFloat(this.x);
-    //            var sectionIds = self.joinSectionIds(zToSectionDataMap[z].sectionList);
-    //            var links = self.getLinksForZ(baseDataUrl, baseRenderUrl, owner, project, stack, z);
-    //            return '<span>Z: ' + z + '</span><br/>' +
-    //                   '<span>Sections: ' + sectionIds + '</span><br/>' +
-    //                   '<span>' + this.series.name + ': ' + this.y + '</span><br/>' +
-    //                   links;
-    //        },
-    //        useHTML: true,
-    //        shared: true
-    //    },
-    //    legend: {
-    //        layout: 'vertical',
-    //        align: 'right',
-    //        verticalAlign: 'middle',
-    //        borderWidth: 0,
-    //        width: 130
-    //    },
-    //    series: self.getBoundsData()
-    //});
+        self.addSeries('Original ( .0)', originalData);
+        self.addSeries('Reacquired ( .1+)', reacquiredData);
+        self.addSeries('Merged', mergedData);
+        self.addSeries('Missing', missingData);
+    };
+}
 
-    //noinspection JSJQueryEfficiency
-    $('#sectionDataStatus').hide();
-};
+function RenderWebServiceSectionOrderingChart(stackDetails, chartId) {
+
+    RenderWebServiceChart.call(this, stackDetails, chartId, 'Section Ordering');
+
+    var tooltipFormatter = function () {
+        var z = parseFloat(this.x);
+        var toZ = z;
+        if (this.y == 0) {
+            toZ = stackDetails.sectionFloatToZMap[z];
+        }
+        var sectionIds = stackDetails.joinSectionIds(stackDetails.zToSectionDataMap[toZ].sectionList);
+        if (sectionIds.length > 0) {
+            sectionIds = sectionIds + ' --> ';
+        }
+        var links = stackDetails.getLinksForZ(toZ);
+        return '<span>' + this.series.name + ' Section</span><br/>' +
+               '<span>' + sectionIds + toZ + '</span><br/>' +
+               links;
+    };
+
+    this.buildChartOptions = function () {
+        return {
+            chart: {
+                type: 'scatter',
+                zoomType: 'x',
+                height: 250
+            },
+            scrollbar: {
+                enabled: true
+            },
+            xAxis: {
+                title: {
+                    text: 'Z'
+                },
+                min: self.minZForStack
+            },
+            yAxis: {
+                title: {
+                    text: ''
+                },
+                categories: ['From', 'To', ''],
+                max: 2
+            },
+            tooltip: {
+                formatter: tooltipFormatter,
+                useHTML: true,
+                shared: true
+            },
+            legend: {
+                layout: 'vertical',
+                align: 'right',
+                verticalAlign: 'middle',
+                borderWidth: 0,
+                width: 130
+            }
+        };
+    };
+
+    var self = this;
+
+    this.buildSeries = function() {
+
+        self.series = [];
+
+        var originalData = [];
+        var reorderedData = [];
+        var mergedData = [];
+        var missingData = [];
+
+        var z;
+        var zFloat;
+        var sectionList;
+        var zInteger;
+        var sectionFloat;
+        var sectionInteger;
+
+        for (z in stackDetails.zToSectionDataMap) {
+
+            if (stackDetails.zToSectionDataMap.hasOwnProperty(z)) {
+
+                zFloat = parseFloat(z);
+                sectionList = stackDetails.zToSectionDataMap[z].sectionList;
+
+                if (sectionList.length > 1) {
+
+                    zInteger = parseInt(z);
+                    sectionFloat = parseFloat(sectionList[0].sectionId);
+                    sectionInteger = parseInt(sectionFloat);
+
+                    if (zInteger == sectionInteger) {
+                        mergedData.push([zFloat, 1]);
+                    } else {
+                        reorderedData.push([sectionFloat, 0]);
+                        reorderedData.push([zFloat, 1]);
+                        reorderedData.push([null, null]);
+                    }
+
+                } else if (sectionList.length > 0) {
+
+                    zInteger = parseInt(z);
+                    sectionFloat = parseFloat(sectionList[0].sectionId);
+                    sectionInteger = parseInt(sectionFloat);
+
+                    if (zInteger == sectionInteger) {
+                        originalData.push([zFloat, 1]);
+                    } else {
+                        reorderedData.push([sectionFloat, 0]);
+                        reorderedData.push([zFloat, 1]);
+                        reorderedData.push([null, null]);
+                    }
+
+                } else {
+                    missingData.push([zFloat, 1]);
+                }
+
+            }
+        }
+
+        self.addSeries('Original', originalData);
+        self.addSeries('Reordered', reorderedData, 1);
+        self.addSeries('Merged', mergedData);
+        self.addSeries('Missing', missingData);
+    };
+}
+
+function RenderWebServiceSectionBoundsChart(stackDetails, chartId, forXValues, forDeltaValues) {
+
+    var boundsType = forXValues ? 'X' : 'Y';
+    var title = boundsType + ' Bounds';
+    if (forDeltaValues) {
+        title += ' Delta';
+    }
+
+    RenderWebServiceChart.call(this, stackDetails, chartId, title);
+
+    var tooltipFormatter = function () {
+        var z = parseFloat(this.x);
+        var sectionIds = stackDetails.joinSectionIds(stackDetails.zToSectionDataMap[z].sectionList);
+        var links = stackDetails.getLinksForZ(z);
+        return '<span>Z: ' + z + '</span><br/>' +
+               '<span>Sections: ' + sectionIds + '</span><br/>' +
+               '<span>' + this.series.name + ': ' + this.y + '</span><br/>' +
+               links;
+    };
+
+    this.buildChartOptions = function () {
+        return {
+            chart: {
+                type: 'scatter',
+                zoomType: 'x'
+            },
+            scrollbar: {
+                enabled: true
+            },
+            xAxis: {
+                title: {
+                    text: 'Z'
+                }
+            },
+            yAxis: {
+                title: {
+                    text: title
+                }
+            },
+            tooltip: {
+                formatter: tooltipFormatter,
+                useHTML: true,
+                shared: true
+            },
+            legend: {
+                layout: 'vertical',
+                align: 'right',
+                verticalAlign: 'middle',
+                borderWidth: 0,
+                width: 130
+            }
+        };
+    };
+
+    var self = this;
+
+    this.buildSeries = function() {
+
+        self.series = [];
+
+        var minData = [];
+        var maxData = [];
+
+        var sectionList;
+        var floatZ;
+        var previousMin = null;
+        var previousMax = null;
+        for (var z in stackDetails.zToSectionDataMap) {
+            if (stackDetails.zToSectionDataMap.hasOwnProperty(z)) {
+
+                sectionList = stackDetails.zToSectionDataMap[z].sectionList;
+                floatZ = parseFloat(z);
+
+                if (forDeltaValues && (previousMin == null)) {
+                    if (forXValues) {
+                        previousMin = sectionList[0].minX;
+                        previousMax = sectionList[0].maxX;
+                    } else {
+                        previousMin = sectionList[0].minY;
+                        previousMax = sectionList[0].maxY;
+                    }
+                }
+
+                for (var index = 0; index < sectionList.length; index++) {
+                    if (sectionList[index].minX !== undefined) {
+                        if (forXValues) {
+                            if (forDeltaValues) {
+                                minData.push([floatZ, (sectionList[index].minX - previousMin)]);
+                                maxData.push([floatZ, (sectionList[index].maxX - previousMax)]);
+                                previousMin = sectionList[index].minX;
+                                previousMax = sectionList[index].maxX;
+                            } else {
+                                minData.push([floatZ, sectionList[index].minX]);
+                                maxData.push([floatZ, sectionList[index].maxX]);
+                            }
+                        } else {
+                            if (forDeltaValues) {
+                                minData.push([floatZ, (sectionList[index].minY - previousMin)]);
+                                maxData.push([floatZ, (sectionList[index].maxY - previousMax)]);
+                                previousMin = sectionList[index].minY;
+                                previousMax = sectionList[index].maxY;
+                            } else {
+                                minData.push([floatZ, sectionList[index].minY]);
+                                maxData.push([floatZ, sectionList[index].maxY]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        self.addSeries('min' + boundsType, minData);
+        self.addSeries('max' + boundsType, maxData);
+    };
+}
