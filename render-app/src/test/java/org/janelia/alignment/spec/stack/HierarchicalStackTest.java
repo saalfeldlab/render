@@ -124,10 +124,10 @@ public class HierarchicalStackTest {
         expectedArray[4] = expectedArray[4] / scale;
         expectedArray[5] = expectedArray[5] / scale;
 
-        final Bounds alignedFirstLayerBounds = new Bounds(-10.0, -20.0, 10.0, 20.0); // center already at origin
+        final Bounds alignedStackBounds = new Bounds(0.0, 0.0, 20.0, 40.0);
 
         final AffineModel2D relativeModel = HierarchicalStack.getFullScaleRelativeModel(model,
-                                                                                        alignedFirstLayerBounds,
+                                                                                        alignedStackBounds,
                                                                                         tier1Stack.getScale());
         final double[] array = new double[6];
         relativeModel.toArray(array);

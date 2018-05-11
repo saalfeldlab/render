@@ -182,20 +182,21 @@ public class ConsensusWarpFieldBuilderTest {
         }
     }
 
-    private static double[] getRelativeAffineData(final HierarchicalStack tierStack,
-                                                  final double[] alignedAffineData,
-                                                  final double alignedStackMinX,
-                                                  final double alignedStackMinY) {
+    public static double[] getRelativeAffineData(final double[] alignedAffineData,
+                                                  final Bounds alignedStackBounds,
+                                                  final double alignedStackScale) {
+
         final AffineModel2D lastTransform = new AffineModel2D();
         lastTransform.set(alignedAffineData[0], alignedAffineData[1], alignedAffineData[2],
                           alignedAffineData[3], alignedAffineData[4], alignedAffineData[5]);
-        final AffineModel2D relativeAlignedModel = tierStack.getFullScaleRelativeModel(lastTransform,
-                                                                                       alignedStackMinX,
-                                                                                       alignedStackMinY);
+        final AffineModel2D relativeAlignedModel = HierarchicalStack.getFullScaleRelativeModel(lastTransform,
+                                                                                               alignedStackBounds,
+                                                                                               alignedStackScale);
         final double[] affineData = new double[6];
         relativeAlignedModel.toArray(affineData);
         return affineData;
     }
+
 
     private static void saveBoxes4And7() throws Exception {
 
@@ -223,9 +224,9 @@ public class ConsensusWarpFieldBuilderTest {
             final TileSpec tileSpecForZ = alignedTiles.getTileSpec(tileId);
             final AffineModel2D lastTransform = (AffineModel2D) tileSpecForZ.getLastTransform().getNewInstance();
             final AffineModel2D relativeAlignedModel =
-                    tier4Stack.getFullScaleRelativeModel(lastTransform,
-                                                         alignedStackBounds.getMinX(),
-                                                         alignedStackBounds.getMinY());
+                    HierarchicalStack.getFullScaleRelativeModel(lastTransform,
+                                                                alignedStackBounds,
+                                                                tier4Stack.getScale());
 
             builder.addConsensusSetData(relativeAlignedModel, nameToPointsForGroup.getPoints(tileId));
         }
@@ -238,27 +239,28 @@ public class ConsensusWarpFieldBuilderTest {
                                                         tier7Stack.getTotalTierColumnCount(),
                                                         AffineWarpField.getDefaultInterpolatorFactory());
 
-        warpField.set(1, 0, getRelativeAffineData(tier7Stack,
-                                                  new double[] {0.999138172531,  0.010158452905, -0.004500172025,
+        final Bounds zeroBounds = new Bounds(0.0, 0.0, 2213.0, 1110.0, 1148.0 ,2215.0);
+        warpField.set(1, 0, getRelativeAffineData(new double[] {0.999138172531,  0.010158452905, -0.004500172025,
                                                                 0.993894967357,  6.408008687679,  0.000000000000},
-                                                  0, 0));
+                                                  zeroBounds,
+                                                  tier4Stack.getScale()));
         // 1,1 use consensus set data
-        warpField.set(1, 2, getRelativeAffineData(tier7Stack,
-                                                  new double[] {0.999763084203, -0.019854609259,  0.021505047005,
+        warpField.set(1, 2, getRelativeAffineData(new double[] {0.999763084203, -0.019854609259,  0.021505047005,
                                                                 0.990914796204, 61.884915579413,  0.000000000000},
-                                                  0, 0));
-        warpField.set(2, 0, getRelativeAffineData(tier7Stack,
-                                                  new double[] {0.993778062963,  0.004213636916,  0.001767546096,
+                                                  zeroBounds,
+                                                  tier4Stack.getScale()));
+        warpField.set(2, 0, getRelativeAffineData(new double[] {0.993778062963,  0.004213636916,  0.001767546096,
                                                                 0.998768975100,  3.687394053087,  0.000000000000},
-                                                  0, 0));
-        warpField.set(2, 1, getRelativeAffineData(tier7Stack,
-                                                  new double[] {0.992857769693,  0.002892510697,  0.001641161429,
+                                                  zeroBounds,
+                                                  tier4Stack.getScale()));
+        warpField.set(2, 1, getRelativeAffineData(new double[] {0.992857769693,  0.002892510697,  0.001641161429,
                                                                 0.990484528910,  0.000000000000,  3.561567228159},
-                                                  0, 0));
-        warpField.set(2, 2, getRelativeAffineData(tier7Stack,
-                                                  new double[] {0.995809759606, -0.004875265948,  0.003182766578,
+                                                  zeroBounds,
+                                                  tier4Stack.getScale()));
+        warpField.set(2, 2, getRelativeAffineData(new double[] {0.995809759606, -0.004875265948,  0.003182766578,
                                                                 0.988558542063,  0.000000000000,  9.774319840562},
-                                                  0, 0));
+                                                  zeroBounds,
+                                                  tier4Stack.getScale()));
 
 
         final AffineWarpField hiResField = warpField.getHighResolutionCopy(consensusRowCount,
@@ -339,31 +341,32 @@ public class ConsensusWarpFieldBuilderTest {
                                                               tierStack.getTotalTierColumnCount(),
                                                               AffineWarpField.getDefaultInterpolatorFactory());
 
-        warpField.set(1, 0, getRelativeAffineData(tierStack,
-                                                  new double[] {0.999138172531,  0.010158452905, -0.004500172025,
+        final Bounds zeroBounds = new Bounds(0.0, 0.0, 2213.0, 1110.0, 1148.0 ,2215.0);
+        warpField.set(1, 0, getRelativeAffineData(new double[] {0.999138172531,  0.010158452905, -0.004500172025,
                                                                 0.993894967357,  6.408008687679,  0.000000000000},
-                                                  0, 0));
+                                                  zeroBounds,
+                                                  tierStack.getScale()));
         // 1,1 use consensus set 0 alignment
-        warpField.set(1, 1, getRelativeAffineData(tierStack,
-                                                  new double[] {0.992226610716,  0.020787884186, -0.017282849775,
+        warpField.set(1, 1, getRelativeAffineData(new double[] {0.992226610716,  0.020787884186, -0.017282849775,
                                                                 0.995925760553, 12.257180422620, 88.976148549632},
-                                                  0, 0));
-        warpField.set(1, 2, getRelativeAffineData(tierStack,
-                                                  new double[] {0.999763084203, -0.019854609259,  0.021505047005,
+                                                  zeroBounds,
+                                                  tierStack.getScale()));
+        warpField.set(1, 2, getRelativeAffineData(new double[] {0.999763084203, -0.019854609259,  0.021505047005,
                                                                 0.990914796204, 61.884915579413,  0.000000000000},
-                                                  0, 0));
-        warpField.set(2, 0, getRelativeAffineData(tierStack,
-                                                  new double[] {0.993778062963,  0.004213636916,  0.001767546096,
+                                                  zeroBounds,
+                                                  tierStack.getScale()));
+        warpField.set(2, 0, getRelativeAffineData(new double[] {0.993778062963,  0.004213636916,  0.001767546096,
                                                                 0.998768975100,  3.687394053087,  0.000000000000},
-                                                  0, 0));
-        warpField.set(2, 1, getRelativeAffineData(tierStack,
-                                                  new double[] {0.992857769693,  0.002892510697,  0.001641161429,
+                                                  zeroBounds,
+                                                  tierStack.getScale()));
+        warpField.set(2, 1, getRelativeAffineData(new double[] {0.992857769693,  0.002892510697,  0.001641161429,
                                                                 0.990484528910,  0.000000000000,  3.561567228159},
-                                                  0, 0));
-        warpField.set(2, 2, getRelativeAffineData(tierStack,
-                                                  new double[] {0.995809759606, -0.004875265948,  0.003182766578,
+                                                  zeroBounds,
+                                                  tierStack.getScale()));
+        warpField.set(2, 2, getRelativeAffineData(new double[] {0.995809759606, -0.004875265948,  0.003182766578,
                                                                 0.988558542063,  0.000000000000,  9.774319840562},
-                                                  0, 0));
+                                                  zeroBounds,
+                                                  tierStack.getScale()));
 
 
         final Bounds parentBounds = new Bounds(36801.0, 38528.0, 2213.0, 47992.0, 49489.0, 2215.0);
@@ -439,9 +442,9 @@ public class ConsensusWarpFieldBuilderTest {
             final TileSpec tileSpecForZ = alignedTiles.getTileSpec(tileId);
             final AffineModel2D lastTransform = (AffineModel2D) tileSpecForZ.getLastTransform().getNewInstance();
             final AffineModel2D relativeAlignedModel =
-                    tierStack.getFullScaleRelativeModel(lastTransform,
-                                                        alignedStackBounds.getMinX(),
-                                                        alignedStackBounds.getMinY());
+                    HierarchicalStack.getFullScaleRelativeModel(lastTransform,
+                                                                alignedStackBounds,
+                                                                tierStack.getScale());
 
             builder.addConsensusSetData(relativeAlignedModel, nameToPointsForGroup.getPoints(tileId));
         }
@@ -601,9 +604,9 @@ public class ConsensusWarpFieldBuilderTest {
             final TileSpec tileSpecForZ = alignedTiles.getTileSpec(tileId);
             final AffineModel2D lastTransform = (AffineModel2D) tileSpecForZ.getLastTransform().getNewInstance();
             final AffineModel2D relativeAlignedModel =
-                    tierStack.getFullScaleRelativeModel(lastTransform,
-                                                        alignedStackBounds.getMinX(),
-                                                        alignedStackBounds.getMinY());
+                    HierarchicalStack.getFullScaleRelativeModel(lastTransform,
+                                                                alignedStackBounds,
+                                                                tierStack.getScale());
 
             builder.addConsensusSetData(relativeAlignedModel, nameToPointsForGroup.getPoints(tileId));
         }
