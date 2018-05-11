@@ -13,6 +13,7 @@ import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
@@ -120,12 +121,18 @@ public class HierarchicalStackCreationFunction
 
             final TransformSpecMetaData transformSpecMetaData = new TransformSpecMetaData();
             transformSpecMetaData.addLabel("regular");
+
+            final double scale = splitStack.getScale();
+            final Bounds splitStackFullScaleBounds = splitStack.getFullScaleBounds();
+            final double scaledMinX = scale * splitStackFullScaleBounds.getMinX();
+            final double scaledMinY = scale * splitStackFullScaleBounds.getMinY();
+
             final List<TransformSpec> regularTransform =
                     Collections.singletonList(
                             new LeafTransformSpec(null,
                                                   transformSpecMetaData,
                                                   AffineModel2D.class.getName(),
-                                                  "1 0 0 1 0 0"));
+                                                  "1 0 0 1 " + scaledMinX + " " + scaledMinY));
 
             final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection();
             TileSpec tileSpec;
@@ -136,7 +143,7 @@ public class HierarchicalStackCreationFunction
                 tileSpec = new TileSpec();
 
                 tileSpec.setTileId(splitStack.getTileIdForZ(z));
-                tileSpec.setLayout(new LayoutData(String.valueOf(z), "n/a", "n/a", 0, 0, 0.0, 0.0, 0.0));
+                tileSpec.setLayout(new LayoutData(String.valueOf(z), "n/a", "n/a", 0, 0, scaledMinX, scaledMinY, 0.0));
                 tileSpec.setZ(z);
 
                 splitStack.setTileSpecBounds(tileSpec);
