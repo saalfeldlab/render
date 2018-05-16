@@ -96,12 +96,12 @@ public class HierarchicalStackTest {
     public void testGetFullScaleRelativeModel() throws Exception {
 
         final int tier = 1;
-        final Integer tierRow = 0;
-        final Integer tierColumn = 1;
+        final Integer tierRow = 1;
+        final Integer tierColumn = 0;
         final Integer totalTierRowCount = 3;
         final Integer totalTierColumnCount = 3;
-        final Double scale = 0.33133797120207087;
-        final Bounds fullScaleBounds = new Bounds(59816.0, 64495.0, 1.0, 64678.0, 70676.0, 3.0);
+        final Double scale = 0.274457;
+        final Bounds fullScaleBounds = new Bounds(36801.0, 42182.0, 2213.0, 40532.0, 45836.0, 2215.0);
 
         final StackId roughTilesStackId = new StackId("testOwner", "tilesProject", "roughTiles");
 
@@ -115,20 +115,20 @@ public class HierarchicalStackTest {
                                       scale,
                                       fullScaleBounds);
 
-        final AffineModel2D model = getModel(1.000018855057, -0.000005117870,
-                                             -0.000003681924, 1.000001492098,
-                                             26.995723857002,  6.610488526292);
+        final AffineModel2D model = getModel(0.995586140332, -0.003078890727,
+                                             0.001019805737, 0.997255702031,
+                                             10101.0, 11578.0);
 
         final double[] expectedArray = new double[6];
         model.toArray(expectedArray);
-        expectedArray[4] = expectedArray[4] / scale;
-        expectedArray[5] = expectedArray[5] / scale;
+        expectedArray[4] = (expectedArray[4] / scale) - fullScaleBounds.getMinX();
+        expectedArray[5] = (expectedArray[5] / scale) - fullScaleBounds.getMinY();
 
-        final Bounds alignedStackBounds = new Bounds(0.0, 0.0, 20.0, 40.0);
+        final Bounds alignedStackBounds = new Bounds(10097.0, 11570.0, 2213.0, 11127.0, 12583.0, 2215.0);
 
         final AffineModel2D relativeModel = HierarchicalStack.getFullScaleRelativeModel(model,
-                                                                                        alignedStackBounds,
-                                                                                        tier1Stack.getScale());
+                                                                                        scale,
+                                                                                        fullScaleBounds);
         final double[] array = new double[6];
         relativeModel.toArray(array);
 

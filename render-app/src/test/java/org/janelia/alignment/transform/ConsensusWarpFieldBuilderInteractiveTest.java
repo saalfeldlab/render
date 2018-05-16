@@ -23,7 +23,9 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import mpicbg.models.AffineModel2D;
 
@@ -32,7 +34,6 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.CanvasNameToPointsMap;
 import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -41,18 +42,12 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.alignment.transform.ConsensusWarpFieldBuilderTest.getRelativeAffineData;
-
 /**
- * Tests the {@link ConsensusWarpFieldBuilder} class.
+ * Interactive tests for the {@link ConsensusWarpFieldBuilder} class.
  *
  * @author Eric Trautman
  */
-public class ConsensusWarpFieldBuilderTest2 {
-
-    // --------------------------------------------------------------
-    // The following methods support ad-hoc interactive testing with external render web services.
-    // Consequently, they aren't included in the unit test suite.
+public class ConsensusWarpFieldBuilderInteractiveTest {
 
     public static void main(final String[] args) {
         try {
@@ -62,55 +57,70 @@ public class ConsensusWarpFieldBuilderTest2 {
         }
     }
 
+    private static double[] getRelativeAffineData(final double[] alignedAffineData,
+                                                 final Bounds splitStackFullScaleBounds,
+                                                 final double splitStackScale) {
+
+        final AffineModel2D lastTransform = new AffineModel2D();
+        lastTransform.set(alignedAffineData[0], alignedAffineData[1], alignedAffineData[2],
+                          alignedAffineData[3], alignedAffineData[4], alignedAffineData[5]);
+        final AffineModel2D relativeAlignedModel = HierarchicalStack.getFullScaleRelativeModel(lastTransform,
+                                                                                               splitStackScale,
+                                                                                               splitStackFullScaleBounds);
+        final double[] affineData = new double[6];
+        relativeAlignedModel.toArray(affineData);
+        return affineData;
+    }
+
     private static double[] getAlignedAffineData(final int stackIndex) {
 
         // from http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_m_tier_1/stack/0003x0003_000003_align/z/2214/resolvedTiles
         //      http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_m_tier_1/stack/0003x0003_000004_align/z/2214/resolvedTiles ...
         final double[][] alignedAffineData = {
                 null, null, null,
-                {0.999492189844,  0.010126889971, -0.004559391040, 0.993572813630, 10102.807545931035, 11570.474994154789},
-                {0.991642157939,  0.021475148144, -0.016901330554, 0.995092491523, 11121.629377043642, 11602.699662598596}, // consensus set 0
-//                {1.003650740490, -0.037748660039,  0.033115672615, 0.985185324420, 11154.514034049920, 11514.641156754786}, // consensus set 1
-                {0.998987446254, -0.018529082903,  0.023197132488, 0.987115155836, 12186.322858570438, 11490.333337044829},
-                {0.993715625269,  0.004007391818,  0.001794249298, 0.998724764028, 10102.093964086109, 12575.038873913190},
-                {0.992866959653,  0.003002421561,  0.001807141067, 0.990679219285, 11123.477946294965, 12582.201824749371},
-                {0.995622138514, -0.004801908516,  0.003198426722, 0.988533074903, 12146.255748820935, 12585.292862056016}
+                {0.998770851487,  0.010199036063, -0.004819967195, 0.993666683103, 10103.298173133444, 11570.310740843664},
+                {0.991841220174,  0.021439550962, -0.016784422563, 0.995140950130, 11121.428502344468, 11602.660908234580}, // consensus set 0
+//                {1.003472279741, -0.037791882285, 0.033039926800, 0.985186540468, 11154.699658095655, 11514.662039522746}, // consensus set 1
+                {0.999231546427, -0.018411059290,  0.023107730604, 0.987026514043, 12186.332248113737, 11490.327347129569},
+                {0.993798319954,  0.004110708357,  0.001703571569, 0.998825287461, 10102.048934476466, 12574.857950076139},
+                {0.993000586098,  0.003015661643,  0.001812060323, 0.990668274415, 11123.472197176909, 12582.208606437347},
+                {0.995620300593, -0.004660149134,  0.003212582648, 0.988594049548, 12146.272408387520, 12585.231648033045}
         };
 
         return alignedAffineData[stackIndex];
     }
 
-    private static Bounds getAlignedBounds(final int stackIndex) {
+    private static Bounds getSplitStackFullScaleBounds(final int stackIndex) {
 
-        // from http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_m_tier_1/stack/0003x0003_000003_align/bounds
-        //      http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_m_tier_1/stack/0003x0003_000004_align/bounds ...
-        final Bounds[] alignedStackBounds = {
+        // from http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_m_tier_1/stack/0003x0003_000003/bounds
+        //      http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_m_tier_1/stack/0003x0003_000004/bounds ...
+        final Bounds[] splitStackFullScaleBounds = {
                 null, null, null,
-                new Bounds(10097.0, 11570.0, 2213.0, 11127.0, 12583.0, 2215.0), // stack 000003
-                new Bounds(11104.0, 11475.0, 2213.0, 12215.0, 12623.0, 2215.0), // stack 000004
-                new Bounds(12117.0, 11471.0, 2213.0, 13233.0, 12634.0, 2215.0), // stack 000005
-                new Bounds(10097.0, 12575.0, 2213.0, 11122.0, 13583.0, 2215.0), // stack 000006
-                new Bounds(11122.0, 12577.0, 2213.0, 12145.0, 13580.0, 2215.0), // stack 000007
-                new Bounds(12146.0, 12575.0, 2213.0, 13169.0, 13582.0, 2215.0)  // stack 000008
+                new Bounds(36801.0, 42182.0, 2213.0, 40532.0, 45836.0, 2215.0), // stack 000003
+                new Bounds(40532.0, 42182.0, 2213.0, 44263.0, 45836.0, 2215.0), // stack 000004
+                new Bounds(44263.0, 42182.0, 2213.0, 47994.0, 45836.0, 2215.0), // stack 000005
+                new Bounds(36801.0, 45836.0, 2213.0, 40532.0, 49490.0, 2215.0), // stack 000006
+                new Bounds(40532.0, 45836.0, 2213.0, 44263.0, 49490.0, 2215.0), // stack 000007
+                new Bounds(44263.0, 45836.0, 2213.0, 47994.0, 49490.0, 2215.0)  // stack 000008
         };
 
-        return alignedStackBounds[stackIndex];
+        return splitStackFullScaleBounds[stackIndex];
     }
 
     private static void setUpWarpField(final double tierScale,
                                        final double[] stack4AffineData,
                                        final AffineWarpField warpField) {
 
-        warpField.set(1, 0, getRelativeAffineData(getAlignedAffineData(3), getAlignedBounds(3), tierScale));
+        warpField.set(1, 0, getRelativeAffineData(getAlignedAffineData(3), getSplitStackFullScaleBounds(3), tierScale));
 
         if (stack4AffineData != null) {
             warpField.set(1, 1, stack4AffineData);
         }
 
-        warpField.set(1, 2, getRelativeAffineData(getAlignedAffineData(5), getAlignedBounds(5), tierScale));
-        warpField.set(2, 0, getRelativeAffineData(getAlignedAffineData(6), getAlignedBounds(6), tierScale));
-        warpField.set(2, 1, getRelativeAffineData(getAlignedAffineData(7), getAlignedBounds(7), tierScale));
-        warpField.set(2, 2, getRelativeAffineData(getAlignedAffineData(8), getAlignedBounds(8), tierScale));
+        warpField.set(1, 2, getRelativeAffineData(getAlignedAffineData(5), getSplitStackFullScaleBounds(5), tierScale));
+        warpField.set(2, 0, getRelativeAffineData(getAlignedAffineData(6), getSplitStackFullScaleBounds(6), tierScale));
+        warpField.set(2, 1, getRelativeAffineData(getAlignedAffineData(7), getSplitStackFullScaleBounds(7), tierScale));
+        warpField.set(2, 2, getRelativeAffineData(getAlignedAffineData(8), getSplitStackFullScaleBounds(8), tierScale));
     }
 
     private static AffineWarpField buildConsensusField(final HierarchicalStack tier4Stack,
@@ -131,11 +141,11 @@ public class ConsensusWarpFieldBuilderTest2 {
 
             final TileSpec tileSpecForZ = alignedTiles.getTileSpec(tileId);
             final AffineModel2D lastTransform = (AffineModel2D) tileSpecForZ.getLastTransform().getNewInstance();
-            final Bounds alignedBounds = getAlignedBounds(4);
+            final Bounds splitStackFullScaleBounds = getSplitStackFullScaleBounds(4);
             final AffineModel2D relativeAlignedModel =
                     HierarchicalStack.getFullScaleRelativeModel(lastTransform,
-                                                                alignedBounds,
-                                                                tier4Stack.getScale());
+                                                                tier4Stack.getScale(),
+                                                                splitStackFullScaleBounds);
 
             builder.addConsensusSetData(relativeAlignedModel, nameToPointsForGroup.getPoints(tileId));
         }
@@ -147,8 +157,8 @@ public class ConsensusWarpFieldBuilderTest2 {
 
     private static void saveBoxes4And7() throws Exception {
 
-        final int consensusRowCount = 2;
-        final int consensusColumnCount = 2;
+        final int consensusRowCount = 10;
+        final int consensusColumnCount = 10;
 
         final HierarchicalStack tier4Stack = HierarchicalStack.fromJson(TIER_STACK);
         final double tierScale = tier4Stack.getScale();
@@ -166,43 +176,28 @@ public class ConsensusWarpFieldBuilderTest2 {
 
         final HierarchicalStack tier7Stack = HierarchicalStack.fromJson(TIER_7_STACK);
 
-        AffineWarpField warpField = new AffineWarpField(tier7Stack.getTotalTierFullScaleWidth(),
-                                                        tier7Stack.getTotalTierFullScaleHeight(),
-                                                        tier7Stack.getTotalTierRowCount(),
-                                                        tier7Stack.getTotalTierColumnCount(),
-                                                        AffineWarpField.getDefaultInterpolatorFactory());
+        final AffineWarpField warpField = new AffineWarpField(tier7Stack.getTotalTierFullScaleWidth(),
+                                                              tier7Stack.getTotalTierFullScaleHeight(),
+                                                              tier7Stack.getTotalTierRowCount(),
+                                                              tier7Stack.getTotalTierColumnCount(),
+                                                              AffineWarpField.getDefaultInterpolatorFactory());
 
         final double[] stack4AffineData = null; // use consensus set data for stack 000004
         setUpWarpField(tier4Stack.getScale(), stack4AffineData, warpField);
 
-        final AffineWarpField hiResField = warpField.getHighResolutionCopy(consensusRowCount,
-                                                                           consensusColumnCount);
-        final int startHiResRow = tier4Stack.getTierRow() * consensusRowCount;
-        final int startHiResColumn = tier4Stack.getTierColumn() * consensusColumnCount;
-        for (int row = 0; row < consensusRowCount; row++) {
-            for (int column = 0; column < consensusColumnCount; column++) {
-                hiResField.set((startHiResRow + row),
-                               (startHiResColumn + column),
-                               consensusField.get(row, column));
-            }
-        }
-
-        warpField = hiResField;
+        final Map<HierarchicalStack, AffineWarpField> tierStackToConsensusFieldMap = new HashMap<>();
+        tierStackToConsensusFieldMap.put(tier4Stack, consensusField);
 
         final Bounds parentBounds = new Bounds(36801.0, 38528.0, 2213.0, 47992.0, 49489.0, 2215.0);
         final double[] locationOffsets = new double[] { parentBounds.getMinX(), parentBounds.getMinY() };
-
-        final AffineWarpFieldTransform warpFieldTransform = new AffineWarpFieldTransform(locationOffsets, warpField);
-
-
         final String warpFieldTransformId = "2214.0_AFFINE_WARP_FIELD";
-        final TransformSpec warpTransformSpec = new LeafTransformSpec(warpFieldTransformId,
-                                                                      null,
-                                                                      AffineWarpFieldTransform.class.getName(),
-                                                                      warpFieldTransform.toDataString());
+        final TransformSpec warpTransformSpec = ConsensusWarpFieldBuilder.buildInterpolatedWarpFieldTransformSpec(warpField,
+                                                                                                                  tierStackToConsensusFieldMap,
+                                                                                                                  locationOffsets,
+                                                                                                                  warpFieldTransformId);
 
-
-
+        // ----------------------------------------------------------------------
+        // render results ...
 
         final RenderParameters box4Parameters =
                 RenderParameters.parseJson(new File("/Users/trautmane/projects/git/render/render-app/src/test/resources/warp-field-test/box4.json"));
@@ -301,6 +296,6 @@ public class ConsensusWarpFieldBuilderTest2 {
             "  }\n" +
             "}";
 
-    private static final Logger LOG = LoggerFactory.getLogger(ConsensusWarpFieldBuilderTest2.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ConsensusWarpFieldBuilderInteractiveTest.class);
 
 }

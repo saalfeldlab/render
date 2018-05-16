@@ -1,6 +1,7 @@
 package org.janelia.alignment.transform;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,6 +11,8 @@ import java.util.Set;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +22,7 @@ import net.imglib2.RandomAccessible;
 import net.imglib2.RealCursor;
 import net.imglib2.RealPoint;
 import net.imglib2.RealPointSampleList;
+import net.imglib2.RealRandomAccess;
 import net.imglib2.Sampler;
 import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgs;
@@ -219,6 +223,159 @@ public class ConsensusWarpFieldBuilder {
         }
 
         return mergedBuilder;
+    }
+
+    public static double[] getAffineMatrixElements(final RealRandomAccess<RealComposite<DoubleType>> warpFieldAccessor,
+                                                   final double[] location) {
+        warpFieldAccessor.setPosition(location);
+        final RealComposite<DoubleType> coefficients = warpFieldAccessor.get();
+        return new double[] {
+                coefficients.get(0).getRealDouble(),
+                coefficients.get(1).getRealDouble(),
+                coefficients.get(2).getRealDouble(),
+                coefficients.get(3).getRealDouble(),
+                coefficients.get(4).getRealDouble(),
+                coefficients.get(5).getRealDouble()
+        };
+    }
+
+    public static LeafTransformSpec buildSimpleWarpFieldTransformSpec(final AffineWarpField warpField,
+                                                                      final Map<HierarchicalStack, AffineWarpField> tierStackToConsensusFieldMap,
+                                                                      final double[] locationOffsets,
+                                                                      final String warpFieldTransformId) {
+        AffineWarpField effectiveWarpField = warpField;
+
+        if ((warpField != null) && (tierStackToConsensusFieldMap.size() > 0)) {
+
+            LOG.info("buildSimpleWarpFieldTransformSpec: creating high resolution warp field to accommodate consensus set data for {} region(s)",
+                     tierStackToConsensusFieldMap.size());
+
+            final AffineWarpField firstConsensusField = tierStackToConsensusFieldMap.values().iterator().next();
+            final int consensusRowCount = firstConsensusField.getRowCount();
+            final int consensusColumnCount = firstConsensusField.getColumnCount();
+
+            final AffineWarpField hiResField = warpField.getHighResolutionCopy(consensusRowCount,
+                                                                               consensusColumnCount);
+            for (final HierarchicalStack tierStack : tierStackToConsensusFieldMap.keySet()) {
+                final AffineWarpField consensusField = tierStackToConsensusFieldMap.get(tierStack);
+                final int startHiResRow = tierStack.getTierRow() * consensusRowCount;
+                final int startHiResColumn = tierStack.getTierColumn() * consensusColumnCount;
+                for (int row = 0; row < consensusRowCount; row++) {
+                    for (int column = 0; column < consensusColumnCount; column++) {
+                        hiResField.set((startHiResRow + row),
+                                       (startHiResColumn + column),
+                                       consensusField.get(row, column));
+                    }
+                }
+            }
+
+            effectiveWarpField = hiResField;
+        }
+
+        final AffineWarpFieldTransform warpFieldTransform =
+                new AffineWarpFieldTransform(locationOffsets, effectiveWarpField);
+
+        return new LeafTransformSpec(warpFieldTransformId,
+                                     null,
+                                     AffineWarpFieldTransform.class.getName(),
+                                     warpFieldTransform.toDataString());
+    }
+
+    public static LeafTransformSpec buildInterpolatedWarpFieldTransformSpec(final AffineWarpField warpField,
+                                                                            final Map<HierarchicalStack, AffineWarpField> tierStackToConsensusFieldMap,
+                                                                            final double[] locationOffsets,
+                                                                            final String warpFieldTransformId) {
+        AffineWarpField effectiveWarpField = warpField;
+
+        if ((warpField != null) && (tierStackToConsensusFieldMap.size() > 0)) {
+
+            LOG.info("buildInterpolatedWarpFieldTransformSpec: creating high resolution warp field to accommodate consensus set data for {} region(s)",
+                     tierStackToConsensusFieldMap.size());
+
+            effectiveWarpField = warpField.getCopy(); // make copy since we need to modify the field ...
+
+            final AffineWarpField firstConsensusField = tierStackToConsensusFieldMap.values().iterator().next();
+            final int consensusRowCount = firstConsensusField.getRowCount();
+            final int consensusColumnCount = firstConsensusField.getColumnCount();
+
+            final Map<Integer, AffineWarpField> gridIndexToConsensusFieldMap = new HashMap<>();
+            for (final HierarchicalStack tierStack : tierStackToConsensusFieldMap.keySet()) {
+                final AffineWarpField consensusField = tierStackToConsensusFieldMap.get(tierStack);
+
+                final RealRandomAccess<RealComposite<DoubleType>> consensusFieldAccessor = consensusField.getAccessor();
+                final double[] consensusFieldCenter = { (consensusField.getWidth() / 2.0), (consensusField.getHeight() / 2.0) };
+
+                effectiveWarpField.set(tierStack.getTierRow(),
+                                       tierStack.getTierColumn(),
+                                       getAffineMatrixElements(consensusFieldAccessor, consensusFieldCenter));
+
+                final int gridIndex = (tierStack.getTierRow() * tierStack.getTotalTierRowCount()) +
+                                      tierStack.getTierColumn();
+                gridIndexToConsensusFieldMap.put(gridIndex, consensusField);
+            }
+
+            final RealRandomAccess<RealComposite<DoubleType>> warpFieldAccessor = effectiveWarpField.getAccessor();
+
+            final int hiResRowCount = effectiveWarpField.getRowCount() * consensusRowCount;
+            final int hiResColumnCount = effectiveWarpField.getColumnCount() * consensusColumnCount;
+
+            final AffineWarpField hiResField = new AffineWarpField(effectiveWarpField.getWidth(),
+                                                                   effectiveWarpField.getHeight(),
+                                                                   hiResRowCount,
+                                                                   hiResColumnCount,
+                                                                   effectiveWarpField.getInterpolatorFactory());
+
+            final double hiResRowHeight = hiResField.getHeight() / hiResRowCount;
+            final double halfHiResRowHeight = hiResRowHeight / 2.0;
+            final double hiResColumnWidth = hiResField.getWidth() / hiResColumnCount;
+            final double halfHiResColumnWidth = hiResColumnWidth / 2.0;
+
+            final int warpFieldRowCount = effectiveWarpField.getRowCount();
+            final int warpFieldColumnCount = effectiveWarpField.getColumnCount();
+
+            for (int row = 0; row < warpFieldRowCount; row++) {
+                for (int column = 0; column < warpFieldColumnCount; column++) {
+
+                    final int gridIndex = (row * warpFieldRowCount) + column;
+                    final AffineWarpField consensusField = gridIndexToConsensusFieldMap.get(gridIndex);
+
+                    if (consensusField == null) {
+
+                        for (int consensusRow = 0; consensusRow < consensusRowCount; consensusRow++) {
+                            for (int consensusColumn = 0; consensusColumn < consensusColumnCount; consensusColumn++) {
+                                final int hiResRow = row * consensusRowCount;
+                                final int hiResColumn = column * consensusColumnCount;
+                                final double centerX = (hiResColumn * hiResColumnWidth) + halfHiResColumnWidth;
+                                final double centerY = (hiResRow * hiResRowHeight) + halfHiResRowHeight;
+                                final double[] center = {centerX, centerY};
+                                hiResField.set(hiResRow, hiResColumn, getAffineMatrixElements(warpFieldAccessor, center));
+                            }
+                        }
+
+                    } else {
+
+                        for (int consensusRow = 0; consensusRow < consensusRowCount; consensusRow++) {
+                            for (int consensusColumn = 0; consensusColumn < consensusColumnCount; consensusColumn++) {
+                                final int hiResRow = (row * consensusRowCount) + consensusRow;
+                                final int hiResColumn = (column * consensusColumnCount) + consensusColumn;
+                                hiResField.set(hiResRow, hiResColumn, consensusField.get(consensusRow, consensusColumn));
+                            }
+                        }
+
+                    }
+                }
+            }
+
+            effectiveWarpField = hiResField;
+        }
+
+        final AffineWarpFieldTransform warpFieldTransform =
+                new AffineWarpFieldTransform(locationOffsets, effectiveWarpField);
+
+        return new LeafTransformSpec(warpFieldTransformId,
+                                     null,
+                                     AffineWarpFieldTransform.class.getName(),
+                                     warpFieldTransform.toDataString());
     }
 
     private void mapCellsToPoints(final Map<Integer, List<RealPoint>> cellToPointsMap,

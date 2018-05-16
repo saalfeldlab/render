@@ -146,8 +146,6 @@ public class HierarchicalStackCreationFunction
                 tileSpec.setLayout(new LayoutData(String.valueOf(z), "n/a", "n/a", 0, 0, scaledMinX, scaledMinY, 0.0));
                 tileSpec.setZ(z);
 
-                splitStack.setTileSpecBounds(tileSpec);
-
                 channelSpec = new ChannelSpec(channel,
                                               minIntensity,
                                               maxIntensity,
@@ -160,6 +158,7 @@ public class HierarchicalStackCreationFunction
                 tileSpec.addChannel(channelSpec);
 
                 tileSpec.addTransformSpecs(regularTransform);
+                splitStack.setTileSpecBounds(tileSpec);
 
                 resolvedTiles.addTileSpecToCollection(tileSpec);
             }

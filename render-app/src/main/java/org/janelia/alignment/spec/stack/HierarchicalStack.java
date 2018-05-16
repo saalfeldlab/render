@@ -2,7 +2,6 @@ package org.janelia.alignment.spec.stack;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -367,21 +366,27 @@ public class HierarchicalStack implements Serializable {
      * full scale version that can be used in an {@link org.janelia.alignment.transform.AffineWarpFieldTransform}.
      *
      * @param  alignedLayerTransformModel  scaled aligned model to convert.
-     * @param  alignedStackBounds          bounds of the (scaled) aligned hierarchical stack.
-     * @param  alignedStackScale           scale of the aligned hierarchical stack.
+     * @param  splitStackScale             scale of the split hierarchical stack.
+     * @param  splitStackFullScaleBounds   full scale bounds of the split hierarchical stack.
      *
      * @return full scale relative version of the specified model.
      */
     @JsonIgnore
     public static AffineModel2D getFullScaleRelativeModel(final AffineModel2D alignedLayerTransformModel,
-                                                          final Bounds alignedStackBounds,
-                                                          final double alignedStackScale) {
+                                                          final double splitStackScale,
+                                                          final Bounds splitStackFullScaleBounds) {
 
         final AffineTransform affine = new AffineTransform();
-        affine.scale(1 / alignedStackScale, 1 / alignedStackScale);
-        affine.translate(-alignedStackBounds.getMinX(), -alignedStackBounds.getMinY());
+        affine.scale(1 / splitStackScale, 1 / splitStackScale);
+
+        final double scaledSplitStackMinX = splitStackFullScaleBounds.getMinX() * splitStackScale;
+        final double scaledSplitStackMinY = splitStackFullScaleBounds.getMinY() * splitStackScale;
+
+        affine.translate(-scaledSplitStackMinX, -scaledSplitStackMinY);
+
         affine.concatenate(alignedLayerTransformModel.createAffine());
-        affine.scale(alignedStackScale, alignedStackScale);
+        affine.scale(splitStackScale, splitStackScale);
+
         final AffineModel2D model = new AffineModel2D();
         model.set(affine);
         return model;
@@ -522,11 +527,10 @@ public class HierarchicalStack implements Serializable {
                                          final Bounds fullScaleBounds) {
         final int scaledCellWidth = (int) Math.ceil(scale * fullScaleBounds.getDeltaX());
         final int scaledCellHeight = (int) Math.ceil(scale * fullScaleBounds.getDeltaY());
-        final Rectangle scaledCellBoundingBox = new Rectangle(0, 0, scaledCellWidth, scaledCellHeight);
 
         tileSpec.setWidth((double) scaledCellWidth);
         tileSpec.setHeight((double) scaledCellHeight);
-        tileSpec.setBoundingBox(scaledCellBoundingBox, tileSpec.getMeshCellSize());
+        tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
 
     }
 

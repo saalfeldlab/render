@@ -373,8 +373,6 @@ public class HierarchicalDataService {
             }
 
             StackId alignedStackId;
-            StackStats alignedStackStats;
-            Bounds alignedStackBounds;
             AffineModel2D relativeAlignedModel;
             final double[] affineMatrixElements = new double[6];
 
@@ -408,20 +406,6 @@ public class HierarchicalDataService {
                     }
 
                     alignedStackId = tierStack.getAlignedStackId();
-                    alignedStackBounds = null;
-
-                    alignedStackStats = projectStackNamesToMetadataMap.get(alignedStackId.getStack()).getStats();
-
-                    if (alignedStackStats != null) {
-                        alignedStackBounds = alignedStackStats.getStackBounds();
-                    }
-
-                    if (alignedStackBounds == null) {
-                        throw new IllegalArgumentException(
-                                "Cannot calculate affine translation offsets for z " + z +
-                                ".  No bounds available for " + alignedStackId +
-                                ".  Make sure stack state is COMPLETE");
-                    }
 
                     final String groupId = z.toString();
 
@@ -444,8 +428,7 @@ public class HierarchicalDataService {
 
                             relativeAlignedModel = getRelativeAlignedModel(tierStack,
                                                                            tileSpecForZ,
-                                                                           alignedStackId,
-                                                                           alignedStackBounds);
+                                                                           alignedStackId);
 
                             builder.addConsensusSetData(relativeAlignedModel, nameToPointsForGroup.getPoints(tileId));
                         }
@@ -458,8 +441,7 @@ public class HierarchicalDataService {
 
                         relativeAlignedModel = getRelativeAlignedModel(tierStack,
                                                                        tileSpecForZ,
-                                                                       alignedStackId,
-                                                                       alignedStackBounds);
+                                                                       alignedStackId);
 
                         relativeAlignedModel.toArray(affineMatrixElements);
 
@@ -469,38 +451,11 @@ public class HierarchicalDataService {
 
                 }
 
-                if ((warpField != null) && (tierStackToConsensusFieldMap.size() > 0)) {
+                transformSpec = ConsensusWarpFieldBuilder.buildInterpolatedWarpFieldTransformSpec(warpField,
+                                                                                                  tierStackToConsensusFieldMap,
+                                                                                                  locationOffsets,
+                                                                                                  z + "_AFFINE_WARP_FIELD");
 
-                    LOG.info("buildAffineWarpFieldTransform: creating high resolution warp field to accommodate consensus set data for {} region(s)",
-                             tierStackToConsensusFieldMap.size());
-
-                    final AffineWarpField hiResField = warpField.getHighResolutionCopy(consensusRowCount,
-                                                                                       consensusColumnCount);
-                    for (final HierarchicalStack tierStack : tierStackToConsensusFieldMap.keySet()) {
-                        final AffineWarpField consensusField = tierStackToConsensusFieldMap.get(tierStack);
-                        final int startHiResRow = tierStack.getTierRow() * consensusRowCount;
-                        final int startHiResColumn = tierStack.getTierColumn() * consensusColumnCount;
-                        for (int row = 0; row < consensusRowCount; row++) {
-                            for (int column = 0; column < consensusColumnCount; column++) {
-                                hiResField.set((startHiResRow + row),
-                                               (startHiResColumn + column),
-                                               consensusField.get(row, column));
-                            }
-                        }
-                    }
-
-                    warpField = hiResField;
-                }
-
-                final String warpFieldTransformId = z + "_AFFINE_WARP_FIELD";
-
-                final AffineWarpFieldTransform warpFieldTransform =
-                        new AffineWarpFieldTransform(locationOffsets, warpField);
-
-                transformSpec = new LeafTransformSpec(warpFieldTransformId,
-                                                      null,
-                                                      AffineWarpFieldTransform.class.getName(),
-                                                      warpFieldTransform.toDataString());
             } else {
                 throw new ObjectNotFoundException("No aligned stacks exist for owner '" + owner +
                                                   "' and project '"+ project + "'.");
@@ -589,8 +544,7 @@ public class HierarchicalDataService {
 
     private AffineModel2D getRelativeAlignedModel(final HierarchicalStack tierStack,
                                                   final TileSpec tileSpecForZ,
-                                                  final StackId alignedStackId,
-                                                  final Bounds alignedStackBounds)
+                                                  final StackId alignedStackId)
             throws IllegalArgumentException {
 
         final AffineModel2D relativeAlignedModel;
@@ -603,8 +557,8 @@ public class HierarchicalDataService {
 
             if (lastTransform instanceof AffineModel2D) {
                 relativeAlignedModel = HierarchicalStack.getFullScaleRelativeModel((AffineModel2D) lastTransform,
-                                                                                   alignedStackBounds,
-                                                                                   tierStack.getScale());
+                                                                                   tierStack.getScale(),
+                                                                                   tierStack.getFullScaleBounds());
             } else {
                 throw new IllegalArgumentException(
                         "Invalid affine data for z " + tileSpecForZ.getZ() +
