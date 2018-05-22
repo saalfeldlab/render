@@ -9,6 +9,7 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.TierZeroStack;
 import org.janelia.render.client.RenderDataClient;
@@ -74,9 +75,9 @@ public class HierarchicalRoughStackFunction
         if (transformInstance instanceof AffineModel2D) {
             final AffineModel2D scaledAffineModel = (AffineModel2D) transformInstance;
             final AffineModel2D fullScaleRoughModel =
-                    tierZeroStack.getFullScaleRoughModel(scaledAffineModel,
-                                                         montageLayerBounds.getMinX(),
-                                                         montageLayerBounds.getMinY());
+                    HierarchicalStack.getFullScaleRelativeModel(scaledAffineModel,
+                                                                tierZeroStack.getScale(),
+                                                                montageLayerBounds);
             final mpicbg.trakem2.transform.AffineModel2D specModel = new mpicbg.trakem2.transform.AffineModel2D();
             specModel.set(fullScaleRoughModel);
 

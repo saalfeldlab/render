@@ -301,6 +301,42 @@ public class AffineWarpField
     }
 
     /**
+     * @return a nicely formatted human-readable JSON string with the affine data for this warp field.
+     */
+    public String toDebugJson() {
+
+        final StringBuilder sb = new StringBuilder();
+        sb.append("  [\n");
+
+        final int affineCount = rowCount * columnCount;
+
+        for (int row = 0; row < rowCount; row++) {
+            for (int column = 0; column < columnCount; column++) {
+                final int startIndex = (row * columnCount) + column;
+                final double cellValues[] = new double[VALUES_PER_AFFINE];
+                int valuesIndex;
+                for (int i = 0; i < VALUES_PER_AFFINE; i++) {
+                    valuesIndex = startIndex + (i * affineCount);
+                    cellValues[i] = values[valuesIndex];
+                }
+                sb.append(String.format("    { \"index\": %6d, \"row\": %3d, \"column\": %3d, \"affine\": \"%16.12f %16.12f %16.12f %16.12f %20.12f %20.12f\" },\n",
+                                        startIndex, row, column,
+                                        cellValues[0], cellValues[1], cellValues[2],
+                                        cellValues[3], cellValues[4], cellValues[5]));
+            }
+            sb.append("\n");
+        }
+
+        if (sb.length() > 4) {
+            sb.setLength(sb.length() - 3);
+        }
+
+        sb.append("\n  ]");
+
+        return sb.toString();
+    }
+
+    /**
      * @return the default interpolator factory for warp field instances.
      */
     public static InterpolatorFactory<RealComposite<DoubleType>, RandomAccessible<RealComposite<DoubleType>>> getDefaultInterpolatorFactory() {

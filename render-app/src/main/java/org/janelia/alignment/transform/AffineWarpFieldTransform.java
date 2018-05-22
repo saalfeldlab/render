@@ -36,9 +36,8 @@ public class AffineWarpFieldTransform
      *
      * @param  affineWarpField  warp field.
      *
-     * @param  locationOffsets  x and y offsets to apply when transforming coordinates.
-     *                          Offsets are subtracted from locations before applying the warp field
-     *                          and then are added back after the warp field has been applied.
+     * @param  locationOffsets  upper left world coordinate of the warp field.
+     *                          Allows world coordinates to be mapped into the warp field.
      *
      * @throws IllegalArgumentException
      *   if the specified warp field references an invalid interpolator.
@@ -62,11 +61,9 @@ public class AffineWarpFieldTransform
     @Override
     public void applyInPlace(final double[] location) {
 
-        // subtract offsets before applying warp field
-        location[0] = location[0] - locationOffsets[0];
-        location[1] = location[1] - locationOffsets[1];
+        final double[] warpFieldLocation = { location[0] - locationOffsets[0], location[1] - locationOffsets[1] };
 
-        warpFieldAccessor.setPosition(location);
+        warpFieldAccessor.setPosition(warpFieldLocation);
         final RealComposite<DoubleType> coefficients = warpFieldAccessor.get();
 
         final double m00 = coefficients.get(0).getRealDouble();
@@ -80,10 +77,6 @@ public class AffineWarpFieldTransform
         final double l0 = location[0];
         location[0] = l0 * m00 + location[1] * m01 + m02;
         location[1] = l0 * m10 + location[1] * m11 + m12;
-
-        // restore (add) offsets back once warp field has been applied
-        location[0] = location[0] + locationOffsets[0];
-        location[1] = location[1] + locationOffsets[1];
     }
 
     /**
@@ -179,6 +172,18 @@ public class AffineWarpFieldTransform
     public CoordinateTransform copy() {
         return new AffineWarpFieldTransform(locationOffsets.clone(),
                                             affineWarpField.getCopy());
+    }
+
+    /**
+     * @return a nicely formatted human-readable JSON string with the affine data for this transform's warp field.
+     */
+    public String toDebugJson() {
+        return
+                "{\n" +
+                "  \"locationOffsets\": { \"x\": " + locationOffsets[0] + ", \"y\": " + locationOffsets[1] + " },\n" +
+                "  \"warpField\": \n" +
+                affineWarpField.toDebugJson() + "\n" +
+                "}";
     }
 
     private void setWarpFieldAccessor() throws IllegalArgumentException {

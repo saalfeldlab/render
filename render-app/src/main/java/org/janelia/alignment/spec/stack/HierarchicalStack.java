@@ -2,7 +2,6 @@ package org.janelia.alignment.spec.stack;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.awt.geom.AffineTransform;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -11,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.TranslationModel2D;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasId;
@@ -361,66 +361,42 @@ public class HierarchicalStack implements Serializable {
         return neighborPairs;
     }
 
+    public String toJson() {
+        return JSON_HELPER.toJson(this);
+    }
+
     /**
-     * Uses the specified aligned stack bounds and scale to convert the specified affine to a
-     * full scale version that can be used in an {@link org.janelia.alignment.transform.AffineWarpFieldTransform}.
+     * Converts the specified affine to a full scale version that can be used in an
+     * {@link org.janelia.alignment.transform.AffineWarpFieldTransform}.
      *
      * @param  alignedLayerTransformModel  scaled aligned model to convert.
-     * @param  splitStackScale             scale of the split hierarchical stack.
-     * @param  splitStackFullScaleBounds   full scale bounds of the split hierarchical stack.
+     * @param  alignedStackScale           scale of the aligned stack.
+     * @param  fullScaleStackBounds        full scale bounds of the stack prior to alignment.
      *
      * @return full scale relative version of the specified model.
      */
     @JsonIgnore
     public static AffineModel2D getFullScaleRelativeModel(final AffineModel2D alignedLayerTransformModel,
-                                                          final double splitStackScale,
-                                                          final Bounds splitStackFullScaleBounds) {
+                                                          final double alignedStackScale,
+                                                          final Bounds fullScaleStackBounds) {
 
-        final AffineTransform affine = new AffineTransform();
-        affine.scale(1 / splitStackScale, 1 / splitStackScale);
+        final double invertedScale = 1.0 / alignedStackScale;
+        final AffineModel2D invertedScaleModel = new AffineModel2D();
+        invertedScaleModel.set(invertedScale, 0.0, 0.0, invertedScale, 0.0, 0.0);
 
-        final double scaledSplitStackMinX = splitStackFullScaleBounds.getMinX() * splitStackScale;
-        final double scaledSplitStackMinY = splitStackFullScaleBounds.getMinY() * splitStackScale;
+        final AffineModel2D scaleModel = new AffineModel2D();
+        scaleModel.set(alignedStackScale, 0.0, 0.0, alignedStackScale, 0.0, 0.0);
 
-        affine.translate(-scaledSplitStackMinX, -scaledSplitStackMinY);
+        final TranslationModel2D offsetModel = new TranslationModel2D();
+        offsetModel.set(-fullScaleStackBounds.getMinX(), -fullScaleStackBounds.getMinY());
 
-        affine.concatenate(alignedLayerTransformModel.createAffine());
-        affine.scale(splitStackScale, splitStackScale);
+        final AffineModel2D fullScaleRelativeModel = new AffineModel2D();
+        fullScaleRelativeModel.concatenate(invertedScaleModel);
+        fullScaleRelativeModel.concatenate(alignedLayerTransformModel);
+        fullScaleRelativeModel.concatenate(scaleModel);
+        fullScaleRelativeModel.concatenate(offsetModel);
 
-        final AffineModel2D model = new AffineModel2D();
-        model.set(affine);
-        return model;
-    }
-
-    /**
-     * Uses this stack's scale and the specified montage layer bounds to convert the specified affine to a
-     * full scale version that can be used for rough alignment of all tiles in a layer.
-     *
-     * @param  alignedLayerTransformModel  scaled aligned model to convert.
-     * @param  montageLayerMinX            minimum X value for the montage layer.
-     * @param  montageLayerMinY            minimum Y value for the montage layer.
-     *
-     * @return full scale (and translated) version of the specified model for a layer.
-     */
-    @JsonIgnore
-    public AffineModel2D getFullScaleRoughModel(final AffineModel2D alignedLayerTransformModel,
-                                                final double montageLayerMinX,
-                                                final double montageLayerMinY) {
-
-        // TODO: revisit this logic ...
-
-        final AffineTransform affine = new AffineTransform();
-        affine.scale(1 / scale, 1 / scale);
-        affine.concatenate(alignedLayerTransformModel.createAffine());
-        affine.scale(scale, scale);
-        affine.translate(-montageLayerMinX, -montageLayerMinY);
-        final AffineModel2D model = new AffineModel2D();
-        model.set(affine);
-        return model;
-    }
-
-    public String toJson() {
-        return JSON_HELPER.toJson(this);
+        return fullScaleRelativeModel;
     }
 
     public static HierarchicalStack fromJson(final String json) {
