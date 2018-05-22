@@ -35,6 +35,7 @@ import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.alignment.transform.ConsensusWarpFieldBuilder;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.request.WaitingRetryHandler;
 import org.janelia.render.client.response.EmptyResponseHandler;
@@ -1229,17 +1230,20 @@ public class RenderDataClient {
     }
 
     /**
-     * @param  z  z value for layer.
+     * @param  z                     z value for layer.
+     * @param  consensusBuildMethod  build method for consensus set alignments.
      *
      * @return affine warp field transform spec for the specified layer.
      *
      * @throws IOException
      *   if the request fails for any reason.
      */
-    public LeafTransformSpec getAffineWarpFieldTransform(final Double z)
+    public LeafTransformSpec getAffineWarpFieldTransform(final Double z,
+                                                         final ConsensusWarpFieldBuilder.BuildMethod consensusBuildMethod)
             throws IOException {
 
-        final URI uri = getUri(urls.getOwnerUrlString() + "/project/" + project + "/z/" + z + "/affineWarpFieldTransform");
+        final URI uri = getUri(urls.getOwnerUrlString() + "/project/" + project + "/z/" + z +
+                               "/affineWarpFieldTransform?consensusBuildMethod=" + consensusBuildMethod);
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final JsonUtils.Helper<LeafTransformSpec> helper = new JsonUtils.Helper<>(LeafTransformSpec.class);

@@ -345,7 +345,8 @@ public class HierarchicalDataService {
                                                            @PathParam("project") final String project,
                                                            @PathParam("z") final Double z,
                                                            @QueryParam("consensusRows") final Integer consensusRows,
-                                                           @QueryParam("consensusColumns") final Integer consensusColumns) {
+                                                           @QueryParam("consensusColumns") final Integer consensusColumns,
+                                                           @QueryParam("consensusBuildMethod") final ConsensusWarpFieldBuilder.BuildMethod consensusBuildMethod) {
 
         LOG.info("buildAffineWarpFieldTransform: entry, owner={}, project={}, z={}",
                  owner, project, z);
@@ -451,10 +452,23 @@ public class HierarchicalDataService {
 
                 }
 
-                transformSpec = ConsensusWarpFieldBuilder.buildInterpolatedWarpFieldTransformSpec(warpField,
-                                                                                                  tierStackToConsensusFieldMap,
-                                                                                                  locationOffsets,
-                                                                                                  z + "_AFFINE_WARP_FIELD");
+                final String warpFieldTransformId = z + "_AFFINE_WARP_FIELD";
+                if ((consensusBuildMethod == null) ||
+                    ConsensusWarpFieldBuilder.BuildMethod.SIMPLE.equals(consensusBuildMethod)) {
+
+                    transformSpec = ConsensusWarpFieldBuilder.buildSimpleWarpFieldTransformSpec(warpField,
+                                                                                                tierStackToConsensusFieldMap,
+                                                                                                locationOffsets,
+                                                                                                warpFieldTransformId);
+
+                } else {
+
+                    transformSpec = ConsensusWarpFieldBuilder.buildInterpolatedWarpFieldTransformSpec(warpField,
+                                                                                                      tierStackToConsensusFieldMap,
+                                                                                                      locationOffsets,
+                                                                                                      warpFieldTransformId);
+
+                }
 
             } else {
                 throw new ObjectNotFoundException("No aligned stacks exist for owner '" + owner +

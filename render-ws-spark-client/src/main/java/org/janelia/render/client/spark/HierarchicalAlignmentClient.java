@@ -35,6 +35,7 @@ import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.HierarchicalTierRegions;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.transform.ConsensusWarpFieldBuilder;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -168,6 +169,12 @@ public class HierarchicalAlignmentClient
                 description = "Pipeline stage for which all prior existing results should be kept",
                 required = false)
         public PipelineStep keepExistingStep;
+
+        @Parameter(
+                names = "--consensusBuildMethod",
+                description = "Method for building consensus warp fields",
+                required = false)
+        public ConsensusWarpFieldBuilder.BuildMethod consensusBuildMethod = ConsensusWarpFieldBuilder.BuildMethod.SIMPLE;
 
         public String getBoxBaseDataUrl() {
             return boxBaseDataUrl == null ? renderWeb.baseDataUrl : boxBaseDataUrl;
@@ -810,7 +817,8 @@ public class HierarchicalAlignmentClient
                                                              currentTier,
                                                              projectForTier,
                                                              tierParentStackId,
-                                                             warpStackId.getStack());
+                                                             warpStackId.getStack(),
+                                                             parameters.consensusBuildMethod);
 
             final JavaRDD<Integer> rddTileCounts = rddZValues.map(warpFieldStackFunction);
 

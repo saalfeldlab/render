@@ -49,6 +49,8 @@ import net.imglib2.view.composite.RealComposite;
  */
 public class ConsensusWarpFieldBuilder {
 
+    public enum BuildMethod { SIMPLE, INTERPOLATE }
+
     private final double width;
     private final double height;
     private final int rowCount;

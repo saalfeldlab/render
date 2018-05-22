@@ -4,6 +4,7 @@ import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.transform.ConsensusWarpFieldBuilder;
 import org.janelia.render.client.RenderDataClient;
 
 /**
@@ -21,19 +22,22 @@ public class HierarchicalWarpFieldStackFunction
     private final String tierProject;
     private final StackId parentTilesStackId;
     private final String warpStackName;
+    private final ConsensusWarpFieldBuilder.BuildMethod consensusBuildMethod;
 
     public HierarchicalWarpFieldStackFunction(final String baseDataUrl,
                                               final String owner,
                                               final int tier,
                                               final String tierProject,
                                               final StackId parentTilesStackId,
-                                              final String warpStackName) {
+                                              final String warpStackName,
+                                              final ConsensusWarpFieldBuilder.BuildMethod consensusBuildMethod) {
         this.baseDataUrl = baseDataUrl;
         this.owner = owner;
         this.tier = tier;
         this.tierProject = tierProject;
         this.parentTilesStackId = parentTilesStackId;
         this.warpStackName = warpStackName;
+        this.consensusBuildMethod = consensusBuildMethod;
     }
 
     @Override
@@ -47,7 +51,8 @@ public class HierarchicalWarpFieldStackFunction
                                      owner,
                                      tierProject);
 
-        final LeafTransformSpec warpFieldTransform = localTierDataClient.getAffineWarpFieldTransform(z);
+        final LeafTransformSpec warpFieldTransform =
+                localTierDataClient.getAffineWarpFieldTransform(z, consensusBuildMethod);
 
         final String tierTransformId = warpFieldTransform.getId() + "_tier_" + tier;
         final LeafTransformSpec tierWarpFieldTransform = new LeafTransformSpec(tierTransformId,
