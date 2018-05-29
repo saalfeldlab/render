@@ -482,6 +482,43 @@ public class HierarchicalDataService {
         return transformSpec;
     }
 
+    @Path("v1/owner/{owner}/project/{project}/z/{z}/affineWarpFieldTransformDebug")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Debug data for layer affine warp field transform")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "invalid affine data found for one of the aligned stacks"),
+            @ApiResponse(code = 404, message = "no aligned stacks exist for the specified project")
+    })
+    public Response getAffineWarpFieldTransformDebugData(@PathParam("owner") final String owner,
+                                                         @PathParam("project") final String project,
+                                                         @PathParam("z") final Double z,
+                                                         @QueryParam("consensusRows") final Integer consensusRows,
+                                                         @QueryParam("consensusColumns") final Integer consensusColumns,
+                                                         @QueryParam("consensusBuildMethod") final ConsensusWarpFieldBuilder.BuildMethod consensusBuildMethod) {
+
+        Response response = null;
+        try {
+            final LeafTransformSpec transformSpec = buildAffineWarpFieldTransform(owner,
+                                                                                  project,
+                                                                                  z,
+                                                                                  consensusRows,
+                                                                                  consensusColumns,
+                                                                                  consensusBuildMethod);
+
+            final AffineWarpFieldTransform transform = new AffineWarpFieldTransform();
+            transform.init(transformSpec.getDataString());
+
+            response = Response.ok(transform.toDebugJson(), MediaType.APPLICATION_JSON).build();
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return response;
+    }
+
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/residualCalculation")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)

@@ -471,6 +471,8 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
             splitConsensusGroupIds = "";
         }
 
+        var warpDebugUrl = self.getOwnerUrl() + "/project/" + splitStackId.project + "/z/" + this.tileZ + "/affineWarpFieldTransformDebug?consensusBuildMethod=SIMPLE";
+
         var html = '<table>' +
                    this.getPopupLinkRow('Warp Stack:', warpCatmaidUrl, hd.warpTilesStackId.stack + ' (CATMAID)') +
                    this.getPopupLinkRow('Tier Project:', tierProjectUrl, hd.alignedStackId.project) +
@@ -483,6 +485,7 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
                    this.getPopupRow('Multi Consensus Group IDs:', consensusRow) +
                    this.getPopupRow('Split Consensus Group IDs:', splitConsensusGroupIds) +
                    this.getPopupRow('Alignment Quality:', hd.alignmentQuality) +
+                   this.getPopupLinkRow('Warp Field Debug:', warpDebugUrl, this.tileZ) +
                    '</table>';
 
         splitStackPopupDetails.html(html);
