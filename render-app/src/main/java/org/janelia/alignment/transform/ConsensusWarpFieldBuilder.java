@@ -341,29 +341,22 @@ public class ConsensusWarpFieldBuilder {
                     final int gridIndex = (row * warpFieldRowCount) + column;
                     final AffineWarpField consensusField = gridIndexToConsensusFieldMap.get(gridIndex);
 
-                    if (consensusField == null) {
+                    for (int consensusRow = 0; consensusRow < consensusRowCount; consensusRow++) {
+                        for (int consensusColumn = 0; consensusColumn < consensusColumnCount; consensusColumn++) {
 
-                        for (int consensusRow = 0; consensusRow < consensusRowCount; consensusRow++) {
-                            for (int consensusColumn = 0; consensusColumn < consensusColumnCount; consensusColumn++) {
-                                final int hiResRow = row * consensusRowCount;
-                                final int hiResColumn = column * consensusColumnCount;
+                            final int hiResRow = (row * consensusRowCount) + consensusRow;
+                            final int hiResColumn = (column * consensusColumnCount) + consensusColumn;
+
+                            if (consensusField == null) {
                                 final double centerX = (hiResColumn * hiResColumnWidth) + halfHiResColumnWidth;
                                 final double centerY = (hiResRow * hiResRowHeight) + halfHiResRowHeight;
                                 final double[] center = {centerX, centerY};
                                 hiResField.set(hiResRow, hiResColumn, getAffineMatrixElements(warpFieldAccessor, center));
-                            }
-                        }
-
-                    } else {
-
-                        for (int consensusRow = 0; consensusRow < consensusRowCount; consensusRow++) {
-                            for (int consensusColumn = 0; consensusColumn < consensusColumnCount; consensusColumn++) {
-                                final int hiResRow = (row * consensusRowCount) + consensusRow;
-                                final int hiResColumn = (column * consensusColumnCount) + consensusColumn;
+                            } else {
                                 hiResField.set(hiResRow, hiResColumn, consensusField.get(consensusRow, consensusColumn));
                             }
-                        }
 
+                        }
                     }
                 }
             }
