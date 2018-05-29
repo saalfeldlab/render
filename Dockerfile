@@ -59,8 +59,10 @@ RUN apk add --update curl && \
 WORKDIR $JETTY_BASE
 
 COPY render-ws/src/main/scripts/jetty/ .
+# NOTE: sync call added to workaround 'text file busy' error ( see https://github.com/moby/moby/issues/9547 )
 RUN ls -al $JETTY_BASE/* && \
     chmod 755 ./configure_web_server.sh && \
+    sync && \
     ./configure_web_server.sh
 
 COPY --from=builder /root/render-lib/render-ws-*.war webapps/render-ws.war
