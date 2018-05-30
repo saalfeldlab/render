@@ -127,6 +127,11 @@ public class HierarchicalStackCreationFunction
             final double scaledMinX = scale * splitStackFullScaleBounds.getMinX();
             final double scaledMinY = scale * splitStackFullScaleBounds.getMinY();
 
+//            final double centerX = splitStackFullScaleBounds.getMinX() - (splitStackFullScaleBounds.getDeltaX() / 2.0);
+//            final double centerY = splitStackFullScaleBounds.getMinY() - (splitStackFullScaleBounds.getDeltaY() / 2.0);
+//            final double scaledCenterX = scale * centerX;
+//            final double scaledCenterY = scale * centerY;
+
             final List<TransformSpec> regularTransform =
                     Collections.singletonList(
                             new LeafTransformSpec(null,

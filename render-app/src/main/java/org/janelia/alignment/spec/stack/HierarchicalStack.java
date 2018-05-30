@@ -390,6 +390,10 @@ public class HierarchicalStack implements Serializable {
         final TranslationModel2D offsetModel = new TranslationModel2D();
         offsetModel.set(-fullScaleStackBounds.getMinX(), -fullScaleStackBounds.getMinY());
 
+//        final double centerX = fullScaleStackBounds.getMinX() - (fullScaleStackBounds.getDeltaX() / 2.0);
+//        final double centerY = fullScaleStackBounds.getMinY() - (fullScaleStackBounds.getDeltaY() / 2.0);
+//        offsetModel.set(-centerX, -centerY);
+
         final AffineModel2D fullScaleRelativeModel = new AffineModel2D();
         fullScaleRelativeModel.concatenate(invertedScaleModel);
         fullScaleRelativeModel.concatenate(alignedLayerTransformModel);
