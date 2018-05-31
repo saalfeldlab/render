@@ -380,25 +380,110 @@ public class HierarchicalStack implements Serializable {
                                                           final double alignedStackScale,
                                                           final Bounds fullScaleStackBounds) {
 
-        final double invertedScale = 1.0 / alignedStackScale;
-        final AffineModel2D invertedScaleModel = new AffineModel2D();
-        invertedScaleModel.set(invertedScale, 0.0, 0.0, invertedScale, 0.0, 0.0);
+        final AffineModel2D alignmentScaleModel = new AffineModel2D();
+        alignmentScaleModel.set(alignedStackScale, 0.0, 0.0, alignedStackScale, 0.0, 0.0);
 
-        final AffineModel2D scaleModel = new AffineModel2D();
-        scaleModel.set(alignedStackScale, 0.0, 0.0, alignedStackScale, 0.0, 0.0);
+        final TranslationModel2D worldBoundsBoxMinTranslationModel = new TranslationModel2D();
+        worldBoundsBoxMinTranslationModel.set(fullScaleStackBounds.getMinX(), fullScaleStackBounds.getMinY());
 
-        final TranslationModel2D offsetModel = new TranslationModel2D();
-        offsetModel.set(-fullScaleStackBounds.getMinX(), -fullScaleStackBounds.getMinY());
+        final double fullScaleWidthDiv2 = fullScaleStackBounds.getDeltaX() / 2.0;
+        final double fullScaleHeightDiv2 = fullScaleStackBounds.getDeltaY() / 2.0;
+        final double scaledCenteredOnOriginX = alignedStackScale * fullScaleWidthDiv2;
+        final double scaledCenteredOnOriginY = alignedStackScale * fullScaleHeightDiv2;
 
-//        final double centerX = fullScaleStackBounds.getMinX() - (fullScaleStackBounds.getDeltaX() / 2.0);
-//        final double centerY = fullScaleStackBounds.getMinY() - (fullScaleStackBounds.getDeltaY() / 2.0);
-//        offsetModel.set(-centerX, -centerY);
+        final TranslationModel2D scaledCenterTranslationModel = new TranslationModel2D();
+        scaledCenterTranslationModel.set(scaledCenteredOnOriginX, scaledCenteredOnOriginY);
+
+        AffineModel2D fullScaleRelativeModel = null;
+        switch (getFullScaleRelativeModelDerivationVersion()) {
+            case 1: fullScaleRelativeModel = deriveV1(worldBoundsBoxMinTranslationModel, alignmentScaleModel, alignedLayerTransformModel, scaledCenterTranslationModel); break;
+            case 2: fullScaleRelativeModel = deriveV2(worldBoundsBoxMinTranslationModel, alignmentScaleModel, alignedLayerTransformModel, scaledCenterTranslationModel); break;
+            case 5: fullScaleRelativeModel = deriveV5(worldBoundsBoxMinTranslationModel, alignmentScaleModel, alignedLayerTransformModel, scaledCenterTranslationModel); break;
+            case 6: fullScaleRelativeModel = deriveV6(worldBoundsBoxMinTranslationModel, alignmentScaleModel, alignedLayerTransformModel, scaledCenterTranslationModel); break;
+        }
+        return fullScaleRelativeModel;
+    }
+
+    private static AffineModel2D deriveV1(final TranslationModel2D worldBoundsBoxMinTranslationModel,
+                                          final AffineModel2D alignmentScaleModel,
+                                          final AffineModel2D alignedLayerTransformModel,
+                                          final TranslationModel2D scaledCenterTranslationModel) {
+
+        // Stephan's original suggestion - produces jump in aggregate
 
         final AffineModel2D fullScaleRelativeModel = new AffineModel2D();
-        fullScaleRelativeModel.concatenate(invertedScaleModel);
-        fullScaleRelativeModel.concatenate(alignedLayerTransformModel);
-        fullScaleRelativeModel.concatenate(scaleModel);
-        fullScaleRelativeModel.concatenate(offsetModel);
+
+        // T Si A S Ti Si Ci S
+        fullScaleRelativeModel.concatenate( worldBoundsBoxMinTranslationModel );
+        fullScaleRelativeModel.concatenate( alignmentScaleModel.createInverse() );
+        fullScaleRelativeModel.concatenate( alignedLayerTransformModel );
+        fullScaleRelativeModel.concatenate( alignmentScaleModel );
+        fullScaleRelativeModel.concatenate( worldBoundsBoxMinTranslationModel.createInverse() );
+        fullScaleRelativeModel.concatenate( alignmentScaleModel.createInverse() );
+        fullScaleRelativeModel.concatenate( scaledCenterTranslationModel.createInverse() );
+        fullScaleRelativeModel.concatenate( alignmentScaleModel );
+
+        return fullScaleRelativeModel;
+    }
+
+    private static AffineModel2D deriveV2(final TranslationModel2D worldBoundsBoxMinTranslationModel,
+                                          final AffineModel2D alignmentScaleModel,
+                                          final AffineModel2D alignedLayerTransformModel,
+                                          final TranslationModel2D scaledCenterTranslationModel) {
+
+        // use scaledCenterTranslationModel (C) instead of inverse - produces jump in opposite direction
+
+        final AffineModel2D fullScaleRelativeModel = new AffineModel2D();
+
+        // T Si A S Ti Si C S
+        fullScaleRelativeModel.concatenate( worldBoundsBoxMinTranslationModel );
+        fullScaleRelativeModel.concatenate( alignmentScaleModel.createInverse() );
+        fullScaleRelativeModel.concatenate( alignedLayerTransformModel );
+        fullScaleRelativeModel.concatenate( alignmentScaleModel );
+        fullScaleRelativeModel.concatenate( worldBoundsBoxMinTranslationModel.createInverse() );
+        fullScaleRelativeModel.concatenate( alignmentScaleModel.createInverse() );
+        fullScaleRelativeModel.concatenate( scaledCenterTranslationModel );
+        fullScaleRelativeModel.concatenate( alignmentScaleModel );
+
+        return fullScaleRelativeModel;
+    }
+
+    private static AffineModel2D deriveV5(final TranslationModel2D worldBoundsBoxMinTranslationModel,
+                                          final AffineModel2D alignmentScaleModel,
+                                          final AffineModel2D alignedLayerTransformModel,
+                                          final TranslationModel2D scaledCenterTranslationModel) {
+
+        // simplified version of v2 that produces same result
+
+        final AffineModel2D fullScaleRelativeModel = new AffineModel2D();
+
+        // T Si A C S Ti
+        fullScaleRelativeModel.concatenate( worldBoundsBoxMinTranslationModel );
+        fullScaleRelativeModel.concatenate( alignmentScaleModel.createInverse() );
+        fullScaleRelativeModel.concatenate( alignedLayerTransformModel );
+        fullScaleRelativeModel.concatenate( scaledCenterTranslationModel );
+        fullScaleRelativeModel.concatenate( alignmentScaleModel );
+        fullScaleRelativeModel.concatenate( worldBoundsBoxMinTranslationModel.createInverse() );
+
+        return fullScaleRelativeModel;
+    }
+
+    private static AffineModel2D deriveV6(final TranslationModel2D worldBoundsBoxMinTranslationModel,
+                                          final AffineModel2D alignmentScaleModel,
+                                          final AffineModel2D alignedLayerTransformModel,
+                                          final TranslationModel2D scaledCenterTranslationModel) {
+
+        // v5 with flipped center translate - looks good for aggregate, still compresses for consensus
+
+        final AffineModel2D fullScaleRelativeModel = new AffineModel2D();
+
+        // T Si C A S Ti
+        fullScaleRelativeModel.concatenate( worldBoundsBoxMinTranslationModel );
+        fullScaleRelativeModel.concatenate( alignmentScaleModel.createInverse() );
+        fullScaleRelativeModel.concatenate( scaledCenterTranslationModel );
+        fullScaleRelativeModel.concatenate( alignedLayerTransformModel );
+        fullScaleRelativeModel.concatenate( alignmentScaleModel );
+        fullScaleRelativeModel.concatenate( worldBoundsBoxMinTranslationModel.createInverse() );
 
         return fullScaleRelativeModel;
     }
@@ -412,9 +497,14 @@ public class HierarchicalStack implements Serializable {
         return roughTilesStackId.getProject() + "_" + roughTilesStackId.getStack() + "_tier_" + tier;
     }
 
+    // TODO: remove derivation version debug hacks
+    public static int getFullScaleRelativeModelDerivationVersion() {
+        return 6;
+    }
+
     public static StackId deriveWarpStackIdForTier(final StackId roughTilesStackId,
                                                    final int tier) {
-        final String warpStack = roughTilesStackId.getStack() + "_tier_" + tier + "_warp";
+        final String warpStack = roughTilesStackId.getStack() + "_tier_" + tier + "_warp_v" + getFullScaleRelativeModelDerivationVersion();
         return new StackId(roughTilesStackId.getOwner(),
                            roughTilesStackId.getProject(),
                            warpStack);
