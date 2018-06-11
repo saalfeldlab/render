@@ -45,6 +45,32 @@ var JaneliaScriptUtilities = function() {
         return href.substring(0, stopIndex) + '/render-ws/v1';
     };
 
+    this.getCatmaidUrl = function(catmaidBaseUrl, stackId, stackVersion, x, y, z, scaleLevel) {
+
+        var catmaidProject = stackId.owner + '__' + stackId.project;
+
+        var xp = 0;
+        var yp = 0;
+        var zp = 0;
+        var s = (typeof scaleLevel === 'undefined') ? 0 : scaleLevel;
+
+        if (typeof stackVersion !== 'undefined') {
+            xp = x * stackVersion.stackResolutionX;
+            yp = y * stackVersion.stackResolutionY;
+            zp = z * stackVersion.stackResolutionZ;
+        }
+
+        return catmaidBaseUrl + '/?pid=' + catmaidProject + '&sid0=' + stackId.stack +
+               '&s0=' + s + '&zp=' + zp + '&yp=' + yp  + '&xp=' + xp +  '&tool=navigator';
+    };
+
+    this.getCenteredCatmaidUrl = function(catmaidBaseUrl, stackId, stackVersion, locationBounds, z, scaleLevel) {
+        var centerX = locationBounds.minX + ((locationBounds.maxX - locationBounds.minX) / 2);
+        var centerY = locationBounds.minY + ((locationBounds.maxY - locationBounds.minY) / 2);
+
+        return this.getCatmaidUrl(catmaidBaseUrl, stackId, stackVersion, centerX, centerY, z, scaleLevel);
+    };
+
     this.getSelectedValue = function(selectId) {
         var selectElement = document.getElementById(selectId);
         return selectElement.options[selectElement.selectedIndex].value;
@@ -572,9 +598,7 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
     }
 
     var stats = stackInfo.stats;
-    var xp = 0;
-    var yp = 0;
-    var zp = 0;
+    var bounds = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
 
     if (typeof stats === 'undefined') {
         values.push('');
@@ -585,19 +609,13 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
         values.push('');
         values.push('');
     } else {
-        var bounds = stats.stackBounds;
-        if (typeof bounds === 'undefined') {
+        if (typeof stats.stackBounds === 'undefined') {
             values.push('');
             values.push('');
         } else {
+            bounds = stats.stackBounds;
             values.push(this.util.numberWithCommas(this.util.getDefinedValue(bounds.minZ)));
             values.push(this.util.numberWithCommas(this.util.getDefinedValue(bounds.maxZ)));
-
-            if (typeof version !== 'undefined') {
-                xp = (bounds.minX + ((bounds.maxX - bounds.minX) / 2)) * version.stackResolutionX;
-                yp = (bounds.minY + ((bounds.maxY - bounds.minY) / 2)) * version.stackResolutionY;
-                zp = bounds.minZ * version.stackResolutionZ;
-            }
         }
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.sectionCount)));
         values.push(this.util.numberWithCommas(this.util.getDefinedValue(stats.tileCount)));
@@ -623,10 +641,9 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
                     '<a target="_blank" href="' + baseStackUrl + '">Metadata</a> ';
 
     if (this.isCatmaidHostDefined()) {
-        var CATMAIDUrl = 'http://' + this.catmaidHost + '/?tool=navigator&s0=8' +
-                         '&pid=' + stackId.project + '&sid0=' + stackId.stack +
-                         '&zp=' + zp + '&yp=' + yp  + '&xp=' + xp;
-        linksHtml = linksHtml + ' <a target="_blank" href="' + CATMAIDUrl + '">CATMAID</a>';
+        var catmaidBaseUrl = 'http://' + this.catmaidHost;
+        var catmaidUrl = this.util.getCenteredCatmaidUrl(catmaidBaseUrl, stackId, version, bounds, bounds.minZ, 8);
+        linksHtml = linksHtml + ' <a target="_blank" href="' + catmaidUrl + '">CATMAID</a>';
     }
 
     if (this.isNdvizHostDefined()) {

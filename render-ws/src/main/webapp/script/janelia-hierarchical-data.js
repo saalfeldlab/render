@@ -435,12 +435,28 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
         var matchContext = '&matchOwner=' + this.owner + '&matchCollection=' + hd.matchCollectionId.name;
         var pmeUrl = viewBaseUrl + '/point-match-explorer.html?' + hosts + alignedStackContext + matchContext;
 
-        var warpCatmaidUrl = this.getCatmaidBaseUrl(hd.fullScaleBounds) + '&s0=2' +
-                             '&pid=' + hd.warpTilesStackId.project + '&sid0=' + hd.warpTilesStackId.stack;
+        var catmaidBaseUrl = 'http://renderer-catmaid:8000';
 
-        var tierCatmaidBaseUrl = this.getCatmaidBaseUrl(selectedSplitStack.stats.stackBounds) + '&s0=0';
-        var splitCatmaidUrl = tierCatmaidBaseUrl + '&pid=' + splitStackId.project + '&sid0=' + splitStackId.stack;
-        var alignedCatmaidUrl = tierCatmaidBaseUrl + '&pid=' + hd.alignedStackId.project + '&sid0=' + hd.alignedStackId.stack;
+        var warpCatmaidUrl = this.util.getCenteredCatmaidUrl(catmaidBaseUrl,
+                                                             hd.warpTilesStackId,
+                                                             selectedSplitStack.currentVersion,
+                                                             hd.fullScaleBounds,
+                                                             this.tileZ,
+                                                             2);
+
+        var splitCatmaidUrl = this.util.getCenteredCatmaidUrl(catmaidBaseUrl,
+                                                              splitStackId,
+                                                              selectedSplitStack.currentVersion,
+                                                              selectedSplitStack.stats.stackBounds,
+                                                              this.tileZ,
+                                                              0);
+
+        var alignedCatmaidUrl = this.util.getCenteredCatmaidUrl(catmaidBaseUrl,
+                                                                hd.alignedStackId,
+                                                                selectedSplitStack.currentVersion,
+                                                                selectedSplitStack.stats.stackBounds,
+                                                                this.tileZ,
+                                                                0);
 
         var matchPairRow;
         if ((hd.savedMatchPairCount !== undefined) && (hd.savedMatchPairCount > 0)) {
@@ -501,14 +517,6 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
     }
 
     return selectedSplitStack;
-};
-
-JaneliaHierarchicalData.prototype.getCatmaidBaseUrl = function(bounds) {
-    var version = this.stackMetaData.currentVersion;
-    var xp = (bounds.minX + ((bounds.maxX - bounds.minX) / 2)) * version.stackResolutionX;
-    var yp = (bounds.minY + ((bounds.maxY - bounds.minY) / 2)) * version.stackResolutionY;
-    var zp = this.tileZ * version.stackResolutionZ;
-    return 'http://renderer-catmaid:8000/?tool=navigator&zp=' + zp + '&yp=' + yp + '&xp=' + xp;
 };
 
 JaneliaHierarchicalData.prototype.getPopupRow = function(header, value) {
