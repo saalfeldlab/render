@@ -1,15 +1,16 @@
 #!/bin/sh
 
+# --------------------------------------------------------------
+# This script configures files in the container
+# based upon run-time environment variables.
+
 set -e
 
+# --------------------------------------------------------------
+# Strips quotes inserted by Ansible into environment variables
 stripQuotes() {
   echo $* | sed -e 's/^"//' -e 's/"$//'
 }
-
-# --------------------------------------------------------------
-# Strip quotes inserted by Ansible into environment variables
-
-JAVA_OPTIONS=$(stripQuotes ${JAVA_OPTIONS})
 
 MONGO_HOST=$(stripQuotes ${MONGO_HOST})
 MONGO_PORT=$(stripQuotes ${MONGO_PORT})
