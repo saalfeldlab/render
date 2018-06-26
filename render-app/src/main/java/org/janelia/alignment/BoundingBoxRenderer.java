@@ -96,17 +96,20 @@ public class BoundingBoxRenderer {
             if (box.width > minBoxWidthForTileIdRendering) {
 
                 tileId = tileSpec.getTileId();
-                x = box.x + ((box.width - lineWidth) / 2); // center tileId horizontally
-                y = box.y + (box.height / 4);              // shift tileId down from top to avoid 'typical' overlap
 
-                start = 0;
-                for (int stop = maxCharactersPerLine; stop < tileId.length(); stop += maxCharactersPerLine) {
-                    targetGraphics.drawString(tileId.substring(start, stop), x, y);
-                    y = y + lineHeight;
-                    start = stop;
-                }
-                if (start < tileId.length()) {
-                    targetGraphics.drawString(tileId.substring(start), x, y);
+                if (tileId != null) {
+                    x = box.x + ((box.width - lineWidth) / 2); // center tileId horizontally
+                    y = box.y + (box.height / 4);              // shift tileId down from top to avoid 'typical' overlap
+
+                    start = 0;
+                    for (int stop = maxCharactersPerLine; stop < tileId.length(); stop += maxCharactersPerLine) {
+                        targetGraphics.drawString(tileId.substring(start, stop), x, y);
+                        y = y + lineHeight;
+                        start = stop;
+                    }
+                    if (start < tileId.length()) {
+                        targetGraphics.drawString(tileId.substring(start), x, y);
+                    }
                 }
 
             }
