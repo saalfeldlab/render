@@ -12,21 +12,21 @@ import org.junit.Test;
 import junit.framework.Assert;
 
 /**
- * Tests the {@link ThinPlateSpline2DClient} class.
+ * Tests the {@link ThinPlateSplineClient} class.
  *
  * @author Eric Trautman
  */
-public class ThinPlateSpline2DClientTest {
+public class ThinPlateSplineClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
-        CommandLineParameters.parseHelp(new ThinPlateSpline2DClient.Parameters());
+        CommandLineParameters.parseHelp(new ThinPlateSplineClient.Parameters());
     }
 
     @Test
     public void testBuildTransformSpec() throws Exception {
 
-        final ThinPlateSpline2DClient.Parameters parameters = new ThinPlateSpline2DClient.Parameters();
+        final ThinPlateSplineClient.Parameters parameters = new ThinPlateSplineClient.Parameters();
 
         final double[] sourceXs = { 0.0, 22.0 };
         final double[] sourceYs = { 0.0, 22.0 };
@@ -47,7 +47,7 @@ public class ThinPlateSpline2DClientTest {
         parameters.numberOfLandmarks = sourceXs.length;
         parameters.landmarkValues = landmarkValues;
 
-        final ThinPlateSpline2DClient client = new ThinPlateSpline2DClient(parameters);
+        final ThinPlateSplineClient client = new ThinPlateSplineClient(parameters);
         final LeafTransformSpec transformSpec = client.buildTransformSpec();
 
         final CoordinateTransform transform = transformSpec.getNewInstance();
@@ -59,7 +59,7 @@ public class ThinPlateSpline2DClientTest {
             Assert.assertEquals("invalid y for landmark " + i, targetYs[i], testResult[1], testDelta);
         }
 
-//        ThinPlateSpline2DClient.main(
+//        ThinPlateSplineClient.main(
 //                new String[] { "--numberOfLandmarks", "1",
 //                               "--outputFile", "/tmp/foo.json",
 //                               "0.0", "0.0",

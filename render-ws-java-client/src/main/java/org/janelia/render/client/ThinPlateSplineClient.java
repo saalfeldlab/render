@@ -18,13 +18,13 @@ import jitk.spline.ThinPlateR2LogRSplineKernelTransform;
 
 /**
  * Java client for translating "raw" landmark (control point) values into a
- * {@link mpicbg.trakem2.transform.ThinPlateSplineTransform} data string
+ * {@link mpicbg.trakem2.transform.ThinPlateSplineTransform} specification
  * suitable for use (and storage) by the render services.
  *
  * @author Dan Kapner
  * @author Eric Trautman
  */
-public class ThinPlateSpline2DClient {
+public class ThinPlateSplineClient {
 
     public static class Parameters extends CommandLineParameters {
 
@@ -84,7 +84,7 @@ public class ThinPlateSpline2DClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final ThinPlateSpline2DClient client = new ThinPlateSpline2DClient(parameters);
+                final ThinPlateSplineClient client = new ThinPlateSplineClient(parameters);
                 final String transformJson = client.buildTransformSpec().toJson();
 
                 if (parameters.outputFile != null) {
@@ -99,7 +99,7 @@ public class ThinPlateSpline2DClient {
 
     private final Parameters parameters;
 
-    public ThinPlateSpline2DClient(final Parameters parameters)
+    public ThinPlateSplineClient(final Parameters parameters)
             throws IllegalArgumentException {
         this.parameters = parameters;
         parameters.validate();
@@ -138,5 +138,5 @@ public class ThinPlateSpline2DClient {
         return transformSpec;
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(ThinPlateSpline2DClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ThinPlateSplineClient.class);
 }
