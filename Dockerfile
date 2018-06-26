@@ -49,12 +49,13 @@ RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 package && \
 # Once web service application is built, set up jetty server and deploy application to it.
 
 # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/render-ws/src/main/scripts/install.sh
-FROM jetty:9.4.6-jre8-alpine as render-ws
+FROM jetty:9.4.9-jre8 as render-ws
 
 # add curl and coreutils (for gnu readlink) not included in alpine
-RUN apk add --update curl && \
-    apk add --update coreutils && \
-    rm -rf /var/cache/apk/*
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl coreutils && \
+    apt-get clean
 
 WORKDIR $JETTY_BASE
 
