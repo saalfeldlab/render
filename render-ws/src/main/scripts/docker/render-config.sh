@@ -9,41 +9,38 @@ stripQuotes() {
 # --------------------------------------------------------------
 # Strip quotes inserted by Ansible into environment variables
 
-export JAVA_OPTIONS=$(stripQuotes $JAVA_OPTIONS)
+JAVA_OPTIONS=$(stripQuotes ${JAVA_OPTIONS})
 
-export MONGO_HOST=$(stripQuotes $MONGO_HOST)
-export MONGO_PORT=$(stripQuotes $MONGO_PORT)
-export MONGO_USERNAME=$(stripQuotes $MONGO_USERNAME)
-export MONGO_PASSWORD=$(stripQuotes $MONGO_PASSWORD)
-export MONGO_AUTH_DB=$(stripQuotes $MONGO_AUTH_DB)
-export MONGO_CONNECTION_STRING=$(stripQuotes $MONGO_CONNECTION_STRING)
-export MONGO_CONNECTION_STRING_USES_AUTH=$(stripQuotes $MONGO_CONNECTION_STRING_USES_AUTH)
+MONGO_HOST=$(stripQuotes ${MONGO_HOST})
+MONGO_PORT=$(stripQuotes ${MONGO_PORT})
+MONGO_USERNAME=$(stripQuotes ${MONGO_USERNAME})
+MONGO_PASSWORD=$(stripQuotes ${MONGO_PASSWORD})
+MONGO_AUTH_DB=$(stripQuotes ${MONGO_AUTH_DB})
+MONGO_CONNECTION_STRING=$(stripQuotes ${MONGO_CONNECTION_STRING})
+MONGO_CONNECTION_STRING_USES_AUTH=$(stripQuotes ${MONGO_CONNECTION_STRING_USES_AUTH})
 
-export JETTY_THREADPOOL_MIN_THREADS=$(stripQuotes $JETTY_THREADPOOL_MIN_THREADS)
-export JETTY_THREADPOOL_MAX_THREADS=$(stripQuotes $JETTY_THREADPOOL_MAX_THREADS)
+JETTY_THREADPOOL_MIN_THREADS=$(stripQuotes ${JETTY_THREADPOOL_MIN_THREADS})
+JETTY_THREADPOOL_MAX_THREADS=$(stripQuotes ${JETTY_THREADPOOL_MAX_THREADS})
 
-export LOG_ACCESS_ROOT_APPENDER=$(stripQuotes $LOG_ACCESS_ROOT_APPENDER)
-export LOG_JETTY_ROOT_APPENDER=$(stripQuotes $LOG_JETTY_ROOT_APPENDER)
-export LOG_JETTY_ROOT_LEVEL=$(stripQuotes $LOG_JETTY_ROOT_LEVEL)
-export LOG_JETTY_JANELIA_LEVEL=$(stripQuotes $LOG_JETTY_JANELIA_LEVEL)
+LOG_ACCESS_ROOT_APPENDER=$(stripQuotes ${LOG_ACCESS_ROOT_APPENDER})
+LOG_JETTY_ROOT_APPENDER=$(stripQuotes ${LOG_JETTY_ROOT_APPENDER})
+LOG_JETTY_ROOT_LEVEL=$(stripQuotes ${LOG_JETTY_ROOT_LEVEL})
+LOG_JETTY_JANELIA_LEVEL=$(stripQuotes ${LOG_JETTY_JANELIA_LEVEL})
 
-export NDVIZHOST=$(stripQuotes $NDVIZHOST)
-export NDVIZPORT=$(stripQuotes $NDVIZPORT)
-export NDVIZ_URL=$(stripQuotes $NDVIZ_URL)
+NDVIZHOST=$(stripQuotes ${NDVIZHOST})
+NDVIZPORT=$(stripQuotes ${NDVIZPORT})
+NDVIZ_URL=$(stripQuotes ${NDVIZ_URL})
 
-export VIEW_CATMAID_HOST_AND_PORT=$(stripQuotes $VIEW_CATMAID_HOST_AND_PORT)
-export VIEW_DYNAMIC_RENDER_HOST_AND_PORT=$(stripQuotes $VIEW_DYNAMIC_RENDER_HOST_AND_PORT)
-export VIEW_RENDER_STACK_OWNER=$(stripQuotes $VIEW_RENDER_STACK_OWNER)
-export VIEW_RENDER_STACK_PROJECT=$(stripQuotes $VIEW_RENDER_STACK_PROJECT)
-export VIEW_RENDER_STACK=$(stripQuotes $VIEW_RENDER_STACK)
-export VIEW_MATCH_OWNER=$(stripQuotes $VIEW_MATCH_OWNER)
-export VIEW_MATCH_COLLECTION=$(stripQuotes $VIEW_MATCH_COLLECTION)
+VIEW_CATMAID_HOST_AND_PORT=$(stripQuotes ${VIEW_CATMAID_HOST_AND_PORT})
+VIEW_DYNAMIC_RENDER_HOST_AND_PORT=$(stripQuotes ${VIEW_DYNAMIC_RENDER_HOST_AND_PORT})
+VIEW_RENDER_STACK_OWNER=$(stripQuotes ${VIEW_RENDER_STACK_OWNER})
+VIEW_RENDER_STACK_PROJECT=$(stripQuotes ${VIEW_RENDER_STACK_PROJECT})
+VIEW_RENDER_STACK=$(stripQuotes ${VIEW_RENDER_STACK})
+VIEW_MATCH_OWNER=$(stripQuotes ${VIEW_MATCH_OWNER})
+VIEW_MATCH_COLLECTION=$(stripQuotes ${VIEW_MATCH_COLLECTION})
 
-export WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER=$(stripQuotes $WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER)
-export WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB=$(stripQuotes $WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB)
-
-# this is just here so that IDE doesn't flag it as undefined below (JETTY_BASE is provided by jetty image)
-JETTY_BASE="${JETTY_BASE}"
+WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER=$(stripQuotes ${WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER})
+WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB=$(stripQuotes ${WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB})
 
 # --------------------------------------------------------------
 # Mongo config
@@ -75,7 +72,7 @@ if [ -n "${MONGO_CONNECTION_STRING}" ]; then
   ESCAPED_MONGO_CONNECTION_STRING=$(echo ${MONGO_CONNECTION_STRING} | sed 's/@/\\@/')
   sed -i "s@#connectionString=.*@connectionString=${ESCAPED_MONGO_CONNECTION_STRING}@" ${RENDER_DB_PROPERTIES}
 
-  if [ "${MONGO_CONNECTION_STRING_USES_AUTH}" == "Y" ] || [ "${MONGO_CONNECTION_STRING_USES_AUTH}" == "y" ]; then
+  if [ "${MONGO_CONNECTION_STRING_USES_AUTH}" = "Y" ] || [ "${MONGO_CONNECTION_STRING_USES_AUTH}" = "y" ]; then
     sed -i "s/#authenticationDatabase=/authenticationDatabase=/" ${RENDER_DB_PROPERTIES}
   fi
 fi
@@ -96,7 +93,7 @@ fi
 # --------------------------------------------------------------
 # Logging config
 
-if [ "${LOG_ACCESS_ROOT_APPENDER}" == "NONE" ]; then
+if [ "${LOG_ACCESS_ROOT_APPENDER}" = "NONE" ]; then
 
   # disable access logging in jetty.xml
   sed -i """
@@ -117,7 +114,7 @@ else
 
 fi
 
-if [ "${LOG_JETTY_ROOT_APPENDER}" == "NONE" ]; then
+if [ "${LOG_JETTY_ROOT_APPENDER}" = "NONE" ]; then
   # turn off jetty server logging
   LOG_JETTY_ROOT_LEVEL="OFF"
   LOG_JETTY_JANELIA_LEVEL="OFF"
