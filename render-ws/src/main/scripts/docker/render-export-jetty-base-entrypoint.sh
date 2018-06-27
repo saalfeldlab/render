@@ -5,6 +5,10 @@ set -e
 ABSOLUTE_SCRIPT=`readlink -m $0`
 SCRIPTS_DIR=`dirname ${ABSOLUTE_SCRIPT}`
 
+# configure this container using quote-stripped versions of current environment variables
+. ${SCRIPTS_DIR}/render-env.sh
+${SCRIPTS_DIR}/render-config.sh
+
 ROOT_EXPORT_DIR="/render-export"
 
 if [ ! -d ${ROOT_EXPORT_DIR} ]; then
@@ -31,9 +35,6 @@ ERROR: jetty base export directory ${JETTY_BASE_EXPORT_DIR} already exists
 fi
 
 mkdir -p ${JETTY_BASE_EXPORT_DIR}
-
-# configure this container using quote-stripped versions of current environment variables
-source ${SCRIPTS_DIR}/render-config.sh
 
 echo """
 exporting $(du -sh ${JETTY_BASE} | awk '{ print $1 " in " $2 }') to $(basename ${JETTY_BASE_EXPORT_DIR})

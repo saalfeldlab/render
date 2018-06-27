@@ -1,7 +1,7 @@
 #!/bin/bash
 
 JDK_VERSION="jdk1.8.0_131"
-JETTY_VERSION="9.4.6.v20170531" # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/Dockerfile
+JETTY_VERSION="9.4.9.v20180320" # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/Dockerfile
 JETTY_DIST="jetty-distribution-${JETTY_VERSION}"
 
 # URL for JDK 8

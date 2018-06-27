@@ -222,7 +222,7 @@
 
     <properties>
         <resteasy.version>3.1.4.Final</resteasy.version>
-        <jetty.version>9.4.6.v20170531</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
+        <jetty.version>9.4.9.v20180320</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
     </properties>
 
 </project>

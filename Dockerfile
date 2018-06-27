@@ -49,12 +49,13 @@ RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 package && \
 # Once web service application is built, set up jetty server and deploy application to it.
 
 # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/render-ws/src/main/scripts/install.sh
-FROM jetty:9.4.6-jre8-alpine as render-ws
+FROM jetty:9.4.9-jre8-alpine as render-ws
 
-# add curl and coreutils (for gnu readlink) not included in alpine
-RUN apk add --update curl && \
-    apk add --update coreutils && \
-    rm -rf /var/cache/apk/*
+# add packages not included in alpine:
+#   curl and coreutils for gnu readlink
+#   fontconfig and ttf-dejavu for bounding box renderer ( see https://github.com/docker-library/openjdk/pull/202 )
+USER root
+RUN apk add --no-cache curl coreutils fontconfig ttf-dejavu
 
 WORKDIR $JETTY_BASE
 

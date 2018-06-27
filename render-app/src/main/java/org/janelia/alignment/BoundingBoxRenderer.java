@@ -2,6 +2,8 @@ package org.janelia.alignment;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.Stroke;
@@ -14,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Simple utility to render bounding boxes for tiles.
+ * If there is enough area to display them, tile identifiers are also rendered inside each box.
  *
  * @author Eric Trautman
  */
@@ -65,10 +68,52 @@ public class BoundingBoxRenderer {
             targetGraphics.clearRect(0, 0, targetImage.getWidth(), targetImage.getHeight());
         }
 
+        final int maxCharactersPerLine = 12;
+
+        int lineWidth = 0;
+        int lineHeight = 0;
+        int minBoxWidthForTileIdRendering = 0;
+        if (tileSpecs.size() > 0) {
+            targetGraphics.setFont(TILE_ID_FONT);
+            final FontMetrics metrics = targetGraphics.getFontMetrics();
+            lineWidth = metrics.stringWidth("A") * maxCharactersPerLine;
+            lineHeight = metrics.getHeight();
+
+            // add margin that should be good enough for 'typical' overlap
+            minBoxWidthForTileIdRendering = (int) (lineWidth * 1.3) + 1;
+        }
+
         Rectangle box;
+        String tileId;
+        int x;
+        int y;
+        int start;
         for (final TileSpec tileSpec : tileSpecs) {
+
             box = getScaledBox(tileSpec);
             targetGraphics.draw(box);
+
+            if (box.width > minBoxWidthForTileIdRendering) {
+
+                tileId = tileSpec.getTileId();
+
+                if (tileId != null) {
+                    x = box.x + ((box.width - lineWidth) / 2); // center tileId horizontally
+                    y = box.y + (box.height / 4);              // shift tileId down from top to avoid 'typical' overlap
+
+                    start = 0;
+                    for (int stop = maxCharactersPerLine; stop < tileId.length(); stop += maxCharactersPerLine) {
+                        targetGraphics.drawString(tileId.substring(start, stop), x, y);
+                        y = y + lineHeight;
+                        start = stop;
+                    }
+                    if (start < tileId.length()) {
+                        targetGraphics.drawString(tileId.substring(start), x, y);
+                    }
+                }
+
+            }
+
         }
 
         targetGraphics.dispose();
@@ -85,4 +130,6 @@ public class BoundingBoxRenderer {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(BoundingBoxRenderer.class);
+
+    private static final Font TILE_ID_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
 }
