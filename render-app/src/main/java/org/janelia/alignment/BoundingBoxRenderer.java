@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
  */
 public class BoundingBoxRenderer {
 
-    private final List<TileSpec> tileSpecs;
+    private final RenderParameters renderParameters;
     private final double xOffset;
     private final double yOffset;
     private final double scale;
@@ -39,7 +39,7 @@ public class BoundingBoxRenderer {
                                final Color foregroundColor,
                                final float lineWidth) {
 
-        this.tileSpecs = renderParameters.getTileSpecs();
+        this.renderParameters = renderParameters;
         this.xOffset = renderParameters.getX();
         this.yOffset = renderParameters.getY();
         this.scale = renderParameters.getScale();
@@ -68,6 +68,7 @@ public class BoundingBoxRenderer {
             targetGraphics.clearRect(0, 0, targetImage.getWidth(), targetImage.getHeight());
         }
 
+        final List<TileSpec> tileSpecs = renderParameters.getTileSpecs();
         final int maxCharactersPerLine = 12;
 
         int lineWidth = 0;
@@ -114,6 +115,13 @@ public class BoundingBoxRenderer {
 
             }
 
+        }
+
+        if (renderParameters.isAddWarpFieldDebugOverlay()) {
+            WarpFieldDebugRenderer.render(renderParameters,
+                                          targetGraphics,
+                                          targetImage.getWidth(),
+                                          targetImage.getHeight());
         }
 
         targetGraphics.dispose();

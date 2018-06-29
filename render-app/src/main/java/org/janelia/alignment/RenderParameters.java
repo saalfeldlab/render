@@ -127,6 +127,9 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--do_filter", description = "ad hoc filters to support alignment", required = false)
     private boolean doFilter;
 
+    @Parameter(names = "--addWarpFieldDebugOverlay", description = "render warp field debug overlay", required = false)
+    public boolean addWarpFieldDebugOverlay;
+
     @Parameter(names = "--background_color", description = "RGB int color for background (default is 0: black)", required = false)
     private Integer backgroundRGBColor;
 
@@ -204,6 +207,7 @@ public class RenderParameters implements Serializable {
         this.backgroundRGBColor = null;
         this.channels = null;
         this.parametersUrl = null;
+        this.addWarpFieldDebugOverlay = false;
 
         this.tileSpecs = new ArrayList<>();
         this.mipmapPathBuilder = null;
@@ -565,6 +569,14 @@ public class RenderParameters implements Serializable {
 
     public void setDoFilter(final Boolean filter) {
         doFilter = (filter != null) && filter;
+    }
+
+    public boolean isAddWarpFieldDebugOverlay() {
+        return addWarpFieldDebugOverlay;
+    }
+
+    public void setAddWarpFieldDebugOverlay(final boolean addWarpFieldDebugOverlay) {
+        this.addWarpFieldDebugOverlay = addWarpFieldDebugOverlay;
     }
 
     public Integer getBackgroundRGBColor() {
@@ -930,6 +942,7 @@ public class RenderParameters implements Serializable {
             excludeMask = mergedValue(excludeMask, baseParameters.excludeMask, false);
             quality = mergedValue(quality, baseParameters.quality, DEFAULT_QUALITY);
             doFilter = mergedValue(doFilter, baseParameters.doFilter, false);
+            addWarpFieldDebugOverlay = mergedValue(addWarpFieldDebugOverlay, baseParameters.addWarpFieldDebugOverlay, false);
             backgroundRGBColor = mergedValue(backgroundRGBColor, baseParameters.backgroundRGBColor);
             channels = mergedValue(channels, baseParameters.channels);
             mipmapPathBuilder = mergedValue(mipmapPathBuilder, baseParameters.mipmapPathBuilder);

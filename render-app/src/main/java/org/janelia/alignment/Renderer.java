@@ -210,6 +210,13 @@ public class Renderer {
             final BufferedImage image = converter.convertProcessorWithMasksToImage(renderParameters, worldTarget);
             targetGraphics.drawImage(image, 0, 0, null);
 
+            if (renderParameters.isAddWarpFieldDebugOverlay()) {
+                WarpFieldDebugRenderer.render(renderParameters,
+                                              targetGraphics,
+                                              targetImage.getWidth(),
+                                              targetImage.getHeight());
+            }
+
             targetGraphics.dispose();
 
         }

@@ -1,5 +1,10 @@
 package org.janelia.alignment.transform;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.Point;
 import mpicbg.trakem2.transform.CoordinateTransform;
 
 import net.imglib2.RandomAccessible;
@@ -172,6 +177,60 @@ public class AffineWarpFieldTransform
     public CoordinateTransform copy() {
         return new AffineWarpFieldTransform(locationOffsets.clone(),
                                             affineWarpField.getCopy());
+    }
+
+    /**
+     * @return the warp field for this transform.
+     */
+    public AffineWarpField getAffineWarpField() {
+        return affineWarpField;
+    }
+
+    /**
+     * @return the (potentially interpolated) affine transform for the specified location.
+     */
+    public AffineModel2D getAffine(final double[] location) {
+
+        final double[] warpFieldLocation = { location[0] - locationOffsets[0], location[1] - locationOffsets[1] };
+
+        warpFieldAccessor.setPosition(warpFieldLocation);
+        final RealComposite<DoubleType> coefficients = warpFieldAccessor.get();
+
+        final AffineModel2D model = new AffineModel2D();
+        model.set(coefficients.get(0).getRealDouble(), coefficients.get(1).getRealDouble(),
+                  coefficients.get(2).getRealDouble(), coefficients.get(3).getRealDouble(),
+                  coefficients.get(4).getRealDouble(), coefficients.get(5).getRealDouble());
+
+        return model;
+    }
+
+    /**
+     * @return list of transformation results for each source location in this warp field's grid.
+     *         For each grid point, local coordinates are the grid source locations and
+     *         world coordinates are the corresponding transformed result.
+     */
+    public List<Point> getGridPoints() {
+
+        final List<Point> gridPoints = new ArrayList<>();
+
+        final double pixelsPerRow = affineWarpField.getYScale();
+        final double pixelsPerHalfRow = pixelsPerRow / 2.0;
+        final double pixelsPerColumn = affineWarpField.getXScale();
+        final double pixelsPerHalfColumn = pixelsPerColumn / 2.0;
+
+        double x;
+        double y;
+        for (int row = 0; row < affineWarpField.getRowCount(); row+=1) {
+            y = locationOffsets[1] + (row * pixelsPerRow) + pixelsPerHalfRow;
+            for (int column = 0; column < affineWarpField.getColumnCount(); column+=1) {
+                x = locationOffsets[0] + (column * pixelsPerColumn) + pixelsPerHalfColumn;
+                final double[] local = new double[] {x, y};
+                final double[] world = apply(local);
+                gridPoints.add(new Point(local, world));
+            }
+        }
+
+        return gridPoints;
     }
 
     /**
