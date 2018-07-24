@@ -179,6 +179,12 @@ public class AffineWarpFieldTransform
                                             affineWarpField.getCopy());
     }
 
+    @Override
+    public String toString() {
+        return "{ \"affineWarpField\": " + affineWarpField +
+               ", \"locationOffsets\": [" + locationOffsets[0] + ", " + locationOffsets[1] + "] }";
+    }
+
     /**
      * @return the warp field for this transform.
      */

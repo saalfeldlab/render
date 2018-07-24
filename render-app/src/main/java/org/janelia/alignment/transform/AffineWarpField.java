@@ -145,6 +145,15 @@ public class AffineWarpField
         return interpolatorFactory;
     }
 
+    @Override
+    public String toString() {
+        return "{ \"columnCount\": " + columnCount +
+               ", \"rowCount\": " + rowCount +
+               ", \"width\": " + width +
+               ", \"height\": " + height +
+               '}';
+    }
+
     /**
      * @return the scale factor to stretch the field's affine values across it's pixel width.
      */
