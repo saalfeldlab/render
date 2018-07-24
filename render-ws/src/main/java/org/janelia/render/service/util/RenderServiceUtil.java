@@ -131,8 +131,19 @@ return renderTiffImage(renderParameters, maxTileSpecsToRender, responseHelper, f
                 maxTilesToRender = RenderServerProperties.getProperties().getInteger("webService.maxTileSpecsToRender");
             }
 
-            final boolean renderBoundingBoxesOnly = (maxTilesToRender != null) &&
-                                                    (renderParameters.numberOfTileSpecs() > maxTilesToRender);
+            boolean renderBoundingBoxesOnly = (maxTilesToRender != null) &&
+                                              (renderParameters.numberOfTileSpecs() > maxTilesToRender);
+
+            // TODO: replace this hack with a proper debugWarpField parameter
+            if ((maxTileSpecsToRender != null) && (maxTileSpecsToRender < 0)) {
+                final Integer defaultMaxTileSpecsToRender =
+                        RenderServerProperties.getProperties().getInteger("webService.maxTileSpecsToRender");
+                renderBoundingBoxesOnly = (defaultMaxTileSpecsToRender != null) &&
+                                          (renderParameters.numberOfTileSpecs() > defaultMaxTileSpecsToRender);
+                if (renderParameters.numberOfTileSpecs() < 40) {
+                    renderParameters.setAddWarpFieldDebugOverlay(true);
+                }
+            }
 
             final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters,
                                                                                renderBoundingBoxesOnly,
