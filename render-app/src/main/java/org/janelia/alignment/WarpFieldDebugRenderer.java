@@ -131,28 +131,30 @@ public class WarpFieldDebugRenderer {
         int index = 0;
         for (final Point gridPoint : gridPoints) {
 
+            // map color for all warp field affine values (even if they are "out of view")
+            // so that colors are consistent when viewed through composition client (e.g. CATMAID)
+            final String affineKey = getAffineKey(warpFieldTransform.getAffine(gridPoint.getL()));
+
+            affineColor = affineKeyToColorMap.get(affineKey);
+
+            if (affineColor == null) {
+
+                affineColor = colorStream.getNextColor();
+                affineKeyToColorMap.put(affineKey, affineColor);
+
+                if (LOG.isDebugEnabled()) {
+                    final int row = index / warpField.getColumnCount();
+                    final int column = index % warpField.getColumnCount();
+                    LOG.debug("drawWarpVectors: new affine found in row {} column {}, key is {}, color is {}",
+                              row, column, affineKey, affineColor);
+                }
+            }
+
             final double[] source = scaleAndOffsetTransform.apply(gridPoint.getL());
 
             if ((source[0] >= 0) && (source[1] >= 0) && (source[0] < targetWidth) && (source[1] < targetHeight)) {
 
                 final double[] target = scaleAndOffsetTransform.apply(gridPoint.getW());
-
-                final String affineKey = getAffineKey(warpFieldTransform.getAffine(gridPoint.getL()));
-
-                affineColor = affineKeyToColorMap.get(affineKey);
-
-                if (affineColor == null) {
-
-                    affineColor = colorStream.getNextColor();
-                    affineKeyToColorMap.put(affineKey, affineColor);
-
-                    if (LOG.isDebugEnabled()) {
-                        final int row = index / warpField.getColumnCount();
-                        final int column = index % warpField.getColumnCount();
-                        LOG.debug("drawWarpVectors: new affine found in row {} column {}, key is {}, color is {}",
-                                  row, column, affineKey, affineColor);
-                    }
-                }
 
                 targetGraphics.setColor(affineColor);
 
