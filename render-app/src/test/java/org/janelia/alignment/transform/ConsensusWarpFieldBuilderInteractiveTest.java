@@ -240,6 +240,7 @@ public class ConsensusWarpFieldBuilderInteractiveTest {
         box4And7Tiles.forEach(renderParameters::addTileSpec);
 
         final BufferedImage targetImage = renderParameters.openTargetImage();
+        renderParameters.setAddWarpFieldDebugOverlay(true);
         ArgbRenderer.render(renderParameters, targetImage, ImageProcessorCache.DISABLED_CACHE);
         final ImagePlus ipWarpedBox4And7 = new ImagePlus("", targetImage);
         final FileSaver fileSaver = new FileSaver(ipWarpedBox4And7);
