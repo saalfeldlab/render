@@ -112,6 +112,11 @@ public class WarpFieldDebugRenderer {
                                         final int targetHeight) {
 
 
+        final AffineWarpField warpField = warpFieldTransform.getAffineWarpField();
+
+        LOG.info("drawWarpVectors: entry, warpFieldTransform={},  scaleAndOffsetTransform={}",
+                 warpFieldTransform, scaleAndOffsetTransform);
+
         targetGraphics.setStroke(new BasicStroke(2));
 
         final int targetBoxSize = 8;
@@ -121,8 +126,6 @@ public class WarpFieldDebugRenderer {
 
         final Map<String, Color> affineKeyToColorMap = new HashMap<>();
         final DistinctColorStream colorStream = new DistinctColorStream();
-
-        final AffineWarpField warpField = warpFieldTransform.getAffineWarpField();
 
         Color affineColor;
         int index = 0;
@@ -163,6 +166,7 @@ public class WarpFieldDebugRenderer {
             index++;
         }
 
+        LOG.info("drawWarpVectors: exit");
     }
 
     /**
