@@ -49,8 +49,8 @@ public class HierarchicalStackTest {
         final Bounds fullScaleBounds = new Bounds(22.0, 33.0, 1.0, 44.0, 55.0, 9.0);
 
         final StackId roughTilesStackId = new StackId("testOwner", "tilesProject", "roughTiles");
-        final StackId parentTierStackId = new StackId("testOwner", "tilesProject", "roughTiles_tier_1_warp_v" + HierarchicalStack.getFullScaleRelativeModelDerivationVersion());
-        final StackId warpTilesStackId = new StackId("testOwner", "tilesProject", "roughTiles_tier_2_warp_v" + HierarchicalStack.getFullScaleRelativeModelDerivationVersion());
+        final StackId parentTierStackId = new StackId("testOwner", "tilesProject", "roughTiles_tier_1_warp");
+        final StackId warpTilesStackId = new StackId("testOwner", "tilesProject", "roughTiles_tier_2_warp");
         final StackId splitStackId = new StackId("testOwner", "tilesProject_roughTiles_tier_2", "0003x0004_000005");
 
         final HierarchicalStack tier2Stack =
@@ -95,6 +95,34 @@ public class HierarchicalStackTest {
     @Test
     public void testGetFullScaleRelativeModel() throws Exception {
 
+        // http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_01_AGGREGATED_CONSENSUS_SETS_tier_1/stack/0003x0003_000002/hierarchicalData
+        final double splitStackScale = 0.27445725006700616;
+        final Bounds fullScaleBounds = new Bounds(44263.0, 38528.0, 2213.0, 47994.0, 42182.0, 2215.0);
+
+        // http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_01_AGGREGATED_CONSENSUS_SETS_tier_1/stack/0003x0003_000002_align/z/2213/resolvedTiles
+        final AffineModel2D model = getModel(0.993066409663, 0.014806698843,
+                                             -0.011630185859, 0.999452281992,
+                                             12145.447082412213, 10614.308863353232);
+
+        final double[] expectedArray = new double[6];
+        model.toArray(expectedArray);
+        expectedArray[4] = 744.5899587683962;
+        expectedArray[5] = -488.4716178320232;
+
+        final AffineModel2D relativeModel = HierarchicalStack.getFullScaleRelativeModel(model,
+                                                                                        splitStackScale,
+                                                                                        fullScaleBounds);
+        final double[] array = new double[6];
+        relativeModel.toArray(array);
+
+        for (int i = 0; i < expectedArray.length; i++) {
+            Assert.assertEquals("invalid value for index " + i, expectedArray[i], array[i], 0.0001);
+        }
+    }
+
+    // TODO: remove derivation version debug hacks
+    @Test
+    public void testGetFullScaleRelativeModelDebug() throws Exception {
         // http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_06_AGGREGATED_CONSENSUS_SETS_tier_1/stack/0003x0003_000002/hierarchicalData
         final double splitStackScale = 0.27445725006700616;
         final Bounds fullScaleBounds = new Bounds(44263.0, 38528.0, 2213.0, 47994.0, 42182.0, 2215.0);
@@ -105,13 +133,13 @@ public class HierarchicalStackTest {
         // http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_06_AGGREGATED_CONSENSUS_SETS_tier_1/stack/0003x0003_000002_align/z/2214/resolvedTiles
         final AffineModel2D align2214 = getModel(1.003462201208, -0.023144573264, 0.020596110524, 0.987326006271, -495.611207120813, -579.114722395200);
 
-        final AffineModel2D relative2213 = HierarchicalStack.getFullScaleRelativeModel(align2213,
-                                                                                       splitStackScale,
-                                                                                       fullScaleBounds);
+        final AffineModel2D relative2213 = HierarchicalStack.getFullScaleRelativeModelDebug(align2213,
+                                                                                            splitStackScale,
+                                                                                            fullScaleBounds);
 
-        final AffineModel2D relative2214 = HierarchicalStack.getFullScaleRelativeModel(align2214,
-                                                                                       splitStackScale,
-                                                                                       fullScaleBounds);
+        final AffineModel2D relative2214 = HierarchicalStack.getFullScaleRelativeModelDebug(align2214,
+                                                                                            splitStackScale,
+                                                                                            fullScaleBounds);
 
         final double[] expectedArray = new double[6];
         align2213.toArray(expectedArray);
@@ -142,7 +170,7 @@ public class HierarchicalStackTest {
     public void testSplitTier() throws Exception {
 
         final StackId roughTilesStackId = new StackId("testOwner", "tilesProject", "roughTiles");
-        final StackId warpTilesStackId = new StackId("testOwner", "tilesProject", "roughTiles_tier_1_warp_v" + HierarchicalStack.getFullScaleRelativeModelDerivationVersion());
+        final StackId warpTilesStackId = new StackId("testOwner", "tilesProject", "roughTiles_tier_1_warp");
         final Bounds parentStackBounds = new Bounds(54954.0, 58314.0, 1.0, 69539.0, 76856.0, 3.0);
         final int maxPixesPerDimension = 4096;
         final Integer tier = 1;

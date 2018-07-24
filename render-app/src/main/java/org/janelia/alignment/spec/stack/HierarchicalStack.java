@@ -380,6 +380,35 @@ public class HierarchicalStack implements Serializable {
                                                           final double alignedStackScale,
                                                           final Bounds fullScaleStackBounds) {
 
+        final double invertedScale = 1.0 / alignedStackScale;
+        final AffineModel2D invertedScaleModel = new AffineModel2D();
+        invertedScaleModel.set(invertedScale, 0.0, 0.0, invertedScale, 0.0, 0.0);
+
+        final AffineModel2D scaleModel = new AffineModel2D();
+        scaleModel.set(alignedStackScale, 0.0, 0.0, alignedStackScale, 0.0, 0.0);
+
+        final TranslationModel2D offsetModel = new TranslationModel2D();
+        offsetModel.set(-fullScaleStackBounds.getMinX(), -fullScaleStackBounds.getMinY());
+
+//        final double centerX = fullScaleStackBounds.getMinX() - (fullScaleStackBounds.getDeltaX() / 2.0);
+//        final double centerY = fullScaleStackBounds.getMinY() - (fullScaleStackBounds.getDeltaY() / 2.0);
+//        offsetModel.set(-centerX, -centerY);
+
+        final AffineModel2D fullScaleRelativeModel = new AffineModel2D();
+        fullScaleRelativeModel.concatenate(invertedScaleModel);
+        fullScaleRelativeModel.concatenate(alignedLayerTransformModel);
+        fullScaleRelativeModel.concatenate(scaleModel);
+        fullScaleRelativeModel.concatenate(offsetModel);
+
+        return fullScaleRelativeModel;
+    }
+
+    // TODO: remove derivation version debug hacks
+    @JsonIgnore
+    public static AffineModel2D getFullScaleRelativeModelDebug(final AffineModel2D alignedLayerTransformModel,
+                                                               final double alignedStackScale,
+                                                               final Bounds fullScaleStackBounds) {
+
         final AffineModel2D alignmentScaleModel = new AffineModel2D();
         alignmentScaleModel.set(alignedStackScale, 0.0, 0.0, alignedStackScale, 0.0, 0.0);
 
@@ -504,7 +533,11 @@ public class HierarchicalStack implements Serializable {
 
     public static StackId deriveWarpStackIdForTier(final StackId roughTilesStackId,
                                                    final int tier) {
-        final String warpStack = roughTilesStackId.getStack() + "_tier_" + tier + "_warp_v" + getFullScaleRelativeModelDerivationVersion();
+        final String warpStack = roughTilesStackId.getStack() + "_tier_" + tier + "_warp";
+
+        // TODO: remove derivation version debug hacks
+        // final String warpStack = roughTilesStackId.getStack() + "_tier_" + tier + "_warp_v" + getFullScaleRelativeModelDerivationVersion();
+
         return new StackId(roughTilesStackId.getOwner(),
                            roughTilesStackId.getProject(),
                            warpStack);
