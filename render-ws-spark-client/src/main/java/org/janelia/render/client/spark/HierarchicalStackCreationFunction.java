@@ -124,17 +124,20 @@ public class HierarchicalStackCreationFunction
 
             final double scale = splitStack.getScale();
             final Bounds splitStackFullScaleBounds = splitStack.getFullScaleBounds();
-            final double fullScaleWidthDiv2 = splitStackFullScaleBounds.getDeltaX() / 2.0;
-            final double fullScaleHeightDiv2 = splitStackFullScaleBounds.getDeltaY() / 2.0;
-            final double scaledCenteredOnOriginX = scale * -fullScaleWidthDiv2;
-            final double scaledCenteredOnOriginY = scale * -fullScaleHeightDiv2;
+            final double scaledMinX = scale * splitStackFullScaleBounds.getMinX();
+            final double scaledMinY = scale * splitStackFullScaleBounds.getMinY();
+
+//            final double fullScaleWidthDiv2 = splitStackFullScaleBounds.getDeltaX() / 2.0;
+//            final double fullScaleHeightDiv2 = splitStackFullScaleBounds.getDeltaY() / 2.0;
+//            final double scaledCenteredOnOriginX = scale * -fullScaleWidthDiv2;
+//            final double scaledCenteredOnOriginY = scale * -fullScaleHeightDiv2;
 
             final List<TransformSpec> regularTransform =
                     Collections.singletonList(
                             new LeafTransformSpec(null,
                                                   transformSpecMetaData,
                                                   AffineModel2D.class.getName(),
-                                                  "1 0 0 1 " + scaledCenteredOnOriginX + " " + scaledCenteredOnOriginY));
+                                                  "1 0 0 1 " + scaledMinX + " " + scaledMinY));
 
             final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection();
             TileSpec tileSpec;
@@ -145,7 +148,7 @@ public class HierarchicalStackCreationFunction
                 tileSpec = new TileSpec();
 
                 tileSpec.setTileId(splitStack.getTileIdForZ(z));
-                tileSpec.setLayout(new LayoutData(String.valueOf(z), "n/a", "n/a", 0, 0, scaledCenteredOnOriginX, scaledCenteredOnOriginY, 0.0));
+                tileSpec.setLayout(new LayoutData(String.valueOf(z), "n/a", "n/a", 0, 0, scaledMinX, scaledMinY, 0.0));
                 tileSpec.setZ(z);
 
                 channelSpec = new ChannelSpec(channel,
