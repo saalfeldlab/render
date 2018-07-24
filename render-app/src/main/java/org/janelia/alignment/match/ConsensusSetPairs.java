@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Utility to organize and consolidate match pair data from consensus sets.
@@ -78,6 +79,14 @@ public class ConsensusSetPairs {
             if (! pGroupIds.contains(qGroupId)) {
                 this.consistentGroupIds.add(qGroupId);
             }
+        }
+
+        // TODO: need to handle cases with only 2 layers (how do you know which is "bad"?)
+        if ((this.splitGroupIds.size() == 0) && (this.consistentGroupIds.size() == 2)) {
+            // hack assumes last id is bad
+            final List<String> sortedGroupIds = this.consistentGroupIds.stream().sorted().collect(Collectors.toList());
+            this.consistentGroupIds.remove(sortedGroupIds.get(1));
+            this.splitGroupIds.add(sortedGroupIds.get(1));
         }
 
         // TODO: need to handle cases when first or last layer of entire stack is split (fold is in the very first or last layer)
