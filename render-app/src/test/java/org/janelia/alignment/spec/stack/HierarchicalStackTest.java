@@ -120,52 +120,6 @@ public class HierarchicalStackTest {
         }
     }
 
-    // TODO: remove derivation version debug hacks
-    @Test
-    public void testGetFullScaleRelativeModelDebug() throws Exception {
-        // http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_06_AGGREGATED_CONSENSUS_SETS_tier_1/stack/0003x0003_000002/hierarchicalData
-        final double splitStackScale = 0.27445725006700616;
-        final Bounds fullScaleBounds = new Bounds(44263.0, 38528.0, 2213.0, 47994.0, 42182.0, 2215.0);
-
-        // http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_06_AGGREGATED_CONSENSUS_SETS_tier_1/stack/0003x0003_000002_align/z/2213/resolvedTiles
-        final AffineModel2D align2213 = getModel(0.993273273471, 0.014838623570, -0.011956136428, 0.999245350615, -514.723796316441, -461.294244130511);
-
-        // http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold_rough_tiles_06_AGGREGATED_CONSENSUS_SETS_tier_1/stack/0003x0003_000002_align/z/2214/resolvedTiles
-        final AffineModel2D align2214 = getModel(1.003462201208, -0.023144573264, 0.020596110524, 0.987326006271, -495.611207120813, -579.114722395200);
-
-        final AffineModel2D relative2213 = HierarchicalStack.getFullScaleRelativeModelDebug(align2213,
-                                                                                            splitStackScale,
-                                                                                            fullScaleBounds);
-
-        final AffineModel2D relative2214 = HierarchicalStack.getFullScaleRelativeModelDebug(align2214,
-                                                                                            splitStackScale,
-                                                                                            fullScaleBounds);
-
-        final double[] expectedArray = new double[6];
-        align2213.toArray(expectedArray);
-        expectedArray[4] = 748.4668198145446;
-        expectedArray[5] = -481.4776690921208;
-
-        final double[] array = new double[6];
-        relative2213.toArray(array);
-
-        for (int i = 0; i < expectedArray.length; i++) {
-            Assert.assertEquals("invalid value for index " + i, expectedArray[i], array[i], 0.0001);
-        }
-
-        // http://renderer.int.janelia.org:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold/stack/rough_tiles_06_AGGREGATED_CONSENSUS_SETS/z/2213/box/46140,39900,150,120,1.0/jpeg-image
-        final double[] rough2213 = { 46140.0, 39900.0 };
-
-        // http://renderer.int.janelia.org:8080/render-ws/v1/owner/flyTEM/project/trautmane_fafb_fold/stack/rough_tiles_06_AGGREGATED_CONSENSUS_SETS/z/2214/box/45990,40425,150,120,1.0/jpeg-image
-        final double[] rough2214 = { 45990.0, 40425.0 };
-
-        final double[] relativelyTransformed2213 = relative2213.apply(rough2213);
-        final double[] relativelyTransformed2214 = relative2214.apply(rough2214);
-
-        Assert.assertEquals("invalid transformed X", relativelyTransformed2213[0], relativelyTransformed2214[0], 10.0);
-        Assert.assertEquals("invalid transformed Y", relativelyTransformed2213[1], relativelyTransformed2214[1], 10.0);
-    }
-
     @Test
     public void testSplitTier() throws Exception {
 
