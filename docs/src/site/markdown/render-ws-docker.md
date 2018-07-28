@@ -129,19 +129,19 @@ VIEW_MATCH_COLLECTION=
 
 The following entrypoints are provided:
 * /render-docker/[render-run-jetty-entrypoint.sh](../../../../render-ws/src/main/scripts/docker/render-run-jetty-entrypoint.sh) (default)
-* /render-docker/[render-export-jetty-base-entrypoint.sh](../../../../render-ws/src/main/scripts/docker/render-export-jetty-base-entrypoint.sh)
+* /render-docker/[render-export-jetty-entrypoint.sh](../../../../render-ws/src/main/scripts/docker/render-export-jetty-entrypoint.sh)
 
 ### Exporting JETTY_BASE for External Use
 
 If you'd like to run the render-ws application on an external jetty server (outside of Docker), you can use 
-/render-docker/[render-export-jetty-base-entrypoint.sh](../../../../render-ws/src/main/scripts/docker/render-export-jetty-base-entrypoint.sh)
+/render-docker/[render-export-jetty-entrypoint.sh](../../../../render-ws/src/main/scripts/docker/render-export-jetty-entrypoint.sh)
 to configure a container within Docker and then export the configured JETTY_BASE to a mounted volume for external use.
   
 ```bash
 # export files to <working-directory>/jetty_base_<run-time> (change or drop --env-file as needed)
 docker run -it --mount type=bind,source="$(pwd)",target=/render-export \
                --env-file ./env.janelia.prod \
-               --entrypoint /render-docker/render-export-jetty-base-entrypoint.sh \
+               --entrypoint /render-docker/render-export-jetty-entrypoint.sh \
                --rm \
                render-ws:latest
 ```
