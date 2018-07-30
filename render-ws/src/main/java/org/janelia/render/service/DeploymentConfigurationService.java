@@ -111,7 +111,8 @@ public class DeploymentConfigurationService {
         Response response = null;
         try {
             final ImageProcessorCache sharedCache = SharedImageProcessorCache.getInstance();
-            LOG.info("invalidateImageProcessorCache: entry, current shared cache stats are: {}", sharedCache.getStats());
+            LOG.info("invalidateImageProcessorCache: entry, invalidating {} elements, current stats are: {}",
+                     sharedCache.size(), sharedCache.getStats());
             sharedCache.invalidateAll();
 
             response = Response.ok().build();
