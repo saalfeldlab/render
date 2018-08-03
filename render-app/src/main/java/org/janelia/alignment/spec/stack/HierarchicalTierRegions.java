@@ -29,18 +29,19 @@ public class HierarchicalTierRegions {
      * Identifies prior tier regions with sufficient alignment quality.
      *
      * @param  priorTierWarpStackBounds     bounds of the prior tier warp stack.
-     * @param  priorTierStacks              list of prior tier stacks.
-     * @param  maxPixelsPerDimension        the number of pixels in the largest dimension for the prior tier stacks.
+     * @param  priorTierStacks              list of incomplete prior tier stacks.
+     * @param  priorTierDimensions          dimensions for the prior tier.
      * @param  maxCompleteAlignmentQuality  tier stacks with quality values less than this maximum do not
      *                                      need to be aligned in subsequent tiers.
      */
     public HierarchicalTierRegions(final Bounds priorTierWarpStackBounds,
                                    final List<HierarchicalStack> priorTierStacks,
-                                   final int maxPixelsPerDimension,
+                                   final TierDimensions priorTierDimensions,
                                    final double maxCompleteAlignmentQuality) {
         this.priorTierWarpStackBounds = priorTierWarpStackBounds;
         this.tierRegions = new TileBoundsRTree(ZERO_Z, new ArrayList<>(priorTierStacks.size()));
-        addPriorTierRegions(priorTierStacks, maxPixelsPerDimension, maxCompleteAlignmentQuality);
+
+        addPriorTierRegions(priorTierStacks, priorTierDimensions, maxCompleteAlignmentQuality);
     }
 
     /**
@@ -77,7 +78,7 @@ public class HierarchicalTierRegions {
     }
 
     private void addPriorTierRegions(final List<HierarchicalStack> existingPriorTierStacks,
-                                     final int maxPixelsPerDimension,
+                                     final TierDimensions priorTierDimensions,
                                      final double maxCompleteAlignmentQuality) {
 
         if (existingPriorTierStacks.size() > 0) {
@@ -86,10 +87,8 @@ public class HierarchicalTierRegions {
             final Integer priorTier = firstStack.getTier();
 
             final List<HierarchicalStack> allPriorTierStacks =
-                    HierarchicalStack.splitTier(firstStack.getRoughTilesStackId(),
-                                                priorTierWarpStackBounds,
-                                                maxPixelsPerDimension,
-                                                priorTier);
+                    priorTierDimensions.getSplitStacks(firstStack.getRoughTilesStackId(),
+                                                       priorTier);
 
             final Map<String, HierarchicalStack> existingNameToStackMap = new HashMap<>();
             for (final HierarchicalStack splitStack : existingPriorTierStacks) {

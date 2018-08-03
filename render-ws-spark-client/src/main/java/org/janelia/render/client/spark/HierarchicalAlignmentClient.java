@@ -35,6 +35,7 @@ import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.HierarchicalTierRegions;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.TierDimensions;
 import org.janelia.alignment.transform.ConsensusWarpFieldBuilder;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.ClientRunner;
@@ -176,6 +177,12 @@ public class HierarchicalAlignmentClient
                 required = false)
         public ConsensusWarpFieldBuilder.BuildMethod consensusBuildMethod = ConsensusWarpFieldBuilder.BuildMethod.SIMPLE;
 
+        @Parameter(
+                names = "--splitMethod",
+                description = "Method used to divide each tier",
+                required = false)
+        public TierDimensions.LayerSplitMethod splitMethod = TierDimensions.LayerSplitMethod.PRIME;
+
         public String getBoxBaseDataUrl() {
             return boxBaseDataUrl == null ? renderWeb.baseDataUrl : boxBaseDataUrl;
         }
@@ -217,6 +224,7 @@ public class HierarchicalAlignmentClient
     private String tierProject;
     private StackId tierParentStackId;
     private List<HierarchicalStack> tierStacks;
+    private TierDimensions tierDimensions;
     private HierarchicalTierRegions priorTierRegions;
     private RenderDataClient driverTierRender;
 
@@ -235,6 +243,7 @@ public class HierarchicalAlignmentClient
         this.zValues = new ArrayList<>();
 
         this.tierStacks = new ArrayList<>();
+        this.tierDimensions = null;
         this.priorTierRegions = null;
     }
 
@@ -242,19 +251,21 @@ public class HierarchicalAlignmentClient
 
         this.zValues.addAll(driverRoughRender.getStackZValues(parameters.stack));
 
+        final StackMetaData roughStackMetaData = driverRoughRender.getStackMetaData(roughTilesStackId.getStack());
+
         if ((parameters.firstTier > 1) && (parameters.maxCompleteAlignmentQuality != null)) {
 
             final int priorTier = parameters.firstTier - 1;
             final StackId parentTilesStackId = HierarchicalStack.deriveParentTierStackId(roughTilesStackId, priorTier);
             final StackMetaData parentStackMetaData = driverRoughRender.getStackMetaData(parentTilesStackId.getStack());
 
-            setupForTier(priorTier, parentStackMetaData);
+            setupForTier(priorTier, roughStackMetaData, parentStackMetaData);
             updateExistingDerivedData();
 
             this.priorTierRegions =
                     new HierarchicalTierRegions(parentStackMetaData.getStats().getStackBounds(),
                                                 tierStacks,
-                                                parameters.maxPixelsPerDimension,
+                                                tierDimensions,
                                                 parameters.maxCompleteAlignmentQuality);
         }
 
@@ -263,7 +274,7 @@ public class HierarchicalAlignmentClient
             final StackId parentTilesStackId = HierarchicalStack.deriveParentTierStackId(roughTilesStackId, tier);
             final StackMetaData parentStackMetaData = driverRoughRender.getStackMetaData(parentTilesStackId.getStack());
 
-            setupForTier(tier, parentStackMetaData);
+            setupForTier(tier, roughStackMetaData, parentStackMetaData);
             createStacksForTier(parentStackMetaData);
             generateMatchesForTier();
             alignTier();
@@ -277,7 +288,7 @@ public class HierarchicalAlignmentClient
                 this.priorTierRegions =
                         new HierarchicalTierRegions(parentStackMetaData.getStats().getStackBounds(),
                                                     tierStacks,
-                                                    parameters.maxPixelsPerDimension,
+                                                    tierDimensions,
                                                     parameters.maxCompleteAlignmentQuality);
             }
 
@@ -287,6 +298,7 @@ public class HierarchicalAlignmentClient
     }
 
     private void setupForTier(final int tier,
+                              final StackMetaData roughStackMetaData,
                               final StackMetaData parentStackMetaData)
             throws IOException {
 
@@ -295,12 +307,29 @@ public class HierarchicalAlignmentClient
         this.currentTier = tier;
         this.tierProject = HierarchicalStack.deriveProjectForTier(roughTilesStackId, currentTier);
         this.tierParentStackId = parentStackMetaData.getStackId();
+        final Bounds roughStackBounds = roughStackMetaData.getStats().getStackBounds();
         final Bounds parentStackBounds = parentStackMetaData.getStats().getStackBounds();
 
-        this.tierStacks = HierarchicalStack.splitTier(this.roughTilesStackId,
-                                                      parentStackBounds,
-                                                      this.parameters.maxPixelsPerDimension,
-                                                      this.currentTier);
+        final int cellWidth = parameters.maxPixelsPerDimension;
+        final int cellHeight = parameters.maxPixelsPerDimension;
+        if (TierDimensions.LayerSplitMethod.CENTER.equals(parameters.splitMethod)) {
+            final List<TierDimensions> tierDimensionsList =
+                    TierDimensions.buildCenterTierDimensionsList(roughStackBounds,
+                                                                 cellWidth,
+                                                                 cellHeight);
+            this.tierDimensions = tierDimensionsList.get(currentTier);
+        } else if (TierDimensions.LayerSplitMethod.CENTER_ASPECT.equals(parameters.splitMethod)) {
+            final List<TierDimensions> tierDimensionsList =
+                    TierDimensions.buildCenterAspectTierDimensionsList(roughStackBounds,
+                                                                       (cellHeight * cellWidth));
+            this.tierDimensions = tierDimensionsList.get(currentTier);
+        } else { // LayerSplitMethod.PRIME
+            this.tierDimensions = TierDimensions.buildPrimeSplitTier(parentStackBounds,
+                                                                     parameters.maxPixelsPerDimension,
+                                                                     currentTier);
+        }
+
+        this.tierStacks = this.tierDimensions.getSplitStacks(roughTilesStackId, currentTier);
 
         if (this.tierStacks.size() == 0) {
             throw new IllegalStateException("no split stacks for tier " + tier + " of " + this.roughTilesStackId);

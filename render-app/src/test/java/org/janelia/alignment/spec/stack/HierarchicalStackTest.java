@@ -126,13 +126,14 @@ public class HierarchicalStackTest {
         final StackId roughTilesStackId = new StackId("testOwner", "tilesProject", "roughTiles");
         final StackId warpTilesStackId = new StackId("testOwner", "tilesProject", "roughTiles_tier_1_warp");
         final Bounds parentStackBounds = new Bounds(54954.0, 58314.0, 1.0, 69539.0, 76856.0, 3.0);
-        final int maxPixesPerDimension = 4096;
+        final int maxPixelsPerDimension = 4096;
         final Integer tier = 1;
 
-        final List<HierarchicalStack> splitStacks = HierarchicalStack.splitTier(roughTilesStackId,
-                                                                                parentStackBounds,
-                                                                                maxPixesPerDimension,
-                                                                                tier);
+        final TierDimensions tierDimensions =
+                TierDimensions.buildPrimeSplitTier(parentStackBounds, maxPixelsPerDimension, tier);
+
+        final List<HierarchicalStack> splitStacks = tierDimensions.getSplitStacks(roughTilesStackId,
+                                                                                  tier);
 
         Assert.assertEquals("invalid number of stacks", 9, splitStacks.size());
 

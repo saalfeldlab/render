@@ -22,6 +22,8 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -51,12 +53,11 @@ public class TierDimensionsTest {
 
         final Object[][] expectedTierValues = {
                 // minX,  minY,  maxX,  maxY, rows, columns, scale
-                { 45360, 34196, 74640, 70804,    1,       1, 0.03125 },  // tier 0
-                { 38040, 25044, 81960, 79956,    3,       3, 0.0625  },  // tier 1
-                { 49020, 38772, 70980, 66228,    3,       3, 0.125   },  // tier 2
-                { 47190, 36484, 72810, 68516,    7,       7, 0.25    },  // tier 3
-                { 49935, 39916, 70065, 65084,   11,      11, 0.5     },  // tier 4
-                { 49477, 39344, 70522, 65656,   23,      23, 1.0     }   // tier 5
+                { 50000, 40000, 70000, 65000,    1,       1, 0.04576 },  // tier 0
+                { 49020, 38772, 70980, 66228,    3,       3, 0.125   },  // tier 1
+                { 47190, 36484, 72810, 68516,    7,       7, 0.25    },  // tier 2
+                { 49935, 39916, 70065, 65084,   11,      11, 0.5     },  // tier 3
+                { 49477, 39344, 70522, 65656,   23,      23, 1.0     }   // tier 4
         };
 
         validateTiers(expectedTierValues, tierDimensionsList);
@@ -82,25 +83,6 @@ public class TierDimensionsTest {
         };
 
         validateTiers(expectedTierValues, tierDimensionsList);
-    }
-
-    @Test
-    public void testBuildPrimeSplitTier() throws Exception {
-
-        final Bounds parentStackBounds = new Bounds(54954.0, 58314.0, 1.0, 69539.0, 76856.0, 3.0);
-        final int maxPixesPerDimension = 4096;
-        final Integer tier = 1;
-
-        final TierDimensions tierDimensions = TierDimensions.buildPrimeSplitTier(parentStackBounds,
-                                                                                 maxPixesPerDimension,
-                                                                                 tier);
-
-        final Object[] expectedTierValues = {
-                // minX,  minY,  maxX,  maxY, rows, columns,   scale
-                  54954, 58314, 69540, 76857,    3,       3, 0.66271
-        };
-
-        validateTier(expectedTierValues, tierDimensions, 1);
     }
 
     private void validateTiers(final Object[][] expectedTierValues,
@@ -136,26 +118,28 @@ public class TierDimensionsTest {
      */
     public static void main(final String[] args) {
 
-        // args: minX, minY, maxX, maxY, cellWidth, cellHeight, targetImagePath
-        final String[] effectiveArgs =
-                (args.length > 7) ?
-                args :
-                new String[] { "50000", "40000", "70000", "65000", "1024", "1024", "CENTER" }; // tall
-//                new String[] { "50000", "40000", "70000", "65000", "1024", "1024", "CENTER_ASPECT" }; // tall
-//                new String[] { "50000", "40000", "70000", "50000", "1024", "1024", "CENTER" }; // wide
-//                new String[] { "50000", "40000", "70000", "50000", "1024", "1024", "CENTER_ASPECT" }; // wide
-//                new String[] { "50000", "40000", "70000", "50000", "1024", "1024", "PRIME" }; // wide
+        // minX, minY, maxX, maxY, cellWidth, cellHeight
+        final List<String> defaultArgs = Arrays.asList("50000", "40000", "70000", "65000", "1024", "1024"); // tall
+//        final List<String> defaultArgs = Arrays.asList("50000", "40000", "70000", "50000", "1024", "1024"); // wide
 
-        final Bounds roughStackBounds = new Bounds(Double.parseDouble(effectiveArgs[0]),
-                                                   Double.parseDouble(effectiveArgs[1]),
+        final List<String> effectiveArgs = new ArrayList<>();
+        if (args.length > 7) {
+            effectiveArgs.addAll(Arrays.asList(args));
+        } else {
+            effectiveArgs.addAll(defaultArgs);
+            effectiveArgs.add(LayerSplitMethod.CENTER.toString()); // CENTER, CENTER_ASPECT, PRIME
+        }
+
+        final Bounds roughStackBounds = new Bounds(Double.parseDouble(effectiveArgs.get(0)),
+                                                   Double.parseDouble(effectiveArgs.get(1)),
                                                    1.0,
-                                                   Double.parseDouble(effectiveArgs[2]),
-                                                   Double.parseDouble(effectiveArgs[3]),
+                                                   Double.parseDouble(effectiveArgs.get(2)),
+                                                   Double.parseDouble(effectiveArgs.get(3)),
                                                    3.0);
-        final int cellWidth = Integer.parseInt(effectiveArgs[4]);
-        final int cellHeight = Integer.parseInt(effectiveArgs[5]);
+        final int cellWidth = Integer.parseInt(effectiveArgs.get(4));
+        final int cellHeight = Integer.parseInt(effectiveArgs.get(5));
 
-        final TierDimensions.LayerSplitMethod layerSplitMethod = LayerSplitMethod.valueOf(effectiveArgs[6]);
+        final TierDimensions.LayerSplitMethod layerSplitMethod = LayerSplitMethod.valueOf(effectiveArgs.get(6));
 
         final List<TierDimensions> tierDimensionsList;
         if (LayerSplitMethod.CENTER.equals(layerSplitMethod)) {
@@ -204,38 +188,42 @@ public class TierDimensionsTest {
         targetGraphics.fillRect(scaledRoughX, scaledRoughY, scaledRoughWidth, scaledRoughHeight);
 
         final BasicStroke defaultStroke = new BasicStroke(1);
-        final BasicStroke centerStroke = new BasicStroke(3);
+        final BasicStroke centerStroke = new BasicStroke(5);
 
         for (int tier = 1; tier < tierDimensionsList.size(); tier++) {
             targetGraphics.setStroke(defaultStroke);
             targetGraphics.setColor(colorStream.getNextColor());
             tierDimensions = tierDimensionsList.get(tier);
 
-            final Bounds tierBounds = tierDimensions.getFullScaleBounds();
-            final int offsetX = (int) ((tierBounds.getMinX() - minX) * tierZeroScale);
-            final int offsetY = (int) ((tierBounds.getMinY() - minY) * tierZeroScale);
             final int tierPixelsPerRow = (int) (tierDimensions.getFullScaleCellHeight() * tierZeroScale);
             final int tierPixelsPerColumn = (int) (tierDimensions.getFullScaleCellWidth() * tierZeroScale);
 
+            final int centerRow = tierDimensions.getRows() / 2;
+            final int centerColumn = tierDimensions.getColumns() / 2;
+
             for (int row = 0; row < tierDimensions.getRows(); row++) {
                 for (int column = 0; column < tierDimensions.getColumns(); column++) {
-                    final int x = offsetX + (column * tierPixelsPerColumn);
-                    final int y = offsetY + (row * tierPixelsPerRow);
+
+                    final Bounds splitStackBounds = tierDimensions.getCellBounds(row, column);
+                    final int x = (int) ((splitStackBounds.getMinX() - minX) * tierZeroScale);
+                    final int y = (int) ((splitStackBounds.getMinY() - minY) * tierZeroScale);
+
+                    if ((row == centerRow) && (column == centerColumn)) {
+                        targetGraphics.setStroke(centerStroke);
+                    } else {
+                        targetGraphics.setStroke(defaultStroke);
+                    }
+
                     targetGraphics.drawRect(x, y, tierPixelsPerColumn, tierPixelsPerRow);
                 }
             }
-
-            final int centerX = offsetX + ((int) Math.floor(tierDimensions.getColumns() / 2.0) * tierPixelsPerColumn);
-            final int centerY = offsetY + ((int) Math.floor(tierDimensions.getRows() / 2.0) * tierPixelsPerRow);
-            targetGraphics.setStroke(centerStroke);
-            targetGraphics.drawRect(centerX, centerY, tierPixelsPerColumn, tierPixelsPerRow);
 
         }
 
         targetGraphics.dispose();
 
-        final String targetPath = effectiveArgs.length == 8 ?
-                                  effectiveArgs[7] :
+        final String targetPath = effectiveArgs.size() == 8 ?
+                                  effectiveArgs.get(7) :
                                   "tier_dimensions_" + layerSplitMethod + "_" + new Date().getTime() + ".png";
         final File targetFile = new File(targetPath);
         try {

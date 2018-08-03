@@ -42,11 +42,12 @@ public class HierarchicalTierRegionsTest {
                                                        48752.0,
                                                        50262.0, 2220.0);
 
-
-        final List<HierarchicalStack> tier3Stacks = HierarchicalStack.splitTier(roughTilesStackId,
-                                                                                tier2WarpTilesBounds,
-                                                                                maxPixelsPerDimension,
-                                                                                3);
+        int tier = 3;
+        final TierDimensions tier3Dimensions = TierDimensions.buildPrimeSplitTier(tier2WarpTilesBounds,
+                                                                                  maxPixelsPerDimension,
+                                                                                  tier);
+        final List<HierarchicalStack> tier3Stacks = tier3Dimensions.getSplitStacks(roughTilesStackId,
+                                                                                   tier);
         for (final HierarchicalStack splitStack : tier3Stacks) {
             splitStack.setAlignmentQuality(maxCompleteAlignmentQuality - 0.1);
         }
@@ -57,13 +58,15 @@ public class HierarchicalTierRegionsTest {
 
         HierarchicalTierRegions tierRegions = new HierarchicalTierRegions(tier3WarpTilesBounds,
                                                                           tier3Stacks,
-                                                                          maxPixelsPerDimension,
+                                                                          tier3Dimensions,
                                                                           maxCompleteAlignmentQuality);
 
-        final List<HierarchicalStack> tier4Stacks = HierarchicalStack.splitTier(roughTilesStackId,
-                                                                                tier3WarpTilesBounds,
-                                                                                maxPixelsPerDimension,
-                                                                                4);
+        tier = 4;
+        final TierDimensions tier4Dimensions = TierDimensions.buildPrimeSplitTier(tier3WarpTilesBounds,
+                                                                                  maxPixelsPerDimension,
+                                                                                  tier);
+        final List<HierarchicalStack> tier4Stacks = tier4Dimensions.getSplitStacks(roughTilesStackId,
+                                                                                   tier);
 
         List<HierarchicalStack> incompleteTier4Stacks = tierRegions.getIncompleteTierStacks(tier4Stacks);
 
@@ -78,7 +81,7 @@ public class HierarchicalTierRegionsTest {
 
         tierRegions = new HierarchicalTierRegions(tier3WarpTilesBounds,
                                                   tier3Stacks,
-                                                  maxPixelsPerDimension,
+                                                  tier3Dimensions,
                                                   maxCompleteAlignmentQuality);
 
         incompleteTier4Stacks = tierRegions.getIncompleteTierStacks(tier4Stacks);
@@ -100,7 +103,7 @@ public class HierarchicalTierRegionsTest {
 
         tierRegions = new HierarchicalTierRegions(tier3WarpTilesBounds,
                                                   partialTier3Stacks,
-                                                  maxPixelsPerDimension,
+                                                  tier3Dimensions,
                                                   maxCompleteAlignmentQuality);
 
         incompleteTier4Stacks = tierRegions.getIncompleteTierStacks(tier4Stacks);

@@ -1,5 +1,8 @@
 package org.janelia.alignment.spec.stack;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -15,7 +18,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class TierDimensions {
+public class TierDimensions implements Serializable {
 
     public enum LayerSplitMethod {
 
@@ -119,6 +122,51 @@ public class TierDimensions {
     }
 
     /**
+     * @param  row     split stack row.
+     * @param  column  split stack column.
+     *
+     * @return full scale (world) bounds for the specified row and column.
+     */
+    @JsonIgnore
+    public Bounds getCellBounds(final int row,
+                                final int column) {
+
+        final double minX = fullScaleBounds.getMinX() + (column * fullScaleCellWidth);
+        final double minY = fullScaleBounds.getMinY() + (row * fullScaleCellHeight);
+
+        return new Bounds(minX, minY, fullScaleBounds.getMinZ(),
+                          (minX + fullScaleCellWidth), (minY + fullScaleCellHeight), fullScaleBounds.getMaxZ());
+    }
+
+    /**
+     * @param  roughTilesStackId  roughly aligned stack being split.
+     * @param  tier               index of this tier.
+     *
+     * @return list of split stacks in this tier (built using these dimensions).
+     */
+    @JsonIgnore
+    public List<HierarchicalStack> getSplitStacks(final StackId roughTilesStackId,
+                                                  final int tier) {
+
+        final List<HierarchicalStack> splitStacks = new ArrayList<>();
+
+        for (int row = 0; row < rows; row++) {
+            for (int column = 0; column < columns; column++) {
+                splitStacks.add(new HierarchicalStack(roughTilesStackId,
+                                                      tier,
+                                                      row,
+                                                      column,
+                                                      rows,
+                                                      columns,
+                                                      scale,
+                                                      getCellBounds(row, column)));
+            }
+        }
+
+        return splitStacks;
+    }
+
+    /**
      * @param  roughStackFullScaleBounds  bounds for the roughly aligned stack being split.
      * @param  cellPixelWidth             pixel width for each cell in each (potentially scaled) tier.
      * @param  cellPixelHeight            pixel height for each cell in each (potentially scaled) tier.
@@ -135,16 +183,33 @@ public class TierDimensions {
                                                           cellPixelWidth,
                                                           cellPixelHeight,
                                                           1.0);
+        TierDimensions nextTier = null;
+
         while (currentTier.getRows() > 1 || currentTier.getColumns() > 1) {
+
             list.add(currentTier);
             currentTier = getParentDimensions(roughStackFullScaleBounds, currentTier);
+
+            // keep current tier if it has fewer rows and/or columns the the tier after it
+            if ((nextTier != null) &&
+                (currentTier.getRows() == nextTier.getRows()) &&
+                (currentTier.getColumns() == nextTier.getColumns())) {
+                break;
+            } else {
+                nextTier = currentTier;
+            }
         }
-        list.add(currentTier);
+
+        // add tier 0 with 1 cell that fits rough stack bounds
+        list.add(
+                buildPrimeSplitTier(roughStackFullScaleBounds,
+                                    Math.max(cellPixelWidth, cellPixelHeight),
+                                    0));
 
         // reverse order so that dimensions for tier 0 are in element 0 ...
         Collections.reverse(list);
 
-        LOG.debug("buildCenterAspectTierDimensionsList: returning dimensions for {} tiers: {}", list.size(), list);
+        LOG.info("buildCenterAspectTierDimensionsList: returning dimensions for {} tiers: {}", list.size(), list);
 
         return list;
     }
@@ -187,7 +252,7 @@ public class TierDimensions {
             parentStackFullScaleBounds = tierDimensions.getFullScaleBounds();
         }
 
-        LOG.debug("buildPrimeTierDimensionsList: returning dimensions for {} tiers: {}", list.size(), list);
+        LOG.info("buildPrimeTierDimensionsList: returning dimensions for {} tiers", list.size());
 
         return list;
     }
@@ -281,7 +346,14 @@ public class TierDimensions {
                                                   (double) (minX + (rowsAndColumns * fullScaleCellWidth)),
                                                   (double) (minY + (rowsAndColumns * fullScaleCellHeight)),
                                                   parentStackFullScaleBounds.getMaxZ());
-        return new TierDimensions(fullScaleCellWidth, fullScaleCellHeight, scale, rowsAndColumns, rowsAndColumns, fullScaleBounds);
+
+        final TierDimensions tierDimensions =
+                new TierDimensions(fullScaleCellWidth, fullScaleCellHeight, scale,
+                                   rowsAndColumns, rowsAndColumns, fullScaleBounds);
+
+        LOG.info("buildPrimeSplitTier: returning tier {} dimensions: {}", tier, tierDimensions);
+
+        return tierDimensions;
     }
 
     private static TierDimensions getParentDimensions(final Bounds roughStackFullScaleBounds,
