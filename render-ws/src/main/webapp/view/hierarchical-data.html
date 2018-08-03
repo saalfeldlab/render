@@ -8,7 +8,7 @@
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="../script/janelia-render.js?v=20180611_001"></script>
-    <script type="text/javascript" src="../script/janelia-hierarchical-data.js?v=20180611_001"></script>
+    <script type="text/javascript" src="../script/janelia-hierarchical-data.js?v=20180803_001"></script>
     <script type="text/javascript">
 
         var hierarchicalData;
@@ -82,7 +82,7 @@
             });
 
             $('#qualitySlider').change(function (e) {
-                var value = parseFloat((e.target.value * 0.01).toFixed(2));
+                var value = parseFloat((e.target.value * 0.0001).toFixed(4));
                 hierarchicalData.setQualityThreshold(value);
             });
 
@@ -126,10 +126,10 @@
                     <input id="boundsTileView" type="radio" name="tileView" value="bounds" checked><label for="boundsTileView" class="radioLabel">bounds</label>
                     <input id="pixelsTileView" type="radio" name="tileView" value="pixels"><label for="pixelsTileView" class="radioLabel">pixels</label>
                 </form>
-                <form oninput="quality.value=(parseFloat(qualitySlider.value)*0.01).toFixed(2)"  onsubmit="return false" class="controlForm">
+                <form oninput="quality.value=(parseFloat(qualitySlider.value)*0.0001).toFixed(4)"  onsubmit="return false" class="controlForm">
                     <label for="qualitySlider" class="controlLabel">Quality:</label>
-                    <input id="qualitySlider" name="qualitySlider" type="range" min="0" max="1000" value="1000">
-                    <output id="quality" name="x" for="qualitySlider">10.00</output>
+                    <input id="qualitySlider" name="qualitySlider" type="range" min="0" max="10000" value="0">
+                    <output id="quality" name="x" for="qualitySlider">0.00</output>
                 </form>
             </td>
         </tr>

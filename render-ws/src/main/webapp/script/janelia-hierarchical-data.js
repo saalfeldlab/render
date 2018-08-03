@@ -185,13 +185,14 @@ JaneliaHierarchicalData.prototype.drawHierarchicalData = function() {
         var fillStyle = undefined;
         var badQuality = false;
         if ((hierarchicalData.alignmentQuality !== undefined) && (! isNaN(hierarchicalData.alignmentQuality))) {
-            if (hierarchicalData.alignmentQuality < 0.01) {
+            if ((hierarchicalData.totalTierColumnCount > 11) || (hierarchicalData.alignmentQuality < 0.0001)) {
                 quality = hierarchicalData.alignmentQuality.toExponential(1);
             } else {
-                quality = hierarchicalData.alignmentQuality.toFixed(2);
+                quality = hierarchicalData.alignmentQuality.toFixed(4);
             }
             if (quality > this.qualityThreshold) {
                 badQuality = true;
+                //noinspection SpellCheckingInspection
                 fillStyle = 'mistyrose';
             }
         }
@@ -211,12 +212,33 @@ JaneliaHierarchicalData.prototype.drawHierarchicalData = function() {
             } else {
                 this.tierContext.fillStyle = 'white';
             }
-            this.tierContext.fillText(quality, centerX, centerY);
+            this.tierContext.fillText(quality.toString(), centerX, centerY);
         }
         var scaledBounds = { minX: scaledBox.x, minY: scaledBox.y, maxX: (scaledBox.x + scaledBox.width), maxY: (scaledBox.y + scaledBox.height) };
         this.scaledBoundsList.push(scaledBounds);
     }
 
+};
+
+JaneliaHierarchicalData.prototype.updateMaxQuality = function() {
+
+    var maxQuality = 0;
+    for (var i = 0; i < this.splitStackList.length; i++) {
+        var hierarchicalData = this.splitStackList[i].hierarchicalData;
+        if ((hierarchicalData.alignmentQuality !== undefined) && (! isNaN(hierarchicalData.alignmentQuality))) {
+            maxQuality = Math.max(maxQuality, hierarchicalData.alignmentQuality);
+        }
+    }
+
+    if (maxQuality > 0) {
+        $('#qualitySlider').prop('max', ((maxQuality + 0.0001) * 10000));
+        var qualitySelector = $('#quality');
+        if (maxQuality < qualitySelector.val()) {
+            qualitySelector.val(maxQuality.toFixed(4));
+        }
+    }
+
+    //console.log('updateMaxQuality: maxQuality is now ' + maxQuality);
 };
 
 JaneliaHierarchicalData.prototype.loadAllData = function() {
@@ -256,6 +278,7 @@ JaneliaHierarchicalData.prototype.updateParentTierStackMetaData = function(paren
     this.setStackBoundsAndScale(parentStackData.stats.stackBounds);
     this.drawLayerPixels();
     this.drawHierarchicalData();
+    this.updateMaxQuality();
 };
 
 JaneliaHierarchicalData.prototype.loadRoughTilesZValues = function(zValues) {
@@ -326,6 +349,7 @@ JaneliaHierarchicalData.prototype.loadTierProjects = function() {
                });
     } else {
         this.drawHierarchicalData();
+        this.updateMaxQuality();
     }
 };
 
@@ -356,8 +380,17 @@ JaneliaHierarchicalData.prototype.selectTierProject = function(tierProjectName) 
 };
 
 /**
- * @param projectStackMetaDataList
+ * @param {Array} projectStackMetaDataList
  * @param projectStackMetaDataList.hierarchicalData
+ * @param projectStackMetaDataList.hierarchicalData.parentTierStackId
+ * @param projectStackMetaDataList.hierarchicalData.alignedStackId
+ * @param projectStackMetaDataList.hierarchicalData.warpTilesStackId
+ * @param projectStackMetaDataList.hierarchicalData.totalTierColumnCount
+ * @param projectStackMetaDataList.hierarchicalData.fullScaleBounds
+ * @param projectStackMetaDataList.hierarchicalData.matchCollectionId
+ * @param projectStackMetaDataList.hierarchicalData.savedMatchPairCount
+ * @param projectStackMetaDataList.hierarchicalData.alignmentQuality
+ * @param projectStackMetaDataList.hierarchicalData.splitGroupIds
  */
 JaneliaHierarchicalData.prototype.loadStacksInTier = function(projectStackMetaDataList) {
 
@@ -374,6 +407,7 @@ JaneliaHierarchicalData.prototype.loadStacksInTier = function(projectStackMetaDa
     }
 
     this.drawHierarchicalData();
+    this.updateMaxQuality();
 
     if (this.splitStackList.length > 0) {
         var parentTierStack = this.splitStackList[0].hierarchicalData.parentTierStackId.stack;
@@ -392,7 +426,7 @@ JaneliaHierarchicalData.prototype.loadStacksInTier = function(projectStackMetaDa
 };
 
 /**
- * @param stackWithZValuesList
+ * @param {Array} stackWithZValuesList
  * @param stackWithZValuesList.stackId
  * @param stackWithZValuesList.zValues
  */
@@ -510,7 +544,6 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
                    url: consensusIdsUrl,
                    cache: false,
                    success: function(data) {
-                       console.log(data);
                        $('#' + consensusDataSpanId).text(data.toString());
                    },
                    error: function(data, text, xhr) {
