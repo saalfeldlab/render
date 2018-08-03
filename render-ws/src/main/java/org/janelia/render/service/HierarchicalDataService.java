@@ -38,7 +38,6 @@ import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.alignment.transform.AffineWarpField;
 import org.janelia.alignment.transform.AffineWarpFieldTransform;
@@ -397,13 +396,13 @@ public class HierarchicalDataService {
                                                         tierStack.getTotalTierColumnCount(),
                                                         AffineWarpField.getDefaultInterpolatorFactory());
 
-                        final StackMetaData parentStackMetadata = getStackMetaData(tierStack.getParentTierStackId());
-
-                        final StackStats parentStats = parentStackMetadata.getStats();
-                        if (parentStats != null) {
-                            final Bounds parentBounds = parentStats.getStackBounds();
-                            locationOffsets = new double[] { parentBounds.getMinX(), parentBounds.getMinY() };
-                        }
+                        // derive tier upper left coordinates from this split stack's position
+                        final Bounds tierStackBounds = tierStack.getFullScaleBounds();
+                        final double tierMinX = tierStackBounds.getMinX() -
+                                                (tierStack.getTierColumn() * (tierStackBounds.getDeltaX()));
+                        final double tierMinY = tierStackBounds.getMinY() -
+                                               (tierStack.getTierRow() * (tierStackBounds.getDeltaY()));
+                        locationOffsets = new double[] { tierMinX, tierMinY };
                     }
 
                     alignedStackId = tierStack.getAlignedStackId();
