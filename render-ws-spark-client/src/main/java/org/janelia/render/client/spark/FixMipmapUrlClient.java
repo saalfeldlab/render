@@ -85,6 +85,13 @@ public class FixMipmapUrlClient
                 required = false)
         public UrlType urlType = UrlType.BOTH;
 
+        @Parameter(
+                names = "--completeStackAfterFix",
+                description = "Complete the target stack after fixing all layers",
+                required = false,
+                arity = 0)
+        public boolean completeStackAfterFix = false;
+
         public String getTargetOwner() {
             if (targetOwner == null) {
                 targetOwner = renderWeb.owner;
@@ -283,6 +290,10 @@ public class FixMipmapUrlClient
 
         LOG.info("run: collected stats");
         LOG.info("run: saved {} tiles and transforms", total);
+
+        if (parameters.completeStackAfterFix) {
+            targetDataClient.setStackState(parameters.targetStack, StackMetaData.StackState.COMPLETE);
+        }
 
         sparkContext.stop();
     }
