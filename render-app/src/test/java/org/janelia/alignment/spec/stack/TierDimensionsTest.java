@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 import org.janelia.alignment.Utils;
@@ -224,7 +223,7 @@ public class TierDimensionsTest {
 
         final String targetPath = effectiveArgs.size() == 8 ?
                                   effectiveArgs.get(7) :
-                                  "tier_dimensions_" + layerSplitMethod + "_" + new Date().getTime() + ".png";
+                                  "tier_dimensions_" + String.join("_", effectiveArgs) + ".png";
         final File targetFile = new File(targetPath);
         try {
             Utils.saveImage(targetImage, targetFile, false, 0.85f);

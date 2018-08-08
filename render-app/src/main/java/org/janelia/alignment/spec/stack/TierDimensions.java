@@ -190,10 +190,11 @@ public class TierDimensions implements Serializable {
             list.add(currentTier);
             currentTier = getParentDimensions(roughStackFullScaleBounds, currentTier);
 
-            // keep current tier if it has fewer rows and/or columns the the tier after it
+            // if current tier has same number of rows or columns as the tier after it,
+            // drop it and exit loop
             if ((nextTier != null) &&
-                (currentTier.getRows() == nextTier.getRows()) &&
-                (currentTier.getColumns() == nextTier.getColumns())) {
+                ((currentTier.getRows() == nextTier.getRows()) ||
+                 (currentTier.getColumns() == nextTier.getColumns()))) {
                 break;
             } else {
                 nextTier = currentTier;
