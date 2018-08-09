@@ -63,19 +63,6 @@ public class CanvasFeatureMatchResult implements Serializable {
      *
      * @return collection of inlier matches.
      */
-    public Matches getInlierMatches(final Double renderScale,
-                                    final double[] pOffsets,
-                                    final double[] qOffsets) {
-        return convertPointMatchListToMatches(getInlierPointMatchList(), renderScale, pOffsets, qOffsets);
-    }
-
-    /**
-     * @param  renderScale  scale of rendered canvases (needed to return matches in full scale coordinates).
-     * @param  pOffsets     full scale x[0] and y[1] offset for all pCanvas matches.
-     * @param  qOffsets     full scale x[0] and y[1] offset for all qCanvas matches.
-     *
-     * @return collection of inlier matches.
-     */
     public List<CanvasMatches> getInlierMatchesList(final String pGroupId,
                                                     final String pId,
                                                     final String qGroupId,
@@ -88,11 +75,14 @@ public class CanvasFeatureMatchResult implements Serializable {
 
         if (consensusSetInliers.size() == 1) {
 
-            list.add(new CanvasMatches(pGroupId,
-                                       pId,
-                                       qGroupId,
-                                       qId,
-                                       getInlierMatches(renderScale, pOffsets, qOffsets)));
+            final List<PointMatch> inlierList = getInlierPointMatchList();
+
+            if (inlierList.size() > 0) {
+                final Matches inlierMatches =
+                        convertPointMatchListToMatches(inlierList, renderScale, pOffsets, qOffsets);
+                list.add(new CanvasMatches(pGroupId, pId, qGroupId, qId, inlierMatches));
+            }
+
         } else {
 
             int consensusSetIndex = 0;
