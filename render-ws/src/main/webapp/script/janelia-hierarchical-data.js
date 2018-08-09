@@ -1,4 +1,4 @@
-var JaneliaHierarchicalData = function(baseUrl, owner, project, stack, tileZ, parentStackId, tierSelectId, layerSelectId, tileBoundsCanvas, tilePixelsCanvas, tierCanvas) {
+var JaneliaHierarchicalData = function(baseUrl, owner, project, stack, tileZ, maxTileSpecsToRender, parentStackId, tierSelectId, layerSelectId, tileBoundsCanvas, tilePixelsCanvas, tierCanvas) {
 
     this.baseUrl = baseUrl;
     this.renderBaseUrl = "http://renderer:8080/render-ws/v1"; // TODO: make this a parameter
@@ -7,6 +7,7 @@ var JaneliaHierarchicalData = function(baseUrl, owner, project, stack, tileZ, pa
     this.project = project;
     this.stack = stack;
     this.tileZ = tileZ;
+    this.maxTileSpecsToRender = maxTileSpecsToRender;
     this.parentStackId = parentStackId;
     this.tierSelectId = tierSelectId;
     this.layerSelectId = layerSelectId;
@@ -24,7 +25,7 @@ var JaneliaHierarchicalData = function(baseUrl, owner, project, stack, tileZ, pa
     this.stackBounds = undefined;
     this.scale = 1.0;
     this.displayTileBounds = true;
-    this.qualityThreshold = 10.0;
+    this.qualityThreshold = 0.0;
 
     this.tierProjectPrefix = this.project + "_" + this.stack + "_tier_";
     this.tierProjects = [];
@@ -133,7 +134,8 @@ JaneliaHierarchicalData.prototype.drawLayerPixels = function() {
     var height = bounds.maxY - bounds.minY;
     var box = bounds.minX + ',' + bounds.minY + ',' + width + ',' + height + ',' + this.scale;
 
-    var pixelsUrl = this.getRenderStackUrl() + '/z/' + this.tileZ + '/box/' + box + '/jpeg-image';
+    var pixelsUrl = this.getRenderStackUrl() + '/z/' + this.tileZ + '/box/' + box +
+                    '/jpeg-image?maxTileSpecsToRender=' + this.maxTileSpecsToRender;
 
     // TODO: check number of tiles (or maybe full scale pixels) first?
 

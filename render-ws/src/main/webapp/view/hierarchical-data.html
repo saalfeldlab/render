@@ -8,7 +8,7 @@
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="../script/janelia-render.js?v=20180611_001"></script>
-    <script type="text/javascript" src="../script/janelia-hierarchical-data.js?v=20180803_001"></script>
+    <script type="text/javascript" src="../script/janelia-hierarchical-data.js?v=20180808_001"></script>
     <script type="text/javascript">
 
         var hierarchicalData;
@@ -29,12 +29,13 @@
             var project = queryParameters.get('renderStackProject', 'trautmane_fafb_fold');
             var stack = queryParameters.get('renderStack', 'rough_tiles_i');
             var z = queryParameters.get('z', '2214');
+            var maxTileSpecsToRender = queryParameters.get('maxTileSpecsToRender', 100);
 
             var tileBoundsCanvas = document.getElementById('tileBoundsCanvas');
             var tilePixelsCanvas = document.getElementById('tilePixelsCanvas');
             var tierCanvas = document.getElementById('tierCanvas');
 
-            hierarchicalData = new JaneliaHierarchicalData(baseUrl, owner, project, stack, z, 'renderStack', 'tierProject', 'layerSelect', tileBoundsCanvas, tilePixelsCanvas, tierCanvas);
+            hierarchicalData = new JaneliaHierarchicalData(baseUrl, owner, project, stack, z, maxTileSpecsToRender, 'renderStack', 'tierProject', 'layerSelect', tileBoundsCanvas, tilePixelsCanvas, tierCanvas);
             hierarchicalData.loadAllData();
 
             $('#renderOwner').html(hierarchicalData.owner);
