@@ -391,7 +391,7 @@ public class HierarchicalAlignmentClient
         }
 
         final String versionTimestamp = String.valueOf(new Date().getTime());
-        final StringBuilder boxUrlSuffix = new StringBuilder("/tiff-image?v=").append(versionTimestamp);
+        final StringBuilder boxUrlSuffix = new StringBuilder("/tiff-image?maxTileSpecsToRender=999999&v=").append(versionTimestamp);
         if (parameters.channel != null) {
             boxUrlSuffix.append("&channels=").append(parameters.channel);
         }
