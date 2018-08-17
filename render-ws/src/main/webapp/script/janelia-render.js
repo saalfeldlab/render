@@ -22,27 +22,24 @@ var JaneliaScriptUtilities = function() {
         failureCallbackFunction(self.getErrorMessage(data));
     };
 
-    this.getShortRenderHost = function() {
-	var href = window.location.href;
-        var hostIndex = href.indexOf(window.location.host);
-        var stopIndex = href.indexOf('/', hostIndex);
-
-	        // for localhost debugging:
-        // return 'http://renderer-dev.int.janelia.org:8080/render-ws/v1';
-
-
-        return href.substring(7, stopIndex);
-	};
-
-    this.getServicesBaseUrl = function() {
+    this.getRenderHost = function() {
         var href = window.location.href;
         var hostIndex = href.indexOf(window.location.host);
         var stopIndex = href.indexOf('/', hostIndex);
+        // for localhost debugging, return 'http://renderer-dev.int.janelia.org:8080';
+        return href.substring(0, stopIndex);
+    };
 
-                // for localhost debugging:
-        // return 'http://renderer-dev.int.janelia.org:8080/render-ws/v1';
+    this.getShortRenderHost = function() {
+        return this.getRenderHost().substring(7);
+    };
 
-        return href.substring(0, stopIndex) + '/render-ws/v1';
+    this.getViewBaseUrl = function() {
+        return this.getRenderHost() + '/render-ws/view';
+    };
+
+    this.getServicesBaseUrl = function() {
+        return this.getRenderHost() + '/render-ws/v1';
     };
 
     this.getCatmaidUrl = function(catmaidBaseUrl, stackId, stackVersion, x, y, z, scaleLevel) {
@@ -86,7 +83,7 @@ var JaneliaScriptUtilities = function() {
         var isSelected;
         for (var index = 0; index < optionList.length; index++) {
             value = optionList[index];
-            isSelected = (value == selectedValue);
+            isSelected = (value === selectedValue);
             selectElementSelector.append($('<option/>').val(value).text(value).prop('selected', isSelected));
         }
         //console.log('updated ' + optionList.length + ' options for ' + selectId);
@@ -178,7 +175,7 @@ JaneliaQueryParameters.prototype.getSearch = function() {
 
 JaneliaQueryParameters.prototype.get = function(key, defaultValue) {
     var value = this.map[key];
-    if ((typeof value == 'undefined') && (typeof defaultValue != 'undefined')){
+    if ((typeof value === 'undefined') && (typeof defaultValue !== 'undefined')){
         value = defaultValue;
     }
     return value;
@@ -196,7 +193,7 @@ JaneliaQueryParameters.prototype.applyServerProperties = function(serverProperty
         var viewKey = key.substr(5);
 
         var queryParameterValue = this.map[viewKey];
-        if (typeof queryParameterValue == 'undefined') {
+        if (typeof queryParameterValue === 'undefined') {
             this.map[viewKey] = serverPropertyMap[key];
         }
     }
@@ -204,9 +201,9 @@ JaneliaQueryParameters.prototype.applyServerProperties = function(serverProperty
 
 JaneliaQueryParameters.prototype.updateParameter = function (key, value) {
 
-    if (typeof key != 'undefined') {
+    if (typeof key !== 'undefined') {
 
-        if (typeof value == 'undefined' || value == '') {
+        if (typeof value === 'undefined' || value === '') {
             delete this.map[key];
         } else {
             this.map[key] = value;
@@ -216,7 +213,7 @@ JaneliaQueryParameters.prototype.updateParameter = function (key, value) {
 };
 
 JaneliaQueryParameters.prototype.updateLink = function(urlToViewId) {
-    if (typeof urlToViewId != 'undefined') {
+    if (typeof urlToViewId !== 'undefined') {
         var search = this.getSearch();
         var href = location.protocol + '//' + location.host + location.pathname + search;
         $('#' + urlToViewId).attr('href', href);
@@ -244,7 +241,6 @@ var JaneliaRenderServiceData = function(owner, project, stack) {
 
     this.util = new JaneliaScriptUtilities();
     this.baseUrl =  this.util.getServicesBaseUrl();
-    this.shortbaseUrl = this.util.getShortRenderHost();
     this.ownerList = [];
     this.stackMetaDataList = [];
     this.projectToStackCountMap = {};
@@ -280,7 +276,7 @@ JaneliaRenderServiceData.prototype.setOwnerList = function(data) {
 
     this.ownerList = data;
     if (this.ownerList.length > 0) {
-        if (this.ownerList.indexOf(this.owner) == -1) {
+        if (this.ownerList.indexOf(this.owner) === -1) {
             this.owner = this.ownerList[0];
         }
     }
@@ -315,7 +311,7 @@ JaneliaRenderServiceData.prototype.setStackMetaDataList = function(data) {
         var project;
         for (var index = 0; index < this.stackMetaDataList.length; index++) {
             project = this.stackMetaDataList[index].stackId.project;
-            if (typeof this.projectToStackCountMap[project] == 'undefined') {
+            if (typeof this.projectToStackCountMap[project] === 'undefined') {
                 this.projectToStackCountMap[project] = 0;
             }
             this.projectToStackCountMap[project]++;
@@ -330,9 +326,9 @@ JaneliaRenderServiceData.prototype.setStackMetaDataList = function(data) {
 JaneliaRenderServiceData.prototype.getStackMetaDataWithStackName = function(stackName, stackMetaDataList) {
 
     var stackMetaData = undefined;
-    if (typeof stackName != 'undefined') {
+    if (typeof stackName !== 'undefined') {
         for (var index = 0; index < stackMetaDataList.length; index++) {
-            if (stackMetaDataList[index].stackId.stack == stackName) {
+            if (stackMetaDataList[index].stackId.stack === stackName) {
                 stackMetaData = stackMetaDataList[index];
                 break;
             }
@@ -345,7 +341,7 @@ JaneliaRenderServiceData.prototype.getProjectStackMetaDataList = function() {
 
     var projectStackMetaDataList = [];
     for (var index = 0; index < this.stackMetaDataList.length; index++) {
-        if (this.stackMetaDataList[index].stackId.project == this.project) {
+        if (this.stackMetaDataList[index].stackId.project === this.project) {
             projectStackMetaDataList.push(this.stackMetaDataList[index]);
         }
     }
@@ -368,7 +364,7 @@ JaneliaRenderServiceData.prototype.getStackMetaData = function() {
 
 JaneliaRenderServiceData.prototype.setProject = function(selectedProject) {
 
-    if (this.distinctProjects.indexOf(selectedProject) == -1) {
+    if (this.distinctProjects.indexOf(selectedProject) === -1) {
         this.project = this.distinctProjects[0];
     } else {
         this.project = selectedProject;
@@ -383,7 +379,7 @@ JaneliaRenderServiceData.prototype.setStack = function(selectedStack) {
 
     var projectStackMetaDataList = this.getProjectStackMetaDataList();
     var stackMetaData = this.getStackMetaDataWithStackName(selectedStack, projectStackMetaDataList);
-    if (typeof stackMetaData == 'undefined') {
+    if (typeof stackMetaData === 'undefined') {
         this.stack = projectStackMetaDataList[0].stackId.stack;
     } else {
         this.stack = selectedStack;
@@ -457,7 +453,7 @@ var JaneliaRenderServiceDataUI = function(queryParameters, ownerSelectId, projec
         self.queryParameters.updateParameterAndLink(stackSelectId, selectedStack, urlToViewId);
     };
 
-    if (typeof stackSelectId != 'undefined') {
+    if (typeof stackSelectId !== 'undefined') {
         this.util.addOnChangeCallbackForSelect(stackSelectId, setStack);
     }
 
@@ -466,7 +462,7 @@ var JaneliaRenderServiceDataUI = function(queryParameters, ownerSelectId, projec
         self.renderServiceData.setProject(selectedProject);
         self.queryParameters.updateParameterAndLink(projectSelectId, selectedProject, urlToViewId);
 
-        if (typeof stackSelectId != 'undefined') {
+        if (typeof stackSelectId !== 'undefined') {
             self.util.updateSelectOptions(stackSelectId,
                                           self.renderServiceData.getProjectStackList(),
                                           self.renderServiceData.stack);
@@ -518,7 +514,7 @@ JaneliaRenderServiceDataUI.prototype.loadData = function() {
 };
 
 JaneliaRenderServiceDataUI.prototype.isDynamicRenderHostDefined = function() {
-    return typeof this.dynamicRenderHost != 'undefined';
+    return typeof this.dynamicRenderHost !== 'undefined';
 };
 
 JaneliaRenderServiceDataUI.prototype.getDynamicRenderBaseUrl = function() {
@@ -530,12 +526,12 @@ JaneliaRenderServiceDataUI.prototype.getDynamicRenderBaseUrl = function() {
 };
 
 JaneliaRenderServiceDataUI.prototype.isNdvizHostDefined = function() {
-    return typeof this.ndvizHost != 'undefined';
+    return typeof this.ndvizHost !== 'undefined';
 
 };
 
 JaneliaRenderServiceDataUI.prototype.isCatmaidHostDefined = function() {
-    return typeof this.catmaidHost != 'undefined';
+    return typeof this.catmaidHost !== 'undefined';
 };
 
 JaneliaRenderServiceDataUI.prototype.buildStackQueryParameters = function(owner, project, stack) {
@@ -556,7 +552,7 @@ JaneliaRenderServiceDataUI.prototype.buildStackQueryParameters = function(owner,
     for (var i = 0; i < keyValueList.length; i++) {
         key = keyValueList[i][0];
         value = keyValueList[i][1];
-        if (typeof value != 'undefined') {
+        if (typeof value !== 'undefined') {
             parameters[key] = value;
         }
     }
@@ -646,6 +642,22 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
         linksHtml = linksHtml + ' <a target="_blank" href="' + catmaidUrl + '">CATMAID</a>';
     }
 
+
+    // http://renderer-dev.int.janelia.org:8080/render-ws/view/hierarchical-data.html?renderStackOwner=flyTEM&renderStackProject=spc&renderStack=mm2_sample_rough_test_1&z=1015
+    // http://renderer-dev.int.janelia.org:8080/render-ws/view/hierarchical-data.html?renderStackOwner=flyTEM&renderStackProject=spc&renderStack=mm2_sample_rough_test_1&z=1015
+
+    // http://renderer-dev:8080/render-ws/view/hierarchical-data.html?renderStackOwner=flyTEM&renderStackProject=spc&renderStack=mm2_sample_rough_test_1&z=1015
+    // mm2_sample_rough_test_1_tier_1_warp
+
+    var warpPattern = /_tier.*_warp$/;
+    if (stackId.stack.match(warpPattern)) {
+        var roughStack = stackId.stack.substring(0, stackId.stack.search(warpPattern));
+        var warpUrl = this.util.getViewBaseUrl() + '/hierarchical-data.html?renderStackOwner=' +
+                      stackId.owner + '&renderStackProject=' + stackId.project + '&renderStack=' + roughStack +
+                      '&z=' + bounds.minZ;
+        linksHtml += '<a target="_blank" href="' + warpUrl + '">Hierarchical Data</a> ';
+    }
+
     if (this.isNdvizHostDefined()) {
         var NDVIZUrl = 'http://' + this.ndvizHost + '/render/' + this.shortbaseUrl + '/' +
                        stackId.owner + '/' + stackId.project + '/' + stackId.stack + '/';
@@ -670,7 +682,7 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
                 '</div>' +
                 '</div>';
 
-    if ((stackInfo.state == 'OFFLINE') || (! includeActions)) {
+    if ((stackInfo.state === 'OFFLINE') || (! includeActions)) {
         linksHtml = '';
     }
 
