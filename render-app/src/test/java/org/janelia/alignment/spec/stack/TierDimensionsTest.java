@@ -1,19 +1,3 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.alignment.spec.stack;
 
 import java.awt.BasicStroke;
@@ -41,7 +25,7 @@ import org.junit.Test;
 public class TierDimensionsTest {
 
     @Test
-    public void testBuildCenterAspectTierDimensionsList() throws Exception {
+    public void testBuildCenterAspectTierDimensionsList() {
 
         final Bounds roughStackBounds = new Bounds(50000.0, 40000.0, 1.0, 70000.0, 65000.0, 3.0);
         final int fullScalePixelsPerCell = 1024 * 1024;
@@ -63,7 +47,7 @@ public class TierDimensionsTest {
     }
 
     @Test
-    public void testBuildPrimeTierDimensionsList() throws Exception {
+    public void testBuildPrimeTierDimensionsList() {
 
         final Bounds roughStackBounds = new Bounds(50000.0, 40000.0, 1.0, 70000.0, 65000.0, 3.0);
         final int maxPixelsPerDimension = 1024;
@@ -79,6 +63,26 @@ public class TierDimensionsTest {
                 { 50000, 40000, 70001, 65002,    3,       3, 0.12287 },  // tier 1
                 { 50000, 40000, 70006, 65004,    7,       7, 0.28667 },  // tier 2
                 { 50000, 40000, 70009, 65007,   17,      17, 0.69613 }   // tier 3
+        };
+
+        validateTiers(expectedTierValues, tierDimensionsList);
+    }
+
+    @Test
+    public void testBuildUpperLeftTierDimensionsList() {
+
+        final Bounds roughStackBounds = new Bounds(50000.0, 40000.0, 1.0, 70000.0, 65000.0, 3.0);
+
+        final List<TierDimensions> tierDimensionsList =
+                TierDimensions.buildUpperLeftTierDimensionsList(roughStackBounds, 1024, 1024);
+
+        final Object[][] expectedTierValues = {
+                // minX,  minY,  maxX,  maxY, rows, columns, scale
+                { 50000, 40000, 70000, 65000,    1,       1, 0.04096 },  // tier 0
+                { 50000, 40000, 74576, 72768,    4,       3, 0.125   },  // tier 1
+                { 47952, 37952, 72528, 66624,    7,       6, 0.25    },  // tier 2
+                { 48976, 38976, 71504, 65600,   13,      11, 0.5     },  // tier 3
+                { 49488, 39488, 70992, 65088,   25,      21, 1.0     }   // tier 4
         };
 
         validateTiers(expectedTierValues, tierDimensionsList);
@@ -126,7 +130,7 @@ public class TierDimensionsTest {
             effectiveArgs.addAll(Arrays.asList(args));
         } else {
             effectiveArgs.addAll(defaultArgs);
-            effectiveArgs.add(LayerSplitMethod.CENTER.toString()); // CENTER, CENTER_ASPECT, PRIME
+            effectiveArgs.add(LayerSplitMethod.UPPER_LEFT.toString()); // CENTER, CENTER_ASPECT, PRIME, UPPER_LEFT
         }
 
         final Bounds roughStackBounds = new Bounds(Double.parseDouble(effectiveArgs.get(0)),
@@ -140,20 +144,11 @@ public class TierDimensionsTest {
 
         final TierDimensions.LayerSplitMethod layerSplitMethod = LayerSplitMethod.valueOf(effectiveArgs.get(6));
 
-        final List<TierDimensions> tierDimensionsList;
-        if (LayerSplitMethod.CENTER.equals(layerSplitMethod)) {
-            tierDimensionsList = TierDimensions.buildCenterTierDimensionsList(roughStackBounds,
-                                                                              cellWidth,
-                                                                              cellHeight);
-        } else if (TierDimensions.LayerSplitMethod.CENTER_ASPECT.equals(layerSplitMethod)) {
-            tierDimensionsList = TierDimensions.buildCenterAspectTierDimensionsList(roughStackBounds,
-                                                                                    (cellHeight * cellWidth));
-        } else { // LayerSplitMethod.PRIME
-            tierDimensionsList = TierDimensions.buildPrimeTierDimensionsList(roughStackBounds,
-                                                                             cellHeight, // maxPixelsPerCell
-                                                                             4);         // numberOfTiers
-        }
-
+        final List<TierDimensions> tierDimensionsList = TierDimensions.buildTierDimensionsList(layerSplitMethod,
+                                                                                               roughStackBounds,
+                                                                                               cellWidth,
+                                                                                               cellHeight,
+                                                                                               null);
         TierDimensions tierDimensions = tierDimensionsList.get(0);
         final Bounds tierZeroBounds = tierDimensions.getFullScaleBounds();
         final double tierZeroScale = tierDimensions.getScale();
@@ -187,7 +182,10 @@ public class TierDimensionsTest {
         targetGraphics.fillRect(scaledRoughX, scaledRoughY, scaledRoughWidth, scaledRoughHeight);
 
         final BasicStroke defaultStroke = new BasicStroke(1);
-        final BasicStroke centerStroke = new BasicStroke(5);
+        final BasicStroke highlightStroke = new BasicStroke(5);
+
+        int highlightRow;
+        int highlightColumn;
 
         for (int tier = 1; tier < tierDimensionsList.size(); tier++) {
             targetGraphics.setStroke(defaultStroke);
@@ -197,8 +195,13 @@ public class TierDimensionsTest {
             final int tierPixelsPerRow = (int) (tierDimensions.getFullScaleCellHeight() * tierZeroScale);
             final int tierPixelsPerColumn = (int) (tierDimensions.getFullScaleCellWidth() * tierZeroScale);
 
-            final int centerRow = tierDimensions.getRows() / 2;
-            final int centerColumn = tierDimensions.getColumns() / 2;
+            if (LayerSplitMethod.UPPER_LEFT.equals(layerSplitMethod)) {
+                highlightRow = tier == 1 ? 0 : (int) Math.pow(2, (tier - 2));
+                highlightColumn = highlightRow;
+            } else {
+                highlightRow = tierDimensions.getRows() / 2;
+                highlightColumn = tierDimensions.getColumns() / 2;
+            }
 
             for (int row = 0; row < tierDimensions.getRows(); row++) {
                 for (int column = 0; column < tierDimensions.getColumns(); column++) {
@@ -207,8 +210,8 @@ public class TierDimensionsTest {
                     final int x = (int) ((splitStackBounds.getMinX() - minX) * tierZeroScale);
                     final int y = (int) ((splitStackBounds.getMinY() - minY) * tierZeroScale);
 
-                    if ((row == centerRow) && (column == centerColumn)) {
-                        targetGraphics.setStroke(centerStroke);
+                    if ((row == highlightRow) && (column == highlightColumn)) {
+                        targetGraphics.setStroke(highlightStroke);
                     } else {
                         targetGraphics.setStroke(defaultStroke);
                     }

@@ -45,7 +45,14 @@ public class TierDimensions implements Serializable {
          * It attempts to prevent overlapping cell bounds between tiers by choosing a prime number of
          * rows and columns for each tier (e.g. tier 0: 1x1, tier 1: 3x3, tier 2: 7x7 ...).
          */
-        PRIME
+        PRIME,
+
+        /**
+         * This method is similar to the {@link #CENTER} method except it "aligns" the
+         * tier 1 upper left corner with the upper left corner of the roughly aligned stack
+         * (instead of working from the stack center).
+         */
+        UPPER_LEFT
     }
 
     private final int fullScaleCellWidth;
@@ -65,12 +72,12 @@ public class TierDimensions implements Serializable {
      * @param  columns                    number of columns in this tier's grid.
      * @param  fullScaleBounds            full scale (world) bounds of this tier's grid.
      */
-    public TierDimensions(final int fullScaleCellWidth,
-                          final int fullScaleCellHeight,
-                          final double scale,
-                          final int rows,
-                          final int columns,
-                          final Bounds fullScaleBounds) {
+    private TierDimensions(final int fullScaleCellWidth,
+                           final int fullScaleCellHeight,
+                           final double scale,
+                           final int rows,
+                           final int columns,
+                           final Bounds fullScaleBounds) {
         this.fullScaleCellWidth = fullScaleCellWidth;
         this.fullScaleCellHeight = fullScaleCellHeight;
         this.scale = scale;
@@ -79,15 +86,15 @@ public class TierDimensions implements Serializable {
         this.fullScaleBounds = fullScaleBounds;
     }
 
-    public Bounds getFullScaleBounds() {
+    Bounds getFullScaleBounds() {
         return fullScaleBounds;
     }
 
-    public int getFullScaleCellWidth() {
+    int getFullScaleCellWidth() {
         return fullScaleCellWidth;
     }
 
-    public int getFullScaleCellHeight() {
+    int getFullScaleCellHeight() {
         return fullScaleCellHeight;
     }
 
@@ -128,8 +135,8 @@ public class TierDimensions implements Serializable {
      * @return full scale (world) bounds for the specified row and column.
      */
     @JsonIgnore
-    public Bounds getCellBounds(final int row,
-                                final int column) {
+    Bounds getCellBounds(final int row,
+                         final int column) {
 
         final double minX = fullScaleBounds.getMinX() + (column * fullScaleCellWidth);
         final double minY = fullScaleBounds.getMinY() + (row * fullScaleCellHeight);
@@ -167,15 +174,170 @@ public class TierDimensions implements Serializable {
     }
 
     /**
+     * @param  splitMethod                method for splitting tiers.
+     * @param  roughStackFullScaleBounds  bounds for the roughly aligned stack being split.
+     * @param  cellPixelWidth             pixel width for each cell in each (potentially scaled) tier.
+     * @param  cellPixelHeight            pixel height for each cell in each (potentially scaled) tier.
+     * @param  maxNumberOfTiers           maximum number of tiers to include
+     *                                    (null indicates max should be dynamically determined).
+     *
+     * @return list of dimensions for each tier built using the specified split method.
+     *
+     * @throws IllegalArgumentException
+     *   if an unsupported split method is specified.
+     */
+    public static List<TierDimensions> buildTierDimensionsList(final LayerSplitMethod splitMethod,
+                                                               final Bounds roughStackFullScaleBounds,
+                                                               final int cellPixelWidth,
+                                                               final int cellPixelHeight,
+                                                               final Integer maxNumberOfTiers)
+            throws IllegalArgumentException {
+
+        List<TierDimensions> list;
+        switch (splitMethod) {
+
+            case CENTER:
+                list = TierDimensions.buildCenterTierDimensionsList(roughStackFullScaleBounds,
+                                                                    cellPixelWidth,
+                                                                    cellPixelHeight);
+                break;
+            case CENTER_ASPECT:
+                list = TierDimensions.buildCenterAspectTierDimensionsList(roughStackFullScaleBounds,
+                                                                          (cellPixelHeight * cellPixelWidth));
+                break;
+            case PRIME:
+                final int numberOfTiers = (maxNumberOfTiers == null) ? 4 : maxNumberOfTiers;
+                list = TierDimensions.buildPrimeTierDimensionsList(roughStackFullScaleBounds,
+                                                                   Math.max(cellPixelWidth, cellPixelHeight),
+                                                                   numberOfTiers);
+                break;
+            case UPPER_LEFT:
+                list = TierDimensions.buildUpperLeftTierDimensionsList(roughStackFullScaleBounds,
+                                                                       cellPixelWidth,
+                                                                       cellPixelHeight);
+                break;
+            default:
+                throw new IllegalArgumentException("split method '" + splitMethod + "' is not supported");
+        }
+
+        if ((maxNumberOfTiers != null) && (list.size() > maxNumberOfTiers)) {
+            list = list.subList(0, maxNumberOfTiers);
+        }
+
+        return list;
+    }
+
+    /**
      * @param  roughStackFullScaleBounds  bounds for the roughly aligned stack being split.
      * @param  cellPixelWidth             pixel width for each cell in each (potentially scaled) tier.
      * @param  cellPixelHeight            pixel height for each cell in each (potentially scaled) tier.
      *
      * @return list of dimensions for each tier built using the {@link LayerSplitMethod#CENTER} method.
      */
-    public static List<TierDimensions> buildCenterTierDimensionsList(final Bounds roughStackFullScaleBounds,
-                                                                           final int cellPixelWidth,
-                                                                           final int cellPixelHeight) {
+    static List<TierDimensions> buildUpperLeftTierDimensionsList(final Bounds roughStackFullScaleBounds,
+                                                                 final int cellPixelWidth,
+                                                                 final int cellPixelHeight) {
+
+        final int fullScaleWidth = (int) Math.ceil(roughStackFullScaleBounds.getDeltaX());
+        final int fullScaleHeight = (int) Math.ceil(roughStackFullScaleBounds.getDeltaY());
+
+        int fullScaleCellWidth = cellPixelWidth;
+        int fullScaleCellHeight = cellPixelHeight;
+        double scale = 1.0;
+        int tierCount = 0;
+        int rows;
+        int columns;
+        do {
+            tierCount++;
+            rows = (int) Math.ceil(fullScaleHeight / (double) fullScaleCellHeight);
+            columns = (int) Math.ceil(fullScaleWidth / (double) fullScaleCellWidth);
+            fullScaleCellWidth *= 2;
+            fullScaleCellHeight *= 2;
+            scale /= 2.0;
+        } while (((fullScaleCellWidth < fullScaleWidth) || (fullScaleCellHeight < fullScaleHeight)) &&
+                 (rows > 3) &&
+                 (columns > 3));
+
+        // "undo" last scaling iteration which exceeded bounds to set up tier 1 values
+        fullScaleCellWidth /= 2;
+        fullScaleCellHeight /= 2;
+        scale *= 2.0;
+        rows = (int) Math.ceil(fullScaleHeight / (cellPixelHeight / scale));
+        columns = (int) Math.ceil(fullScaleWidth / (cellPixelWidth / scale));
+
+        final List<TierDimensions> list = new ArrayList<>(tierCount);
+
+        // add tier 0 with 1 cell that fits rough stack bounds
+        list.add(buildTierZero(roughStackFullScaleBounds, cellPixelWidth, cellPixelHeight));
+
+        if (tierCount > 1) {
+
+            // place tier 1 upper left at rough stack upper left
+            int minX = (int) Math.floor(roughStackFullScaleBounds.getMinX());
+            int minY = (int) Math.floor(roughStackFullScaleBounds.getMinY());
+            Bounds fullScaleBounds = new Bounds((double) minX,
+                                                (double) minY,
+                                                roughStackFullScaleBounds.getMinZ(),
+                                                (double) (minX + (columns * fullScaleCellWidth)),
+                                                (double) (minY + (rows * fullScaleCellHeight)),
+                                                roughStackFullScaleBounds.getMaxZ());
+
+            list.add(new TierDimensions(fullScaleCellWidth,
+                                        fullScaleCellHeight,
+                                        scale,
+                                        rows,
+                                        columns,
+                                        fullScaleBounds));
+
+            int insideCenterX = (int) Math.floor(fullScaleBounds.getMinX() + (fullScaleCellWidth * 0.25));
+            int insideCenterY = (int) Math.floor(fullScaleBounds.getMinY() + (fullScaleCellHeight * 0.25));
+            int cellsFromInside = 1;
+            for (int tier = 2; tier <= tierCount; tier++) {
+                fullScaleCellWidth /= 2;
+                fullScaleCellHeight /= 2;
+                scale *= 2.0;
+
+                minX = (int) Math.floor(insideCenterX - (cellsFromInside * fullScaleCellWidth));
+                minY = (int) Math.floor(insideCenterY - (cellsFromInside * fullScaleCellHeight));
+
+                rows = (int) Math.ceil((roughStackFullScaleBounds.getMaxY() - minY) / fullScaleCellHeight);
+                columns = (int) Math.ceil((roughStackFullScaleBounds.getMaxX() - minX) / fullScaleCellWidth);
+
+                fullScaleBounds = new Bounds((double) minX,
+                                             (double) minY,
+                                             roughStackFullScaleBounds.getMinZ(),
+                                             (double) (minX + (columns * fullScaleCellWidth)),
+                                             (double) (minY + (rows * fullScaleCellHeight)),
+                                             roughStackFullScaleBounds.getMaxZ());
+
+                list.add(new TierDimensions(fullScaleCellWidth,
+                                            fullScaleCellHeight,
+                                            scale,
+                                            rows,
+                                            columns,
+                                            fullScaleBounds));
+
+                insideCenterX = (int) Math.floor(insideCenterX + (fullScaleCellWidth * 0.25));
+                insideCenterY = (int) Math.floor(insideCenterY + (fullScaleCellHeight * 0.25));
+                cellsFromInside = (int) Math.pow(2, (tier - 1));
+            }
+        }
+
+        LOG.info("buildUpperLeftTierDimensionsList: returning dimensions for {} tiers: {}", list.size(), list);
+
+        return list;
+    }
+
+    /**
+     * @param  roughStackFullScaleBounds  bounds for the roughly aligned stack being split.
+     * @param  cellPixelWidth             pixel width for each cell in each (potentially scaled) tier.
+     * @param  cellPixelHeight            pixel height for each cell in each (potentially scaled) tier.
+     *
+     * @return list of dimensions for each tier built using the {@link LayerSplitMethod#CENTER} method.
+     */
+    private static List<TierDimensions> buildCenterTierDimensionsList(final Bounds roughStackFullScaleBounds,
+                                                                      final int cellPixelWidth,
+                                                                      final int cellPixelHeight) {
 
         final List<TierDimensions> list = new ArrayList<>();
 
@@ -202,10 +364,7 @@ public class TierDimensions implements Serializable {
         }
 
         // add tier 0 with 1 cell that fits rough stack bounds
-        list.add(
-                buildPrimeSplitTier(roughStackFullScaleBounds,
-                                    Math.max(cellPixelWidth, cellPixelHeight),
-                                    0));
+        list.add(buildTierZero(roughStackFullScaleBounds,cellPixelWidth, cellPixelHeight));
 
         // reverse order so that dimensions for tier 0 are in element 0 ...
         Collections.reverse(list);
@@ -221,8 +380,8 @@ public class TierDimensions implements Serializable {
      *
      * @return list of dimensions for each tier built using the {@link LayerSplitMethod#CENTER_ASPECT} method.
      */
-    public static List<TierDimensions> buildCenterAspectTierDimensionsList(final Bounds roughStackFullScaleBounds,
-                                                                           final int maxPixelsPerCell) {
+    static List<TierDimensions> buildCenterAspectTierDimensionsList(final Bounds roughStackFullScaleBounds,
+                                                                    final int maxPixelsPerCell) {
 
         final double stackAspectRatio = roughStackFullScaleBounds.getDeltaX() / roughStackFullScaleBounds.getDeltaY();
         final double cellHeight = Math.sqrt(maxPixelsPerCell / stackAspectRatio);
@@ -238,9 +397,9 @@ public class TierDimensions implements Serializable {
      *
      * @return list of dimensions for each tier built using the {@link LayerSplitMethod#PRIME} method.
      */
-    public static List<TierDimensions> buildPrimeTierDimensionsList(final Bounds roughStackFullScaleBounds,
-                                                                    final int maxPixelsPerDimension,
-                                                                    final int numberOfTiers) {
+    static List<TierDimensions> buildPrimeTierDimensionsList(final Bounds roughStackFullScaleBounds,
+                                                             final int maxPixelsPerDimension,
+                                                             final int numberOfTiers) {
 
         final List<TierDimensions> list = new ArrayList<>();
 
@@ -266,10 +425,10 @@ public class TierDimensions implements Serializable {
      *
      * @return dimensions for one tier built using the {@link LayerSplitMethod#CENTER} method.
      */
-    public static TierDimensions buildCenterSplitTier(final Bounds roughStackFullScaleBounds,
-                                                      final int fullScaleCellWidth,
-                                                      final int fullScaleCellHeight,
-                                                      final double scale) {
+    private static TierDimensions buildCenterSplitTier(final Bounds roughStackFullScaleBounds,
+                                                       final int fullScaleCellWidth,
+                                                       final int fullScaleCellHeight,
+                                                       final double scale) {
 
         final double centerX = roughStackFullScaleBounds.getCenterX();
         final double centerY = roughStackFullScaleBounds.getCenterY();
@@ -316,9 +475,9 @@ public class TierDimensions implements Serializable {
      *
      * @return dimensions for one tier built using the {@link LayerSplitMethod#PRIME} method.
      */
-    public static TierDimensions buildPrimeSplitTier(final Bounds parentStackFullScaleBounds,
-                                                     final int maxPixelsPerDimension,
-                                                     final int tier) {
+    static TierDimensions buildPrimeSplitTier(final Bounds parentStackFullScaleBounds,
+                                              final int maxPixelsPerDimension,
+                                              final int tier) {
 
         final int[] primeCandidates = { 1, 3, 7, 17, 37, 79, 163, 331, 673, 1361, 2729, 5471, 10949, 21911 };
         final int rowsAndColumns;
@@ -355,6 +514,19 @@ public class TierDimensions implements Serializable {
         LOG.info("buildPrimeSplitTier: returning tier {} dimensions: {}", tier, tierDimensions);
 
         return tierDimensions;
+    }
+
+    /**
+     * @param  roughStackFullScaleBounds  bounds for the parent stack being split.
+     * @param  cellPixelWidth             pixel width for each cell in each (potentially scaled) tier.
+     * @param  cellPixelHeight            pixel height for each cell in each (potentially scaled) tier.
+     *
+     * @return tier 0 dimensions with 1 cell that fits rough stack bounds.
+     */
+    private static TierDimensions buildTierZero(final Bounds roughStackFullScaleBounds,
+                                                final int cellPixelWidth,
+                                                final int cellPixelHeight) {
+        return buildPrimeSplitTier(roughStackFullScaleBounds, Math.max(cellPixelWidth, cellPixelHeight), 0);
     }
 
     private static TierDimensions getParentDimensions(final Bounds roughStackFullScaleBounds,
