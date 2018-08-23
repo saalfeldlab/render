@@ -27,11 +27,11 @@ import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.FeatureExtractionParameters;
-import org.janelia.render.client.parameter.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.FeatureStorageParameters;
-import org.janelia.render.client.parameter.MatchDerivationParameters;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.janelia.render.client.spark.cache.CachedCanvasFeatures;
 import org.janelia.render.client.spark.cache.CanvasDataCache;
@@ -50,22 +50,22 @@ public class SIFTPointMatchClient
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
+        MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
 
         @ParametersDelegate
-        public FeatureRenderParameters featureRender = new FeatureRenderParameters();
+        FeatureRenderParameters featureRender = new FeatureRenderParameters();
 
         @ParametersDelegate
-        public FeatureRenderClipParameters featureRenderClip = new FeatureRenderClipParameters();
+        FeatureRenderClipParameters featureRenderClip = new FeatureRenderClipParameters();
 
         @ParametersDelegate
-        public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+        FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
 
         @ParametersDelegate
-        public FeatureStorageParameters featureStorage = new FeatureStorageParameters();
+        FeatureStorageParameters featureStorage = new FeatureStorageParameters();
 
         @ParametersDelegate
-        public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
+        MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
         @Parameter(
                 names = "--pairJson",
@@ -98,7 +98,7 @@ public class SIFTPointMatchClient
 
     private final Parameters parameters;
 
-    public SIFTPointMatchClient(final Parameters parameters) throws IllegalArgumentException {
+    private SIFTPointMatchClient(final Parameters parameters) throws IllegalArgumentException {
         this.parameters = parameters;
     }
 
@@ -141,16 +141,16 @@ public class SIFTPointMatchClient
                                 matchStorageFunction);
     }
 
-    public static long generateMatchesForPairs(final JavaSparkContext sparkContext,
-                                               final RenderableCanvasIdPairs renderableCanvasIdPairs,
-                                               final String baseDataUrl,
-                                               final FeatureRenderParameters featureRenderParameters,
-                                               final FeatureRenderClipParameters featureRenderClipParameters,
-                                               final FeatureExtractionParameters featureExtractionParameters,
-                                               final FeatureStorageParameters featureStorageParameters,
-                                               final MatchDerivationParameters matchDerivationParameters,
-                                               final MatchStorageFunction matchStorageFunction)
-            throws IOException, URISyntaxException {
+    static long generateMatchesForPairs(final JavaSparkContext sparkContext,
+                                        final RenderableCanvasIdPairs renderableCanvasIdPairs,
+                                        final String baseDataUrl,
+                                        final FeatureRenderParameters featureRenderParameters,
+                                        final FeatureRenderClipParameters featureRenderClipParameters,
+                                        final FeatureExtractionParameters featureExtractionParameters,
+                                        final FeatureStorageParameters featureStorageParameters,
+                                        final MatchDerivationParameters matchDerivationParameters,
+                                        final MatchStorageFunction matchStorageFunction)
+            throws URISyntaxException {
 
         final CanvasRenderParametersUrlTemplate urlTemplateForRun =
                 CanvasRenderParametersUrlTemplate.getTemplateForRun(

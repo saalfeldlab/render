@@ -35,10 +35,10 @@ import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.FeatureExtractionParameters;
-import org.janelia.render.client.parameter.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.render.client.parameter.FeatureStorageParameters;
-import org.janelia.render.client.parameter.MatchDerivationParameters;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
@@ -77,76 +77,74 @@ public class RoughAlignmentClient
 
         @Parameter(
                 names = "--zNeighborDistance",
-                description = "Generate matches between layers with z values less than or equal to this distance from the current layer's z value",
-                required = false)
+                description = "Generate matches between layers with z values less than or equal to this distance from the current layer's z value"
+        )
         public Integer zNeighborDistance = 2;
 
         @Parameter(
                 names = "--scapeRenderScale",
-                description = "Render montage layer scapes at this scale",
-                required = false)
+                description = "Render montage layer scapes at this scale"
+        )
         public Double scapeRenderScale;
 
         @Parameter(
                 names = "--maxPixelsPerScape",
-                description = "Set montage layer scape render scale based upon this pixel maximum (ignored if --scapeRenderScale is specified)",
-                required = false)
+                description = "Set montage layer scape render scale based upon this pixel maximum (ignored if --scapeRenderScale is specified)"
+        )
         public Integer maxPixelsPerScape = 5_000_000;
 
         @Parameter(
                 names = "--renderWithFilter",
                 description = "Render tiles using a filter for intensity correction",
-                required = false,
                 arity = 1)
         public boolean renderWithFilter = true;
 
         @Parameter(
                 names = "--fillWithNoise",
                 description = "Fill each canvas image with noise before rendering to improve point match derivation",
-                required = false,
                 arity = 1)
         public boolean fillWithNoise = true;
 
         @Parameter(
                 names = "--channel",
-                description = "Name of channel to use for alignment (omit if data is not multi-channel)",
-                required = false)
+                description = "Name of channel to use for alignment (omit if data is not multi-channel)"
+        )
         public String channel;
 
         @Parameter(
                 names = "--boxBaseDataUrl",
-                description = "Base web service URL for boxes referenced in tiered split stacks (e.g. http://host[:port]/render-ws/v1).  If omitted, baseDataUrl will be used.",
-                required = false)
+                description = "Base web service URL for boxes referenced in tiered split stacks (e.g. http://host[:port]/render-ws/v1).  If omitted, baseDataUrl will be used."
+        )
         public String boxBaseDataUrl;
 
         @Parameter(
                 names = "--minIntensity",
-                description = "Minimum intensity for all tiered split stack canvas tiles",
-                required = false)
+                description = "Minimum intensity for all tiered split stack canvas tiles"
+        )
         public Double minIntensity = 0.0;
 
         @Parameter(
                 names = "--maxIntensity",
-                description = "Maximum intensity for all tiered split stack canvas tiles",
-                required = false)
+                description = "Maximum intensity for all tiered split stack canvas tiles"
+        )
         public Double maxIntensity = 255.0;
 
         @ParametersDelegate
-        public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+        FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
 
         @Parameter(
                 names = { "--maxFeatureCacheGb" },
-                description = "Maximum number of gigabytes of features to cache",
-                required = false)
+                description = "Maximum number of gigabytes of features to cache"
+        )
         public Integer maxCacheGb = 2;
 
         @ParametersDelegate
-        public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
+        MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
         @Parameter(
                 names = "--solverScript",
-                description = "Full path for solver",
-                required = false)
+                description = "Full path for solver"
+        )
         public String solverScript = "/groups/flyTEM/flyTEM/matlab_compiled/bin/run_system_solve_affine_with_constraint_SL.sh";
 
         @Parameter(
@@ -157,15 +155,15 @@ public class RoughAlignmentClient
 
         @Parameter(
                 names = "--keepExisting",
-                description = "Pipeline stage for which all prior existing results should be kept",
-                required = false)
+                description = "Pipeline stage for which all prior existing results should be kept"
+        )
         public PipelineStep keepExistingStep;
 
-        public String getBoxBaseDataUrl() {
+        String getBoxBaseDataUrl() {
             return boxBaseDataUrl == null ? renderWeb.baseDataUrl : boxBaseDataUrl;
         }
 
-        public boolean keepExisting(final PipelineStep step) {
+        boolean keepExisting(final PipelineStep step) {
             return (keepExistingStep != null) && (step.compareTo(keepExistingStep) <= 0);
         }
     }
@@ -203,8 +201,8 @@ public class RoughAlignmentClient
     private String tierZeroProject;
     private RenderDataClient driverTierRender;
 
-    public RoughAlignmentClient(final Parameters parameters,
-                                final SparkConf sparkConf) throws IllegalArgumentException {
+    private RoughAlignmentClient(final Parameters parameters,
+                                 final SparkConf sparkConf) throws IllegalArgumentException {
         this.parameters = parameters;
         this.sparkContext = new JavaSparkContext(sparkConf);
 
@@ -423,8 +421,7 @@ public class RoughAlignmentClient
         return existingMatchCollectionPairCounts;
     }
 
-    private void updateSavedMatchPairCounts(final Map<String, Long> existingMatchCollectionPairCounts)
-            throws IOException {
+    private void updateSavedMatchPairCounts(final Map<String, Long> existingMatchCollectionPairCounts) {
 
         final String matchCollectionName = tierZeroStack.getMatchCollectionId().getName();
         // NOTE: will set count to null if match collection does not exist

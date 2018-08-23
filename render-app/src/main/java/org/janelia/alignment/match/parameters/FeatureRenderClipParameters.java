@@ -1,4 +1,4 @@
-package org.janelia.render.client.parameter;
+package org.janelia.alignment.match.parameters;
 
 import com.beust.jcommander.Parameter;
 
@@ -14,14 +14,14 @@ public class FeatureRenderClipParameters
 
     @Parameter(
             names = "--clipWidth",
-            description = "Number of full scale pixels to include in rendered clips of LEFT/RIGHT oriented montage tiles",
-            required = false)
+            description = "Number of full scale pixels to include in rendered clips of LEFT/RIGHT oriented montage tiles"
+    )
     public Integer clipWidth;
 
     @Parameter(
             names = "--clipHeight",
-            description = "Number of full scale pixels to include in rendered clips of TOP/BOTTOM oriented montage tiles",
-            required = false)
+            description = "Number of full scale pixels to include in rendered clips of TOP/BOTTOM oriented montage tiles"
+    )
     public Integer clipHeight;
 
 }

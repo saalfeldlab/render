@@ -41,11 +41,11 @@ import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.FeatureExtractionParameters;
-import org.janelia.render.client.parameter.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.FeatureStorageParameters;
-import org.janelia.render.client.parameter.MatchDerivationParameters;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,88 +75,92 @@ public class HierarchicalAlignmentClient
 
         @Parameter(
                 names = "--lastTier",
-                description = "Last tier to generate",
-                required = false)
+                description = "Last tier to generate"
+        )
         public Integer lastTier = 1;
 
         @Parameter(
                 names = "--maxPixelsPerDimension",
-                description = "Scale each tier such that the number of pixels in the largest dimension is this number",
-                required = false)
+                description = "Scale each tier such that the number of pixels in the largest dimension is this number"
+        )
         public Integer maxPixelsPerDimension = 2048;
 
         @Parameter(
+                names = "--maxNumberOfTiers",
+                description = "Maximum number of tiers in the hierarchy (or null to dynamically determine value)"
+        )
+        public Integer maxNumberOfTiers = null;
+
+        @Parameter(
                 names = "--maxCompleteAlignmentQuality",
-                description = "Split stacks with quality values less than this maximum do not need to be aligned in subsequent tiers",
-                required = false)
+                description = "Split stacks with quality values less than this maximum do not need to be aligned in subsequent tiers"
+        )
         public Double maxCompleteAlignmentQuality;
 
         @Parameter(
                 names = "--firstTier",
-                description = "First tier to generate",
-                required = false)
+                description = "First tier to generate"
+        )
         public Integer firstTier = 1;
 
         @Parameter(
                 names = "--zNeighborDistance",
-                description = "Generate matches between layers with z values less than or equal to this distance from the current layer's z value",
-                required = false)
+                description = "Generate matches between layers with z values less than or equal to this distance from the current layer's z value"
+        )
         public Integer zNeighborDistance = 2;
 
         @Parameter(
                 names = "--renderWithFilter",
                 description = "Render tiles using a filter for intensity correction",
-                required = false,
                 arity = 1)
         public boolean renderWithFilter = true;
 
         @Parameter(
                 names = "--fillWithNoise",
                 description = "Fill each canvas image with noise before rendering to improve point match derivation",
-                required = false,
                 arity = 1)
         public boolean fillWithNoise = true;
 
         @Parameter(
                 names = "--channel",
-                description = "Name of channel to use for alignment (omit if data is not multi-channel)",
-                required = false)
+                description = "Name of channel to use for alignment (omit if data is not multi-channel)"
+        )
         public String channel;
 
         @Parameter(
                 names = "--boxBaseDataUrl",
-                description = "Base web service URL for boxes referenced in tiered split stacks (e.g. http://host[:port]/render-ws/v1).  If omitted, baseDataUrl will be used.",
-                required = false)
+                description = "Base web service URL for boxes referenced in tiered split stacks (e.g. http://host[:port]/render-ws/v1).  If omitted, baseDataUrl will be used."
+        )
         public String boxBaseDataUrl;
 
         @Parameter(
                 names = "--minIntensity",
-                description = "Minimum intensity for all tiered split stack canvas tiles",
-                required = false)
+                description = "Minimum intensity for all tiered split stack canvas tiles"
+        )
         public Double minIntensity = 0.0;
 
         @Parameter(
                 names = "--maxIntensity",
-                description = "Maximum intensity for all tiered split stack canvas tiles",
-                required = false)
+                description = "Maximum intensity for all tiered split stack canvas tiles"
+        )
         public Double maxIntensity = 255.0;
 
         @ParametersDelegate
-        public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+        FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
 
         @Parameter(
                 names = { "--maxFeatureCacheGb" },
-                description = "Maximum number of gigabytes of features to cache",
-                required = false)
+                description = "Maximum number of gigabytes of features to cache"
+        )
         public Integer maxCacheGb = 2;
 
         @ParametersDelegate
-        public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
+        MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
         @Parameter(
                 names = "--solverScript",
-                description = "Full path for solver",
-                required = false)
+                description = "Full path for solver"
+        )
         public String solverScript = "/groups/flyTEM/flyTEM/matlab_compiled/bin/run_system_solve_affine_with_constraint_SL.sh";
 
         @Parameter(
@@ -167,27 +171,27 @@ public class HierarchicalAlignmentClient
 
         @Parameter(
                 names = "--keepExisting",
-                description = "Pipeline stage for which all prior existing results should be kept",
-                required = false)
+                description = "Pipeline stage for which all prior existing results should be kept"
+        )
         public PipelineStep keepExistingStep;
 
         @Parameter(
                 names = "--consensusBuildMethod",
-                description = "Method for building consensus warp fields",
-                required = false)
+                description = "Method for building consensus warp fields"
+        )
         public ConsensusWarpFieldBuilder.BuildMethod consensusBuildMethod = ConsensusWarpFieldBuilder.BuildMethod.SIMPLE;
 
         @Parameter(
                 names = "--splitMethod",
-                description = "Method used to divide each tier",
-                required = false)
+                description = "Method used to divide each tier"
+        )
         public TierDimensions.LayerSplitMethod splitMethod = TierDimensions.LayerSplitMethod.PRIME;
 
-        public String getBoxBaseDataUrl() {
+        String getBoxBaseDataUrl() {
             return boxBaseDataUrl == null ? renderWeb.baseDataUrl : boxBaseDataUrl;
         }
 
-        public boolean keepExisting(final PipelineStep step) {
+        boolean keepExisting(final PipelineStep step) {
             return (keepExistingStep != null) && (step.compareTo(keepExistingStep) <= 0);
         }
     }
@@ -228,8 +232,8 @@ public class HierarchicalAlignmentClient
     private HierarchicalTierRegions priorTierRegions;
     private RenderDataClient driverTierRender;
 
-    public HierarchicalAlignmentClient(final Parameters parameters,
-                                       final SparkConf sparkConf) throws IllegalArgumentException {
+    HierarchicalAlignmentClient(final Parameters parameters,
+                                final SparkConf sparkConf) throws IllegalArgumentException {
         this.parameters = parameters;
         this.sparkContext = new JavaSparkContext(sparkConf);
 
@@ -299,8 +303,7 @@ public class HierarchicalAlignmentClient
 
     private void setupForTier(final int tier,
                               final StackMetaData roughStackMetaData,
-                              final StackMetaData parentStackMetaData)
-            throws IOException {
+                              final StackMetaData parentStackMetaData) {
 
         LOG.info("setupForTier: entry, tier={}", tier);
 
@@ -308,27 +311,17 @@ public class HierarchicalAlignmentClient
         this.tierProject = HierarchicalStack.deriveProjectForTier(roughTilesStackId, currentTier);
         this.tierParentStackId = parentStackMetaData.getStackId();
         final Bounds roughStackBounds = roughStackMetaData.getStats().getStackBounds();
-        final Bounds parentStackBounds = parentStackMetaData.getStats().getStackBounds();
 
         final int cellWidth = parameters.maxPixelsPerDimension;
         final int cellHeight = parameters.maxPixelsPerDimension;
-        if (TierDimensions.LayerSplitMethod.CENTER.equals(parameters.splitMethod)) {
-            final List<TierDimensions> tierDimensionsList =
-                    TierDimensions.buildCenterTierDimensionsList(roughStackBounds,
-                                                                 cellWidth,
-                                                                 cellHeight);
-            this.tierDimensions = tierDimensionsList.get(currentTier);
-        } else if (TierDimensions.LayerSplitMethod.CENTER_ASPECT.equals(parameters.splitMethod)) {
-            final List<TierDimensions> tierDimensionsList =
-                    TierDimensions.buildCenterAspectTierDimensionsList(roughStackBounds,
-                                                                       (cellHeight * cellWidth));
-            this.tierDimensions = tierDimensionsList.get(currentTier);
-        } else { // LayerSplitMethod.PRIME
-            this.tierDimensions = TierDimensions.buildPrimeSplitTier(parentStackBounds,
-                                                                     parameters.maxPixelsPerDimension,
-                                                                     currentTier);
-        }
 
+        final List<TierDimensions> tierDimensionsList = TierDimensions.buildTierDimensionsList(parameters.splitMethod,
+                                                                                               roughStackBounds,
+                                                                                               cellWidth,
+                                                                                               cellHeight,
+                                                                                               null);
+
+        this.tierDimensions = tierDimensionsList.get(currentTier);
         this.tierStacks = this.tierDimensions.getSplitStacks(roughTilesStackId, currentTier);
 
         if (this.tierStacks.size() == 0) {
@@ -348,8 +341,7 @@ public class HierarchicalAlignmentClient
 
     private void updateExistingDerivedData() throws IOException {
 
-        final Set<StackId> existingTierProjectStackIds = new HashSet<>();
-        existingTierProjectStackIds.addAll(driverTierRender.getProjectStacks());
+        final Set<StackId> existingTierProjectStackIds = new HashSet<>(driverTierRender.getProjectStacks());
 
         for (final HierarchicalStack splitStack : tierStacks) {
             final StackId splitStackId = splitStack.getSplitStackId();
@@ -512,8 +504,7 @@ public class HierarchicalAlignmentClient
         return existingMatchCollectionPairCounts;
     }
 
-    private void updateSavedMatchPairCounts(final Map<String, Long> existingMatchCollectionPairCounts)
-            throws IOException {
+    private void updateSavedMatchPairCounts(final Map<String, Long> existingMatchCollectionPairCounts) {
 
         for (final HierarchicalStack tierStack : tierStacks) {
             final String matchCollectionName = tierStack.getMatchCollectionId().getName();
@@ -868,8 +859,8 @@ public class HierarchicalAlignmentClient
         LOG.info("createWarpStackForTier: exit, processing took {} seconds", timer.getElapsedSeconds());
     }
 
-    public static long getPotentialPairsPerStack(final int numberOfLayers,
-                                                 final int zNeighborDistance) {
+    static long getPotentialPairsPerStack(final int numberOfLayers,
+                                          final int zNeighborDistance) {
         final long potentialPairsPerStack;
         if (zNeighborDistance >= numberOfLayers) {
             potentialPairsPerStack = getTriangularNumber(numberOfLayers - 1);

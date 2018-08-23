@@ -23,8 +23,8 @@ import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.FeatureExtractionParameters;
-import org.janelia.render.client.parameter.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,13 +46,13 @@ public class FeatureClient
         public String baseDataUrl;
 
         @ParametersDelegate
-        public FeatureRenderParameters featureRender = new FeatureRenderParameters();
+        FeatureRenderParameters featureRender = new FeatureRenderParameters();
 
         @ParametersDelegate
-        public FeatureRenderClipParameters featureRenderClip = new FeatureRenderClipParameters();
+        FeatureRenderClipParameters featureRenderClip = new FeatureRenderClipParameters();
 
         @ParametersDelegate
-        public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+        FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
 
         @Parameter(
                 names = "--rootFeatureDirectory",
@@ -69,17 +69,17 @@ public class FeatureClient
 
         @Parameter(
                 names = "--beginIndex",
-                description = "Index of first pair to process",
-                required = false)
+                description = "Index of first pair to process"
+        )
         public Integer beginIndex = 0;
 
         @Parameter(
                 names = "--endIndex",
-                description = "Index (inclusive) of last pair to process (or null to process all remaining)",
-                required = false)
+                description = "Index (inclusive) of last pair to process (or null to process all remaining)"
+        )
         public Integer endIndex;
 
-        public int getExclusiveEndIndex(final int totalNumberOfPairs) {
+        int getExclusiveEndIndex(final int totalNumberOfPairs) {
             int exclusiveEndIndex = totalNumberOfPairs;
             if ((endIndex != null && endIndex < totalNumberOfPairs)) {
                 exclusiveEndIndex = endIndex + 1;
@@ -110,7 +110,7 @@ public class FeatureClient
 
     private final Parameters parameters;
 
-    public FeatureClient(final Parameters parameters) throws IllegalArgumentException {
+    FeatureClient(final Parameters parameters) throws IllegalArgumentException {
         this.parameters = parameters;
     }
 
@@ -151,12 +151,12 @@ public class FeatureClient
                                         new File(parameters.rootFeatureDirectory).getAbsoluteFile());
     }
 
-    public static void generateFeatureListsForCanvases(final String renderParametersUrlTemplate,
-                                                       final List<CanvasId> canvasIdList,
-                                                       final FeatureRenderParameters featureRenderParameters,
-                                                       final FeatureRenderClipParameters featureRenderClipParameters,
-                                                       final FeatureExtractionParameters featureExtractionParameters,
-                                                       final File rootDirectory)
+    private static void generateFeatureListsForCanvases(final String renderParametersUrlTemplate,
+                                                        final List<CanvasId> canvasIdList,
+                                                        final FeatureRenderParameters featureRenderParameters,
+                                                        final FeatureRenderClipParameters featureRenderClipParameters,
+                                                        final FeatureExtractionParameters featureExtractionParameters,
+                                                        final File rootDirectory)
             throws IOException, URISyntaxException {
 
         final CanvasRenderParametersUrlTemplate urlTemplateForRun =

@@ -29,9 +29,9 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.FeatureExtractionParameters;
-import org.janelia.render.client.parameter.FeatureRenderClipParameters;
-import org.janelia.render.client.parameter.MatchDerivationParameters;
+import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,71 +76,70 @@ public class PointMatchClient {
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
+        MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
 
         @ParametersDelegate
         public MatchDerivationParameters match = new MatchDerivationParameters();
 
         @ParametersDelegate
-        public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+        FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
 
         @ParametersDelegate
-        public FeatureRenderClipParameters clip = new FeatureRenderClipParameters();
+        FeatureRenderClipParameters clip = new FeatureRenderClipParameters();
 
         @Parameter(
                 names = "--firstCanvasPosition",
-                description = "When clipping, identifies the relative position of the first canvas to the second canvas",
-                required = false)
+                description = "When clipping, identifies the relative position of the first canvas to the second canvas"
+        )
         public MontageRelativePosition firstCanvasPosition;
 
         @Parameter(
                 names = "--renderScale",
-                description = "Render canvases at this scale",
-                required = false)
+                description = "Render canvases at this scale"
+        )
         public Double renderScale = 1.0;
 
         @Parameter(names = "--fillWithNoise",
                 description = "Fill each canvas image with noise before rendering to improve point match derivation",
-                required = false,
                 arity = 1)
         public boolean fillWithNoise = true;
 
         @Parameter(
                 names = "--renderFileFormat",
-                description = "Format for saved canvases (only relevant if debugDirectory is specified)",
-                required = false)
+                description = "Format for saved canvases (only relevant if debugDirectory is specified)"
+        )
         public RenderFileFormat renderFileFormat = RenderFileFormat.JPG;
 
         @Parameter(
                 names = "--numberOfThreads",
-                description = "Number of threads to use for processing",
-                required = false)
+                description = "Number of threads to use for processing"
+        )
         public int numberOfThreads = 1;
 
         @Parameter(
                 names = "--matchStorageFile",
-                description = "File to store matches (omit if matches should be stored through web service)",
-                required = false)
+                description = "File to store matches (omit if matches should be stored through web service)"
+        )
         public String matchStorageFile = null;
 
         @Parameter(
                 names = "--canvasGroupIdAlgorithm",
-                description = "Algorithm for deriving canvas group ids",
-                required = false)
+                description = "Algorithm for deriving canvas group ids"
+        )
         public CanvasGroupIdAlgorithm canvasGroupIdAlgorithm = CanvasGroupIdAlgorithm.FIRST_TILE_SECTION_ID;
 
         @Parameter(
                 names = "--canvasIdAlgorithm",
-                description = "Algorithm for deriving canvas ids",
-                required = false)
+                description = "Algorithm for deriving canvas ids"
+        )
         public CanvasIdAlgorithm canvasIdAlgorithm = CanvasIdAlgorithm.FIRST_TILE_ID;
 
         @Parameter(
                 names = "--debugDirectory",
-                description = "Directory to save rendered canvases for debugging (omit to keep rendered data in memory only)",
-                required = false)
+                description = "Directory to save rendered canvases for debugging (omit to keep rendered data in memory only)"
+        )
         public String debugDirectory = null;
-        public File validatedDebugDirectory = null;
+        File validatedDebugDirectory = null;
 
         @Parameter(
                 description = "canvas_1_URL canvas_2_URL [canvas_p_URL canvas_q_URL] ... (each URL pair identifies render parameters for canvas pairs)",
@@ -152,7 +151,7 @@ public class PointMatchClient {
          *
          * @return file for debug save of rendered canvas.
          */
-        public File getCanvasFile(final String matchId) {
+        File getCanvasFile(final String matchId) {
             File canvasFile = null;
             if (validatedDebugDirectory != null) {
                 canvasFile = new File(validatedDebugDirectory,
@@ -166,7 +165,7 @@ public class PointMatchClient {
          *
          * @return match group id derived using the {@link #canvasGroupIdAlgorithm}.
          */
-        public String getCanvasGroupId(final RenderParameters renderParameters) {
+        String getCanvasGroupId(final RenderParameters renderParameters) {
             String matchGroupId = null;
             if (renderParameters.hasTileSpecs()) {
                 switch (canvasGroupIdAlgorithm) {
@@ -190,8 +189,8 @@ public class PointMatchClient {
          *
          * @return match id derived using the {@link #canvasIdAlgorithm}.
          */
-        public String getCanvasId(final RenderParameters renderParameters,
-                                  final String canvasName) {
+        String getCanvasId(final RenderParameters renderParameters,
+                           final String canvasName) {
             String matchId = null;
             if (renderParameters.hasTileSpecs()) {
                 switch (canvasIdAlgorithm) {
@@ -263,7 +262,7 @@ public class PointMatchClient {
     private final Map<String, CanvasData> canvasUrlToDataMap;
     private final RenderDataClient renderDataClient;
 
-    public PointMatchClient(final Parameters clientParameters)
+    PointMatchClient(final Parameters clientParameters)
             throws IllegalArgumentException {
 
         if ((clientParameters.renderParameterUrls.size() % 2) != 0) {
@@ -336,14 +335,14 @@ public class PointMatchClient {
                                                      clientParameters.matchClient.collection);
     }
 
-    public Map<String, CanvasData> getCanvasUrlToDataMap() {
+    Map<String, CanvasData> getCanvasUrlToDataMap() {
         return canvasUrlToDataMap;
     }
 
     /**
      * Extract features from distinct set of canvases.
      */
-    public void extractFeatures() throws Exception {
+    void extractFeatures() throws Exception {
 
         LOG.info("extractFeatures: entry, extracting from {} canvases", canvasUrlToDataMap.size());
 
@@ -379,7 +378,7 @@ public class PointMatchClient {
     /**
      * Derive point matches for each canvas pair and write results.
      */
-    public List<CanvasMatches> deriveMatches() throws Exception {
+    List<CanvasMatches> deriveMatches() throws Exception {
 
         LOG.info("deriveMatches: entry, extracting from {} canvases", canvasUrlToDataMap.size());
 
@@ -435,7 +434,7 @@ public class PointMatchClient {
         return canvasMatchesList;
     }
 
-    public void saveMatches(final List<CanvasMatches> canvasMatchesList) throws Exception {
+    private void saveMatches(final List<CanvasMatches> canvasMatchesList) throws Exception {
 
         LOG.info("saveMatches: entry, canvasMatchesList.size={}", canvasMatchesList.size());
 
@@ -459,7 +458,7 @@ public class PointMatchClient {
 
                 final Path storagePath = Paths.get(parameters.matchStorageFile);
 
-                try (BufferedWriter writer = Files.newBufferedWriter(storagePath, StandardCharsets.UTF_8)) {
+                try (final BufferedWriter writer = Files.newBufferedWriter(storagePath, StandardCharsets.UTF_8)) {
 
                     writer.write("[\n");
 
@@ -498,10 +497,10 @@ public class PointMatchClient {
         private final CanvasId canvasId;
         private List<Feature> featureList;
 
-        public CanvasData(final String canvasUrl,
-                          final double renderScale,
-                          final int canvasIndex,
-                          final Parameters clientParameters) {
+        CanvasData(final String canvasUrl,
+                   final double renderScale,
+                   final int canvasIndex,
+                   final Parameters clientParameters) {
 
             this.renderParameters = RenderParameters.loadFromUrl(canvasUrl);
             this.renderParameters.setScale(renderScale);
@@ -520,14 +519,14 @@ public class PointMatchClient {
                               renderParameters.y + renderParameters.height);
         }
 
-        public void clipForMontagePair(final Bounds bounds,
-                                       final Integer clipWidth,
-                                       final Integer clipHeight) {
+        void clipForMontagePair(final Bounds bounds,
+                                final Integer clipWidth,
+                                final Integer clipHeight) {
             canvasId.setClipOffsets((int) bounds.getDeltaX(), (int) bounds.getDeltaY(), clipWidth, clipHeight);
             renderParameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
         }
 
-        public void setFeatureList(final List<Feature> featureList) {
+        void setFeatureList(final List<Feature> featureList) {
             this.featureList = featureList;
         }
 
@@ -535,7 +534,7 @@ public class PointMatchClient {
             return canvasId;
         }
 
-        public int getNumberOfFeatures() {
+        int getNumberOfFeatures() {
             return (featureList == null) ? 0 : featureList.size();
         }
 
@@ -554,8 +553,8 @@ public class PointMatchClient {
         private final File renderFile;
         private final CanvasFeatureExtractor extractor;
 
-        public CanvasFeatureExtractorThread(final CanvasData canvasData,
-                                            final Parameters clientParameters) {
+        CanvasFeatureExtractorThread(final CanvasData canvasData,
+                                     final Parameters clientParameters) {
 
             this.canvasData = canvasData;
             this.renderFile = clientParameters.getCanvasFile(canvasData.canvasId.getId());
@@ -595,9 +594,9 @@ public class PointMatchClient {
 
         private CanvasFeatureMatchResult matchResult;
 
-        public CanvasFeatureMatcherThread(final CanvasData pCanvasData,
-                                          final CanvasData qCanvasData,
-                                          final CanvasFeatureMatcher matcher) {
+        CanvasFeatureMatcherThread(final CanvasData pCanvasData,
+                                   final CanvasData qCanvasData,
+                                   final CanvasFeatureMatcher matcher) {
             this.pCanvasData = pCanvasData;
             this.qCanvasData = qCanvasData;
             this.matcher = matcher;

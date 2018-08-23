@@ -2,6 +2,7 @@ package org.janelia.render.service;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -9,6 +10,7 @@ import java.util.Set;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -23,6 +25,8 @@ import javax.ws.rs.core.UriInfo;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
+import org.janelia.alignment.match.MatchTrial;
+import org.janelia.alignment.match.parameters.MatchTrialParameters;
 import org.janelia.render.service.dao.MatchDao;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.util.RenderServiceUtil;
@@ -51,7 +55,7 @@ public class MatchService {
         this(MatchDao.build());
     }
 
-    public MatchService(final MatchDao matchDao) {
+    private MatchService(final MatchDao matchDao) {
         this.matchDao = matchDao;
     }
 
@@ -592,6 +596,41 @@ public class MatchService {
         }
 
         return Response.ok().build();
+    }
+
+    @Path("v1/owner/{owner}/matchTrial")
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Create a match trial",
+            notes = "Derives matches for the specified canvas pair.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 201, message = "matches successfully saved"),
+            @ApiResponse(code = 400, message = "If no matches are provided")
+    })
+    public MatchTrial deriveMatches(@PathParam("owner") final String owner,
+                                    @Context final UriInfo uriInfo,
+                                    final MatchTrialParameters matchTrialParameters) {
+
+        LOG.info("deriveMatches: entry, owner={}", owner);
+
+        if (matchTrialParameters == null) {
+            throw new IllegalServiceArgumentException("no parameters provided");
+        }
+
+        MatchTrial matchTrial = null;
+        try {
+            final String trialId = String.valueOf(new Date().getTime());
+            matchTrial = new MatchTrial(trialId, matchTrialParameters);
+            matchTrial.deriveResults();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        LOG.info("deriveMatches: exit");
+
+        return matchTrial;
     }
 
     private MatchCollectionId getCollectionId(final String owner,

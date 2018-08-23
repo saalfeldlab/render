@@ -22,7 +22,7 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.ConsensusSetData;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MatchDerivationParameters;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +51,7 @@ public class RansacFilterClient {
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
+        MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
         @Parameter(
                 names = "--candidateFile",
@@ -91,7 +91,7 @@ public class RansacFilterClient {
 
     private final Parameters parameters;
 
-    public RansacFilterClient(final Parameters parameters) {
+    RansacFilterClient(final Parameters parameters) {
         this.parameters = parameters;
     }
 
@@ -164,7 +164,7 @@ public class RansacFilterClient {
 
     }
 
-    public List<CanvasMatches> loadMatchData(final String dataFile)
+    private List<CanvasMatches> loadMatchData(final String dataFile)
             throws IOException, IllegalArgumentException {
 
         final List<CanvasMatches> matchPairCandidates;
@@ -182,14 +182,14 @@ public class RansacFilterClient {
         return matchPairCandidates;
     }
 
-    public void saveMatchData(final List<CanvasMatches> filteredData,
+    private void saveMatchData(final List<CanvasMatches> filteredData,
                                final String outputFileName)
             throws IOException {
         FileUtil.saveJsonFile(outputFileName, filteredData);
         LOG.info("saveMatchData: exit, saved {} filter pairs to {}", filteredData.size() , outputFileName);
     }
 
-    public String[] splitFileName(final String fullPathName) {
+    private String[] splitFileName(final String fullPathName) {
         final int extensionIndex;
         String baseName = FilenameUtils.getBaseName(fullPathName);
         if (fullPathName.endsWith(".gz") || fullPathName.endsWith(".zip")) {

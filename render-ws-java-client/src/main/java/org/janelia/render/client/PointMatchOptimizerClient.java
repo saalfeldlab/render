@@ -16,8 +16,8 @@ import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.FeatureExtractionParameters;
-import org.janelia.render.client.parameter.MatchDerivationParameters;
+import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,32 +51,32 @@ public class PointMatchOptimizerClient {
 
         @Parameter(
                 names = "--renderScaleStep",
-                description = "Amount to adjust render scale for each iteration during optimization",
-                required = false)
+                description = "Amount to adjust render scale for each iteration during optimization"
+        )
         public Double renderScaleStep = 0.1;
 
         @Parameter(
                 names = "--minFeatureCount",
-                description = "Minimum number features for optimal render scale",
-                required = false)
+                description = "Minimum number features for optimal render scale"
+        )
         public Integer minFeatureCount = 3000;
 
         @Parameter(
                 names = "--maxFeatureCount",
-                description = "Maximum number features for optimal render scale",
-                required = false)
+                description = "Maximum number features for optimal render scale"
+        )
         public Integer maxFeatureCount = 6000;
 
         @ParametersDelegate
-        public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+        FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
 
         @ParametersDelegate
-        public MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
+        MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
         @Parameter(
                 names = "--matchRodStep",
-                description = "Amount to adjust ratio of distances for each iteration during optimization",
-                required = false)
+                description = "Amount to adjust ratio of distances for each iteration during optimization"
+        )
         public Double matchRodStep = 0.05;
 
     }
@@ -87,7 +87,7 @@ public class PointMatchOptimizerClient {
     public static void main(final String[] args) {
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
-            public void runClient(final String[] args) throws Exception {
+            public void runClient(final String[] args) {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
@@ -109,7 +109,7 @@ public class PointMatchOptimizerClient {
     private final Map<Double, List<Feature>> scaleToPFeatureListMap;
     private final Map<Double, List<Feature>> scaleToQFeatureListMap;
 
-    public PointMatchOptimizerClient(final Parameters clientParameters)
+    private PointMatchOptimizerClient(final Parameters clientParameters)
             throws IllegalArgumentException {
 
         this.parameters = clientParameters;
@@ -123,7 +123,7 @@ public class PointMatchOptimizerClient {
     /**
      * Extract features from distinct set of canvases.
      */
-    public void run() throws Exception {
+    public void run() {
 
         Double optimalRenderScale = null;
 
