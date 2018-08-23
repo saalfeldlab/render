@@ -79,10 +79,9 @@ public class TierDimensionsTest {
         final Object[][] expectedTierValues = {
                 // minX,  minY,  maxX,  maxY, rows, columns, scale
                 { 50000, 40000, 70000, 65000,    1,       1, 0.04096 },  // tier 0
-                { 50000, 40000, 74576, 72768,    4,       3, 0.125   },  // tier 1
-                { 47952, 37952, 72528, 66624,    7,       6, 0.25    },  // tier 2
-                { 48976, 38976, 71504, 65600,   13,      11, 0.5     },  // tier 3
-                { 49488, 39488, 70992, 65088,   25,      21, 1.0     }   // tier 4
+                { 50000, 40000, 70480, 68672,    7,       5, 0.25    },  // tier 1
+                { 48976, 38976, 71504, 65600,   13,      11, 0.5     },  // tier 2
+                { 49488, 39488, 70992, 65088,   25,      21, 1.0     }   // tier 3
         };
 
         validateTiers(expectedTierValues, tierDimensionsList);

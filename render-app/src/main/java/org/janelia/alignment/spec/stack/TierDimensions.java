@@ -249,11 +249,11 @@ public class TierDimensions implements Serializable {
         int columns;
         do {
             tierCount++;
-            rows = (int) Math.ceil(fullScaleHeight / (double) fullScaleCellHeight);
-            columns = (int) Math.ceil(fullScaleWidth / (double) fullScaleCellWidth);
             fullScaleCellWidth *= 2;
             fullScaleCellHeight *= 2;
             scale /= 2.0;
+            rows = (int) Math.ceil(fullScaleHeight / (double) fullScaleCellHeight);
+            columns = (int) Math.ceil(fullScaleWidth / (double) fullScaleCellWidth);
         } while (((fullScaleCellWidth < fullScaleWidth) || (fullScaleCellHeight < fullScaleHeight)) &&
                  (rows > 3) &&
                  (columns > 3));
