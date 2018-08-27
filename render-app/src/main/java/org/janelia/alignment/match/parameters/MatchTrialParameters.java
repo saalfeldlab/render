@@ -53,4 +53,14 @@ public class MatchTrialParameters implements Serializable {
     public String getqUrl() {
         return qUrl;
     }
+
+    public void validateAndSetDefaults() throws IllegalArgumentException {
+
+        if (featureAndMatchParameters == null) {
+            throw new IllegalArgumentException("featureAndMatchParameters are not defined");
+        } else {
+            featureAndMatchParameters.setDefaults();
+        }
+    }
+
 }

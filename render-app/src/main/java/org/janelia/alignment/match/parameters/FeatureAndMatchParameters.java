@@ -36,4 +36,20 @@ public class FeatureAndMatchParameters {
         return matchDerivationParameters;
     }
 
+    void setDefaults() throws IllegalArgumentException {
+
+        if (featureExtractionParameters == null) {
+            throw new IllegalArgumentException("featureExtractionParameters are not defined");
+        } else {
+            featureExtractionParameters.setDefaults();
+        }
+
+        if (matchDerivationParameters == null) {
+            throw new IllegalArgumentException("matchDerivationParameters are not defined");
+        } else {
+            matchDerivationParameters.setDefaults();
+        }
+
+    }
+
 }
