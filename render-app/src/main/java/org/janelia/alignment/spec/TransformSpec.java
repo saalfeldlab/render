@@ -29,7 +29,10 @@ import org.janelia.alignment.json.JsonUtils;
         use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
         property = "type",
-        defaultImpl = LeafTransformSpec.class)
+        defaultImpl = LeafTransformSpec.class) // NOTE: Between Jackson 2.8 and 2.9.5 this is broken because
+                                               // defaultImpl must be super class of all subtypes.
+                                               // This is fixed in 2.9.6 (and < 2.8).
+                                               // For details, see https://github.com/FasterXML/jackson-databind/issues/1565
 @JsonSubTypes({
         @JsonSubTypes.Type(value = InterpolatedTransformSpec.class, name = InterpolatedTransformSpec.TYPE),
         @JsonSubTypes.Type(value = LeafTransformSpec.class, name = LeafTransformSpec.TYPE),
