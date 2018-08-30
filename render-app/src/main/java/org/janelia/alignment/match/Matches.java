@@ -16,6 +16,8 @@
  */
 package org.janelia.alignment.match;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,8 +28,7 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import net.imglib2.RealPoint;
 
 /**
@@ -36,7 +37,7 @@ import net.imglib2.RealPoint;
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org> and John Bogovic
  */
-@ApiModel(description = "A collection of n-dimensional weighted source-target point correspondences.")
+@Schema(description = "A collection of n-dimensional weighted source-target point correspondences.")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class Matches implements Serializable {
 
@@ -56,15 +57,15 @@ public class Matches implements Serializable {
     }
 
     /** source point coordinates */
-    @ApiModelProperty(value = "Source point coordinates", required=true)
+    @Schema(description = "Source point coordinates", required=true)
     final protected double[][] p;
 
     /** target point coordinates */
-    @ApiModelProperty(value = "Target point coordinates", required=true)
+    @Schema(description = "Target point coordinates", required=true)
     final protected double[][] q;
 
     /** weights */
-    @ApiModelProperty(value = "Weights", required=true)
+    @Schema(description = "Weights", required=true)
     final protected double[] w;
 
     // no-arg constructor needed for JSON deserialization
@@ -136,10 +137,16 @@ public class Matches implements Serializable {
         return matches;
     }
 
+    // NOTE: Convenience getter methods for derived data should be excluded from the JSON model - hence the JsonIgnore annotation.
+    //       Newer Jackson versions (e.g. 2.9.6) fail to parse RealPoint with an IllegalArgumentException:
+    //       Conflicting setter definitions for property "position": net.imglib2.RealPoint#setPosition(1 params) vs net.imglib2.RealPoint#setPosition(1 params)
+    //       The JsonIgnore annotation avoids that issue.
+    @JsonIgnore
     public List<RealPoint> getPList() {
         return buildPointList(getPs());
     }
 
+    @JsonIgnore
     public List<RealPoint> getQList() {
         return buildPointList(getQs());
     }
