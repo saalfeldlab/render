@@ -268,6 +268,21 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         }
     }
 
+    public String getCurrentDefaultChannel() {
+        String defaultChannel = null;
+        if (currentVersion != null) {
+            defaultChannel = currentVersion.getDefaultChannel();
+        }
+        return defaultChannel;
+    }
+
+    public void setCurrentDefaultChannel(final String defaultChannel) {
+
+        if (currentVersion != null) {
+            currentVersion.setDefaultChannel(defaultChannel);
+        }
+    }
+
     public HierarchicalStack getHierarchicalData() {
         return hierarchicalData;
     }

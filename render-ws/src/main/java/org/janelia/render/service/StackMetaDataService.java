@@ -50,7 +50,7 @@ import static org.janelia.alignment.spec.stack.StackMetaData.StackState.*;
  * @author Eric Trautman
  */
 @Path("/")
-@Api(tags = {"Stack Management APIs"})
+@Api(tags = {"Stack Data APIs"})
 public class StackMetaDataService {
 
     private final RenderDao renderDao;
@@ -61,8 +61,7 @@ public class StackMetaDataService {
         this(RenderDao.build());
     }
 
-    public StackMetaDataService(final RenderDao renderDao)
-            throws UnknownHostException {
+    StackMetaDataService(final RenderDao renderDao) {
         this.renderDao = renderDao;
     }
 
@@ -155,7 +154,6 @@ public class StackMetaDataService {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = "Stack Data APIs",
             value = "Metadata for the specified stack")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Stack not found")
@@ -185,7 +183,7 @@ public class StackMetaDataService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = {"Stack Data APIs", "Stack Management APIs"},
+            tags = {"Stack Data APIs"},
             value = "Rename a stack")
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "stack successfully renamed"),
@@ -219,7 +217,7 @@ public class StackMetaDataService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = {"Stack Data APIs", "Stack Management APIs"},
+            tags = {"Stack Data APIs"},
             value = "Clones one stack to another",
             notes = "This operation copies all fromStack tiles and transformations to a new stack with the specified metadata.  This is a potentially long running operation (depending upon the size of the fromStack).")
     @ApiResponses(value = {
@@ -279,7 +277,7 @@ public class StackMetaDataService {
     @POST  // NOTE: POST method is used because version number is auto-incremented
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = {"Stack Data APIs", "Stack Management APIs"},
+            tags = {"Stack Data APIs"},
             value = "Saves new version of stack metadata")
     @ApiResponses(value = {
             @ApiResponse(code = 201, message = "stackVersion successfully created"),
@@ -325,7 +323,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}")
     @DELETE
     @ApiOperation(
-            tags = {"Stack Data APIs", "Stack Management APIs"},
+            tags = {"Stack Data APIs"},
             value = "Deletes specified stack",
             notes = "Deletes all tiles, transformations, meta data, and unsaved snapshot data for the stack.")
     @ApiResponses(value = {
@@ -366,7 +364,6 @@ public class StackMetaDataService {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = "Stack Data APIs",
             value = "The x, y, and z resolution values for the specified stack")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Stack not found")
@@ -393,7 +390,7 @@ public class StackMetaDataService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = {"Stack Data APIs", "Stack Management APIs"},
+            tags = {"Stack Data APIs"},
             value = "Saves x, y, and z resolution values for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "resolution values successfully saved"),
@@ -423,7 +420,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
     @DELETE
     @ApiOperation(
-            tags = {"Section Data APIs", "Stack Management APIs"},
+            tags = {"Section Data APIs"},
             value = "Deletes x, y, and z resolution values for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "stack is READ_ONLY"),
@@ -432,14 +429,13 @@ public class StackMetaDataService {
     public Response deleteResolutionValues(@PathParam("owner") final String owner,
                                            @PathParam("project") final String project,
                                            @PathParam("stack") final String stack) {
-        return saveResolutionValues(owner, project, stack, Arrays.asList((Double) null, null, null));
+        return saveResolutionValues(owner, project, stack, Arrays.asList(null, null, null));
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     @ApiOperation(
-            tags = "Stack Data APIs",
             value = "The materializedBoxRootPath for the specified stack")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Stack not found")
@@ -466,7 +462,7 @@ public class StackMetaDataService {
     @PUT
     @Consumes(MediaType.TEXT_PLAIN)
     @ApiOperation(
-            tags = {"Stack Data APIs", "Stack Management APIs"},
+            tags = {"Stack Data APIs"},
             value = "Saves materializedBoxRootPath for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "materializedBoxRootPath successfully saved"),
@@ -496,7 +492,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
     @DELETE
     @ApiOperation(
-            tags = {"Section Data APIs", "Stack Management APIs"},
+            tags = {"Section Data APIs"},
             value = "Deletes materializedBoxRootPath for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "stack is READ_ONLY"),
@@ -512,7 +508,6 @@ public class StackMetaDataService {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = "Stack Data APIs",
             value = "The mipmap path builder specs for the specified stack")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Stack not found")
@@ -539,7 +534,7 @@ public class StackMetaDataService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = {"Stack Data APIs", "Stack Management APIs"},
+            tags = {"Stack Data APIs"},
             value = "Saves mipmap path builder specs for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "mipmap path builder specs successfully saved"),
@@ -569,7 +564,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/mipmapPathBuilder")
     @DELETE
     @ApiOperation(
-            tags = {"Section Data APIs", "Stack Management APIs"},
+            tags = {"Section Data APIs"},
             value = "Deletes mipmap path builder specs for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "stack is READ_ONLY"),
@@ -581,11 +576,82 @@ public class StackMetaDataService {
         return saveMipmapPathBuilder(owner, project, stack, null);
     }
 
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/defaultChannel")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "The default channel for the specified stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Stack not found")
+    })
+    public String getDefaultChannel(@PathParam("owner") final String owner,
+                                    @PathParam("project") final String project,
+                                    @PathParam("stack") final String stack) {
+
+        LOG.info("getDefaultChannel: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        String defaultChannel = null;
+        try {
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            defaultChannel = stackMetaData.getCurrentDefaultChannel();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return defaultChannel;
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/defaultChannel")
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Stack Data APIs"},
+            value = "Saves default channel name for stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "default channel successfully saved"),
+            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response saveDefaultChannel(@PathParam("owner") final String owner,
+                                       @PathParam("project") final String project,
+                                       @PathParam("stack") final String stack,
+                                       final String defaultChannel) {
+
+        LOG.info("saveDefaultChannel: entry, owner={}, project={}, stack={}, defaultChannel={}",
+                 owner, project, stack, defaultChannel);
+
+        try {
+            final StackMetaData stackMetaData = getStackMetaData(owner, project, stack);
+            validateStackIsModifiable(stackMetaData);
+            stackMetaData.setCurrentDefaultChannel(defaultChannel);
+            renderDao.saveStackMetaData(stackMetaData);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return Response.ok().build();
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/defaultChannel")
+    @DELETE
+    @ApiOperation(
+            tags = {"Section Data APIs"},
+            value = "Deletes default channel for stack")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "stack is READ_ONLY"),
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public Response deleteDefaultChannel(@PathParam("owner") final String owner,
+                                         @PathParam("project") final String project,
+                                         @PathParam("stack") final String stack) {
+        return saveDefaultChannel(owner, project, stack, null);
+    }
+
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/cycle")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = "Stack Data APIs",
             value = "The cycle data for the specified stack")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Stack not found")
@@ -615,7 +681,7 @@ public class StackMetaDataService {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = {"Stack Data APIs", "Stack Management APIs"},
+            tags = {"Stack Data APIs"},
             value = "Saves cycle data for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "cycle data successfully saved"),
@@ -648,7 +714,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/cycle")
     @DELETE
     @ApiOperation(
-            tags = {"Section Data APIs", "Stack Management APIs"},
+            tags = {"Section Data APIs"},
             value = "Deletes cycle data for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "stack is READ_ONLY"),
@@ -663,7 +729,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/section/{sectionId}")
     @DELETE
     @ApiOperation(
-            tags = {"Section Data APIs", "Stack Management APIs"},
+            tags = {"Section Data APIs"},
             value = "Deletes all tiles in section",
             notes = "Deletes all tiles in the specified stack with the specified sectionId value.  This operation can only be performed against stacks in the LOADING state")
     @ApiResponses(value = {
@@ -700,7 +766,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}")
     @DELETE
     @ApiOperation(
-            tags = {"Section Data APIs", "Stack Management APIs"},
+            tags = {"Section Data APIs"},
             value = "Deletes all tiles in layer",
             notes = "Deletes all tiles in the specified stack with the specified z value.  This operation can only be performed against stacks in the LOADING state")
     @ApiResponses(value = {
@@ -737,7 +803,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/state/{state}")
     @PUT
     @ApiOperation(
-            tags = {"Stack Data APIs", "Stack Management APIs"},
+            tags = {"Stack Data APIs"},
             value = "Sets the stack's current state",
             notes = "Normal progression is LOADING to COMPLETE to READ_ONLY to OFFLINE.  " +
                     "Transitioning to COMPLETE is a potentially long running operation " +
@@ -799,7 +865,7 @@ public class StackMetaDataService {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = {"Stack Data APIs", "Stack Management APIs"},
+            tags = {"Stack Data APIs"},
             value = "Bounds for the specified stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "stack bounds not available"),
@@ -881,7 +947,6 @@ public class StackMetaDataService {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = "Stack Data APIs",
             value = "Get flattened tile specs with the specified ids",
             notes = "For each tile spec, nested transform lists are flattened and reference transforms are resolved.  This should make the specs suitable for external use.")
     public List<TileSpec> getTileSpecsWithIds(@PathParam("owner") final String owner,
@@ -917,14 +982,14 @@ public class StackMetaDataService {
         return stackMetaData;
     }
 
-    public static ObjectNotFoundException getStackNotFoundException(final String owner,
-                                                                    final String project,
-                                                                    final String stack) {
+    static ObjectNotFoundException getStackNotFoundException(final String owner,
+                                                             final String project,
+                                                             final String stack) {
         return new ObjectNotFoundException("stack with owner '" + owner + "', project '" + project +
                                             "', and name '" + stack + "' does not exist");
     }
 
-    public static void validateStackIsModifiable(final StackMetaData stackMetaData) {
+    private static void validateStackIsModifiable(final StackMetaData stackMetaData) {
         if (stackMetaData.isReadOnly()) {
             throw new IllegalStateException("Data for stack " + stackMetaData.getStackId().getStack() +
                                             " cannot be modified because it is " + stackMetaData.getState() + ".");

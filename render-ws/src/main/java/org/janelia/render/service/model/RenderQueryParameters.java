@@ -148,7 +148,18 @@ public class RenderQueryParameters
 
         // apply stack default parameters
         if (stackMetaData != null) {
+
             renderParameters.setMipmapPathBuilder(stackMetaData.getCurrentMipmapPathBuilder());
+
+            // if channels have not been explicitly requested ...
+            if (channels == null) {
+                final String defaultChannel = stackMetaData.getCurrentDefaultChannel();
+                // ... and this stack has a default channel, "select" the stack default channel for rendering
+                if (defaultChannel != null) {
+                    renderParameters.setChannels(defaultChannel);
+                }
+            }
+
         }
 
         // Override existing scale with query scale if it is specified.
