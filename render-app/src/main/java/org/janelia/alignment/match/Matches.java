@@ -28,7 +28,8 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
-import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
 import net.imglib2.RealPoint;
 
 /**
@@ -37,7 +38,7 @@ import net.imglib2.RealPoint;
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org> and John Bogovic
  */
-@Schema(description = "A collection of n-dimensional weighted source-target point correspondences.")
+@ApiModel(description = "A collection of n-dimensional weighted source-target point correspondences.")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class Matches implements Serializable {
 
@@ -57,15 +58,15 @@ public class Matches implements Serializable {
     }
 
     /** source point coordinates */
-    @Schema(description = "Source point coordinates", required=true)
+    @ApiModelProperty(value = "Source point coordinates", required=true)
     final protected double[][] p;
 
     /** target point coordinates */
-    @Schema(description = "Target point coordinates", required=true)
+    @ApiModelProperty(value = "Target point coordinates", required=true)
     final protected double[][] q;
 
     /** weights */
-    @Schema(description = "Weights", required=true)
+    @ApiModelProperty(value = "Weights", required=true)
     final protected double[] w;
 
     // no-arg constructor needed for JSON deserialization
