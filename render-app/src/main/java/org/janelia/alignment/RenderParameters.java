@@ -1,4 +1,4 @@
-/**
+/*
  * License: GPL
  *
  * This program is free software; you can redistribute it and/or
@@ -64,73 +64,73 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--help", description = "Display this note", help = true)
     public transient boolean help;
 
-    @Parameter(names = "--tile_spec_url", description = "URL to JSON tile spec", required = false)
+    @Parameter(names = "--tile_spec_url", description = "URL to JSON tile spec")
     private String tileSpecUrl;
 
-    @Parameter(names = {"--res", "--meshCellSize"}, description = " Mesh resolution, specified by the desired size of a mesh cell (triangle) in pixels", required = false)
+    @Parameter(names = {"--res", "--meshCellSize"}, description = " Mesh resolution, specified by the desired size of a mesh cell (triangle) in pixels")
     public double meshCellSize;
 
-    @Parameter(names = {"--min_res", "--minMeshCellSize"}, description = " Minimal mesh resolution, specified by the desired size of a mesh cell (triangle) in pixels", required = false)
+    @Parameter(names = {"--min_res", "--minMeshCellSize"}, description = " Minimal mesh resolution, specified by the desired size of a mesh cell (triangle) in pixels")
     public double minMeshCellSize = 0;
 
-    @Parameter(names = "--in", description = "Path to the input image if any", required = false)
+    @Parameter(names = "--in", description = "Path to the input image if any")
     public String in;
 
     @Parameter(names = "--out", description = "Path to the output image", required = true)
     public String out;
 
-    @Parameter(names = "--x", description = "Target image left coordinate", required = false)
+    @Parameter(names = "--x", description = "Target image left coordinate")
     public double x;
 
-    @Parameter(names = "--y", description = "Target image top coordinate", required = false)
+    @Parameter(names = "--y", description = "Target image top coordinate")
     public double y;
 
-    @Parameter(names = "--width", description = "Target image width", required = false)
+    @Parameter(names = "--width", description = "Target image width")
     public int width;
 
-    @Parameter(names = "--height", description = "Target image height", required = false)
+    @Parameter(names = "--height", description = "Target image height")
     public int height;
 
-    @Parameter(names = "--scale", description = "scale factor applied to the target image", required = false)
+    @Parameter(names = "--scale", description = "scale factor applied to the target image")
     public double scale;
 
-    @Parameter(names = "--area_offset", description = "add bounding box offset", required = false)
+    @Parameter(names = "--area_offset", description = "add bounding box offset")
     public boolean areaOffset;
 
-    @Parameter(names = "--minIntensity", description = "minimum intensity value for all tile specs", required = false)
+    @Parameter(names = "--minIntensity", description = "minimum intensity value for all tile specs")
     public Double minIntensity;
 
-    @Parameter(names = "--maxIntensity", description = "maximum intensity value for all tile specs", required = false)
+    @Parameter(names = "--maxIntensity", description = "maximum intensity value for all tile specs")
     public Double maxIntensity;
 
-    @Parameter(names = "--gray", description = "convert output to gray scale image", required = false)
+    @Parameter(names = "--gray", description = "convert output to gray scale image")
     public boolean convertToGray;
 
-    @Parameter(names = "--quality", description = "JPEG quality float [0, 1]", required = false)
+    @Parameter(names = "--quality", description = "JPEG quality float [0, 1]")
     public float quality;
 
-    @Parameter(names = "--threads", description = "Number of threads to be used", required = false )
+    @Parameter(names = "--threads", description = "Number of threads to be used")
     public int numberOfThreads;
 
-    @Parameter(names = "--skip_interpolation", description = "enable sloppy but fast rendering by skipping interpolation", required = false)
+    @Parameter(names = "--skip_interpolation", description = "enable sloppy but fast rendering by skipping interpolation")
     public boolean skipInterpolation;
 
-    @Parameter(names = "--binary_mask", description = "render only 100% opaque pixels", required = false)
+    @Parameter(names = "--binary_mask", description = "render only 100% opaque pixels")
     public boolean binaryMask;
 
-    @Parameter(names = "--exclude_mask", description = "exclude mask when rendering", required = false)
+    @Parameter(names = "--exclude_mask", description = "exclude mask when rendering")
     public boolean excludeMask;
 
-    @Parameter(names = "--parameters_url", description = "URL to base JSON parameters file (to be applied to any unspecified or default parameters)", required = false)
+    @Parameter(names = "--parameters_url", description = "URL to base JSON parameters file (to be applied to any unspecified or default parameters)")
     public String parametersUrl;
 
-    @Parameter(names = "--do_filter", description = "ad hoc filters to support alignment", required = false)
+    @Parameter(names = "--do_filter", description = "ad hoc filters to support alignment")
     private boolean doFilter;
 
-    @Parameter(names = "--background_color", description = "RGB int color for background (default is 0: black)", required = false)
+    @Parameter(names = "--background_color", description = "RGB int color for background (default is 0: black)")
     private Integer backgroundRGBColor;
 
-    @Parameter(names = "--channels", description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3').", required = false)
+    @Parameter(names = "--channels", description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3').")
     private String channels;
 
     private MipmapPathBuilder mipmapPathBuilder;
@@ -344,8 +344,6 @@ public class RenderParameters implements Serializable {
                     urlStream = urlObject.openStream();
                 } catch (final UnknownHostException uhe) {
 
-                    urlStream = null;
-
                     if (attempt < maxNumberOfAttempts) {
                         LOG.info("attempt {} to open stream for {} failed with cause {}",
                                  attempt, urlObject, uhe.getMessage());
@@ -441,12 +439,12 @@ public class RenderParameters implements Serializable {
         if (! initialized) {
             parseTileSpecs();
             applyMipmapPathBuilderToTileSpecs();
-            channelNamesAndWeights = ChannelNamesAndWeights.fromSpec(channels, getFirstChannelName());
+            deriveChannelNamesAndWeights();
             initialized = true;
         }
     }
 
-    public boolean displayHelp() {
+    boolean displayHelp() {
         return help;
     }
 
@@ -468,7 +466,7 @@ public class RenderParameters implements Serializable {
         return out;
     }
 
-    public URI getOutUri() throws IllegalArgumentException {
+    private void setOutUri() throws IllegalArgumentException {
         if ((outUri == null) && (out != null)) {
             try {
                 outUri = new URI(out);
@@ -476,7 +474,6 @@ public class RenderParameters implements Serializable {
                 throw new IllegalArgumentException("failed to create uniform resource identifier for '" + out + "'", e);
             }
         }
-        return outUri;
     }
 
     public double getX() {
@@ -567,7 +564,7 @@ public class RenderParameters implements Serializable {
         doFilter = (filter != null) && filter;
     }
 
-    public Integer getBackgroundRGBColor() {
+    Integer getBackgroundRGBColor() {
         return backgroundRGBColor;
     }
 
@@ -581,15 +578,7 @@ public class RenderParameters implements Serializable {
         return namesAndWeights.getNames();
     }
 
-    public String getFirstChannelName() {
-        String firstChannelName = null;
-        if ((tileSpecs != null) && (tileSpecs.size() > 0)) {
-            firstChannelName = tileSpecs.get(0).getFirstChannelName();
-        }
-        return firstChannelName;
-    }
-
-    public ChannelNamesAndWeights getChannelNamesAndWeights()
+    ChannelNamesAndWeights getChannelNamesAndWeights()
             throws IllegalArgumentException {
         if (channelNamesAndWeights == null) {
             deriveChannelNamesAndWeights();
@@ -601,11 +590,6 @@ public class RenderParameters implements Serializable {
             throws IllegalArgumentException {
         this.channels = channels;
         deriveChannelNamesAndWeights();
-    }
-
-    public void deriveChannelNamesAndWeights()
-            throws IllegalArgumentException {
-        this.channelNamesAndWeights = ChannelNamesAndWeights.fromSpec(channels, getFirstChannelName());
     }
 
     public boolean hasTileSpecs() {
@@ -637,7 +621,7 @@ public class RenderParameters implements Serializable {
         tileSpecs.forEach(TileSpec::flattenTransforms);
     }
 
-    public boolean hasMipmapPathBuilder() {
+    boolean hasMipmapPathBuilder() {
         return this.mipmapPathBuilder != null;
     }
 
@@ -645,7 +629,7 @@ public class RenderParameters implements Serializable {
         this.mipmapPathBuilder = mipmapPathBuilder;
     }
 
-    public void applyMipmapPathBuilderToTileSpecs() {
+    private void applyMipmapPathBuilderToTileSpecs() {
         if (hasMipmapPathBuilder()) {
             for (final TileSpec spec : tileSpecs) {
                 spec.setMipmapPathBuilder(mipmapPathBuilder);
@@ -680,7 +664,7 @@ public class RenderParameters implements Serializable {
     /**
      * Displays command usage information on the console (standard-out).
      */
-    public void showUsage() {
+    void showUsage() {
         if (jCommander == null) {
             setCommander();
         }
@@ -697,7 +681,7 @@ public class RenderParameters implements Serializable {
     public void validate() throws IllegalArgumentException, IllegalStateException {
 
         // validate specified out parameter is a valid URI
-        getOutUri();
+        setOutUri();
 
         if (! initialized) {
             throw new IllegalStateException("derived parameters have not been initialized");
@@ -854,6 +838,19 @@ public class RenderParameters implements Serializable {
         jCommander.setProgramName("java -jar render.jar");
     }
 
+    private String getFirstChannelName() {
+        String firstChannelName = null;
+        if ((tileSpecs != null) && (tileSpecs.size() > 0)) {
+            firstChannelName = tileSpecs.get(0).getFirstChannelName();
+        }
+        return firstChannelName;
+    }
+
+    private void deriveChannelNamesAndWeights()
+            throws IllegalArgumentException {
+        this.channelNamesAndWeights = ChannelNamesAndWeights.fromSpec(channels, getFirstChannelName());
+    }
+
     private void parseTileSpecs()
             throws IllegalArgumentException {
 
@@ -907,6 +904,7 @@ public class RenderParameters implements Serializable {
      * For now, if a primitive value is set to its default it will be overridden by the parametersUrl value.
      *
      * @throws IllegalArgumentException
+     *   if base parameters cannot be applied.
      */
     private void applyBaseParameters() throws IllegalArgumentException {
 

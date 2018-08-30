@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
+import javax.ws.rs.BeanParam;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -23,6 +24,7 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.model.ObjectNotFoundException;
+import org.janelia.render.service.model.RenderQueryParameters;
 import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,13 +46,13 @@ public class TileDataService {
     private final RenderDao renderDao;
     private final RenderDataService renderDataService;
 
-    @SuppressWarnings("UnusedDeclaration")
+    @SuppressWarnings({"UnusedDeclaration", "WeakerAccess"})
     public TileDataService()
             throws UnknownHostException {
         this(RenderDao.build());
     }
 
-    public TileDataService(final RenderDao renderDao) {
+    private TileDataService(final RenderDao renderDao) {
         this.renderDao = renderDao;
         this.renderDataService = new RenderDataService(renderDao);
     }
@@ -131,20 +133,13 @@ public class TileDataService {
                                                 @PathParam("project") final String project,
                                                 @PathParam("stack") final String stack,
                                                 @PathParam("tileId") final String tileId,
-                                                @QueryParam("width") final Integer width,   // full scale width
-                                                @QueryParam("height") final Integer height, // full scale height
-                                                @QueryParam("scale") final Double scale,
-                                                @QueryParam("filter") final Boolean filter,
-                                                @QueryParam("filterListName") final String filterListName,
-                                                @QueryParam("binaryMask") final Boolean binaryMask,
-                                                @QueryParam("excludeMask") final Boolean excludeMask,
+                                                @BeanParam final RenderQueryParameters renderQueryParameters,
+                                                @QueryParam("width") final Integer width,// full scale width
+                                                @QueryParam("height") final Integer height,// full scale height
                                                 @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
                                                 @QueryParam("excludeTransformsAfterLast") final Set<String> excludeAfterLastLabels,
                                                 @QueryParam("excludeFirstTransformAndAllAfter") final Set<String> excludeFirstAndAllAfterLabels,
-                                                @QueryParam("excludeAllTransforms") final Boolean excludeAllTransforms,
-                                                @QueryParam("minIntensity") final Double minIntensity,
-                                                @QueryParam("maxIntensity") final Double maxIntensity,
-                                                @QueryParam("channels") final String channels) {
+                                                @QueryParam("excludeAllTransforms") final Boolean excludeAllTransforms) {
 
         LOG.info("getRenderParameters: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
@@ -156,18 +151,14 @@ public class TileDataService {
 
             final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
 
-            parameters = getCoreTileRenderParameters(width, height, scale, normalizeForMatching,
-                                                     excludeAfterLastLabels, excludeFirstAndAllAfterLabels,
-                                                     excludeAllTransforms, tileSpec);
+            parameters = getCoreTileRenderParameters(width, height, renderQueryParameters.getScale(),
+                                                     normalizeForMatching, excludeAfterLastLabels,
+                                                     excludeFirstAndAllAfterLabels, excludeAllTransforms, tileSpec);
 
-            parameters.setDoFilter(filter);
-            renderDataService.setFilterSpecs(filterListName, parameters);
-            parameters.setBinaryMask(binaryMask);
-            parameters.setExcludeMask(excludeMask);
-            parameters.setMipmapPathBuilder(stackMetaData.getCurrentMipmapPathBuilder());
-            parameters.setMinIntensity(minIntensity);
-            parameters.setMaxIntensity(maxIntensity);
-            parameters.setChannels(channels);
+            renderQueryParameters.applyQueryAndDefaultParameters(parameters,
+                                                                 stackMetaData,
+                                                                 renderDataService);
+
 
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -217,13 +208,12 @@ public class TileDataService {
                                                           @PathParam("stack") final String stack,
                                                           @PathParam("tileId") final String tileId,
                                                           @PathParam("scale") final Double scale,
-                                                          @QueryParam("filter") final Boolean filter,
-                                                          @QueryParam("filterListName") final String filterListName) {
+                                                          @BeanParam final RenderQueryParameters renderQueryParameters) {
 
         LOG.info("getTileSourceRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}",
                  owner, project, stack, tileId, scale);
 
-        return getRawTileRenderParameters(owner, project, stack, tileId, scale, filter, filterListName, true);
+        return getRawTileRenderParameters(owner, project, stack, tileId, scale, renderQueryParameters, true);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/mask/scale/{scale}/render-parameters")
@@ -239,13 +229,12 @@ public class TileDataService {
                                                         @PathParam("stack") final String stack,
                                                         @PathParam("tileId") final String tileId,
                                                         @PathParam("scale") final Double scale,
-                                                        @QueryParam("filter") final Boolean filter,
-                                                        @QueryParam("filterListName") final String filterListName) {
+                                                        @BeanParam final RenderQueryParameters renderQueryParameters) {
 
         LOG.info("getTileMaskRenderParameters: entry, owner={}, project={}, stack={}, tileId={}, scale={}",
                  owner, project, stack, tileId, scale);
 
-        return getRawTileRenderParameters(owner, project, stack, tileId, scale, filter, filterListName, false);
+        return getRawTileRenderParameters(owner, project, stack, tileId, scale, renderQueryParameters, false);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/withNeighbors/render-parameters")
@@ -262,12 +251,7 @@ public class TileDataService {
                                                                  @PathParam("tileId") final String tileId,
                                                                  @QueryParam("widthFactor") Double widthFactor,
                                                                  @QueryParam("heightFactor") Double heightFactor,
-                                                                 @QueryParam("scale") Double scale,
-                                                                 @QueryParam("filter") final Boolean filter,
-                                                                 @QueryParam("filterListName") final String filterListName,
-                                                                 @QueryParam("binaryMask") final Boolean binaryMask,
-                                                                 @QueryParam("convertToGray") final Boolean convertToGray,
-                                                                 @QueryParam("channels") final String channels) {
+                                                                 @BeanParam final RenderQueryParameters renderQueryParameters) {
 
         LOG.info("getTileWithNeighborsRenderParameters: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
@@ -282,10 +266,6 @@ public class TileDataService {
 
             if (heightFactor == null) {
                 heightFactor = 0.3;
-            }
-
-            if (scale == null) {
-                scale = 1.0;
             }
 
             final double neighborhoodWidth = tileSpec.getWidth() * widthFactor;
@@ -305,12 +285,8 @@ public class TileDataService {
                                                                        z,
                                                                        width,
                                                                        height,
-                                                                       scale,
-                                                                       filter,
-                                                                       filterListName,
-                                                                       binaryMask,
-                                                                       convertToGray,
-                                                                       channels);
+                                                                       null,
+                                                                       renderQueryParameters);
 
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
@@ -319,14 +295,14 @@ public class TileDataService {
         return parameters;
     }
 
-    protected static RenderParameters getCoreTileRenderParameters(final Integer width,
-                                                                  final Integer height,
-                                                                  final Double scale,
-                                                                  final Boolean normalizeForMatching,
-                                                                  final Set<String> excludeAfterLastLabels,
-                                                                  final Set<String> excludeFirstAndAllAfterLabels,
-                                                                  final Boolean excludeAllTransforms,
-                                                                  final TileSpec tileSpec) {
+    static RenderParameters getCoreTileRenderParameters(final Integer width,
+                                                        final Integer height,
+                                                        final Double scale,
+                                                        final Boolean normalizeForMatching,
+                                                        final Set<String> excludeAfterLastLabels,
+                                                        final Set<String> excludeFirstAndAllAfterLabels,
+                                                        final Boolean excludeAllTransforms,
+                                                        final TileSpec tileSpec) {
 
         // Flatten and (if requested) normalize the tile's list of transforms for rendering.
         // Normalization is typically achieved by removing all non-lens correction transformations.
@@ -437,8 +413,7 @@ public class TileDataService {
                                                         final String stack,
                                                         final String tileId,
                                                         final Double scale,
-                                                        final Boolean filter,
-                                                        final String filterListName,
+                                                        final RenderQueryParameters renderQueryParameters,
                                                         final boolean isSource) {
 
         // we only need to fetch the tile spec since no transforms are needed
@@ -460,8 +435,7 @@ public class TileDataService {
             channelSpec.putMipmap(firstEntry.getKey(), maskAsImage);
         }
         tileRenderParameters.addTileSpec(simpleTileSpec);
-        tileRenderParameters.setDoFilter(filter);
-        renderDataService.setFilterSpecs(filterListName, tileRenderParameters);
+        renderQueryParameters.applyQueryAndDefaultParameters(tileRenderParameters, null, renderDataService);
 
         // since we have only one tile with no transformations,
         // skip interpolation to save pixels in last row and column of image

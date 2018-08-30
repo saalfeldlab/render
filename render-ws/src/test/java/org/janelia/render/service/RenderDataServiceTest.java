@@ -16,6 +16,7 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.service.dao.RenderDao;
+import org.janelia.render.service.model.RenderQueryParameters;
 import org.janelia.test.EmbeddedMongoDb;
 import org.jboss.resteasy.spi.ResteasyUriInfo;
 import org.junit.AfterClass;
@@ -62,13 +63,14 @@ public class RenderDataServiceTest {
     }
 
     @AfterClass
-    public static void after() throws Exception {
+    public static void after() {
         embeddedMongoDb.stop();
     }
 
     @Test
-    public void testGetExternalRenderParameters() throws Exception {
+    public void testGetExternalRenderParameters() {
 
+        final RenderQueryParameters renderQueryParameters = new RenderQueryParameters();
         final RenderParameters renderParameters =
                 service.getExternalRenderParameters(alignStackId.getOwner(),
                                                     alignStackId.getProject(),
@@ -79,11 +81,7 @@ public class RenderDataServiceTest {
                                                     200,
                                                     200,
                                                     1.0,
-                                                    null,
-                                                    null,
-                                                    null,
-                                                    null,
-                                                    null);
+                                                    renderQueryParameters);
 
         Assert.assertNotNull("null parameters returned", renderParameters);
     }
@@ -156,7 +154,7 @@ public class RenderDataServiceTest {
     }
 
     @Test
-    public void testGetLastTileTransforms() throws Exception {
+    public void testGetLastTileTransforms() {
 
         final List<LastTileTransform> lastTileTransformList =
                 service.getLastTileTransformsForZ(alignStackId.getOwner(),
