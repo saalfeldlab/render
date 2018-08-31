@@ -28,11 +28,12 @@ public class StackVersion
     private String materializedBoxRootPath;
     private MipmapPathBuilder mipmapPathBuilder;
     private final Double alignmentQuality;
+    private String defaultChannel;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private StackVersion() {
-        this(null, null, null, null, null, null, null, null, null, null);
+        this(null, null, null, null, null, null, null, null, null, null, null);
     }
 
     public StackVersion(final Date createTimestamp,
@@ -46,7 +47,7 @@ public class StackVersion
                         final MipmapPathBuilder mipmapPathBuilder) {
         this(createTimestamp, versionNotes, cycleNumber, cycleStepNumber,
              stackResolutionX, stackResolutionY, stackResolutionZ,
-             materializedBoxRootPath, mipmapPathBuilder, null);
+             materializedBoxRootPath, mipmapPathBuilder, null, null);
     }
 
     public StackVersion(final Date createTimestamp,
@@ -58,7 +59,8 @@ public class StackVersion
                         final Double stackResolutionZ,
                         final String materializedBoxRootPath,
                         final MipmapPathBuilder mipmapPathBuilder,
-                        final Double alignmentQuality) {
+                        final Double alignmentQuality,
+                        final String defaultChannel) {
         this.createTimestamp = createTimestamp;
         this.versionNotes = versionNotes;
         this.cycleNumber = cycleNumber;
@@ -69,6 +71,7 @@ public class StackVersion
         this.materializedBoxRootPath = materializedBoxRootPath;
         this.mipmapPathBuilder = mipmapPathBuilder;
         this.alignmentQuality = alignmentQuality;
+        this.defaultChannel = defaultChannel;
     }
 
     public Date getCreateTimestamp() {
@@ -133,11 +136,11 @@ public class StackVersion
         }
     }
 
-    public String getMaterializedBoxRootPath() {
+    String getMaterializedBoxRootPath() {
         return materializedBoxRootPath;
     }
 
-    public void setMaterializedBoxRootPath(final String materializedBoxRootPath) {
+    void setMaterializedBoxRootPath(final String materializedBoxRootPath) {
         String trimmedPath = null;
         if (materializedBoxRootPath != null) {
             trimmedPath = materializedBoxRootPath.trim();
@@ -167,6 +170,14 @@ public class StackVersion
 
     public Double getAlignmentQuality() {
         return alignmentQuality;
+    }
+
+    String getDefaultChannel() {
+        return defaultChannel;
+    }
+
+    void setDefaultChannel(final String defaultChannel) {
+        this.defaultChannel = defaultChannel;
     }
 
     @Override

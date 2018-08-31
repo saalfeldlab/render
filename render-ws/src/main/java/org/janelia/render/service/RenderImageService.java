@@ -4,6 +4,7 @@ import java.io.File;
 import java.net.UnknownHostException;
 import java.nio.file.Paths;
 
+import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.PUT;
@@ -22,6 +23,7 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
+import org.janelia.render.service.model.RenderQueryParameters;
 import org.janelia.render.service.util.RenderServiceUtil;
 import org.janelia.render.service.util.ResponseHelper;
 import org.slf4j.Logger;
@@ -47,7 +49,7 @@ public class RenderImageService {
         this(new RenderDataService());
     }
 
-    public RenderImageService(final RenderDataService renderDataService) {
+    private RenderImageService(final RenderDataService renderDataService) {
         this.renderDataService = renderDataService;
     }
 
@@ -67,7 +69,6 @@ public class RenderImageService {
                                                    null,
                                                    ResponseHelper.NO_CACHE_HELPER);
     }
-
 
     @SuppressWarnings("PathAnnotation")
     @Path("v1/owner/{owner}/png-image")
@@ -113,25 +114,19 @@ public class RenderImageService {
                                         @PathParam("project") final String project,
                                         @PathParam("stack") final String stack,
                                         @PathParam("z") final Double z,
-                                        @QueryParam("scale") Double scale,
-                                        @QueryParam("filter") final Boolean filter,
-                                        @QueryParam("filterListName") final String filterListName,
+                                        @BeanParam final RenderQueryParameters renderQueryParameters,
                                         @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                        @QueryParam("channels") final String channels,
                                         @Context final Request request) {
 
-        LOG.info("renderJpegImageForZ: entry, owner={}, project={}, stack={}, z={}, scale={}",
-                 owner, project, stack, z, scale);
+        LOG.info("renderJpegImageForZ: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
 
-        if (scale == null) {
-            scale = 0.01;
-        }
+        renderQueryParameters.setDefaultScale(0.01);
 
         final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
-                    renderDataService.getRenderParametersForZ(owner, project, stack, z, scale,
-                                                              filter, filterListName, channels);
+                    renderDataService.getRenderParametersForZ(owner, project, stack, z, renderQueryParameters);
             return RenderServiceUtil.renderJpegImage(renderParameters, maxTileSpecsToRender, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -148,25 +143,19 @@ public class RenderImageService {
                                        @PathParam("project") final String project,
                                        @PathParam("stack") final String stack,
                                        @PathParam("z") final Double z,
-                                       @QueryParam("scale") Double scale,
-                                       @QueryParam("filter") final Boolean filter,
-                                       @QueryParam("filterListName") final String filterListName,
+                                       @BeanParam final RenderQueryParameters renderQueryParameters,
                                        @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                       @QueryParam("channels") final String channels,
                                        @Context final Request request) {
 
-        LOG.info("renderPngImageForZ: entry, owner={}, project={}, stack={}, z={}, scale={}",
-                 owner, project, stack, z, scale);
+        LOG.info("renderPngImageForZ: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
 
-        if (scale == null) {
-            scale = 0.01;
-        }
+        renderQueryParameters.setDefaultScale(0.01);
 
         final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
-                    renderDataService.getRenderParametersForZ(owner, project, stack, z, scale,
-                                                              filter, filterListName, channels);
+                    renderDataService.getRenderParametersForZ(owner, project, stack, z, renderQueryParameters);
             return RenderServiceUtil.renderPngImage(renderParameters, maxTileSpecsToRender, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -183,25 +172,19 @@ public class RenderImageService {
                                         @PathParam("project") final String project,
                                         @PathParam("stack") final String stack,
                                         @PathParam("z") final Double z,
-                                        @QueryParam("scale") Double scale,
-                                        @QueryParam("filter") final Boolean filter,
-                                        @QueryParam("filterListName") final String filterListName,
+                                        @BeanParam final RenderQueryParameters renderQueryParameters,
                                         @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                        @QueryParam("channels") final String channels,
                                         @Context final Request request) {
 
-        LOG.info("renderTiffImageForZ: entry, owner={}, project={}, stack={}, z={}, scale={}",
-                 owner, project, stack, z, scale);
+        LOG.info("renderTiffImageForZ: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
 
-        if (scale == null) {
-            scale = 0.01;
-        }
+        renderQueryParameters.setDefaultScale(0.01);
 
         final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
-                    renderDataService.getRenderParametersForZ(owner, project, stack, z, scale,
-                                                              filter, filterListName, channels);
+                    renderDataService.getRenderParametersForZ(owner, project, stack, z, renderQueryParameters);
             return RenderServiceUtil.renderTiffImage(renderParameters, maxTileSpecsToRender, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -223,13 +206,8 @@ public class RenderImageService {
                                           @PathParam("width") final Integer width,
                                           @PathParam("height") final Integer height,
                                           @PathParam("scale") final Double scale,
-                                          @QueryParam("filter") final Boolean filter,
-                                          @QueryParam("filterListName") final String filterListName,
-                                          @QueryParam("binaryMask") final Boolean binaryMask,
+                                          @BeanParam final RenderQueryParameters renderQueryParameters,
                                           @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                          @QueryParam("minIntensity") final Double minIntensity,
-                                          @QueryParam("maxIntensity") final Double maxIntensity,
-                                          @QueryParam("channels") final String channels,
                                           @Context final Request request) {
 
         LOG.info("renderJpegImageForBox: entry");
@@ -239,8 +217,7 @@ public class RenderImageService {
             final RenderParameters renderParameters =
                     getRenderParametersForGroupBox(owner, project, stack, null,
                                                    x, y, z, width, height, scale,
-                                                   filter, filterListName, binaryMask,
-                                                   minIntensity, maxIntensity, channels);
+                                                   renderQueryParameters);
             return RenderServiceUtil.renderJpegImage(renderParameters, maxTileSpecsToRender, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -261,18 +238,11 @@ public class RenderImageService {
                                               @PathParam("z") final Double z,
                                               @PathParam("width") final Integer width,
                                               @PathParam("height") final Integer height,
-                                              @QueryParam("scale") final Double scale,
-                                              @QueryParam("filter") final Boolean filter,
-                                              @QueryParam("filterListName") final String filterListName,
-                                              @QueryParam("binaryMask") final Boolean binaryMask,
+                                              @BeanParam final RenderQueryParameters renderQueryParameters,
                                               @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                              @QueryParam("minIntensity") final Double minIntensity,
-                                              @QueryParam("maxIntensity") final Double maxIntensity,
-                                              @QueryParam("channels") final String channels,
                                               @Context final Request request) {
-        return renderJpegImageForBox(owner, project, stack, x, y, z, width, height, scale,
-                                     filter, filterListName, binaryMask,
-                                     maxTileSpecsToRender, minIntensity, maxIntensity, channels, request);
+        return renderJpegImageForBox(owner, project, stack, x, y, z, width, height, null,
+                                     renderQueryParameters, maxTileSpecsToRender, request);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
@@ -290,13 +260,8 @@ public class RenderImageService {
                                          @PathParam("width") final Integer width,
                                          @PathParam("height") final Integer height,
                                          @PathParam("scale") final Double scale,
-                                         @QueryParam("filter") final Boolean filter,
-                                         @QueryParam("filterListName") final String filterListName,
-                                         @QueryParam("binaryMask") final Boolean binaryMask,
+                                         @BeanParam final RenderQueryParameters renderQueryParameters,
                                          @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                         @QueryParam("minIntensity") final Double minIntensity,
-                                         @QueryParam("maxIntensity") final Double maxIntensity,
-                                         @QueryParam("channels") final String channels,
                                          @Context final Request request) {
 
         LOG.info("renderPngImageForBox: entry");
@@ -306,8 +271,7 @@ public class RenderImageService {
             final RenderParameters renderParameters =
                     getRenderParametersForGroupBox(owner, project, stack, null,
                                                    x, y, z, width, height, scale,
-                                                   filter, filterListName, binaryMask,
-                                                   minIntensity, maxIntensity, channels);
+                                                   renderQueryParameters);
             return RenderServiceUtil.renderPngImage(renderParameters, maxTileSpecsToRender, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -328,18 +292,11 @@ public class RenderImageService {
                                              @PathParam("z") final Double z,
                                              @PathParam("width") final Integer width,
                                              @PathParam("height") final Integer height,
-                                             @QueryParam("scale") final Double scale,
-                                             @QueryParam("filter") final Boolean filter,
-                                             @QueryParam("filterListName") final String filterListName,
-                                             @QueryParam("binaryMask") final Boolean binaryMask,
+                                             @BeanParam final RenderQueryParameters renderQueryParameters,
                                              @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                             @QueryParam("minIntensity") final Double minIntensity,
-                                             @QueryParam("maxIntensity") final Double maxIntensity,
-                                             @QueryParam("channels") final String channels,
                                              @Context final Request request) {
-        return renderPngImageForBox(owner, project, stack, x, y, z, width, height, scale,
-                                    filter, filterListName, binaryMask,
-                                    maxTileSpecsToRender, minIntensity, maxIntensity, channels, request);
+        return renderPngImageForBox(owner, project, stack, x, y, z, width, height, null,
+                                    renderQueryParameters, maxTileSpecsToRender, request);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
@@ -357,13 +314,8 @@ public class RenderImageService {
                                           @PathParam("width") final Integer width,
                                           @PathParam("height") final Integer height,
                                           @PathParam("scale") final Double scale,
-                                          @QueryParam("filter") final Boolean filter,
-                                          @QueryParam("filterListName") final String filterListName,
-                                          @QueryParam("binaryMask") final Boolean binaryMask,
+                                          @BeanParam final RenderQueryParameters renderQueryParameters,
                                           @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                          @QueryParam("minIntensity") final Double minIntensity,
-                                          @QueryParam("maxIntensity") final Double maxIntensity,
-                                          @QueryParam("channels") final String channels,
                                           @Context final Request request) {
 
         LOG.info("renderTiffImageForBox: entry");
@@ -373,8 +325,7 @@ public class RenderImageService {
             final RenderParameters renderParameters =
                     getRenderParametersForGroupBox(owner, project, stack, null,
                                                    x, y, z, width, height, scale,
-                                                   filter, filterListName, binaryMask,
-                                                   minIntensity, maxIntensity, channels);
+                                                   renderQueryParameters);
             return RenderServiceUtil.renderTiffImage(renderParameters, maxTileSpecsToRender, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -396,13 +347,8 @@ public class RenderImageService {
                                             @PathParam("width") final Integer width,
                                             @PathParam("height") final Integer height,
                                             @PathParam("scale") final Double scale,
-                                            @QueryParam("filter") final Boolean filter,
-                                            @QueryParam("filterListName") final String filterListName,
-                                            @QueryParam("binaryMask") final Boolean binaryMask,
+                                            @BeanParam final RenderQueryParameters renderQueryParameters,
                                             @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                            @QueryParam("minIntensity") final Double minIntensity,
-                                            @QueryParam("maxIntensity") final Double maxIntensity,
-                                            @QueryParam("channels") final String channels,
                                             @Context final Request request) {
 
         LOG.info("renderTiffImageForBox: entry");
@@ -412,8 +358,7 @@ public class RenderImageService {
             final RenderParameters renderParameters =
                     getRenderParametersForGroupBox(owner, project, stack, null,
                                                    x, y, z, width, height, scale,
-                                                   filter, filterListName, binaryMask,
-                                                   minIntensity, maxIntensity, channels);
+                                                   renderQueryParameters);
             return RenderServiceUtil.renderTiffImage(renderParameters, maxTileSpecsToRender, responseHelper, true);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -433,18 +378,11 @@ public class RenderImageService {
                                               @PathParam("z") final Double z,
                                               @PathParam("width") final Integer width,
                                               @PathParam("height") final Integer height,
-                                              @QueryParam("scale") final Double scale,
-                                              @QueryParam("filter") final Boolean filter,
-                                              @QueryParam("filterListName") final String filterListName,
-                                              @QueryParam("binaryMask") final Boolean binaryMask,
+                                              @BeanParam final RenderQueryParameters renderQueryParameters,
                                               @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                              @QueryParam("minIntensity") final Double minIntensity,
-                                              @QueryParam("maxIntensity") final Double maxIntensity,
-                                              @QueryParam("channels") final String channels,
                                               @Context final Request request) {
-        return renderTiffImageForBox(owner, project, stack, x, y, z, width, height, scale,
-                                     filter, filterListName, binaryMask,
-                                     maxTileSpecsToRender, minIntensity, maxIntensity, channels, request);
+        return renderTiffImageForBox(owner, project, stack, x, y, z, width, height, null,
+                                     renderQueryParameters, maxTileSpecsToRender, request);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/jpeg-image")
@@ -463,13 +401,8 @@ public class RenderImageService {
                                                @PathParam("width") final Integer width,
                                                @PathParam("height") final Integer height,
                                                @PathParam("scale") final Double scale,
-                                               @QueryParam("filter") final Boolean filter,
-                                               @QueryParam("filterListName") final String filterListName,
-                                               @QueryParam("binaryMask") final Boolean binaryMask,
+                                               @BeanParam final RenderQueryParameters renderQueryParameters,
                                                @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                               @QueryParam("minIntensity") final Double minIntensity,
-                                               @QueryParam("maxIntensity") final Double maxIntensity,
-                                               @QueryParam("channels") final String channels,
                                                @Context final Request request) {
 
         LOG.info("renderJpegImageForGroupBox: entry");
@@ -479,8 +412,7 @@ public class RenderImageService {
             final RenderParameters renderParameters =
                     getRenderParametersForGroupBox(owner, project, stack, groupId,
                                                    x, y, z, width, height, scale,
-                                                   filter, filterListName, binaryMask,
-                                                   minIntensity, maxIntensity, channels);
+                                                   renderQueryParameters);
             return RenderServiceUtil.renderJpegImage(renderParameters, maxTileSpecsToRender, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -502,18 +434,11 @@ public class RenderImageService {
                                                    @PathParam("z") final Double z,
                                                    @PathParam("width") final Integer width,
                                                    @PathParam("height") final Integer height,
-                                                   @QueryParam("scale") final Double scale,
-                                                   @QueryParam("filter") final Boolean filter,
-                                                   @QueryParam("filterListName") final String filterListName,
-                                                   @QueryParam("binaryMask") final Boolean binaryMask,
+                                                   @BeanParam final RenderQueryParameters renderQueryParameters,
                                                    @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                                   @QueryParam("minIntensity") final Double minIntensity,
-                                                   @QueryParam("maxIntensity") final Double maxIntensity,
-                                                   @QueryParam("channels") final String channels,
                                                    @Context final Request request) {
-        return renderJpegImageForGroupBox(owner, project, stack, groupId, x, y, z, width, height, scale,
-                                          filter, filterListName, binaryMask,
-                                          maxTileSpecsToRender, minIntensity, maxIntensity, channels, request);
+        return renderJpegImageForGroupBox(owner, project, stack, groupId, x, y, z, width, height, null,
+                                          renderQueryParameters, maxTileSpecsToRender, request);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image")
@@ -532,13 +457,8 @@ public class RenderImageService {
                                               @PathParam("width") final Integer width,
                                               @PathParam("height") final Integer height,
                                               @PathParam("scale") final Double scale,
-                                              @QueryParam("filter") final Boolean filter,
-                                              @QueryParam("filterListName") final String filterListName,
-                                              @QueryParam("binaryMask") final Boolean binaryMask,
+                                              @BeanParam final RenderQueryParameters renderQueryParameters,
                                               @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                              @QueryParam("minIntensity") final Double minIntensity,
-                                              @QueryParam("maxIntensity") final Double maxIntensity,
-                                              @QueryParam("channels") final String channels,
                                               @Context final Request request) {
 
         LOG.info("renderPngImageForGroupBox: entry");
@@ -548,8 +468,7 @@ public class RenderImageService {
             final RenderParameters renderParameters =
                     getRenderParametersForGroupBox(owner, project, stack, groupId,
                                                    x, y, z, width, height, scale,
-                                                   filter, filterListName, binaryMask,
-                                                   minIntensity, maxIntensity, channels);
+                                                   renderQueryParameters);
             return RenderServiceUtil.renderPngImage(renderParameters, maxTileSpecsToRender, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -571,18 +490,11 @@ public class RenderImageService {
                                                   @PathParam("z") final Double z,
                                                   @PathParam("width") final Integer width,
                                                   @PathParam("height") final Integer height,
-                                                  @QueryParam("scale") final Double scale,
-                                                  @QueryParam("filter") final Boolean filter,
-                                                  @QueryParam("filterListName") final String filterListName,
-                                                  @QueryParam("binaryMask") final Boolean binaryMask,
+                                                  @BeanParam final RenderQueryParameters renderQueryParameters,
                                                   @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                                  @QueryParam("minIntensity") final Double minIntensity,
-                                                  @QueryParam("maxIntensity") final Double maxIntensity,
-                                                  @QueryParam("channels") final String channels,
                                                   @Context final Request request) {
-        return renderPngImageForGroupBox(owner, project, stack, groupId, x, y, z, width, height, scale,
-                                         filter, filterListName, binaryMask,
-                                         maxTileSpecsToRender, minIntensity, maxIntensity, channels, request);
+        return renderPngImageForGroupBox(owner, project, stack, groupId, x, y, z, width, height, null,
+                                         renderQueryParameters, maxTileSpecsToRender, request);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/group/{groupId}/z/{z}/box/{x},{y},{width},{height},{scale}/tiff-image")
@@ -601,13 +513,8 @@ public class RenderImageService {
                                                @PathParam("width") final Integer width,
                                                @PathParam("height") final Integer height,
                                                @PathParam("scale") final Double scale,
-                                               @QueryParam("filter") final Boolean filter,
-                                               @QueryParam("filterListName") final String filterListName,
-                                               @QueryParam("binaryMask") final Boolean binaryMask,
+                                               @BeanParam final RenderQueryParameters renderQueryParameters,
                                                @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                               @QueryParam("minIntensity") final Double minIntensity,
-                                               @QueryParam("maxIntensity") final Double maxIntensity,
-                                               @QueryParam("channels") final String channels,
                                                @Context final Request request) {
 
         LOG.info("renderTiffImageForGroupBox: entry");
@@ -617,8 +524,7 @@ public class RenderImageService {
             final RenderParameters renderParameters =
                     getRenderParametersForGroupBox(owner, project, stack, groupId,
                                                    x, y, z, width, height, scale,
-                                                   filter, filterListName, binaryMask,
-                                                   minIntensity, maxIntensity, channels);
+                                                   renderQueryParameters);
             return RenderServiceUtil.renderTiffImage(renderParameters, maxTileSpecsToRender, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -640,18 +546,11 @@ public class RenderImageService {
                                                    @PathParam("z") final Double z,
                                                    @PathParam("width") final Integer width,
                                                    @PathParam("height") final Integer height,
-                                                   @QueryParam("scale") final Double scale,
-                                                   @QueryParam("filter") final Boolean filter,
-                                                   @QueryParam("filterListName") final String filterListName,
-                                                   @QueryParam("binaryMask") final Boolean binaryMask,
+                                                   @BeanParam final RenderQueryParameters renderQueryParameters,
                                                    @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                                   @QueryParam("minIntensity") final Double minIntensity,
-                                                   @QueryParam("maxIntensity") final Double maxIntensity,
-                                                   @QueryParam("channels") final String channels,
                                                    @Context final Request request) {
-        return renderTiffImageForGroupBox(owner, project, stack, groupId, x, y, z, width, height, scale,
-                                          filter, filterListName, binaryMask,
-                                          maxTileSpecsToRender, minIntensity, maxIntensity, channels, request);
+        return renderTiffImageForGroupBox(owner, project, stack, groupId, x, y, z, width, height, null,
+                                          renderQueryParameters, maxTileSpecsToRender, request);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.jpg")
@@ -669,20 +568,13 @@ public class RenderImageService {
                                                   @PathParam("z") final Double z,
                                                   @PathParam("row") final Integer row,
                                                   @PathParam("column") final Integer column,
-                                                  @QueryParam("filter") final Boolean filter,
-                                                  @QueryParam("filterListName") final String filterListName,
-                                                  @QueryParam("binaryMask") final Boolean binaryMask,
+                                                  @BeanParam final RenderQueryParameters renderQueryParameters,
                                                   @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                                  @QueryParam("minIntensity") final Double minIntensity,
-                                                  @QueryParam("maxIntensity") final Double maxIntensity,
-                                                  @QueryParam("channels") final String channels,
                                                   @Context final Request request) {
 
         return renderLargeDataTileSource(owner, project, stack, width, height, level, z, row, column,
                                          Utils.JPEG_FORMAT, RenderServiceUtil.IMAGE_JPEG_MIME_TYPE,
-                                         filter, filterListName, binaryMask,
-                                         maxTileSpecsToRender, minIntensity, maxIntensity, channels,
-                                         request);
+                                         renderQueryParameters, maxTileSpecsToRender, request);
     }
 
 
@@ -699,21 +591,15 @@ public class RenderImageService {
                                                 @PathParam("height") final Integer height,
                                                 @PathParam("z") final Double z,
                                                 @QueryParam("maxOverviewWidthAndHeight") final Integer maxOverviewWidthAndHeight,
-                                                @QueryParam("filter") final Boolean filter,
-                                                @QueryParam("filterListName") final String filterListName,
-                                                @QueryParam("binaryMask") final Boolean binaryMask,
+                                                @BeanParam final RenderQueryParameters renderQueryParameters,
                                                 @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
                                                 @QueryParam("translateOrigin") final Boolean translateOrigin,
-                                                @QueryParam("minIntensity") final Double minIntensity,
-                                                @QueryParam("maxIntensity") final Double maxIntensity,
-                                                @QueryParam("channels") final String channels,
                                                 @Context final Request request) {
 
         return renderLargeDataOverview(owner, project, stack, width, height, z,
                                        Utils.JPEG_FORMAT, RenderServiceUtil.IMAGE_JPEG_MIME_TYPE,
-                                       maxOverviewWidthAndHeight,
-                                       filter, filterListName, binaryMask, maxTileSpecsToRender, translateOrigin,
-                                       minIntensity, maxIntensity, channels, request);
+                                       maxOverviewWidthAndHeight, renderQueryParameters,
+                                       maxTileSpecsToRender, translateOrigin, request);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.png")
@@ -731,20 +617,13 @@ public class RenderImageService {
                                                  @PathParam("z") final Double z,
                                                  @PathParam("row") final Integer row,
                                                  @PathParam("column") final Integer column,
-                                                 @QueryParam("filter") final Boolean filter,
-                                                 @QueryParam("filterListName") final String filterListName,
-                                                 @QueryParam("binaryMask") final Boolean binaryMask,
+                                                 @BeanParam final RenderQueryParameters renderQueryParameters,
                                                  @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
-                                                 @QueryParam("minIntensity") final Double minIntensity,
-                                                 @QueryParam("maxIntensity") final Double maxIntensity,
-                                                 @QueryParam("channels") final String channels,
                                                  @Context final Request request) {
 
         return renderLargeDataTileSource(owner, project, stack, width, height, level, z, row, column,
                                          Utils.PNG_FORMAT, RenderServiceUtil.IMAGE_PNG_MIME_TYPE,
-                                         filter, filterListName, binaryMask,
-                                         maxTileSpecsToRender, minIntensity, maxIntensity, channels,
-                                         request);
+                                         renderQueryParameters, maxTileSpecsToRender, request);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/small/{z}.png")
@@ -760,22 +639,15 @@ public class RenderImageService {
                                                @PathParam("height") final Integer height,
                                                @PathParam("z") final Double z,
                                                @QueryParam("maxOverviewWidthAndHeight") final Integer maxOverviewWidthAndHeight,
-                                               @QueryParam("filter") final Boolean filter,
-                                               @QueryParam("filterListName") final String filterListName,
-                                               @QueryParam("binaryMask") final Boolean binaryMask,
+                                               @BeanParam final RenderQueryParameters renderQueryParameters,
                                                @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
                                                @QueryParam("translateOrigin") final Boolean translateOrigin,
-                                               @QueryParam("minIntensity") final Double minIntensity,
-                                               @QueryParam("maxIntensity") final Double maxIntensity,
-                                               @QueryParam("channels") final String channels,
                                                @Context final Request request) {
 
         return renderLargeDataOverview(owner, project, stack, width, height, z,
                                        Utils.PNG_FORMAT, RenderServiceUtil.IMAGE_PNG_MIME_TYPE,
-                                       maxOverviewWidthAndHeight, filter, filterListName, binaryMask,
-                                       maxTileSpecsToRender,
-                                       translateOrigin, minIntensity, maxIntensity, channels,
-                                       request);
+                                       maxOverviewWidthAndHeight, renderQueryParameters,
+                                       maxTileSpecsToRender, translateOrigin, request);
     }
 
     private Response renderLargeDataTileSource(final String owner,
@@ -789,13 +661,8 @@ public class RenderImageService {
                                                final Integer column,
                                                final String format,
                                                final String mimeType,
-                                               final Boolean filter,
-                                               final String filterListName,
-                                               final Boolean binaryMask,
+                                               final RenderQueryParameters renderQueryParameters,
                                                Integer maxTileSpecsToRender,
-                                               final Double minIntensity,
-                                               final Double maxIntensity,
-                                               final String channels,
                                                final Request request) {
 
         LOG.info("renderLargeDataTileSource: entry, stack={}, width={}, height={}, z={}, row={}, column={}",
@@ -805,7 +672,7 @@ public class RenderImageService {
         final ResponseHelper responseHelper = new ResponseHelper(request, stackMetaData);
         if (responseHelper.isModified()) {
 
-            final File sourceFile = getLargeDataFile(stackMetaData, filter, binaryMask,
+            final File sourceFile = getLargeDataFile(stackMetaData,
                                                      width + "x" + height,
                                                      level.toString(),
                                                      String.valueOf(z.intValue()),
@@ -824,8 +691,7 @@ public class RenderImageService {
                 final RenderParameters renderParameters =
                         getRenderParametersForGroupBox(owner, project, stack, null,
                                                        x, y, z, (int) scaledWidth, (int) scaledHeight, scale,
-                                                       filter, filterListName, binaryMask,
-                                                       minIntensity, maxIntensity, channels);
+                                                       renderQueryParameters);
 
                 if (maxTileSpecsToRender == null) {
                     maxTileSpecsToRender = DEFAULT_MAX_TILE_SPECS_FOR_LARGE_DATA;
@@ -859,14 +725,9 @@ public class RenderImageService {
                                              final String format,
                                              final String mimeType,
                                              Integer maxOverviewWidthAndHeight,
-                                             final Boolean filter,
-                                             final String filterListName,
-                                             final Boolean binaryMask,
+                                             final RenderQueryParameters renderQueryParameters,
                                              Integer maxTileSpecsToRender,
                                              final Boolean translateOrigin,
-                                             final Double minIntensity,
-                                             final Double maxIntensity,
-                                             final String channels,
                                              final Request request) {
 
         LOG.info("renderLargeDataOverview: entry, stack={}, width={}, height={}, z={}",
@@ -876,7 +737,7 @@ public class RenderImageService {
         final ResponseHelper responseHelper = new ResponseHelper(request, stackMetaData);
         if (responseHelper.isModified()) {
 
-            final File overviewSourceFile = getLargeDataFile(stackMetaData, filter, binaryMask,
+            final File overviewSourceFile = getLargeDataFile(stackMetaData,
                                                              width + "x" + height,
                                                              "small",
                                                              String.valueOf(z.intValue()) + "." + format);
@@ -929,8 +790,7 @@ public class RenderImageService {
                 final RenderParameters renderParameters =
                         getRenderParametersForGroupBox(owner, project, stack, null,
                                                        stackMinX, stackMinY, z, stackWidth, stackHeight, scale,
-                                                       filter, filterListName, binaryMask,
-                                                       minIntensity, maxIntensity, channels);
+                                                       renderQueryParameters);
 
                 if (maxTileSpecsToRender == null) {
                     maxTileSpecsToRender = DEFAULT_MAX_TILE_SPECS_FOR_LARGE_DATA;
@@ -956,8 +816,6 @@ public class RenderImageService {
     }
 
     private File getLargeDataFile(final StackMetaData stackMetaData,
-                                  final Boolean filter,
-                                  final Boolean binaryMask,
                                   final String... additionalPathElements) {
 
         File file = null;
@@ -967,7 +825,7 @@ public class RenderImageService {
 
             file = Paths.get(rootPath, additionalPathElements).toFile();
 
-            queueLargeDataFileRequest(file, filter, binaryMask);
+            queueLargeDataFileRequest(file);
 
             if (! file.exists()) {
                 // force dynamic rendering if materialized box does not exist
@@ -979,12 +837,10 @@ public class RenderImageService {
         return file;
     }
 
-    private void queueLargeDataFileRequest(final File file,
-                                           final Boolean filter,
-                                           final Boolean binaryMask) {
+    private void queueLargeDataFileRequest(final File file) {
         // TODO: queue (POST) request for materialize service (will either generate file or just mark usage)
-        LOG.info("need to queue materialize service request for {}, filter={}, binaryMask={}",
-                 file, filter, binaryMask);
+        LOG.info("need to queue materialize service request for {}",
+                 file);
     }
 
     private RenderParameters getRenderParametersForGroupBox(final String owner,
@@ -997,30 +853,18 @@ public class RenderImageService {
                                                             final Integer width,
                                                             final Integer height,
                                                             final Double scale,
-                                                            final Boolean filter,
-                                                            final String filterListName,
-                                                            final Boolean binaryMask,
-                                                            final Double minIntensity,
-                                                            final Double maxIntensity,
-                                                            final String channels) {
+                                                            final RenderQueryParameters renderQueryParameters) {
 
         final StackId stackId = new StackId(owner, project, stack);
-        final RenderParameters renderParameters = renderDataService.getInternalRenderParameters(stackId,
-                                                                                                groupId,
-                                                                                                x,
-                                                                                                y,
-                                                                                                z,
-                                                                                                width,
-                                                                                                height,
-                                                                                                scale);
-        renderParameters.setDoFilter(filter);
-        renderDataService.setFilterSpecs(filterListName, renderParameters);
-        renderParameters.setBinaryMask(binaryMask);
-        renderParameters.setMinIntensity(minIntensity);
-        renderParameters.setMaxIntensity(maxIntensity);
-        renderParameters.setChannels(channels);
-
-        return renderParameters;
+        return renderDataService.getInternalRenderParameters(stackId,
+                                                             groupId,
+                                                             x,
+                                                             y,
+                                                             z,
+                                                             width,
+                                                             height,
+                                                             scale,
+                                                             renderQueryParameters);
     }
 
     private StackMetaData getStackMetaData(final String owner,

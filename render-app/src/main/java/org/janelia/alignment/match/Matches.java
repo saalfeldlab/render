@@ -16,6 +16,8 @@
  */
 package org.janelia.alignment.match;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -136,10 +138,16 @@ public class Matches implements Serializable {
         return matches;
     }
 
+    // NOTE: Convenience getter methods for derived data should be excluded from the JSON model - hence the JsonIgnore annotation.
+    //       Newer Jackson versions (e.g. 2.9.6) fail to parse RealPoint with an IllegalArgumentException:
+    //       Conflicting setter definitions for property "position": net.imglib2.RealPoint#setPosition(1 params) vs net.imglib2.RealPoint#setPosition(1 params)
+    //       The JsonIgnore annotation avoids that issue.
+    @JsonIgnore
     public List<RealPoint> getPList() {
         return buildPointList(getPs());
     }
 
+    @JsonIgnore
     public List<RealPoint> getQList() {
         return buildPointList(getQs());
     }

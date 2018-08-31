@@ -46,105 +46,109 @@ public class StackClient {
 
         @Parameter(
                 names = "--stackState",
-                description = "New state for stack",
-                required = false)
+                description = "New state for stack"
+        )
         public StackState stackState;
 
         @Parameter(
                 names = "--versionNotes",
-                description = "Notes about the version being created",
-                required = false)
+                description = "Notes about the version being created"
+        )
         public String versionNotes;
 
         @Parameter(
                 names = "--cycleNumber",
-                description = "Processing cycle number",
-                required = false)
+                description = "Processing cycle number"
+        )
         public Integer cycleNumber;
 
         @Parameter(
                 names = "--cycleStepNumber",
-                description = "Processing cycle step number",
-                required = false)
+                description = "Processing cycle step number"
+        )
         public Integer cycleStepNumber;
 
         @Parameter(
                 names = "--stackResolutionX",
-                description = "X resoution (in nanometers) for the stack",
-                required = false)
+                description = "X resoution (in nanometers) for the stack"
+        )
         public Double stackResolutionX;
 
         @Parameter(
                 names = "--stackResolutionY",
-                description = "Y resoution (in nanometers) for the stack",
-                required = false)
+                description = "Y resoution (in nanometers) for the stack"
+        )
         public Double stackResolutionY;
 
         @Parameter(
                 names = "--stackResolutionZ",
-                description = "Z resoution (in nanometers) for the stack",
-                required = false)
+                description = "Z resoution (in nanometers) for the stack"
+        )
         public Double stackResolutionZ;
 
         @Parameter(
                 names = "--materializedBoxRootPath",
-                description = "Root path for materialized boxes",
-                required = false)
+                description = "Root path for materialized boxes"
+        )
         public String materializedBoxRootPath;
 
         @Parameter(
                 names = "--alignmentQuality",
-                description = "Metric for aligned stacks",
-                required = false)
+                description = "Metric for aligned stacks"
+        )
         public Double alignmentQuality;
 
         @Parameter(
+                names = "--defaultChannelName",
+                description = "Default channel to render (for multi-channel stacks)"
+        )
+        public String defaultChannelName;
+
+        @Parameter(
                 names = "--cloneResultProject",
-                description = "Name of project for stack created by clone operation (default is to use source project)",
-                required = false)
+                description = "Name of project for stack created by clone operation (default is to use source project)"
+        )
         public String cloneResultProject;
 
         @Parameter(
                 names = "--cloneResultStack",
-                description = "Name of stack created by clone operation",
-                required = false)
+                description = "Name of stack created by clone operation"
+        )
         public String cloneResultStack;
 
         @Parameter(
                 names = "--renamedOwner",
-                description = "Name of renamed stack owner (default is to use source owner)",
-                required = false)
+                description = "Name of renamed stack owner (default is to use source owner)"
+        )
         public String renamedOwner;
 
         @Parameter(
                 names = "--renamedProject",
-                description = "Name of renamed stack project (default is to use source project)",
-                required = false)
+                description = "Name of renamed stack project (default is to use source project)"
+        )
         public String renamedProject;
 
         @Parameter(
                 names = "--renamedStack",
-                description = "Name of renamed stack",
-                required = false)
+                description = "Name of renamed stack"
+        )
         public String renamedStack;
 
         @Parameter(
                 names = "--sectionId",
-                description = "The sectionId to delete",
-                required = false)
+                description = "The sectionId to delete"
+        )
         public String sectionId;
 
         @Parameter(
                 names = "--skipSharedTransformClone",
                 description = "Only clone tiles, skipping clone of shared transforms (default is false)",
-                required = false,
                 arity = 0)
         public Boolean skipSharedTransformClone;
 
         @Parameter(
                 names = "--zValues",
                 description = "Z values for filtering",
-                required = false,
                 variableArity = true)
         public List<String> zValues;
 
@@ -188,14 +192,14 @@ public class StackClient {
     private final String stack;
     private final RenderDataClient renderDataClient;
 
-    public StackClient(final Parameters parameters) {
+    private StackClient(final Parameters parameters) {
 
         this.parameters = parameters;
         this.stack = parameters.stack;
         this.renderDataClient = parameters.renderWeb.getDataClient();
     }
 
-    public void createStackVersion()
+    private void createStackVersion()
             throws Exception {
 
         logMetaData("createStackVersion: before save");
@@ -209,14 +213,15 @@ public class StackClient {
                                                            parameters.stackResolutionZ,
                                                            parameters.materializedBoxRootPath,
                                                            null,
-                                                           parameters.alignmentQuality);
+                                                           parameters.alignmentQuality,
+                                                           parameters.defaultChannelName);
 
         renderDataClient.saveStackVersion(stack, stackVersion);
 
         logMetaData("createStackVersion: after save");
     }
 
-    public void cloneStackVersion()
+    private void cloneStackVersion()
             throws Exception {
 
         if (parameters.cloneResultStack == null) {
@@ -251,7 +256,7 @@ public class StackClient {
         logMetaData("cloneStackVersion: after clone", renderDataClient, parameters.cloneResultStack);
     }
 
-    public void renameStack()
+    private void renameStack()
             throws Exception {
 
         if (parameters.renamedStack == null) {
@@ -288,7 +293,7 @@ public class StackClient {
         logMetaData("setStackState: after update");
     }
 
-    public void deleteStack()
+    private void deleteStack()
             throws Exception {
 
         logMetaData("deleteStack: before removal");
