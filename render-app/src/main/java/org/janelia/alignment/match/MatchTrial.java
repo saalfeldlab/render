@@ -8,6 +8,8 @@ import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.match.parameters.FeatureAndMatchParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
@@ -21,15 +23,26 @@ import org.janelia.alignment.spec.Bounds;
  */
 public class MatchTrial implements Serializable {
 
-    private final String id;
+    private String id;
     private final MatchTrialParameters parameters;
     private List<Matches> matches;
     private MatchTrialStats stats;
 
-    public MatchTrial(final String id,
-                      final MatchTrialParameters parameters) {
-        this.id = id;
+    @SuppressWarnings("unused")
+    public MatchTrial() {
+        this(null);
+    }
+
+    public MatchTrial(final MatchTrialParameters parameters) {
         this.parameters = parameters;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public MatchTrialParameters getParameters() {
+        return parameters;
     }
 
     public List<Matches> getMatches() {
@@ -40,47 +53,53 @@ public class MatchTrial implements Serializable {
         return stats;
     }
 
+    public MatchTrial getCopyWithId(final String id) {
+        final MatchTrial copy = new MatchTrial(parameters);
+        copy.id = id;
+        copy.matches = this.matches;
+        copy.stats =this.stats;
+        return copy;
+    }
+
     public void deriveResults() {
 
-        final FeatureRenderClipParameters clipParameters =
-                parameters.getFeatureAndMatchParameters().getFeatureRenderClipParameters();
+        final FeatureAndMatchParameters featureAndMatchParameters = parameters.getFeatureAndMatchParameters();
+        final FeatureRenderClipParameters clipParameters = featureAndMatchParameters.getClipParameters();
 
-        MontageRelativePosition pPosition = null;
-        MontageRelativePosition qPosition = null;
+        MontageRelativePosition pClipPosition = null;
+        MontageRelativePosition qClipPosition = null;
 
         if ((clipParameters != null) &&
             ((clipParameters.clipWidth != null) || (clipParameters.clipHeight != null))) {
 
-            pPosition = parameters.getpPosition();
-            if (pPosition == null) {
-                throw new IllegalArgumentException("pPosition must be specified for clipping");
-            }
+            pClipPosition = featureAndMatchParameters.getpClipPosition();
 
-            switch (pPosition) {
-                case TOP: qPosition = MontageRelativePosition.BOTTOM; break;
-                case BOTTOM: qPosition = MontageRelativePosition.TOP; break;
-                case LEFT: qPosition = MontageRelativePosition.RIGHT; break;
-                case RIGHT: qPosition = MontageRelativePosition.LEFT; break;
+            switch (pClipPosition) {
+                case TOP: qClipPosition = MontageRelativePosition.BOTTOM; break;
+                case BOTTOM: qClipPosition = MontageRelativePosition.TOP; break;
+                case LEFT: qClipPosition = MontageRelativePosition.RIGHT; break;
+                case RIGHT: qClipPosition = MontageRelativePosition.LEFT; break;
             }
 
         }
 
         final long pFeatureStart = System.currentTimeMillis();
+        final String groupId = "trial";
 
-        final CanvasData pCanvasData = new CanvasData(parameters.getpUrl(),
-                                                      new CanvasId(id, "P", pPosition),
+        final CanvasData pCanvasData = new CanvasData(parameters.getpRenderParametersUrl(),
+                                                      new CanvasId(groupId, "P", pClipPosition),
                                                       parameters);
 
         final long qFeatureStart = System.currentTimeMillis();
 
-        final CanvasData qCanvasData = new CanvasData(parameters.getqUrl(),
-                                                      new CanvasId(id, "Q", qPosition),
+        final CanvasData qCanvasData = new CanvasData(parameters.getqRenderParametersUrl(),
+                                                      new CanvasId(groupId, "Q", qClipPosition),
                                                       parameters);
 
         final long matchStart = System.currentTimeMillis();
 
         final MatchDerivationParameters matchDerivationParameters =
-                parameters.getFeatureAndMatchParameters().getMatchDerivationParameters();
+                featureAndMatchParameters.getMatchDerivationParameters();
 
         final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(matchDerivationParameters.matchRod,
                                                                       matchDerivationParameters.matchModelType,
@@ -119,6 +138,17 @@ public class MatchTrial implements Serializable {
                                          (matchStop - matchStart));
     }
 
+    public String toJson() {
+        return JSON_HELPER.toJson(this);
+    }
+
+    public static MatchTrial fromJson(final String json) {
+        return JSON_HELPER.fromJson(json);
+    }
+
+    private static final JsonUtils.Helper<MatchTrial> JSON_HELPER =
+            new JsonUtils.Helper<>(MatchTrial.class);
+
     /**
      * Helper class to hold data (render parameters, features, etc.) for each canvas.
      */
@@ -128,12 +158,12 @@ public class MatchTrial implements Serializable {
         private final CanvasId canvasId;
         private final List<Feature> featureList;
 
-        CanvasData(final String canvasUrl,
+        CanvasData(final String renderParametersUrl,
                    final CanvasId canvasId,
                    final MatchTrialParameters trialParameters)
                 throws IllegalArgumentException {
 
-            this.renderParameters = RenderParameters.loadFromUrl(canvasUrl);
+            this.renderParameters = RenderParameters.loadFromUrl(renderParametersUrl);
             this.canvasId = canvasId;
 
             if (canvasId.getRelativePosition() != null) {
@@ -144,7 +174,7 @@ public class MatchTrial implements Serializable {
                                                  renderParameters.y + renderParameters.height);
 
                 final FeatureRenderClipParameters clipParameters =
-                        trialParameters.getFeatureAndMatchParameters().getFeatureRenderClipParameters();
+                        trialParameters.getFeatureAndMatchParameters().getClipParameters();
                 final Integer clipWidth = clipParameters.clipWidth;
                 final Integer clipHeight = clipParameters.clipHeight;
 
@@ -153,17 +183,17 @@ public class MatchTrial implements Serializable {
 
             }
 
-            final FeatureExtractionParameters featureExtractionParameters =
-                    trialParameters.getFeatureAndMatchParameters().getFeatureExtractionParameters();
+            final FeatureExtractionParameters siftFeatureParameters =
+                    trialParameters.getFeatureAndMatchParameters().getSiftFeatureParameters();
 
             final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
-            siftParameters.fdSize = featureExtractionParameters.fdSize;
-            siftParameters.steps = featureExtractionParameters.steps;
+            siftParameters.fdSize = siftFeatureParameters.fdSize;
+            siftParameters.steps = siftFeatureParameters.steps;
 
             final CanvasFeatureExtractor extractor = new CanvasFeatureExtractor(siftParameters,
-                                                                                featureExtractionParameters.minScale,
-                                                                                featureExtractionParameters.maxScale,
-                                                                                trialParameters.getFillWithNoise());
+                                                                                siftFeatureParameters.minScale,
+                                                                                siftFeatureParameters.maxScale,
+                                                                                renderParameters.isFillWithNoise());
 
             this.featureList = extractor.extractFeatures(renderParameters, null);
         }

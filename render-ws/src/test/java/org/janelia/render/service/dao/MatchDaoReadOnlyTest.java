@@ -64,27 +64,33 @@ public class MatchDaoReadOnlyTest {
                                          true,
                                          false,
                                          true);
+        embeddedMongoDb.importCollection(MatchDao.MATCH_TRIAL_COLLECTION_NAME,
+                                         new File("src/test/resources/mongodb/matchTrial.json"),
+                                         true,
+                                         false,
+                                         true);
+
     }
 
     @AfterClass
-    public static void after() throws Exception {
+    public static void after() {
         embeddedMongoDb.stop();
     }
 
-    public static MatchDao getDao() {
+    static MatchDao getDao() {
         return dao;
     }
 
-    public static MatchCollectionId getCollectionId() {
+    static MatchCollectionId getCollectionId() {
         return collectionId;
     }
 
-    public static String getGroupId() {
+    static String getGroupId() {
         return groupId;
     }
 
     @Test
-    public void testGetMatchCollectionMetaData() throws Exception {
+    public void testGetMatchCollectionMetaData() {
 
         final List<MatchCollectionMetaData> metaDataList = dao.getMatchCollectionMetaData();
         Assert.assertEquals("invalid number of match collections returned",
@@ -105,7 +111,7 @@ public class MatchDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetMultiConsensusPGroupIds() throws Exception {
+    public void testGetMultiConsensusPGroupIds() {
 
         final List<String> pGroupList = dao.getMultiConsensusPGroupIds(collectionId);
 
@@ -122,7 +128,7 @@ public class MatchDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetMultiConsensusGroupIds() throws Exception {
+    public void testGetMultiConsensusGroupIds() {
 
         final Set<String> groupList = dao.getMultiConsensusGroupIds(collectionId);
 

@@ -7,6 +7,7 @@ import java.util.List;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
+import org.janelia.alignment.match.MatchTrial;
 import org.janelia.alignment.match.Matches;
 import org.junit.After;
 import org.junit.Assert;
@@ -36,7 +37,7 @@ public class MatchDaoTest {
     }
 
     @After
-    public void after() throws Exception {
+    public void after() {
         MatchDaoReadOnlyTest.after();
     }
 
@@ -165,7 +166,7 @@ public class MatchDaoTest {
     }
 
     @Test
-    public void testRemoveMatches() throws Exception {
+    public void testRemoveMatches() {
 
         final MatchCollectionId deletionCollectionId = new MatchCollectionId("testOwner", "deletionCollection");
 
@@ -218,7 +219,7 @@ public class MatchDaoTest {
     }
 
     @Test
-    public void testRenameMatchCollection() throws Exception {
+    public void testRenameMatchCollection() {
 
         final MatchCollectionId toMatchCollectionId = new MatchCollectionId(collectionId.getOwner(),
                                                                             "new_and_improved");
@@ -233,6 +234,62 @@ public class MatchDaoTest {
 
         Assert.assertTrue("renamed collection " + toMatchCollectionId + " NOT found", foundToCollection);
         Assert.assertFalse("original collection " + collectionId + " still exists", foundFromCollection);
+    }
+
+    @Test
+    public void testMatchTrial() {
+
+        final String json =
+                "{\n" +
+                "  \"parameters\" : {\n" +
+                "    \"featureAndMatchParameters\" : {\n" +
+                "      \"siftFeatureParameters\" : {\n" +
+                "        \"fdSize\" : 4,\n" +
+                "        \"minScale\" : 0.5,\n" +
+                "        \"maxScale\" : 1.0,\n" +
+                "        \"steps\" : 3\n" +
+                "      },\n" +
+                "      \"matchDerivationParameters\" : {\n" +
+                "        \"matchRod\" : 0.95,\n" +
+                "        \"matchModelType\" : \"AFFINE\",\n" +
+                "        \"matchIterations\" : 1000,\n" +
+                "        \"matchMaxEpsilon\" : 5.0,\n" +
+                "        \"matchMinInlierRatio\" : 0.0,\n" +
+                "        \"matchMinNumInliers\" : 6,\n" +
+                "        \"matchMaxTrust\" : 30.0,\n" +
+                "        \"matchFilter\" : \"AGGREGATED_CONSENSUS_SETS\"\n" +
+                "      }\n" +
+                "    },\n" +
+                "    \"pRenderParametersUrl\" : \"http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/spc_mm2_sample_rough_test_1_tier_3/stack/0016x0017_000118/tile/z_1015.0_box_5632_6656_1024_1024_0.500000/render-parameters?excludeMask=true&normalizeForMatching=true&filter=true&fillWithNoise=true\",\n" +
+                "    \"qRenderParametersUrl\" : \"http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/spc_mm2_sample_rough_test_1_tier_3/stack/0016x0017_000118/tile/z_1016.0_box_5632_6656_1024_1024_0.500000/render-parameters?excludeMask=true&normalizeForMatching=true&filter=true&fillWithNoise=true\"\n" +
+                "  },\n" +
+                "  \"matches\" : [ ],\n" +
+                "  \"stats\" : {\n" +
+                "    \"pFeatureCount\" : 996,\n" +
+                "    \"pFeatureDerivationMilliseconds\" : 1415,\n" +
+                "    \"qFeatureCount\" : 1133,\n" +
+                "    \"qFeatureDerivationMilliseconds\" : 1279,\n" +
+                "    \"consensusSetSizes\" : [ 0 ],\n" +
+                "    \"matchDerivationMilliseconds\" : 324\n" +
+                "  }\n" +
+                "}";
+
+        final MatchTrial matchTrial = MatchTrial.fromJson(json);
+
+        final MatchTrial insertedTrial = dao.insertMatchTrial(matchTrial);
+
+        final String trialId = insertedTrial.getId();
+        Assert.assertNotNull("trialId not set", trialId);
+
+        Assert.assertEquals("invalid pRenderParametersUrl inserted",
+                            matchTrial.getParameters().getpRenderParametersUrl(), insertedTrial.getParameters().getpRenderParametersUrl());
+
+        final MatchTrial retrievedTrial = dao.getMatchTrial(trialId);
+        Assert.assertNotNull("trial not saved", retrievedTrial);
+
+        Assert.assertEquals("invalid qRenderParametersUrl inserted",
+                            matchTrial.getParameters().getqRenderParametersUrl(), retrievedTrial.getParameters().getqRenderParametersUrl());
+
     }
 
     private MatchCollectionMetaData getCollectionMetaData(final MatchCollectionId collectionId) {

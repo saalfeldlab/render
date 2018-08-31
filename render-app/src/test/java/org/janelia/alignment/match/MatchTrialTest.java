@@ -42,12 +42,11 @@ public class MatchTrialTest {
 
         final FeatureAndMatchParameters featureAndMatchParameters =
                 new FeatureAndMatchParameters(featureExtractionParameters,
+                                              matchDerivationParameters,
                                               null,
-                                              matchDerivationParameters);
+                                              null);
 
         final MatchTrialParameters trialParameters = new MatchTrialParameters(featureAndMatchParameters,
-                                                                              true,
-                                                                              null,
                                                                               pTileUrl,
                                                                               qTileUrl);
 
@@ -56,7 +55,7 @@ public class MatchTrialTest {
 
         System.out.println(JSON_HELPER.toJson(trialParameters));
 
-        final MatchTrial matchTrial = new MatchTrial("test", trialParameters);
+        final MatchTrial matchTrial = new MatchTrial(trialParameters);
         matchTrial.deriveResults();
 
         System.out.println(matchTrial.getStats().toJson());

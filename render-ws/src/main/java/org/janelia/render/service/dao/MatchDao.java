@@ -23,9 +23,11 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
+import org.janelia.alignment.match.MatchTrial;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.slf4j.Logger;
@@ -38,7 +40,8 @@ import org.slf4j.LoggerFactory;
  */
 public class MatchDao {
 
-    public static final String MATCH_DB_NAME = "match";
+    static final String MATCH_DB_NAME = "match";
+    static final String MATCH_TRIAL_COLLECTION_NAME = "aaa_match_trial";
 
     public static MatchDao build()
             throws UnknownHostException {
@@ -48,7 +51,7 @@ public class MatchDao {
 
     private final MongoDatabase matchDatabase;
 
-    public MatchDao(final MongoClient client) {
+    MatchDao(final MongoClient client) {
         matchDatabase = client.getDatabase(MATCH_DB_NAME);
     }
 
@@ -60,7 +63,7 @@ public class MatchDao {
 
         final List<MatchCollectionMetaData> list = new ArrayList<>();
         for (final String collectionName : matchDatabase.listCollectionNames()) {
-            if (! collectionName.startsWith("system.")) {
+            if (! collectionName.startsWith("system.") && (! MATCH_TRIAL_COLLECTION_NAME.equals(collectionName))) {
                 list.add(
                         new MatchCollectionMetaData(
                                 MatchCollectionId.fromDbCollectionName(collectionName),
@@ -136,7 +139,7 @@ public class MatchDao {
         // mongodb java 3.0 driver notes:
         // -- need to set cursor batchSize to prevent NPE from cursor creation
         final AggregateIterable<Document> iterable = matchCollection.aggregate(pipeline).batchSize(1);
-        try (MongoCursor<Document> cursor = iterable.iterator()) {
+        try (final MongoCursor<Document> cursor = iterable.iterator()) {
             while (cursor.hasNext()) {
                 final Document id = cursor.next().get("_id", Document.class);
                 pGroupIdsWithMultiplePairs.add(id.getString("pGroupId"));
@@ -184,7 +187,7 @@ public class MatchDao {
         // mongodb java 3.0 driver notes:
         // -- need to set cursor batchSize to prevent NPE from cursor creation
         final AggregateIterable<Document> iterable = matchCollection.aggregate(pipeline).batchSize(1);
-        try (MongoCursor<Document> cursor = iterable.iterator()) {
+        try (final MongoCursor<Document> cursor = iterable.iterator()) {
             while (cursor.hasNext()) {
                 final Document id = cursor.next().get("_id", Document.class);
                 groupIdsWithMultiplePairs.add(id.getString("pGroupId"));
@@ -251,7 +254,7 @@ public class MatchDao {
 
     public List<CanvasMatches> getMatchesOutsideGroup(final MatchCollectionId collectionId,
                                                       final String groupId)
-            throws IllegalArgumentException, IOException, ObjectNotFoundException {
+            throws IllegalArgumentException, ObjectNotFoundException {
 
         LOG.debug("getMatchesOutsideGroup: entry, collectionId={}, groupId={}",
                   collectionId, groupId);
@@ -316,7 +319,7 @@ public class MatchDao {
                                                   final String pId,
                                                   final String qGroupId,
                                                   final String qId)
-            throws IllegalArgumentException, IOException, ObjectNotFoundException {
+            throws IllegalArgumentException, ObjectNotFoundException {
 
         MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
         MongoUtil.validateRequiredParameter("pId", pId);
@@ -334,7 +337,7 @@ public class MatchDao {
 
         int matchCount = 0;
         CanvasMatches canvasMatches = null;
-        try (MongoCursor<Document> cursor = collection.find(query).iterator()) {
+        try (final MongoCursor<Document> cursor = collection.find(query).iterator()) {
             if (cursor.hasNext()) {
                 canvasMatches = CanvasMatches.fromJson(cursor.next().toJson());
                 matchCount = canvasMatches.size();
@@ -537,7 +540,7 @@ public class MatchDao {
     }
 
     public void removeAllMatches(final MatchCollectionId collectionId)
-            throws IllegalArgumentException, IOException, ObjectNotFoundException {
+            throws IllegalArgumentException, ObjectNotFoundException {
 
         LOG.debug("removeAllMatches: entry, collectionId={}", collectionId);
 
@@ -583,6 +586,46 @@ public class MatchDao {
         MongoUtil.renameCollection(matchDatabase, fromCollectionName, toCollectionName);
     }
 
+    public MatchTrial getMatchTrial(final String trialId)
+            throws IllegalArgumentException,
+                   ObjectNotFoundException {
+
+        MongoUtil.validateRequiredParameter("trialId", trialId);
+
+        final MongoCollection<Document> collection = getMatchTrialCollection();
+
+        final Document query = new Document();
+        query.put("_id", new ObjectId(trialId));
+
+        final Document document = collection.find(query).first();
+
+        if (document == null) {
+            throw new ObjectNotFoundException("match trial with id '" + trialId + "' does not exist in the " +
+                                              MongoUtil.fullName(collection) + " collection");
+        }
+
+        return MatchTrial.fromJson(document.toJson());
+    }
+
+    public MatchTrial insertMatchTrial(final MatchTrial matchTrial)
+            throws IllegalArgumentException {
+
+        MongoUtil.validateRequiredParameter("matchTrial", matchTrial);
+
+        final MongoCollection<Document> collection = getMatchTrialCollection();
+        final MatchTrial copyWithNullId = matchTrial.getCopyWithId(null);
+        final Document matchTrialDocument = Document.parse(copyWithNullId.toJson());
+
+        collection.insertOne(matchTrialDocument);
+
+        final ObjectId id = matchTrialDocument.getObjectId("_id");
+        return matchTrial.getCopyWithId(String.valueOf(id));
+    }
+
+    private MongoCollection<Document> getMatchTrialCollection() {
+        return matchDatabase.getCollection(MATCH_TRIAL_COLLECTION_NAME);
+    }
+
     private MongoCollection<Document> getExistingCollection(final MatchCollectionId collectionId) {
         return MongoUtil.getExistingCollection(matchDatabase, collectionId.getDbCollectionName());
     }
@@ -620,7 +663,7 @@ public class MatchDao {
 
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
 
-        try (MongoCursor<String> cursor = collection.distinct(fieldName, String.class).iterator()) {
+        try (final MongoCursor<String> cursor = collection.distinct(fieldName, String.class).iterator()) {
             while (cursor.hasNext()) {
                 distinctIds.add(cursor.next());
             }
@@ -630,12 +673,11 @@ public class MatchDao {
     }
 
     private List<CanvasMatches> getMatches(final MongoCollection<Document> collection,
-                                           final Document query)
-            throws IOException {
+                                           final Document query) {
 
         final List<CanvasMatches> canvasMatchesList = new ArrayList<>();
 
-        try (MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).iterator()) {
+        try (final MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).iterator()) {
             while (cursor.hasNext()) {
                 canvasMatchesList.add(CanvasMatches.fromJson(cursor.next().toJson()));
             }
@@ -667,7 +709,7 @@ public class MatchDao {
             outputStream.write(OPEN_BRACKET);
 
             int count = 0;
-            try (MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).sort(MATCH_ORDER_BY).iterator()) {
+            try (final MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).sort(MATCH_ORDER_BY).iterator()) {
 
                 Document document;
                 while (cursor.hasNext()) {

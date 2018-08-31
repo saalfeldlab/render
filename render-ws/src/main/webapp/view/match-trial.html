@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Match Trial</title>
+
+    <link rel="stylesheet" href="../css/match.css">
+
+    <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
+    <script type="text/javascript" src="../script/janelia-render.js?v=20180611_001"></script>
+    <script type="text/javascript" src="../script/janelia-match-trial.js?v=20180823_001"></script>
+    <script type="text/javascript">
+
+        var matchTrial;
+
+        $( document ).ready(function() {
+
+            var util = new JaneliaScriptUtilities();
+            var queryParameters = new JaneliaQueryParameters();
+
+            var baseUrl = util.getServicesBaseUrl();
+
+            // TODO: remove this when done debugging on localhost
+            // baseUrl = "http://renderer-dev:8080/render-ws/v1";
+
+            var owner = 'flyTEM';
+
+            var viewScale = queryParameters.get('viewScale', 1.0);
+
+            var canvas = document.getElementById("theCanvas");
+
+            matchTrial = new JaneliaMatchTrial(baseUrl, owner, canvas, viewScale);
+
+            var matchTrialId = queryParameters.get('matchTrialId', 'TBD');
+
+            var newTrialButtonSelector = $('#newTrial');
+            
+            if (matchTrialId === 'TBD') {
+                newTrialButtonSelector.hide();
+                $('#headerDiv').hide();
+            } else {
+                $('#formDiv').hide();
+                var trialSuffix = matchTrialId.substring(matchTrialId.length - 6);
+                $(document).attr('title', 'Match Trial ' + trialSuffix);
+                var trialDataUrl = matchTrial.matchTrialUrl + '/' + matchTrialId;
+                $('#trialId').html('<a target="_blank" href="' + trialDataUrl + '">' + trialSuffix + '</a>');
+                matchTrial.loadTrial(matchTrialId);
+            }
+
+            newTrialButtonSelector.click(function() {
+                matchTrial.openNewTrialWindow();
+            });
+
+            $('#runTrial').click(function() {
+                matchTrial.runTrial();
+            });
+
+        });
+
+    </script>
+
+</head>
+<body>
+
+<h3>Match Trial <span id="trialId"></span> <input id="newTrial" type="button" style="margin-left:40px" value="Edit Parameters"></h3>
+
+<span id="message" class="error"></span>
+
+<div id="formDiv" class="header_div">
+    <table class="data_table">
+        <tr>
+            <td colspan="2"><hr/></td>
+        </tr>
+        <tr>
+            <td>SIFT Feature Parameters:</td>
+            <td>
+                <label>fdSize: <input id="fdSize" type="number" min="0" max="1000"></label>
+                <label>minScale: <input id="minScale" type="number" step="0.01" min="0.0" max="1.0"></label>
+                <label>maxScale: <input id="maxScale" type="number" step="0.01" min="0.0" max="1.0"></label>
+                <label>steps: <input id="steps" type="number" min="0" max="100"></label>
+            </td>
+        </tr>
+        <tr>
+            <td>Match Parameters:</td>
+            <td>
+                <label>modelType:
+                    <select id="matchModelType">
+                        <option>AFFINE</option>
+                        <option>RIGID</option>
+                        <option>SIMILARITY</option>
+                        <option>TRANSLATION</option>
+                    </select>
+                </label>
+                <label>ROD: <input id="matchRod" type="number" step="0.01" min="0.0" max="1.0"></label>
+                <label>iterations: <input id="matchIterations" type="number" min="1" max="10000"></label>
+                <label>maxEpsilon: <input id="matchMaxEpsilon" type="number" step="0.1" min="0.0" max="100.0"></label>
+            </td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>
+                <label>minInlierRatio: <input id="matchMinInlierRatio" type="number" step="0.01" min="0.0" max="1.0"></label>
+                <label>minNumInliers: <input id="matchMinNumInliers" type="number" min="0" max="1000"></label>
+                <label>maxTrust: <input id="matchMaxTrust" type="number" step="0.1" min="0.0" max="100.0"></label>
+                <label>filter:
+                    <select id="matchFilter">
+                        <option>AGGREGATED_CONSENSUS_SETS</option>
+                        <option>CONSENSUS_SETS</option>
+                        <option>NONE</option>
+                        <option>SINGLE_SET</option>
+                    </select>
+                </label>
+            </td>
+        </tr>
+        <tr>
+            <td>Clip Parameters:</td>
+            <td>
+                <label>pClipPosition:
+                    <select id="pClipPosition">
+                        <option>NO CLIP</option>
+                        <option>TOP</option>
+                        <option>BOTTOM</option>
+                        <option>LEFT</option>
+                        <option>RIGHT</option>
+                    </select>
+                </label>
+                <label>clipPixels: <input id="clipPixels" type="number" min="0" max="10000"></label>
+            </td>
+        </tr>
+        <tr>
+            <td><label for="pRenderParametersUrl">pRenderParametersUrl:</label></td>
+            <td><textarea id="pRenderParametersUrl" rows="5" cols="120"></textarea></td>
+        </tr>
+        <tr>
+            <td><label for="qRenderParametersUrl">qRenderParametersUrl:</label></td>
+            <td><textarea id="qRenderParametersUrl" rows="5" cols="120"></textarea></td>
+        </tr>
+        <tr>
+            <td colspan="2"><hr/></td>
+        </tr>
+        <tr>
+            <td><input id="runTrial" type="button" value="Run Trial"></td>
+        </tr>
+    </table>
+</div>
+
+<div id="headerDiv" class="header_div">
+    <table class="data_table">
+        <tr>
+            <td colspan="4"><hr/></td>
+        </tr>
+        <tr>
+            <td>SIFT Feature Parameters:</td>
+            <td colspan="4">
+                fdSize: <span id="trialFdSize" class="parameterValue"></span>
+                minScale: <span id="trialMinScale" class="parameterValue"></span>
+                maxScale: <span id="trialMaxScale" class="parameterValue"></span>
+                steps: <span id="trialSteps" class="parameterValue"></span>
+            </td>
+        </tr>
+        <tr>
+            <td>Match Parameters:</td>
+            <td colspan="4">
+                modelType: <span id="trialMatchModelType" class="parameterValue"></span>
+                ROD: <span id="trialMatchRod" class="parameterValue"></span>
+                iterations: <span id="trialMatchIterations" class="parameterValue"></span>
+                maxEpsilon: <span id="trialMatchMaxEpsilon" class="parameterValue"></span>
+            </td>
+        </tr>
+        <tr>
+            <td></td>
+            <td colspan="4">
+                minInlierRatio: <span id="trialMatchMinInlierRatio" class="parameterValue"></span>
+                minNumInliers: <span id="trialMatchMinNumInliers" class="parameterValue"></span>
+                maxTrust: <span id="trialMatchMaxTrust" class="parameterValue"></span>
+                filter: <span id="trialMatchFilter" class="parameterValue"></span>
+            </td>
+        </tr>
+        <tr>
+            <td>Clip Parameters:</td>
+            <td colspan="4">
+                pClipPosition: <span id="trialPClipPosition" class="parameterValue"></span>
+                clipPixels: <span id="trialClipPixels" class="parameterValue"></span>
+            </td>
+        </tr>
+        <tr>
+            <td>P Render Parameters URL:</td>
+            <td id="trialpRenderParametersUrl"></td>
+            <td>Q Render Parameters URL:</td>
+            <td id="trialqRenderParametersUrl"></td>
+        </tr>
+        <tr>
+            <td colspan="4"><hr/></td>
+        </tr>
+        <tr>
+            <td>P Feature Stats:</td>
+            <td id="pFeatureStats"></td>
+            <td>Q Feature Stats:</td>
+            <td id="qFeatureStats"></td>
+        </tr>
+        <tr>
+            <td>Match Stats:</td>
+            <td id="matchStats" colspan="4"></td>
+        </tr>
+        <tr>
+            <td>Match View:</td>
+            <td>
+                <input type='button' value='All Matches' onclick='matchTrial.drawAllMatches()' />
+                <input type='button' value='Previous Match' onclick='matchTrial.drawSelectedMatches(-1)' />
+                <input type='button' value='Next Match' onclick='matchTrial.drawSelectedMatches(1)' />
+            </td>
+            <td id="matchInfo" colspan="3"></td>
+        </tr>
+    </table>
+</div>
+
+<div id="tileDiv">
+    <canvas id="theCanvas"></canvas>
+</div>
+
+</body>
+</html>

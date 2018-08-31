@@ -2,7 +2,6 @@ package org.janelia.render.service;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -598,6 +597,29 @@ public class MatchService {
         return Response.ok().build();
     }
 
+    @Path("v1/owner/{owner}/matchTrial/{trialId}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Get match trial")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "trial not found")
+    })
+    public MatchTrial getMatchTrial(@PathParam("owner") final String owner,
+                                    @PathParam("trialId") final String trialId) {
+
+        LOG.info("getMatchTrial: entry, owner={}, trialId={}", owner, trialId);
+
+        MatchTrial matchTrial = null;
+        try {
+            matchTrial = matchDao.getMatchTrial(trialId);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return matchTrial;
+    }
+
     @Path("v1/owner/{owner}/matchTrial")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
@@ -606,29 +628,32 @@ public class MatchService {
             value = "Create a match trial",
             notes = "Derives matches for the specified canvas pair.")
     @ApiResponses(value = {
-            @ApiResponse(code = 201, message = "matches successfully saved"),
+            @ApiResponse(code = 201, message = "Trial results have been saved"),
             @ApiResponse(code = 400, message = "If no matches are provided")
     })
-    public MatchTrial deriveMatches(@PathParam("owner") final String owner,
-                                    @Context final UriInfo uriInfo,
+    public MatchTrial runMatchTrial(@PathParam("owner") final String owner,
                                     final MatchTrialParameters matchTrialParameters) {
 
-        LOG.info("deriveMatches: entry, owner={}", owner);
-
-        if (matchTrialParameters == null) {
-            throw new IllegalServiceArgumentException("no parameters provided");
-        }
+        LOG.info("runMatchTrial: entry, owner={}", owner);
 
         MatchTrial matchTrial = null;
         try {
-            final String trialId = String.valueOf(new Date().getTime());
-            matchTrial = new MatchTrial(trialId, matchTrialParameters);
+
+            if (matchTrialParameters == null) {
+                throw new IllegalArgumentException("no parameters provided");
+            } else {
+                matchTrialParameters.validateAndSetDefaults();
+            }
+
+            matchTrial = new MatchTrial(matchTrialParameters);
             matchTrial.deriveResults();
+            matchTrial = matchDao.insertMatchTrial(matchTrial);
+
+            LOG.info("runMatchTrial: exit, saved trial {}", matchTrial.getId());
+
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
-
-        LOG.info("deriveMatches: exit");
 
         return matchTrial;
     }

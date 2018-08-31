@@ -14,10 +14,10 @@ import org.janelia.alignment.json.JsonUtils;
 public class MatchTrialStats
         implements Serializable {
 
-    private final Integer firstCanvasFeatureCount;
-    private final Long firstCanvasFeatureDerivationMilliseconds;
-    private final Integer secondCanvasFeatureCount;
-    private final Long secondCanvasFeatureDerivationMilliseconds;
+    private final Integer pFeatureCount;
+    private final Long pFeatureDerivationMilliseconds;
+    private final Integer qFeatureCount;
+    private final Long qFeatureDerivationMilliseconds;
     private final List<Integer> consensusSetSizes;
     private final Long matchDerivationMilliseconds;
 
@@ -30,16 +30,16 @@ public class MatchTrialStats
              null);
     }
 
-    MatchTrialStats(final Integer firstCanvasFeatureCount,
-                    final Long firstCanvasFeatureDerivationMilliseconds,
-                    final Integer secondCanvasFeatureCount,
-                    final Long secondCanvasFeatureDerivationMilliseconds,
+    MatchTrialStats(final Integer pFeatureCount,
+                    final Long pFeatureDerivationMilliseconds,
+                    final Integer qFeatureCount,
+                    final Long qFeatureDerivationMilliseconds,
                     final List<Integer> consensusSetSizes,
                     final Long matchDerivationMilliseconds) {
-        this.firstCanvasFeatureCount = firstCanvasFeatureCount;
-        this.firstCanvasFeatureDerivationMilliseconds = firstCanvasFeatureDerivationMilliseconds;
-        this.secondCanvasFeatureCount = secondCanvasFeatureCount;
-        this.secondCanvasFeatureDerivationMilliseconds = secondCanvasFeatureDerivationMilliseconds;
+        this.pFeatureCount = pFeatureCount;
+        this.pFeatureDerivationMilliseconds = pFeatureDerivationMilliseconds;
+        this.qFeatureCount = qFeatureCount;
+        this.qFeatureDerivationMilliseconds = qFeatureDerivationMilliseconds;
         this.consensusSetSizes = consensusSetSizes;
         this.matchDerivationMilliseconds = matchDerivationMilliseconds;
     }
