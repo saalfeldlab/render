@@ -3,8 +3,6 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
-import ij.process.ByteProcessor;
-
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
@@ -49,39 +47,37 @@ public class RenderSectionClient {
 
         @Parameter(
                 names = "--scale",
-                description = "Scale for each rendered layer",
-                required = false)
+                description = "Scale for each rendered layer"
+        )
         public Double scale = 0.02;
 
         @Parameter(
                 names = "--format",
-                description = "Format for rendered boxes",
-                required = false)
+                description = "Format for rendered boxes"
+        )
         public String format = Utils.PNG_FORMAT;
 
         @Parameter(
                 names = "--doFilter",
                 description = "Use ad hoc filter to support alignment",
-                required = false,
                 arity = 1)
         public boolean doFilter = true;
 
         @Parameter(
                 names = "--filterListName",
-                description = "Apply this filter list to all rendering (overrides doFilter option)",
-                required = false)
+                description = "Apply this filter list to all rendering (overrides doFilter option)"
+        )
         public String filterListName;
 
         @Parameter(
                 names = "--channels",
-                description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3')",
-                required = false)
+                description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3')"
+        )
         public String channels;
 
         @Parameter(
                 names = "--fillWithNoise",
                 description = "Fill image with noise before rendering to improve point match derivation",
-                required = false,
                 arity = 1)
         public boolean fillWithNoise = true;
 
@@ -92,38 +88,38 @@ public class RenderSectionClient {
 
         @Parameter(
                 names = "--bounds",
-                description = "Bounds used for all layers: xmin, xmax, ymin,ymax",
-                required = false)
+                description = "Bounds used for all layers: xmin, xmax, ymin,ymax"
+        )
         public List<Integer> bounds;
 
         @Parameter(
                 names = "--customOutputFolder",
-                description = "Custom named folder for output. Overrides the default format 'sections_at_#' folder",
-                required = false)
+                description = "Custom named folder for output. Overrides the default format 'sections_at_#' folder"
+        )
         public String customOutputFolder;
 
         @Parameter(
                 names = "--customSubFolder",
-                description = "Name for subfolder to customOutputFolder, if used",
-                required = false)
+                description = "Name for subfolder to customOutputFolder, if used"
+        )
         public String customSubFolder;
 
         @Parameter(
                 names = "--padFileNamesWithZeros",
-                description = "Pad outputfilenames with leading zeroes, i.e. 12.tiff -> 00012.tiff",
-                required = false)
+                description = "Pad outputfilenames with leading zeroes, i.e. 12.tiff -> 00012.tiff"
+        )
         public boolean padFileNameWithZeroes;
 
         @Parameter(
                 names = "--maxIntensity",
-                description = "Max intensity to render image",
-                required = false)
+                description = "Max intensity to render image"
+        )
         public Integer maxIntensity;
 
         @Parameter(
                 names = "--minIntensity",
-                description = "Min intensity to render image",
-                required = false)
+                description = "Min intensity to render image"
+        )
         public Integer minIntensity;
     }
 
@@ -156,7 +152,7 @@ public class RenderSectionClient {
     private final ImageProcessorCache imageProcessorCache;
     private final RenderDataClient renderDataClient;
 
-    public RenderSectionClient(final Parameters clientParameters) {
+    private RenderSectionClient(final Parameters clientParameters) {
 
         this.clientParameters = clientParameters;
 
@@ -189,7 +185,7 @@ public class RenderSectionClient {
         this.renderDataClient = clientParameters.renderWeb.getDataClient();
     }
 
-    public void generateImageForZ(final Double z)
+    private void generateImageForZ(final Double z)
             throws Exception {
 
         LOG.info("generateImageForZ: {}, entry, sectionDirectory={}, dataClient={}",
@@ -242,18 +238,13 @@ public class RenderSectionClient {
         LOG.debug("generateImageForZ: {}, loading {}", z, parametersUrl);
 
         final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
+        renderParameters.setFillWithNoise(clientParameters.fillWithNoise);
         renderParameters.setDoFilter(clientParameters.doFilter);
         renderParameters.setChannels(clientParameters.channels);
 
         final File sectionFile = getSectionFile(z);
 
         final BufferedImage sectionImage = renderParameters.openTargetImage();
-
-        if (clientParameters.fillWithNoise) {
-            final ByteProcessor ip = new ByteProcessor(sectionImage.getWidth(), sectionImage.getHeight());
-            mpicbg.ij.util.Util.fillWithNoise(ip);
-            sectionImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
-        }
 
         ArgbRenderer.render(renderParameters, sectionImage, imageProcessorCache);
 

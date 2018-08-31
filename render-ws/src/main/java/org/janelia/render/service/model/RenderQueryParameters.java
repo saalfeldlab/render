@@ -28,6 +28,9 @@ public class RenderQueryParameters
     @QueryParam("excludeMask")
     private final Boolean excludeMask;
 
+    @QueryParam("fillWithNoise")
+    private final Boolean fillWithNoise;
+
     @QueryParam("filter")
     private final Boolean filter;
 
@@ -56,6 +59,7 @@ public class RenderQueryParameters
              null,
              null,
              null,
+             null,
              scale);
     }
 
@@ -63,6 +67,7 @@ public class RenderQueryParameters
                                   final String channels,
                                   final Boolean convertToGray,
                                   final Boolean excludeMask,
+                                  final Boolean fillWithNoise,
                                   final Boolean filter,
                                   final String filterListName,
                                   final Double minIntensity,
@@ -72,6 +77,7 @@ public class RenderQueryParameters
         this.channels = channels;
         this.convertToGray = convertToGray;
         this.excludeMask = excludeMask;
+        this.fillWithNoise = fillWithNoise;
         this.filter = filter;
         this.filterListName = filterListName;
         this.minIntensity = minIntensity;
@@ -97,6 +103,11 @@ public class RenderQueryParameters
     @SuppressWarnings("unused") // getter required for Swagger to detect parameter
     public Boolean getExcludeMask() {
         return excludeMask;
+    }
+
+    @SuppressWarnings("unused") // getter required for Swagger to detect parameter
+    public Boolean getFillWithNoise() {
+        return fillWithNoise;
     }
 
     @SuppressWarnings("unused") // getter required for Swagger to detect parameter
@@ -139,6 +150,7 @@ public class RenderQueryParameters
         renderParameters.setChannels(channels);
         renderParameters.setConvertToGray(convertToGray);
         renderParameters.setExcludeMask(excludeMask);
+        renderParameters.setFillWithNoise(fillWithNoise);
         renderParameters.setDoFilter(filter);
         renderParameters.setMinIntensity(minIntensity);
         renderParameters.setMaxIntensity(maxIntensity);

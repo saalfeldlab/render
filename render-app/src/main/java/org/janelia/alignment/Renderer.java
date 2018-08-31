@@ -1,4 +1,4 @@
-/**
+/*
  * License: GPL
  *
  * This program is free software; you can redistribute it and/or
@@ -15,6 +15,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 package org.janelia.alignment;
+
+import ij.process.ByteProcessor;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -64,8 +66,8 @@ public class Renderer {
      * @param  renderParameters     specifies what to render.
      * @param  imageProcessorCache  cache of source tile data.
      */
-    public Renderer(final RenderParameters renderParameters,
-                    final ImageProcessorCache imageProcessorCache) {
+    private Renderer(final RenderParameters renderParameters,
+                     final ImageProcessorCache imageProcessorCache) {
         this.renderParameters = renderParameters;
         this.imageProcessorCache = imageProcessorCache;
     }
@@ -76,8 +78,8 @@ public class Renderer {
      * @throws Exception
      *   if any part of the process fails.
      */
-    public void validateRenderAndSaveImage(final ImageOpener imageOpener,
-                                           final ProcessorWithMasksConverter converter)
+    private void validateRenderAndSaveImage(final ImageOpener imageOpener,
+                                            final ProcessorWithMasksConverter converter)
             throws Exception {
 
         final long mainStart = System.currentTimeMillis();
@@ -143,7 +145,7 @@ public class Renderer {
      * @throws IllegalArgumentException
      *   if rendering fails for any reason.
      */
-    public ImageProcessorWithMasks renderImageProcessorWithMasks()
+    private ImageProcessorWithMasks renderImageProcessorWithMasks()
             throws IllegalArgumentException {
 
         ImageProcessorWithMasks worldTarget = null;
@@ -181,8 +183,8 @@ public class Renderer {
      * @throws IllegalArgumentException
      *   if rendering fails for any reason.
      */
-    public void renderToBufferedImage(final ProcessorWithMasksConverter converter,
-                                      final BufferedImage targetImage)
+    private void renderToBufferedImage(final ProcessorWithMasksConverter converter,
+                                       final BufferedImage targetImage)
             throws IllegalArgumentException {
 
         final int numberOfTileSpecs = renderParameters.numberOfTileSpecs();
@@ -203,8 +205,16 @@ public class Renderer {
             // TODO: see if there is a more efficient way to do the background fill and avoid redraw of image below
             final Integer backgroundRGBColor = renderParameters.getBackgroundRGBColor();
             if (backgroundRGBColor != null) {
+
                 targetGraphics.setBackground(new Color(backgroundRGBColor));
                 targetGraphics.clearRect(0, 0, targetImage.getWidth(), targetImage.getHeight());
+
+            } else if (renderParameters.isFillWithNoise()) {
+
+                final ByteProcessor ip = new ByteProcessor(targetImage.getWidth(), targetImage.getHeight());
+                mpicbg.ij.util.Util.fillWithNoise(ip);
+                targetGraphics.drawImage(ip.createImage(), 0, 0, null);
+
             }
 
             final BufferedImage image = converter.convertProcessorWithMasksToImage(renderParameters, worldTarget);
@@ -240,10 +250,10 @@ public class Renderer {
      * @throws IllegalArgumentException
      *   if rendering fails for any reason.
      */
-    public static void renderToBufferedImage(final RenderParameters renderParameters,
-                                             final BufferedImage targetImage,
-                                             final ImageProcessorCache imageProcessorCache,
-                                             final ProcessorWithMasksConverter converter)
+    static void renderToBufferedImage(final RenderParameters renderParameters,
+                                      final BufferedImage targetImage,
+                                      final ImageProcessorCache imageProcessorCache,
+                                      final ProcessorWithMasksConverter converter)
             throws IllegalArgumentException {
         final Renderer renderer = new Renderer(renderParameters, imageProcessorCache);
         renderer.renderToBufferedImage(converter, targetImage);
@@ -259,9 +269,9 @@ public class Renderer {
      * @throws Exception
      *   if rendering fails for any reason.
      */
-    public static void renderUsingCommandLineArguments(final String[] args,
-                                                       final ImageOpener imageOpener,
-                                                       final ProcessorWithMasksConverter converter)
+    static void renderUsingCommandLineArguments(final String[] args,
+                                                final ImageOpener imageOpener,
+                                                final ProcessorWithMasksConverter converter)
             throws Exception {
         final RenderParameters renderParameters = RenderParameters.parseCommandLineArgs(args);
         if (renderParameters.displayHelp()) {

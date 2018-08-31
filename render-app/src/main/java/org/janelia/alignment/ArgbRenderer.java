@@ -1,4 +1,4 @@
-/**
+/*
  * License: GPL
  *
  * This program is free software; you can redistribute it and/or
@@ -16,7 +16,6 @@
  */
 package org.janelia.alignment;
 
-import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
 
 import java.awt.image.BufferedImage;
@@ -87,34 +86,6 @@ public class ArgbRenderer {
                               final ImageProcessorCache imageProcessorCache)
             throws IllegalArgumentException {
         Renderer.renderToBufferedImage(renderParameters, targetImage, imageProcessorCache, CONVERTER);
-    }
-
-    /**
-     * Constructs a renderer instance and renders an image optionally pre-filled with noise.
-     *
-     * @param  renderParameters  specifies what to render.
-     * @param  fillWithNoise     indicates whether image should be filled with noise before rendering.
-     *
-     * @return the rendered image.
-     */
-    public static BufferedImage renderWithNoise(final RenderParameters renderParameters,
-                                                final boolean fillWithNoise) {
-
-        LOG.info("renderWithNoise: entry, fillWithNoise={}", fillWithNoise);
-
-        final BufferedImage bufferedImage = renderParameters.openTargetImage();
-
-        if (fillWithNoise) {
-            final ByteProcessor ip = new ByteProcessor(bufferedImage.getWidth(), bufferedImage.getHeight());
-            mpicbg.ij.util.Util.fillWithNoise(ip);
-            bufferedImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
-        }
-
-        ArgbRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
-
-        LOG.info("renderWithNoise: exit");
-
-        return bufferedImage;
     }
 
     /**

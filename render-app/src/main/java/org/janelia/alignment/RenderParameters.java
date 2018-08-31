@@ -133,6 +133,9 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--background_color", description = "RGB int color for background (default is 0: black)")
     private Integer backgroundRGBColor;
 
+    @Parameter(names = "--fill_with_noise", description = "fill canvas with background noise before rendering into it")
+    private boolean fillWithNoise;
+
     @Parameter(names = "--channels", description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3').")
     private String channels;
 
@@ -205,6 +208,7 @@ public class RenderParameters implements Serializable {
         this.excludeMask = false;
         this.doFilter = false;
         this.backgroundRGBColor = null;
+        this.fillWithNoise = false;
         this.channels = null;
         this.parametersUrl = null;
         this.addWarpFieldDebugOverlay = false;
@@ -584,6 +588,14 @@ public class RenderParameters implements Serializable {
         this.backgroundRGBColor = backgroundRGBColor;
     }
 
+    public boolean isFillWithNoise() {
+        return fillWithNoise;
+    }
+
+    public void setFillWithNoise(final Boolean fillWithNoise) {
+        this.fillWithNoise = (fillWithNoise != null) && fillWithNoise;
+    }
+
     public Set<String> getChannelNames()
             throws IllegalArgumentException {
         final ChannelNamesAndWeights namesAndWeights = getChannelNamesAndWeights();
@@ -819,6 +831,10 @@ public class RenderParameters implements Serializable {
             sb.append("backgroundRGBColor=").append(backgroundRGBColor).append(", ");
         }
 
+        if (fillWithNoise) {
+            sb.append("fillWithNoise=true, ");
+        }
+
         if (channels != null) {
             sb.append("channels=").append(channels).append(", ");
         }
@@ -942,6 +958,7 @@ public class RenderParameters implements Serializable {
             doFilter = mergedValue(doFilter, baseParameters.doFilter, false);
             addWarpFieldDebugOverlay = mergedValue(addWarpFieldDebugOverlay, baseParameters.addWarpFieldDebugOverlay, false);
             backgroundRGBColor = mergedValue(backgroundRGBColor, baseParameters.backgroundRGBColor);
+            fillWithNoise = mergedValue(fillWithNoise, baseParameters.fillWithNoise, false);
             channels = mergedValue(channels, baseParameters.channels);
             mipmapPathBuilder = mergedValue(mipmapPathBuilder, baseParameters.mipmapPathBuilder);
             filterSpecs = mergedValue(filterSpecs, baseParameters.filterSpecs);

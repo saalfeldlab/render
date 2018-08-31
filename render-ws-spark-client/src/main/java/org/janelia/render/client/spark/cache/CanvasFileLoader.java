@@ -12,6 +12,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +55,10 @@ public class CanvasFileLoader
 
         final RenderParameters renderParameters = getRenderParameters(canvasId);
 
-        final BufferedImage bufferedImage = ArgbRenderer.renderWithNoise(renderParameters, fillWithNoise);
+        final BufferedImage bufferedImage = renderParameters.openTargetImage();
+        renderParameters.setFillWithNoise(fillWithNoise);
+
+        ArgbRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
 
         Utils.saveImage(bufferedImage,
                         renderFile,
