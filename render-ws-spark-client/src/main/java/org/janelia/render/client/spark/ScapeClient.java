@@ -6,7 +6,6 @@ import com.beust.jcommander.ParametersDelegate;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.plugin.ZProjector;
-import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
 
@@ -14,17 +13,13 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-
-import mpicbg.ij.util.Util;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -78,84 +73,83 @@ public class ScapeClient
 
         @Parameter(
                 names = "--maxImagesPerDirectory",
-                description = "Maximum number of images to render in one directory",
-                required = false)
+                description = "Maximum number of images to render in one directory"
+        )
         public Integer maxImagesPerDirectory = 1000;
 
         @Parameter(
                 names = "--scale",
-                description = "Scale for each rendered layer",
-                required = false)
+                description = "Scale for each rendered layer"
+        )
         public Double scale = 0.02;
 
         @Parameter(
                 names = "--zScale",
-                description = "Ratio of z to xy resolution for creating isotropic layer projections (omit to skip projection)",
-                required = false)
+                description = "Ratio of z to xy resolution for creating isotropic layer projections (omit to skip projection)"
+        )
         public Double zScale;
 
         @Parameter(
                 names = "--format",
-                description = "Format for rendered boxes",
-                required = false)
+                description = "Format for rendered boxes"
+        )
         public String format = Utils.JPEG_FORMAT;
 
         @Parameter(
                 names = "--doFilter",
-                description = "Use ad hoc filter to support alignment",
-                required = false)
+                description = "Use ad hoc filter to support alignment"
+        )
         public boolean doFilter = false;
 
         @Parameter(
                 names = "--filterListName",
-                description = "Apply this filter list to all rendering (overrides doFilter option)",
-                required = false)
+                description = "Apply this filter list to all rendering (overrides doFilter option)"
+        )
         public String filterListName;
 
         @Parameter(
                 names = "--channels",
-                description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3')",
-                required = false)
+                description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3')"
+        )
         public String channels;
 
         @Parameter(
                 names = "--fillWithNoise",
-                description = "Fill image with noise before rendering to improve point match derivation",
-                required = false)
+                description = "Fill image with noise before rendering to improve point match derivation"
+        )
         public boolean fillWithNoise = false;
 
         @Parameter(
                 names = "--useLayerBounds",
                 description = "Base each scape on layer bounds instead of on stack bounds (e.g. for unaligned data)",
-                required = false,
                 arity = 1)
         public boolean useLayerBounds = false;
 
         @Parameter(
                 names = "--minX",
-                description = "Left most pixel coordinate in world coordinates.  Default is minX of stack (or layer when --useLayerBounds true)",
-                required = false)
+                description = "Left most pixel coordinate in world coordinates.  Default is minX of stack (or layer when --useLayerBounds true)"
+        )
         public Double minX;
 
         @Parameter(
                 names = "--minY",
-                description = "Top most pixel coordinate in world coordinates.  Default is minY of stack (or layer when --useLayerBounds true)",
-                required = false)
+                description = "Top most pixel coordinate in world coordinates.  Default is minY of stack (or layer when --useLayerBounds true)"
+        )
         public Double minY;
 
         @Parameter(
                 names = "--width",
-                description = "Width in world coordinates.  Default is maxX - minX of stack (or layer when --useLayerBounds true)",
-                required = false)
+                description = "Width in world coordinates.  Default is maxX - minX of stack (or layer when --useLayerBounds true)"
+        )
         public Double width;
 
         @Parameter(
                 names = "--height",
-                description = "Height in world coordinates.  Default is maxY - minY of stack (or layer when --useLayerBounds true)",
-                required = false)
+                description = "Height in world coordinates.  Default is maxY - minY of stack (or layer when --useLayerBounds true)"
+        )
         public Double height;
 
-        public File getSectionRootDirectory() {
+        File getSectionRootDirectory() {
 
             final String scapeDir = "scape_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
             final Path sectionRootPath = Paths.get(rootDirectory,
@@ -165,9 +159,9 @@ public class ScapeClient
             return sectionRootPath.toFile();
         }
 
-        public double getEffectiveBound(final Double layerValue,
-                                        final Double stackValue,
-                                        final Double parameterValue) {
+        double getEffectiveBound(final Double layerValue,
+                                 final Double stackValue,
+                                 final Double parameterValue) {
             final double value;
             if (parameterValue == null) {
                 if (useLayerBounds) {
@@ -181,11 +175,11 @@ public class ScapeClient
             return value;
         }
 
-        public Double getMaxX(final double effectiveMinX) {
+        Double getMaxX(final double effectiveMinX) {
             return (width == null) ? null : effectiveMinX + width;
         }
 
-        public Double getMaxY(final double effectiveMinY) {
+        Double getMaxY(final double effectiveMinY) {
             return (height == null) ? null : effectiveMinY + height;
         }
 
@@ -210,12 +204,12 @@ public class ScapeClient
 
     private final Parameters parameters;
 
-    public ScapeClient(final Parameters parameters) {
+    private ScapeClient(final Parameters parameters) {
         this.parameters = parameters;
     }
 
     public void run()
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         final SparkConf conf = new SparkConf().setAppName("ScapeClient");
         final JavaSparkContext sparkContext = new JavaSparkContext(conf);
@@ -232,7 +226,7 @@ public class ScapeClient
                                                                                        parameters.layerRange.maxZ);
 
         // projection process depends upon z ordering, so sort section data results by z ...
-        Collections.sort(sectionDataList, SectionData.Z_COMPARATOR);
+        sectionDataList.sort(SectionData.Z_COMPARATOR);
 
         if (sectionDataList.size() == 0) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
@@ -282,6 +276,7 @@ public class ScapeClient
                         LOG.debug("generateScapeFunction: loading {}", parametersUrl);
 
                         final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
+                        renderParameters.setFillWithNoise(parameters.fillWithNoise);
                         renderParameters.setDoFilter(parameters.doFilter);
                         renderParameters.setChannels(parameters.channels);
 
@@ -289,12 +284,6 @@ public class ScapeClient
 
                         if (isProjectionNeeded && (projectedStack == null)) {
                             projectedStack = new ImageStack(sectionImage.getWidth(), sectionImage.getHeight());
-                        }
-
-                        if (parameters.fillWithNoise) {
-                            final ByteProcessor ip = new ByteProcessor(sectionImage.getWidth(), sectionImage.getHeight());
-                            Util.fillWithNoise(ip);
-                            sectionImage.getGraphics().drawImage(ip.createImage(), 0, 0, null);
                         }
 
                         ArgbRenderer.render(renderParameters, sectionImage, imageProcessorCache);
@@ -410,11 +399,11 @@ public class ScapeClient
         private final File outputDir;
         private final String zFormatSpec;
 
-        public RenderSection(final Double firstZ,
-                             final int stackIndex,
-                             final String zFormatSpec,
-                             final int maxImagesPerDirectory,
-                             final File sectionRootDirectory) {
+        RenderSection(final Double firstZ,
+                      final int stackIndex,
+                      final String zFormatSpec,
+                      final int maxImagesPerDirectory,
+                      final File sectionRootDirectory) {
 
             this.firstZ = firstZ;
             this.sectionDataList = new ArrayList<>();
@@ -425,19 +414,19 @@ public class ScapeClient
             this.outputDir = new File(sectionRootDirectory, imageDirectoryName);
         }
 
-        public List<SectionData> getSectionDataList() {
+        List<SectionData> getSectionDataList() {
             return sectionDataList;
         }
 
-        public Double getFirstZ() {
+        Double getFirstZ() {
             return firstZ;
         }
 
-        public boolean isProjectionNeeded() {
+        boolean isProjectionNeeded() {
             return sectionDataList.size() > 1;
         }
 
-        public File getOutputFile(final String fileExtension) {
+        File getOutputFile(final String fileExtension) {
             final String paddedZName;
             if (sectionDataList.size() > 1) {
                 final Double lastZ = sectionDataList.get(sectionDataList.size() - 1).getZ();
@@ -450,7 +439,7 @@ public class ScapeClient
             return new File(outputDir, paddedZName + "." + fileExtension.toLowerCase());
         }
 
-        public void addSection(final SectionData sectionData) {
+        void addSection(final SectionData sectionData) {
             this.sectionDataList.add(sectionData);
         }
     }

@@ -16,6 +16,7 @@ import mpicbg.util.Timer;
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +76,10 @@ public class CanvasFeatureExtractor implements Serializable {
 
         renderParameters.validate();
 
-        final BufferedImage bufferedImage = ArgbRenderer.renderWithNoise(renderParameters, fillWithNoise);
+        final BufferedImage bufferedImage = renderParameters.openTargetImage();
+        renderParameters.setFillWithNoise(fillWithNoise);
+
+        ArgbRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
 
         if (renderFile != null) {
             try {
@@ -98,7 +102,7 @@ public class CanvasFeatureExtractor implements Serializable {
      *
      * @return list of extracted features.
      */
-    public List<Feature> extractFeaturesFromImage(final BufferedImage bufferedImage) {
+    private List<Feature> extractFeaturesFromImage(final BufferedImage bufferedImage) {
 
         final Timer timer = new Timer();
         timer.start();
