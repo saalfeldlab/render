@@ -169,7 +169,7 @@ JaneliaMatchTrial.prototype.initNewTrialForm = function(parameters) {
     $('#qRenderParametersUrl').val(parameters.qRenderParametersUrl);
 };
 
-JaneliaMatchTrial.prototype.runTrial = function() {
+JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRunningSelector, errorMessageSelector) {
 
     var featureAndMatchParameters = {
         "siftFeatureParameters" : {
@@ -202,25 +202,43 @@ JaneliaMatchTrial.prototype.runTrial = function() {
         qRenderParametersUrl: $('#qRenderParametersUrl').val()
     };
 
-    var self = this;
-    $.ajax({
-               type: "POST",
-               headers: {
-                   'Accept': 'application/json',
-                   'Content-Type': 'application/json'
-               },
-               url: self.matchTrialUrl,
-               data: JSON.stringify(requestData),
-               cache: false,
-               success: function(data) {
-                   var stop = window.location.href.indexOf('?');
-                   window.location = window.location.href.substring(0, stop) +
-                                     '?matchTrialId=' + data.id + '&viewScale=' + self.viewScale;
-               },
-               error: function(data, text, xhr) {
-                   console.log(xhr);
-               }
-           });
+    var parametersUrlRegex = /.*render-parameters.*/;
+    if (requestData.pRenderParametersUrl.match(parametersUrlRegex) &&
+        requestData.pRenderParametersUrl.match(parametersUrlRegex)) {
+
+        errorMessageSelector.text('');
+        runTrialButtonSelector.prop("disabled", true);
+        trialRunningSelector.show();
+
+        var self = this;
+        $.ajax({
+                   type: "POST",
+                   headers: {
+                       'Accept': 'application/json',
+                       'Content-Type': 'application/json'
+                   },
+                   url: self.matchTrialUrl,
+                   data: JSON.stringify(requestData),
+                   cache: false,
+                   success: function(data) {
+                       var stop = window.location.href.indexOf('?');
+                       window.location = window.location.href.substring(0, stop) +
+                                         '?matchTrialId=' + data.id + '&viewScale=' + self.viewScale;
+                   },
+                   error: function(data, text, xhr) {
+                       console.log(xhr);
+                       errorMessageSelector.text(data.statusText + ': ' + data.responseText);
+                       runTrialButtonSelector.prop("disabled", false);
+                       trialRunningSelector.hide();
+                   }
+               });
+
+    } else {
+
+        errorMessageSelector.text('render parameters URLs must contain "render-parameters"');
+
+    }
+
 };
 
 JaneliaMatchTrial.prototype.getRenderParametersLink = function(parametersUrl) {

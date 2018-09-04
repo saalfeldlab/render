@@ -39,10 +39,6 @@ JaneliaHierarchicalData.prototype.getOwnerUrl = function() {
     return this.baseUrl + "/owner/" + this.owner;
 };
 
-JaneliaHierarchicalData.prototype.getProjectUrl = function() {
-    return this.getOwnerUrl() + "/project/" + this.project + "/stack/" + this.stack;
-};
-
 JaneliaHierarchicalData.prototype.getStackUrl = function() {
     return this.getOwnerUrl() + "/project/" + this.project + "/stack/" + this.stack;
 };
@@ -285,7 +281,7 @@ JaneliaHierarchicalData.prototype.updateParentTierStackMetaData = function(paren
 
 JaneliaHierarchicalData.prototype.loadRoughTilesZValues = function(zValues) {
 
-    if (typeof this.tileZ == 'undefined') {
+    if (typeof this.tileZ === 'undefined') {
         var middleIndex = Math.round(zValues.length / 2) - 1;
         this.tileZ = zValues[middleIndex];
     }
@@ -334,7 +330,7 @@ JaneliaHierarchicalData.prototype.setLayer = function(z) {
 
 JaneliaHierarchicalData.prototype.loadTierProjects = function() {
 
-    if (this.tierProjects.length == 0) {
+    if (this.tierProjects.length === 0) {
 
         var self = this;
         $.ajax({
@@ -413,7 +409,7 @@ JaneliaHierarchicalData.prototype.loadStacksInTier = function(projectStackMetaDa
 
     if (this.splitStackList.length > 0) {
         var parentTierStack = this.splitStackList[0].hierarchicalData.parentTierStackId.stack;
-        if (this.stack != parentTierStack) {
+        if (this.stack !== parentTierStack) {
 
             this.stack = parentTierStack;
             $('#' + this.parentStackId).html(this.stack);
@@ -495,8 +491,8 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
                                                                 0);
 
         var matchPairRow;
+        var zPlusOne = parseInt(this.tileZ) + 1;
         if ((hd.savedMatchPairCount !== undefined) && (hd.savedMatchPairCount > 0)) {
-            var zPlusOne = parseInt(this.tileZ) + 1;
             var plusOnePairUrl = this.getPlusOnePairUrl(this.tileZ, splitStackId, hd, renderProjectContext, matchContext);
             matchPairRow = this.getPopupLinkRow('Match Pair:', plusOnePairUrl, 'matches between z ' + this.tileZ + ' and ' + zPlusOne);
         } else {
@@ -525,6 +521,17 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
 
         var warpDebugUrl = self.getOwnerUrl() + "/project/" + splitStackId.project + "/z/" + this.tileZ + "/affineWarpFieldTransformDebug?consensusBuildMethod=SIMPLE";
 
+        var splitStackUrl = self.getOwnerUrl() + "/project/" + splitStackId.project + '/stack/' + splitStackId.stack + '/tile/';
+        var tileIdSuffix = this.getSplitTileIdSuffix(hd);
+        var pTileId = 'z_' + this.tileZ + tileIdSuffix;
+        var qTileId = 'z_' + zPlusOne + tileIdSuffix;
+        var renderSuffix = '/render-parameters?excludeMask=true&normalizeForMatching=true&filter=true&fillWithNoise=true';
+        var pRenderParametersUrl = splitStackUrl + pTileId + renderSuffix;
+        var qRenderParametersUrl = splitStackUrl + qTileId + renderSuffix;
+        var matchTrialUrl = viewBaseUrl + '/match-trial.html?matchTrialId=TBD' +
+                            '&pRenderParametersUrl=' + encodeURIComponent(pRenderParametersUrl) +
+                            '&qRenderParametersUrl=' + encodeURIComponent(qRenderParametersUrl);
+
         var html = '<table>' +
                    this.getPopupLinkRow('Warp Stack:', warpCatmaidUrl, hd.warpTilesStackId.stack + ' (CATMAID)') +
                    this.getPopupLinkRow('Tier Project:', tierProjectUrl, hd.alignedStackId.project) +
@@ -538,6 +545,7 @@ JaneliaHierarchicalData.prototype.selectSplitStack = function(canvasX, canvasY, 
                    this.getPopupRow('Split Consensus Group IDs:', splitConsensusGroupIds) +
                    this.getPopupRow('Alignment Quality:', hd.alignmentQuality) +
                    this.getPopupLinkRow('Warp Field Debug:', warpDebugUrl, this.tileZ) +
+                   this.getPopupLinkRow('Match Trial:', matchTrialUrl, pTileId) +
                    '</table>';
 
         splitStackPopupDetails.html(html);
@@ -569,20 +577,24 @@ JaneliaHierarchicalData.prototype.getPopupLinkRow = function(header, url, linkTe
     return this.getPopupRow(header, this.getPopupLink(url, linkText));
 };
 
+JaneliaHierarchicalData.prototype.getSplitTileIdSuffix = function(hierarchicalData) {
+    var bounds = hierarchicalData.fullScaleBounds;
+    return '.0_box_' + bounds.minX + '_' + bounds.minY + '_' +
+                       (bounds.maxX - bounds.minX) + '_' + (bounds.maxY - bounds.minY) + '_' +
+                       hierarchicalData.scale.toFixed(6);
+};
+
 JaneliaHierarchicalData.prototype.getPlusOnePairUrl = function(z, splitStackId, hierarchicalData, renderProjectContext, matchContext) {
     var zPlusOne = parseInt(z) + 1;
     var pairBaseUrl = 'http://renderer:8080/render-ws/view/tile-pair.html?';
-    var bounds = hierarchicalData.fullScaleBounds;
-    var tileIdSuffix = '.0_box_' + bounds.minX + '_' + bounds.minY + '_' +
-                       (bounds.maxX - bounds.minX) + '_' + (bounds.maxY - bounds.minY) + '_' +
-                       hierarchicalData.scale.toFixed(6);
+    var tileIdSuffix = this.getSplitTileIdSuffix(hierarchicalData);
     return pairBaseUrl + 'pId=z_' + z + tileIdSuffix + '&qId=z_' + zPlusOne + tileIdSuffix + renderProjectContext +
            '&renderStack=' + splitStackId.stack + '&renderScale=1.0' + matchContext;
 };
 
 JaneliaHierarchicalData.prototype.setDisplayTileBounds = function(displayTileBounds) {
 
-    if (this.displayTileBounds != displayTileBounds) {
+    if (this.displayTileBounds !== displayTileBounds) {
         this.displayTileBounds = displayTileBounds;
         if (displayTileBounds) {
             this.clearContextCanvas(this.tilePixelsContext);
