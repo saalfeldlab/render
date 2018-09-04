@@ -161,11 +161,11 @@ var JaneliaQueryParameters = function() {
 
     this.map = {};
 
-    var queryString = decodeURIComponent(window.location.search.substring(1));
+    var queryString = window.location.search.substring(1);
     var re = /([^&=]+)=([^&]*)/g;
     var m;
     while (m = re.exec(queryString)) {
-        this.map[m[1]] = m[2];
+        this.map[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
     }
 };
 
