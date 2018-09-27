@@ -46,7 +46,7 @@ public class CoordinateService {
         this(RenderDao.build());
     }
 
-    public CoordinateService(final RenderDao renderDao) {
+    CoordinateService(final RenderDao renderDao) {
         this.renderDao = renderDao;
     }
 
@@ -282,6 +282,7 @@ public class CoordinateService {
             value = "Derive array of local coordinates for specified world coordinates",
             notes = "World coordinates can map to multiple (overlapping) tiles.  An array of local coordinates, one element per tile, is returned with the visible (last drawn) tile marked.")
     @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "no tile exists at specified coordinates"),
             @ApiResponse(code = 500, message = "coordinates not invertible")
     })
     public List<TileCoordinates> getLocalCoordinates(@PathParam("owner") final String owner,
@@ -306,6 +307,54 @@ public class CoordinateService {
         }
 
         return localCoordinatesList;
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/world-coordinates/{x},{y}/mapped-to-stack/{toStack}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Map world coordinates in one stack to another")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "no tile exists at specified coordinates"),
+            @ApiResponse(code = 500, message = "coordinates not invertible")
+    })
+    public TileCoordinates mapWorldCoordinates(@PathParam("owner") final String owner,
+                                               @PathParam("project") final String project,
+                                               @PathParam("stack") final String stack,
+                                               @PathParam("x") final Double worldX,
+                                               @PathParam("y") final Double worldY,
+                                               @PathParam("z") final Double z,
+                                               @PathParam("toStack") final String toStack,
+                                               @QueryParam("toOwner") final String toOwner,
+                                               @QueryParam("toProject") final String toProject) {
+
+        LOG.info("mapWorldCoordinates: entry, owner={}, project={}, stack={}, worldX={}, worldY={}, z={}",
+                 owner, project, stack, worldX, worldY, z);
+
+        TileCoordinates mappedWorldCoordinates = new TileCoordinates(null, null, null);
+        try {
+
+            TileCoordinates localTileCoordinates = null;
+            for (final TileCoordinates local: getLocalCoordinates(owner, project, stack, worldX, worldY, z)) {
+                if (local.isVisible()) {
+                    localTileCoordinates = local;
+                    break;
+                }
+            }
+
+            if (localTileCoordinates != null) {
+                final String mapStackOwner = toOwner == null ? owner : toOwner;
+                final String mapStackProject = toProject == null ? project : toProject;
+                final double[] mapLocal = localTileCoordinates.getLocal();
+                mappedWorldCoordinates = getWorldCoordinates(mapStackOwner, mapStackProject, toStack,
+                                                             localTileCoordinates.getTileId(),
+                                                             mapLocal[0], mapLocal[1]);
+            }
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return mappedWorldCoordinates;
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/world-to-local-coordinates")
