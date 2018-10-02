@@ -3,6 +3,8 @@ package org.janelia.render.client.parameter;
 import com.beust.jcommander.Parameter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import java.io.Serializable;
+
 import org.janelia.render.client.RenderDataClient;
 
 /**
@@ -10,7 +12,7 @@ import org.janelia.render.client.RenderDataClient;
  *
  * @author Eric Trautman
  */
-public class WarpStackParameters {
+public class WarpStackParameters implements Serializable {
 
     @Parameter(
             names = "--stack",
@@ -20,14 +22,14 @@ public class WarpStackParameters {
 
     @Parameter(
             names = "--alignOwner",
-            description = "Name of align stack owner (default is same as montage stack owner)",
-            required = false)
+            description = "Name of align stack owner (default is same as montage stack owner)"
+    )
     public String alignOwner;
 
     @Parameter(
             names = "--alignProject",
-            description = "Name of align stack project (default is same as montage stack project)",
-            required = false)
+            description = "Name of align stack project (default is same as montage stack project)"
+    )
     public String alignProject;
 
     @Parameter(
@@ -38,14 +40,14 @@ public class WarpStackParameters {
 
     @Parameter(
             names = "--targetOwner",
-            description = "Name of target stack owner (default is same as montage stack owner)",
-            required = false)
+            description = "Name of target stack owner (default is same as montage stack owner)"
+    )
     public String targetOwner;
 
     @Parameter(
             names = "--targetProject",
-            description = "Name of target stack project (default is same as montage stack project)",
-            required = false)
+            description = "Name of target stack project (default is same as montage stack project)"
+    )
     public String targetProject;
 
     @Parameter(
