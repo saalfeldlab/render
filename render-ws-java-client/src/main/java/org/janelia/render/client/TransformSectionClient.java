@@ -16,6 +16,10 @@ import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.APPEND;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
+
 /**
  * Java client for adding a transform to all tiles in one or more sections of a stack.
  *
@@ -39,15 +43,15 @@ public class TransformSectionClient {
 
         @Parameter(
                 names = "--targetProject",
-                description = "Name of target project that will contain transformed tiles (default is to reuse source project)",
-                required = false)
-        private String targetProject;
+                description = "Name of target project that will contain transformed tiles (default is to reuse source project)"
+        )
+        public String targetProject;
 
         @Parameter(
                 names = "--targetStack",
-                description = "Name of target stack that will contain transformed tiles (default is to reuse source stack)",
-                required = false)
-        private String targetStack;
+                description = "Name of target stack that will contain transformed tiles (default is to reuse source stack)"
+        )
+        public String targetStack;
 
         @Parameter(
                 names = "--transformId",
@@ -69,11 +73,9 @@ public class TransformSectionClient {
         public String transformData;
 
         @Parameter(
-                names = "--replaceLast",
-                description = "Replace each tile's last transform with this one (default is to append new transform)",
-                required = false,
-                arity = 0)
-        public boolean replaceLast;
+                names = "--transformApplicationMethod",
+                description = "Identifies how this transform should be applied to each tile")
+        public ResolvedTileSpecCollection.TransformApplicationMethod transformApplicationMethod = APPEND;
 
         @Parameter(
                 description = "Z values",
@@ -117,7 +119,7 @@ public class TransformSectionClient {
     private final RenderDataClient sourceRenderDataClient;
     private final RenderDataClient targetRenderDataClient;
 
-    public TransformSectionClient(final Parameters parameters) {
+    private TransformSectionClient(final Parameters parameters) {
 
         this.parameters = parameters;
 
@@ -148,15 +150,20 @@ public class TransformSectionClient {
         targetRenderDataClient.setupDerivedStack(sourceStackMetaData, parameters.getTargetStack());
     }
 
-    public void generateStackDataForZ(final Double z)
+    private void generateStackDataForZ(final Double z)
             throws Exception {
 
         LOG.info("generateStackDataForZ: entry, z={}", z);
 
         final ResolvedTileSpecCollection tiles = sourceRenderDataClient.getResolvedTiles(parameters.stack, z);
 
-        tiles.addTransformSpecToCollection(stackTransform);
-        tiles.addReferenceTransformToAllTiles(stackTransform.getId(), parameters.replaceLast);
+        if (PRE_CONCATENATE_LAST.equals(parameters.transformApplicationMethod)) {
+            tiles.preConcatenateTransformToAllTiles(stackTransform);
+        } else {
+            tiles.addTransformSpecToCollection(stackTransform);
+            tiles.addReferenceTransformToAllTiles(stackTransform.getId(),
+                                                  REPLACE_LAST.equals(parameters.transformApplicationMethod));
+        }
 
         final int totalNumberOfTiles = tiles.getTileCount();
         if (tileSpecValidator != null) {

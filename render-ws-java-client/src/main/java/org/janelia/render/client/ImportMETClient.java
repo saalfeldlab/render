@@ -32,6 +32,10 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.APPEND;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
+
 /**
  * Java client for generating importing MET data from stitching and alignment processes into the render database.
  *
@@ -49,21 +53,21 @@ public class ImportMETClient {
 
         @Parameter(
                 names = "--targetOwner",
-                description = "Name of owner for target stack that will contain imported transforms (default is to reuse source owner)",
-                required = false)
-        private String targetOwner;
+                description = "Name of owner for target stack that will contain imported transforms (default is to reuse source owner)"
+        )
+        public String targetOwner;
 
         @Parameter(
                 names = "--targetProject",
-                description = "Name of project for target stack that will contain imported transforms (default is to reuse source project)",
-                required = false)
-        private String targetProject;
+                description = "Name of project for target stack that will contain imported transforms (default is to reuse source project)"
+        )
+        public String targetProject;
 
         @Parameter(
                 names = "--targetStack",
                 description = "Name of target (align, montage, etc.) stack that will contain imported transforms",
                 required = true)
-        private String targetStack;
+        public String targetStack;
 
         @Parameter(
                 names = "--metFile",
@@ -73,24 +77,23 @@ public class ImportMETClient {
 
         @Parameter(
                 names = "--formatVersion",
-                description = "MET format version ('v1', v2', 'v3', ...)",
-                required = false)
+                description = "MET format version ('v1', v2', 'v3', ...)"
+        )
         public String formatVersion = "v1";
 
         @Parameter(
                 names = "--changeMode",
-                description = "Specifies how the transforms should be applied to existing data",
-                required = false)
+                description = "Specifies how the transforms should be applied to existing data"
+        )
         public ChangeMode changeMode = ChangeMode.REPLACE_LAST;
 
         @Parameter(
                 names = "--disableValidation",
                 description = "Disable flyTEM tile validation",
-                required = false,
                 arity = 0)
         public boolean disableValidation;
 
-        public String getTargetOwner() {
+        String getTargetOwner() {
             if (targetOwner == null) {
                 targetOwner = renderWeb.owner;
             }
@@ -132,7 +135,7 @@ public class ImportMETClient {
 
     private final Map<String, SectionData> metSectionToDataMap;
 
-    public ImportMETClient(final Parameters parameters) {
+    private ImportMETClient(final Parameters parameters) {
         this.parameters = parameters;
 
         if (parameters.disableValidation) {
@@ -150,7 +153,7 @@ public class ImportMETClient {
         this.metSectionToDataMap = new HashMap<>();
     }
 
-    public void generateStackData() throws Exception {
+    private void generateStackData() throws Exception {
 
         LOG.info("generateStackData: entry");
 
@@ -187,7 +190,7 @@ public class ImportMETClient {
 
     // TODO: remove old MET loader once Khaled no longer needs it
     private void loadV1MetData(final int[] parameterIndexes,
-                               final int lastParameterIndex,
+                               @SuppressWarnings("SameParameterValue") final int lastParameterIndex,
                                final CoordinateTransform transformModel)
             throws IOException, IllegalArgumentException {
 
@@ -391,7 +394,7 @@ public class ImportMETClient {
             this.updatedTiles = null;
         }
 
-        public int getUpdatedTileCount() {
+        int getUpdatedTileCount() {
             return updatedTiles == null ? 0 : updatedTiles.getTileCount();
         }
 
@@ -402,10 +405,10 @@ public class ImportMETClient {
                    '}';
         }
 
-        public void addTileId(final String tileId,
-                              final int lineNumber,
-                              final String modelClassName,
-                              final String modelDataString) {
+        void addTileId(final String tileId,
+                       final int lineNumber,
+                       final String modelClassName,
+                       final String modelDataString) {
 
             if (tileIdToAlignTransformMap.containsKey(tileId)) {
                 throw new IllegalArgumentException("Tile ID " + tileId + " is listed more than once in MET file " +
@@ -417,7 +420,7 @@ public class ImportMETClient {
 
         }
 
-        public void updateTiles() throws Exception {
+        void updateTiles() throws Exception {
 
             LOG.info("updateTiles: entry, z={}", z);
 
@@ -443,9 +446,12 @@ public class ImportMETClient {
             LOG.info("updateTiles: after filter, collection is {}", updatedTiles);
 
             boolean removeExistingTransforms = false;
-            boolean replaceLastTransform = true;
+            ResolvedTileSpecCollection.TransformApplicationMethod applicationMethod = REPLACE_LAST;
+
             if (ChangeMode.APPEND.equals(parameters.changeMode)) {
-                replaceLastTransform = false;
+                applicationMethod = APPEND;
+            } else if (ChangeMode.CONCATENATE_TO_LAST.equals(parameters.changeMode)) {
+                applicationMethod = PRE_CONCATENATE_LAST;
             } else if (ChangeMode.REPLACE_ALL.equals(parameters.changeMode)) {
                 removeExistingTransforms = true;
             }
@@ -471,7 +477,7 @@ public class ImportMETClient {
                     tileSpec.setTransforms(new ListTransformSpec());
                 }
 
-                updatedTiles.addTransformSpecToTile(tileId, alignTransform, replaceLastTransform);
+                updatedTiles.addTransformSpecToTile(tileId, alignTransform, applicationMethod);
                 tileSpecCount++;
                 if (timer.hasIntervalPassed()) {
                     LOG.info("updateTiles: updated transforms for {} out of {} tiles",
@@ -487,7 +493,7 @@ public class ImportMETClient {
                       tileSpecCount, removedTiles, timer.getElapsedSeconds());
         }
 
-        public void saveTiles() throws Exception {
+        void saveTiles() throws Exception {
 
             LOG.info("saveTiles: entry, z={}", z);
 

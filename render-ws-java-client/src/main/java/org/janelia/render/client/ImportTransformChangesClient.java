@@ -25,6 +25,10 @@ import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.APPEND;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
+
 /**
  * Java client for importing transform changes to existing tiles in the render database.
  *
@@ -32,7 +36,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ImportTransformChangesClient {
 
-    public enum ChangeMode { APPEND, REPLACE_LAST, REPLACE_ALL }
+    public enum ChangeMode { APPEND, REPLACE_LAST, CONCATENATE_TO_LAST, REPLACE_ALL }
 
     public static class Parameters extends CommandLineParameters {
 
@@ -50,21 +54,21 @@ public class ImportTransformChangesClient {
 
         @Parameter(names =
                 "--targetOwner",
-                description = "Name of owner for target stack that will contain imported transforms (default is to reuse source owner)",
-                required = false)
-        private String targetOwner;
+                description = "Name of owner for target stack that will contain imported transforms (default is to reuse source owner)"
+        )
+        public String targetOwner;
 
         @Parameter(
                 names = "--targetProject",
-                description = "Name of project for target stack that will contain imported transforms (default is to reuse source project)",
-                required = false)
-        private String targetProject;
+                description = "Name of project for target stack that will contain imported transforms (default is to reuse source project)"
+        )
+        public String targetProject;
 
         @Parameter(
                 names = "--targetStack",
                 description = "Name of target (align, montage, etc.) stack that will contain imported transforms",
                 required = true)
-        private String targetStack;
+        public String targetStack;
 
         @Parameter(
                 names = "--transformFile",
@@ -74,11 +78,11 @@ public class ImportTransformChangesClient {
 
         @Parameter(
                 names = "--changeMode",
-                description = "Specifies how the transforms should be applied to existing data",
-                required = false)
+                description = "Specifies how the transforms should be applied to existing data"
+        )
         public ChangeMode changeMode = ChangeMode.REPLACE_LAST;
 
-        public String getTargetOwner() {
+        String getTargetOwner() {
             if (targetOwner == null) {
                 targetOwner = renderWeb.owner;
             }
@@ -120,7 +124,7 @@ public class ImportTransformChangesClient {
 
     private final Map<Double, SectionData> zToDataMap;
 
-    public ImportTransformChangesClient(final Parameters parameters) {
+    private ImportTransformChangesClient(final Parameters parameters) {
 
         this.parameters = parameters;
         this.tileSpecValidator = parameters.tileSpecValidator.getValidatorInstance();
@@ -134,7 +138,7 @@ public class ImportTransformChangesClient {
         this.zToDataMap = new HashMap<>();
     }
 
-    public void updateStackData() throws Exception {
+    private void updateStackData() throws Exception {
 
         LOG.info("updateStackData: entry");
 
@@ -220,7 +224,7 @@ public class ImportTransformChangesClient {
             this.tileIdToLoadedTransformMap = new HashMap<>(tileSpecs.getTileCount() * 2);
         }
 
-        public boolean containsTile(final String tileId) {
+        boolean containsTile(final String tileId) {
             return (tileSpecs.getTileSpec(tileId) != null);
         }
 
@@ -229,7 +233,7 @@ public class ImportTransformChangesClient {
             return "{z: " + z + ", updatedTileCount: " + tileSpecs.getTileCount() + '}';
         }
 
-        public void addTileTransform(final TileTransform tileTransform)
+        void addTileTransform(final TileTransform tileTransform)
                 throws IllegalArgumentException {
 
             final String tileId = tileTransform.getTileId();
@@ -242,7 +246,7 @@ public class ImportTransformChangesClient {
             tileIdToLoadedTransformMap.put(tileId, tileTransform);
         }
 
-        public void updateTiles() throws Exception {
+        void updateTiles() {
 
             LOG.info("updateTiles: entry, z={}", z);
 
@@ -266,9 +270,12 @@ public class ImportTransformChangesClient {
             LOG.info("updateTiles: after filter, collection is {}", tileSpecs);
 
             boolean removeExistingTransforms = false;
-            boolean replaceLastTransform = true;
+            ResolvedTileSpecCollection.TransformApplicationMethod applicationMethod = REPLACE_LAST;
+
             if (ChangeMode.APPEND.equals(parameters.changeMode)) {
-                replaceLastTransform = false;
+                applicationMethod = APPEND;
+            } else if (ChangeMode.CONCATENATE_TO_LAST.equals(parameters.changeMode)) {
+                applicationMethod = PRE_CONCATENATE_LAST;
             } else if (ChangeMode.REPLACE_ALL.equals(parameters.changeMode)) {
                 removeExistingTransforms = true;
             }
@@ -292,7 +299,7 @@ public class ImportTransformChangesClient {
                     tileSpec.setTransforms(new ListTransformSpec());
                 }
 
-                tileSpecs.addTransformSpecToTile(tileId, tileTransform.getTransform(), replaceLastTransform);
+                tileSpecs.addTransformSpecToTile(tileId, tileTransform.getTransform(), applicationMethod);
                 tileSpecCount++;
 
                 if (timer.hasIntervalPassed()) {
@@ -309,7 +316,7 @@ public class ImportTransformChangesClient {
                      tileSpecCount, removedTiles, timer.getElapsedSeconds());
         }
 
-        public void saveTiles() throws Exception {
+        void saveTiles() throws Exception {
 
             LOG.info("saveTiles: entry, z={}", z);
 

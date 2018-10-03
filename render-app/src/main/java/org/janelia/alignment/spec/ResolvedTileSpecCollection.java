@@ -12,6 +12,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import mpicbg.models.CoordinateTransform;
+import mpicbg.trakem2.transform.AffineModel2D;
+
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.util.ProcessTimer;
@@ -20,6 +23,10 @@ import org.slf4j.LoggerFactory;
 
 import io.swagger.annotations.ApiModelProperty;
 
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.APPEND;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
+
 /**
  * A collection of tile specifications that also includes all referenced transform specifications,
  * allowing the tile specifications to be fully resolved.
@@ -27,6 +34,20 @@ import io.swagger.annotations.ApiModelProperty;
  * @author Eric Trautman
  */
 public class ResolvedTileSpecCollection implements Serializable {
+
+    public enum TransformApplicationMethod {
+        /** Indicates that the specified transform should be appended to the end of each tile's transform list. */
+        APPEND,
+
+        /** Indicates that the specified transform should replace each tile's last transform. */
+        REPLACE_LAST,
+
+        /**
+         * Indicates that the specified transform should be pre-concatenated to each tile's last transform
+         * (only valid if transforms are affine).
+         */
+        PRE_CONCATENATE_LAST
+    }
 
     private final Map<String, TransformSpec> transformIdToSpecMap;
     private final Map<String, TileSpec> tileIdToSpecMap;
@@ -138,19 +159,18 @@ public class ResolvedTileSpecCollection implements Serializable {
      * If this collection has a tile spec validator that determines the spec is invalid
      * (after applying the transform), the spec will be removed from the collection.
      *
-     * @param  tileId         identifies the tile to which the transform should be added.
+     * @param  tileId             identifies the tile to which the transform should be added.
      *
-     * @param  transformSpec  the transform to add.
+     * @param  transformSpec      the transform to add.
      *
-     * @param  replaceLast    if true, the specified transform will replace the tile's last transform;
-     *                        otherwise, the specified transform will simply be appended.
+     * @param  applicationMethod  method used to apply (add) the transform.
      *
      * @throws IllegalArgumentException
      *   if the specified tile cannot be found or the specified transform cannot be fully resolved.
      */
     public void addTransformSpecToTile(final String tileId,
                                        final TransformSpec transformSpec,
-                                       final boolean replaceLast) throws IllegalArgumentException {
+                                       final TransformApplicationMethod applicationMethod) throws IllegalArgumentException {
 
         final TileSpec tileSpec = tileIdToSpecMap.get(tileId);
 
@@ -166,11 +186,37 @@ public class ResolvedTileSpecCollection implements Serializable {
             }
         }
 
-        if (replaceLast) {
+        TransformSpec newTransformSpec = transformSpec;
+        if (PRE_CONCATENATE_LAST.equals(applicationMethod)) {
+
+            final TransformSpec lastTransformSpec = tileSpec.getLastTransform();
+            final CoordinateTransform lastTransform = lastTransformSpec.buildInstance();
+            if (lastTransform instanceof AffineModel2D) {
+                final AffineModel2D lastAffine = (AffineModel2D) lastTransform;
+                final CoordinateTransform newTransform = transformSpec.buildInstance();
+                if (newTransform instanceof AffineModel2D) {
+
+                    lastAffine.preConcatenate((AffineModel2D) newTransform);
+                    newTransformSpec = new LeafTransformSpec(AffineModel2D.class.getName(), lastAffine.toDataString());
+
+                } else {
+                    throw new IllegalArgumentException("concatenated transform must be an instance of " +
+                                                       AffineModel2D.class.getName());
+                }
+            } else {
+                throw new IllegalArgumentException("last transform for tile spec '" + tileId +
+                                                   "' must be an instance of " + AffineModel2D.class.getName());
+            }
+
             tileSpec.removeLastTransformSpec();
+
+        } else if (REPLACE_LAST.equals(applicationMethod)) {
+
+            tileSpec.removeLastTransformSpec();
+
         }
 
-        tileSpec.addTransformSpecs(Collections.singletonList(transformSpec));
+        tileSpec.addTransformSpecs(Collections.singletonList(newTransformSpec));
 
         // addition of new transform spec obsolesces the previously resolved coordinate transform instance,
         // so we need to re-resolve the tile before re-deriving the bounding box
@@ -214,11 +260,12 @@ public class ResolvedTileSpecCollection implements Serializable {
         }
 
         final TransformSpec referenceTransformSpec = new ReferenceTransformSpec(transformId);
+        final TransformApplicationMethod applicationMethod = replaceLast ? REPLACE_LAST : APPEND;
 
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
         for (final String tileId : tileIdToSpecMap.keySet()) {
-            addTransformSpecToTile(tileId, referenceTransformSpec, replaceLast);
+            addTransformSpecToTile(tileId, referenceTransformSpec, applicationMethod);
             tileSpecCount++;
             if (timer.hasIntervalPassed()) {
                 LOG.info("addReferenceTransformToAllTiles: added transform to {} out of {} tiles",
@@ -227,6 +274,38 @@ public class ResolvedTileSpecCollection implements Serializable {
         }
 
         LOG.info("addReferenceTransformToAllTiles: added transform to {} tiles, elapsedSeconds={}",
+                 tileSpecCount, timer.getElapsedSeconds());
+    }
+
+    /**
+     * Concatenates the specified transform to the last transform of each tile in this collection.
+     *
+     * Each tile's bounding box is recalculated after the new transform is applied
+     * (so this can potentially be a long running operation).
+     *
+     * If this collection has a tile spec validator that determines one or more tile specs are invalid
+     * (after applying the transform), those tile specs will be removed from the collection.
+     *
+     * @param  transformSpec    identifies the transform to be concatenated to all tiles.
+     *
+     * @throws IllegalArgumentException
+     *   if the specified transform cannot be concatenated.
+     */
+    public void preConcatenateTransformToAllTiles(final LeafTransformSpec transformSpec)
+            throws IllegalArgumentException {
+
+        final ProcessTimer timer = new ProcessTimer();
+        int tileSpecCount = 0;
+        for (final String tileId : tileIdToSpecMap.keySet()) {
+            addTransformSpecToTile(tileId, transformSpec, PRE_CONCATENATE_LAST);
+            tileSpecCount++;
+            if (timer.hasIntervalPassed()) {
+                LOG.info("preConcatenateTransformToAllTiles: pre-concatenated transform to {} out of {} tiles",
+                         tileSpecCount, tileIdToSpecMap.size());
+            }
+        }
+
+        LOG.info("preConcatenateTransformToAllTiles: pre-concatenated transform to {} tiles, elapsedSeconds={}",
                  tileSpecCount, timer.getElapsedSeconds());
     }
 
@@ -313,18 +392,13 @@ public class ResolvedTileSpecCollection implements Serializable {
      * Removes the specified tile spec from this collection if it is invalid.
      *
      * @param  tileSpec  tile spec to validate.
-     *
-     * @return true if the spec is invalid; otherwise false.
      */
-    public boolean removeTileSpecIfInvalid(final TileSpec tileSpec) {
-        boolean isInvalid = false;
+    public void removeTileSpecIfInvalid(final TileSpec tileSpec) {
         if (tileSpecValidator != null) {
-            isInvalid = isTileInvalid(tileSpec);
-            if (isInvalid) {
+            if (isTileInvalid(tileSpec)) {
                 tileIdToSpecMap.remove(tileSpec.getTileId());
             }
         }
-        return isInvalid;
     }
 
     /**

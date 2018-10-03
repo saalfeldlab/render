@@ -4,7 +4,6 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,6 +32,8 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
+
 /**
  * Java client for copying tiles from one stack to another.
  *
@@ -53,21 +54,21 @@ public class CopyStackClient {
 
         @Parameter(
                 names = "--toOwner",
-                description = "Name of target stack owner (default is same as source stack owner)",
-                required = false)
-        private String toOwner;
+                description = "Name of target stack owner (default is same as source stack owner)"
+        )
+        public String toOwner;
 
         @Parameter(
                 names = "--toProject",
-                description = "Name of target stack project (default is same as source stack project)",
-                required = false)
-        private String toProject;
+                description = "Name of target stack project (default is same as source stack project)"
+        )
+        public String toProject;
 
         @Parameter(
                 names = "--toStack",
                 description = "Name of target stack",
                 required = true)
-        private String toStack;
+        public String toStack;
 
         @Parameter(
                 names = "--z",
@@ -76,44 +77,40 @@ public class CopyStackClient {
         public List<Double> zValues;
 
         @ParametersDelegate
-        public LayerBoundsParameters layerBounds = new LayerBoundsParameters();
+        LayerBoundsParameters layerBounds = new LayerBoundsParameters();
 
         @Parameter(
                 names = "--keepExisting",
                 description = "Keep any existing target stack tiles with the specified z (default is to remove them)",
-                required = false,
                 arity = 0)
         public boolean keepExisting = false;
 
         @Parameter(
                 names = "--completeToStackAfterCopy",
                 description = "Complete the to stack after copying all layers",
-                required = false,
                 arity = 0)
         public boolean completeToStackAfterCopy = false;
 
         @Parameter(
                 names = "--replaceLastTransformWithStage",
                 description = "Replace the last transform in each tile space with a 'stage identity' transform",
-                required = false,
                 arity = 0)
         public boolean replaceLastTransformWithStage = false;
 
         @Parameter(
                 names = "--splitMergedSections",
                 description = "Reset z values for tiles so that original sections are separated",
-                required = false,
                 arity = 0)
         public boolean splitMergedSections = false;
 
-        public String getToOwner() {
+        String getToOwner() {
             if (toOwner == null) {
                 toOwner = renderWeb.owner;
             }
             return toOwner;
         }
 
-        public String getToProject() {
+        String getToProject() {
             if (toProject == null) {
                 toProject = renderWeb.project;
             }
@@ -154,7 +151,7 @@ public class CopyStackClient {
     private final RenderDataClient toDataClient;
     private final Map<String, Integer> sectionIdToZMap;
 
-    public CopyStackClient(final Parameters parameters) throws Exception {
+    private CopyStackClient(final Parameters parameters) throws Exception {
 
         this.parameters = parameters;
 
@@ -171,16 +168,16 @@ public class CopyStackClient {
         }
     }
 
-    public void setUpDerivedStack() throws Exception {
+    private void setUpDerivedStack() throws Exception {
         final StackMetaData fromStackMetaData = fromDataClient.getStackMetaData(parameters.fromStack);
         toDataClient.setupDerivedStack(fromStackMetaData, parameters.toStack);
     }
 
-    public void completeToStack() throws Exception {
+    private void completeToStack() throws Exception {
         toDataClient.setStackState(parameters.toStack, StackState.COMPLETE);
     }
 
-    public void copyLayer(final Double z) throws Exception {
+    private void copyLayer(final Double z) throws Exception {
 
         final ResolvedTileSpecCollection sourceCollection =
                 fromDataClient.getResolvedTiles(parameters.fromStack, z);
@@ -256,7 +253,7 @@ public class CopyStackClient {
 
             sourceCollection.addTransformSpecToTile(tileSpec.getTileId(),
                                                     transformSpec,
-                                                    true);
+                                                    REPLACE_LAST);
 
             tileSpecCount++;
 
@@ -273,19 +270,13 @@ public class CopyStackClient {
     private Map<String, Integer> getSectionIdToIntegralZMap()
             throws IOException {
 
-        final Comparator<SectionData> sectionComparator = (o1, o2) -> {
-            int result = o1.getZ().compareTo(o2.getZ());
-            if (result == 0) {
-                result = o1.getSectionId().compareTo(o2.getSectionId());
-            }
-            return result;
-        };
+        final Comparator<SectionData> sectionComparator =
+                Comparator.comparingDouble(SectionData::getZ).thenComparing(SectionData::getSectionId);
 
         final List<SectionData> orderedSectionDataList =
                 fromDataClient.getStackSectionData(parameters.fromStack, null, null);
 
-        Collections.sort(orderedSectionDataList,
-                         sectionComparator);
+        orderedSectionDataList.sort(sectionComparator);
 
         final Map<String, Integer> sectionIdToZMap = new HashMap<>(orderedSectionDataList.size());
 
