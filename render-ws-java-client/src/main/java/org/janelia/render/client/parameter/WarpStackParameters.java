@@ -56,6 +56,12 @@ public class WarpStackParameters implements Serializable {
             required = true)
     public String targetStack;
 
+    @Parameter(
+            names = "--completeTargetStack",
+            description = "Complete the target stack after processing all layers",
+            arity = 0)
+    public boolean completeTargetStack = false;
+
     @JsonIgnore
     private String baseDataUrl;
 

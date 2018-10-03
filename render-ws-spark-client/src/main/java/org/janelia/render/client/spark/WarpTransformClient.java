@@ -200,6 +200,10 @@ public class WarpTransformClient
         LOG.info("run: copied {} tiles", total);
 
         sparkContext.stop();
+
+        if (parameters.warp.completeTargetStack) {
+            targetDataClient.setStackState(parameters.warp.targetStack, StackMetaData.StackState.COMPLETE);
+        }
     }
 
     private static TransformSpec buildTransform(final Collection<TileSpec> montageTiles,

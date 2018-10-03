@@ -40,18 +40,17 @@ public class WarpTransformClient {
         public TileSpecValidatorParameters tileSpecValidator = new TileSpecValidatorParameters();
 
         @ParametersDelegate
-        public WarpStackParameters warp = new WarpStackParameters();
+        WarpStackParameters warp = new WarpStackParameters();
 
         @Parameter(
                 names = "--alpha",
-                description = "Alpha value for MLS transform",
-                required = false)
+                description = "Alpha value for MLS transform"
+        )
         public Double alpha;
 
         @Parameter(
                 names = "--deriveMLS",
                 description = "Derive moving least squares transforms instead of thin plate spline transforms",
-                required = false,
                 arity = 0)
         public boolean deriveMLS;
 
@@ -79,6 +78,10 @@ public class WarpTransformClient {
                 for (final String z : parameters.zValues) {
                     client.generateStackDataForZ(new Double(z), parameters.alpha);
                 }
+
+                if (parameters.warp.completeTargetStack) {
+                    client.completeTargetStack();
+                }
             }
         };
         clientRunner.run();
@@ -91,7 +94,7 @@ public class WarpTransformClient {
     private final RenderDataClient alignDataClient;
     private final RenderDataClient targetDataClient;
 
-    public WarpTransformClient(final Parameters parameters) {
+    private WarpTransformClient(final Parameters parameters) {
         this.parameters = parameters;
         this.tileSpecValidator = parameters.tileSpecValidator.getValidatorInstance();
         this.montageDataClient = parameters.renderWeb.getDataClient();
@@ -99,13 +102,17 @@ public class WarpTransformClient {
         this.targetDataClient = parameters.warp.getTargetDataClient();
     }
 
-    public void setUpDerivedStack() throws Exception {
+    private void setUpDerivedStack() throws Exception {
         final StackMetaData montageStackMetaData = montageDataClient.getStackMetaData(parameters.warp.montageStack);
         targetDataClient.setupDerivedStack(montageStackMetaData, parameters.warp.targetStack);
     }
 
-    public void generateStackDataForZ(final Double z,
-                                      final Double alpha)
+    private void completeTargetStack() throws Exception {
+        targetDataClient.setStackState(parameters.warp.targetStack, StackMetaData.StackState.COMPLETE);
+    }
+
+    private void generateStackDataForZ(final Double z,
+                                       final Double alpha)
             throws Exception {
 
         LOG.info("generateStackDataForZ: entry, z={}, alpha={}", z, alpha);
