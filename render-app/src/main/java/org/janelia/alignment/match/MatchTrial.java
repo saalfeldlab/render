@@ -61,7 +61,8 @@ public class MatchTrial implements Serializable {
         return copy;
     }
 
-    public void deriveResults() {
+    public void deriveResults()
+            throws IllegalArgumentException {
 
         final FeatureAndMatchParameters featureAndMatchParameters = parameters.getFeatureAndMatchParameters();
         final FeatureRenderClipParameters clipParameters = featureAndMatchParameters.getClipParameters();
@@ -96,6 +97,12 @@ public class MatchTrial implements Serializable {
                                                       new CanvasId(groupId, "Q", qClipPosition),
                                                       parameters);
 
+        if (pCanvasData.getRenderScale() - qCanvasData.getRenderScale() != 0.0) {
+            throw new IllegalArgumentException(
+                    "render scales for both canvases must be the same but pCanvas scale is " +
+                    pCanvasData.getRenderScale() + " while qCanvas render scale is " + qCanvasData.getRenderScale());
+        }
+
         final long matchStart = System.currentTimeMillis();
 
         final MatchDerivationParameters matchDerivationParameters =
@@ -122,7 +129,7 @@ public class MatchTrial implements Serializable {
                                                                              pCanvasId.getId(),
                                                                              qCanvasId.getGroupId(),
                                                                              qCanvasId.getId(),
-                                                                             1.0,
+                                                                             pCanvasData.getRenderScale(),
                                                                              pCanvasId.getClipOffsets(),
                                                                              qCanvasId.getClipOffsets());
         this.matches = new ArrayList<>(results.size());
@@ -204,6 +211,10 @@ public class MatchTrial implements Serializable {
 
         List<Feature> getFeatureList() {
             return featureList;
+        }
+
+        public Double getRenderScale() {
+            return renderParameters.getScale();
         }
 
         @Override
