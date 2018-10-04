@@ -15,6 +15,9 @@ var JaneliaMatchTrialImage = function(renderParametersUrl, row, column, viewScal
     this.viewScale = viewScale; // TODO: use viewScale when loading image
     this.cellMargin = cellMargin;
 
+    var renderScale = parseFloat(new URL(renderParametersUrl).searchParams.get('scale'));
+    this.renderScale = isNaN(renderScale) ? 1.0 : renderScale;
+
     this.image = new Image();
     this.x = -1;
     this.y = -1;
@@ -48,11 +51,11 @@ JaneliaMatchTrialImage.prototype.drawLoadedImage = function(canvas) {
 };
 
 JaneliaMatchTrialImage.prototype.getCanvasWidth = function() {
-    return (this.image.naturalWidth * this.viewScale);
+    return (this.image.naturalWidth); // TODO: use viewScale when calculating canvas size
 };
 
 JaneliaMatchTrialImage.prototype.getCanvasHeight = function() {
-    return (this.image.naturalHeight * this.viewScale);
+    return (this.image.naturalHeight); // TODO: use viewScale when calculating canvas size
 };
 
 var JaneliaMatchTrial = function(baseUrl, owner, canvas, viewScale) {
@@ -426,10 +429,10 @@ JaneliaMatchTrial.prototype.drawMatch = function(matches, matchIndex, pImage, qI
     var pMatches = matches.p;
     var qMatches = matches.q;
 
-    var px = (pMatches[0][matchIndex] * pImage.viewScale) + pImage.x;
-    var py = (pMatches[1][matchIndex] * pImage.viewScale) + pImage.y;
-    var qx = (qMatches[0][matchIndex] * qImage.viewScale) + qImage.x;
-    var qy = (qMatches[1][matchIndex] * qImage.viewScale) + qImage.y;
+    var px = (pMatches[0][matchIndex] * pImage.renderScale * pImage.viewScale) + pImage.x;
+    var py = (pMatches[1][matchIndex] * pImage.renderScale * pImage.viewScale) + pImage.y;
+    var qx = (qMatches[0][matchIndex] * qImage.renderScale * qImage.viewScale) + qImage.x;
+    var qy = (qMatches[1][matchIndex] * qImage.renderScale * qImage.viewScale) + qImage.y;
 
     context.beginPath();
     context.moveTo(px, py);
