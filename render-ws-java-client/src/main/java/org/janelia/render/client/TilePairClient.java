@@ -300,8 +300,8 @@ public class TilePairClient {
             }
         }
 
-        // edge case: add existing pairs if there is only one layer being processed
-        if ((zValues.size() == 1) && (parameters.zNeighborDistance == 0) && (existingMatchHelper != null)) {
+        // edge case: add existing montage pairs (distance == 0)
+        if ((parameters.zNeighborDistance == 0) && (existingMatchHelper != null)) {
             existingMatchHelper.addExistingPairs(zValues.get(0));
         }
 
@@ -355,6 +355,13 @@ public class TilePairClient {
                                                                    parameters.excludeSameSectionNeighbors);
             if (existingMatchHelper != null) {
                 existingMatchHelper.removeExistingPairs(z, currentNeighborPairs);
+
+                // edge case: add existing montage pairs (distance == 0) for next z
+                final int nextIndex = zIndex + 1;
+                if ((parameters.zNeighborDistance == 0) && (nextIndex < zValues.size())) {
+                    existingMatchHelper.addExistingPairs(zValues.get(nextIndex));
+                }
+
             }
 
             neighborPairs.addAll(currentNeighborPairs);
