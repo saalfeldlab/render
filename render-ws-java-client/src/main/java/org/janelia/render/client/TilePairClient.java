@@ -6,6 +6,7 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -24,9 +25,12 @@ import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
+import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -85,6 +89,12 @@ public class TilePairClient {
                 description = "Explit radius in full scale pixels for locating neighbor tiles (if set, will override --xyNeighborFactor)"
         )
         public Double explicitRadius;
+
+        @Parameter(
+                names = "--useRowColPositions",
+                description = "For montage pairs (zNeighborDistance == 0) use layout imageRow and imageCol values instead of tile bounds to identify neighbor tiles",
+                arity = 0)
+        public boolean useRowColPositions = false;
 
         @Parameter(
                 names = "--zNeighborDistance",
@@ -403,56 +413,91 @@ public class TilePairClient {
     public TileBoundsRTree buildRTree(final double z)
             throws IOException {
 
-        List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
-        final int totalTileCount = tileBoundsList.size();
+        TileBoundsRTree tree;
+        List<TileBounds> tileBoundsList;
+        final int totalTileCount;
 
-        if (includeClient != null) {
+        if ((parameters.zNeighborDistance == 0) && (parameters.useRowColPositions)) {
 
-            final List<TileBounds> includeList = includeClient.getTileBounds(includeStack.getStack(), z);
-            final Set<String> includeTileIds = new HashSet<>(includeList.size() * 2);
-            for (final TileBounds bounds : includeList) {
-                includeTileIds.add(bounds.getTileId());
+            final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
+            final Collection<TileSpec> tileSpecs = resolvedTiles.getTileSpecs();
+
+            tileBoundsList = new ArrayList<>(tileSpecs.size());
+            totalTileCount = tileBoundsList.size();
+
+            final int tileSize = 10;
+            for (final TileSpec tileSpec : tileSpecs) {
+                final LayoutData layoutData = tileSpec.getLayout();
+                if (layoutData == null) {
+                    throw new IOException("tile '" + tileSpec.getTileId() + "' is missing layout data");
+                }
+                final Integer imageRow = layoutData.getImageRow();
+                final Integer imageCol = layoutData.getImageCol();
+                if ((imageRow == null) || (imageCol == null)) {
+                    throw new IOException("tile '" + tileSpec.getTileId() +
+                                          "' is missing layout imageRow and/or imageCol data");
+                }
+                final double minX = imageCol * tileSize;
+                final double minY = imageRow * tileSize;
+                tileBoundsList.add(new TileBounds(tileSpec.getTileId(), layoutData.getSectionId(), tileSpec.getZ(),
+                                                  minX, minY, minX + tileSize, minY + tileSize));
             }
 
-            tileBoundsList.removeIf(tileBounds -> !includeTileIds.contains(tileBounds.getTileId()));
+            tree = new TileBoundsRTree(z, tileBoundsList);
 
-            if (totalTileCount > tileBoundsList.size()) {
-                LOG.info("buildRTree: removed {} tiles not found in {}",
-                         (totalTileCount - tileBoundsList.size()), includeStack);
+        } else {
+
+            tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
+            totalTileCount = tileBoundsList.size();
+
+            if (includeClient != null) {
+
+                final List<TileBounds> includeList = includeClient.getTileBounds(includeStack.getStack(), z);
+                final Set<String> includeTileIds = new HashSet<>(includeList.size() * 2);
+                for (final TileBounds bounds : includeList) {
+                    includeTileIds.add(bounds.getTileId());
+                }
+
+                tileBoundsList.removeIf(tileBounds -> !includeTileIds.contains(tileBounds.getTileId()));
+
+                if (totalTileCount > tileBoundsList.size()) {
+                    LOG.info("buildRTree: removed {} tiles not found in {}",
+                             (totalTileCount - tileBoundsList.size()), includeStack);
+                }
+
             }
 
-        }
+            tree = new TileBoundsRTree(z, tileBoundsList);
 
-        TileBoundsRTree tree = new TileBoundsRTree(z, tileBoundsList);
+            if (filterTilesWithBox) {
 
-        if (filterTilesWithBox) {
+                final int unfilteredCount = tileBoundsList.size();
 
-            final int unfilteredCount = tileBoundsList.size();
+                tileBoundsList = tree.findTilesInBox(parameters.bounds.minX, parameters.bounds.minY,
+                                                     parameters.bounds.maxX, parameters.bounds.maxY);
 
-            tileBoundsList = tree.findTilesInBox(parameters.bounds.minX, parameters.bounds.minY,
-                                                 parameters.bounds.maxX, parameters.bounds.maxY);
+                if (unfilteredCount > tileBoundsList.size()) {
 
-            if (unfilteredCount > tileBoundsList.size()) {
+                    LOG.info("buildRTree: removed {} tiles outside of bounding box",
+                             (unfilteredCount - tileBoundsList.size()));
 
-                LOG.info("buildRTree: removed {} tiles outside of bounding box",
-                         (unfilteredCount - tileBoundsList.size()));
-
-                tree = new TileBoundsRTree(z, tileBoundsList);
+                    tree = new TileBoundsRTree(z, tileBoundsList);
+                }
             }
-        }
 
-        if (parameters.excludeCompletelyObscuredTiles) {
+            if (parameters.excludeCompletelyObscuredTiles) {
 
-            final int unfilteredCount = tileBoundsList.size();
+                final int unfilteredCount = tileBoundsList.size();
 
-            tileBoundsList = tree.findVisibleTiles();
+                tileBoundsList = tree.findVisibleTiles();
 
-            if (unfilteredCount > tileBoundsList.size()) {
+                if (unfilteredCount > tileBoundsList.size()) {
 
-                LOG.info("buildRTree: removed {} completely obscured tiles",
-                         (unfilteredCount - tileBoundsList.size()));
+                    LOG.info("buildRTree: removed {} completely obscured tiles",
+                             (unfilteredCount - tileBoundsList.size()));
 
-                tree = new TileBoundsRTree(z, tileBoundsList);
+                    tree = new TileBoundsRTree(z, tileBoundsList);
+                }
             }
         }
 
