@@ -18,7 +18,6 @@ var JaneliaTile2 = function(tileSpec, stackUrl, matchCollectionUrl, renderQueryP
 
     this.specUrl = this.stackUrl + "/tile/" + this.tileSpec.tileId;
 
-    this.renderQueryParameters = renderQueryParameters;
     this.renderUrl = this.specUrl + "/render-parameters?" + renderQueryParameters;
     this.imageUrl = this.specUrl + "/jpeg-image?" + renderQueryParameters + "&scale=" + this.scale;
 
@@ -100,7 +99,7 @@ JaneliaTile2.prototype.loadAllMatches = function() {
             var qTile = pTile.janeliaTileMap[qTileId];
             var qGroupId = qTile.tileSpec.layout.sectionId;
 
-            if ((pGroupId < qGroupId) || ((pGroupId == qGroupId) && (pId < qTileId))) {
+            if ((pGroupId < qGroupId) || ((pGroupId === qGroupId) && (pId < qTileId))) {
 
                 var matchesUrl = pTile.getMatchesUrl(qTile);
 
@@ -239,6 +238,8 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
 
     var sectionMap = {};
     var tileSpecs = data["tileSpecs"];
+    var firstRow = undefined;
+    var firstColumn = undefined;
 
     var tileSpec;
     var sectionData;
@@ -262,7 +263,18 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
         sectionData.minXList.push({"tileId": tileSpec.tileId, "value": tileSpec.minX});
         sectionData.minYList.push({"tileId": tileSpec.tileId, "value": tileSpec.minY});
 
-        if (this.tileId == tileSpec.tileId) {
+        if ((typeof tileSpec.layout.imageRow !== 'undefined') &&
+            (typeof tileSpec.layout.imageCol !== 'undefined')) {
+            if (typeof firstRow === 'undefined') {
+                firstRow = tileSpec.layout.imageRow;
+                firstColumn = tileSpec.layout.imageCol;
+            } else {
+                firstRow = Math.min(firstRow, tileSpec.layout.imageRow);
+                firstColumn = Math.min(firstColumn, tileSpec.layout.imageCol);
+            }
+        }
+
+        if (this.tileId === tileSpec.tileId) {
             originalTileWidth = tileSpec.width;
             originalTileHeight = tileSpec.height;
         }
@@ -277,13 +289,13 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
 
     var deriveRowOrColumn = function(forTileId, list, size) {
         var rowOrColumn = 0;
-        if ((list.length > 0) && (forTileId != list[0].tileId)) {
+        if ((list.length > 0) && (forTileId !== list[0].tileId)) {
             for (var index = 1; index < list.length; index++) {
                 var prevDelta = list[index].value - list[index - 1].value;
                 if ((prevDelta / size) > 0.5) {
                     rowOrColumn = rowOrColumn + 1;
                 }
-                if (forTileId == list[index].tileId) {
+                if (forTileId === list[index].tileId) {
                     break;
                 }
             }
@@ -311,9 +323,16 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
 
                     tileSpec = janeliaTile2.tileSpec;
 
-                    janeliaTile2.setRowAndColumn(
-                            deriveRowOrColumn(tileId, sectionData.minYList, originalTileHeight),
-                            firstColumnForSection + deriveRowOrColumn(tileId, sectionData.minXList, originalTileWidth));
+                    if (typeof firstRow === 'undefined') {
+                        janeliaTile2.setRowAndColumn(
+                                deriveRowOrColumn(tileId, sectionData.minYList, originalTileHeight),
+                                firstColumnForSection +
+                                deriveRowOrColumn(tileId, sectionData.minXList, originalTileWidth));
+                    } else {
+                        janeliaTile2.setRowAndColumn(
+                                tileSpec.layout.imageRow - firstRow,
+                                tileSpec.layout.imageCol - firstColumn);
+                    }
                 }
             }
             firstColumnForSection = firstColumnForSection + sectionData.minXList[sectionData.minXList.length - 1].value;
@@ -397,10 +416,10 @@ JaneliaTileWithNeighbors.prototype.buildTilePair = function(tileSpec, otherTileS
     this.updateTileIdHtml('q', qTile);
 };
 
-JaneliaTileWithNeighbors.prototype.updateTileIdHtml = function(porq, tile2) {
+JaneliaTileWithNeighbors.prototype.updateTileIdHtml = function(pOrQ, tile2) {
     var tileIdHtml = '<a href=\"' + tile2.specUrl + '" target="_blank"">' + tile2.tileSpec.tileId + '</a>' +
                       '<br/>(<a href=\"' + tile2.renderUrl + '" target="_blank"">normalized render parameters</a>)';
-    var selectorId = '#' + porq + 'TileId';
+    var selectorId = '#' + pOrQ + 'TileId';
     $(selectorId).html(tileIdHtml);
 };
 
@@ -477,9 +496,9 @@ JaneliaTileWithNeighbors.prototype.rotatePair = function() {
     var pTile = this.janeliaTileMap[this.pTileId];
     var qTile = this.janeliaTileMap[this.qTileId];
 
-    if (pTile.row == 0) {
-        if (qTile.row == 0) {
-            if (pTile.column == 0) {
+    if (pTile.row === 0) {
+        if (qTile.row === 0) {
+            if (pTile.column === 0) {
                 // PQ -> P
                 //       Q
                 qTile.row = 1;
@@ -517,14 +536,14 @@ JaneliaTileWithNeighbors.prototype.move = function(rowDelta, columnDelta) {
         for (var neighborTileId in this.janeliaTileMap) {
             if (this.janeliaTileMap.hasOwnProperty(neighborTileId)) {
                 var neighbor = this.janeliaTileMap[neighborTileId];
-                if ((neighbor.row == nextRow) && (neighbor.column == nextColumn)) {
+                if ((neighbor.row === nextRow) && (neighbor.column === nextColumn)) {
                     nextTileId = neighborTileId;
                     break;
                 }
             }
         }
 
-        if (nextTileId != this.tileId) {
+        if (nextTileId !== this.tileId) {
             this.setTileId(nextTileId);
         }
 
@@ -585,7 +604,7 @@ JaneliaTileWithNeighbors.prototype.getOrderedTileSpecPair = function(tileSpecA, 
     var bGroupId = tileSpecB.layout.sectionId;
     var bId = tileSpecB.tileId;
 
-    if ((aGroupId > bGroupId) || ((aGroupId == bGroupId) && (aId > bId))) {
+    if ((aGroupId > bGroupId) || ((aGroupId === bGroupId) && (aId > bId))) {
         orderedPair.pTileSpec = tileSpecB;
         orderedPair.qTileSpec = tileSpecA;
     }
