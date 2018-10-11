@@ -20,6 +20,7 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionMetaData;
@@ -874,6 +875,54 @@ public class RenderDataClient {
                  requestContext, tileIds.size());
 
         httpClient.execute(httpPut, responseHandler);
+    }
+
+    /**
+     * @param  stack  name of stack.
+     * @param  tileId tile identifier.
+     *
+     * @return render parameters (with flattened tile specs) for the specified tile.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public RenderParameters getRenderParametersForTile(final String stack,
+                                                       final String tileId)
+            throws IOException {
+
+        final URI uri = getUri(urls.getTileUrlString(stack, tileId) + "/render-parameters");
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonUtils.Helper<RenderParameters> helper = new JsonUtils.Helper<>(RenderParameters.class);
+        final JsonResponseHandler<RenderParameters> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getRenderParametersForTile: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
+     * @param  stack  name of stack.
+     * @param  z      z value for layer.
+     *
+     * @return render parameters (with flattened tile specs) for the specified layer.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public RenderParameters getRenderParametersForZ(final String stack,
+                                                    final Double z)
+            throws IOException {
+
+        final URI uri = getUri(urls.getZUrlString(stack, z) + "/render-parameters");
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonUtils.Helper<RenderParameters> helper = new JsonUtils.Helper<>(RenderParameters.class);
+        final JsonResponseHandler<RenderParameters> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getRenderParametersForZ: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
     }
 
     /**
