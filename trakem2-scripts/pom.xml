@@ -17,6 +17,90 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>1.7.1</version>
+
+                <executions>
+                    <execution>
+                        <id>shade-trakem2</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+
+                        <configuration>
+
+                            <outputFile>target/render-ws_trakem2_plugins-${project.version}.jar</outputFile>
+
+                            <filters>
+
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>org/janelia/acquire/**</exclude>
+                                        <exclude>org/python/**</exclude>
+                                    </excludes>
+                                </filter>
+
+                            </filters>
+
+                            <artifactSet>
+                                <excludes>
+                                    <exclude>au.com.bytecode:*</exclude>
+                                    <exclude>ca.mcgill:*</exclude>
+                                    <exclude>ch.qos.logback:*</exclude>
+                                    <exclude>com.adobe.xmp:*</exclude>
+                                    <exclude>com.amazonaws:*</exclude>
+                                    <exclude>com.drewnoakes:*</exclude>
+                                    <exclude>com.esotericsoftware.kryo:*</exclude>
+                                    <exclude>com.esotericsoftware.minlog:*</exclude>
+                                    <exclude>com.github.davidmoten:*</exclude>
+                                    <exclude>com.jgoodies:jgoodies-common:*</exclude>
+                                    <exclude>com.jgoodies:jgoodies-forms:*</exclude>
+                                    <exclude>com.sun.media:*</exclude>
+                                    <exclude>com.twelvemonkeys.common:*</exclude>
+                                    <exclude>com.twelvemonkeys.imageio:*</exclude>
+                                    <exclude>commons-codec:*</exclude>
+                                    <exclude>commons-io:*</exclude>
+                                    <exclude>commons-logging:*</exclude>
+                                    <exclude>edu.mines:*</exclude>
+                                    <exclude>edu.ucar:*</exclude>
+                                    <exclude>gov.nist.math:*</exclude>
+                                    <exclude>io.reactivex:*</exclude>
+                                    <exclude>javax.media:*</exclude>
+                                    <exclude>jama:*</exclude>
+                                    <exclude>joda-time:*</exclude>
+                                    <exclude>log4j:*</exclude>
+                                    <exclude>mpicbg:*</exclude>
+                                    <exclude>net.imagej:*</exclude>
+                                    <exclude>net.sf.opencsv:*</exclude>
+                                    <exclude>net.sf.trove4j:*</exclude>
+                                    <exclude>ome:*</exclude>
+                                    <exclude>org.apache.xmlgraphics:*</exclude>
+                                    <exclude>org.bush:*</exclude>
+                                    <exclude>org.jfree:*</exclude>
+                                    <exclude>org.jogamp.gluegen:*</exclude>
+                                    <exclude>org.jogamp.jogl:*</exclude>
+                                    <exclude>org.objenesis:*</exclude>
+                                    <exclude>org.openmicroscopy:*</exclude>
+                                    <exclude>org.perf4j:*</exclude>
+                                    <exclude>org.scijava:*</exclude>
+                                    <exclude>postgresql:*</exclude>
+                                    <exclude>sc.fiji:*</exclude>
+                                    <exclude>software.amazon.ion:*</exclude>
+                                </excludes>
+                            </artifactSet>
+
+                        </configuration>
+
+                    </execution>
+
+                </executions>
+
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
                 <version>3.0.1</version>
                 <executions>
@@ -35,6 +119,12 @@
     <dependencies>
 
         <dependency>
+            <groupId>org.janelia.render</groupId>
+            <artifactId>render-ws-java-client</artifactId>
+            <version>${render-version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>net.imagej</groupId>
             <artifactId>ij</artifactId>
         </dependency>
@@ -47,7 +137,7 @@
         <dependency>
             <groupId>sc.fiji</groupId>
             <artifactId>TrakEM2_</artifactId>
-            <version>1.0f</version>
+            <version>1.0j</version>
         </dependency>
 
     </dependencies>
