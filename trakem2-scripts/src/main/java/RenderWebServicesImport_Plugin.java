@@ -8,20 +8,24 @@ import ij.process.ByteProcessor;
 
 import java.awt.Color;
 import java.awt.geom.AffineTransform;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import mpicbg.models.CoordinateTransform;
+import mpicbg.trakem2.transform.TranslationModel2D;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ChannelSpec;
+import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.client.RenderDataClient;
 
@@ -44,10 +48,12 @@ public class RenderWebServicesImport_Plugin
     private LayerSet trakLayerSet;
 
     private StackMetaData stackMetaData;
-    private RenderParameters layerRenderParameters;
+    private List<RenderParameters> layerRenderParametersList;
 
     private boolean splitSections;
     private boolean loadMasks;
+    private boolean replaceLastWithStage;
+    private int imageType;
 
     @Override
     public void run(final String arg) {
@@ -95,9 +101,12 @@ public class RenderWebServicesImport_Plugin
         gd.addStringField("Render Stack Owner", "flyTEM", defaultTextColumns);
         gd.addStringField("Render Stack Project", "FAFB00", defaultTextColumns);
         gd.addStringField("Render Stack Name", "v12_acquire_merged", defaultTextColumns);
-        gd.addNumericField("Z", 2429.0, 1);
+        gd.addNumericField("Min Z", 2429.0, 1);
+        gd.addNumericField("Max Z", 2429.0, 1);
+        gd.addNumericField("Image Type (use -1 to dynamically derive)", 0, 0);
         gd.addCheckbox("Split Sections", true);
         gd.addCheckbox("Load Masks", false);
+        gd.addCheckbox("Replace Last Transform With Stage", false);
         gd.showDialog();
 
         if (! gd.wasCanceled()) {
@@ -105,18 +114,34 @@ public class RenderWebServicesImport_Plugin
             try {
                 final String baseDataUrl = gd.getNextString();
                 final StackId stackId = new StackId(gd.getNextString(), gd.getNextString(), gd.getNextString());
-                final double z = gd.getNextNumber();
+                final double minZ = gd.getNextNumber();
+                final double maxZ = gd.getNextNumber();
+                imageType = new Double(gd.getNextNumber()).intValue();
                 splitSections = gd.getNextBoolean();
                 loadMasks = gd.getNextBoolean();
+                replaceLastWithStage = gd.getNextBoolean();
 
                 final RenderDataClient renderDataClient = new RenderDataClient(baseDataUrl, stackId.getOwner(), stackId.getProject());
 
-                trakProject.setTitle(stackId.getStack());
+                final String stack = stackId.getStack();
+
+                final String projectTitle = replaceLastWithStage ? stack + "_stage" : stack;
+                trakProject.setTitle(projectTitle);
 
                 stackMetaData = renderDataClient.getStackMetaData(stackId.getStack());
-                layerRenderParameters = renderDataClient.getRenderParametersForZ(stackId.getStack(), z);
 
-                System.out.println("loadRenderData: loaded data for layer " + z + " in " + stackId + "\n");
+                layerRenderParametersList = new ArrayList<>();
+                final Set<Double> zValues = new LinkedHashSet<>();
+                for (final SectionData sectionData : renderDataClient.getStackSectionData(stack,
+                                                                                          minZ,
+                                                                                          maxZ)) {
+                    zValues.add(sectionData.getZ());
+                }
+
+                for (final Double z : zValues) {
+                    layerRenderParametersList.add(renderDataClient.getRenderParametersForZ(stack, z));
+                    System.out.println("loadRenderData: loaded data for layer " + z + " in " + stackId + "\n");
+                }
 
                 isDataLoaded = true;
             } catch (final Exception e) {
@@ -142,32 +167,36 @@ public class RenderWebServicesImport_Plugin
             }
         }
 
-        final StackStats stackStats = stackMetaData.getStats();
-        if (stackStats != null) {
-            final Bounds stackBounds = stackStats.getStackBounds();
-            if (stackBounds != null) {
-                trakLayerSet.setDimensions((float) layerRenderParameters.getX(),
-                                           (float) layerRenderParameters.getY(),
-                                           (float) layerRenderParameters.getWidth(),
-                                           (float) layerRenderParameters.getHeight());
-            }
-        }
-
         final Loader trakLoader = trakProject.getLoader();
         Layer trakLayer;
 
         final Map<String, ByteProcessor> maskPathToProcessor =  new HashMap<>();
         ByteProcessor maskProcessor;
 
-        final List<TileSpec> tileSpecList = layerRenderParameters.getTileSpecs();
+        double layerSetMinX = Double.MAX_VALUE;
+        double layerSetMinY = Double.MAX_VALUE;
+        double layerSetMaxX = Double.MIN_VALUE;
+        double layerSetMaxY = Double.MIN_VALUE;
+        final List<TileSpec> tileSpecList = new ArrayList<>();
+        for (final RenderParameters layerRenderParameters : layerRenderParametersList) {
+            tileSpecList.addAll(layerRenderParameters.getTileSpecs());
+            if (! replaceLastWithStage) {
+                layerSetMinX = Math.min(layerSetMinX, layerRenderParameters.getX());
+                layerSetMinY = Math.min(layerSetMinY, layerRenderParameters.getY());
+                layerSetMaxX = Math.max(layerSetMaxX, layerRenderParameters.getX() + layerRenderParameters.getWidth());
+                layerSetMaxY = Math.max(layerSetMaxY, layerRenderParameters.getX() + layerRenderParameters.getHeight());
+            }
+        }
 
         int tileCount = 0;
+        int type = imageType;
         for (final TileSpec tileSpec : tileSpecList) {
 
             final String tileId = tileSpec.getTileId();
+            final LayoutData layout = tileSpec.getLayout();
 
             if (splitSections) {
-                final String sectionId = tileSpec.getLayout().getSectionId();
+                final String sectionId = layout.getSectionId();
                 final double z = Double.parseDouble(sectionId);
                 trakLayer = trakLayerSet.getLayer(z, thickness, true);
             } else {
@@ -180,10 +209,13 @@ public class RenderWebServicesImport_Plugin
                 final ImageAndMask imageAndMask = firstChannelSpec.getFirstMipmapEntry().getValue();
                 final String imageFilePath = imageAndMask.getImageFilePath();
 
-                final ImagePlus imagePlus = trakLoader.openImagePlus(imageFilePath);
-                final int o_width = imagePlus.getWidth();
-                final int o_height = imagePlus.getHeight();
-                final int type = imagePlus.getType();
+                final int o_width = tileSpec.getWidth();
+                final int o_height = tileSpec.getHeight();
+
+                if (imageType == -1) {
+                    final ImagePlus imagePlus = trakLoader.openImagePlus(imageFilePath);
+                    type = imagePlus.getType();
+                }
 
                 final double minIntensity = firstChannelSpec.getMinIntensity();
                 final double maxIntensity = firstChannelSpec.getMaxIntensity();
@@ -212,6 +244,19 @@ public class RenderWebServicesImport_Plugin
 
                 final List<CoordinateTransform> transforms =
                         tileSpec.getTransforms().getNewInstanceAsList().getList(null);
+
+                if (replaceLastWithStage) {
+
+                    final TranslationModel2D stageTransform = new TranslationModel2D();
+                    stageTransform.set(layout.getStageX(), layout.getStageY());
+                    transforms.set((transforms.size() - 1), stageTransform);
+
+                    layerSetMinX = Math.min(layerSetMinX, layout.getStageX());
+                    layerSetMinY = Math.min(layerSetMinY, layout.getStageY());
+                    layerSetMaxX = Math.max(layerSetMaxX, (layout.getStageX() + tileSpec.getWidth()));
+                    layerSetMaxY = Math.max(layerSetMaxY, (layout.getStageY() + tileSpec.getHeight()));
+                }
+
                 for (final CoordinateTransform transform : transforms) {
                     if (transform instanceof mpicbg.trakem2.transform.CoordinateTransform) {
                         trakPatch.appendCoordinateTransform((mpicbg.trakem2.transform.CoordinateTransform) transform);
@@ -237,6 +282,8 @@ public class RenderWebServicesImport_Plugin
                 e.printStackTrace(System.out);
             }
         }
+
+        trakLayerSet.setDimensions((float) layerSetMinX, (float) layerSetMinY, (float) (layerSetMaxX - layerSetMinX), (float) (layerSetMaxY - layerSetMinY));
 
         Utils.log("convertTileSpecsToPatches: converted " + tileCount +
                   " out of " + tileSpecList.size() + " tiles");
