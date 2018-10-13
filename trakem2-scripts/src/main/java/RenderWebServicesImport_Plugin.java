@@ -21,6 +21,7 @@ import mpicbg.trakem2.transform.TranslationModel2D;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.SectionData;
@@ -45,8 +46,6 @@ import ini.trakem2.utils.Utils;
  */
 public class RenderWebServicesImport_Plugin
         implements PlugIn {
-
-    private static ImportData importData;
 
     @Override
     public void run(final String arg) {
@@ -135,19 +134,9 @@ public class RenderWebServicesImport_Plugin
         final Map<String, ByteProcessor> maskPathToProcessor =  new HashMap<>();
         ByteProcessor maskProcessor;
 
-        double layerSetMinX = Double.MAX_VALUE;
-        double layerSetMinY = Double.MAX_VALUE;
-        double layerSetMaxX = Double.MIN_VALUE;
-        double layerSetMaxY = Double.MIN_VALUE;
         final List<TileSpec> tileSpecList = new ArrayList<>();
         for (final RenderParameters layerRenderParameters : importData.layerRenderParametersList) {
             tileSpecList.addAll(layerRenderParameters.getTileSpecs());
-            if (! importData.replaceLastWithStage) {
-                layerSetMinX = Math.min(layerSetMinX, layerRenderParameters.getX());
-                layerSetMinY = Math.min(layerSetMinY, layerRenderParameters.getY());
-                layerSetMaxX = Math.max(layerSetMaxX, layerRenderParameters.getX() + layerRenderParameters.getWidth());
-                layerSetMaxY = Math.max(layerSetMaxY, layerRenderParameters.getX() + layerRenderParameters.getHeight());
-            }
         }
 
         int tileCount = 0;
@@ -213,10 +202,8 @@ public class RenderWebServicesImport_Plugin
                     stageTransform.set(layout.getStageX(), layout.getStageY());
                     transforms.set((transforms.size() - 1), stageTransform);
 
-                    layerSetMinX = Math.min(layerSetMinX, layout.getStageX());
-                    layerSetMinY = Math.min(layerSetMinY, layout.getStageY());
-                    layerSetMaxX = Math.max(layerSetMaxX, (layout.getStageX() + tileSpec.getWidth()));
-                    layerSetMaxY = Math.max(layerSetMaxY, (layout.getStageY() + tileSpec.getHeight()));
+                    importData.updateMaxXAndY((layout.getStageX() + tileSpec.getWidth()),
+                                              (layout.getStageY() + tileSpec.getHeight()));
                 }
 
                 for (final CoordinateTransform transform : transforms) {
@@ -245,10 +232,7 @@ public class RenderWebServicesImport_Plugin
             }
         }
 
-        importData.trakLayerSet.setDimensions((float) layerSetMinX,
-                                              (float) layerSetMinY,
-                                              (float) (layerSetMaxX - layerSetMinX),
-                                              (float) (layerSetMaxY - layerSetMinY));
+        importData.trakLayerSet.setDimensions(0, 0, (float) importData.maxX, (float) importData.maxY);
 
         Utils.log("convertTileSpecsToPatches: converted " + tileCount +
                   " out of " + tileSpecList.size() + " tiles");
@@ -258,6 +242,8 @@ public class RenderWebServicesImport_Plugin
         }
 
     }
+
+    private static ImportData importData = null;
 
     private enum PluginArgument {
         NEW_PROJECT, IMPORT_LAYER
@@ -282,6 +268,8 @@ public class RenderWebServicesImport_Plugin
 
         private StackMetaData stackMetaData;
         private List<RenderParameters> layerRenderParametersList;
+        private double maxX;
+        private double maxY;
 
         ImportData(final Project trakProject,
                    final LayerSet trakLayerSet) {
@@ -307,9 +295,15 @@ public class RenderWebServicesImport_Plugin
             this.trakLayerSet = trakLayerSet;
         }
 
+        void updateMaxXAndY(final double maxX,
+                            final double maxY) {
+            this.maxX = Math.max(this.maxX, maxX);
+            this.maxY = Math.max(this.maxY, maxY);
+        }
+
         boolean setParametersFromDialog() {
 
-            final GenericDialog dialog = new GenericDialog("Render Stack");
+            final GenericDialog dialog = new GenericDialog("Import Parameters");
 
             final int defaultTextColumns = 80;
             dialog.addStringField("Render Web Services Base URL", baseDataUrl, defaultTextColumns);
@@ -386,10 +380,21 @@ public class RenderWebServicesImport_Plugin
                         }
 
                         if (isNewProject) {
+
                             final TileSpec firstTileSpec = layerRenderParametersList.get(0).getTileSpecs().get(0);
                             final Double meshCellSize = firstTileSpec.getMeshCellSize();
                             trakProject.setProperty("mesh_resolution", String.valueOf(meshCellSize.intValue()));
                             trakProject.setProperty("n_mipmap_threads", String.valueOf(numberOfMipmapThreads));
+
+                            if (replaceLastWithStage) {
+                                final LayoutData layout = firstTileSpec.getLayout();
+                                maxX = layout.getStageX() + firstTileSpec.getWidth();
+                                maxY = layout.getStageY() + firstTileSpec.getHeight();
+                            } else {
+                                final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+                                maxX = stackBounds.getMaxX();
+                                maxY = stackBounds.getMaxY();
+                            }
                         }
 
                     }
