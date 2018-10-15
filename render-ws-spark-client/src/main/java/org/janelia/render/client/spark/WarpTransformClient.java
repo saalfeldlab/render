@@ -5,7 +5,6 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -51,10 +50,10 @@ public class WarpTransformClient
         public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
         @ParametersDelegate
-        public TileSpecValidatorParameters tileSpecValidator = new TileSpecValidatorParameters();
+        TileSpecValidatorParameters tileSpecValidator = new TileSpecValidatorParameters();
 
         @ParametersDelegate
-        public WarpStackParameters warp = new WarpStackParameters();
+        WarpStackParameters warp = new WarpStackParameters();
 
         @ParametersDelegate
         public ZRangeParameters layerRange = new ZRangeParameters();
@@ -62,11 +61,10 @@ public class WarpTransformClient
         @Parameter(
                 names = "--z",
                 description = "Explicit z values for sections to be processed",
-                required = false,
                 variableArity = true) // e.g. --z 20.0 21.0 22.0
         public List<Double> zValues;
 
-        public Set<Double> getZValues() {
+        Set<Double> getZValues() {
             return (zValues == null) ? Collections.emptySet() : new HashSet<>(zValues);
         }
 
@@ -92,12 +90,12 @@ public class WarpTransformClient
 
     private final Parameters parameters;
 
-    public WarpTransformClient(final Parameters parameters) {
+    private WarpTransformClient(final Parameters parameters) {
         this.parameters = parameters;
     }
 
     public void run()
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         final SparkConf conf = new SparkConf().setAppName("WarpTransformClient");
         final JavaSparkContext sparkContext = new JavaSparkContext(conf);
@@ -154,6 +152,11 @@ public class WarpTransformClient
                         montageDataClient.getResolvedTiles(parameters.warp.montageStack, z);
                 final ResolvedTileSpecCollection alignTiles =
                         alignDataClient.getResolvedTiles(parameters.warp.alignStack, z);
+
+                if (parameters.warp.excludeTilesNotInBothStacks) {
+                    montageTiles.removeDifferentTileSpecs(alignTiles.getTileIds());
+                    alignTiles.removeDifferentTileSpecs(montageTiles.getTileIds());
+                }
 
                 final TransformSpec warpTransformSpec = buildTransform(montageTiles.getTileSpecs(),
                                                                        alignTiles.getTileSpecs(),

@@ -120,6 +120,14 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     /**
+     * @return set of tile ids in this collection.
+     */
+    @JsonIgnore
+    public Set<String> getTileIds() {
+        return tileIdToSpecMap.keySet();
+    }
+
+    /**
      * Adds a tile specification to this collection and verifies that
      * any referenced transforms already exist in this collection.
      *

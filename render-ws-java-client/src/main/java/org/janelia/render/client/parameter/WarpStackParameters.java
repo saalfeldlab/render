@@ -57,6 +57,12 @@ public class WarpStackParameters implements Serializable {
     public String targetStack;
 
     @Parameter(
+            names = "--excludeTilesNotInBothStacks",
+            description = "Exclude any tiles not found in both the montage and align stacks",
+            arity = 0)
+    public boolean excludeTilesNotInBothStacks = false;
+
+    @Parameter(
             names = "--completeTargetStack",
             description = "Complete the target stack after processing all layers",
             arity = 0)

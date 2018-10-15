@@ -122,6 +122,11 @@ public class WarpTransformClient {
         final ResolvedTileSpecCollection alignTiles =
                 alignDataClient.getResolvedTiles(parameters.warp.alignStack, z);
 
+        if (parameters.warp.excludeTilesNotInBothStacks) {
+            montageTiles.removeDifferentTileSpecs(alignTiles.getTileIds());
+            alignTiles.removeDifferentTileSpecs(montageTiles.getTileIds());
+        }
+
         final TransformSpec warpTransformSpec = buildTransform(montageTiles.getTileSpecs(),
                                                                alignTiles.getTileSpecs(),
                                                                alpha,
