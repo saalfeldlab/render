@@ -4,7 +4,9 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -25,6 +28,7 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackMetaData.StackState;
+import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.LayerBoundsParameters;
@@ -75,6 +79,12 @@ public class CopyStackClient {
                 description = "Z value of section to be copied",
                 required = true)
         public List<Double> zValues;
+
+        @Parameter(
+                names = "--moveToOrigin",
+                description = "If necessary, translate copied stack so that it's minX and minY are near the origin (default is to copy exact location)",
+                arity = 0)
+        public boolean moveToOrigin = false;
 
         @ParametersDelegate
         LayerBoundsParameters layerBounds = new LayerBoundsParameters();
@@ -150,6 +160,7 @@ public class CopyStackClient {
     private final RenderDataClient fromDataClient;
     private final RenderDataClient toDataClient;
     private final Map<String, Integer> sectionIdToZMap;
+    private final LeafTransformSpec moveStackTransform;
 
     private CopyStackClient(final Parameters parameters) throws Exception {
 
@@ -166,6 +177,40 @@ public class CopyStackClient {
         } else {
             this.sectionIdToZMap = null;
         }
+
+        if (parameters.moveToOrigin) {
+
+            if (parameters.replaceLastTransformWithStage) {
+                throw new IllegalArgumentException(
+                        "please choose either --moveToOrigin or --replaceLastTransformWithStage but not both");
+            }
+
+            final StackMetaData sourceStackMetaData = fromDataClient.getStackMetaData(parameters.fromStack);
+            final StackStats sourceStackStats = sourceStackMetaData.getStats();
+            final Bounds sourceStackBounds = sourceStackStats.getStackBounds();
+
+            final double padding = 10.0;
+            if ((sourceStackBounds.getMinX() < 0) || (sourceStackBounds.getMinX() > padding) ||
+                (sourceStackBounds.getMinY() < 0) || (sourceStackBounds.getMinY() > padding)) {
+
+                final double xOffset = padding - sourceStackBounds.getMinX();
+                final double yOffset = padding - sourceStackBounds.getMinY();
+                final String dataString = "1 0 0 1 " + xOffset + " " + yOffset;
+
+                final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_hhmmss_SSS");
+                moveStackTransform = new LeafTransformSpec("MOVE_STACK_" + sdf.format(new Date()),
+                                                           null,
+                                                           AffineModel2D.class.getName(),
+                                                           dataString);
+            } else {
+                LOG.info("skipping move to origin since source stack is already near the origin");
+                moveStackTransform = null;
+            }
+
+        } else {
+            moveStackTransform = null;
+        }
+
     }
 
     private void setUpDerivedStack() throws Exception {
@@ -203,6 +248,11 @@ public class CopyStackClient {
                      sourceCollection.getTileCount());
         } else {
             toStackZValues.add(z);
+        }
+
+        if (moveStackTransform != null) {
+            sourceCollection.addTransformSpecToCollection(moveStackTransform);
+            sourceCollection.addReferenceTransformToAllTiles(moveStackTransform.getId(), false);
         }
 
         sourceCollection.removeUnreferencedTransforms();
