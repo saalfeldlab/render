@@ -672,12 +672,17 @@ public class RenderImageService {
         final ResponseHelper responseHelper = new ResponseHelper(request, stackMetaData);
         if (responseHelper.isModified()) {
 
-            final File sourceFile = getLargeDataFile(stackMetaData,
-                                                     width + "x" + height,
-                                                     level.toString(),
-                                                     String.valueOf(z.intValue()),
-                                                     row.toString(),
-                                                     column + "." + format);
+            final File sourceFile;
+            if ((maxTileSpecsToRender == null) || (maxTileSpecsToRender != 0)) {
+                sourceFile = getLargeDataFile(stackMetaData,
+                                              width + "x" + height,
+                                              level.toString(),
+                                              String.valueOf(z.intValue()),
+                                              row.toString(),
+                                              column + "." + format);
+            } else {
+                sourceFile = null;
+            }
 
             if (sourceFile == null) {
 
