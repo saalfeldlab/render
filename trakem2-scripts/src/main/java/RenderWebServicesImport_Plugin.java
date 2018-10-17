@@ -8,8 +8,14 @@ import ij.process.ByteProcessor;
 
 import java.awt.Color;
 import java.awt.geom.AffineTransform;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -40,7 +46,7 @@ import ini.trakem2.persistence.Loader;
 import ini.trakem2.utils.Utils;
 
 /**
- * TODO: add javadoc
+ * This plug-in imports render web services stack tile data into a TrakEM project.
  *
  * @author Eric Trautman
  */
@@ -49,8 +55,6 @@ public class RenderWebServicesImport_Plugin
 
     @Override
     public void run(final String arg) {
-
-        System.out.println(">>>> RenderWebServicesImport_Plugin.run: entry >>>>");
 
         PluginArgument pluginArgument = null;
         try {
@@ -62,6 +66,8 @@ public class RenderWebServicesImport_Plugin
         }
 
         if (pluginArgument != null) {
+
+            Utils.log("\nRenderWebServicesImport_Plugin.run: entry");
 
             final List<Project> projectList = Project.getProjects();
 
@@ -78,6 +84,12 @@ public class RenderWebServicesImport_Plugin
 
                 final DirectoryChooser chooser = new DirectoryChooser("Select storage folder");
                 String storageFolder = chooser.getDirectory();
+
+                if (storageFolder == null) {
+                    Utils.log("RenderWebServicesImport_Plugin.run: cancelled");
+                    return;
+                }
+
                 storageFolder = storageFolder.replace('\\', '/');
 
                 final Project trakProject = Project.newFSProject("blank", null, storageFolder, false);
@@ -112,9 +124,10 @@ public class RenderWebServicesImport_Plugin
                     convertTileSpecsToPatches();
                 }
             }
+
+            Utils.log("\nRenderWebServicesImport_Plugin.run: exit");
         }
 
-        System.out.println("<<<< RenderWebServicesImport_Plugin.run: exit <<<<");
     }
 
     private void convertTileSpecsToPatches() {
@@ -139,6 +152,7 @@ public class RenderWebServicesImport_Plugin
             tileSpecList.addAll(layerRenderParameters.getTileSpecs());
         }
 
+        final StringBuilder skippedMasksCsvData = new StringBuilder();
         int tileCount = 0;
         int type = importData.imagePlusType;
         for (final TileSpec tileSpec : tileSpecList) {
@@ -184,12 +198,11 @@ public class RenderWebServicesImport_Plugin
                             final ImagePlus maskImagePlus = trakLoader.openImagePlus(maskFilePath);
                             maskProcessor = maskImagePlus.getProcessor().convertToByteProcessor();
                             maskPathToProcessor.put(maskFilePath, maskProcessor);
-                            System.out.println("convertTileSpecsToPatches: loaded mask " + maskFilePath);
+                            Utils.log("convertTileSpecsToPatches: loaded mask " + maskFilePath);
                         }
                         trakPatch.setAlphaMask(maskProcessor);
                     } else {
-                        Utils.log("convertTileSpecsToPatches: skipped load of mask for patch, " + tileId + ", " +
-                                  maskFilePath);
+                        skippedMasksCsvData.append(tileId).append(',').append(maskFilePath).append('\n');
                     }
                 }
 
@@ -222,8 +235,9 @@ public class RenderWebServicesImport_Plugin
 
                 tileCount++;
 
-                if (tileCount % 200 == 0) {
-                    System.out.println("convertTileSpecsToPatches: converted " + tileCount + " tiles ...");
+                if (tileCount % 100 == 0) {
+                    Utils.log("convertTileSpecsToPatches: converted " + tileCount +
+                              " out of " + tileSpecList.size() + " tiles");
                 }
 
             } catch (final Exception e) {
@@ -239,6 +253,21 @@ public class RenderWebServicesImport_Plugin
 
         if (tileCount < tileSpecList.size()) {
             Utils.log("\nWARNING: Check console window for details about tile conversion failures!\n");
+        }
+
+        if (skippedMasksCsvData.length() > 0) {
+            final String storageFolder = importData.trakProject.getLoader().getStorageFolder();
+            final String csvFileName = "skipped_masks_" + new Date().getTime() + ".csv";
+            final Path csvPath = Paths.get(storageFolder, csvFileName);
+            try {
+                Files.write(csvPath, skippedMasksCsvData.toString().getBytes(), StandardOpenOption.CREATE);
+                Utils.log("convertTileSpecsToPatches: saved skipped masks details in " + csvPath.toAbsolutePath());
+            } catch (final IOException e) {
+                System.out.println("\nfailed to save " + csvPath.toAbsolutePath());
+                e.printStackTrace(System.out);
+                Utils.log("convertTileSpecsToPatches: skippedMasksCsvData is:");
+                Utils.log(skippedMasksCsvData.toString());
+            }
         }
 
     }
@@ -376,7 +405,7 @@ public class RenderWebServicesImport_Plugin
 
                         for (final Double z : zValues) {
                             layerRenderParametersList.add(renderDataClient.getRenderParametersForZ(renderStack, z));
-                            System.out.println("loadRenderData: loaded data for layer " + z + " in " + stackId + "\n");
+                            Utils.log("loadRenderData: loaded data for layer " + z + " in " + stackId);
                         }
 
                         if (isNewProject) {
