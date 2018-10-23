@@ -183,16 +183,26 @@ public class RenderWebServicesExport_Plugin
                     final CoordinateTransform stageTransform = flattenedTransformList.get(stageTransformIndex);
                     final CoordinateTransform alignmentTransform = flattenedTransformList.get(alignmentTransformIndex);
 
-                    if (stageTransform instanceof TranslationModel2D) {
-                        if (alignmentTransform instanceof AffineModel2D) {
-                            ((AffineModel2D) alignmentTransform).concatenate((TranslationModel2D) stageTransform);
+                    if (alignmentTransform instanceof AffineModel2D) {
+                        final AffineModel2D alignmentModel = (AffineModel2D) alignmentTransform;
+                        if (stageTransform instanceof TranslationModel2D) {
+                            alignmentModel.concatenate((TranslationModel2D) stageTransform);
+                        } else if (stageTransform instanceof AffineModel2D) {
+                            alignmentModel.concatenate((AffineModel2D) stageTransform);
                         } else {
-                            throw new IllegalArgumentException("tile " + tileId + " alignment transform class is " +
-                                                               alignmentTransform.getClass().getName());
+                            throw new IllegalArgumentException("tile " + tileId + " stage transform class is " +
+                                                               stageTransform.getClass().getName() +
+                                                               " instead of " + TranslationModel2D.class.getName() +
+                                                               " or " + AffineModel2D.class.getName() +
+                                                               "\nflattened transform list is:\n" +
+                                                               getTransformLogInfo(flattenedTransformList));
                         }
                     } else {
-                        throw new IllegalArgumentException("tile " + tileId + " stage transform class is " +
-                                                           stageTransform.getClass().getName());
+                        throw new IllegalArgumentException("tile " + tileId + " alignment transform class is " +
+                                                           alignmentTransform.getClass().getName() +
+                                                           " instead of " + AffineModel2D.class.getName()+
+                                                           "\nflattened transform list is:\n" +
+                                                           getTransformLogInfo(flattenedTransformList));
                     }
 
                     final LeafTransformSpec transformSpec = new LeafTransformSpec(alignmentTransform.getClass().getName(),
@@ -203,9 +213,7 @@ public class RenderWebServicesExport_Plugin
 //                    // debug TrakEM2 transforms for the first few tiles ...
 //                    if (updatedTileSpecCount < 5) {
 //                        final StringBuilder msg = new StringBuilder("\ntileId: " + tileId + ":\n");
-//                        for (final CoordinateTransform cot : flattenedTransformList) {
-//                            msg.append(cot.getClass().getName()).append(": '").append(cot.toDataString()).append("'\n");
-//                        }
+//                        msg.append(getTransformLogInfo(flattenedTransformList));
 //                        Utils.log(msg.append("\n"));
 //                    }
 
@@ -243,6 +251,14 @@ public class RenderWebServicesExport_Plugin
         }
 
         Utils.log("\nexportPatches: Done!");
+    }
+
+    private String getTransformLogInfo(final List<CoordinateTransform> flattenedTransformList) {
+        final StringBuilder info = new StringBuilder();
+        for (final CoordinateTransform cot : flattenedTransformList) {
+            info.append(cot.getClass().getName()).append(": '").append(cot.toDataString()).append("'\n");
+        }
+        return info.toString();
     }
 
     private static ExportData exportData = null;
@@ -343,6 +359,19 @@ public class RenderWebServicesExport_Plugin
             if (! wasCancelled) {
 
                 try {
+
+                    final Layer firstLayer = exportData.trakLayerSet.getLayer(exportData.trakMinZ);
+                    if (firstLayer == null) {
+                        throw new IllegalArgumentException(
+                                "no layers found with min Z " + exportData.trakMinZ);
+                    }
+
+                    final Layer lastLayer = exportData.trakLayerSet.getLayer(exportData.trakMaxZ);
+                    if (lastLayer == null) {
+                        throw new IllegalArgumentException(
+                                "no layers found with max Z " + exportData.trakMaxZ);
+                    }
+
                     if (hasMappedZValues()) {
                         try {
                             for (final String zPair : trakZToTargetZMapString.split(",")) {
