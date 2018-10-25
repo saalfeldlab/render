@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -23,6 +24,7 @@ import javax.annotation.Nonnull;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.spec.LayoutData;
@@ -36,6 +38,7 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.LayerBoundsParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,11 +75,14 @@ public class TilePairClient {
         )
         private String baseStack;
 
-        @Parameter(names = "--minZ", description = "Minimum Z value for all tiles", required = true)
-        public Double minZ;
+        @ParametersDelegate
+        public ZRangeParameters layerRange = new ZRangeParameters();
 
-        @Parameter(names = "--maxZ", description = "Maximum Z value for all tiles", required = true)
-        public Double maxZ;
+        @Parameter(
+                names = "--z",
+                description = "Explicit z values for layers to be processed (only valid for generating montage pairs with --zNeighborDistance 0)",
+                variableArity = true) // e.g. --z 20.0 --z 21.0 --z 22.0
+        public List<Double> zValues;
 
         @Parameter(
                 names = "--xyNeighborFactor",
@@ -86,7 +92,7 @@ public class TilePairClient {
 
         @Parameter(
                 names = "--explicitRadius",
-                description = "Explit radius in full scale pixels for locating neighbor tiles (if set, will override --xyNeighborFactor)"
+                description = "Explicit radius in full scale pixels for locating neighbor tiles (if set, will override --xyNeighborFactor)"
         )
         public Double explicitRadius;
 
@@ -143,7 +149,7 @@ public class TilePairClient {
 
         @Parameter(
                 names = "--onlyIncludeTilesFromStack",
-                description = "Name of match collection whose existing pairs should be excluded from the generated list (default is to include all pairs)"
+                description = "Name of stack containing tile ids to include (uses --owner and --project values, default is to include all tiles)"
         )
         public String onlyIncludeTilesFromStack;
 
@@ -235,6 +241,11 @@ public class TilePairClient {
 
         this.renderDataClient = parameters.renderWeb.getDataClient();
 
+        if ((parameters.zValues != null) && (parameters.zValues.size() > 0) && (parameters.zNeighborDistance != 0)) {
+            throw new IllegalArgumentException(
+                    "Explicit --z values can only be specified when --zNeighborDistance is zero (for montages).");
+        }
+
         if (parameters.onlyIncludeTilesFromStack == null) {
             includeClient = null;
             includeStack = null;
@@ -278,12 +289,13 @@ public class TilePairClient {
     public List<Double> getZValues()
             throws IOException {
         return renderDataClient.getStackZValues(parameters.stack,
-                                                parameters.minZ,
-                                                parameters.maxZ);
+                                                parameters.layerRange.minZ,
+                                                parameters.layerRange.maxZ,
+                                                parameters.zValues);
     }
 
     void deriveAndSaveSortedNeighborPairs()
-            throws IOException {
+            throws IllegalArgumentException, IOException {
 
         LOG.info("deriveAndSaveSortedNeighborPairs: entry");
 
@@ -291,11 +303,30 @@ public class TilePairClient {
 
         final List<Double> zValues = getZValues();
 
-        final ExistingMatchHelper existingMatchHelper;
-        if (parameters.excludePairsInMatchCollection == null) {
-            existingMatchHelper = null;
-        } else {
-            existingMatchHelper = new ExistingMatchHelper(parameters, renderDataClient);
+        if (zValues.size() == 0) {
+            throw new IllegalArgumentException(
+                    "stack " + parameters.stack + " does not contain any layers with the specified z values");
+        }
+
+        Collections.sort(zValues);
+        final double minZ = zValues.get(0);
+        final double maxZ = zValues.get(zValues.size() - 1);
+
+        ExistingMatchHelper existingMatchHelper = null;
+        if (parameters.excludePairsInMatchCollection != null) {
+
+            final String collectionName = parameters.excludePairsInMatchCollection;
+            final RenderDataClient matchDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                                          parameters.getExistingMatchOwner(),
+                                                                          collectionName);
+
+            final List<MatchCollectionMetaData> matchCollections = matchDataClient.getOwnerMatchCollections();
+            final boolean foundCollection = matchCollections.stream()
+                    .anyMatch(md -> md.getCollectionId().getName().equals(collectionName));
+
+            if (foundCollection) {
+                existingMatchHelper = new ExistingMatchHelper(parameters, renderDataClient, minZ, maxZ, matchDataClient);
+            }
         }
 
         final Map<Double, TileBoundsRTree> zToTreeMap = new LinkedHashMap<>(zValues.size());
@@ -332,7 +363,7 @@ public class TilePairClient {
 
             neighborTreeList = new ArrayList<>();
 
-            final double idealMaxNeighborZ = Math.min(parameters.maxZ, z + parameters.zNeighborDistance);
+            final double idealMaxNeighborZ = Math.min(maxZ, z + parameters.zNeighborDistance);
             for (int neighborZIndex = zIndex + 1; neighborZIndex < zValues.size(); neighborZIndex++) {
 
                 neighborZ = zValues.get(neighborZIndex);
@@ -530,12 +561,17 @@ public class TilePairClient {
         final Set<OrderedCanvasIdPair> existingPairs;
 
         ExistingMatchHelper(final Parameters clientParameters,
-                            final RenderDataClient renderDataClient)
+                            final RenderDataClient renderDataClient,
+                            final double minZ,
+                            final double maxZ,
+                            final RenderDataClient matchDataClient)
                 throws IOException {
 
+            this.matchDataClient = matchDataClient;
+
             stackSectionDataList = renderDataClient.getStackSectionData(clientParameters.stack,
-                                                                        clientParameters.minZ,
-                                                                        clientParameters.maxZ);
+                                                                        minZ,
+                                                                        maxZ);
 
             zToSectionIdMap = new HashMap<>(stackSectionDataList.size());
             for (final SectionData sectionData : stackSectionDataList) {
@@ -543,10 +579,6 @@ public class TilePairClient {
                                                                                    z -> new ArrayList<>());
                 sectionIdList.add(sectionData.getSectionId());
             }
-
-            matchDataClient = new RenderDataClient(clientParameters.renderWeb.baseDataUrl,
-                                                   clientParameters.getExistingMatchOwner(),
-                                                   clientParameters.excludePairsInMatchCollection);
 
             existingPairs = new LinkedHashSet<>(8192); // order is important for later removal of matches
         }

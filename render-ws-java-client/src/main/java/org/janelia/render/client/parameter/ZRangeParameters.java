@@ -14,14 +14,12 @@ public class ZRangeParameters
 
     @Parameter(
             names = "--minZ",
-            description = "Minimum Z value for layers to be processed",
-            required = false)
+            description = "Minimum Z value for layers to be processed")
     public Double minZ;
 
     @Parameter(
             names = "--maxZ",
-            description = "Maximum Z value for layers to be processed",
-            required = false)
+            description = "Maximum Z value for layers to be processed")
     public Double maxZ;
 
 }
