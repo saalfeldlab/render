@@ -17,6 +17,7 @@ import mpicbg.trakem2.transform.TranslationModel2D;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.spec.ChannelSpec;
+import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -136,11 +137,15 @@ public class ImportDmgClient {
         final double dHeight = parameters.height;
 
         // <dmgRootPath>/<width>x<height>/0/<z>/<z>.0.<row>.<col>.png
-        final Pattern baseNamePattern = Pattern.compile("^" + z + "\\.(\\d+)\\.(\\d+)\\." + parameters.dmgFormat + "$");
+        final Pattern baseNamePattern = Pattern.compile(
+                "^" + z + "\\.(?:.*\\.)?(\\d+)\\.(\\d+)\\." + parameters.dmgFormat + "$");
+
         final Path zPath = Paths.get(parameters.dmgRootPath,
                                      parameters.width + "x" + parameters.height,
                                      "0",
-                                     String.valueOf(z.intValue()));
+                                     String.valueOf(z.intValue())).toAbsolutePath();
+
+        LOG.info("importStackData: looking for images in {}", zPath);
 
         Files.list(zPath).forEach(path -> {
 
@@ -161,6 +166,9 @@ public class ImportDmgClient {
                 channelSpec.putMipmap(0, new ImageAndMask(path.toAbsolutePath().toString(), null));
 
                 final TileSpec tileSpec = new TileSpec();
+                final LayoutData layoutData =
+                        new LayoutData(z.toString(), null, null, row, col, minX, minY, null);
+                tileSpec.setLayout(layoutData);
                 tileSpec.setTileId(baseName);
                 tileSpec.setZ(z);
                 tileSpec.setWidth(dWidth);
@@ -170,6 +178,11 @@ public class ImportDmgClient {
                 tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
 
                 tileSpecs.add(tileSpec);
+
+            } else if (baseName.endsWith(parameters.dmgFormat)) {
+
+                LOG.info("importStackData: ignoring {}", baseName);
+                
             }
 
         });
