@@ -9,10 +9,12 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import mpicbg.trakem2.util.Downsampler;
 
@@ -44,7 +46,7 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
      * @return a list of consistently shuffled RGB colors suitable for use as
      *         16-bit gray colors (red = 0).
      */
-    public static List<Color> buildColorList() {
+    static List<Color> buildColorList() {
         final int maxComponentCount = 256 - 2; // exclude 0 and 255
         final List<Color> colorList = new ArrayList<>(maxComponentCount * maxComponentCount);
         for (int green = 1; green < maxComponentCount; green++) {
@@ -101,7 +103,7 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         buildMaps(tileSpecs);
     }
 
-    protected Color getColorForUrl(final String url)
+    Color getColorForUrl(final String url)
             throws IllegalArgumentException {
 
         final Color labelColor = urlToColor.get(url);
@@ -185,16 +187,17 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
                     colorList.size() + " distinct labels");
         }
 
-        int tileIndex = 0;
-        ChannelSpec firstChannelSpec;
-        String imageUrl;
-        for (final TileSpec tileSpec : tileSpecs) {
-            firstChannelSpec = tileSpec.getAllChannels().get(0);
-            imageUrl = firstChannelSpec.getFloorMipmapEntry(0).getValue().getImageUrl();
-            urlToTileSpec.put(imageUrl, tileSpec);
-            urlToColor.put(imageUrl, colorList.get(tileIndex));
-            tileIndex++;
-        }
+        final AtomicInteger tileIndex = new AtomicInteger(0);
+
+        tileSpecs.stream()
+                .sorted(Comparator.comparing(TileSpec::getTileId))
+                .forEach(tileSpec -> {
+                    final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().get(0);
+                    final String imageUrl = firstChannelSpec.getFloorMipmapEntry(0).getValue().getImageUrl();
+                    final int colorIndex = tileIndex.getAndIncrement();
+                    urlToTileSpec.put(imageUrl, tileSpec);
+                    urlToColor.put(imageUrl, colorList.get(colorIndex));
+                });
 
     }
 

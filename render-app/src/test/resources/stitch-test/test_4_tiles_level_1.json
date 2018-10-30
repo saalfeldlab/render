@@ -1,5 +1,6 @@
 [
     {
+        "tileId": "tile_1",
         "width": 2650.0,
         "height": 2260.0,
         "mipmapLevels": {
@@ -27,6 +28,7 @@
         }
     },
     {
+        "tileId": "tile_2",
         "width": 2650.0,
         "height": 2260.0,
         "mipmapLevels": {
@@ -54,6 +56,7 @@
         }
     },
     {
+        "tileId": "tile_3",
         "width": 2650.0,
         "height": 2260.0,
         "mipmapLevels": {
@@ -81,6 +84,7 @@
         }
     },
     {
+        "tileId": "tile_4",
         "width": 2650.0,
         "height": 2260.0,
         "mipmapLevels": {

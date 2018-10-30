@@ -1,5 +1,6 @@
 [
     {
+        "tileId": "tile_1",
         "mipmapLevels": {
             "0": {
                 "imageUrl": "src/test/resources/stitch-test/col0075_row0021_cam1.png"
@@ -20,6 +21,7 @@
         }
     },
     {
+        "tileId": "tile_2",
         "mipmapLevels": {
             "0": {
                 "imageUrl": "src/test/resources/stitch-test/col0075_row0022_cam3.png",
@@ -41,6 +43,7 @@
         }
     },
     {
+        "tileId": "tile_3",
         "mipmapLevels": {
             "0": {
                 "imageUrl": "src/test/resources/stitch-test/col0076_row0021_cam0.png",
@@ -62,6 +65,7 @@
         }
     },
     {
+        "tileId": "tile_4",
         "mipmapLevels": {
             "0": {
                 "imageUrl": "src/test/resources/stitch-test/col0076_row0022_cam2.png"
