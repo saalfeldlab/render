@@ -79,6 +79,10 @@ public class RenderWebServiceUrls implements Serializable {
         return getMatchCollectionUrlString() + "/group/" + groupId + "/matchesOutsideGroup";
     }
 
+    public String getMatchesWithinGroupUrlString(final String groupId) {
+        return getMatchCollectionUrlString() + "/group/" + groupId + "/matchesWithinGroup";
+    }
+
     public String getStackUrlString(final String stack) {
         return getOwnerUrlString() + "/project/" + project + "/stack/" + stack;
     }

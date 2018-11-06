@@ -1146,6 +1146,29 @@ public class RenderDataClient {
         return httpClient.execute(httpGet, responseHandler);
     }
 
+    /**
+     * @param  groupId      groupId (usually the section id).
+     *
+     * @return list of canvas matches between the specified groupId
+     *         and all other canvases that have the same groupId.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<CanvasMatches> getMatchesWithinGroup(final String groupId)
+            throws IOException {
+
+        final URI uri = getUri(urls.getMatchesWithinGroupUrlString(groupId));
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final TypeReference<List<CanvasMatches>> typeReference = new TypeReference<List<CanvasMatches>>() {};
+        final JsonUtils.GenericHelper<List<CanvasMatches>> helper = new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<CanvasMatches>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getMatchesWithinGroup: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
 
     /**
      * Deletes matches between the specified group id and all other canvases that have a different groupId.
