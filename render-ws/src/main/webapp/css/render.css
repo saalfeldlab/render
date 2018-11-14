@@ -393,3 +393,53 @@ caption {
     cursor: pointer;
     background-color: #e6bf99
 }
+
+#diagnostics_table img.thumb {
+    border: 1px solid #ddd; /* Gray border */
+    border-radius: 4px;  /* Rounded border */
+    padding: 5px; /* Some padding */
+    height: 200px; /* Set a small width */
+}
+
+/* Add a hover effect (blue shadow) */
+#diagnostics_table img:hover {
+    box-shadow: 0 0 2px 1px rgba(0, 140, 186, 0.5);
+}
+
+#diagnostics_table ol {
+    margin-top: 0;
+}
+
+#diagnostics_table li {
+    font-size: small;
+}
+
+#diagnostics_table a {
+    margin-right: 10px;
+}
+
+#diagnostics_table a.first {
+    width: 10em;
+    display: inline-block;
+}
+
+#diagnostics_table th.center {
+    text-align: center;
+}
+
+#diagnostics_table th.narrow {
+    width: 6em;
+}
+
+#diagnostics_table th.right {
+    text-align: right;
+}
+
+#diagnostics_table li:hover {
+    background-color: yellow;
+}
+
+#diagnostics_table .outlier_details {
+    height: 200px;
+    overflow: auto;
+}
