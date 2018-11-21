@@ -56,7 +56,7 @@ public class UnconnectedTileRemovalClientTest {
         }
 
         final UnconnectedTileRemovalClient.Parameters parameters = new UnconnectedTileRemovalClient.Parameters();
-        parameters.smallClusterFactor = 0.5; // should result in maxSmallClusterSize of 4 (0.5 * 8)
+        parameters.tileCluster.smallClusterFactor = 0.5; // should result in maxSmallClusterSize of 4 (0.5 * 8)
 
         final UnconnectedTileRemovalClient client = new UnconnectedTileRemovalClient(parameters);
         client.markSmallClustersAsUnconnected(99.0, matchesList, unconnectedTileIds);

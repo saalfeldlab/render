@@ -252,7 +252,7 @@ public class ResolvedTileSpecCollection implements Serializable {
      *
      * @param  transformId    identifies the transform to be applied to all tiles.
      *
-     * @param  replaceLast    if true, the reference transform will replace the tile's last transform;
+     * @param  replaceLast    if true, the reference transform will replace each tile's last transform;
      *                        otherwise, the specified transform will simply be appended.
      *
      * @throws IllegalArgumentException
@@ -260,6 +260,32 @@ public class ResolvedTileSpecCollection implements Serializable {
      */
     public void addReferenceTransformToAllTiles(final String transformId,
                                                 final boolean replaceLast)
+            throws IllegalArgumentException {
+        addReferenceTransformToTilesWithIds(transformId, tileIdToSpecMap.keySet(), replaceLast);
+    }
+
+    /**
+     * Adds a reference to the specified transform to all tiles with ids in the specified set.
+     *
+     * Each tile's bounding box is recalculated after the new transform is applied
+     * (so this can potentially be a long running operation).
+     *
+     * If this collection has a tile spec validator that determines one or more tile specs are invalid
+     * (after applying the transform), those tile specs will be removed from the collection.
+     *
+     * @param  transformId    identifies the transform to be applied.
+     *
+     * @param  tileIds        identifies tiles to which the transform should be applied.
+     *
+     * @param  replaceLast    if true, the reference transform will replace each tile's last transform;
+     *                        otherwise, the specified transform will simply be appended.
+     *
+     * @throws IllegalArgumentException
+     *   if the specified transform cannot be found.
+     */
+    public void addReferenceTransformToTilesWithIds(final String transformId,
+                                                    final Set<String> tileIds,
+                                                    final boolean replaceLast)
             throws IllegalArgumentException {
 
         final TransformSpec transformSpec = transformIdToSpecMap.get(transformId);
@@ -272,16 +298,16 @@ public class ResolvedTileSpecCollection implements Serializable {
 
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
-        for (final String tileId : tileIdToSpecMap.keySet()) {
+        for (final String tileId : tileIds) {
             addTransformSpecToTile(tileId, referenceTransformSpec, applicationMethod);
             tileSpecCount++;
             if (timer.hasIntervalPassed()) {
-                LOG.info("addReferenceTransformToAllTiles: added transform to {} out of {} tiles",
-                         tileSpecCount, tileIdToSpecMap.size());
+                LOG.info("addReferenceTransformToTilesWithIds: added transform to {} out of {} tiles",
+                         tileSpecCount, tileIds.size());
             }
         }
 
-        LOG.info("addReferenceTransformToAllTiles: added transform to {} tiles, elapsedSeconds={}",
+        LOG.info("addReferenceTransformToTilesWithIds: added transform to {} tiles, elapsedSeconds={}",
                  tileSpecCount, timer.getElapsedSeconds());
     }
 

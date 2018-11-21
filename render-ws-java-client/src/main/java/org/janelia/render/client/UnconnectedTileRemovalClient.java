@@ -4,11 +4,8 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -20,6 +17,7 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.TileClusterParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,30 +40,8 @@ public class UnconnectedTileRemovalClient {
                 required = true)
         public String stack;
 
-        @Parameter(
-                names = "--matchOwner",
-                description = "Match collection owner (default is to use render stack owner)")
-        public String matchOwner;
-
-        @Parameter(
-                names = "--matchCollection",
-                description = "Match collection name",
-                required = true)
-        public String matchCollection;
-
-        @Parameter(
-                names = "--maxSmallClusterSize",
-                description = "If specified, small connected clusters with this many or fewer tiles will be " +
-                              "considered unconnected and be removed.")
-        public Integer maxSmallClusterSize;
-
-        @Parameter(
-                names = "--smallClusterFactor",
-                description = "If specified, relatively small connected clusters will be considered unconnected " +
-                              "and be removed.  A layer's max small cluster size is calculated by multiplying this " +
-                              "factor by the size of the layer's largest connected cluster.  " +
-                              "This value will be ignored if --maxSmallClusterSize is specified.")
-        public Double smallClusterFactor;
+        @ParametersDelegate
+        TileClusterParameters tileCluster = new TileClusterParameters();
 
         @Parameter(
                 names = "--reportRemovedTiles",
@@ -97,9 +73,6 @@ public class UnconnectedTileRemovalClient {
                 variableArity = true) // e.g. --z 20.0 21.0 22.0
         public List<Double> zValues;
 
-        private String getMatchOwner() {
-            return matchOwner == null ? renderWeb.owner : matchOwner;
-        }
     }
 
     /**
@@ -112,6 +85,8 @@ public class UnconnectedTileRemovalClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
+
+                parameters.tileCluster.validate();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -132,9 +107,9 @@ public class UnconnectedTileRemovalClient {
             throws Exception {
 
         final RenderDataClient renderDataClient = parameters.renderWeb.getDataClient();
-        final RenderDataClient matchDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
-                                                                      parameters.getMatchOwner(),
-                                                                      parameters.matchCollection);
+        final RenderDataClient matchDataClient =
+                parameters.tileCluster.getMatchDataClient(parameters.renderWeb.baseDataUrl,
+                                                          parameters.renderWeb.owner);
 
         final String removedTilesStackName = parameters.removedTilesStackName == null ?
                                              parameters.stack + "_removed_tiles" :
@@ -164,7 +139,7 @@ public class UnconnectedTileRemovalClient {
                }
             }
 
-            if ((parameters.maxSmallClusterSize != null) || (parameters.smallClusterFactor != null)) {
+            if (parameters.tileCluster.isDefined()) {
                 markSmallClustersAsUnconnected(z, matchesList, unconnectedTileIds);
             }
 
@@ -252,22 +227,13 @@ public class UnconnectedTileRemovalClient {
                                         final List<CanvasMatches> matchesList,
                                         final Set<String> unconnectedTileIds) {
 
-        final List<Set<String>> connectedTileSets = buildConnectedTileSets(matchesList);
-        connectedTileSets.sort(Comparator.comparingInt(Set::size));
-
-        final List<Integer> connectedSetSizes = new ArrayList<>();
-        connectedTileSets.forEach(tileIds -> connectedSetSizes.add(tileIds.size()));
-
-        LOG.info("markSmallClustersAsUnconnected: for z {}, found {} connected tile sets with sizes {}",
-                 z, connectedTileSets.size(), connectedSetSizes);
+        final List<Set<String>> connectedTileSets = TileClusterParameters.buildAndSortConnectedTileSets(z, matchesList);
 
         if (connectedTileSets.size() > 1) {
 
             // keep largest connected tile set regardless of size
             final Set<String> largestCluster = connectedTileSets.remove(connectedTileSets.size() - 1);
-            final int maxSmallClusterSize = parameters.maxSmallClusterSize == null ?
-                                            (int) Math.ceil(largestCluster.size() * parameters.smallClusterFactor) :
-                                            parameters.maxSmallClusterSize;
+            final int maxSmallClusterSize = parameters.tileCluster.getEffectiveMaxSmallClusterSize(largestCluster.size());
 
             LOG.info("markSmallClustersAsUnconnected: for z {}, maxSmallClusterSize is {}",
                      z, maxSmallClusterSize);
@@ -290,56 +256,6 @@ public class UnconnectedTileRemovalClient {
 
         }
 
-    }
-
-    private List<Set<String>> buildConnectedTileSets(final List<CanvasMatches> matchesList) {
-
-        final Map<String, Set<String>> connectionsMap = new HashMap<>();
-
-        Set<String> pSet;
-        Set<String> qSet;
-
-        for (final CanvasMatches matches : matchesList) {
-            final String pId = matches.getpId();
-            final String qId = matches.getqId();
-
-            pSet = connectionsMap.computeIfAbsent(pId, k -> new HashSet<>());
-            pSet.add(qId);
-
-            qSet = connectionsMap.computeIfAbsent(qId, k -> new HashSet<>());
-            qSet.add(pId);
-        }
-
-        final List<Set<String>> connectedTileSets = new ArrayList<>();
-
-        while (connectionsMap.size() > 0) {
-            @SuppressWarnings("OptionalGetWithoutIsPresent")
-            final String tileId = connectionsMap.keySet().stream().findFirst().get();
-            final Set<String> connectedTileSet = new HashSet<>();
-            addConnectedTiles(tileId, connectionsMap, connectedTileSet);
-            connectedTileSets.add(connectedTileSet);
-        }
-
-        return connectedTileSets;
-    }
-
-    private void addConnectedTiles(final String tileId,
-                                   final Map<String, Set<String>> connectionsMap,
-                                   final Set<String> connectedTileSet) {
-
-        final boolean isNewConnection = connectedTileSet.add(tileId);
-
-        if (isNewConnection) {
-
-            final Set<String> connectedTileIds = connectionsMap.remove(tileId);
-
-            if (connectedTileIds != null) {
-                for (final String connectedTileId : connectedTileIds) {
-                    addConnectedTiles(connectedTileId, connectionsMap, connectedTileSet);
-                }
-            }
-
-        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(UnconnectedTileRemovalClient.class);
