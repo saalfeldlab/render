@@ -1,5 +1,10 @@
 package org.janelia.render.client.response;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -11,34 +16,29 @@ import org.apache.http.entity.ContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-
 /**
  * Base class containing common response handling methods.
  *
  * @author Eric Trautman
  */
-public class BaseResponseHandler {
+class BaseResponseHandler {
 
-    public static final String TEXT_PLAIN_MIME_TYPE = ContentType.TEXT_PLAIN.getMimeType();
-    public static final String JSON_MIME_TYPE = ContentType.APPLICATION_JSON.getMimeType();
+    private static final String TEXT_PLAIN_MIME_TYPE = ContentType.TEXT_PLAIN.getMimeType();
+    static final String JSON_MIME_TYPE = ContentType.APPLICATION_JSON.getMimeType();
 
-    public static final Set<Integer> OK = new HashSet<Integer>(Arrays.asList(HttpStatus.SC_OK));
-    public static final Set<Integer> CREATED = new HashSet<Integer>(Arrays.asList(HttpStatus.SC_CREATED));
+    static final Set<Integer> OK = new HashSet<>(Collections.singletonList(HttpStatus.SC_OK));
+    static final Set<Integer> CREATED = new HashSet<>(Collections.singletonList(HttpStatus.SC_CREATED));
 
-    private String requestContext;
+    private final String requestContext;
 
     /**
      * @param  requestContext  context (e.g. "PUT http://janelia.org") for use in error messages.
      */
-    public BaseResponseHandler(String requestContext) {
+    BaseResponseHandler(final String requestContext) {
         this.requestContext = requestContext;
     }
 
-    public String getRequestContext() {
+    String getRequestContext() {
         return requestContext;
     }
 
@@ -50,14 +50,15 @@ public class BaseResponseHandler {
      * @throws IOException
      *   if the entity content cannot be read.
      */
-    public String getResponseBodyText(HttpEntity entity)
+    String getResponseBodyText(final HttpEntity entity)
             throws IOException {
 
         String text = null;
 
         final Header contentTypeHeader = entity.getContentType();
         if (contentTypeHeader != null) {
-            if (TEXT_PLAIN_MIME_TYPE.equals(contentTypeHeader.getValue())) {
+            final String contentTypeValue = contentTypeHeader.getValue();
+            if ((contentTypeValue != null) && contentTypeValue.startsWith(TEXT_PLAIN_MIME_TYPE)) {
                 text = IOUtils.toString(entity.getContent());
             }
         }
@@ -75,8 +76,8 @@ public class BaseResponseHandler {
      * @throws IOException
      *   if an invalid
      */
-    public HttpEntity getValidatedResponseEntity(HttpResponse response,
-                                                 Set<Integer> validStatusCodes)
+    HttpEntity getValidatedResponseEntity(final HttpResponse response,
+                                          final Set<Integer> validStatusCodes)
             throws IOException {
 
         final StatusLine statusLine = response.getStatusLine();
@@ -87,7 +88,7 @@ public class BaseResponseHandler {
             String responseBodyText = null;
             try {
                 responseBodyText = getResponseBodyText(entity);
-            } catch (Throwable t) {
+            } catch (final Throwable t) {
                 LOG.warn("failed to parse entity content for error response, ignoring parse failure", t);
             }
             throw new ClientProtocolException("HTTP status " + statusCode + " with body\n\n  " + responseBodyText +

@@ -27,9 +27,9 @@ public class RenderDataClientTest {
     private Double z;
 
     @Before
-    public void setup() throws Exception {
+    public void setup() {
         renderDataClient = new RenderDataClient("http://renderer-dev:8080/render-ws/v1", "flyTEM", "FAFB00");
-        stack = "v5_montage";
+        stack = "v14_align_tps_20170818";
         z = 3451.0;
     }
 
