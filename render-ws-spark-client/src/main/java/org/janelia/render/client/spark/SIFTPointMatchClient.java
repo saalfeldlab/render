@@ -25,13 +25,13 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
-import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.FeatureStorageParameters;
-import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.janelia.render.client.spark.cache.CachedCanvasFeatures;
 import org.janelia.render.client.spark.cache.CanvasDataCache;
@@ -74,6 +74,11 @@ public class SIFTPointMatchClient
                 order = 5)
         public List<String> pairJson;
 
+        @Parameter(
+                names = "--expectedParallelism",
+                description = "Fail immediately if Spark Context parallelism does not match this value")
+        public Integer expectedParallelism;
+
     }
 
     public static void main(final String[] args) {
@@ -111,6 +116,14 @@ public class SIFTPointMatchClient
         final String executorsJson = LogUtilities.getExecutorsApiJson(sparkAppId);
 
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
+
+        if (parameters.expectedParallelism != null) {
+            final int defaultParallelism = sparkContext.defaultParallelism();
+            if (! parameters.expectedParallelism.equals(defaultParallelism)) {
+                throw new IllegalStateException("spark default parallelism is " + defaultParallelism +
+                                                " but should be " + parameters.expectedParallelism);
+            }
+        }
 
         for (final String pairJsonFileName : parameters.pairJson) {
             generateMatchesForPairFile(sparkContext, pairJsonFileName);
