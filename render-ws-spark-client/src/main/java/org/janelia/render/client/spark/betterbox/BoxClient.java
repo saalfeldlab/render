@@ -8,7 +8,6 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.InetAddress;
-import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -16,10 +15,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -38,13 +40,17 @@ import org.janelia.alignment.betterbox.BoxDataPyramidForLayer;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.LabelImageProcessorCache;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.IGridPaths;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.betterbox.BoxGenerator;
+import org.janelia.render.client.betterbox.LabelBoxValidationResult;
+import org.janelia.render.client.betterbox.LabelBoxValidator;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MaterializedBoxParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -87,14 +93,12 @@ public class BoxClient
                               "If set, the last boxes rendered for each prior partition will be removed " +
                               "because they are potentially corrupt.  All other previously rendered boxes " +
                               "will be excluded from this run and kept.",
-                required = false,
                 arity = 0)
         public boolean cleanUpPriorRun = false;
 
         @Parameter(
                 names = "--explainPlan",
                 description = "Run through partition stages and log 'the plan', but skip actual rendering",
-                required = false,
                 arity = 0)
         public boolean explainPlan = false;
 
@@ -103,14 +107,19 @@ public class BoxClient
                 description = "Maximum number of gigabytes of source level zero pixel data to cache per core.  " +
                               "WARNING: When increasing this value, make sure to monitor performance and pay close " +
                               "attention to JVM garbage collection times.  " +
-                              "Increases in cache size can non-intuitively degrade overall performance.",
-                required = false)
+                              "Increases in cache size can non-intuitively degrade overall performance."
+        )
         public Double maxCacheGb = 1.0;
+
+        @Parameter(
+                names = "--validateLabelsOnly",
+                description = "Run validation process on already generated label boxes and render nothing",
+                arity = 0)
+        public boolean validateLabelsOnly = false;
 
         @Parameter(
                 names = "--z",
                 description = "Explicit z values for layers to be rendered",
-                required = false,
                 variableArity = true) // e.g. --z 20.0 --z 21.0 --z 22.0
         public List<Double> zValues;
     }
@@ -138,13 +147,14 @@ public class BoxClient
     private List<Double> zValues;
     private File boxDataParentDirectory;
     private File partitionedBoxDataDirectory;
+    private File labelValidationDirectory;
 
     public BoxClient(final Parameters parameters) {
         this.parameters = parameters;
     }
 
     public void run(final SparkConf sparkConf)
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         final JavaSparkContext sparkContext = new JavaSparkContext(sparkConf);
 
@@ -161,11 +171,16 @@ public class BoxClient
                                                                       foundBoxesRenderedForPriorRun);
 
         final Broadcast<BoxGenerator> broadcastBoxGenerator = sparkContext.broadcast(boxGenerator);
-        for (int level = 0; level <= parameters.box.maxLevel; level++) {
-            renderBoxesForLevel(level, distributedBoxDataRdd, broadcastBoxGenerator);
+
+        if (parameters.validateLabelsOnly) {
+            validateLabelBoxes(sparkContext, distributedBoxDataRdd);
+        } else {
+            for (int level = 0; level <= parameters.box.maxLevel; level++) {
+                renderBoxesForLevel(level, distributedBoxDataRdd, broadcastBoxGenerator);
+            }
         }
 
-        if (parameters.box.isOverviewNeeded() && (!parameters.explainPlan)) {
+        if (parameters.box.isOverviewNeeded() && (! parameters.explainPlan) && (! parameters.validateLabelsOnly)) {
             renderOverviewImages(sparkContext,
                                  broadcastBoxGenerator);
         }
@@ -187,8 +202,13 @@ public class BoxClient
         final StackMetaData stackMetaData = driverDataClient.getStackMetaData(parameters.box.stack);
         final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
 
+        if (parameters.validateLabelsOnly) {
+            parameters.box.label = true;
+            parameters.box.maxLevel = 0;
+        }
+
         boxGenerator = new BoxGenerator(parameters.renderWeb, parameters.box, stackBounds);
-        if (! parameters.explainPlan) {
+        if ((! parameters.explainPlan) && (! parameters.validateLabelsOnly)) {
             boxGenerator.setupCommonDirectoriesAndFiles();
         }
 
@@ -201,7 +221,17 @@ public class BoxClient
         // are concurrently launched for the same stack (Allen Brain Institute use case)
         final String ipAddressString = InetAddress.getLocalHost().toString();
 
-        boxDataParentDirectory =  new File(boxGenerator.getBaseBoxPath() + "/box_data/" + ipAddressString);
+        if (parameters.validateLabelsOnly) {
+
+            final String validationDirName = "label_val_" + new Date().getTime();
+            labelValidationDirectory = new File(boxGenerator.getBaseBoxPath(), validationDirName).getAbsoluteFile();
+            boxDataParentDirectory = new File(labelValidationDirectory, "box_data");
+
+        } else {
+
+            boxDataParentDirectory = new File(boxGenerator.getBaseBoxPath() + "/box_data/" + ipAddressString);
+        }
+
         final String boxDataDirectoryName = new SimpleDateFormat("yyyy_MMdd_HHmm_ss").format(new Date());
         partitionedBoxDataDirectory = new File(boxDataParentDirectory, boxDataDirectoryName);
     }
@@ -214,8 +244,7 @@ public class BoxClient
      *
      * @return true if prior data was found; otherwise false.
      */
-    private boolean cleanUpPriorRun(final JavaSparkContext sparkContext)
-            throws IOException, URISyntaxException {
+    private boolean cleanUpPriorRun(final JavaSparkContext sparkContext) {
 
         List<String> removedBoxPaths = new ArrayList<>();
 
@@ -229,10 +258,10 @@ public class BoxClient
 
                 // at least one z directory exists, so look for and load partition data from the last run
                 final List<File> partitionDirectories =
-                        Arrays.asList(boxDataParentDirectory.listFiles(File::isDirectory));
+                        Arrays.asList(Objects.requireNonNull(boxDataParentDirectory.listFiles(File::isDirectory)));
 
                 // reverse sort the list so that the last run is first
-                Collections.sort(partitionDirectories, (o1, o2) -> o2.getName().compareTo(o1.getName()));
+                partitionDirectories.sort((o1, o2) -> o2.getName().compareTo(o1.getName()));
 
                 if (partitionDirectories.size() > 0) {
                     final File latestPartitionDirectory = partitionDirectories.get(0);
@@ -301,8 +330,7 @@ public class BoxClient
      * @return optimally partitioned box data set for rendering.
      */
     private JavaRDD<BoxData> partitionBoxes(final JavaSparkContext sparkContext,
-                                            final boolean excludeAlreadyRenderedBoxes)
-            throws IOException, URISyntaxException {
+                                            final boolean excludeAlreadyRenderedBoxes) {
 
         final JavaRDD<Double> zValuesRdd = sparkContext.parallelize(zValues);
 
@@ -613,12 +641,88 @@ public class BoxClient
                 boxTaskInfoRdd.collect()
                         .stream()
                         .map(task -> "\n" + task)
+                        .sorted()
                         .collect(Collectors.toList());
-
-        Collections.sort(taskInfoList);
 
         LOG.info(""); // empty statement adds newline to lengthy unterminated stage progress lines in log
         LOG.info("logBoxRenderTaskInfo: exit, info for level {} is {}", level, taskInfoList);
+    }
+
+    private void validateLabelBoxes(final JavaSparkContext sparkContext,
+                                    final JavaRDD<BoxData> boxDataRdd) {
+
+        final File validationDirectory = labelValidationDirectory;
+
+        LOG.info("validateLabelBoxes: entry, validationDirectory is {}", validationDirectory);
+
+        final JavaRDD<Double> validatedZRdd =
+                boxDataRdd.mapPartitions(
+                        (FlatMapFunction<Iterator<BoxData>, Double>) boxDataIterator -> {
+
+                            LogUtilities.setupExecutorLog4j("partition " + TaskContext.getPartitionId());
+
+                            final List<BoxData> boxesToValidate = new ArrayList<>();
+                            while (boxDataIterator.hasNext()) {
+                                boxesToValidate.add(boxDataIterator.next());
+                            }
+
+                            final LabelBoxValidator validator = new LabelBoxValidator(parameters.renderWeb,
+                                                                                      parameters.box);
+
+                            final LabelBoxValidationResult result = validator.validateLabelBoxes(boxesToValidate);
+
+                            result.writeLayerResults(validationDirectory, TaskContext.getPartitionId());
+
+                            return result.getZValues().iterator();
+                        },
+                        true
+                );
+
+        final List<Double> distinctValidatedZValues = new ArrayList<>(new HashSet<>(validatedZRdd.collect()));
+
+        final JavaRDD<Double> distinctValidatedZRdd = sparkContext.parallelize(distinctValidatedZValues);
+
+        final JavaRDD<String> errorMessageRdd =
+                distinctValidatedZRdd.mapPartitions((FlatMapFunction<Iterator<Double>, String>) zIterator -> {
+                    LogUtilities.setupExecutorLog4j("partition " + TaskContext.getPartitionId());
+
+                    final List<String> errorMessageList = new ArrayList<>();
+
+                    final RenderDataClient localDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                                                  parameters.renderWeb.owner,
+                                                                                  parameters.renderWeb.project);
+                    final String stack = parameters.box.stack;
+
+                    Double z;
+                    LabelBoxValidationResult mergedResult;
+                    while (zIterator.hasNext()) {
+
+                        z = zIterator.next();
+
+                        final List<TileBounds> tileBoundsList = localDataClient.getTileBounds(stack, z);
+                        final TileBoundsRTree tileBoundsRTree = new TileBoundsRTree(z, tileBoundsList);
+                        final Set<String> completelyObscuredTileIds =
+                                tileBoundsRTree.findCompletelyObscuredTiles()
+                                        .stream()
+                                        .map(TileBounds::getTileId)
+                                        .collect(Collectors.toSet());
+
+                        mergedResult = LabelBoxValidationResult.fromDirectory(validationDirectory, z);
+                        mergedResult.checkLabelCounts(z, completelyObscuredTileIds);
+                        errorMessageList.addAll(mergedResult.getErrorMessageList(z));
+                    }
+
+                    return errorMessageList.iterator();
+                });
+
+        final List<String> errorMessageList =
+                errorMessageRdd.collect()
+                        .stream()
+                        .map(msg -> "\n" + msg)
+                        .collect(Collectors.toList());
+
+        LOG.info(""); // empty statement adds newline to lengthy unterminated stage progress lines in log
+        LOG.info("validateLabelBoxes: exit, {} errors found:\n{}", errorMessageList.size(), errorMessageList);
     }
 
     /**
@@ -665,14 +769,7 @@ public class BoxClient
             boxData = boxDataIterator.next();
 
             if (boxData.getLevel() == level) {
-
-                boxList = zToBoxList.get(boxData.getZ());
-
-                if (boxList == null) {
-                    boxList = new ArrayList<>();
-                    zToBoxList.put(boxData.getZ(), boxList);
-                }
-
+                boxList = zToBoxList.computeIfAbsent(boxData.getZ(), k -> new ArrayList<>());
                 boxList.add(boxData);
             }
         }

@@ -1,12 +1,12 @@
 package org.janelia.alignment.util;
 
-import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
+import ij.process.ShortProcessor;
 
 import java.awt.Color;
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -46,7 +46,7 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
      * @return a list of consistently shuffled RGB colors suitable for use as
      *         16-bit gray colors (red = 0).
      */
-    static List<Color> buildColorList() {
+    public static List<Color> buildColorList() {
         final int maxComponentCount = 256 - 2; // exclude 0 and 255
         final List<Color> colorList = new ArrayList<>(maxComponentCount * maxComponentCount);
         for (int green = 1; green < maxComponentCount; green++) {
@@ -143,14 +143,20 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         } else {
 
             final Color labelColor = getColorForUrl(url);
+            final TileSpec tileSpec = urlToTileSpec.get(url);
+            final short[] pixels = new short[tileSpec.getWidth() * tileSpec.getHeight()];
+            Arrays.fill(pixels, (short) labelColor.getRGB());
+
+            imageProcessor = new ShortProcessor(tileSpec.getWidth(), tileSpec.getHeight(), pixels, null);
+
+            // Note: Intensity range will typically get set again in UrlMipmapSource.setMinAndMaxIntensity
+            //       but I'm including it here just to be complete.
+            imageProcessor.setMinAndMax(0, MAX_LABEL_INTENSITY);
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug("loadImageProcessor: loading label, url={}, downSampleLevels={}, color={}",
-                          url, downSampleLevels, labelColor);
+                LOG.debug("loadImageProcessor: loaded label, tile={}, url={}, downSampleLevels={}, color={}",
+                          tileSpec.getTileId(), url, downSampleLevels, imageProcessor.get(0, 0));
             }
-
-            final TileSpec tileSpec = urlToTileSpec.get(url);
-            imageProcessor = loadLabelProcessor(tileSpec.getWidth(), tileSpec.getHeight(), labelColor);
 
             // down sample the image as needed
             if (downSampleLevels > 0) {
@@ -163,18 +169,6 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         }
 
         return imageProcessor;
-    }
-
-    private ImageProcessor loadLabelProcessor(final int width,
-                                              final int height,
-                                              final Color color)
-            throws IllegalArgumentException {
-
-        final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        final Graphics2D g2d = image.createGraphics();
-        g2d.drawImage(image, 0, 0, color, null);
-        return new ColorProcessor(image);
-
     }
 
     private void buildMaps(final Collection<TileSpec> tileSpecs) {
@@ -199,6 +193,27 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
                     urlToColor.put(imageUrl, colorList.get(colorIndex));
                 });
 
+    }
+
+    /** Max intensity for 16-bit labels is 2^16 - 1 (unsigned short) */
+    public static final int MAX_LABEL_INTENSITY = 65535;
+
+    /**
+     * @param  width      image width.
+     * @param  height     image height.
+     *
+     * @return a 16-bit gray image filled with white pixels.
+     */
+    public static BufferedImage createEmptyImage(final int width,
+                                                 final int height) {
+
+        final short[] pixels = new short[width * height];
+        Arrays.fill(pixels, (short) MAX_LABEL_INTENSITY);
+
+        final ShortProcessor labelProcessor = new ShortProcessor(width, height, pixels, null);
+        labelProcessor.setMinAndMax(0, MAX_LABEL_INTENSITY);
+
+        return labelProcessor.getBufferedImage();
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(LabelImageProcessorCache.class);

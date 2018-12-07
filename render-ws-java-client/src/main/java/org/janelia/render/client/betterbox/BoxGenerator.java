@@ -1,7 +1,5 @@
 package org.janelia.render.client.betterbox;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -30,6 +28,7 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.alignment.util.LabelImageProcessorCache;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.RenderWebServiceUrls;
 import org.janelia.render.client.parameter.MaterializedBoxParameters;
@@ -66,7 +65,6 @@ public class BoxGenerator
     private final int boxHeight;
     private final String baseBoxPath;
     private final String boxPathSuffix;
-    private final Integer backgroundRGBColor;
     private final File emptyImageFile;
 
     /**
@@ -94,9 +92,6 @@ public class BoxGenerator
         String boxName = this.boxWidth + "x" + this.boxHeight;
         if (boxParameters.label) {
             boxName += "-label";
-            this.backgroundRGBColor = Color.WHITE.getRGB();
-        } else {
-            this.backgroundRGBColor = null;
         }
 
         final Path boxPath = Paths.get(boxParameters.rootDirectory,
@@ -163,20 +158,14 @@ public class BoxGenerator
 
             } else {
 
-                final BufferedImage emptyImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
-
                 if (boxParameters.label) {
 
-                    final Graphics2D targetGraphics = emptyImage.createGraphics();
-                    targetGraphics.setBackground(new Color(backgroundRGBColor));
-                    targetGraphics.clearRect(0, 0, boxWidth, boxHeight);
-                    targetGraphics.dispose();
-
-                    final BufferedImage emptyLabelImage = BoxMipmapGenerator.convertArgbLabelTo16BitGray(emptyImage);
-                    Utils.saveImage(emptyLabelImage, emptyImageFile.getAbsolutePath(), format, false, 0.85f);
+                    final BufferedImage emptyImage = LabelImageProcessorCache.createEmptyImage(boxWidth, boxHeight);
+                    Utils.saveImage(emptyImage, emptyImageFile.getAbsolutePath(), format, false, 0.85f);
 
                 } else {
 
+                    final BufferedImage emptyImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
                     Utils.saveImage(emptyImage, emptyImageFile.getAbsolutePath(), format, true, 0.85f);
 
                 }
@@ -312,7 +301,6 @@ public class BoxGenerator
                                      0, 0,
                                      (int) Math.ceil(scaledStackMaxX), (int) Math.ceil(scaledStackMaxY),
                                      overviewScale);
-        overviewParameters.setBackgroundRGBColor(backgroundRGBColor);
 
         final int numberOfRows = (int) (scaledStackMaxY / boxParameters.height) + 1;
         final int numberOfColumns = (int) (scaledStackMaxX / boxParameters.width) + 1;
@@ -403,20 +391,19 @@ public class BoxGenerator
                 final RenderParameters renderParameters = RenderParameters.loadFromUrl(boxParametersUrl);
                 renderParameters.setSkipInterpolation(boxParameters.skipInterpolation);
                 renderParameters.setBinaryMask(boxParameters.binaryMask);
-                renderParameters.setBackgroundRGBColor(backgroundRGBColor);
+
+                if (boxParameters.label) {
+                    // override intensity range for 16-bit labels
+                    renderParameters.setMinIntensity(0.0);
+                    renderParameters.setMaxIntensity(65535.0);
+
+                    // make sure labels always use binary mask
+                    renderParameters.setBinaryMask(true);
+                }
 
                 if (renderParameters.hasTileSpecs()) {
-
-                    boxImage = renderParameters.openTargetImage();
-
-                    // To test rendering on machines that have access to the web service
-                    // but not to the source images (e.g. a laptop),
-                    // uncomment the following lines and then comment out the ArgbRenderer call.
-//                    final BoundingBoxRenderer renderer = new BoundingBoxRenderer(renderParameters, Color.WHITE, 100);
-//                    renderer.render(boxImage);
-
-                    ArgbRenderer.render(renderParameters, boxImage, imageProcessorCache);
-
+                    boxImage = BoxMipmapGenerator.renderBoxImage(renderParameters,
+                                                                 imageProcessorCache);
                 } else {
                     LOG.warn("renderBoxFile: box {} is empty (no tile specs)", boxData);
                 }
@@ -472,10 +459,10 @@ public class BoxGenerator
         final ProcessTimer processTimer;
         private final SimpleDateFormat sdf;
 
-        public Progress(final double z,
-                        final int level,
-                        final int numberOfLevelBoxes,
-                        final long logIntervalSeconds) {
+        Progress(final double z,
+                 final int level,
+                 final int numberOfLevelBoxes,
+                 final long logIntervalSeconds) {
 
             this.z = z;
             this.level = level;
@@ -484,8 +471,8 @@ public class BoxGenerator
             this.sdf = new SimpleDateFormat("HH:mm:ss");
         }
 
-        public void markProcessedBox(final int renderedLevelBoxCount,
-                                     final ImageProcessorCache imageProcessorCache) {
+        void markProcessedBox(final int renderedLevelBoxCount,
+                              final ImageProcessorCache imageProcessorCache) {
 
             if (processTimer.hasIntervalPassed() || (renderedLevelBoxCount == numberOfLevelBoxes)) {
 

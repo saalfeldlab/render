@@ -1,12 +1,9 @@
 package org.janelia.render.client;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -61,7 +58,6 @@ public class BoxGenerator implements Serializable {
     private final int boxWidth;
     private final int boxHeight;
     private final File boxDirectory;
-    private final Integer backgroundRGBColor;
     private final File emptyImageFile;
     private final Bounds stackBounds;
 
@@ -82,9 +78,6 @@ public class BoxGenerator implements Serializable {
         String boxName = this.boxWidth + "x" + this.boxHeight;
         if (boxParameters.label) {
             boxName += "-label";
-            this.backgroundRGBColor = Color.WHITE.getRGB();
-        } else {
-            this.backgroundRGBColor = null;
         }
 
         final Path boxPath = Paths.get(boxParameters.rootDirectory,
@@ -161,24 +154,18 @@ public class BoxGenerator implements Serializable {
 
         } else {
 
-            final BufferedImage emptyImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
-
             if (boxParameters.label) {
 
-                final Graphics2D targetGraphics = emptyImage.createGraphics();
-                targetGraphics.setBackground(new Color(backgroundRGBColor));
-                targetGraphics.clearRect(0, 0, boxWidth, boxHeight);
-                targetGraphics.dispose();
-
-                final BufferedImage emptyLabelImage = BoxMipmapGenerator.convertArgbLabelTo16BitGray(emptyImage);
+                final BufferedImage emptyImage = LabelImageProcessorCache.createEmptyImage(boxWidth, boxHeight);
                 if (emptyImageFile.exists()) {
                     LOG.debug("skipping save of {} because it already exists", emptyImageFile.getAbsolutePath());
                 } else {
-                    Utils.saveImage(emptyLabelImage, emptyImageFile.getAbsolutePath(), format, false, 0.85f);
+                    Utils.saveImage(emptyImage, emptyImageFile.getAbsolutePath(), format, false, 0.85f);
                 }
 
             } else {
 
+                final BufferedImage emptyImage = new BufferedImage(boxWidth, boxHeight, BufferedImage.TYPE_INT_ARGB);
                 if (emptyImageFile.exists()) {
                     LOG.debug("skipping save of {} because it already exists", emptyImageFile.getAbsolutePath());
                 } else {
@@ -286,7 +273,7 @@ public class BoxGenerator implements Serializable {
                                    final ImageProcessorCache imageProcessorCache,
                                    final BoxMipmapGenerator boxMipmapGenerator,
                                    final IGridPaths iGridPaths)
-            throws URISyntaxException, IOException {
+            throws IOException {
 
         final Progress progress = new Progress(tileCount);
 
@@ -405,13 +392,20 @@ public class BoxGenerator implements Serializable {
         renderParameters.setDoFilter(boxParameters.doFilter);
         renderParameters.setSkipInterpolation(boxParameters.skipInterpolation);
         renderParameters.setBinaryMask(boxParameters.binaryMask);
-        renderParameters.setBackgroundRGBColor(backgroundRGBColor);
+
+        if (boxParameters.label) {
+            // override intensity range for 16-bit labels
+            renderParameters.setMinIntensity(0.0);
+            renderParameters.setMaxIntensity(65535.0);
+
+            // make sure labels always use binary mask
+            renderParameters.setBinaryMask(true);
+        }
 
         if (renderParameters.hasTileSpecs()) {
 
-            final BufferedImage levelZeroImage = renderParameters.openTargetImage();
-
-            ArgbRenderer.render(renderParameters, levelZeroImage, imageProcessorCache);
+            final BufferedImage levelZeroImage = BoxMipmapGenerator.renderBoxImage(renderParameters,
+                                                                                   imageProcessorCache);
 
             BoxMipmapGenerator.saveImage(levelZeroImage,
                                          levelZeroFile,
@@ -440,10 +434,10 @@ public class BoxGenerator implements Serializable {
         int row;
         int column;
 
-        public AlreadyGeneratedState(final int x,
-                                     final int y,
-                                     final int row,
-                                     final int column) {
+        AlreadyGeneratedState(final int x,
+                              final int y,
+                              final int row,
+                              final int column) {
             this.x = x;
             this.y = y;
             this.row = row;
@@ -462,7 +456,7 @@ public class BoxGenerator implements Serializable {
         private final SimpleDateFormat sdf;
         private int currentRowY;
 
-        public Progress(final int numberOfLayerTiles) {
+        Progress(final int numberOfLayerTiles) {
             this.numberOfLayerTiles = numberOfLayerTiles;
             this.processedTileIds = new HashSet<>(numberOfLayerTiles * 2);
             this.startTime = System.currentTimeMillis();
@@ -470,8 +464,8 @@ public class BoxGenerator implements Serializable {
             this.currentRowY = -1;
         }
 
-        public void markProcessedTilesForRow(final int rowY,
-                                             final RenderParameters renderParameters) {
+        void markProcessedTilesForRow(final int rowY,
+                                      final RenderParameters renderParameters) {
             final int rowMaxY = rowY + boxHeight;
             if (rowY > currentRowY) {
                 currentRowY = rowY;
