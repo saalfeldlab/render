@@ -9,10 +9,10 @@ import org.janelia.alignment.spec.TileSpec;
  */
 public class TemTileSpecValidator implements TileSpecValidator {
 
-    double minCoordinate;
-    double maxCoordinate;
-    double minSize;
-    double maxSize;
+    private double minCoordinate;
+    private double maxCoordinate;
+    private double minSize;
+    private double maxSize;
 
     /**
      * No-arg constructor that applies default parameters is required for
@@ -59,15 +59,9 @@ public class TemTileSpecValidator implements TileSpecValidator {
             throws IllegalArgumentException {
         final String[] names = { "minCoordinate:", "maxCoordinate:", "minSize:", "maxSize:" };
         final double[] values = new double[] { minCoordinate, maxCoordinate, minSize, maxSize};
-        String trimmedNameAndValue;
-        for (final String stringNameAndValue : dataString.split(",")) {
-            trimmedNameAndValue = stringNameAndValue.trim();
-            for (int i = 0; i < names.length; i++) {
-                if (trimmedNameAndValue.startsWith(names[i])) {
-                    values[i] = Double.parseDouble(trimmedNameAndValue.substring(names[i].length()));
-                }
-            }
-        }
+
+        TileSpecValidator.parseDataString(dataString, names, values);
+
         minCoordinate = values[0];
         maxCoordinate = values[1];
         minSize = values[2];

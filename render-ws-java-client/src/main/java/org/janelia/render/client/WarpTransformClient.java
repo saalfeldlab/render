@@ -148,7 +148,7 @@ public class WarpTransformClient {
                  totalNumberOfTiles, z, numberOfRemovedTiles);
 
         if (montageTiles.getTileCount() == 0) {
-            throw new IllegalStateException("no tiles left to save after filtering invalid tiles");
+            throw new IllegalStateException("no tiles left to save after filtering invalid tiles for z " + z);
         }
 
         targetDataClient.saveResolvedTiles(montageTiles, parameters.warp.targetStack, z);

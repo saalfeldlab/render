@@ -34,4 +34,25 @@ public interface TileSpecValidator {
     void validate(final TileSpec tileSpec)
             throws IllegalArgumentException;
 
+    /**
+     * Utility for parsing validator configuration data.
+     *
+     * @param  dataString  configured data string to parse.
+     * @param  names       ordered names of configurable attributes.
+     * @param  values      ordered values will be overwritten with any values parsed from the data string.
+     */
+    static void parseDataString(final String dataString,
+                                final String[] names,
+                                final double[] values) {
+        String trimmedNameAndValue;
+        for (final String stringNameAndValue : dataString.split(",")) {
+            trimmedNameAndValue = stringNameAndValue.trim();
+            for (int i = 0; i < names.length; i++) {
+                if (trimmedNameAndValue.startsWith(names[i])) {
+                    values[i] = Double.parseDouble(trimmedNameAndValue.substring(names[i].length()));
+                }
+            }
+        }
+    }
+
 }
