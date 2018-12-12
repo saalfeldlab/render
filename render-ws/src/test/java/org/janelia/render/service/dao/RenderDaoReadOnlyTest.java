@@ -10,6 +10,7 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
@@ -64,12 +65,12 @@ public class RenderDaoReadOnlyTest {
     }
 
     @AfterClass
-    public static void after() throws Exception {
+    public static void after() {
         embeddedMongoDb.stop();
     }
 
     @Test
-    public void testGetOwners() throws Exception {
+    public void testGetOwners() {
         final List<String> list = dao.getOwners();
 
         Assert.assertNotNull("null list retrieved", list);
@@ -77,7 +78,7 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetProjects() throws Exception {
+    public void testGetProjects() {
         final List<String> list = dao.getProjects(stackId.getOwner());
 
         Assert.assertNotNull("null list retrieved", list);
@@ -85,7 +86,7 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetStackMetaDataList() throws Exception {
+    public void testGetStackMetaDataList() {
         List<StackMetaData> list = dao.getStackMetaDataList(stackId.getOwner(), null);
 
         Assert.assertNotNull("null list retrieved for owner", list);
@@ -98,7 +99,7 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetStackMetaData() throws Exception {
+    public void testGetStackMetaData() {
 
         final Integer expectedLayoutWidth = 2600;
         final Integer expectedLayoutHeight = 2200;
@@ -111,7 +112,7 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetParameters() throws Exception {
+    public void testGetParameters() {
 
         final Double x = 1000.0;
         final Double y = 3000.0;
@@ -161,7 +162,7 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetTileSpec() throws Exception {
+    public void testGetTileSpec() {
         final String existingTileId = "134";
         final TileSpec tileSpec = dao.getTileSpec(stackId, existingTileId, false);
         Assert.assertNotNull("null tileSpec retrieved", tileSpec);
@@ -169,19 +170,19 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetTileSpecs() throws Exception {
+    public void testGetTileSpecs() {
         final List<TileSpec> list = dao.getTileSpecs(stackId, 3903.0);
         Assert.assertNotNull("null tile spec list retrieved", list);
         Assert.assertEquals("invalid number of tile specs retrieved", 12, list.size());
     }
 
     @Test(expected = ObjectNotFoundException.class)
-    public void testGetTileSpecWithBadId() throws Exception {
+    public void testGetTileSpecWithBadId() {
         dao.getTileSpec(stackId, "missingId", false);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testSaveTileSpecWithBadTransformReference() throws Exception {
+    public void testSaveTileSpecWithBadTransformReference() {
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setZ(12.3);
         tileSpec.setTileId("bad-ref-tile");
@@ -193,19 +194,19 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetTransformSpec() throws Exception {
+    public void testGetTransformSpec() {
         final TransformSpec transformSpec = dao.getTransformSpec(stackId, "2");
         Assert.assertNotNull("null transformSpec retrieved", transformSpec);
         Assert.assertTrue("invalid type retrieved", transformSpec instanceof ListTransformSpec);
     }
 
     @Test(expected = ObjectNotFoundException.class)
-    public void testGetTransformSpecWithBadId() throws Exception {
+    public void testGetTransformSpecWithBadId() {
         dao.getTransformSpec(stackId, "missingId");
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testSaveTransformSpecWithBadTransformReference() throws Exception {
+    public void testSaveTransformSpecWithBadTransformReference() {
         final ListTransformSpec listSpec = new ListTransformSpec("bad-ref-transform", null);
         listSpec.addSpec(new ReferenceTransformSpec("missing-id"));
 
@@ -213,7 +214,7 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetZValues() throws Exception {
+    public void testGetZValues() {
         validateZValues("",                      dao.getZValues(stackId), 2);
         validateZValues("between 3900 and 4000", dao.getZValues(stackId, 3900.0, 4000.0), 2);
         validateZValues("after 3900",            dao.getZValues(stackId, 3900.0, null),   2);
@@ -229,13 +230,13 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetLayerBounds() throws Exception {
-        final Double expectedMinX = 1094.0;
-        final Double expectedMinY = 1769.0;
-        final Double expectedMaxX = 9917.0;
-        final Double expectedMaxY = 8301.0;
+    public void testGetLayerBounds() {
+        final double expectedMinX = 1094.0;
+        final double expectedMinY = 1769.0;
+        final double expectedMaxX = 9917.0;
+        final double expectedMaxY = 8301.0;
 
-        final Double z = 3903.0;
+        final double z = 3903.0;
 
         final Bounds bounds = dao.getLayerBounds(stackId, z);
 
@@ -249,7 +250,7 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetTileBoundsForZ() throws Exception {
+    public void testGetTileBoundsForZ() {
         final Double z = 3903.0;
         final List<TileBounds> list = dao.getTileBoundsForZ(stackId, z);
 
@@ -268,12 +269,26 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetTileBoundsForSection() throws Exception {
+    public void testGetTileBoundsForSection() {
         final String sectionId = "3903.0";
         final List<TileBounds> list = dao.getTileBoundsForSection(stackId, sectionId);
 
         Assert.assertNotNull("null list retrieved", list);
         Assert.assertEquals("invalid number of tiles found", 2, list.size());
+    }
+
+    @Test
+    public void testGetSectionDataForZ() {
+        final Double z = 3903.0;
+        final List<SectionData> list = dao.getSectionDataForZ(stackId, z);
+
+        Assert.assertNotNull("null list retrieved", list);
+        Assert.assertEquals("invalid number of sections found, actual values were " + list,
+                            2, list.size());
+        Assert.assertEquals("invalid first section id",
+                            "3903.0", list.get(0).getSectionId());
+        Assert.assertEquals("invalid second section id",
+                            "mis-ordered-section", list.get(1).getSectionId());
     }
 
     @Test
@@ -323,7 +338,7 @@ public class RenderDaoReadOnlyTest {
     }
 
     @Test
-    public void testGetResolvedTiles() throws Exception {
+    public void testGetResolvedTiles() {
         final Double z = 3903.0;
 
         ResolvedTileSpecCollection resolvedTiles = dao.getResolvedTiles(stackId, z);

@@ -28,6 +28,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.bson.Document;
@@ -223,8 +224,8 @@ public class RenderDao {
         return tileSpec;
     }
 
-    public Map<String, TransformSpec> resolveTransformReferencesForTiles(final StackId stackId,
-                                                                         final List<TileSpec> tileSpecs)
+    private Map<String, TransformSpec> resolveTransformReferencesForTiles(final StackId stackId,
+                                                                          final List<TileSpec> tileSpecs)
             throws IllegalStateException {
 
         final Set<String> unresolvedIds = new HashSet<>();
@@ -586,13 +587,11 @@ public class RenderDao {
      * @param  stackId    stack identifier.
      * @param  tileSpec   specification to be saved.
      *
-     * @return the specification updated with any attributes that were modified by the save.
-     *
      * @throws IllegalArgumentException
      *   if any required parameters or transform spec references are missing.
      */
-    public TileSpec saveTileSpec(final StackId stackId,
-                                 final TileSpec tileSpec)
+    void saveTileSpec(final StackId stackId,
+                      final TileSpec tileSpec)
             throws IllegalArgumentException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
@@ -616,8 +615,6 @@ public class RenderDao {
                   MongoUtil.action(result),
                   query.toJson(),
                   result.getUpsertedId());
-
-        return tileSpec;
     }
 
     /**
@@ -661,13 +658,11 @@ public class RenderDao {
      * @param  stackId        stack identifier.
      * @param  transformSpec  specification to be saved.
      *
-     * @return the specification updated with any attributes that were modified by the save.
-     *
      * @throws IllegalArgumentException
      *   if any required parameters or transform spec references are missing.
      */
-    public TransformSpec saveTransformSpec(final StackId stackId,
-                                           final TransformSpec transformSpec)
+    void saveTransformSpec(final StackId stackId,
+                           final TransformSpec transformSpec)
             throws IllegalArgumentException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
@@ -693,8 +688,6 @@ public class RenderDao {
                   MongoUtil.action(result),
                   query.toJson(),
                   result.getUpsertedId());
-
-        return transformSpec;
     }
 
     /**
@@ -848,7 +841,7 @@ public class RenderDao {
             query.append("_id.z", new Document(QueryOperators.LTE, maxZ));
         }
 
-        try (MongoCursor<Document> cursor = sectionCollection.find(query).iterator()) {
+        try (final MongoCursor<Document> cursor = sectionCollection.find(query).iterator()) {
             Document document;
             Document resultId;
             String sectionId;
@@ -960,7 +953,7 @@ public class RenderDao {
                 "currentVersion.cycleStepNumber", -1).append(
                 "lastModifiedTimestamp", -1);
 
-        try (MongoCursor<Document> cursor = stackMetaDataCollection.find(query).sort(sortCriteria).iterator()) {
+        try (final MongoCursor<Document> cursor = stackMetaDataCollection.find(query).sort(sortCriteria).iterator()) {
             Document document;
             while (cursor.hasNext()) {
                 document = cursor.next();
@@ -1317,8 +1310,8 @@ public class RenderDao {
                   MongoUtil.fullName(tileCollection), tileQuery.toJson(), removeResult.getDeletedCount());
     }
 
-    public void removeTilesWithIds(final StackId stackId,
-                                   final List<String> tileIds)
+    void removeTilesWithIds(final StackId stackId,
+                            final List<String> tileIds)
             throws IllegalArgumentException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
@@ -1382,6 +1375,43 @@ public class RenderDao {
         final Double maxY = getBound(tileCollection, tileQuery, "maxY", false);
 
         return new Bounds(minX, minY, z, maxX, maxY, z);
+    }
+
+    /**
+     * @return list of section data objects for the specified stackId and z.
+     *
+     * @throws IllegalArgumentException
+     *   if any required parameters are missing.
+     *
+     * @throws ObjectNotFoundException
+     *   if the stack cannot be found.
+     */
+    public List<SectionData> getSectionDataForZ(final StackId stackId,
+                                                final Double z)
+            throws IllegalArgumentException, ObjectNotFoundException {
+
+        final List<TileBounds> tileBoundsList = getTileBoundsForZ(stackId, z);
+
+        final Map<String, SectionData> sectionIdToDataMap = new TreeMap<>();
+        
+        tileBoundsList.forEach(tileBounds -> {
+            final String sectionId = tileBounds.getSectionId();
+            if (sectionId != null) {
+                final SectionData sectionData = sectionIdToDataMap.get(sectionId);
+                if (sectionData == null) {
+                    sectionIdToDataMap.put(sectionId, new SectionData(tileBounds));
+                } else {
+                    sectionData.addTileBounds(tileBounds);
+                }
+            }
+        });
+
+        final List<SectionData> list = new ArrayList<>(sectionIdToDataMap.values());
+
+        LOG.debug("getSectionDataForZ: returning {} values for z {}",
+                  list.size(), z);
+
+        return list;
     }
 
     /**
@@ -1575,7 +1605,7 @@ public class RenderDao {
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
         final Document orderBy = format.getOrderBy();
-        try (MongoCursor<Document> cursor =
+        try (final MongoCursor<Document> cursor =
                      tileCollection.find(tileQuery).projection(tileKeys).sort(orderBy).iterator()) {
 
             Document document;
@@ -1638,7 +1668,7 @@ public class RenderDao {
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
         final Document orderBy = new Document(tileIdKey, 1);
-        try (MongoCursor<Document> cursor =
+        try (final MongoCursor<Document> cursor =
                      tileCollection.find(tileQuery).projection(tileKeys).sort(orderBy).iterator()) {
 
             Document document;
@@ -1694,7 +1724,7 @@ public class RenderDao {
 
         final List<TileBounds> list = new ArrayList<>();
 
-        try (MongoCursor<Document> cursor = tileCollection.find(tileQuery).projection(tileKeys).iterator()) {
+        try (final MongoCursor<Document> cursor = tileCollection.find(tileQuery).projection(tileKeys).iterator()) {
             Document document;
             Document layoutDocument;
             String sectionId;
@@ -1741,7 +1771,7 @@ public class RenderDao {
             LOG.debug("getTransformSpecs: {}.find({})",
                       MongoUtil.fullName(transformCollection), transformQuery.toJson());
 
-            try (MongoCursor<Document> cursor = transformCollection.find(transformQuery).iterator()) {
+            try (final MongoCursor<Document> cursor = transformCollection.find(transformQuery).iterator()) {
                 Document document;
                 TransformSpec transformSpec;
                 while (cursor.hasNext()) {
@@ -1807,7 +1837,7 @@ public class RenderDao {
         // order tile specs by tileId to ensure consistent coordinate mapping
         final Document orderBy = new Document("tileId", 1);
 
-        try (MongoCursor<Document> cursor = tileCollection.find(tileQuery).sort(orderBy).iterator()) {
+        try (final MongoCursor<Document> cursor = tileCollection.find(tileQuery).sort(orderBy).iterator()) {
             Document document;
             TileSpec tileSpec;
             int count = 0;
@@ -2005,7 +2035,7 @@ public class RenderDao {
 
         final List<WriteModel<Document>> modelList = new ArrayList<>(maxDocumentsPerBulkInsert);
 
-        try (MongoCursor<Document> cursor = fromCollection.find(filterQuery).iterator()) {
+        try (final MongoCursor<Document> cursor = fromCollection.find(filterQuery).iterator()) {
 
             BulkWriteResult result;
             long insertedCount;

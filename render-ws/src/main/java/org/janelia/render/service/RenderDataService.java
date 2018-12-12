@@ -185,7 +185,8 @@ public class RenderDataService {
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
             tags = "Stack Data APIs",
-            value = "List z and sectionId for all sections in specified stack")
+            value = "List z and sectionId for all sections in specified stack",
+            notes = "Stack must be in COMPLETE state for section data to be available")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "section data not generated"),
             @ApiResponse(code = 404, message = "stack not found")
@@ -391,6 +392,34 @@ public class RenderDataService {
             RenderServiceUtil.throwServiceException(t);
         }
         return bounds;
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/sectionData")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = "Section Data APIs",
+            value = "List section data for all sections with specified z",
+            notes = "Section data is dynamically derived so this resource is available for stacks in any state")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack not found")
+    })
+    public List<SectionData> getSectionDataForZ(@PathParam("owner") final String owner,
+                                                @PathParam("project") final String project,
+                                                @PathParam("stack") final String stack,
+                                                @PathParam("z") final Double z) {
+
+        LOG.info("getSectionDataForZ: entry, owner={}, project={}, stack={}",
+                 owner, project, stack);
+
+        List<SectionData> list = null;
+        try {
+            final StackId stackId = new StackId(owner, project, stack);
+            list = renderDao.getSectionDataForZ(stackId, z);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+        return list;
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/tileBounds")

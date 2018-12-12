@@ -16,17 +16,26 @@ public class SectionData
 
     private final String sectionId;
     private final Double z;
-    private final Long tileCount;
-    private final Double minX;
-    private final Double maxX;
-    private final Double minY;
-    private final Double maxY;
-
+    private Long tileCount;
+    private Double minX;
+    private Double maxX;
+    private Double minY;
+    private Double maxY;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private SectionData() {
         this(null, null, null, null, null, null, null);
+    }
+
+    public SectionData(final TileBounds tileBounds) {
+        this(tileBounds.getSectionId(),
+             tileBounds.getZ(),
+             1L,
+             tileBounds.getMinX(),
+             tileBounds.getMaxX(),
+             tileBounds.getMinY(),
+             tileBounds.getMaxY());
     }
 
     public SectionData(final String sectionId,
@@ -43,6 +52,14 @@ public class SectionData
         this.maxX = maxX;
         this.minY = minY;
         this.maxY = maxY;
+    }
+
+    public void addTileBounds(final TileBounds tileBounds) {
+        this.tileCount++;
+        this.minX = Math.min(this.minX, tileBounds.getMinX());
+        this.minY = Math.min(this.minY, tileBounds.getMinY());
+        this.maxX = Math.max(this.maxX, tileBounds.getMaxX());
+        this.maxY = Math.max(this.maxY, tileBounds.getMaxY());
     }
 
     public String getSectionId() {
@@ -92,13 +109,7 @@ public class SectionData
         return this.toJson();
     }
 
-    public static final Comparator<SectionData> Z_COMPARATOR = new Comparator<SectionData>() {
-        @Override
-        public int compare(final SectionData o1,
-                           final SectionData o2) {
-            return o1.z.compareTo(o2.z);
-        }
-    };
+    public static final Comparator<SectionData> Z_COMPARATOR = Comparator.comparing(o -> o.z);
 
     private static final JsonUtils.Helper<SectionData> JSON_HELPER =
             new JsonUtils.Helper<>(SectionData.class);
