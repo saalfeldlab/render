@@ -141,13 +141,13 @@ public class WarpedTileSpecValidator
     }
 
     // stolen from https://github.com/axtimwalde/fiji-scripts/blob/master/TrakEM2/visualize-ct-difference.bsh#L90-L106
-    private static Model sampleRigidModel(final String tileId,
-                                          final CoordinateTransform ct,
-                                          final double scaleX,
-                                          final double scaleY,
-                                          final int samplesPerDimension) {
+    public static RigidModel2D sampleRigidModel(final String tileId,
+                                                final CoordinateTransform ct,
+                                                final double scaleX,
+                                                final double scaleY,
+                                                final int samplesPerDimension) {
 
-        final Model model = new RigidModel2D();
+        final RigidModel2D model = new RigidModel2D();
         final List<PointMatch> matches = new ArrayList<>();
 
         try {
