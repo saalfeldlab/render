@@ -263,6 +263,8 @@ JaneliaMatchTrial.prototype.getRenderParametersLink = function(parametersUrl) {
  * @param data.stats.qFeatureCount
  * @param data.stats.qFeatureDerivationMilliseconds
  * @param {Array} data.stats.consensusSetSizes
+ * @param {Array} data.stats.consensusSetDeltaXStandardDeviations
+ * @param {Array} data.stats.consensusSetDeltaYStandardDeviations
  * @param data.stats.matchDerivationMilliseconds
  */
 JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
@@ -339,9 +341,39 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
     } else {
         csText = csSizes.length + ' consensus sets with [' + csSizes.toString() + '] matches were';
     }
-    $('#matchStats').html(csText + ' derived in ' + stats.matchDerivationMilliseconds + ' ms');
+
+    var html = csText + ' derived in ' + stats.matchDerivationMilliseconds + ' ms' +
+               this.getStandardDeviationHtml('X', stats.consensusSetDeltaXStandardDeviations) +
+               this.getStandardDeviationHtml('Y', stats.consensusSetDeltaYStandardDeviations);
+
+    $('#matchStats').html(html);
 
     this.drawAllMatches();
+};
+
+JaneliaMatchTrial.prototype.getStandardDeviationHtml = function(xOrY,
+                                                                standardDeviationValues) {
+    var html = '';
+    if (typeof standardDeviationValues !== 'undefined') {
+        if (standardDeviationValues.length > 1) {
+            html = '<br/>Set Delta ' + xOrY + ' Standard Deviations: [ ' + this.getDeltaHtml(standardDeviationValues[0]);
+            for (var i = 1; i < standardDeviationValues.length; i++) {
+                html = html + ', ' + this.getDeltaHtml(standardDeviationValues[i]);
+            }
+            html += ' ]';
+        } else {
+            html = '<br/>Delta ' + xOrY + ' Standard Deviation: ' + this.getDeltaHtml(standardDeviationValues[0]);
+        }
+    }
+    return html;
+};
+
+JaneliaMatchTrial.prototype.getDeltaHtml = function(value) {
+    var html = value.toFixed(1);
+    if (value > 8) {
+        html = '<span style="color:red;">' + html + '</span>';
+    }
+    return html;
 };
 
 JaneliaMatchTrial.prototype.drawAllMatches = function() {

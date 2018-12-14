@@ -186,6 +186,7 @@ public class SIFTPointMatchClient
                         featureStorageParameters.requireStoredFeatures);
 
         final double renderScale = featureRenderParameters.renderScale;
+        final Double pairMaxDeltaStandardDeviation = matchDerivationParameters.pairMaxDeltaStandardDeviation;
 
         // broadcast to all nodes
         final Broadcast<Long> broadcastCacheMaxKilobytes = sparkContext.broadcast(cacheMaxKilobytes);
@@ -236,17 +237,15 @@ public class SIFTPointMatchClient
                         final double[] pClipOffsets = pFeatures.getClipOffsets();
                         final double[] qClipOffsets = qFeatures.getClipOffsets();
 
-                        if (matchResult.foundMatches()) {
-                            matchList.addAll(
-                                    matchResult.getInlierMatchesList(p.getGroupId(),
-                                                                     p.getId(),
-                                                                     q.getGroupId(),
-                                                                     q.getId(),
-                                                                     renderScale,
-                                                                     pClipOffsets,
-                                                                     qClipOffsets));
-                        }
-
+                        matchResult.addInlierMatchesToList(p.getGroupId(),
+                                                           p.getId(),
+                                                           q.getGroupId(),
+                                                           q.getId(),
+                                                           renderScale,
+                                                           pClipOffsets,
+                                                           qClipOffsets,
+                                                           pairMaxDeltaStandardDeviation,
+                                                           matchList);
                     }
 
                     log.info("derived matches for {} out of {} pairs, cache stats are {}",

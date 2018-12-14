@@ -7,6 +7,9 @@ import java.util.List;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Encapsulates key data elements from canvas feature match derivation.
  *
@@ -34,7 +37,7 @@ public class CanvasFeatureMatchResult implements Serializable {
         }
     }
 
-    public boolean foundMatches() {
+    private boolean foundMatches() {
         return totalNumberOfInliers > 0;
     }
 
@@ -45,7 +48,7 @@ public class CanvasFeatureMatchResult implements Serializable {
         return consensusSetInliers.get(0);
     }
 
-    public List<Integer> getConsensusSetSizes() {
+    List<Integer> getConsensusSetSizes() {
         final List<Integer> sizes = new ArrayList<>();
         if (consensusSetInliers != null) {
             //noinspection Convert2streamapi
@@ -63,13 +66,13 @@ public class CanvasFeatureMatchResult implements Serializable {
      *
      * @return collection of inlier matches.
      */
-    public List<CanvasMatches> getInlierMatchesList(final String pGroupId,
-                                                    final String pId,
-                                                    final String qGroupId,
-                                                    final String qId,
-                                                    final Double renderScale,
-                                                    final double[] pOffsets,
-                                                    final double[] qOffsets) {
+    List<CanvasMatches> getInlierMatchesList(final String pGroupId,
+                                             final String pId,
+                                             final String qGroupId,
+                                             final String qId,
+                                             final Double renderScale,
+                                             final double[] pOffsets,
+                                             final double[] qOffsets) {
 
         final List<CanvasMatches> list = new ArrayList<>();
 
@@ -99,6 +102,54 @@ public class CanvasFeatureMatchResult implements Serializable {
         return list;
     }
 
+    public void addInlierMatchesToList(final String pGroupId,
+                                       final String pId,
+                                       final String qGroupId,
+                                       final String qId,
+                                       final Double renderScale,
+                                       final double[] pOffsets,
+                                       final double[] qOffsets,
+                                       final Double pairMaxDeltaStandardDeviation,
+                                       final List<CanvasMatches> targetList) {
+
+        if (foundMatches()) {
+
+            final List<CanvasMatches> inlierList = getInlierMatchesList(pGroupId,
+                                                                        pId,
+                                                                        qGroupId,
+                                                                        qId,
+                                                                        renderScale,
+                                                                        pOffsets,
+                                                                        qOffsets);
+            if (pairMaxDeltaStandardDeviation != null) {
+                inlierList.forEach(canvasMatches -> {
+
+                    final Matches m = canvasMatches.getMatches();
+                    final double dxStd = m.calculateStandardDeviationForDeltaX();
+                    final double dyStd = m.calculateStandardDeviationForDeltaY();
+                    if (dxStd > pairMaxDeltaStandardDeviation) {
+
+                        LOG.warn("tossing matches between {} and {} because delta X standard deviation of {} is greater than {}",
+                                 canvasMatches.getpId(), canvasMatches.getqId(), dxStd, pairMaxDeltaStandardDeviation);
+
+                    } else if (dyStd > pairMaxDeltaStandardDeviation) {
+
+                        LOG.warn("tossing matches between {} and {} because delta Y standard deviation of {} is greater than {}",
+                                 canvasMatches.getpId(), canvasMatches.getqId(), dyStd, pairMaxDeltaStandardDeviation);
+
+                    } else {
+                        targetList.add(canvasMatches);
+                    }
+
+                });
+
+            } else {
+                targetList.addAll(inlierList);
+            }
+        }
+
+    }
+
     @Override
     public String toString() {
         return "{'consensusSetSizes' : " + getConsensusSetSizes() + ", 'inlierRatio' : " + inlierRatio + '}';
@@ -123,10 +174,10 @@ public class CanvasFeatureMatchResult implements Serializable {
      *
      * @return the specified point match list in {@link Matches} form.
      */
-    public static Matches convertPointMatchListToMatches(final List<PointMatch> pointMatchList,
-                                                         final double renderScale,
-                                                         final double[] pOffsets,
-                                                         final double[] qOffsets) {
+    private static Matches convertPointMatchListToMatches(final List<PointMatch> pointMatchList,
+                                                          final double renderScale,
+                                                          final double[] pOffsets,
+                                                          final double[] qOffsets) {
 
         final Matches matches;
 
@@ -214,4 +265,6 @@ public class CanvasFeatureMatchResult implements Serializable {
 
         return pointMatchList;
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureMatchResult.class);
 }

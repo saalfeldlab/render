@@ -426,7 +426,7 @@ public class PointMatchClient {
 
         final List<CanvasMatches> canvasMatchesList = new ArrayList<>(matcherList.size());
         for (final CanvasFeatureMatcherThread matcherThread : matcherList) {
-            canvasMatchesList.addAll(matcherThread.getMatches());
+            matcherThread.addMatchesToList(canvasMatchesList, parameters.match.pairMaxDeltaStandardDeviation);
         }
 
         LOG.info("deriveMatches: exit");
@@ -607,14 +607,17 @@ public class PointMatchClient {
             matchResult = matcher.deriveMatchResult(pCanvasData.featureList, qCanvasData.featureList);
         }
 
-        public List<CanvasMatches> getMatches() {
-            return matchResult.getInlierMatchesList(pCanvasData.canvasId.getGroupId(),
-                                                    pCanvasData.canvasId.getId(),
-                                                    qCanvasData.canvasId.getGroupId(),
-                                                    qCanvasData.canvasId.getId(),
-                                                    pCanvasData.renderScale,
-                                                    pCanvasData.canvasId.getClipOffsets(),
-                                                    qCanvasData.canvasId.getClipOffsets());
+        void addMatchesToList(final List<CanvasMatches> targetList,
+                              final Double pairMaxDeltaStandardDeviation) {
+            matchResult.addInlierMatchesToList(pCanvasData.canvasId.getGroupId(),
+                                               pCanvasData.canvasId.getId(),
+                                               qCanvasData.canvasId.getGroupId(),
+                                               qCanvasData.canvasId.getId(),
+                                               pCanvasData.renderScale,
+                                               pCanvasData.canvasId.getClipOffsets(),
+                                               qCanvasData.canvasId.getClipOffsets(),
+                                               pairMaxDeltaStandardDeviation,
+                                               targetList);
         }
 
         @Override

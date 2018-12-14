@@ -25,6 +25,7 @@ import org.junit.Test;
  *
  * @author Eric Trautman
  */
+@SuppressWarnings("SameParameterValue")
 public class PointMatchClientTest {
 
     @Test
@@ -99,12 +100,60 @@ public class PointMatchClientTest {
     public static void main(final String[] args) {
         try {
             if (args.length == 0) {
+                showProblemMontageMatches();
+            } else if (args.length == 1) {
                 showFoldMatches();
             } else {
                 saveFullScaleMatches();
             }
         } catch (final Throwable t) {
             t.printStackTrace();
+        }
+    }
+
+    private static void showProblemMontageMatches()
+            throws Exception {
+
+        final String baseDataUrl = "http://renderer-dev:8080/render-ws/v1";
+
+        final String baseTileUrl = "http://renderer:8080/render-ws/v1/owner/flyTEM/project/FAFB00/stack/v12_acquire/tile";
+        final String pTile = "/150504171631067035.2409.0";
+        final String qTile = "/150504171631067036.2409.0";
+        final String queryParameters = "?excludeMask=true&normalizeForMatching=true&width=2760&height=2330&filter=true";
+
+        final String pTileUrl = baseTileUrl + pTile + "/render-parameters" + queryParameters;
+        final String qTileUrl = baseTileUrl + qTile + "/render-parameters" + queryParameters;
+
+        final File matchFile = new File("/Users/trautmane/Desktop/matches.json");
+
+        final String argString =
+                "--baseDataUrl " + baseDataUrl + " " +
+                "--owner flyTEM --collection not_applicable --matchStorageFile " + matchFile + " " +
+                "--renderScale 0.33 --SIFTfdSize 4 --SIFTminScale 0.8 --SIFTmaxScale 1.0 --SIFTsteps 3 " +
+                "--matchRod 0.92 --matchModelType TRANSLATION --matchIterations 1000 --matchMaxEpsilon 7 --matchMinInlierRatio 0.0 " +
+                "--firstCanvasPosition TOP --clipWidth 600 --clipHeight 600 " +
+                "--matchMinNumInliers 7 --matchMaxTrust 4 --matchFilter SINGLE_SET " +
+                "--pairMaxDeltaStandardDeviation 8.0 " +
+                pTileUrl + " " + qTileUrl;
+
+        final String[] args = argString.split(" ");
+
+        final PointMatchClient.Parameters parameters = new PointMatchClient.Parameters();
+        parameters.parse(args);
+
+        final PointMatchClient client = new PointMatchClient(parameters);
+
+        client.extractFeatures();
+
+        final List<CanvasMatches> canvasMatchesList = client.deriveMatches();
+        if (canvasMatchesList.size() > 0) {
+            final Color[] colors = new Color[8]; //{Color.red, Color.cyan, Color.yellow};
+            for (int i = 0; i < colors.length; i++) {
+                colors[i] = new Color(ColorStream.next());
+            }
+
+            showMatches(baseTileUrl + pTile + "/jpeg-image" + queryParameters, canvasMatchesList, true, colors);
+            showMatches(baseTileUrl + qTile + "/jpeg-image" + queryParameters, canvasMatchesList, false, colors);
         }
     }
 

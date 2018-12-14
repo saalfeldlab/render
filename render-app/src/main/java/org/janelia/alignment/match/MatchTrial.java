@@ -49,8 +49,16 @@ public class MatchTrial implements Serializable {
         return matches;
     }
 
+    public void setMatches(final List<Matches> matches) {
+        this.matches = matches;
+    }
+
     public MatchTrialStats getStats() {
         return stats;
+    }
+
+    public void setStats(final MatchTrialStats stats) {
+        this.stats = stats;
     }
 
     public MatchTrial getCopyWithId(final String id) {
@@ -133,8 +141,13 @@ public class MatchTrial implements Serializable {
                                                                              pCanvasId.getClipOffsets(),
                                                                              qCanvasId.getClipOffsets());
         this.matches = new ArrayList<>(results.size());
+        final List<Double> deltaXStandardDeviations = new ArrayList<>();
+        final List<Double> deltaYStandardDeviations = new ArrayList<>();
         for (final CanvasMatches canvasMatches : results) {
-            this.matches.add(canvasMatches.getMatches());
+            final Matches m = canvasMatches.getMatches();
+            this.matches.add(m);
+            deltaXStandardDeviations.add(m.calculateStandardDeviationForDeltaX());
+            deltaYStandardDeviations.add(m.calculateStandardDeviationForDeltaY());
         }
 
         this.stats = new MatchTrialStats(pCanvasData.featureList.size(),
@@ -142,7 +155,9 @@ public class MatchTrial implements Serializable {
                                          qCanvasData.featureList.size(),
                                          (matchStart - qFeatureStart),
                                          matchResult.getConsensusSetSizes(),
-                                         (matchStop - matchStart));
+                                         (matchStop - matchStart),
+                                         deltaXStandardDeviations,
+                                         deltaYStandardDeviations);
     }
 
     public String toJson() {

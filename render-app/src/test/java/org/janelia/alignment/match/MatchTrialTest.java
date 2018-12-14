@@ -15,9 +15,9 @@ public class MatchTrialTest {
 
     public static void main(final String[] args) {
 
-        final String baseTileUrl = "http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/spc_mm2_sample_rough_test_1_tier_3/stack/0009x0009_000023/tile";
-        final String pTile = "/z_1015.0_box_9060_2614_2048_2048_0.250000";
-        final String qTile = "/z_1016.0_box_9060_2614_2048_2048_0.250000";
+        final String baseTileUrl = "http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/spc_mm2_sample_rough_test_1_tier_2/stack/0009x0009_000023/tile";
+        final String pTile = "/z_1015.0_box_9216_3072_2048_2048_0.250000";
+        final String qTile = "/z_1016.0_box_9216_3072_2048_2048_0.250000";
 //        final String qTile = "/z_1017.0_box_9060_2614_2048_2048_0.250000";
         final String queryParameters = "?excludeMask=true&normalizeForMatching=true&filter=true";
 

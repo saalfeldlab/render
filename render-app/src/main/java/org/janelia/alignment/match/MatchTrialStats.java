@@ -20,6 +20,8 @@ public class MatchTrialStats
     private final Long qFeatureDerivationMilliseconds;
     private final List<Integer> consensusSetSizes;
     private final Long matchDerivationMilliseconds;
+    private final List<Double> consensusSetDeltaXStandardDeviations;
+    private final List<Double> consensusSetDeltaYStandardDeviations;
 
     public MatchTrialStats() {
         this(null,
@@ -27,21 +29,27 @@ public class MatchTrialStats
              null,
              null,
              null,
+             null,
+             null,
              null);
     }
 
-    MatchTrialStats(final Integer pFeatureCount,
-                    final Long pFeatureDerivationMilliseconds,
-                    final Integer qFeatureCount,
-                    final Long qFeatureDerivationMilliseconds,
-                    final List<Integer> consensusSetSizes,
-                    final Long matchDerivationMilliseconds) {
+    public MatchTrialStats(final Integer pFeatureCount,
+                           final Long pFeatureDerivationMilliseconds,
+                           final Integer qFeatureCount,
+                           final Long qFeatureDerivationMilliseconds,
+                           final List<Integer> consensusSetSizes,
+                           final Long matchDerivationMilliseconds,
+                           final List<Double> consensusSetDeltaXStandardDeviations,
+                           final List<Double> consensusSetDeltaYStandardDeviations) {
         this.pFeatureCount = pFeatureCount;
         this.pFeatureDerivationMilliseconds = pFeatureDerivationMilliseconds;
         this.qFeatureCount = qFeatureCount;
         this.qFeatureDerivationMilliseconds = qFeatureDerivationMilliseconds;
         this.consensusSetSizes = consensusSetSizes;
         this.matchDerivationMilliseconds = matchDerivationMilliseconds;
+        this.consensusSetDeltaXStandardDeviations = consensusSetDeltaXStandardDeviations;
+        this.consensusSetDeltaYStandardDeviations = consensusSetDeltaYStandardDeviations;
     }
 
     public String toJson() {
