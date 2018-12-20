@@ -42,7 +42,6 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.LabelImageProcessorCache;
 import org.janelia.render.client.ClientRunner;
@@ -82,7 +81,7 @@ public class BoxClient
         public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
         @ParametersDelegate
-        public MaterializedBoxParameters box = new MaterializedBoxParameters();
+        MaterializedBoxParameters box = new MaterializedBoxParameters();
 
         @ParametersDelegate
         public ZRangeParameters layerRange = new ZRangeParameters();
@@ -149,7 +148,7 @@ public class BoxClient
     private File partitionedBoxDataDirectory;
     private File labelValidationDirectory;
 
-    public BoxClient(final Parameters parameters) {
+    BoxClient(final Parameters parameters) {
         this.parameters = parameters;
     }
 
@@ -219,7 +218,8 @@ public class BoxClient
 
         // insert IP address into directory name to prevent data collisions when multiple drivers (Spark jobs)
         // are concurrently launched for the same stack (Allen Brain Institute use case)
-        final String ipAddressString = InetAddress.getLocalHost().toString();
+        final String timestamp = new SimpleDateFormat("yyyy_MMdd_HHmm_ss").format(new Date());
+        final String runName = "run." + timestamp + ".driver." + InetAddress.getLocalHost().getHostAddress();
 
         if (parameters.validateLabelsOnly) {
 
@@ -229,11 +229,11 @@ public class BoxClient
 
         } else {
 
-            boxDataParentDirectory = new File(boxGenerator.getBaseBoxPath() + "/box_data/" + ipAddressString);
+            boxDataParentDirectory = new File(boxGenerator.getBaseBoxPath(), "box_data");
+
         }
 
-        final String boxDataDirectoryName = new SimpleDateFormat("yyyy_MMdd_HHmm_ss").format(new Date());
-        partitionedBoxDataDirectory = new File(boxDataParentDirectory, boxDataDirectoryName);
+        partitionedBoxDataDirectory = new File(boxDataParentDirectory, runName);
     }
 
     /**
@@ -252,9 +252,12 @@ public class BoxClient
 
         final File levelZeroDirectory = new File(boxGenerator.getBaseBoxPath(), "0");
         if (levelZeroDirectory.exists() && boxDataParentDirectory.exists()) {
+
             final FilenameFilter numberedDirFilter = (dir, name) -> name.matches("^\\d++$");
             final File[] zDirectories = levelZeroDirectory.listFiles(numberedDirFilter);
             if ((zDirectories != null) && (zDirectories.length > 0)) {
+
+                LOG.info("cleanUpPriorRun: found materialized data in {}", levelZeroDirectory);
 
                 // at least one z directory exists, so look for and load partition data from the last run
                 final List<File> partitionDirectories =
@@ -269,7 +272,14 @@ public class BoxClient
                     priorRunBoxDataStringsRdd = sparkContext.textFile(latestPartitionDirectory.getAbsolutePath());
                 }
 
+            } else {
+                LOG.warn("cleanUpPriorRun: skipping because no materialized data was found in {}",
+                         levelZeroDirectory);
             }
+
+        } else {
+            LOG.warn("cleanUpPriorRun: skipping because {} and/or {} are missing",
+                     levelZeroDirectory, boxDataParentDirectory);
         }
 
         if (priorRunBoxDataStringsRdd != null) {
