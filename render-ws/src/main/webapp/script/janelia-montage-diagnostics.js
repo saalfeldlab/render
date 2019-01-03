@@ -108,9 +108,14 @@ var JaneliaDiagnostics = function(diagnosticData, servicesBaseUrl) {
                                                               toStackInfo);
              }
 
-            if (linkIndex < 4) {
+            if (linkIndex < 3) {
 
                 this.mapCoordinatesAndOpenWindow(fromStackInfo, layerData.z, toStackInfo, outlierData,
+                                                 catmaidBaseUrl, resolution);
+
+            } else if (linkIndex === 3) {
+
+                this.mapCoordinatesAndOpenWindow(fromStackInfo, layerData.z, stackDataA.tps, outlierData,
                                                  catmaidBaseUrl, resolution);
 
             }  else {
