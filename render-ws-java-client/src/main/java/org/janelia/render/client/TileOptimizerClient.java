@@ -125,8 +125,9 @@ public class TileOptimizerClient {
                             "--project", "FAFB_montage",
                             "--stack", "split_0271_montage",
                             "--matchCollection", "FAFB_montage_fix",
-                            "--z", "100271"
-                            };
+                            "--minZ", "100270",
+                            "--maxZ", "100272"
+                    };
                     parameters.parse(testArgs);
                 } else {
                     parameters.parse(args);
@@ -189,50 +190,47 @@ public class TileOptimizerClient {
     private void runOptimizer()
             throws IOException, NotEnoughDataPointsException, IllDefinedDataPointsException {
 
-        for (final String pGroupId : pGroupList) {
-            runOptimizerForPGroup(pGroupId);
-        }
-    }
-
-    private void runOptimizerForPGroup(final String pGroupId)
-            throws IOException, NotEnoughDataPointsException, IllDefinedDataPointsException {
-
-        LOG.info("runOptimizerForPGroup: entry, pGroupId={}", pGroupId);
+        LOG.info("runOptimizer: entry");
 
         final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>>> idToTileMap = new HashMap<>();
 
-        final List<CanvasMatches> matches =  matchDataClient.getMatchesWithPGroupId(pGroupId);
-        for (final CanvasMatches match : matches) {
+        for (final String pGroupId : pGroupList) {
 
-            final String pId = match.getpId();
-            final TileSpec pTileSpec = getTileSpec(pGroupId, pId);
+            LOG.info("runOptimizer: connecting tiles with pGroupId {}", pGroupId);
 
-            final String qGroupId = match.getqGroupId();
-            final String qId = match.getqId();
-            final TileSpec qTileSpec = getTileSpec(qGroupId, qId);
+            final List<CanvasMatches> matches = matchDataClient.getMatchesWithPGroupId(pGroupId);
+            for (final CanvasMatches match : matches) {
 
-            if ((pTileSpec == null) || (qTileSpec == null)) {
-                LOG.info("runOptimizerForPGroup: ignoring pair ({}, {}) because one or both tiles are missing from stack {}",
-                         pId, qId, parameters.stack);
-                continue;
+                final String pId = match.getpId();
+                final TileSpec pTileSpec = getTileSpec(pGroupId, pId);
+
+                final String qGroupId = match.getqGroupId();
+                final String qId = match.getqId();
+                final TileSpec qTileSpec = getTileSpec(qGroupId, qId);
+
+                if ((pTileSpec == null) || (qTileSpec == null)) {
+                    LOG.info("runOptimizer: ignoring pair ({}, {}) because one or both tiles are missing from stack {}",
+                             pId, qId, parameters.stack);
+                    continue;
+                }
+
+                final Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> p =
+                        idToTileMap.computeIfAbsent(pId,
+                                                    pTile -> getTile(pTileSpec));
+
+                final Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> q =
+                        idToTileMap.computeIfAbsent(qId,
+                                                    qTile -> getTile(qTileSpec));
+
+                p.connect(q,
+                          CanvasFeatureMatchResult.convertMatchesToPointMatchList(match.getMatches()));
             }
-
-            final Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> p =
-                    idToTileMap.computeIfAbsent(pId,
-                                                pTile -> getTile(pTileSpec));
-
-            final Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> q =
-                    idToTileMap.computeIfAbsent(qId,
-                                                qTile -> getTile(qTileSpec));
-
-            p.connect(q,
-                      CanvasFeatureMatchResult.convertMatchesToPointMatchList(match.getMatches()));
         }
 
         final TileConfiguration tileConfig = new TileConfiguration();
         tileConfig.addTiles(idToTileMap.values());
 
-        LOG.info("runOptimizerForPGroup: optimizing {} tiles", idToTileMap.size());
+        LOG.info("runOptimizer: optimizing {} tiles", idToTileMap.size());
 
         for (final double lambda : new double[]{1, 0.5, 0.1, 0.01}) {
 
@@ -250,7 +248,7 @@ public class TileOptimizerClient {
             System.out.println("tile " + tileId + " => " + model.createAffineModel2D());
         }
 
-        LOG.info("runOptimizerForPGroup: exit");
+        LOG.info("runOptimizer: exit");
     }
 
     private TileSpec getTileSpec(final String sectionId,
