@@ -82,7 +82,7 @@ public class TileOptimizerClient {
                 names = "--maxIterations",
                 description = "Max iterations"
         )
-        public Integer maxIterations = 10000;
+        public Integer maxIterations = 2000;
 
         @Parameter(
                 names = "--maxPlateauWidth",
@@ -94,7 +94,7 @@ public class TileOptimizerClient {
                 names = "--lambda",
                 description = "Lambda"
         )
-        public Double lambda = 0.01;
+        public Double lambda = 0.01; // 1, 0.5, 0.1. 0.01
 
 
         public Parameters() {
@@ -229,15 +229,25 @@ public class TileOptimizerClient {
                       CanvasFeatureMatchResult.convertMatchesToPointMatchList(match.getMatches()));
         }
 
-
         final TileConfiguration tileConfig = new TileConfiguration();
-        tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
+        tileConfig.addTiles(idToTileMap.values());
+
+        LOG.info("runOptimizerForPGroup: optimizing {} tiles", idToTileMap.size());
+
+        for (final double lambda : new double[]{1, 0.5, 0.1, 0.01}) {
+
+            for (final Tile tile : idToTileMap.values())
+                ((InterpolatedAffineModel2D)tile.getModel()).setLambda(lambda);
+
+            tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
+            
+        }
 
         for (final String tileId : idToTileMap.keySet()) {
             final Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> tile = idToTileMap.get(tileId);
             //final Affine2D model = tile.getModel();
             final InterpolatedAffineModel2D model = tile.getModel();
-            System.out.println(model.createAffineModel2D());
+            System.out.println("tile " + tileId + " => " + model.createAffineModel2D());
         }
 
         LOG.info("runOptimizerForPGroup: exit");
@@ -269,20 +279,25 @@ public class TileOptimizerClient {
     private Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> getTile(final TileSpec tileSpec) {
 
         // TODO: make samplesPerDimension a parameter?
-        final int samplesPerDimension = 64;
+        final int samplesPerDimension = 2;
 
         final CoordinateTransformList<CoordinateTransform> transformList = tileSpec.getTransformList();
+        final AffineModel2D lastTransform = (AffineModel2D) transformList.get(transformList.getList(null).size() - 1);
+        final AffineModel2D copy = lastTransform.copy();
+
         final double scaleX = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
         final double scaleY = (tileSpec.getHeight() - 1.0) / (samplesPerDimension - 1.0);
 
         final RigidModel2D rigidModel = WarpedTileSpecValidator.sampleRigidModel(tileSpec.getTileId(),
-                                                                                 transformList,
+                                                                                 copy,
                                                                                  scaleX,
                                                                                  scaleY,
                                                                                  samplesPerDimension);
 
-        // TODO: build affine model from tile spec transform list?
-        return new Tile<>(new InterpolatedAffineModel2D<>(new AffineModel2D(),
+//        System.out.println("rigid: " + rigidModel);
+//        System.out.println("copy: " + copy);
+
+        return new Tile<>(new InterpolatedAffineModel2D<>(copy,
                                                           rigidModel,
                                                           parameters.lambda));
     }
