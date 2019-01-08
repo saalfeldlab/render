@@ -6,8 +6,10 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -23,16 +25,19 @@ import mpicbg.models.TileConfiguration;
 
 import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.validator.WarpedTileSpecValidator;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
-import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
 
 /**
  * Java client for running TrakEM2 tile optimizer.
@@ -47,28 +52,34 @@ public class TileOptimizerClient {
         @ParametersDelegate
         public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-        @Parameter(names = "--stack", description = "Stack name", required = true)
+        @Parameter(
+                names = "--stack",
+                description = "Stack name",
+                required = true)
         public String stack;
 
-        @ParametersDelegate
-        public ZRangeParameters layerRange = new ZRangeParameters();
+        @Parameter(
+                names = "--minZ",
+                description = "Minimum (split) Z value for layers to be processed",
+                required = true)
+        public Double minZ;
 
         @Parameter(
-                names = "--z",
-                description = "Explicit z values for layers to be processed",
-                variableArity = true) // e.g. --z 20.0 --z 21.0 --z 22.0
-        public List<Double> zValues;
+                names = "--maxZ",
+                description = "Maximum (split) Z value for layers to be processed",
+                required = true)
+        public Double maxZ;
 
         @Parameter(
                 names = "--matchCollection",
-                description = "Name of match collection to analyze",
+                description = "Name of match collection for tiles",
                 required = true
         )
         public String matchCollection;
 
         @Parameter(
                 names = "--matchOwner",
-                description = "Owner of match collection to analyze (default is owner)"
+                description = "Owner of match collection for tiles (default is owner)"
         )
         public String matchOwner;
 
@@ -96,15 +107,51 @@ public class TileOptimizerClient {
         )
         public Double lambda = 0.01; // 1, 0.5, 0.1. 0.01
 
+        @Parameter(
+                names = "--targetOwner",
+                description = "Owner name for aligned result stack (default is same as owner)"
+        )
+        public String targetOwner;
+
+        @Parameter(
+                names = "--targetProject",
+                description = "Project name for aligned result stack (default is same as project)"
+        )
+        public String targetProject;
+
+        @Parameter(
+                names = "--targetStack",
+                description = "Name for aligned result stack (if omitted, aligned models are simply logged)")
+        public String targetStack;
+
+        @Parameter(
+                names = "--mergedZ",
+                description = "Z value for all aligned tiles (if omitted, original split z values are kept)"
+        )
+        public Double mergedZ;
+
+        @Parameter(
+                names = "--completeTargetStack",
+                description = "Complete the target stack after processing",
+                arity = 0)
+        public boolean completeTargetStack = false;
 
         public Parameters() {
         }
 
-        String getMatchOwner() {
-            if (matchOwner == null) {
-                matchOwner = renderWeb.owner;
+        void initDefaultValues() {
+
+            if (this.matchOwner == null) {
+                this.matchOwner = renderWeb.owner;
             }
-            return matchOwner;
+
+            if (this.targetOwner == null) {
+                this.targetOwner = renderWeb.owner;
+            }
+
+            if (this.targetProject == null) {
+                this.targetProject = renderWeb.project;
+            }
         }
 
     }
@@ -124,9 +171,12 @@ public class TileOptimizerClient {
                             "--owner", "flyTEM",
                             "--project", "FAFB_montage",
                             "--stack", "split_0271_montage",
+                            "--targetStack", "split_0271_optimized_montage",
+                            "--completeTargetStack",
                             "--matchCollection", "FAFB_montage_fix",
                             "--minZ", "100270",
                             "--maxZ", "100272"
+//                            ,"--mergedZ", "271"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -147,6 +197,7 @@ public class TileOptimizerClient {
     private final Parameters parameters;
     private final RenderDataClient renderDataClient;
     private final RenderDataClient matchDataClient;
+    private final RenderDataClient targetDataClient;
 
     private final List<String> pGroupList;
     private final Map<String, Double> sectionIdToZMap;
@@ -156,19 +207,32 @@ public class TileOptimizerClient {
     private TileOptimizerClient(final Parameters parameters)
             throws IOException {
 
+        parameters.initDefaultValues();
+
         this.parameters = parameters;
         this.renderDataClient = parameters.renderWeb.getDataClient();
         this.matchDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
-                                                    parameters.getMatchOwner(),
+                                                    parameters.matchOwner,
                                                     parameters.matchCollection);
 
         this.sectionIdToZMap = new TreeMap<>();
         this.zToTileSpecsMap = new HashMap<>();
         this.totalTileCount = 0;
 
-        final ZFilter zFilter = new ZFilter(parameters.layerRange.minZ,
-                                            parameters.layerRange.maxZ,
-                                            parameters.zValues);
+        if (parameters.targetStack == null) {
+            this.targetDataClient = null;
+        } else {
+            this.targetDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                         parameters.targetOwner,
+                                                         parameters.targetProject);
+
+            final StackMetaData sourceStackMetaData = renderDataClient.getStackMetaData(parameters.stack);
+            targetDataClient.setupDerivedStack(sourceStackMetaData, parameters.targetStack);
+        }
+
+        final ZFilter zFilter = new ZFilter(parameters.minZ,
+                                            parameters.maxZ,
+                                            null);
         final List<SectionData> allSectionDataList = renderDataClient.getStackSectionData(parameters.stack,
                                                                                           null,
                                                                                           null);
@@ -241,14 +305,73 @@ public class TileOptimizerClient {
             
         }
 
-        for (final String tileId : idToTileMap.keySet()) {
-            final Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> tile = idToTileMap.get(tileId);
-            //final Affine2D model = tile.getModel();
-            final InterpolatedAffineModel2D model = tile.getModel();
-            System.out.println("tile " + tileId + " => " + model.createAffineModel2D());
+        if (parameters.targetStack == null) {
+
+            for (final String tileId : idToTileMap.keySet()) {
+                final Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> tile = idToTileMap.get(tileId);
+                final InterpolatedAffineModel2D model = tile.getModel();
+                LOG.info("tile {} model is {}", tileId, model.createAffineModel2D());
+            }
+
+        } else {
+
+            saveTargetStackTiles(idToTileMap);
+
         }
 
         LOG.info("runOptimizer: exit");
+    }
+
+    private void saveTargetStackTiles(final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>>> idToTileMap)
+            throws IOException {
+
+        LOG.info("saveTargetStackTiles: entry");
+
+        for (final ResolvedTileSpecCollection resolvedTiles : zToTileSpecsMap.values()) {
+
+            final Set<String> tileIdsToRemove = new HashSet<>();
+
+            for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
+
+                final String tileId = tileSpec.getTileId();
+                final Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> tile = idToTileMap.get(tileId);
+
+                if (tile == null) {
+                    tileIdsToRemove.add(tileId);
+                } else {
+                    resolvedTiles.addTransformSpecToTile(tileId,
+                                                         getTransformSpec(tile.getModel()),
+                                                         REPLACE_LAST);
+                }
+
+                if (parameters.mergedZ != null) {
+                    tileSpec.setZ(parameters.mergedZ);
+                }
+
+            }
+
+            if (tileIdsToRemove.size() > 0) {
+                LOG.info("removed {} unaligned tile specs from target collection", tileIdsToRemove.size());
+                resolvedTiles.removeTileSpecs(tileIdsToRemove);
+            }
+
+            targetDataClient.saveResolvedTiles(resolvedTiles, parameters.targetStack, null);
+        }
+
+        LOG.info("saveTargetStackTiles: saved tiles for all split sections");
+
+        if (parameters.completeTargetStack) {
+            targetDataClient.setStackState(parameters.targetStack, StackMetaData.StackState.COMPLETE);
+        }
+
+        LOG.info("saveTargetStackTiles: exit");
+    }
+
+    private LeafTransformSpec getTransformSpec(final InterpolatedAffineModel2D forModel) {
+        final double[] m = new double[6];
+        forModel.createAffineModel2D().toArray(m);
+        final String data = String.valueOf(m[0]) + ' ' + m[1] + ' ' + m[2] + ' ' + m[3] + ' ' + m[4] + ' ' + m[5];
+        return new LeafTransformSpec(mpicbg.trakem2.transform.AffineModel2D.class.getName(), data);
     }
 
     private TileSpec getTileSpec(final String sectionId,
