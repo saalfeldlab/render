@@ -136,7 +136,7 @@ public class LabelBoxValidator
 
     }
 
-    public static Set<Integer> getNonEmptyLabelColors(final ImageProcessor ip) {
+    private static Set<Integer> getNonEmptyLabelColors(final ImageProcessor ip) {
         final Set<Integer> colorSet = new HashSet<>();
         for (int y = 0; y < ip.getHeight(); y++) {
             for (int x = 0; x < ip.getWidth(); x++) {
@@ -147,6 +147,30 @@ public class LabelBoxValidator
             }
         }
         return colorSet;
+    }
+
+    public static void main(final String[] args) {
+
+        // can also use imagemagick to do this:
+        //   identify -format %k filename
+
+        String[] effectiveArgs = args;
+        if (args.length == 0) {
+            effectiveArgs = new String[] {
+                "/Users/trautmane/Desktop/dmg_bleach_problem/label/row_6_col_19.png",
+                "/Users/trautmane/Desktop/dmg_bleach_problem/label/row_6_col_20.png",
+                "/Users/trautmane/Desktop/dmg_bleach_problem/label/row_6_col_21.png",
+                "/Users/trautmane/Desktop/dmg_bleach_problem/label/row_7_col_19.png",
+                "/Users/trautmane/Desktop/dmg_bleach_problem/label/row_7_col_20.png",
+                "/Users/trautmane/Desktop/dmg_bleach_problem/label/row_7_col_21.png"
+            };
+        }
+
+        for (final String labelPath : effectiveArgs) {
+            final ImagePlus imagePlus = new ImagePlus(labelPath);
+            final Set<Integer> nonEmptyLabelColors = getNonEmptyLabelColors(imagePlus.getProcessor());
+            LOG.info("found {} distinct non-empty label colors in {}", nonEmptyLabelColors.size(), labelPath);
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(LabelBoxValidator.class);
