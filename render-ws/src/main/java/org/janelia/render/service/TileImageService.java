@@ -160,6 +160,42 @@ public class TileImageService {
         }
     }
 
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/tiff16-image")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_TIFF_MIME_TYPE)
+    @ApiOperation(value = "Render TIFF image for a tile")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Tile not found")
+    })
+    public Response renderTiff16ImageForTile(@PathParam("owner") final String owner,
+                                           @PathParam("project") final String project,
+                                           @PathParam("stack") final String stack,
+                                           @PathParam("tileId") final String tileId,
+                                           @BeanParam final RenderQueryParameters renderQueryParameters,
+                                           @QueryParam("width") final Integer width,
+                                           @QueryParam("height") final Integer height,
+                                           @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
+                                           @QueryParam("excludeTransformsAfterLast") final Set<String> excludeAfterLastLabels,
+                                           @QueryParam("excludeFirstTransformAndAllAfter") final Set<String> excludeFirstAndAllAfterLabels,
+                                           @QueryParam("excludeAllTransforms") final Boolean excludeAllTransforms,
+                                           @Context final Request request) {
+
+        LOG.info("renderTiffImageForTile: entry, owner={}, project={}, stack={}, tileId={}",
+                 owner, project, stack, tileId);
+
+        final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
+        if (responseHelper.isModified()) {
+            final RenderParameters renderParameters =
+                    tileDataService.getRenderParameters(owner, project, stack, tileId, renderQueryParameters,
+                                                        width, height, normalizeForMatching,
+                                                        excludeAfterLastLabels, excludeFirstAndAllAfterLabels,
+                                                        excludeAllTransforms);
+            return RenderServiceUtil.renderTiffImage(renderParameters, null, responseHelper, true);
+        } else {
+            return responseHelper.getNotModifiedResponse();
+        }
+    }
+
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/tile/{tileId}/source/jpeg-image")
     @GET
     @Produces(RenderServiceUtil.IMAGE_JPEG_MIME_TYPE)

@@ -40,7 +40,7 @@ public class ImageProcessorCache {
     /** Default max number of pixels is 1GB (or 160 full resolution 2500x2500 pixel tiles). */
     public static final long DEFAULT_MAX_CACHED_PIXELS = 1000 * 1000000; // 1GB
 
-    private final long maximumNumberOfCachedPixels;
+    private final long maximumNumberOfCachedKilobytes;
     private final boolean recordStats;
     private final boolean cacheOriginalsForDownSampledImages;
 
@@ -73,17 +73,21 @@ public class ImageProcessorCache {
                                final boolean recordStats,
                                final boolean cacheOriginalsForDownSampledImages) {
 
-        this.maximumNumberOfCachedPixels = maximumNumberOfCachedPixels;
+        this.maximumNumberOfCachedKilobytes = maximumNumberOfCachedPixels / 1000;
         this.recordStats = recordStats;
         this.cacheOriginalsForDownSampledImages = cacheOriginalsForDownSampledImages;
 
         final Weigher<CacheKey, ImageProcessor> weigher =
                 (key, value) -> {
+                    final long bitCount = ((long) value.getPixelCount()) * value.getBitDepth();
+                    final long kilobyteCount = bitCount / 8000L;
                     final int weight;
-                    if (value == null) {
-                        weight = 0;
+                    if (kilobyteCount < 0 || kilobyteCount > Integer.MAX_VALUE) {
+                        weight = Integer.MAX_VALUE;
+                        LOG.warn("{} is too large ({} kilobytes) for cache weight function, using max weight of {}",
+                                 key, kilobyteCount, weight);
                     } else {
-                        weight = value.getPixelCount() * value.getBitDepth() / 8;
+                        weight = Math.max(1, (int) kilobyteCount);
                     }
                     return weight;
                 };
@@ -92,8 +96,7 @@ public class ImageProcessorCache {
                 new CacheLoader<CacheKey, ImageProcessor>() {
 
                     @Override
-                    public ImageProcessor load(@Nullable final CacheKey key)
-                            throws Exception {
+                    public ImageProcessor load(@Nullable final CacheKey key) {
                         ImageProcessor imageProcessor = null;
                         if (key != null) {
                             imageProcessor = loadImageProcessor(key.getUri(), key.getDownSampleLevels(), key.isMask(),key.isConvertTo16Bit());
@@ -105,13 +108,13 @@ public class ImageProcessorCache {
 
         if (recordStats) {
             cache = CacheBuilder.newBuilder()
-                    .maximumWeight(maximumNumberOfCachedPixels)
+                    .maximumWeight(maximumNumberOfCachedKilobytes)
                     .weigher(weigher)
                     .recordStats()
                     .build(loader);
         } else {
             cache = CacheBuilder.newBuilder()
-                    .maximumWeight(maximumNumberOfCachedPixels)
+                    .maximumWeight(maximumNumberOfCachedKilobytes)
                     .weigher(weigher)
                     .build(loader);
         }
@@ -177,7 +180,7 @@ public class ImageProcessorCache {
     @Override
     public String toString() {
         return "{numberOfEntries: " + size() +
-               ", maximumNumberOfCachedPixels: " + maximumNumberOfCachedPixels +
+               ", maximumNumberOfCachedKilobytes: " + maximumNumberOfCachedKilobytes +
                ", recordStats: " + recordStats +
                ", cacheOriginalsForDownSampledImages: " + cacheOriginalsForDownSampledImages +
                '}';
@@ -287,10 +290,10 @@ public class ImageProcessorCache {
         private final boolean isMask;
         private final boolean convertTo16Bit;
 
-        public CacheKey(final String url,
-                        final int downSampleLevels,
-                        final boolean isMask,
-                        final boolean convertTo16Bit) {
+        CacheKey(final String url,
+                 final int downSampleLevels,
+                 final boolean isMask,
+                 final boolean convertTo16Bit) {
 
             this.url = url;
 
@@ -307,10 +310,10 @@ public class ImageProcessorCache {
         public String getUri() {
             return url;
         }
-        public boolean isConvertTo16Bit(){
+        boolean isConvertTo16Bit(){
             return convertTo16Bit;
 	    }
-        public int getDownSampleLevels() {
+        int getDownSampleLevels() {
             return downSampleLevels;
         }
 
