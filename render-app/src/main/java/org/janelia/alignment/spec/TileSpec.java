@@ -1,4 +1,4 @@
-/**
+/*
  * License: GPL
  *
  * This program is free software; you can redistribute it and/or
@@ -492,6 +492,41 @@ public class TileSpec implements Serializable {
             firstEntry = channels.get(0).getFirstMipmapEntry();
         }
         return firstEntry;
+    }
+
+    public void setMinAndMaxIntensity(final double minIntensity,
+                                      final double maxIntensity,
+                                      final String forChannelName) {
+
+        if (channels == null) {
+
+            this.minIntensity = minIntensity;
+            this.maxIntensity = maxIntensity;
+
+        } else {
+
+            if (forChannelName == null) {
+
+                for (final ChannelSpec channelSpec : channels) {
+                    if (channelSpec.getName() == null) {
+                        channelSpec.setMinAndMaxIntensity(minIntensity, maxIntensity);
+                        break;
+                    }
+                }
+
+            } else {
+
+                for (final ChannelSpec channelSpec : channels) {
+                    if (forChannelName.equals(channelSpec.getName())) {
+                        channelSpec.setMinAndMaxIntensity(minIntensity, maxIntensity);
+                        break;
+                    }
+                }
+
+            }
+
+        }
+
     }
 
     public void setMipmapPathBuilder(final MipmapPathBuilder mipmapPathBuilder) {

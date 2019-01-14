@@ -16,8 +16,8 @@ import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 public class ChannelSpec implements Serializable {
 
     private final String name;
-    private final Double minIntensity;
-    private final Double maxIntensity;
+    private Double minIntensity;
+    private Double maxIntensity;
     private final TreeMap<Integer, ImageAndMask> mipmapLevels;
     private MipmapPathBuilder mipmapPathBuilder;
 
@@ -57,6 +57,12 @@ public class ChannelSpec implements Serializable {
 
     public double getMaxIntensity() {
         return maxIntensity;
+    }
+
+    void setMinAndMaxIntensity(final double minIntensity,
+                               final double maxIntensity)  {
+        this.minIntensity = minIntensity;
+        this.maxIntensity = maxIntensity;
     }
 
     public boolean is16Bit() {
