@@ -119,7 +119,7 @@ public class MipmapClient {
         this.renderDataClient = renderWebParameters.getDataClient();
     }
 
-    public MipmapPathBuilder getMipmapPathBuilder() {
+    MipmapPathBuilder getMipmapPathBuilder() {
         return mipmapPathBuilder;
     }
 
@@ -140,8 +140,10 @@ public class MipmapClient {
                         updatedBuilder = null; // no need to update
                     }
                 } else {
-                    throw new IOException("Old and new mipmap path builders have different root path or extension ( old=" +
-                                          currentBuilder + ", new=" + mipmapPathBuilder + " ).");
+                    LOG.error("updateMipmapPathBuilderForStack: skipping update because " +
+                              "old and new mipmap path builders have different root path or extension " +
+                              "( old={}, new={} ).", currentBuilder, mipmapPathBuilder);
+                    updatedBuilder = null; // skip update
                 }
 
             } else {
@@ -184,7 +186,7 @@ public class MipmapClient {
         return renderedTileCount;
     }
 
-    public void generateMissingMipmapFiles(final TileSpec tileSpec)
+    void generateMissingMipmapFiles(final TileSpec tileSpec)
             throws IllegalArgumentException, IOException {
 
         for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
@@ -235,7 +237,8 @@ public class MipmapClient {
                         }
 
                         imageMipmapFile = getFileForUrlString(derivedImageAndMask.getImageUrl());
-                        sourceImageProcessor = generateMipmapFile(sourceImageProcessor, imageMipmapFile, 1,
+                        sourceImageProcessor = generateMipmapFile(sourceImageProcessor,
+                                                                  imageMipmapFile,
                                                                   channelSpec.getMinIntensity(),
                                                                   channelSpec.getMaxIntensity(),
                                                                   isMipmapLevelInRange);
@@ -245,7 +248,8 @@ public class MipmapClient {
                                 createMissingDirectories(derivedImageAndMask.getMaskUrl());
                             }
                             maskMipmapFile = getFileForUrlString(derivedImageAndMask.getMaskUrl());
-                            sourceMaskProcessor = generateMipmapFile(sourceMaskProcessor, maskMipmapFile, 1,
+                            sourceMaskProcessor = generateMipmapFile(sourceMaskProcessor,
+                                                                     maskMipmapFile,
                                                                      channelSpec.getMinIntensity(),
                                                                      channelSpec.getMaxIntensity(),
                                                                      isMipmapLevelInRange);
@@ -318,12 +322,12 @@ public class MipmapClient {
 
     private ImageProcessor generateMipmapFile(final ImageProcessor sourceProcessor,
                                               final File targetMipmapFile,
-                                              final int mipmapLevelDelta,
                                               final double minIntensity,
                                               final double maxIntensity,
                                               final boolean isMipmapLevelInRange)
             throws IOException {
 
+        final int mipmapLevelDelta = 1;
         final ImageProcessor downSampledProcessor = Downsampler.downsampleImageProcessor(sourceProcessor,
                                                                                          mipmapLevelDelta);
         if (isMipmapLevelInRange && (parameters.forceGeneration || (! targetMipmapFile.exists()))) {
@@ -338,9 +342,9 @@ public class MipmapClient {
         return downSampledProcessor;
     }
 
-    public static BufferedImage getGrayBufferedImage(final ImageProcessor downSampledProcessor,
-                                                     final double minIntensity,
-                                                     final double maxIntensity) {
+    private static BufferedImage getGrayBufferedImage(final ImageProcessor downSampledProcessor,
+                                                      final double minIntensity,
+                                                      final double maxIntensity) {
 
         downSampledProcessor.setMinAndMax(minIntensity, maxIntensity);
 
@@ -360,7 +364,7 @@ public class MipmapClient {
         return image;
     }
 
-    public static ImageProcessor loadImageProcessor(final String url)
+    static ImageProcessor loadImageProcessor(final String url)
             throws IllegalArgumentException {
 
         // openers keep state about the file being opened, so we need to create a new opener for each load
