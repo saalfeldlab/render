@@ -30,8 +30,8 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
-import org.janelia.render.client.spark.cache.CachedCanvasFeatures;
-import org.janelia.render.client.spark.cache.CanvasFeatureListLoader;
+import org.janelia.render.client.cache.CachedCanvasFeatures;
+import org.janelia.render.client.cache.CanvasFeatureListLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

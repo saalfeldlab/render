@@ -9,6 +9,9 @@ import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.MontageRelativePosition;
+import org.janelia.render.client.cache.CachedCanvasFeatures;
+import org.janelia.render.client.cache.CanvasDataCache;
+import org.janelia.render.client.cache.CanvasFeatureListLoader;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -20,7 +23,7 @@ import org.junit.Test;
 public class CanvasDataCacheTest {
 
     @Test
-    public void testCachedClipOffsets() throws Exception {
+    public void testCachedClipOffsets() {
 
         final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
         siftParameters.fdSize = 8;

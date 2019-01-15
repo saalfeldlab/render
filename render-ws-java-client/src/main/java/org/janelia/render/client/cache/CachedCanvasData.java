@@ -1,4 +1,4 @@
-package org.janelia.render.client.spark.cache;
+package org.janelia.render.client.cache;
 
 /**
  * Base methods required for managing cached canvas data.

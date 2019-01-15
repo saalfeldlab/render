@@ -29,8 +29,8 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
-import org.janelia.render.client.spark.cache.CanvasDataCache;
-import org.janelia.render.client.spark.cache.CanvasFileLoader;
+import org.janelia.render.client.cache.CanvasDataCache;
+import org.janelia.render.client.cache.CanvasFileLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,10 +45,10 @@ public class DMeshPointMatchClient
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
+        MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
 
         @ParametersDelegate
-        public FeatureRenderParameters featureRender = new FeatureRenderParameters();
+        FeatureRenderParameters featureRender = new FeatureRenderParameters();
 
         @Parameter(
                 names = "--pairJson",
@@ -59,38 +59,37 @@ public class DMeshPointMatchClient
 
         @Parameter(
                 names = "--format",
-                description = "Format for rendered canvases ('jpg', 'png', 'tif')",
-                required = false)
+                description = "Format for rendered canvases ('jpg', 'png', 'tif')"
+        )
         public String format = Utils.PNG_FORMAT;
 
         @Parameter(
                 names = "--dMeshScript",
-                description = "Script for launching DMesh",
-                required = false)
+                description = "Script for launching DMesh"
+        )
         public String dMeshScript = "/groups/flyTEM/flyTEM/match/dmesh/run_ptest.sh";
 
         @Parameter(
                 names = "--dMeshParameters",
-                description = "File containing DMesh parameters",
-                required = false)
+                description = "File containing DMesh parameters"
+        )
         public String dMeshParameters = "/groups/flyTEM/flyTEM/match/dmesh/matchparams.txt";
 
         @Parameter(
                 names = "--dMeshLogToolOutput",
                 description = "Log DMesh tool output even when processing is successful",
-                required = false,
                 arity = 1)
         public boolean dMeshLogToolOutput = false;
 
         @Parameter(
                 names = { "--maxImageCacheGb" },
-                description = "Maximum number of gigabytes of DMesh images to cache",
-                required = false)
+                description = "Maximum number of gigabytes of DMesh images to cache"
+        )
         public Integer maxImageCacheGb = 20;
 
         @Parameter(names = "--imageCacheParentDirectory",
-                description = "Parent directory for cached (rendered) canvases",
-                required = false)
+                description = "Parent directory for cached (rendered) canvases"
+        )
         public String imageCacheParentDirectory = "/dev/shm";
     }
 
@@ -120,7 +119,7 @@ public class DMeshPointMatchClient
 
     private final Parameters parameters;
 
-    public DMeshPointMatchClient(final Parameters parameters) throws IllegalArgumentException {
+    private DMeshPointMatchClient(final Parameters parameters) throws IllegalArgumentException {
         this.parameters = parameters;
     }
 

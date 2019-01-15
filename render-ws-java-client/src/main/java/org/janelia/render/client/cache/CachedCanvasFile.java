@@ -1,4 +1,4 @@
-package org.janelia.render.client.spark.cache;
+package org.janelia.render.client.cache;
 
 import java.io.File;
 
@@ -16,13 +16,13 @@ public class CachedCanvasFile implements CachedCanvasData {
     private final File renderedImage;
     private final RenderParameters renderParameters;
 
-    public CachedCanvasFile(final File renderedImage,
-                            final RenderParameters renderParameters) {
+    CachedCanvasFile(final File renderedImage,
+                     final RenderParameters renderParameters) {
         this.renderedImage = renderedImage;
         this.renderParameters = renderParameters;
     }
 
-    public File getRenderedImage() {
+    File getRenderedImage() {
         return renderedImage;
     }
 

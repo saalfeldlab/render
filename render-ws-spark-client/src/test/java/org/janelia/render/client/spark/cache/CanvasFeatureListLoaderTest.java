@@ -5,6 +5,7 @@ import mpicbg.imagefeatures.FloatArray2DSIFT;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
+import org.janelia.render.client.cache.CanvasFeatureListLoader;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -18,7 +19,7 @@ public class CanvasFeatureListLoaderTest {
     private String tileId = "aaa";
 
     @Test
-    public void testGetRenderParametersUrl() throws Exception {
+    public void testGetRenderParametersUrl() {
 
 
         testTemplate("http://render:8080/render-ws/v1/tile/{id}/render-parameters",

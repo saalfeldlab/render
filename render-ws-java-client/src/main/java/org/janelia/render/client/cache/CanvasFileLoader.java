@@ -1,4 +1,4 @@
-package org.janelia.render.client.spark.cache;
+package org.janelia.render.client.cache;
 
 import java.awt.image.BufferedImage;
 import java.io.File;

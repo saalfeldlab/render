@@ -1,4 +1,4 @@
-package org.janelia.render.client.spark.cache;
+package org.janelia.render.client.cache;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
@@ -10,9 +10,6 @@ import com.google.common.cache.Weigher;
 import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasId;
@@ -102,25 +99,20 @@ public class CanvasDataCache {
             this.kilobyteCapacity = kilobyteCapacity;
         }
 
-        this.weigher = new Weigher<CanvasId, CachedCanvasData>() {
+        this.weigher = (key, value) -> {
 
-            @Override
-            public int weigh(@Nullable final CanvasId key,
-                             @Nonnull final CachedCanvasData value) {
+            long kiloBytes = value.getKilobytes();
 
-                long kiloBytes = value.getKilobytes();
-
-                // hopefully we'll never have > 2000 gigabyte file,
-                // but if so it simply won't be fairly weighted
-                if (kiloBytes > Integer.MAX_VALUE) {
-                    LOG.warn("weightOf: truncating weight for " + kiloBytes + " Kb item " + value);
-                    kiloBytes = Integer.MAX_VALUE;
-                } else if (kiloBytes == 0) {
-                    // zero weights are not supported, so we need to set empty file weight to 1
-                    kiloBytes = 1;
-                }
-                return (int) kiloBytes;
+            // hopefully we'll never have > 2000 gigabyte file,
+            // but if so it simply won't be fairly weighted
+            if (kiloBytes > Integer.MAX_VALUE) {
+                LOG.warn("weightOf: truncating weight for " + kiloBytes + " Kb item " + value);
+                kiloBytes = Integer.MAX_VALUE;
+            } else if (kiloBytes == 0) {
+                // zero weights are not supported, so we need to set empty file weight to 1
+                kiloBytes = 1;
             }
+            return (int) kiloBytes;
         };
 
         // separate thread pool for removing data that expires from the cache
@@ -152,7 +144,7 @@ public class CanvasDataCache {
     /**
      * @return the maximum number of kilobytes to be maintained in this cache.
      */
-    public long getKilobyteCapacity() {
+    private long getKilobyteCapacity() {
         return kilobyteCapacity;
     }
 
@@ -168,7 +160,7 @@ public class CanvasDataCache {
      * @throws IllegalStateException
      *   if the data cannot be cached.
      */
-    public CachedCanvasData getData(final CanvasId canvasId)
+    private CachedCanvasData getData(final CanvasId canvasId)
             throws IllegalStateException {
 
         final CachedCanvasData cachedCanvasData;
@@ -244,7 +236,7 @@ public class CanvasDataCache {
         // The "penalty" for this appears to be serialized put of the object
         // AFTER it has been loaded - which should not be a problem.
 
-        CacheBuilder<CanvasId, CachedCanvasData> cacheBuilder =
+        final CacheBuilder<CanvasId, CachedCanvasData> cacheBuilder =
                 CacheBuilder.newBuilder()
                         .concurrencyLevel(1)
                         .maximumWeight(getKilobyteCapacity())
@@ -252,7 +244,7 @@ public class CanvasDataCache {
                         .removalListener(asyncRemovalListener);
 
         if (recordStats) {
-            cacheBuilder = cacheBuilder.recordStats();
+            cacheBuilder.recordStats();
         }
 
         this.canvasIdToDataCache = cacheBuilder.build(canvasDataLoader);

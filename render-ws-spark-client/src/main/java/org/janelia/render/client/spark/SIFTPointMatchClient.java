@@ -10,14 +10,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import mpicbg.imagefeatures.FloatArray2DSIFT;
-
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.broadcast.Broadcast;
-import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
@@ -29,15 +26,18 @@ import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.cache.CachedCanvasFeatures;
+import org.janelia.render.client.cache.CanvasDataCache;
+import org.janelia.render.client.cache.CanvasFeatureListLoader;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.FeatureStorageParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
-import org.janelia.render.client.spark.cache.CachedCanvasFeatures;
-import org.janelia.render.client.spark.cache.CanvasDataCache;
-import org.janelia.render.client.spark.cache.CanvasFeatureListLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.janelia.render.client.SIFTPointMatchClient.getCanvasFeatureExtractor;
+import static org.janelia.render.client.SIFTPointMatchClient.getCanvasFeatureMatcher;
 
 /**
  * Spark client for generating and storing SIFT point matches for a specified set of canvas (e.g. tile) pairs.
@@ -279,31 +279,6 @@ public class SIFTPointMatchClient
                  totalSaved, totalProcessed, percentSaved, matchPairCountList.size());
 
         return totalSaved;
-    }
-
-    private static CanvasFeatureExtractor getCanvasFeatureExtractor(final FeatureExtractionParameters featureExtraction,
-                                                                    final FeatureRenderParameters featureRender) {
-
-        final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
-        siftParameters.fdSize = featureExtraction.fdSize;
-        siftParameters.steps = featureExtraction.steps;
-
-        return new CanvasFeatureExtractor(siftParameters,
-                                          featureExtraction.minScale,
-                                          featureExtraction.maxScale,
-                                          featureRender.fillWithNoise);
-    }
-
-    private static CanvasFeatureMatcher getCanvasFeatureMatcher(final MatchDerivationParameters matchParameters) {
-        return new CanvasFeatureMatcher(matchParameters.matchRod,
-                                        matchParameters.matchModelType,
-                                        matchParameters.matchIterations,
-                                        matchParameters.matchMaxEpsilon,
-                                        matchParameters.matchMinInlierRatio,
-                                        matchParameters.matchMinNumInliers,
-                                        matchParameters.matchMaxTrust,
-                                        matchParameters.matchMaxNumInliers,
-                                        matchParameters.matchFilter);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(SIFTPointMatchClient.class);

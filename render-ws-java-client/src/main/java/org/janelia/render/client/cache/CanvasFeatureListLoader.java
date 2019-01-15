@@ -1,4 +1,4 @@
-package org.janelia.render.client.spark.cache;
+package org.janelia.render.client.cache;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -62,7 +62,7 @@ public class CanvasFeatureListLoader
     }
 
     @Override
-    public CachedCanvasFeatures load(@Nonnull final CanvasId canvasId) throws Exception {
+    public CachedCanvasFeatures load(@Nonnull final CanvasId canvasId) {
 
         List<Feature> featureList = null;
         double[] offsets = null;

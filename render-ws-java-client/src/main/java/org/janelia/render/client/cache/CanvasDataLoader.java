@@ -1,4 +1,4 @@
-package org.janelia.render.client.spark.cache;
+package org.janelia.render.client.cache;
 
 import com.google.common.cache.CacheLoader;
 
@@ -26,13 +26,13 @@ public abstract class CanvasDataLoader
      * @param  urlTemplate  template for deriving render parameters URL for each canvas.
      * @param  dataClass    class of specific data loader implementation.
      */
-    protected CanvasDataLoader(final CanvasRenderParametersUrlTemplate urlTemplate,
-                               final Class dataClass) {
+    CanvasDataLoader(final CanvasRenderParametersUrlTemplate urlTemplate,
+                     final Class dataClass) {
         this.urlTemplate = urlTemplate;
         this.dataClass = dataClass;
     }
 
-    public Class getDataClass() {
+    Class getDataClass() {
         return dataClass;
     }
 
@@ -51,7 +51,7 @@ public abstract class CanvasDataLoader
         return urlTemplate.getRenderParametersUrl(canvasId);
     }
 
-    public RenderParameters getRenderParameters(final CanvasId canvasId)
+    RenderParameters getRenderParameters(final CanvasId canvasId)
             throws IllegalArgumentException {
         return urlTemplate.getRenderParameters(canvasId);
     }

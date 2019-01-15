@@ -1,4 +1,4 @@
-package org.janelia.render.client.spark.cache;
+package org.janelia.render.client.cache;
 
 import java.util.List;
 
@@ -14,8 +14,8 @@ public class CachedCanvasFeatures implements CachedCanvasData {
     private final List<Feature> featureList;
     private final double[] clipOffsets;
 
-    public CachedCanvasFeatures(final List<Feature> featureList,
-                                final double[] clipOffsets) {
+    CachedCanvasFeatures(final List<Feature> featureList,
+                         final double[] clipOffsets) {
         this.featureList = featureList;
         this.clipOffsets = clipOffsets;
     }
