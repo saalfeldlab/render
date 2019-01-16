@@ -56538,19 +56538,30 @@ var getTileCoordinates = function getTileCoordinates(tileId, tileData) {
   return tileCoordinates;
 };
 
+var getMatchWeight = function getMatchWeight(canvasMatches) {
+  var weight = 0;
+  if (typeof canvasMatches.matches !== "undefined" && typeof canvasMatches.matches.w !== "undefined") {
+    weight = canvasMatches.matches.w.length;
+  }
+  return weight;
+};
+
 //calculate max and min connection strength based on number of point matches
 //for use in selecting the color indicating the strength
 var calculateWeightRange = function calculateWeightRange(tileData) {
-  maxWeight = 0;
-  minWeight = Number.MAX_VALUE;
+  var weight = 0;
+  var maxWeight = 0;
+  var minWeight = Number.MAX_VALUE;
   _.forEach(tileData, function (layer) {
     _.forEach(layer.pointMatches.matchesWithinGroup, function (m) {
-      maxWeight = Math.max(maxWeight, m.matches.w.length);
-      minWeight = Math.min(minWeight, m.matches.w.length);
+      weight = getMatchWeight(m);
+      maxWeight = Math.max(maxWeight, weight);
+      minWeight = Math.min(minWeight, weight);
     });
     _.forEach(layer.pointMatches.matchesOutsideGroup, function (m) {
-      maxWeight = Math.max(maxWeight, m.matches.w.length);
-      minWeight = Math.min(minWeight, m.matches.w.length);
+      weight = getMatchWeight(m);
+      maxWeight = Math.max(maxWeight, weight);
+      minWeight = Math.min(minWeight, weight);
     });
   });
   return { minWeight: minWeight, maxWeight: maxWeight };
@@ -56608,58 +56619,64 @@ var drawPMLines = function drawPMLines(tileData) {
     linewidth: line_width
   });
 
-  //create intralayer lines
+  //create intra-layer lines
   _.forEach(tileData, function (layer) {
     _.forEach(layer.pointMatches.matchesWithinGroup, function (m) {
+      var matchWeight = getMatchWeight(m);
+      if (matchWeight > 0) {
+        m.pTile = getTileCoordinates(m.pId, tileData);
+        m.qTile = getTileCoordinates(m.qId, tileData);
+        //calculates new coordinates to draw the intra-layer lines so that they do not begin and start in the middle of the tile
+        var xlen = m.qTile.xPos - m.pTile.xPos;
+        var ylen = m.qTile.yPos - m.pTile.yPos;
+        var hlen = Math.sqrt(Math.pow(xlen, 2) + Math.pow(ylen, 2));
+        var ratio = line_shorten_factor / hlen;
+        var smallerXLen = xlen * ratio;
+        var smallerYLen = ylen * ratio;
+
+        merged_line_geometry.vertices.push(new _three2.default.Vector3(m.pTile.xPos + smallerXLen, m.pTile.yPos + smallerYLen, m.pTile.zPos), new _three2.default.Vector3(m.qTile.xPos - smallerXLen, m.qTile.yPos - smallerYLen, m.qTile.zPos));
+
+        var PMInfo = {
+          startX: m.pTile.xPos + smallerXLen,
+          startY: m.pTile.yPos + smallerYLen,
+          startZ: m.pTile.zPos,
+          endX: m.qTile.xPos - smallerXLen,
+          endY: m.qTile.yPos - smallerYLen,
+          endZ: m.qTile.zPos,
+          connection_strength: matchWeight,
+          strength_color: pm_connection_strength_chroma_scale(matchWeight)
+        };
+
+        addPointMatchInfoToTile(m.pTile, PMInfo);
+        addPointMatchInfoToTile(m.qTile, PMInfo);
+      }
+    });
+  });
+
+  //create inter-layer lines
+  _.forEach(removeDuplicatePMs(tileData), function (m) {
+    var matchWeight = getMatchWeight(m);
+    if (matchWeight > 0) {
       m.pTile = getTileCoordinates(m.pId, tileData);
       m.qTile = getTileCoordinates(m.qId, tileData);
-      //calculates new coordinates to draw the intra-layer lines so that they do not begin and start in the middle of the tile
-      var xlen = m.qTile.xPos - m.pTile.xPos;
-      var ylen = m.qTile.yPos - m.pTile.yPos;
-      var hlen = Math.sqrt(Math.pow(xlen, 2) + Math.pow(ylen, 2));
-      var ratio = line_shorten_factor / hlen;
-      var smallerXLen = xlen * ratio;
-      var smallerYLen = ylen * ratio;
 
-      merged_line_geometry.vertices.push(new _three2.default.Vector3(m.pTile.xPos + smallerXLen, m.pTile.yPos + smallerYLen, m.pTile.zPos), new _three2.default.Vector3(m.qTile.xPos - smallerXLen, m.qTile.yPos - smallerYLen, m.qTile.zPos));
+      //since inter-layer lines are drawn from the center of the tiles, no calculations need to be done
+      merged_line_geometry.vertices.push(new _three2.default.Vector3(m.pTile.xPos, m.pTile.yPos, m.pTile.zPos), new _three2.default.Vector3(m.qTile.xPos, m.qTile.yPos, m.qTile.zPos));
 
       var PMInfo = {
-        startX: m.pTile.xPos + smallerXLen,
-        startY: m.pTile.yPos + smallerYLen,
+        startX: m.pTile.xPos,
+        startY: m.pTile.yPos,
         startZ: m.pTile.zPos,
-        endX: m.qTile.xPos - smallerXLen,
-        endY: m.qTile.yPos - smallerYLen,
+        endX: m.qTile.xPos,
+        endY: m.qTile.yPos,
         endZ: m.qTile.zPos,
-        connection_strength: m.matches.w.length,
-        strength_color: pm_connection_strength_chroma_scale(m.matches.w.length)
+        connection_strength: matchWeight,
+        strength_color: pm_connection_strength_chroma_scale(matchWeight)
       };
 
       addPointMatchInfoToTile(m.pTile, PMInfo);
       addPointMatchInfoToTile(m.qTile, PMInfo);
-    });
-  });
-
-  //create interlayer lines
-  _.forEach(removeDuplicatePMs(tileData), function (m) {
-    m.pTile = getTileCoordinates(m.pId, tileData);
-    m.qTile = getTileCoordinates(m.qId, tileData);
-
-    //since interlayer lines are drawn from the center of the tiles, no calculations need to be done
-    merged_line_geometry.vertices.push(new _three2.default.Vector3(m.pTile.xPos, m.pTile.yPos, m.pTile.zPos), new _three2.default.Vector3(m.qTile.xPos, m.qTile.yPos, m.qTile.zPos));
-
-    var PMInfo = {
-      startX: m.pTile.xPos,
-      startY: m.pTile.yPos,
-      startZ: m.pTile.zPos,
-      endX: m.qTile.xPos,
-      endY: m.qTile.yPos,
-      endZ: m.qTile.zPos,
-      connection_strength: m.matches.w.length,
-      strength_color: pm_connection_strength_chroma_scale(m.matches.w.length)
-    };
-
-    addPointMatchInfoToTile(m.pTile, PMInfo);
-    addPointMatchInfoToTile(m.qTile, PMInfo);
+    }
   });
 
   //merged_line is what is drawn on the canvas (improves performance)
