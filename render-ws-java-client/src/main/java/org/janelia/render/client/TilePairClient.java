@@ -137,7 +137,7 @@ public class TilePairClient {
 
         @Parameter(
                 names = "--onlyIncludeTilesFromStack",
-                description = "Name of match collection whose existing pairs should be excluded from the generated list (default is to include all pairs)",
+                description = "If specified, this stack is used to whitelist which tile pairs get included from the location stack",
                 required = false)
         public String onlyIncludeTilesFromStack;
 
