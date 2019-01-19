@@ -4,6 +4,7 @@ import ij.ImagePlus;
 import ij.process.ImageProcessor;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -101,11 +102,10 @@ public class LabelBoxValidator
 
         if (boxFile.exists()) {
 
-            final ImagePlus labelImagePlus = Utils.openImagePlus(boxFile.getAbsolutePath());
+            try {
 
-            if (labelImagePlus != null) {
+                final Set<Integer> nonEmptyBoxColors = getNonEmptyLabelColors(boxFile.getAbsolutePath());
 
-                final Set<Integer> nonEmptyBoxColors = getNonEmptyLabelColors(labelImagePlus.getProcessor());
                 result.addNonEmptyLabelColors(boxZ, nonEmptyBoxColors);
 
                 final String boxParametersUrl = webServiceUrls.getStackUrlString(stack) +
@@ -120,10 +120,9 @@ public class LabelBoxValidator
                 //   clip tiles such that only the masked area is within the box.
                 //   Mask areas don't get labelled, so a box's color count may not necessarily match its tile count.
 
-            } else {
+            } catch (final IOException e) {
 
-                result.addErrorMessage(boxZ,
-                                       boxFile + " could not be loaded into an ImagePlus instance for validation");
+                result.addErrorMessage(boxZ, e.getMessage());
 
             }
 
@@ -136,7 +135,17 @@ public class LabelBoxValidator
 
     }
 
-    private static Set<Integer> getNonEmptyLabelColors(final ImageProcessor ip) {
+    public static Set<Integer> getNonEmptyLabelColors(final String labelPath)
+            throws IOException {
+
+        final ImagePlus labelImagePlus = Utils.openImagePlus(labelPath);
+
+        if (labelImagePlus == null) {
+            throw new IOException(labelPath + " could not be loaded into an ImagePlus instance");
+        }
+
+        final ImageProcessor ip = labelImagePlus.getProcessor();
+
         final Set<Integer> colorSet = new HashSet<>();
         for (int y = 0; y < ip.getHeight(); y++) {
             for (int x = 0; x < ip.getWidth(); x++) {
@@ -146,6 +155,7 @@ public class LabelBoxValidator
                 }
             }
         }
+
         return colorSet;
     }
 
@@ -167,9 +177,12 @@ public class LabelBoxValidator
         }
 
         for (final String labelPath : effectiveArgs) {
-            final ImagePlus imagePlus = new ImagePlus(labelPath);
-            final Set<Integer> nonEmptyLabelColors = getNonEmptyLabelColors(imagePlus.getProcessor());
-            LOG.info("found {} distinct non-empty label colors in {}", nonEmptyLabelColors.size(), labelPath);
+            try {
+                final Set<Integer> nonEmptyLabelColors = getNonEmptyLabelColors(labelPath);
+                LOG.info("found {} distinct non-empty label colors in {}", nonEmptyLabelColors.size(), labelPath);
+            } catch (final IOException e) {
+                LOG.error("failed to check " + labelPath, e);
+            }
         }
     }
 
