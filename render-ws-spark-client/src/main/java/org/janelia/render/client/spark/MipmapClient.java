@@ -4,7 +4,6 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.util.List;
 
 import org.apache.spark.SparkConf;
@@ -35,7 +34,7 @@ public class MipmapClient
         public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
         @ParametersDelegate
-        public MipmapParameters mipmap = new MipmapParameters();
+        MipmapParameters mipmap = new MipmapParameters();
 
         @ParametersDelegate
         public ZRangeParameters layerRange = new ZRangeParameters();
@@ -61,12 +60,12 @@ public class MipmapClient
 
     private final Parameters parameters;
 
-    public MipmapClient(final Parameters parameters) {
+    private MipmapClient(final Parameters parameters) {
         this.parameters = parameters;
     }
 
     public void run()
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         final SparkConf conf = new SparkConf().setAppName("MipmapClient");
         final JavaSparkContext sparkContext = new JavaSparkContext(conf);
@@ -94,7 +93,7 @@ public class MipmapClient
             final org.janelia.render.client.MipmapClient mc =
                     new org.janelia.render.client.MipmapClient(parameters.renderWeb,
                                                                parameters.mipmap);
-            return mc.generateMipmapsForZ(z);
+            return mc.processMipmapsForZ(z);
         };
 
         final JavaRDD<Integer> rddTileCounts = rddZValues.map(mipmapFunction);

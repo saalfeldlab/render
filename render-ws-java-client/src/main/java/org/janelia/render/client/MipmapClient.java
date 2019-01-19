@@ -12,6 +12,7 @@ import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +72,7 @@ public class MipmapClient {
                 final MipmapClient client = new MipmapClient(parameters.renderWeb,
                                                              parameters.mipmap);
                 for (final Double z : parameters.zValues) {
-                    client.generateMipmapsForZ(z);
+                    client.processMipmapsForZ(z);
                 }
                 client.updateMipmapPathBuilderForStack();
             }
@@ -162,10 +163,10 @@ public class MipmapClient {
 
     }
 
-    public int generateMipmapsForZ(final Double z)
+    public int processMipmapsForZ(final Double z)
             throws Exception {
 
-        LOG.info("generateMipmapsForZ: entry, z={}", z);
+        LOG.info("processMipmapsForZ: entry, z={}", z);
 
         final ResolvedTileSpecCollection tiles = renderDataClient.getResolvedTiles(stack, z);
         final int tileCount = tiles.getTileCount();
@@ -173,15 +174,26 @@ public class MipmapClient {
         final int startTile = (parameters.renderGroup - 1) * tilesPerGroup;
         final int stopTile = startTile + tilesPerGroup ;
 
+        int removedFileCount = 0;
+
         final List<TileSpec> tileSpecsToRender = new ArrayList<>(tiles.getTileSpecs()).subList(startTile, stopTile);
         for (final TileSpec tileSpec : tileSpecsToRender) {
-            generateMissingMipmapFiles(tileSpec);
+            if (parameters.removeAll) {
+                removedFileCount += removeExistingMipmapFiles(tileSpec);
+            } else {
+                generateMissingMipmapFiles(tileSpec);
+            }
         }
 
         final int renderedTileCount = tileSpecsToRender.size();
 
-        LOG.info("generateMipmapsForZ: exit, generated mipmaps for {} tiles with z {} in group {} ({} to {} of {})",
-                 renderedTileCount, z, parameters.renderGroup, startTile, stopTile - 1, tileCount);
+        if (parameters.removeAll) {
+            LOG.info("processMipmapsForZ: exit, removed {} mipmaps for {} tiles with z {} in group {} ({} to {} of {})",
+                     removedFileCount, renderedTileCount, z, parameters.renderGroup, startTile, stopTile - 1, tileCount);
+        } else {
+            LOG.info("processMipmapsForZ: exit, generated mipmaps for {} tiles with z {} in group {} ({} to {} of {})",
+                     renderedTileCount, z, parameters.renderGroup, startTile, stopTile - 1, tileCount);
+        }
 
         return renderedTileCount;
     }
@@ -262,6 +274,50 @@ public class MipmapClient {
                 LOG.info("generateMissingMipmapFiles: all mipmap files exist for ", context);
             }
         }
+    }
+
+    private int removeExistingMipmapFiles(final TileSpec tileSpec)
+            throws IllegalArgumentException, IOException {
+
+        int removedFileCount = 0;
+
+        for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
+
+            final Map.Entry<Integer, ImageAndMask> firstEntry = channelSpec.getFirstMipmapEntry();
+            if (firstEntry != null) {
+
+                final ImageAndMask sourceImageAndMask = firstEntry.getValue();
+                if ((sourceImageAndMask != null) && sourceImageAndMask.hasImage()) {
+
+                    Map.Entry<Integer, ImageAndMask> derivedEntry;
+                    ImageAndMask derivedImageAndMask;
+                    File imageMipmapFile;
+                    File maskMipmapFile;
+                    for (int mipmapLevel = 1; mipmapLevel <= mipmapPathBuilder.getNumberOfLevels(); mipmapLevel++) {
+
+                        derivedEntry = mipmapPathBuilder.deriveImageAndMask(mipmapLevel, firstEntry, false);
+                        derivedImageAndMask = derivedEntry.getValue();
+
+                        imageMipmapFile = getFileForUrlString(derivedImageAndMask.getImageUrl());
+                        if (imageMipmapFile.exists()) {
+                            Files.delete(imageMipmapFile.toPath());
+                            removedFileCount++;
+                        }
+
+                        if (sourceImageAndMask.hasMask()) {
+                            maskMipmapFile = getFileForUrlString(derivedImageAndMask.getMaskUrl());
+                            if (maskMipmapFile.exists()) {
+                                Files.delete(maskMipmapFile.toPath());
+                                removedFileCount++;
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+
+        return removedFileCount;
     }
 
     private boolean isMissingMipmaps(final ChannelSpec channelSpec,

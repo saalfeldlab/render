@@ -30,40 +30,44 @@ public class MipmapParameters implements Serializable {
 
     @Parameter(
             names = "--minLevel",
-            description = "Minimum mipmap level to generate",
-            required = false)
+            description = "Minimum mipmap level to generate"
+    )
     public Integer minLevel = 1;
 
     @Parameter(
             names = "--maxLevel",
-            description = "Maximum mipmap level to generate",
-            required = false)
+            description = "Maximum mipmap level to generate"
+    )
     public Integer maxLevel = 6;
 
     @Parameter(
             names = "--format",
-            description = "Format for mipmaps (tiff, jpg, png)",
-            required = false)
+            description = "Format for mipmaps (tiff, jpg, png)"
+    )
     public String format = Utils.TIFF_FORMAT;
 
     @Parameter(
             names = "--forceGeneration",
             description = "Regenerate mipmaps even if they already exist",
-            required = false,
             arity = 0)
     public boolean forceGeneration = false;
 
     @Parameter(
             names = "--renderGroup",
-            description = "Index (1-n) that identifies portion of layer to render (omit if only one job is being used)",
-            required = false)
+            description = "Index (1-n) that identifies portion of layer to render (omit if only one job is being used)"
+    )
     public Integer renderGroup = 1;
 
     @Parameter(
             names = "--numberOfRenderGroups",
-            description = "Total number of parallel jobs being used to render this layer (omit if only one job is being used)",
-            required = false)
+            description = "Total number of parallel jobs being used to render this layer (omit if only one job is being used)"
+    )
     public Integer numberOfRenderGroups = 1;
+
+    @Parameter(
+            names = "--removeAll",
+            description = "Indicates that existing mipmaps should be removed (instead of generated)")
+    public Boolean removeAll = false;
 
     public MipmapPathBuilder getMipmapPathBuilder()
             throws IOException {
