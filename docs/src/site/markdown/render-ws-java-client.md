@@ -912,6 +912,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.WarpTransformClient
   [Import Match Client]: <#import-match-client> 
   [Import Transform Changes Client]: <#import-transform-changes-client> 
   [Mipmap Client]: <#mipmap-client> 
+  [Point Match Client]: <#point-match-client> 
   [Render Section Client]: <#render-section-client> 
   [render web services]: <render-ws.md>
   [Section Update Client]: <#section-update-client> 
