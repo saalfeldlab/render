@@ -538,8 +538,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.PointMatchClient [o
 ```
 
 ### Source Code: 
-* Java: [MipmapClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/MipmapClient.java)
-* Launch Script: [render_mipmaps.sh](../../../../render-ws-java-client/src/main/scripts/render_mipmaps.sh) 
+* Java: [PointMatchClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/PointMatchClient.java)
 
 
 
