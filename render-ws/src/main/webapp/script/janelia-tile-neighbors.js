@@ -391,16 +391,15 @@ JaneliaTileWithNeighbors.prototype.buildTilePair = function(tileSpec, otherTileS
 
     pTile.matchInfoSelector = "#matchInfo";
 
-    var canvasOffset = 4;
-    var tileMargin = 4;
+    var canvasMargin = 100;
 
     var pTileWidth = (orderedPair.pTileSpec.maxX - orderedPair.pTileSpec.minX + 1) * this.scale;
     var qTileWidth = (orderedPair.qTileSpec.maxX - orderedPair.qTileSpec.minX + 1) * this.scale;
-    var canvasWidth = canvasOffset + tileMargin + pTileWidth + qTileWidth;
+    var canvasWidth = canvasMargin + pTileWidth + qTileWidth;
 
     var pTileHeight = (orderedPair.pTileSpec.maxY - orderedPair.pTileSpec.minY + 1) * this.scale;
     var qTileHeight = (orderedPair.qTileSpec.maxY - orderedPair.qTileSpec.minY + 1) * this.scale;
-    var canvasHeight = canvasOffset + tileMargin + pTileHeight + qTileHeight;
+    var canvasHeight = canvasMargin + pTileHeight + qTileHeight;
 
     var context = this.canvas.getContext("2d");
     context.canvas.width = canvasWidth;
