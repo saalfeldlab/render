@@ -8,6 +8,7 @@ import java.util.Set;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.TileClusterParameters;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -59,7 +60,11 @@ public class UnconnectedTileRemovalClientTest {
         parameters.tileCluster.smallClusterFactor = 0.5; // should result in maxSmallClusterSize of 4 (0.5 * 8)
 
         final UnconnectedTileRemovalClient client = new UnconnectedTileRemovalClient(parameters);
-        client.markSmallClustersAsUnconnected(99.0, matchesList, unconnectedTileIds);
+        final Double z = 99.0;
+        final List<Set<String>> sortedConnectedTileSets =
+                TileClusterParameters.buildAndSortConnectedTileSets(z, matchesList);
+        final int firstRemainingSetIndex =
+                client.markSmallClustersAsUnconnected(z, sortedConnectedTileSets, unconnectedTileIds);
 
         final String[] expectedUnconnectedTiles = {"I", "J", "K", "L", "M", "N", "O", "P", "X", "Y"};
         Assert.assertEquals("invalid number of small cluster tiles found ",
@@ -69,6 +74,9 @@ public class UnconnectedTileRemovalClientTest {
             Assert.assertTrue("tileId " + tileId + " should have been marked as unconnected",
                               unconnectedTileIds.contains(tileId));
         }
+
+        Assert.assertEquals("invalid firstRemainingSetIndex returned",
+                            4, firstRemainingSetIndex);
     }
 
 }

@@ -3,6 +3,7 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -11,10 +12,12 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
@@ -61,6 +64,15 @@ public class UnconnectedTileRemovalClient {
         public String removedTilesStackName;
 
         @Parameter(
+                names = "--separateSmallerUnconnectedClusters",
+                description = "If specified and more than one cluster exists for a section after removal, " +
+                              "leave the largest cluster in that section and then separate any smaller clusters " +
+                              "into independent layers by assigning them sequential integral z values " +
+                              "after the stack's highest z value",
+                arity = 0)
+        public boolean separateSmallerUnconnectedClusters = false;
+
+        @Parameter(
                 names = "--completeStacksAfterRemoval",
                 description = "Complete source and/or removed tiles stacks after processing",
                 arity = 0)
@@ -98,6 +110,7 @@ public class UnconnectedTileRemovalClient {
     }
 
     private final Parameters parameters;
+    private Double smallClusterZ = null;
 
     UnconnectedTileRemovalClient(final Parameters parameters) {
         this.parameters = parameters;
@@ -115,7 +128,23 @@ public class UnconnectedTileRemovalClient {
                                              parameters.stack + "_removed_tiles" :
                                              parameters.removedTilesStackName;
 
+
+        if (parameters.separateSmallerUnconnectedClusters) {
+            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
+            Bounds stackBounds = null;
+            final StackStats stats = stackMetaData.getStats();
+            if (stats != null) {
+                stackBounds = stats.getStackBounds();
+            }
+            if (stackBounds == null) {
+                throw new IllegalStateException("Bounds are not defined for stack '" + parameters.stack +
+                                                "'. The stack likely needs to be COMPLETED." );
+            }
+            smallClusterZ = stackBounds.getMaxZ() + 1;
+        }
+
         int totalUnconnectedTiles = 0;
+        int totalNumberOfSeparatedClusters = 0;
 
         for (final Double z : parameters.zValues) {
 
@@ -139,11 +168,36 @@ public class UnconnectedTileRemovalClient {
                }
             }
 
+            boolean foundSmallerClustersToSeparate = false;
             if (parameters.tileCluster.isDefined()) {
-                markSmallClustersAsUnconnected(z, matchesList, unconnectedTileIds);
+
+                final List<Set<String>> sortedConnectedTileSets =
+                        TileClusterParameters.buildAndSortConnectedTileSets(z, matchesList);
+
+                final int largestSetIndex = sortedConnectedTileSets.size() - 1;
+                final int firstRemainingSetIndex =
+                        markSmallClustersAsUnconnected(z, sortedConnectedTileSets, unconnectedTileIds);
+
+                foundSmallerClustersToSeparate = (parameters.separateSmallerUnconnectedClusters) &&
+                                                 (firstRemainingSetIndex < largestSetIndex);
+
+                if (foundSmallerClustersToSeparate) {
+
+                    renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
+
+                    final List<Set<String>> smallerRemainingTileSets =
+                            sortedConnectedTileSets.subList(firstRemainingSetIndex, largestSetIndex);
+
+                    separateSmallerRemainingClusters(resolvedTiles,
+                                                     smallerRemainingTileSets,
+                                                     renderDataClient);
+
+                    totalNumberOfSeparatedClusters += smallerRemainingTileSets.size();
+                }
+
             }
 
-            if (unconnectedTileIds.size() > 0) {
+            if ((unconnectedTileIds.size() > 0) || foundSmallerClustersToSeparate) {
 
                 LOG.info("removeTiles: found {} unconnected tiles for z {}", unconnectedTileIds.size(), z);
 
@@ -154,14 +208,11 @@ public class UnconnectedTileRemovalClient {
                         renderDataClient.setupDerivedStack(sourceStackMetaData, removedTilesStackName);
                     }
 
-                    final ResolvedTileSpecCollection removedTiles =
-                            new ResolvedTileSpecCollection(resolvedTiles.getTransformSpecs(),
-                                                           resolvedTiles.getTileSpecs());
-                    removedTiles.removeDifferentTileSpecs(unconnectedTileIds);
+                    final ResolvedTileSpecCollection removedTiles = getFilteredCollection(resolvedTiles,
+                                                                                          unconnectedTileIds);
 
                     if (removedTiles.getTileCount() > 0) {
 
-                        removedTiles.removeUnreferencedTransforms();
                         // NOTE: don't delete existing tiles from removed stack in case this is a second pass
                         renderDataClient.saveResolvedTiles(removedTiles, removedTilesStackName, z);
 
@@ -208,7 +259,8 @@ public class UnconnectedTileRemovalClient {
 
         }
 
-        if (parameters.completeStacksAfterRemoval && (totalUnconnectedTiles > 0)) {
+        if (parameters.completeStacksAfterRemoval &&
+            ((totalUnconnectedTiles > 0) || (totalNumberOfSeparatedClusters > 0))) {
 
             if (! parameters.reportRemovedTiles) {
                 renderDataClient.setStackState(parameters.stack, StackMetaData.StackState.COMPLETE);
@@ -220,32 +272,41 @@ public class UnconnectedTileRemovalClient {
 
         }
 
+        if (totalNumberOfSeparatedClusters > 0) {
+            LOG.info("separated {} small clusters into new layers", totalNumberOfSeparatedClusters);
+        }
+
         LOG.info("found {} unconnected tiles across all layers", totalUnconnectedTiles);
     }
 
-    void markSmallClustersAsUnconnected(final Double z,
-                                        final List<CanvasMatches> matchesList,
-                                        final Set<String> unconnectedTileIds) {
+    int markSmallClustersAsUnconnected(final Double z,
+                                       final List<Set<String>> sortedConnectedTileSets,
+                                       final Set<String> unconnectedTileIds) {
 
-        final List<Set<String>> connectedTileSets = TileClusterParameters.buildAndSortConnectedTileSets(z, matchesList);
+        int firstRemainingClusterIndex = 0;
 
-        if (connectedTileSets.size() > 1) {
+        if (sortedConnectedTileSets.size() > 1) {
 
             // keep largest connected tile set regardless of size
-            final Set<String> largestCluster = connectedTileSets.remove(connectedTileSets.size() - 1);
+            final int largestSetIndex = sortedConnectedTileSets.size() - 1;
+            final Set<String> largestCluster = sortedConnectedTileSets.get(largestSetIndex);
             final int maxSmallClusterSize = parameters.tileCluster.getEffectiveMaxSmallClusterSize(largestCluster.size());
 
             LOG.info("markSmallClustersAsUnconnected: for z {}, maxSmallClusterSize is {}",
                      z, maxSmallClusterSize);
 
             final List<Integer> remainingClusterSizes = new ArrayList<>();
-            for (final Set<String> clusterTileIds : connectedTileSets) {
+            for (int i = 0; i < largestSetIndex; i++) {
+                final Set<String> clusterTileIds = sortedConnectedTileSets.get(i);
                 if (clusterTileIds.size() <= maxSmallClusterSize) {
                     unconnectedTileIds.addAll(clusterTileIds);
                     LOG.info("markSmallClustersAsUnconnected: removed small {} tile cluster: {}",
                              clusterTileIds.size(), clusterTileIds.stream().sorted().collect(Collectors.toList()));
                 } else {
                     remainingClusterSizes.add(clusterTileIds.size());
+                    if (firstRemainingClusterIndex == 0) {
+                        firstRemainingClusterIndex = i;
+                    }
                 }
             }
 
@@ -256,6 +317,47 @@ public class UnconnectedTileRemovalClient {
 
         }
 
+        return firstRemainingClusterIndex;
+    }
+
+    private void separateSmallerRemainingClusters(final ResolvedTileSpecCollection allTiles,
+                                                  final List<Set<String>> smallerRemainingTileSets,
+                                                  final RenderDataClient renderDataClient)
+            throws IOException {
+
+        for (final Set<String> remainingCluster : smallerRemainingTileSets) {
+
+            final ResolvedTileSpecCollection filteredTiles = getFilteredCollection(allTiles, remainingCluster);
+
+            if (filteredTiles.hasTileSpecs()) {
+
+                allTiles.removeTileSpecs(remainingCluster);
+
+                for (final TileSpec tileSpec : filteredTiles.getTileSpecs()) {
+                    tileSpec.setZ(smallClusterZ);
+                }
+
+                renderDataClient.saveResolvedTiles(filteredTiles, parameters.stack, smallClusterZ);
+
+                LOG.info("separateSmallerRemainingClusters: changed z to {} for {} tile cluster: {}",
+                         smallClusterZ,
+                         remainingCluster.size(),
+                         remainingCluster.stream().sorted().collect(Collectors.toList()));
+
+                smallClusterZ += 1;
+            }
+        }
+
+    }
+
+    private ResolvedTileSpecCollection getFilteredCollection(final ResolvedTileSpecCollection allTiles,
+                                                             final Set<String> keepTileIds) {
+        final ResolvedTileSpecCollection filteredTiles =
+                new ResolvedTileSpecCollection(allTiles.getTransformSpecs(),
+                                               allTiles.getTileSpecs());
+        filteredTiles.removeDifferentTileSpecs(keepTileIds);
+        filteredTiles.removeUnreferencedTransforms();
+        return filteredTiles;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(UnconnectedTileRemovalClient.class);
