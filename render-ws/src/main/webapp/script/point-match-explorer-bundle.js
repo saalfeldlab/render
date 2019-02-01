@@ -3861,8 +3861,6 @@ function mapDataTypeToURL(state, dataType, params) {
       return STACK_BASE_URL + "/stackIds";
     case "MatchCollections":
       return MATCH_BASE_URL + "/matchCollections";
-    case "StackResolution":
-      return BASE_URL + "/owner/flyTEM/project/FAFB00/stack/v12_align";
     case "StackMetadata":
       return STACK_BASE_URL + "/project/" + selectedProject + "/stack/" + selectedStack;
     case "SectionData":
@@ -55398,6 +55396,7 @@ var App = function (_Component) {
         this.props.invalidateData("SectionBounds");
         this.props.invalidateData("TileBounds");
         this.props.invalidateData("SectionData");
+        this.props.invalidateData("StackMetadata");
         this.props.invalidateData("MatchesWithinGroup");
         this.props.invalidateData("MatchesOutsideGroup");
         canvas.removeEventListener("mousemove", this.processMouseMove, false);
@@ -55411,6 +55410,7 @@ var App = function (_Component) {
         this.props.getData("SectionBounds");
         this.props.getData("TileBounds");
         this.props.getData("SectionData");
+        this.props.getData("StackMetadata");
       }
     }
   }, {
@@ -55433,7 +55433,7 @@ var App = function (_Component) {
           isMetaDown = _props$PMEVariables.isMetaDown,
           isPDown = _props$PMEVariables.isPDown;
 
-      var md = (0, _utilsThree.onMouseUp)(event, isShiftDown, isCtrlDown, isMetaDown, isPDown, this.afterMouseUp, this.props.UserInput, this.props.APIData.StackResolution.data.currentVersion);
+      var md = (0, _utilsThree.onMouseUp)(event, isShiftDown, isCtrlDown, isMetaDown, isPDown, this.afterMouseUp, this.props.UserInput, this.props.APIData.StackMetadata.data.currentVersion);
       this.props.updatePMEVariables({ selectedMetadata: md });
     }
   }, {
@@ -55685,7 +55685,6 @@ var APIDataInitialState = {
   "StackOwners": dataInitialState,
   "MatchOwners": dataInitialState,
   "MatchCollections": dataInitialState,
-  "StackResolution": dataInitialState,
   "StackMetadata": dataInitialState,
   "SectionData": dataInitialState,
   "StackIds": dataInitialState,
@@ -56526,7 +56525,6 @@ var UserInputs = function (_Component) {
     key: "componentWillMount",
     value: function componentWillMount() {
       this.props.getData("StackOwners");
-      this.props.getData("StackResolution");
       this.props.getData("MatchOwners");
     }
   }, {
