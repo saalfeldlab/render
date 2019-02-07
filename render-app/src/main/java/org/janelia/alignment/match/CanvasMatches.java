@@ -42,12 +42,16 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
     private String qId;
 
     /** Information about this consensus set of matches (or null if there is only one set).  */
-    @ApiModelProperty(value = "Information about this consensus set of matches (omit if there is only one set)", required = false)
+    @ApiModelProperty(value = "Information about this consensus set of matches (omit if there is only one set)")
     private ConsensusSetData consensusSetData;
 
     /** Weighted source-target point correspondences. */
     @ApiModelProperty(value = "Weighted source-target point correspondences", required=true)
     private Matches matches;
+
+    /** Number of source-target point correspondences. */
+    @ApiModelProperty(value = "Number of source-target point correspondences")
+    private Integer matchCount;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
@@ -120,6 +124,13 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
             }
         }
 
+        // ensure that matchCount accurately represents number of correspondences
+        if (matches != null) {
+            matchCount = matches.getWs().length;
+        } else {
+            matchCount = 0;
+        }
+
     }
 
     /**
@@ -139,7 +150,7 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         }
     }
 
-    public ConsensusSetData getConsensusSetData() {
+    ConsensusSetData getConsensusSetData() {
         return consensusSetData;
     }
 
@@ -163,7 +174,7 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
      * @throws IllegalStateException
      *   if the consensus set data has already been defined for these matches.
      */
-    public void setConsensusSetIndex(final Integer consensusSetIndex)
+    void setConsensusSetIndex(final Integer consensusSetIndex)
             throws IllegalStateException {
 
         if (this.consensusSetData != null) {
@@ -177,6 +188,10 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         final String setSuffix = "_set_" + this.pGroupId + "_" + this.qGroupId + "_" + consensusSetIndex;
         this.pId = this.pId + setSuffix;
         this.qId = this.qId + setSuffix;
+    }
+
+    public Integer getMatchCount() {
+        return matchCount;
     }
 
     @Override

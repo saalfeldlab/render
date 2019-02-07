@@ -148,7 +148,7 @@ public class MatchDaoReadOnlyTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesWithPGroup(collectionId, null, groupId, outputStream);
+        dao.writeMatchesWithPGroup(collectionId, null, groupId, false, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -166,7 +166,7 @@ public class MatchDaoReadOnlyTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesWithinGroup(collectionId, null, groupId, outputStream);
+        dao.writeMatchesWithinGroup(collectionId, null, groupId, false, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -206,7 +206,7 @@ public class MatchDaoReadOnlyTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideGroup(collectionId, null, groupId, outputStream);
+        dao.writeMatchesOutsideGroup(collectionId, null, groupId, false, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -226,7 +226,7 @@ public class MatchDaoReadOnlyTest {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
         final String targetGroupId = "section2";
-        dao.writeMatchesBetweenGroups(collectionId, null, groupId, targetGroupId, outputStream);
+        dao.writeMatchesBetweenGroups(collectionId, null, groupId, targetGroupId, false, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -307,7 +307,7 @@ public class MatchDaoReadOnlyTest {
         final String sourceId = "tile1.1";
         final String qGroupId = "section1";
 
-        dao.writeMatchesBetweenObjectAndGroup(collectionId, null, groupId, sourceId,qGroupId, outputStream);
+        dao.writeMatchesBetweenObjectAndGroup(collectionId, null, groupId, sourceId,qGroupId, false, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -341,7 +341,7 @@ public class MatchDaoReadOnlyTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesWithinGroup(collectionId, mergeCollectionIdList, groupId, outputStream);
+        dao.writeMatchesWithinGroup(collectionId, mergeCollectionIdList, groupId, false, outputStream);
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 

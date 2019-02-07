@@ -1058,6 +1058,49 @@ public class RenderDataClient {
     }
 
     /**
+     * @return list of pGroup identifiers for this collection.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<String> getMatchPGroupIds()
+            throws IOException {
+
+        final URI uri = getUri(urls.getMatchCollectionUrlString() + "/pGroupIds");
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final TypeReference<List<String>> typeReference = new TypeReference<List<String>>() {};
+        final JsonUtils.GenericHelper<List<String>> helper = new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<String>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getMatchPGroupIds: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
+     * Updates match counts for all pairs with specified pGroup.
+     *
+     * @param  pGroupId  pGroupId.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void updateMatchCountsForPGroup(final String pGroupId)
+            throws IOException {
+
+        final URI uri = getUri(urls.getMatchCollectionUrlString() + "/pGroup/" + pGroupId + "/matchCounts");
+        final String requestContext = "PUT " + uri;
+        final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+
+        LOG.info("updateMatchCountsForPGroup: submitting {}", requestContext);
+
+        httpClient.execute(httpPut, responseHandler);
+    }
+
+    /**
      * @return list of p and q group identifiers with multiple consensus set match pairs.
      *
      * @throws IOException

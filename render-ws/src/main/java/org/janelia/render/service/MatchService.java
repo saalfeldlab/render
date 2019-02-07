@@ -8,6 +8,7 @@ import java.util.Set;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -208,6 +209,7 @@ public class MatchService {
     public Response getMatchesWithPGroup(@PathParam("owner") final String owner,
                                          @PathParam("matchCollection") final String matchCollection,
                                          @PathParam("pGroupId") final String pGroupId,
+                                         @DefaultValue("false") @QueryParam("excludeMatchDetails") final boolean excludeMatchDetails,
                                          @QueryParam("mergeCollection") final List<String> mergeCollectionList) {
 
         LOG.info("getMatchesWithPGroup: entry, owner={}, matchCollection={}, pGroupId={}, mergeCollectionList={}",
@@ -216,7 +218,7 @@ public class MatchService {
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
         final StreamingOutput responseOutput =
-                output -> matchDao.writeMatchesWithPGroup(collectionId, mergeCollectionIdList, pGroupId, output);
+                output -> matchDao.writeMatchesWithPGroup(collectionId, mergeCollectionIdList, pGroupId, excludeMatchDetails, output);
 
         return streamResponse(responseOutput);
     }
@@ -235,6 +237,7 @@ public class MatchService {
     public Response getMatchesWithinGroup(@PathParam("owner") final String owner,
                                           @PathParam("matchCollection") final String matchCollection,
                                           @PathParam("groupId") final String groupId,
+                                          @DefaultValue("false") @QueryParam("excludeMatchDetails") final boolean excludeMatchDetails,
                                           @QueryParam("mergeCollection") final List<String> mergeCollectionList) {
 
         LOG.info("getMatchesWithinGroup: entry, owner={}, matchCollection={}, groupId={}, mergeCollectionList={}",
@@ -243,7 +246,7 @@ public class MatchService {
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
         final StreamingOutput responseOutput =
-                output -> matchDao.writeMatchesWithinGroup(collectionId, mergeCollectionIdList, groupId, output);
+                output -> matchDao.writeMatchesWithinGroup(collectionId, mergeCollectionIdList, groupId, excludeMatchDetails, output);
 
         return streamResponse(responseOutput);
     }
@@ -262,6 +265,7 @@ public class MatchService {
     public Response getMatchesOutsideGroup(@PathParam("owner") final String owner,
                                            @PathParam("matchCollection") final String matchCollection,
                                            @PathParam("groupId") final String groupId,
+                                           @DefaultValue("false") @QueryParam("excludeMatchDetails") final boolean excludeMatchDetails,
                                            @QueryParam("mergeCollection") final List<String> mergeCollectionList) {
 
         LOG.info("getMatchesOutsideGroup: entry, owner={}, matchCollection={}, groupId={}, mergeCollectionList={}",
@@ -270,7 +274,7 @@ public class MatchService {
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
         final StreamingOutput responseOutput =
-                output -> matchDao.writeMatchesOutsideGroup(collectionId, mergeCollectionIdList, groupId, output);
+                output -> matchDao.writeMatchesOutsideGroup(collectionId, mergeCollectionIdList, groupId, excludeMatchDetails, output);
 
         return streamResponse(responseOutput);
     }
@@ -290,6 +294,7 @@ public class MatchService {
                                             @PathParam("matchCollection") final String matchCollection,
                                             @PathParam("pGroupId") final String pGroupId,
                                             @PathParam("qGroupId") final String qGroupId,
+                                            @DefaultValue("false") @QueryParam("excludeMatchDetails") final boolean excludeMatchDetails,
                                             @QueryParam("mergeCollection") final List<String> mergeCollectionList) {
 
         LOG.info("getMatchesBetweenGroups: entry, owner={}, matchCollection={}, pGroupId={}, qGroupId={}, mergeCollectionList={}",
@@ -298,7 +303,7 @@ public class MatchService {
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
         final StreamingOutput responseOutput =
-                output -> matchDao.writeMatchesBetweenGroups(collectionId, mergeCollectionIdList, pGroupId, qGroupId, output);
+                output -> matchDao.writeMatchesBetweenGroups(collectionId, mergeCollectionIdList, pGroupId, qGroupId, excludeMatchDetails, output);
 
         return streamResponse(responseOutput);
     }
@@ -348,6 +353,7 @@ public class MatchService {
                                                 @PathParam("pGroupId") final String pGroupId,
                                                 @PathParam("pId") final String pId,
                                                 @PathParam("qGroupId") final String qGroupId,
+                                                @DefaultValue("false") @QueryParam("excludeMatchDetails") final boolean excludeMatchDetails,
                                                 @QueryParam("mergeCollection") final List<String> mergeCollectionList) {
 
         LOG.info("getMatchesFromObjectToGroup: entry, owner={}, matchCollection={}, pGroupId={}, pId={}, qGroupId={}, mergeCollectionList={}",
@@ -356,7 +362,7 @@ public class MatchService {
         final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
         final List<MatchCollectionId> mergeCollectionIdList = getCollectionIdList(owner, mergeCollectionList);
         final StreamingOutput responseOutput =
-                output -> matchDao.writeMatchesBetweenObjectAndGroup(collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId, output);
+                output -> matchDao.writeMatchesBetweenObjectAndGroup(collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId, excludeMatchDetails, output);
 
         return streamResponse(responseOutput);
     }
@@ -539,6 +545,53 @@ public class MatchService {
         final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
 
         LOG.info("saveMatches: exit");
+
+        return responseBuilder.build();
+    }
+
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/pGroup/{pGroupId}/matchCounts")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Find match counts for all pairs with the specified pGroup",
+            response = CanvasMatches.class,
+            responseContainer="List")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public Response getMatchCountsForPGroup(@PathParam("owner") final String owner,
+                                            @PathParam("matchCollection") final String matchCollection,
+                                            @PathParam("pGroupId") final String pGroupId) {
+
+        return getMatchesWithPGroup(owner, matchCollection, pGroupId,true, null);
+    }
+
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/pGroup/{pGroupId}/matchCounts")
+    @PUT
+    @ApiOperation(
+            value = "Update match counts for all pairs with specified pGroup")
+    @ApiResponses(value = {
+            @ApiResponse(code = 201, message = "match counts successfully updated"),
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public Response updateMatchCountsForPGroup(@PathParam("owner") final String owner,
+                                               @PathParam("matchCollection") final String matchCollection,
+                                               @PathParam("pGroupId") final String pGroupId,
+                                               @Context final UriInfo uriInfo) {
+
+        LOG.info("updateMatchCountsForPGroup: entry, owner={}, matchCollection={}, pGroupId={}",
+                 owner, matchCollection, pGroupId);
+
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+        try {
+            matchDao.updateMatchCountsForPGroup(collectionId, pGroupId);
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        final Response.ResponseBuilder responseBuilder = Response.created(uriInfo.getRequestUri());
+
+        LOG.info("updateMatchCountsForPGroup: exit, pGroupId={}", pGroupId);
 
         return responseBuilder.build();
     }

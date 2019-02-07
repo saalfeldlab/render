@@ -1,9 +1,12 @@
 package org.janelia.render.service.dao;
 
+import com.mongodb.client.MongoCollection;
+
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bson.Document;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
@@ -66,7 +69,7 @@ public class MatchDaoTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideGroup(collectionId, null, groupId, outputStream);
+        dao.writeMatchesOutsideGroup(collectionId, null, groupId, true, outputStream);
 
         List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
@@ -75,7 +78,7 @@ public class MatchDaoTest {
 
         outputStream.reset();
 
-        dao.writeMatchesWithinGroup(collectionId, null, groupId, outputStream);
+        dao.writeMatchesWithinGroup(collectionId, null, groupId, true, outputStream);
 
         canvasMatchesList = getListFromStream(outputStream);
 
@@ -103,21 +106,29 @@ public class MatchDaoTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideGroup(collectionId, null, groupId, outputStream);
+        dao.writeMatchesOutsideGroup(collectionId, null, groupId, false, outputStream);
 
         canvasMatchesList = getListFromStream(outputStream);
 
         Assert.assertEquals("invalid number of matches returned, matches=" + canvasMatchesList,
                             5, canvasMatchesList.size());
 
+        CanvasMatches lastSavedMatchPair = null;
         int savePCount = 0;
         for (final CanvasMatches canvasMatches : canvasMatchesList) {
             if (pId.equals(canvasMatches.getpId())) {
                 savePCount++;
+                lastSavedMatchPair = canvasMatches;
             }
         }
 
         Assert.assertEquals("invalid number of matches saved", 3, savePCount);
+
+        if (lastSavedMatchPair != null) {
+            final Integer wLength = lastSavedMatchPair.getMatches().getWs().length;
+            Assert.assertEquals("invalid match count for last pair",
+                                wLength, lastSavedMatchPair.getMatchCount());
+        }
     }
 
     @Test
@@ -151,7 +162,7 @@ public class MatchDaoTest {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeMatchesOutsideGroup(collectionId, null, updateGroupA, outputStream);
+        dao.writeMatchesOutsideGroup(collectionId, null, updateGroupA, false, outputStream);
 
         final List<CanvasMatches> retrievedList = getListFromStream(outputStream);
 
@@ -160,7 +171,7 @@ public class MatchDaoTest {
 
         for (final CanvasMatches canvasMatches : retrievedList) {
             final Matches matches = canvasMatches.getMatches();
-            final double ws[] = matches.getWs();
+            final double[] ws = matches.getWs();
             Assert.assertEquals("weight not updated", 8.0, ws[0], 0.01);
         }
     }
@@ -289,6 +300,29 @@ public class MatchDaoTest {
 
         Assert.assertEquals("invalid qRenderParametersUrl inserted",
                             matchTrial.getParameters().getqRenderParametersUrl(), retrievedTrial.getParameters().getqRenderParametersUrl());
+
+    }
+
+    @Test
+    public void testUpdateMatchCountsForPGroup() {
+
+        final String pGroupId = "section1";
+
+        dao.updateMatchCountsForPGroup(collectionId, pGroupId);
+
+        final MongoCollection<Document> matchCollection = dao.getExistingCollection(collectionId);
+        final Document query = new Document("pGroupId", pGroupId);
+        final List<CanvasMatches> updatedMatchList = dao.getMatches(matchCollection, query);
+
+        Assert.assertEquals("invalid number of matches returned, matches=" + updatedMatchList,
+                            3, updatedMatchList.size());
+
+        for (final CanvasMatches canvasMatches : updatedMatchList) {
+            final Matches matches = canvasMatches.getMatches();
+            final Integer expectedMatchCount = matches.getWs().length;
+            Assert.assertEquals("match counts not updated",
+                                expectedMatchCount, canvasMatches.getMatchCount());
+        }
 
     }
 

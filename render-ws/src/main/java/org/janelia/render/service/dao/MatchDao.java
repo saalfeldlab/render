@@ -9,6 +9,7 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.client.result.DeleteResult;
@@ -109,44 +110,7 @@ public class MatchDao {
      */
     public List<String> getMultiConsensusPGroupIds(final MatchCollectionId collectionId)
             throws IllegalArgumentException {
-
-        final MongoCollection<Document> matchCollection = getExistingCollection(collectionId);
-
-        // db.<matchCollection>.aggregate(
-        //     [
-        //         { "$match": { "consensusSetData": { "$exists": true } } },
-        //         { "$group": { "_id": { "pGroupId": "$pGroupId" } } }
-        //     ]
-        // )
-
-        final List<Document> pipeline = new ArrayList<>();
-        pipeline.add(new Document("$match",
-                                  new Document("consensusSetData",
-                                               new Document(QueryOperators.EXISTS, true))));
-        pipeline.add(new Document("$group",
-                                  new Document("_id",
-                                               new Document("pGroupId", "$pGroupId"))));
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("getMultiConsensusPGroupIds: running {}.aggregate({})",
-                      MongoUtil.fullName(matchCollection),
-                      MongoUtil.toJson(pipeline));
-        }
-
-        // sort and reduce to distinct set of group ids here instead of in pipeline
-        final TreeSet<String> pGroupIdsWithMultiplePairs = new TreeSet<>();
-
-        // mongodb java 3.0 driver notes:
-        // -- need to set cursor batchSize to prevent NPE from cursor creation
-        final AggregateIterable<Document> iterable = matchCollection.aggregate(pipeline).batchSize(1);
-        try (final MongoCursor<Document> cursor = iterable.iterator()) {
-            while (cursor.hasNext()) {
-                final Document id = cursor.next().get("_id", Document.class);
-                pGroupIdsWithMultiplePairs.add(id.getString("pGroupId"));
-            }
-        }
-
-        return new ArrayList<>(pGroupIdsWithMultiplePairs);
+        return new ArrayList<>(getMultiConsensusGroupIds(collectionId, false));
     }
 
     /**
@@ -158,49 +122,13 @@ public class MatchDao {
     public Set<String> getMultiConsensusGroupIds(final MatchCollectionId collectionId)
             throws IllegalArgumentException {
 
-        final MongoCollection<Document> matchCollection = getExistingCollection(collectionId);
-
-        // db.<matchCollection>.aggregate(
-        //     [
-        //         { "$match": { "consensusSetData": { "$exists": true } } },
-        //         { "$group": { "_id": { "pGroupId": "$pGroupId", "qGroupId": "$qGroupId" } } }
-        //     ]
-        // )
-
-        final List<Document> pipeline = new ArrayList<>();
-        pipeline.add(new Document("$match",
-                                  new Document("consensusSetData",
-                                               new Document(QueryOperators.EXISTS, true))));
-        pipeline.add(new Document("$group",
-                                  new Document("_id",
-                                               new Document("pGroupId", "$pGroupId").append("qGroupId", "$qGroupId"))));
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("getMultiConsensusPGroupIds: running {}.aggregate({})",
-                      MongoUtil.fullName(matchCollection),
-                      MongoUtil.toJson(pipeline));
-        }
-
-        // sort and reduce to distinct set of group ids here instead of in pipeline
-        final TreeSet<String> groupIdsWithMultiplePairs = new TreeSet<>();
-
-        // mongodb java 3.0 driver notes:
-        // -- need to set cursor batchSize to prevent NPE from cursor creation
-        final AggregateIterable<Document> iterable = matchCollection.aggregate(pipeline).batchSize(1);
-        try (final MongoCursor<Document> cursor = iterable.iterator()) {
-            while (cursor.hasNext()) {
-                final Document id = cursor.next().get("_id", Document.class);
-                groupIdsWithMultiplePairs.add(id.getString("pGroupId"));
-                groupIdsWithMultiplePairs.add(id.getString("qGroupId"));
-            }
-        }
-
-        return groupIdsWithMultiplePairs;
+        return getMultiConsensusGroupIds(collectionId, true);
     }
 
     public void writeMatchesWithPGroup(final MatchCollectionId collectionId,
                                        final List<MatchCollectionId> mergeCollectionIdList,
                                        final String pGroupId,
+                                       final boolean excludeMatchDetails,
                                        final OutputStream outputStream)
             throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
@@ -213,12 +141,13 @@ public class MatchDao {
 
         final Document query = new Document("pGroupId", pGroupId);
 
-        writeMatches(collectionList, query, outputStream);
+        writeMatches(collectionList, query, excludeMatchDetails, outputStream);
     }
 
     public void writeMatchesWithinGroup(final MatchCollectionId collectionId,
                                         final List<MatchCollectionId> mergeCollectionIdList,
                                         final String groupId,
+                                        final boolean excludeMatchDetails,
                                         final OutputStream outputStream)
             throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
@@ -231,12 +160,13 @@ public class MatchDao {
 
         final Document query = new Document("pGroupId", groupId).append("qGroupId", groupId);
 
-        writeMatches(collectionList, query, outputStream);
+        writeMatches(collectionList, query, excludeMatchDetails, outputStream);
     }
 
     public void writeMatchesOutsideGroup(final MatchCollectionId collectionId,
                                          final List<MatchCollectionId> mergeCollectionIdList,
                                          final String groupId,
+                                         final boolean excludeMatchDetails,
                                          final OutputStream outputStream)
             throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
@@ -249,7 +179,7 @@ public class MatchDao {
 
         final Document query = getOutsideGroupQuery(groupId);
 
-        writeMatches(collectionList, query, outputStream);
+        writeMatches(collectionList, query, excludeMatchDetails, outputStream);
     }
 
     public List<CanvasMatches> getMatchesOutsideGroup(final MatchCollectionId collectionId,
@@ -272,24 +202,20 @@ public class MatchDao {
                                           final List<MatchCollectionId> mergeCollectionIdList,
                                           final String pGroupId,
                                           final String qGroupId,
+                                          final boolean excludeMatchDetails,
                                           final OutputStream outputStream)
             throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
         LOG.debug("writeMatchesBetweenGroups: entry, collectionId={}, mergeCollectionIdList={}, pGroupId={}, qGroupId={}",
                   collectionId, mergeCollectionIdList, pGroupId, qGroupId);
 
+        validateRequiredGroupIds(pGroupId, qGroupId);
+
         final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
                                                                                          mergeCollectionIdList);
-        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
-        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
+        final Document query = getNormalizedGroupIdQuery(pGroupId, qGroupId);
 
-        final String noTileId = "";
-        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, noTileId, qGroupId, noTileId, null);
-        final Document query = new Document(
-                "pGroupId", normalizedCriteria.getpGroupId()).append(
-                "qGroupId", normalizedCriteria.getqGroupId());
-
-        writeMatches(collectionList, query, outputStream);
+        writeMatches(collectionList, query, excludeMatchDetails, outputStream);
     }
 
     public void writeMatchesBetweenObjectAndGroup(final MatchCollectionId collectionId,
@@ -297,6 +223,7 @@ public class MatchDao {
                                                   final String pGroupId,
                                                   final String pId,
                                                   final String qGroupId,
+                                                  final boolean excludeMatchDetails,
                                                   final OutputStream outputStream)
             throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
@@ -311,7 +238,7 @@ public class MatchDao {
 
         final Document query = getInvolvingObjectAndGroupQuery(pGroupId, pId, qGroupId);
 
-        writeMatches(collectionList, query, outputStream);
+        writeMatches(collectionList, query, excludeMatchDetails, outputStream);
     }
 
     public CanvasMatches getMatchesBetweenObjects(final MatchCollectionId collectionId,
@@ -321,17 +248,9 @@ public class MatchDao {
                                                   final String qId)
             throws IllegalArgumentException, ObjectNotFoundException {
 
-        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
-        MongoUtil.validateRequiredParameter("pId", pId);
-        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
-        MongoUtil.validateRequiredParameter("qId", qId);
+        validateRequiredPairIds(pGroupId, pId, qGroupId, qId);
 
-        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, pId, qGroupId, qId, null);
-        final Document query = new Document(
-                "pGroupId", normalizedCriteria.getpGroupId()).append(
-                "pId", normalizedCriteria.getpId()).append(
-                "qGroupId", normalizedCriteria.getqGroupId()).append(
-                "qId", normalizedCriteria.getqId());
+        final Document query = getNormalizedIdQuery(pGroupId, pId, qGroupId, qId);
 
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
 
@@ -367,21 +286,14 @@ public class MatchDao {
         LOG.debug("writeMatchesBetweenObjects: entry, collectionId={}, mergeCollectionIdList={}, pGroupId={}, pId={}, qGroupId={}, qId={}",
                   collectionId, mergeCollectionIdList, pGroupId, pId, qGroupId, qId);
 
+        validateRequiredPairIds(pGroupId, pId, qGroupId, qId);
+
         final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
                                                                                          mergeCollectionIdList);
-        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
-        MongoUtil.validateRequiredParameter("pId", pId);
-        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
-        MongoUtil.validateRequiredParameter("qId", qId);
 
-        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, pId, qGroupId, qId, null);
-        final Document query = new Document(
-                "pGroupId", normalizedCriteria.getpGroupId()).append(
-                "pId", normalizedCriteria.getpId()).append(
-                "qGroupId", normalizedCriteria.getqGroupId()).append(
-                "qId", normalizedCriteria.getqId());
+        final Document query = getNormalizedIdQuery(pGroupId, pId, qGroupId, qId);
 
-        writeMatches(collectionList, query, outputStream);
+        writeMatches(collectionList, query, false, outputStream);
     }
 
     public void writeMatchesInvolvingObject(final MatchCollectionId collectionId,
@@ -394,14 +306,12 @@ public class MatchDao {
         LOG.debug("writeMatchesInvolvingObject: entry, collectionId={}, mergeCollectionIdList={}, groupId={}, id={}",
                   collectionId, mergeCollectionIdList, groupId, id);
 
+        validateRequiredCanvasIds(groupId, id);
         final List<MongoCollection<Document>> collectionList = getDistinctCollectionList(collectionId,
                                                                                          mergeCollectionIdList);
-        MongoUtil.validateRequiredParameter("groupId", groupId);
-        MongoUtil.validateRequiredParameter("id", id);
-
         final Document query = getInvolvingObjectQuery(groupId, id);
 
-        writeMatches(collectionList, query, outputStream);
+        writeMatches(collectionList, query, false, outputStream);
     }
 
     public void removeMatchesInvolvingObject(final MatchCollectionId collectionId,
@@ -412,11 +322,8 @@ public class MatchDao {
         LOG.debug("removeMatchesInvolvingObject: entry, collectionId={}, groupId={}, id={}",
                   collectionId, groupId, id);
 
+        validateRequiredCanvasIds(groupId, id);
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
-
-        MongoUtil.validateRequiredParameter("groupId", groupId);
-        MongoUtil.validateRequiredParameter("id", id);
-
         final Document query = getInvolvingObjectQuery(groupId, id);
 
         final DeleteResult result = collection.deleteMany(query);
@@ -435,19 +342,9 @@ public class MatchDao {
         LOG.debug("removeMatchesBetweenTiles: entry, collectionId={}, pGroupId={}, pId={}, qGroupId={}, qId={}",
                   collectionId, pGroupId, pId, qGroupId, qId);
 
+        validateRequiredPairIds(pGroupId, pId, qGroupId, qId);
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
-
-        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
-        MongoUtil.validateRequiredParameter("pId", pId);
-        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
-        MongoUtil.validateRequiredParameter("qId", qId);
-
-        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, pId, qGroupId, qId, null);
-        final Document query = new Document(
-                "pGroupId", normalizedCriteria.getpGroupId()).append(
-                "pId", normalizedCriteria.getpId()).append(
-                "qGroupId", normalizedCriteria.getqGroupId()).append(
-                "qId", normalizedCriteria.getqId());
+        final Document query = getNormalizedIdQuery(pGroupId, pId, qGroupId, qId);
 
         final DeleteResult result = collection.deleteMany(query);
 
@@ -463,16 +360,9 @@ public class MatchDao {
         LOG.debug("removeMatchesBetweenGroups: entry, collectionId={}, pGroupId={}, qGroupId={}",
                   collectionId, pGroupId,  qGroupId);
 
+        validateRequiredGroupIds(pGroupId, qGroupId);
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
-
-        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
-        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
-
-        final String noTileId = "";
-        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, noTileId, qGroupId, noTileId, null);
-        final Document query = new Document(
-                "pGroupId", normalizedCriteria.getpGroupId()).append(
-                "qGroupId", normalizedCriteria.getqGroupId());
+        final Document query = getNormalizedGroupIdQuery(pGroupId, qGroupId);
 
         final DeleteResult result = collection.deleteMany(query);
 
@@ -484,9 +374,7 @@ public class MatchDao {
                                           final String groupId)
             throws IllegalArgumentException, ObjectNotFoundException {
 
-        MongoUtil.validateRequiredParameter("collectionId", collectionId);
         MongoUtil.validateRequiredParameter("groupId", groupId);
-
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
         final Document query = getOutsideGroupQuery(groupId);
 
@@ -500,7 +388,6 @@ public class MatchDao {
                             final List<CanvasMatches> matchesList)
             throws IllegalArgumentException {
 
-        MongoUtil.validateRequiredParameter("collectionId", collectionId);
         MongoUtil.validateRequiredParameter("matchesList", matchesList);
 
         LOG.debug("saveMatches: entry, collectionId={}, matchesList.size()={}",
@@ -544,8 +431,6 @@ public class MatchDao {
 
         LOG.debug("removeAllMatches: entry, collectionId={}", collectionId);
 
-        MongoUtil.validateRequiredParameter("collectionId", collectionId);
-
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
 
         collection.drop();
@@ -567,9 +452,6 @@ public class MatchDao {
     public void renameMatchCollection(final MatchCollectionId fromCollectionId,
                                       final MatchCollectionId toCollectionId)
             throws IllegalArgumentException, ObjectNotFoundException {
-
-        MongoUtil.validateRequiredParameter("fromCollectionId", fromCollectionId);
-        MongoUtil.validateRequiredParameter("toCollectionId", toCollectionId);
 
         final String fromCollectionName = fromCollectionId.getDbCollectionName();
         final boolean fromCollectionExists = MongoUtil.exists(matchDatabase, fromCollectionName);
@@ -622,11 +504,75 @@ public class MatchDao {
         return matchTrial.getCopyWithId(String.valueOf(id));
     }
 
+    public void updateMatchCountsForPGroup(final MatchCollectionId collectionId,
+                                           final String pGroupId) {
+
+        LOG.debug("updateMatchCountsForPGroup: entry, collectionId={}, pGroupId={}",
+                  collectionId, pGroupId);
+
+        final ProcessTimer timer = new ProcessTimer();
+
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+
+        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
+
+        // db.<matchCollection>.aggregate(
+        //     [
+        //         {
+        //             "$match":  {
+        //                 "pGroupId": "..."
+        //             }
+        //         },
+        //         {
+        //             "$project":  {
+        //                 "_id": "$_id",
+        //                 "matchCount": { "$size": "$matches.w" } } }
+        //             }
+        //         }
+        //     ]
+        // )
+
+        final Document matchCriteria = new Document("pGroupId", pGroupId);
+        final Document projectCriteria = new Document("_id", "$_id").append("matchCount",
+                                                                           new Document("$size", "$matches.w"));
+
+        final List<Document> pipeline = new ArrayList<>();
+        pipeline.add(new Document("$match", matchCriteria));
+        pipeline.add(new Document("$project", projectCriteria));
+
+        final List<WriteModel<Document>> modelList = new ArrayList<>();
+
+        try (final MongoCursor<Document> cursor = collection.aggregate(pipeline).iterator()) {
+            while (cursor.hasNext()) {
+                final Document result = cursor.next();
+                final Document filter = new Document("_id", result.getObjectId("_id"));
+                final Document update = new Document("$set",
+                                                     new Document("matchCount",
+                                                                  result.getInteger("matchCount")));
+                modelList.add(new UpdateOneModel<>(filter, update));
+            }
+        }
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("updateMatchCountsForPGroup: calculated match counts for {} pairs returned by {}.aggregate({})",
+                      modelList.size(), MongoUtil.fullName(collection), MongoUtil.toJson(pipeline));
+        }
+
+        final BulkWriteResult result = collection.bulkWrite(modelList, MongoUtil.UNORDERED_OPTION);
+
+        if (LOG.isDebugEnabled()) {
+            final String bulkResultMessage = MongoUtil.toMessage("matches", result, modelList.size());
+            LOG.debug("updateMatchCountsForPGroup: {} using {}.initializeUnorderedBulkOp(), elapsedMilliseconds={}",
+                      bulkResultMessage, MongoUtil.fullName(collection), timer.getElapsedMilliseconds());
+        }
+
+    }
+    
     private MongoCollection<Document> getMatchTrialCollection() {
         return matchDatabase.getCollection(MATCH_TRIAL_COLLECTION_NAME);
     }
 
-    private MongoCollection<Document> getExistingCollection(final MatchCollectionId collectionId) {
+    MongoCollection<Document> getExistingCollection(final MatchCollectionId collectionId) {
         return MongoUtil.getExistingCollection(matchDatabase, collectionId.getDbCollectionName());
     }
 
@@ -672,12 +618,34 @@ public class MatchDao {
         return distinctIds;
     }
 
-    private List<CanvasMatches> getMatches(final MongoCollection<Document> collection,
-                                           final Document query) {
+    private Document getNormalizedGroupIdQuery(final String pGroupId,
+                                               final String qGroupId) {
+        final String noTileId = "";
+        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, noTileId, qGroupId, noTileId, null);
+        return new Document(
+                "pGroupId", normalizedCriteria.getpGroupId()).append(
+                "qGroupId", normalizedCriteria.getqGroupId());
+    }
+
+    private Document getNormalizedIdQuery(final String pGroupId,
+                                          final String pId,
+                                          final String qGroupId,
+                                          final String qId) {
+        final CanvasMatches normalizedCriteria = new CanvasMatches(pGroupId, pId, qGroupId, qId, null);
+        return new Document(
+                "pGroupId", normalizedCriteria.getpGroupId()).append(
+                "pId", normalizedCriteria.getpId()).append(
+                "qGroupId", normalizedCriteria.getqGroupId()).append(
+                "qId", normalizedCriteria.getqId());
+    }
+
+    List<CanvasMatches> getMatches(final MongoCollection<Document> collection,
+                                   final Document query) {
 
         final List<CanvasMatches> canvasMatchesList = new ArrayList<>();
+        final Document projection = EXCLUDE_MONGO_ID_KEY;
 
-        try (final MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).iterator()) {
+        try (final MongoCursor<Document> cursor = collection.find(query).projection(projection).iterator()) {
             while (cursor.hasNext()) {
                 canvasMatchesList.add(CanvasMatches.fromJson(cursor.next().toJson()));
             }
@@ -685,7 +653,7 @@ public class MatchDao {
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("getMatches: wrote data for {} matches returned by {}.find({},{})",
-                      canvasMatchesList.size(), MongoUtil.fullName(collection), query.toJson(), EXCLUDE_MONGO_ID_KEY_JSON);
+                      canvasMatchesList.size(), MongoUtil.fullName(collection), query.toJson(), projection.toJson());
         }
 
         return canvasMatchesList;
@@ -693,12 +661,15 @@ public class MatchDao {
 
     private void writeMatches(final List<MongoCollection<Document>> collectionList,
                               final Document query,
+                              final boolean excludeMatchDetails,
                               final OutputStream outputStream)
             throws IOException {
 
+        final Document projection = excludeMatchDetails ? EXCLUDE_MONGO_ID_KEY_AND_MATCHES : EXCLUDE_MONGO_ID_KEY;
+
         if (collectionList.size() > 1) {
 
-            writeMergedMatches(collectionList, query, outputStream);
+            writeMergedMatches(collectionList, query, projection, outputStream);
 
         } else {
 
@@ -709,7 +680,7 @@ public class MatchDao {
             outputStream.write(OPEN_BRACKET);
 
             int count = 0;
-            try (final MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).sort(MATCH_ORDER_BY).iterator()) {
+            try (final MongoCursor<Document> cursor = collection.find(query).projection(projection).sort(MATCH_ORDER_BY).iterator()) {
 
                 Document document;
                 while (cursor.hasNext()) {
@@ -732,13 +703,14 @@ public class MatchDao {
 
             if (LOG.isDebugEnabled()) {
                 LOG.debug("writeMatches: wrote data for {} matches returned by {}.find({},{}), elapsedSeconds={}",
-                          count, MongoUtil.fullName(collection), query.toJson(), EXCLUDE_MONGO_ID_KEY_JSON, timer.getElapsedSeconds());
+                          count, MongoUtil.fullName(collection), query.toJson(), projection.toJson(), timer.getElapsedSeconds());
             }
         }
     }
 
     private void writeMergedMatches(final List<MongoCollection<Document>> collectionList,
                                     final Document query,
+                                    final Document projection,
                                     final OutputStream outputStream)
             throws IOException {
 
@@ -759,7 +731,7 @@ public class MatchDao {
             MongoCollection<Document> collection;
             for (int i = 0; i < numberOfCollections; i++) {
                 collection = collectionList.get(i);
-                cursorList.add(collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).sort(MATCH_ORDER_BY).iterator());
+                cursorList.add(collection.find(query).projection(projection).sort(MATCH_ORDER_BY).iterator());
                 matchesList.add(null);
                 numberOfCompletedCursors += updateMatches(cursorList, matchesList, i);
             }
@@ -809,7 +781,7 @@ public class MatchDao {
                 collectionNames.append(MongoUtil.fullName(collectionList.get(i)));
             }
             LOG.debug("writeMergedMatches: wrote data for {} matches returned by {}.find({},{}).sort({}), elapsedSeconds={}",
-                      count, collectionNames, query.toJson(), EXCLUDE_MONGO_ID_KEY_JSON, MATCH_ORDER_BY_JSON, timer.getElapsedSeconds());
+                      count, collectionNames, query.toJson(), projection.toJson(), MATCH_ORDER_BY_JSON, timer.getElapsedSeconds());
         }
     }
 
@@ -866,6 +838,69 @@ public class MatchDao {
         return (canvasMatches == null ? 1 : 0);
     }
 
+    private Set<String> getMultiConsensusGroupIds(final MatchCollectionId collectionId,
+                                                  final boolean includeQGroupIds)
+            throws IllegalArgumentException {
+
+        final MongoCollection<Document> matchCollection = getExistingCollection(collectionId);
+
+        final List<Document> pipeline = new ArrayList<>();
+        pipeline.add(new Document("$match",
+                                  new Document("consensusSetData",
+                                               new Document(QueryOperators.EXISTS, true))));
+
+        if (includeQGroupIds) {
+
+            // db.<matchCollection>.aggregate(
+            //     [
+            //         { "$match": { "consensusSetData": { "$exists": true } } },
+            //         { "$group": { "_id": { "pGroupId": "$pGroupId", "qGroupId": "$qGroupId" } } }
+            //     ]
+            // )
+
+            pipeline.add(new Document("$group",
+                                      new Document("_id",
+                                                   new Document("pGroupId", "$pGroupId").
+                                                           append("qGroupId", "$qGroupId"))));
+        } else {
+
+            // db.<matchCollection>.aggregate(
+            //     [
+            //         { "$match": { "consensusSetData": { "$exists": true } } },
+            //         { "$group": { "_id": { "pGroupId": "$pGroupId" } } }
+            //     ]
+            // )
+
+            pipeline.add(new Document("$group",
+                                      new Document("_id",
+                                                   new Document("pGroupId", "$pGroupId"))));
+        }
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("getMultiConsensusGroupIds: running {}.aggregate({})",
+                      MongoUtil.fullName(matchCollection),
+                      MongoUtil.toJson(pipeline));
+        }
+
+        // sort and reduce to distinct set of group ids here instead of in pipeline
+        final TreeSet<String> groupIdsWithMultiplePairs = new TreeSet<>();
+
+        // mongodb java 3.0 driver notes:
+        // -- need to set cursor batchSize to prevent NPE from cursor creation
+        final AggregateIterable<Document> iterable = matchCollection.aggregate(pipeline).batchSize(1);
+        try (final MongoCursor<Document> cursor = iterable.iterator()) {
+            while (cursor.hasNext()) {
+                final Document id = cursor.next().get("_id", Document.class);
+                groupIdsWithMultiplePairs.add(id.getString("pGroupId"));
+                if (includeQGroupIds) {
+                    groupIdsWithMultiplePairs.add(id.getString("qGroupId"));
+                }
+            }
+        }
+
+        return groupIdsWithMultiplePairs;
+    }
+
     private Document getOutsideGroupQuery(final String groupId) {
         final List<Document> queryList = new ArrayList<>();
         queryList.add(new Document("pGroupId", groupId).append(
@@ -906,13 +941,35 @@ public class MatchDao {
                               MATCH_B_OPTIONS);
     }
 
+    private static void validateRequiredCanvasIds(final String groupId,
+                                                  final String id) {
+        MongoUtil.validateRequiredParameter("groupId", groupId);
+        MongoUtil.validateRequiredParameter("id", id);
+    }
+
+    private static void validateRequiredGroupIds(final String pGroupId,
+                                                 final String qGroupId) {
+        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
+        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
+    }
+
+    private static void validateRequiredPairIds(final String pGroupId,
+                                                final String pId,
+                                                final String qGroupId,
+                                                final String qId) {
+        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
+        MongoUtil.validateRequiredParameter("pId", pId);
+        MongoUtil.validateRequiredParameter("qGroupId", qGroupId);
+        MongoUtil.validateRequiredParameter("qId", qId);
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(MatchDao.class);
 
     private static final Document MATCH_ORDER_BY =
             new Document("pGroupId", 1).append("qGroupId", 1).append("pId", 1).append("qId", 1);
     private static final String MATCH_ORDER_BY_JSON = MATCH_ORDER_BY.toJson();
     private static final Document EXCLUDE_MONGO_ID_KEY = new Document("_id", 0);
-    private static final String EXCLUDE_MONGO_ID_KEY_JSON = EXCLUDE_MONGO_ID_KEY.toJson();
+    private static final Document EXCLUDE_MONGO_ID_KEY_AND_MATCHES = new Document("_id", 0).append("matches", 0);
     private static final byte[] OPEN_BRACKET = "[".getBytes();
     private static final byte[] COMMA_WITH_NEW_LINE = ",\n".getBytes();
     private static final byte[] CLOSE_BRACKET = "]".getBytes();
