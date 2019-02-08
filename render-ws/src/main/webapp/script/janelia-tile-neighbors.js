@@ -149,7 +149,11 @@ JaneliaTile2.prototype.drawMatches = function(canvasMatches) {
         }
 
         if ((typeof pTile.matchInfoSelector !== 'undefined')) {
-            $(pTile.matchInfoSelector).html(matchCount + ' total matches');
+            var matchesUrl = pTile.getMatchesUrl(qTile);
+            var matchInfoHtml = matchCount + ' total matches ' +
+                                "<input type='button' value='Delete Matches' onclick='tilePair.deleteMatches(\"" +
+                                matchesUrl + "\")' />";
+            $(pTile.matchInfoSelector).html(matchInfoHtml);
         }
 
     } else {
@@ -632,4 +636,22 @@ JaneliaTileWithNeighbors.prototype.viewTilePair = function(tileA, tileB, renderS
         alert('Please allow popups for this website');
     }
 
+};
+
+JaneliaTileWithNeighbors.prototype.deleteMatches = function(pairMatchesUrl) {
+    if (confirm("This will remove all matches for this tile pair.  Are you sure you want to do this?")) {
+        $.ajax({
+                   url: pairMatchesUrl,
+                   type: 'DELETE',
+                   success: function () {
+                       window.location.reload();
+                   },
+                   error: function (data,
+                                    text,
+                                    xhr) {
+                       console.log(xhr);
+                   }
+               });
+    }
+    return false;
 };
