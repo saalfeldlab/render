@@ -12,6 +12,7 @@ Name                              | Description
 [Import Match Client]             | Imports JSON point match data into a match collection.
 [Import Transform Changes Client] | Imports JSON transform changes for existing stack tiles into a new stack.
 [Mipmap Client]                   | Renders down-sampled mipmap images for a stack's source tiles to disk.
+[Point Match Client]              | Generates and stores SIFT point matches for one or more canvas (e.g. tile) pairs.
 [Render Section Client]           | Renders a composite image of all tiles in a layer for one or more stack layers.
 [Section Update Client]           | Updates the z value for all tiles in a stack section.
 [Stack Client]                    | Supports stack management functions like creation, state changing, and deletion.
@@ -438,6 +439,109 @@ java -cp current-ws-standalone.jar org.janelia.render.client.MipmapClient [optio
 
 
 
+## Point Match Client 
+Generates and stores SIFT point matches for one or more canvas (e.g. tile) pairs.
+
+### Usage:
+```
+java -cp current-ws-standalone.jar org.janelia.render.client.PointMatchClient [options] 
+         canvas_1_URL canvas_2_URL [canvas_p_URL canvas_q_URL] ... 
+         (each URL pair identifies render parameters for canvas pairs)
+
+  Options:
+
+  * --baseDataUrl
+       Base web service URL for data (e.g. http://host[:port]/render-ws/v1)
+  * --owner
+       Match collection owner
+  * --collection
+      Match collection name
+
+    --debugDirectory
+      Directory to save rendered canvases for debugging (omit to keep rendered data in memory only)
+    --matchStorageFile
+      File to store matches (omit if matches should be stored through web service) 
+       
+    --SIFTfdSize
+      SIFT feature descriptor size: how many samples per row and column
+      Default: 8
+    --SIFTminScale
+      SIFT minimum scale: minSize * minScale < size < maxSize * maxScale
+      Default: 0.5
+    --SIFTmaxScale
+      SIFT maximum scale: minSize * minScale < size < maxSize * maxScale
+      Default: 0.85
+    --SIFTsteps
+      SIFT steps per scale octave
+      Default: 3
+
+    --matchFilter
+      Identifies if and how matches should be filtered
+      Default: SINGLE_SET
+      Possible Values: [NONE, SINGLE_SET, CONSENSUS_SETS, AGGREGATED_CONSENSUS_SETS]
+    --matchIterations
+      Match filter iterations
+      Default: 1000
+    --matchMaxEpsilon
+      Minimal allowed transfer error for match filtering
+      Default: 20.0
+    --matchMaxNumInliers
+      Maximum number of inliers for match filtering
+    --matchMaxTrust
+      Reject match candidates with a cost larger than maxTrust * median cost
+      Default: 3.0
+    --matchMinInlierRatio
+      Minimal ratio of inliers to candidates for match filtering
+      Default: 0.0
+    --matchMinNumInliers
+      Minimal absolute number of inliers for match filtering
+      Default: 4
+    --matchModelType
+      Type of model for match filtering
+      Default: AFFINE
+      Possible Values: [TRANSLATION, RIGID, SIMILARITY, AFFINE]
+    --matchRod
+      Ratio of distances for matches
+      Default: 0.92
+
+    --renderScale
+      Render canvases at this scale
+      Default: 1.0
+    --renderFileFormat
+      Format for saved canvases (only relevant if debugDirectory is specified)
+      Default: JPG
+      Possible Values: [JPG, PNG, TIF]
+    --fillWithNoise
+      Fill each canvas image with noise before rendering to improve point match derivation
+      Default: true
+    --clipHeight
+      Number of full scale pixels to include in rendered clips of TOP/BOTTOM oriented montage tiles
+    --clipWidth
+      Number of full scale pixels to include in rendered clips of LEFT/RIGHT oriented montage tiles
+      
+    --canvasGroupIdAlgorithm
+      Algorithm for deriving canvas group ids
+      Default: FIRST_TILE_SECTION_ID
+      Possible Values: [FIRST_TILE_SECTION_ID, FIRST_TILE_Z, COLLECTION]
+    --canvasIdAlgorithm
+      Algorithm for deriving canvas ids
+      Default: FIRST_TILE_ID
+      Possible Values: [FIRST_TILE_ID, FIRST_TILE_Z, CANVAS_NAME]
+    --firstCanvasPosition
+      When clipping, identifies the relative position of the first canvas to 
+      the second canvas
+      Possible Values: [TOP, BOTTOM, LEFT, RIGHT]
+      
+    --numberOfThreads
+      Number of threads to use for processing
+      Default: 1
+```
+
+### Source Code: 
+* Java: [PointMatchClient.java](../../../../render-ws-java-client/src/main/java/org/janelia/render/client/PointMatchClient.java)
+
+
+
 ## Render Section Client 
 Renders a composite image of all tiles in a layer for one or more stack layers.
 
@@ -592,9 +696,15 @@ java -cp current-ws-standalone.jar org.janelia.render.client.TilePairClient [opt
     --xyNeighborFactor
        Multiply this by max(width, height) of each tile to determine radius for locating neighbor tiles
        Default: 0.9
+    --explicitRadius
+      Explit radius in full scale pixels for locating neighbor tiles (if set, will override --xyNeighborFactor)
     --zNeighborDistance
        Look for neighbor tiles with z values less than or equal to this distance from the current tile's z value
        Default: 2
+
+    --maxPairsPerFile
+      Maximum number of pairs to include in each file.
+      Default: 100000
 
     --baseOwner
        Name of base/parent owner from which the render stack was derived (default assumes same owner as render stack)
@@ -611,12 +721,19 @@ java -cp current-ws-standalone.jar org.janelia.render.client.TilePairClient [opt
        Default: true
     --excludePairsInMatchCollection
        Name of match collection whose existing pairs should be excluded from the generated list (default is to include all pairs)
+    --existingMatchOwner
+      Owner of match collection whose existing pairs should be excluded from the generated list (default is owner)
+    --minExistingMatchCount
+      Minimum number of existing matches to trigger pair exclusion
+      Default: 0
     --excludeSameLayerNeighbors
        Exclude neighbor tiles in the same layer (z) as the source tile
        Default: false
     --excludeSameSectionNeighbors
        Exclude neighbor tiles with the same sectionId as the source tile
        Default: false
+    --onlyIncludeTilesFromStack
+      If specified, this stack is used to whitelist which tile pairs get included from the location stack
 
     --minX
        Minimum X value for all tiles
@@ -794,6 +911,7 @@ java -cp current-ws-standalone.jar org.janelia.render.client.WarpTransformClient
   [Import Match Client]: <#import-match-client> 
   [Import Transform Changes Client]: <#import-transform-changes-client> 
   [Mipmap Client]: <#mipmap-client> 
+  [Point Match Client]: <#point-match-client> 
   [Render Section Client]: <#render-section-client> 
   [render web services]: <render-ws.md>
   [Section Update Client]: <#section-update-client> 
