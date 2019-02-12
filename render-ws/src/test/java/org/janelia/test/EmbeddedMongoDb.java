@@ -43,7 +43,7 @@ public class EmbeddedMongoDb {
     public EmbeddedMongoDb(final String dbName)
             throws IOException {
 
-        this.version = Version.Main.V3_4;
+        this.version = Version.Main.V4_0;
         this.port = 12345;
 
         // see MongodForTestsFactory for example verbose startup options
