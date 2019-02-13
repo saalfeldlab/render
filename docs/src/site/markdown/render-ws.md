@@ -66,8 +66,6 @@ echo "mongodb-org-shell hold" | sudo dpkg --set-selections
 echo "mongodb-org-mongos hold" | sudo dpkg --set-selections
 echo "mongodb-org-tools hold" | sudo dpkg --set-selections
 
-sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927
-
 # Create systemd service file
 # NOTE: This file has to be named mongodb.service (instead of mongod.service) for some reason
 sudo curl -o /lib/systemd/system/mongodb.service "https://raw.githubusercontent.com/mongodb/mongo/v4.0/rpm/mongod.service"
