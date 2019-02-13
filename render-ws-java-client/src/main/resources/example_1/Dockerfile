@@ -11,7 +11,7 @@
 #
 # The default endpoint for the image runs a script (run_example_steps.sh)
 # that contains the render web services example steps listed at:
-#   https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws.md
+#   https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws-example.md
 #
 # To build the example:
 #   cd to src/main/java/resources/example_1
