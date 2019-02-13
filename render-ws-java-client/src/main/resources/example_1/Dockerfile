@@ -14,7 +14,7 @@
 #   https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws-example.md
 #
 # To build the example:
-#   cd to src/main/java/resources/example_1
+#   copy this file to your local directory (save it as Dockerfile)
 #   docker build -t render_example_1:latest .
 #
 # To run an example container:
@@ -79,6 +79,4 @@ RUN curl -o /lib/systemd/system/mongodb.service "https://raw.githubusercontent.c
 # expose the render port
 EXPOSE 8080
 
-COPY run_example_steps.sh /var/www/render/run_example_steps.sh
-
-CMD /var/www/render/run_example_steps.sh
+CMD ./render-ws-java-client/src/main/resources/example_1/run_example_steps.sh

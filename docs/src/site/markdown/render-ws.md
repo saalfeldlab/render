@@ -16,7 +16,9 @@ machines that are tuned for their specific purpose.
 These installation instructions cover setup of an evaluation instance with a collocated web server and 
 database running on Ubuntu 16.04.
 
-> Note: In lieu of running these steps manually, you may prefer to use a [Docker deployment] instead. 
+> Note: In lieu of running these steps manually, you may prefer to use a [Docker deployment] instead.
+Finally, if you'd like to run this exact installation process along with the [Render Web Services Example] in Docker, 
+you can use this [Dockerfile](../../../../render-ws-java-client/src/main/resources/example_1/Dockerfile).  
 
 ### 1. Install Git and Maven
 ```bash
