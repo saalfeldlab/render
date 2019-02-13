@@ -73,8 +73,8 @@ RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75
     echo "mongodb-org-mongos hold" | dpkg --set-selections && \
     echo "mongodb-org-tools hold" | dpkg --set-selections
 
-# copied from https://github.com/mongodb/mongo/blob/master/rpm/mongod.service
-COPY mongodb.service /lib/systemd/system/mongodb.service
+# NOTE: This file has to be named mongodb.service (instead of mongod.service) for some reason
+RUN curl -o /lib/systemd/system/mongodb.service "https://raw.githubusercontent.com/mongodb/mongo/v4.0/rpm/mongod.service"
 
 # expose the render port
 EXPOSE 8080
