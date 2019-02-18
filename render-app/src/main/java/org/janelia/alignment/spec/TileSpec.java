@@ -223,17 +223,24 @@ public class TileSpec implements Serializable {
                 final ArrayList<double[]> borderSamples = new ArrayList<>();
 
                 /* top and bottom */
-                for (double x = 0; x <= width; x += meshCellSize) {
+                final int numXs = (int)Math.max(2, Math.round(width / meshCellSize));
+                final double dx = (width - 1) / (numXs - 1);
+
+                for (double xi =0; xi < numXs; ++xi) {
+                    final double x = xi * dx;
                     borderSamples.add(new double[]{x, 0});
                     borderSamples.add(new double[]{x, height});
                 }
 
                 /* left and right */
-                for (double y = 0; y < height; y += meshCellSize) {
+                final int numYs = (int)Math.max(2, Math.round(height / meshCellSize));
+                final double dy = (height - 1) / (numYs - 1);
+
+                for (double yi =0; yi < numYs; ++yi) {
+                    final double y = yi * dy;
                     borderSamples.add(new double[]{0, y});
                     borderSamples.add(new double[]{width, y});
                 }
-
                 double xMin = Double.MAX_VALUE;
                 double yMin = Double.MAX_VALUE;
 
