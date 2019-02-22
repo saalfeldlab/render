@@ -98,6 +98,10 @@ public class UnconnectedTileRemovalClient {
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
 
+                if ((parameters.tileCluster == null) || (parameters.tileCluster.matchCollection == null)) {
+                    throw new IllegalArgumentException("--matchCollection must be specified");
+                }
+
                 parameters.tileCluster.validate();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
