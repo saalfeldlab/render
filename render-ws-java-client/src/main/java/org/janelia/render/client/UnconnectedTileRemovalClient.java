@@ -308,16 +308,14 @@ public class UnconnectedTileRemovalClient {
                              clusterTileIds.size(), clusterTileIds.stream().sorted().collect(Collectors.toList()));
                 } else {
                     remainingClusterSizes.add(clusterTileIds.size());
-                    if (firstRemainingClusterIndex == 0) {
-                        firstRemainingClusterIndex = i;
-                    }
                 }
             }
 
             remainingClusterSizes.add(largestCluster.size());
+            firstRemainingClusterIndex = sortedConnectedTileSets.size() - remainingClusterSizes.size();
 
-            LOG.info("markSmallClustersAsUnconnected: for z {}, {} clusters remain with sizes {}",
-                     z, remainingClusterSizes.size(), remainingClusterSizes);
+            LOG.info("markSmallClustersAsUnconnected: for z {}, firstRemainingClusterIndex is {}, {} clusters remain with sizes {}",
+                     z, firstRemainingClusterIndex, remainingClusterSizes.size(), remainingClusterSizes);
 
         }
 
@@ -328,6 +326,9 @@ public class UnconnectedTileRemovalClient {
                                                   final List<Set<String>> smallerRemainingTileSets,
                                                   final RenderDataClient renderDataClient)
             throws IOException {
+
+        LOG.info("separateSmallerRemainingClusters: separating {} clusters",
+                 smallerRemainingTileSets.size());
 
         for (final Set<String> remainingCluster : smallerRemainingTileSets) {
 
@@ -349,6 +350,16 @@ public class UnconnectedTileRemovalClient {
                          remainingCluster.stream().sorted().collect(Collectors.toList()));
 
                 smallClusterZ += 1;
+
+            } else {
+
+                // NOTE: This happens when tiles in the cluster have matches but the tiles
+                //       were already dropped by another process (e.g. montage solve).
+
+                LOG.info("separateSmallerRemainingClusters: skip missing {} tile cluster: {}",
+                         remainingCluster.size(),
+                         remainingCluster.stream().sorted().collect(Collectors.toList()));
+
             }
         }
 
@@ -360,7 +371,6 @@ public class UnconnectedTileRemovalClient {
                 new ResolvedTileSpecCollection(allTiles.getTransformSpecs(),
                                                allTiles.getTileSpecs());
         filteredTiles.removeDifferentTileSpecs(keepTileIds);
-        filteredTiles.removeUnreferencedTransforms();
         return filteredTiles;
     }
 

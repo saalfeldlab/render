@@ -59,12 +59,11 @@ public class UnconnectedTileRemovalClientTest {
         final UnconnectedTileRemovalClient.Parameters parameters = new UnconnectedTileRemovalClient.Parameters();
         parameters.tileCluster.smallClusterFactor = 0.5; // should result in maxSmallClusterSize of 4 (0.5 * 8)
 
-        final UnconnectedTileRemovalClient client = new UnconnectedTileRemovalClient(parameters);
+        UnconnectedTileRemovalClient client = new UnconnectedTileRemovalClient(parameters);
         final Double z = 99.0;
         final List<Set<String>> sortedConnectedTileSets =
                 TileClusterParameters.buildAndSortConnectedTileSets(z, matchesList);
-        final int firstRemainingSetIndex =
-                client.markSmallClustersAsUnconnected(z, sortedConnectedTileSets, unconnectedTileIds);
+        int firstRemainingSetIndex = client.markSmallClustersAsUnconnected(z, sortedConnectedTileSets, unconnectedTileIds);
 
         final String[] expectedUnconnectedTiles = {"I", "J", "K", "L", "M", "N", "O", "P", "X", "Y"};
         Assert.assertEquals("invalid number of small cluster tiles found ",
@@ -77,6 +76,16 @@ public class UnconnectedTileRemovalClientTest {
 
         Assert.assertEquals("invalid firstRemainingSetIndex returned",
                             4, firstRemainingSetIndex);
+
+
+        // all-inclusive test
+        parameters.tileCluster.maxSmallClusterSize = 1;
+
+        client = new UnconnectedTileRemovalClient(parameters);
+        firstRemainingSetIndex = client.markSmallClustersAsUnconnected(z, sortedConnectedTileSets, unconnectedTileIds);
+
+        Assert.assertEquals("invalid firstRemainingSetIndex returned",
+                            0, firstRemainingSetIndex);
     }
 
 }
