@@ -409,12 +409,21 @@ public class ResolvedTileSpecCollection implements Serializable {
     public void removeInvalidTileSpecs() {
 
         if (tileSpecValidator != null) {
+
+            final ProcessTimer processTimer = new ProcessTimer(10000);
+            final int numberOfSpecs = tileIdToSpecMap.size();
+
+            int specIndex = 0;
             final Iterator<Map.Entry<String, TileSpec>> i = tileIdToSpecMap.entrySet().iterator();
             Map.Entry<String, TileSpec> entry;
             while (i.hasNext()) {
                 entry = i.next();
                 if (isTileInvalid(entry.getValue())) {
                     i.remove();
+                }
+                specIndex++;
+                if (processTimer.hasIntervalPassed()) {
+                    LOG.info("removeInvalidTileSpecs: processed {} out of {} specs", specIndex, numberOfSpecs);
                 }
             }
         }
