@@ -98,6 +98,32 @@ public class Bounds implements Serializable {
         return toJson();
     }
 
+    public boolean intersects(final Bounds that) {
+
+        boolean result = false;
+
+        if (this.hasXAndYDimensionsDefined() && that.hasXAndYDimensionsDefined()) {
+
+            result = (this.minX <= that.maxX) && (this.minY <= that.maxY) &&
+                     (this.maxX >= that.minX) && (this.maxY >= that.minY);
+
+            if (result && this.hasZDimensionsDefined() && that.hasZDimensionsDefined()) {
+                result = (this.minZ <= that.maxZ) && (this.maxZ >= that.minZ);
+            }
+        }
+
+        return result;
+    }
+
+    public Bounds union(final Bounds that) {
+        return new Bounds(union(this.minX, that.minX, true),
+                          union(this.minY, that.minY, true),
+                          union(this.minZ, that.minZ, true),
+                          union(this.maxX, that.maxX, false),
+                          union(this.maxY, that.maxY, false),
+                          union(this.maxZ, that.maxZ, false));
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }
@@ -106,7 +132,32 @@ public class Bounds implements Serializable {
         return JSON_HELPER.fromJson(json);
     }
 
+    @JsonIgnore
+    private boolean hasXAndYDimensionsDefined() {
+        return (minX != null) && (minY != null) && (maxX != null) && (maxY != null);
+    }
+
+    @JsonIgnore
+    private boolean hasZDimensionsDefined() {
+        return (minZ != null) && (maxZ != null);
+    }
+
     private static final JsonUtils.Helper<Bounds> JSON_HELPER =
             new JsonUtils.Helper<>(Bounds.class);
 
+    private static Double union(final Double a,
+                                final Double b,
+                                final boolean isMin) {
+        final Double value;
+        if (a == null) {
+            value = b;
+        } else if (b == null) {
+            value = a;
+        } else if (isMin) {
+            value = Math.min(a, b);
+        } else {
+            value = Math.max(a, b);
+        }
+        return value;
+    }
 }
