@@ -3,9 +3,13 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
@@ -33,8 +37,23 @@ public class SectionUpdateClient {
         @Parameter(names = "--stack", description = "Stack name", required = true)
         public String stack;
 
-        @Parameter(names = "--sectionId", description = "Section ID", required = true)
-        public String sectionId;
+        @Parameter(
+                names = "--sectionId",
+                description = "Section ID(s) for all tiles that should be moved to the new Z",
+                variableArity = true)
+        public List<String> sectionIdList;
+
+        @Parameter(
+                names = "--fromZ",
+                description = "Z value(s) for all tiles that should be moved to the new Z",
+                variableArity = true)
+        public List<Double> fromZList;
+
+        @Parameter(
+                names = "--flattenAllLayers",
+                description = "Indicates that all layers in the stack should have the same Z",
+                arity = 0)
+        public boolean flattenAllLayers;
 
         @Parameter(names = "--z", description = "Z value", required = true)
         public Double z;
@@ -88,7 +107,7 @@ public class SectionUpdateClient {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final SectionUpdateClient client = new SectionUpdateClient(parameters);
-                client.updateZ();
+                client.updateSectionsAndLayers();
             }
         };
         clientRunner.run();
@@ -96,56 +115,113 @@ public class SectionUpdateClient {
 
     private final Parameters parameters;
     private final RenderDataClient renderDataClient;
+    private final Map<Double, Set<String>> zToSectionIds;
 
     private SectionUpdateClient(final Parameters parameters) {
         this.parameters = parameters;
         this.renderDataClient = parameters.renderWeb.getDataClient();
+        this.zToSectionIds = new HashMap<>();
     }
 
-    private void updateZ()
-            throws Exception {
+    private void updateSectionsAndLayers()
+            throws IOException, IllegalArgumentException {
+
+        final List<SectionData> sectionDataList =
+                renderDataClient.getStackSectionData(parameters.stack, null, null);
+
+        final Set<Double> zValues = new HashSet<>();
+
+        if (parameters.flattenAllLayers) {
+
+            sectionDataList.stream()
+                    .filter(sd -> ! parameters.z.equals(sd.getZ()))
+                    .forEach(sd -> zValues.add(sd.getZ()));
+
+        } else  if (parameters.fromZList != null) {
+
+            final Set<Double> fromZSet = new HashSet<>(parameters.fromZList);
+            sectionDataList.stream()
+                    .filter(sd -> (fromZSet.contains(sd.getZ())))
+                    .forEach(sd -> zValues.add(sd.getZ()));
+
+        } else if (parameters.sectionIdList != null) {
+
+            final Set<String> sectionIdSet = new HashSet<>(parameters.sectionIdList);
+            sectionDataList.stream()
+                    .filter(sd -> (sectionIdSet.contains(sd.getSectionId())))
+                    .forEach(sd -> zToSectionIds.computeIfAbsent(sd.getZ(),
+                                                                 s -> new HashSet<>()).add(sd.getSectionId()));
+            zValues.addAll(zToSectionIds.keySet());
+
+        }
+
+        if (zValues.size() == 0) {
+
+            if (parameters.flattenAllLayers) {
+                throw new IllegalArgumentException("The stack " + parameters.stack + " is already flattened.");
+            } else {
+                throw new IllegalArgumentException(
+                        "No matching section ids or z values were found in " + parameters.stack +
+                        ".  You need to correct your --sectionId or --fromZ parameters.");
+            }
+        }
+
+        renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
+
+        zValues.stream().sorted().forEach(this::updateZ);
+
+        if (parameters.completeToStackAfterUpdate) {
+            renderDataClient.setStackState(parameters.stack, StackMetaData.StackState.COMPLETE);
+        }
+
+    }
+
+    private void updateZ(final Double z) {
 
         final String stack = parameters.stack;
-        final String sectionId = parameters.sectionId;
+        final Set<String> sectionIdSet = zToSectionIds == null ? null : zToSectionIds.get(z);
 
-        renderDataClient.ensureStackIsInLoadingState(stack, null);
+        try {
 
-        if (parameters.isBoxSpecified()) {
+            final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
 
-            final List<SectionData> sectionDataList = renderDataClient.getStackSectionData(stack, null, null);
+            if (parameters.isBoxSpecified()) {
 
-            Double zForSectionId = null;
-            for (final SectionData sectionData : sectionDataList) {
-                if (sectionId.equals(sectionData.getSectionId())) {
-                    zForSectionId = sectionData.getZ();
-                    break;
+                final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, z);
+                final Set<String> updateTileIds = new HashSet<>();
+                final TileBoundsRTree tree = new TileBoundsRTree(z, tileBoundsList);
+                for (final TileBounds tileBounds : tree.findTilesInBox(parameters.minX, parameters.minY,
+                                                                       parameters.maxX, parameters.maxY)) {
+                    if ((sectionIdSet == null) || sectionIdSet.contains(tileBounds.getSectionId())) {
+                        updateTileIds.add(tileBounds.getTileId());
+                    }
                 }
-            }
 
-            if (zForSectionId == null) {
-                throw new IllegalArgumentException("sectionId '" + sectionId + "' not found in stack " + stack);
-            }
-
-            final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, zForSectionId);
-            final TileBoundsRTree tree = new TileBoundsRTree(zForSectionId, tileBoundsList);
-            final Set<String> updateTileIds = new HashSet<>(tileBoundsList.size() * 2);
-            for (final TileBounds tileBounds : tree.findTilesInBox(parameters.minX, parameters.minY,
-                                                                   parameters.maxX, parameters.maxY)) {
-                if (sectionId.equals(tileBounds.getSectionId())) {
-                    updateTileIds.add(tileBounds.getTileId());
+                if (updateTileIds.size() == 0) {
+                    throw new IllegalArgumentException(
+                            "no tile specs exist in stack " + stack + " within the bounding box: " +
+                            "min (" + parameters.minX + ", " + parameters.minY +
+                            "), max (" + parameters.maxX + ", " + parameters.maxY + ")");
                 }
+
+                resolvedTiles.removeDifferentTileSpecs(updateTileIds);
+
+            } else if (sectionIdSet != null) {
+
+                final Set<String> updateTileIds =
+                        resolvedTiles.getTileSpecs().stream()
+                                .filter(ts -> sectionIdSet.contains(ts.getSectionId()))
+                                .map(TileSpec::getTileId)
+                                .collect(Collectors.toSet());
+
+                if (updateTileIds.size() == 0) {
+                    throw new IllegalArgumentException(
+                            "no tile specs exist in stack " + stack + " with sectionId(s) " + sectionIdSet);
+                }
+
+                resolvedTiles.removeDifferentTileSpecs(updateTileIds);
+
             }
-
-            if (updateTileIds.size() == 0) {
-                throw new IllegalArgumentException("no tile specs exist for stack " + stack + " in the bounding box: " +
-                                                   "min (" + parameters.minX + ", " + parameters.minY +
-                                                   "), max (" + parameters.maxX + ", " + parameters.maxY  + ")");
-            }
-
-            final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, zForSectionId);
-
-            resolvedTiles.removeDifferentTileSpecs(updateTileIds);
-
 
             for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
                 tileSpec.setZ(parameters.z);
@@ -153,12 +229,8 @@ public class SectionUpdateClient {
 
             renderDataClient.saveResolvedTiles(resolvedTiles, stack, null);
 
-        } else {
-            renderDataClient.updateZForSection(stack, parameters.sectionId, parameters.z);
-        }
-
-        if (parameters.completeToStackAfterUpdate) {
-            renderDataClient.setStackState(stack, StackMetaData.StackState.COMPLETE);
+        } catch (final IOException ioe) {
+            throw new RuntimeException("wrapping exception for stream", ioe);
         }
 
     }
