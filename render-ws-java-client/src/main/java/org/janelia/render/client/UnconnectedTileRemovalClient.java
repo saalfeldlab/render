@@ -3,21 +3,35 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import org.janelia.alignment.ArgbRenderer;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Utils;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
+import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
@@ -175,8 +189,11 @@ public class UnconnectedTileRemovalClient {
             boolean foundSmallerClustersToSeparate = false;
             if (parameters.tileCluster.isDefined()) {
 
-                final List<Set<String>> sortedConnectedTileSets =
-                        TileClusterParameters.buildAndSortConnectedTileSets(z, matchesList);
+                final SortedConnectedCanvasIdClusters clusters = new SortedConnectedCanvasIdClusters(matchesList);
+                final List<Set<String>> sortedConnectedTileSets = clusters.getSortedConnectedTileIdSets();
+
+                LOG.info("removeTiles: for z {}, found {} connected tile sets with sizes {}",
+                         z, clusters.size(), clusters.getClusterSizes());
 
                 final int largestSetIndex = sortedConnectedTileSets.size() - 1;
                 final int firstRemainingSetIndex =
@@ -192,11 +209,14 @@ public class UnconnectedTileRemovalClient {
                     final List<Set<String>> smallerRemainingTileSets =
                             sortedConnectedTileSets.subList(firstRemainingSetIndex, largestSetIndex);
 
+                    final double firstSeparatedZ = smallClusterZ;
+
                     separateSmallerRemainingClusters(resolvedTiles,
                                                      smallerRemainingTileSets,
                                                      renderDataClient);
 
-                    totalNumberOfSeparatedClusters += smallerRemainingTileSets.size();
+                    final int numberOfSeparatedClusters = (int) (smallClusterZ - firstSeparatedZ);
+                    totalNumberOfSeparatedClusters += numberOfSeparatedClusters;
                 }
 
             }
@@ -242,7 +262,6 @@ public class UnconnectedTileRemovalClient {
 
                     if (resolvedTiles.getTileCount() > 0) {
 
-                        resolvedTiles.removeUnreferencedTransforms();
                         renderDataClient.deleteStack(parameters.stack, z);
                         renderDataClient.saveResolvedTiles(resolvedTiles, parameters.stack, z);
 
@@ -268,6 +287,9 @@ public class UnconnectedTileRemovalClient {
 
             if (! parameters.reportRemovedTiles) {
                 renderDataClient.setStackState(parameters.stack, StackMetaData.StackState.COMPLETE);
+                if ((totalNumberOfSeparatedClusters > 0) && (parameters.zValues.size() == 1)) {
+                    findIntersectingSeparatedClusters(renderDataClient);
+                }
             }
 
             if (parameters.saveRemovedTiles) {
@@ -276,10 +298,7 @@ public class UnconnectedTileRemovalClient {
 
         }
 
-        if (totalNumberOfSeparatedClusters > 0) {
-            LOG.info("separated {} small clusters into new layers", totalNumberOfSeparatedClusters);
-        }
-
+        LOG.info("separated {} small clusters into new layers", totalNumberOfSeparatedClusters);
         LOG.info("found {} unconnected tiles across all layers", totalUnconnectedTiles);
     }
 
@@ -365,6 +384,188 @@ public class UnconnectedTileRemovalClient {
 
     }
 
+    private List<Double> getZList(final RenderDataClient renderDataClient)
+            throws IOException {
+
+        final List<SectionData> stackSectionDataList = renderDataClient.getStackSectionData(parameters.stack,
+                                                                                            null,
+                                                                                            null);
+        return stackSectionDataList.stream()
+                .map(SectionData::getZ)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+    }
+
+    private void findIntersectingSeparatedClusters(final RenderDataClient renderDataClient)
+            throws IOException {
+
+        final List<Double> zList = getZList(renderDataClient);
+
+        final Map<Double, Map<String, TileBounds>> zToBoundsMap = new HashMap<>();
+        final List<TileBoundsRTree> boundsRTrees = new ArrayList<>();
+        for (final Double z : zList) {
+            final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
+            final Map<String, TileBounds> boundsMap = new HashMap<>();
+            tileBoundsList.forEach(tileBounds -> boundsMap.put(tileBounds.getTileId(), tileBounds));
+            zToBoundsMap.put(z, boundsMap);
+            boundsRTrees.add(new TileBoundsRTree(z, tileBoundsList));
+        }
+
+        final List<OverlapProblem> overlapProblems = new ArrayList<>();
+        OverlapProblem overlapProblem;
+        for (int i = 0; i < zList.size(); i++) {
+
+            final Double z = zList.get(i);
+            final TileBoundsRTree boundsRTree = boundsRTrees.get(i);
+
+            for (int j = i + 1; j < zList.size(); j++) {
+
+                final Double otherZ = zList.get(j);
+                overlapProblem = null;
+
+                for (final TileBounds tileBounds : zToBoundsMap.get(otherZ).values()) {
+
+                    final List<TileBounds> intersectingTiles = boundsRTree.findTilesInBox(tileBounds.getMinX(),
+                                                                                          tileBounds.getMinY(),
+                                                                                          tileBounds.getMaxX(),
+                                                                                          tileBounds.getMaxY());
+                    if (intersectingTiles.size() > 0) {
+                        if (overlapProblem == null) {
+                            overlapProblem = new OverlapProblem(otherZ,
+                                                                tileBounds,
+                                                                z,
+                                                                intersectingTiles);
+                        } else {
+                            overlapProblem.addProblem(tileBounds, intersectingTiles);
+                        }
+                    }
+
+                }
+
+                if (overlapProblem != null) {
+                    overlapProblems.add(overlapProblem);
+                }
+            }
+
+        }
+
+        if (overlapProblems.size() > 0) {
+            overlapProblems.forEach(op -> op.render(renderDataClient, parameters.stack));
+            overlapProblems.forEach(OverlapProblem::logProblemDetails);
+        } else {
+            LOG.info("no overlap problems found");
+        }
+    }
+
+    private class OverlapProblem {
+
+        private final Double z;
+        private final List<TileBounds> tileBoundsList;
+        private final Double intersectingZ;
+        private final List<TileBounds> intersectingTileBoundsList;
+        private final List<String> problemDetailsList;
+        private File problemImageFile;
+
+        OverlapProblem(final Double z,
+                       final TileBounds tileBounds,
+                       final Double intersectingZ,
+                       final List<TileBounds> intersectingTileBoundsList) {
+            this.z = z;
+            this.tileBoundsList = new ArrayList<>();
+            this.intersectingZ = intersectingZ;
+            this.intersectingTileBoundsList = new ArrayList<>();
+            this.problemDetailsList = new ArrayList<>();
+            this.problemImageFile = null;
+            addProblem(tileBounds, intersectingTileBoundsList);
+        }
+
+        void addProblem(final TileBounds tileBounds,
+                        final List<TileBounds> intersectingTileBoundsList)  {
+
+            this.tileBoundsList.add(tileBounds);
+            this.intersectingTileBoundsList.addAll(intersectingTileBoundsList);
+
+            final List<String> intersectingTileIds = intersectingTileBoundsList.stream()
+                    .map(TileBounds::getTileId)
+                    .collect(Collectors.toList());
+            final String details = "cluster overlap: z " + z + " tile " + tileBounds.getTileId() +
+                                   " overlaps z " + intersectingZ + " tile(s) " + intersectingTileIds;
+            this.problemDetailsList.add(details);
+        }
+
+        void logProblemDetails() {
+            problemDetailsList.forEach(LOG::warn);
+            if (problemImageFile != null) {
+                LOG.warn("cluster overlap image saved to {}\n", problemImageFile);
+            }
+        }
+
+        RenderParameters getParameters(final RenderDataClient renderDataClient,
+                                       final Bounds intersectingBounds,
+                                       final Double z) {
+            final String urlString =
+                    renderDataClient.getRenderParametersUrlString(parameters.stack,
+                                                                  intersectingBounds.getMinX(),
+                                                                  intersectingBounds.getMinY(),
+                                                                  z,
+                                                                  (int) intersectingBounds.getDeltaX(),
+                                                                  (int) intersectingBounds.getDeltaY(),
+                                                                  0.05,
+                                                                  null);
+            return RenderParameters.loadFromUrl(urlString);
+        }
+
+        void drawTileBounds(final Graphics2D targetGraphics,
+                            final RenderParameters renderParameters,
+                            final TileBounds tileBounds,
+                            final Color color) {
+            targetGraphics.setStroke(new BasicStroke(2));
+            targetGraphics.setColor(color);
+            final int x = (int) ((tileBounds.getMinX() - renderParameters.getX()) * renderParameters.getScale());
+            final int y = (int) ((tileBounds.getMinY() - renderParameters.getY()) * renderParameters.getScale());
+            final int width = (int) (tileBounds.getDeltaX() * renderParameters.getScale());
+            final int height = (int) (tileBounds.getDeltaY() * renderParameters.getScale());
+            targetGraphics.drawRect(x, y, width, height);
+        }
+
+        void render(final RenderDataClient renderDataClient,
+                    final String stackName) {
+
+            final List<Bounds> allBounds = new ArrayList<>(intersectingTileBoundsList);
+            allBounds.addAll(tileBoundsList);
+
+            @SuppressWarnings("OptionalGetWithoutIsPresent")
+            final Bounds problemBounds = allBounds.stream().reduce(Bounds::union).get();
+
+            final RenderParameters parameters = getParameters(renderDataClient, problemBounds, z);
+            final RenderParameters otherParameters = getParameters(renderDataClient, problemBounds, intersectingZ);
+            for (final TileSpec tileSpec : otherParameters.getTileSpecs()) {
+                parameters.addTileSpec(tileSpec);
+            }
+
+            final BufferedImage targetImage = parameters.openTargetImage();
+            ArgbRenderer.render(parameters, targetImage, ImageProcessorCache.DISABLED_CACHE);
+
+            final Graphics2D targetGraphics = targetImage.createGraphics();
+            intersectingTileBoundsList.forEach(tb -> drawTileBounds(targetGraphics, parameters, tb, Color.GREEN));
+            tileBoundsList.forEach(tb -> drawTileBounds(targetGraphics, parameters, tb, Color.RED));
+            targetGraphics.dispose();
+
+            final String problemName = String.format("problem_overlap_%s_gz%1.0f_rz%1.0f_x%d_y%d.jpg",
+                                                     stackName, intersectingZ, z,
+                                                     (int) parameters.getX(), (int) parameters.getY());
+            this.problemImageFile = new File(problemName).getAbsoluteFile();
+
+            try {
+                Utils.saveImage(targetImage, this.problemImageFile, false, 0.85f);
+            } catch (final IOException e) {
+                LOG.error("failed to save " + problemName, e);
+            }
+        }
+
+    }
+
     private ResolvedTileSpecCollection getFilteredCollection(final ResolvedTileSpecCollection allTiles,
                                                              final Set<String> keepTileIds) {
         final ResolvedTileSpecCollection filteredTiles =
@@ -373,6 +574,8 @@ public class UnconnectedTileRemovalClient {
         filteredTiles.removeDifferentTileSpecs(keepTileIds);
         return filteredTiles;
     }
+
+
 
     private static final Logger LOG = LoggerFactory.getLogger(UnconnectedTileRemovalClient.class);
 }
