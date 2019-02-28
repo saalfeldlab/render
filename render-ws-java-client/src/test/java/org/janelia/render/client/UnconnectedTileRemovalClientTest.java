@@ -7,8 +7,8 @@ import java.util.Set;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
+import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.TileClusterParameters;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -61,8 +61,9 @@ public class UnconnectedTileRemovalClientTest {
 
         UnconnectedTileRemovalClient client = new UnconnectedTileRemovalClient(parameters);
         final Double z = 99.0;
-        final List<Set<String>> sortedConnectedTileSets =
-                TileClusterParameters.buildAndSortConnectedTileSets(z, matchesList);
+        final SortedConnectedCanvasIdClusters clusters = new SortedConnectedCanvasIdClusters(matchesList);
+        final List<Set<String>> sortedConnectedTileSets = clusters.getSortedConnectedTileIdSets();
+
         int firstRemainingSetIndex = client.markSmallClustersAsUnconnected(z, sortedConnectedTileSets, unconnectedTileIds);
 
         final String[] expectedUnconnectedTiles = {"I", "J", "K", "L", "M", "N", "O", "P", "X", "Y"};
