@@ -18,10 +18,7 @@
             var util = new JaneliaScriptUtilities();
             var queryParameters = new JaneliaQueryParameters();
 
-            var baseUrl = util.getServicesBaseUrl();
-
-            // TODO: remove this when done debugging on localhost
-            //var baseUrl = "http://renderer-dev:8080/render-ws/v1";
+            var baseUrl = queryParameters.get('baseUrl', util.getServicesBaseUrl());
 
             var owner = queryParameters.get('renderStackOwner');
             var project = queryParameters.get('renderStackProject', '');
@@ -33,9 +30,10 @@
             // Until we've stored the point match render context properly,
             // you may need to hack these parameters to match your setup.
             var keyToDefaultRenderParametersMap = {
-                'DEFAULT': "excludeMask=true&normalizeForMatching=true",
-                'FAFB': "excludeMask=true&normalizeForMatching=true&width=2760&height=2330",
-                'HIER_CANVAS': "filter=true"
+                'DEFAULT': {'excludeMask' : 'true', 'normalizeForMatching' : 'true'},
+                'FAFB': {'excludeMask' : 'true', 'normalizeForMatching' : 'true', 'width' : 2760, 'height' : 2330},
+                'HIER_CANVAS': {'filter' : 'true'},
+                'ALLEN_AT': {'normalizeForMatching' : 'true', 'minIntensity' : 0, 'maxIntensity' : 10000 }
             };
 
             var defaultKey = 'DEFAULT';
@@ -44,7 +42,18 @@
             }
             var renderParametersKey = queryParameters.get('renderParametersKey', defaultKey);
 
-            var defaultRenderQueryParameters = keyToDefaultRenderParametersMap[renderParametersKey];
+            var renderQueryParameters = keyToDefaultRenderParametersMap[renderParametersKey];
+            
+            // Allow query string overrides of standard render flags
+            var renderFlags = ["excludeMask", "normalizeForMatching", "filter", "minIntensity", "maxIntensity"]
+            renderFlags.forEach(flag => {
+                var value = queryParameters.get(flag);
+                if (typeof value !== 'undefined') {
+                    renderQueryParameters[flag] = value;
+                }
+            });
+
+            var renderQueryParameterString = $.param(renderQueryParameters)
 
             var defaultRenderScale = 0.15;
             var renderScale = queryParameters.get('renderScale', defaultRenderScale);
@@ -54,7 +63,7 @@
             tilePair = new JaneliaTileWithNeighbors(
                     baseUrl, owner, project, stack,
                     matchOwner, matchCollection,
-                    defaultRenderQueryParameters, renderScale, canvas);
+                    renderQueryParameterString, renderScale, canvas);
 
             var tileId = queryParameters.get('pId');
             var otherTileId = queryParameters.get('qId');
@@ -67,7 +76,6 @@
             var stackLinkHtml = '(<a href="' + tilePair.stackUrl + '" target="_blank">stack metadata</a>)';
             $("#renderStackLink").html(stackLinkHtml);
             $("#matchCollection").html(tilePair.matchOwner + sep + tilePair.matchCollection);
-
 
         });
 
