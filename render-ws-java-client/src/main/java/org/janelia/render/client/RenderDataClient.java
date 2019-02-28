@@ -74,6 +74,10 @@ public class RenderDataClient {
         this.httpClient = HttpClientBuilder.create().setRetryHandler(new WaitingRetryHandler()).build();
     }
 
+    public RenderWebServiceUrls getUrls() {
+        return urls;
+    }
+
     @Override
     public String toString() {
         return String.valueOf(urls);
@@ -1140,6 +1144,48 @@ public class RenderDataClient {
         LOG.info("getMatchMultiConsensusPGroupIds: submitting {}", requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
+     *
+     * @param pGroupId  first tile's section id.
+     * @param pId       first tile's id.
+     * @param qGroupId  second tile's section id.
+     * @param qId       second tile's id.
+     *
+     * @return canvas matches between the specified tiles.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public CanvasMatches getMatchesBetweenTiles(final String pGroupId,
+                                                final String pId,
+                                                final String qGroupId,
+                                                final String qId)
+            throws IOException {
+
+        final String urlString = String.format("%s/group/%s/id/%s/matchesWith/%s/id/%s",
+                                               urls.getMatchCollectionUrlString(), pGroupId, pId, qGroupId, qId);
+        final URI uri = getUri(urlString);
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final TypeReference<List<CanvasMatches>> typeReference = new TypeReference<List<CanvasMatches>>() {};
+        final JsonUtils.GenericHelper<List<CanvasMatches>> helper = new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<CanvasMatches>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getMatchesBetweenTiles: submitting {}", requestContext);
+
+        final List<CanvasMatches> responseList = httpClient.execute(httpGet, responseHandler);
+
+        CanvasMatches canvasMatches = null;
+        if (responseList.size() == 1) {
+            canvasMatches = responseList.get(0);
+        } else if (responseList.size() > 1) {
+            throw new IOException(responseList.size() + " match records returned for pId " + pId +
+                                  " and qId " + qId + " when there should only be one record");
+        }
+
+        return canvasMatches;
     }
 
     /**
