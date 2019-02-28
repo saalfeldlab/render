@@ -312,7 +312,7 @@ public class MatchDaoTest {
 
         final MongoCollection<Document> matchCollection = dao.getExistingCollection(collectionId);
         final Document query = new Document("pGroupId", pGroupId);
-        final List<CanvasMatches> updatedMatchList = dao.getMatches(matchCollection, query);
+        final List<CanvasMatches> updatedMatchList = dao.getMatches(matchCollection, query, false);
 
         Assert.assertEquals("invalid number of matches returned, matches=" + updatedMatchList,
                             3, updatedMatchList.size());

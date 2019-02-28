@@ -711,8 +711,8 @@ public class MatchService {
         return matchTrial;
     }
 
-    private MatchCollectionId getCollectionId(final String owner,
-                                              final String matchCollection) {
+    static MatchCollectionId getCollectionId(final String owner,
+                                             final String matchCollection) {
 
         MatchCollectionId collectionId = null;
         try {

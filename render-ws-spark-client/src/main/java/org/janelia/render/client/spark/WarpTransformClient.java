@@ -20,6 +20,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
@@ -261,8 +262,11 @@ public class WarpTransformClient
             throw new IllegalStateException("cannot determine clusters because no matches were found for z " + z);
         }
 
-        final List<Set<String>> connectedTileSets = TileClusterParameters.buildAndSortConnectedTileSets(z,
-                                                                                                        matchesList);
+        final SortedConnectedCanvasIdClusters clusters = new SortedConnectedCanvasIdClusters(matchesList);
+        final List<Set<String>> connectedTileSets = clusters.getSortedConnectedTileIdSets();
+
+        LOG.info("buildTransformsForClusters: for z {}, found {} connected tile sets with sizes {}",
+                 z, clusters.size(), clusters.getClusterSizes());
 
         final Set<String> largestCluster = connectedTileSets.get(connectedTileSets.size() - 1);
         final int maxSmallClusterSize = tileClusterParameters.getEffectiveMaxSmallClusterSize(largestCluster.size());

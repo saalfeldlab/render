@@ -182,8 +182,26 @@ public class MatchDao {
         writeMatches(collectionList, query, excludeMatchDetails, outputStream);
     }
 
+    public List<CanvasMatches> getMatchesWithinGroup(final MatchCollectionId collectionId,
+                                                     final String groupId,
+                                                     final boolean excludeMatchDetails)
+            throws IllegalArgumentException, ObjectNotFoundException {
+
+        LOG.debug("getMatchesWithinGroup: entry, collectionId={}, groupId={}",
+                  collectionId, groupId);
+
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+
+        MongoUtil.validateRequiredParameter("groupId", groupId);
+
+        final Document query = new Document("pGroupId", groupId).append("qGroupId", groupId);
+
+        return getMatches(collection, query, excludeMatchDetails);
+    }
+
     public List<CanvasMatches> getMatchesOutsideGroup(final MatchCollectionId collectionId,
-                                                      final String groupId)
+                                                      final String groupId,
+                                                      final boolean excludeMatchDetails)
             throws IllegalArgumentException, ObjectNotFoundException {
 
         LOG.debug("getMatchesOutsideGroup: entry, collectionId={}, groupId={}",
@@ -195,7 +213,7 @@ public class MatchDao {
 
         final Document query = getOutsideGroupQuery(groupId);
 
-        return getMatches(collection, query);
+        return getMatches(collection, query, excludeMatchDetails);
     }
 
     public void writeMatchesBetweenGroups(final MatchCollectionId collectionId,
@@ -640,10 +658,12 @@ public class MatchDao {
     }
 
     List<CanvasMatches> getMatches(final MongoCollection<Document> collection,
-                                   final Document query) {
+                                   final Document query,
+                                   final boolean excludeMatchDetails) {
 
         final List<CanvasMatches> canvasMatchesList = new ArrayList<>();
-        final Document projection = EXCLUDE_MONGO_ID_KEY;
+
+        final Document projection = excludeMatchDetails ? EXCLUDE_MONGO_ID_KEY_AND_MATCHES : EXCLUDE_MONGO_ID_KEY;
 
         try (final MongoCursor<Document> cursor = collection.find(query).projection(projection).iterator()) {
             while (cursor.hasNext()) {
@@ -652,7 +672,7 @@ public class MatchDao {
         }
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("getMatches: wrote data for {} matches returned by {}.find({},{})",
+            LOG.debug("getMatches: {} matches returned for {}.find({},{})",
                       canvasMatchesList.size(), MongoUtil.fullName(collection), query.toJson(), projection.toJson());
         }
 
