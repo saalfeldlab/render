@@ -87,6 +87,12 @@ public class UnconnectedTileRemovalClient {
         public boolean separateSmallerUnconnectedClusters = false;
 
         @Parameter(
+                names = "--renderIntersectingClusters",
+                description = "Render any cluster intersection areas for review",
+                arity = 0)
+        public boolean renderIntersectingClusters = false;
+
+        @Parameter(
                 names = "--completeStacksAfterRemoval",
                 description = "Complete source and/or removed tiles stacks after processing",
                 arity = 0)
@@ -451,7 +457,9 @@ public class UnconnectedTileRemovalClient {
         }
 
         if (overlapProblems.size() > 0) {
-            overlapProblems.forEach(op -> op.render(renderDataClient, parameters.stack));
+            if (parameters.renderIntersectingClusters) {
+                overlapProblems.forEach(op -> op.render(renderDataClient, parameters.stack));
+            }
             overlapProblems.forEach(OverlapProblem::logProblemDetails);
         } else {
             LOG.info("no overlap problems found");
