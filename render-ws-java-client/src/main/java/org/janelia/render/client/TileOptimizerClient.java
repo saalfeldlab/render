@@ -200,7 +200,7 @@ public class TileOptimizerClient {
     private final RenderDataClient targetDataClient;
 
     private final List<String> pGroupList;
-    private final Map<String, Double> sectionIdToZMap;
+    private final Map<String, List<Double>> sectionIdToZMap;
     private final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap;
     private int totalTileCount;
 
@@ -248,7 +248,13 @@ public class TileOptimizerClient {
                     "stack " + parameters.stack + " does not contain any sections with the specified z values");
         }
 
-        allSectionDataList.forEach(sd -> sectionIdToZMap.put(sd.getSectionId(), sd.getZ()));
+        allSectionDataList.forEach(sd -> {
+            if (isZInRange(sd.getZ())) {
+                final List<Double> zListForSection = sectionIdToZMap.computeIfAbsent(sd.getSectionId(),
+                                                                                     zList -> new ArrayList<>());
+                zListForSection.add(sd.getZ());
+            }
+        });
     }
 
     private void runOptimizer()
@@ -322,6 +328,10 @@ public class TileOptimizerClient {
         LOG.info("runOptimizer: exit");
     }
 
+    private boolean isZInRange(final Double z) {
+        return (z != null) && (z.compareTo(parameters.minZ) >= 0) && (z.compareTo(parameters.maxZ) <= 0);
+    }
+
     private void saveTargetStackTiles(final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>>> idToTileMap)
             throws IOException {
 
@@ -378,23 +388,31 @@ public class TileOptimizerClient {
                                  final String tileId)
             throws IOException {
 
-        final Double z = sectionIdToZMap.get(sectionId);
+        TileSpec tileSpec = null;
 
-        if (! zToTileSpecsMap.containsKey(z)) {
+        for (final Double z : sectionIdToZMap.get(sectionId)) {
 
-            if (totalTileCount > 100000) {
-                throw new IllegalArgumentException("More than 100000 tiles need to be loaded - please reduce z values");
+            if (! zToTileSpecsMap.containsKey(z)) {
+
+                if (totalTileCount > 100000) {
+                    throw new IllegalArgumentException("More than 100000 tiles need to be loaded - please reduce z values");
+                }
+
+                final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
+                resolvedTiles.resolveTileSpecs();
+                zToTileSpecsMap.put(z, resolvedTiles);
+                totalTileCount += resolvedTiles.getTileCount();
             }
 
-            final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
-            resolvedTiles.resolveTileSpecs();
-            zToTileSpecsMap.put(z, resolvedTiles);
-            totalTileCount += resolvedTiles.getTileCount();
+            final ResolvedTileSpecCollection resolvedTileSpecCollection = zToTileSpecsMap.get(z);
+            tileSpec = resolvedTileSpecCollection.getTileSpec(tileId);
+
+            if (tileSpec != null) {
+                break;
+            }
         }
 
-        final ResolvedTileSpecCollection resolvedTileSpecCollection = zToTileSpecsMap.get(z);
-
-        return resolvedTileSpecCollection.getTileSpec(tileId);
+        return tileSpec;
     }
 
     private Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> getTile(final TileSpec tileSpec) {
