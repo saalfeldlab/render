@@ -13,24 +13,26 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.InterpolatedAffineModel2D;
+import mpicbg.models.Model;
 import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 
 import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.alignment.spec.validator.WarpedTileSpecValidator;
+import org.janelia.alignment.util.ScriptUtil;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -45,7 +47,7 @@ import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApp
  * @author Stephan Saalfeld
  * @author Eric Trautman
  */
-public class TileOptimizerClient {
+public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
     public static class Parameters extends CommandLineParameters {
 
@@ -71,6 +73,12 @@ public class TileOptimizerClient {
         public Double maxZ;
 
         @Parameter(
+                names = "--matchOwner",
+                description = "Owner of match collection for tiles (default is owner)"
+        )
+        public String matchOwner;
+
+        @Parameter(
                 names = "--matchCollection",
                 description = "Name of match collection for tiles",
                 required = true
@@ -78,10 +86,17 @@ public class TileOptimizerClient {
         public String matchCollection;
 
         @Parameter(
-                names = "--matchOwner",
-                description = "Owner of match collection for tiles (default is owner)"
+                names = "--regularizerModelType",
+                description = "Type of model for regularizer",
+                required = true
         )
-        public String matchOwner;
+        public ModelType regularizerModelType;
+
+        @Parameter(
+                names = "--samplesPerDimension",
+                description = "Samples per dimension"
+        )
+        public Integer samplesPerDimension = 2;
 
         @Parameter(
                 names = "--maxAllowedError",
@@ -102,10 +117,13 @@ public class TileOptimizerClient {
         public Integer maxPlateauWidth = 200;
 
         @Parameter(
-                names = "--lambda",
-                description = "Lambda"
+                names = "--startLambda",
+                description = "Starting lambda for optimizer.  " +
+                              "Optimizer loops through lambdas 1.0, 0.5, 0.1. 0.01.  " +
+                              "If you know your starting alignment is good, " +
+                              "set this to one of the smaller values to improve performance."
         )
-        public Double lambda = 0.01; // 1, 0.5, 0.1. 0.01
+        public Double startLambda = 1.0;
 
         @Parameter(
                 names = "--targetOwner",
@@ -139,6 +157,7 @@ public class TileOptimizerClient {
         public Parameters() {
         }
 
+        @SuppressWarnings("Duplicates")
         void initDefaultValues() {
 
             if (this.matchOwner == null) {
@@ -175,7 +194,8 @@ public class TileOptimizerClient {
                             "--completeTargetStack",
                             "--matchCollection", "FAFB_montage_fix",
                             "--minZ", "100270",
-                            "--maxZ", "100272"
+                            "--maxZ", "100272",
+                            "--regularizerModelType", "RIGID"
 //                            ,"--mergedZ", "271"
                     };
                     parameters.parse(testArgs);
@@ -185,9 +205,9 @@ public class TileOptimizerClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final TileOptimizerClient client = new TileOptimizerClient(parameters);
+                final Trakem2SolverClient client = new Trakem2SolverClient(parameters);
 
-                client.runOptimizer();
+                client.run();
             }
         };
         clientRunner.run();
@@ -204,7 +224,7 @@ public class TileOptimizerClient {
     private final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap;
     private int totalTileCount;
 
-    private TileOptimizerClient(final Parameters parameters)
+    private Trakem2SolverClient(final Parameters parameters)
             throws IOException {
 
         parameters.initDefaultValues();
@@ -257,16 +277,16 @@ public class TileOptimizerClient {
         });
     }
 
-    private void runOptimizer()
+    private void run()
             throws IOException, NotEnoughDataPointsException, IllDefinedDataPointsException {
 
-        LOG.info("runOptimizer: entry");
+        LOG.info("run: entry");
 
-        final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>>> idToTileMap = new HashMap<>();
+        final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
 
         for (final String pGroupId : pGroupList) {
 
-            LOG.info("runOptimizer: connecting tiles with pGroupId {}", pGroupId);
+            LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
 
             final List<CanvasMatches> matches = matchDataClient.getMatchesWithPGroupId(pGroupId);
             for (final CanvasMatches match : matches) {
@@ -279,18 +299,18 @@ public class TileOptimizerClient {
                 final TileSpec qTileSpec = getTileSpec(qGroupId, qId);
 
                 if ((pTileSpec == null) || (qTileSpec == null)) {
-                    LOG.info("runOptimizer: ignoring pair ({}, {}) because one or both tiles are missing from stack {}",
+                    LOG.info("run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}",
                              pId, qId, parameters.stack);
                     continue;
                 }
 
-                final Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> p =
+                final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p =
                         idToTileMap.computeIfAbsent(pId,
-                                                    pTile -> getTile(pTileSpec));
+                                                    pTile -> buildTileFromSpec(pTileSpec));
 
-                final Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> q =
+                final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> q =
                         idToTileMap.computeIfAbsent(qId,
-                                                    qTile -> getTile(qTileSpec));
+                                                    qTile -> buildTileFromSpec(qTileSpec));
 
                 p.connect(q,
                           CanvasFeatureMatchResult.convertMatchesToPointMatchList(match.getMatches()));
@@ -300,21 +320,26 @@ public class TileOptimizerClient {
         final TileConfiguration tileConfig = new TileConfiguration();
         tileConfig.addTiles(idToTileMap.values());
 
-        LOG.info("runOptimizer: optimizing {} tiles", idToTileMap.size());
+        LOG.info("run: optimizing {} tiles", idToTileMap.size());
 
-        for (final double lambda : new double[]{1, 0.5, 0.1, 0.01}) {
+        final double[] lambdaValues = new double[] { 1, 0.5, 0.1, 0.01 };
 
-            for (final Tile tile : idToTileMap.values())
-                ((InterpolatedAffineModel2D)tile.getModel()).setLambda(lambda);
+        for (final double lambda : lambdaValues) {
+            if (lambda <= parameters.startLambda) {
 
-            tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
-            
+                for (final Tile tile : idToTileMap.values()) {
+                    ((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
+                }
+
+                tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
+
+            }
         }
 
         if (parameters.targetStack == null) {
 
             for (final String tileId : idToTileMap.keySet()) {
-                final Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> tile = idToTileMap.get(tileId);
+                final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = idToTileMap.get(tileId);
                 final InterpolatedAffineModel2D model = tile.getModel();
                 LOG.info("tile {} model is {}", tileId, model.createAffineModel2D());
             }
@@ -325,14 +350,39 @@ public class TileOptimizerClient {
 
         }
 
-        LOG.info("runOptimizer: exit");
+        LOG.info("run: exit");
+    }
+
+    private Tile<InterpolatedAffineModel2D<AffineModel2D, B>> buildTileFromSpec(final TileSpec tileSpec) {
+
+        final CoordinateTransformList<CoordinateTransform> transformList = tileSpec.getTransformList();
+        final AffineModel2D lastTransform = (AffineModel2D)
+                transformList.get(transformList.getList(null).size() - 1);
+        final AffineModel2D lastTransformCopy = lastTransform.copy();
+
+        final double sampleWidth = (tileSpec.getWidth() - 1.0) / (parameters.samplesPerDimension - 1.0);
+        final double sampleHeight = (tileSpec.getHeight() - 1.0) / (parameters.samplesPerDimension - 1.0);
+
+        final B regularizer = parameters.regularizerModelType.getInstance();
+
+        try {
+            ScriptUtil.fit(regularizer, lastTransformCopy, sampleWidth, sampleHeight, parameters.samplesPerDimension);
+        } catch (final Throwable t) {
+            throw new IllegalArgumentException(regularizer.getClass() + " model derivation failed for tile '" +
+                                               tileSpec.getTileId() + "', cause: " + t.getMessage(),
+                                               t);
+        }
+
+        return new Tile<>(new InterpolatedAffineModel2D<>(lastTransformCopy,
+                                                          regularizer,
+                                                          parameters.startLambda)); // note: lambda gets reset during optimization loops
     }
 
     private boolean isZInRange(final Double z) {
         return (z != null) && (z.compareTo(parameters.minZ) >= 0) && (z.compareTo(parameters.maxZ) <= 0);
     }
 
-    private void saveTargetStackTiles(final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>>> idToTileMap)
+    private void saveTargetStackTiles(final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap)
             throws IOException {
 
         LOG.info("saveTargetStackTiles: entry");
@@ -344,7 +394,7 @@ public class TileOptimizerClient {
             for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
 
                 final String tileId = tileSpec.getTileId();
-                final Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> tile = idToTileMap.get(tileId);
+                final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = idToTileMap.get(tileId);
 
                 if (tile == null) {
                     tileIdsToRemove.add(tileId);
@@ -415,32 +465,6 @@ public class TileOptimizerClient {
         return tileSpec;
     }
 
-    private Tile<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>> getTile(final TileSpec tileSpec) {
-
-        // TODO: make samplesPerDimension a parameter?
-        final int samplesPerDimension = 2;
-
-        final CoordinateTransformList<CoordinateTransform> transformList = tileSpec.getTransformList();
-        final AffineModel2D lastTransform = (AffineModel2D) transformList.get(transformList.getList(null).size() - 1);
-        final AffineModel2D copy = lastTransform.copy();
-
-        final double scaleX = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
-        final double scaleY = (tileSpec.getHeight() - 1.0) / (samplesPerDimension - 1.0);
-
-        final RigidModel2D rigidModel = WarpedTileSpecValidator.sampleRigidModel(tileSpec.getTileId(),
-                                                                                 copy,
-                                                                                 scaleX,
-                                                                                 scaleY,
-                                                                                 samplesPerDimension);
-
-//        System.out.println("rigid: " + rigidModel);
-//        System.out.println("copy: " + copy);
-
-        return new Tile<>(new InterpolatedAffineModel2D<>(copy,
-                                                          rigidModel,
-                                                          parameters.lambda));
-    }
-
-    private static final Logger LOG = LoggerFactory.getLogger(TileOptimizerClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Trakem2SolverClient.class);
 
 }

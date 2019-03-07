@@ -1,16 +1,12 @@
 package org.janelia.alignment.spec.validator;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.Model;
-import mpicbg.models.Point;
-import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
 
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.ScriptUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,20 +110,24 @@ public class WarpedTileSpecValidator
         }
 
         final CoordinateTransformList<CoordinateTransform> warpTransformList = tileSpec.getTransformList();
-        final double scaleX = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
-        final double scaleY = (tileSpec.getHeight() - 1.0) / (samplesPerDimension - 1.0);
+        final double sampleWidth = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
+        final double sampleHeight = (tileSpec.getHeight() - 1.0) / (samplesPerDimension - 1.0);
 
-        final Model rigidModel = sampleRigidModel(tileSpec.getTileId(),
-                                                  warpTransformList,
-                                                  scaleX,
-                                                  scaleY,
-                                                  samplesPerDimension);
+        final Model model = new RigidModel2D();
 
-        final double maxDelta = calculateMaxDelta(warpTransformList,
-                                                  rigidModel,
-                                                  scaleX,
-                                                  scaleY,
-                                                  samplesPerDimension);
+        try {
+            ScriptUtil.fit(model, warpTransformList, sampleWidth, sampleHeight, samplesPerDimension);
+        } catch (final Throwable t) {
+            throw new IllegalArgumentException(model.getClass() + " model derivation failed for tile '" +
+                                               tileSpec.getTileId() + "', cause: " + t.getMessage(),
+                                               t);
+        }
+
+        final double maxDelta = ScriptUtil.calculateMaxDelta(warpTransformList,
+                                                             model,
+                                                             sampleWidth,
+                                                             sampleHeight,
+                                                             samplesPerDimension);
 
         if (maxDelta > maxDeltaThreshold) {
             throw new IllegalArgumentException(
@@ -140,62 +140,6 @@ public class WarpedTileSpecValidator
 
     }
 
-    // stolen from https://github.com/axtimwalde/fiji-scripts/blob/master/TrakEM2/visualize-ct-difference.bsh#L90-L106
-    public static RigidModel2D sampleRigidModel(final String tileId,
-                                                final CoordinateTransform ct,
-                                                final double scaleX,
-                                                final double scaleY,
-                                                final int samplesPerDimension) {
-
-        final RigidModel2D model = new RigidModel2D();
-        final List<PointMatch> matches = new ArrayList<>();
-
-        try {
-
-            for (int y = 0; y < samplesPerDimension; ++y) {
-                final double ys = scaleY * y;
-                for (int x = 0; x < samplesPerDimension; ++x) {
-                    final double xs = scaleX * x;
-                    final Point p = new Point(new double[]{xs, ys});
-                    p.apply(ct);
-                    matches.add(new PointMatch(p, p));
-                }
-            }
-
-            model.fit(matches);
-
-        } catch (final Throwable t) {
-            throw new IllegalArgumentException("rigid model derivation failed for tileId '" + tileId +
-                                               "', cause: " + t.getMessage(), t);
-        }
-
-        return model;
-    }
-
-    // adapted from https://github.com/axtimwalde/fiji-scripts/blob/master/TrakEM2/visualize-ct-difference.bsh#L56-L72
-    private static double calculateMaxDelta(final CoordinateTransform ct1,
-                                            final CoordinateTransform ct2,
-                                            final double scaleX,
-                                            final double scaleY,
-                                            final int samplesPerDimension) {
-
-        double maxDelta = 0.0;
-
-        for (int y = 0; y < samplesPerDimension; ++y) {
-            for (int x = 0; x < samplesPerDimension; ++x) {
-                final double[] l1 = new double[]{x * scaleX, y * scaleY};
-                final double[] l2 = new double[]{x * scaleX, y * scaleY};
-                ct1.applyInPlace(l1);
-                ct2.applyInPlace(l2);
-                final double dx = l1[0] - l2[0];
-                final double dy = l1[1] - l2[1];
-                final double d = Math.sqrt(dx * dx + dy * dy);
-                maxDelta = Math.max(maxDelta, d);
-            }
-        }
-
-        return maxDelta;
-    }
 
     private static final Logger LOG = LoggerFactory.getLogger(WarpedTileSpecValidator.class);
 }
