@@ -40,11 +40,11 @@ public class ResidualCalculator implements Serializable {
             this(null, null, null, null, null);
         }
 
-        public InputData(final String pTileId,
-                         final String qTileId,
-                         final StackId matchRenderStackId,
-                         final MatchCollectionId matchCollectionId,
-                         final Boolean includeDetails) {
+        InputData(final String pTileId,
+                  final String qTileId,
+                  final StackId matchRenderStackId,
+                  final MatchCollectionId matchCollectionId,
+                  final Boolean includeDetails) {
             this.matchCollectionId = matchCollectionId;
             this.matchRenderStackId = matchRenderStackId;
             this.pTileId = pTileId;
@@ -70,7 +70,7 @@ public class ResidualCalculator implements Serializable {
             return matchRenderStackId;
         }
 
-        public Boolean getIncludeDetails() {
+        Boolean getIncludeDetails() {
             return includeDetails;
         }
     }
@@ -81,6 +81,7 @@ public class ResidualCalculator implements Serializable {
         private final InputData inputData;
         private final Double medianDistance;
         private final Double meanDistance;
+        private final Double maxDistance;
         private final Double rootMeanSquareError;
         private final List<Double> distanceList;
 
@@ -92,13 +93,14 @@ public class ResidualCalculator implements Serializable {
 
         public Result(final StackId alignedStackId,
                       final InputData inputData) {
-            this(alignedStackId, inputData, null, null, null, null);
+            this(alignedStackId, inputData, null, null, null, null, null);
         }
 
         public Result(final StackId alignedStackId,
                       final InputData inputData,
                       final Double medianDistance,
                       final Double meanDistance,
+                      final Double maxDistance,
                       final Double rootMeanSquareError,
                       final List<Double> distanceList) {
 
@@ -106,6 +108,7 @@ public class ResidualCalculator implements Serializable {
             this.inputData = inputData;
             this.medianDistance = medianDistance;
             this.meanDistance = meanDistance;
+            this.maxDistance = maxDistance;
             this.rootMeanSquareError = rootMeanSquareError;
             if (inputData.getIncludeDetails()) {
                 this.distanceList = distanceList;
@@ -116,9 +119,9 @@ public class ResidualCalculator implements Serializable {
 
         @Override
         public String toString() {
-            final String totals = String.format("%25s, %40s, %6.2f, %6.2f, %6.2f",
+            final String totals = String.format("%25s, %40s, %6.2f, %6.2f, %6.2f, %6.2f",
                                                 alignedStackId.getProject(), alignedStackId.getStack(),
-                                                medianDistance, meanDistance, rootMeanSquareError);
+                                                medianDistance, meanDistance, maxDistance, rootMeanSquareError);
             final StringBuilder sb = new StringBuilder(totals);
             if (inputData.getIncludeDetails() && (distanceList != null)) {
                 for (final Double distance : distanceList) {
@@ -131,7 +134,7 @@ public class ResidualCalculator implements Serializable {
 
         @JsonIgnore
         public static String getHeader() {
-            return String.format("%25s, %40s, %6s, %6s, %6s, details\n", "project", "stack", "median", "mean", "RMSE");
+            return String.format("%25s, %40s, %6s, %6s, %6s, %6s, details\n", "project", "stack", "median", "mean", "max", "RMSE");
         }
 
     }
@@ -163,6 +166,8 @@ public class ResidualCalculator implements Serializable {
 
             Collections.sort(distanceList);
 
+            final double max = distanceList.get(distanceList.size() - 1);
+
             final int middleIndex = distanceList.size() / 2;
             double median = distanceList.get(middleIndex);
             if (distanceList.size() % 2 == 0) {
@@ -179,7 +184,7 @@ public class ResidualCalculator implements Serializable {
             final double arithmeticMean = (distanceSum / distanceList.size());
             final double rootMeanSquareError = Math.sqrt(distanceSquaredSum / distanceList.size());
 
-            result = new Result(alignedStackId, inputData, median, arithmeticMean, rootMeanSquareError, distanceList);
+            result = new Result(alignedStackId, inputData, median, arithmeticMean, max, rootMeanSquareError, distanceList);
 
         } else {
 
@@ -211,8 +216,8 @@ public class ResidualCalculator implements Serializable {
         return localMatchList;
     }
 
-    public static Point getLocalPoint(final Point worldPoint,
-                                      final TileSpec tileSpec)
+    private static Point getLocalPoint(final Point worldPoint,
+                                       final TileSpec tileSpec)
             throws NoninvertibleModelException {
         final double[] world = worldPoint.getL();
         final double[] local = tileSpec.getLocalCoordinates(world[0], world[1], tileSpec.getMeshCellSize());
