@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.Consumes;
@@ -25,6 +26,7 @@ import javax.ws.rs.core.UriInfo;
 
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
+import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.PointMatch;
 
 import org.janelia.alignment.RenderParameters;
@@ -34,6 +36,7 @@ import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -44,6 +47,7 @@ import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.alignment.transform.AffineWarpField;
 import org.janelia.alignment.transform.AffineWarpFieldTransform;
 import org.janelia.alignment.transform.ConsensusWarpFieldBuilder;
+import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.alignment.util.ResidualCalculator;
 import org.janelia.render.service.dao.MatchDao;
 import org.janelia.render.service.dao.RenderDao;
@@ -594,22 +598,22 @@ public class HierarchicalDataService {
         return result;
     }
 
-    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/residualCalculation")
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/pairResidualCalculation")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            value = "Calculate alignment residual stats")
+            value = "Calculate alignment residual stats for a tile pair")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "stack, match collection, or tile not found")
     })
-    public ResidualCalculator.Result calculateResidualDistances(@PathParam("owner") final String owner,
-                                                                @PathParam("project") final String project,
-                                                                @PathParam("stack") final String stack,
-                                                                @Context final UriInfo uriInfo,
-                                                                final ResidualCalculator.InputData inputData) {
+    public ResidualCalculator.Result calculateResidualDistancesForPair(@PathParam("owner") final String owner,
+                                                                       @PathParam("project") final String project,
+                                                                       @PathParam("stack") final String stack,
+                                                                       @Context final UriInfo uriInfo,
+                                                                       final ResidualCalculator.InputData inputData) {
 
-        LOG.info("calculateResidual: entry, owner={}, project={}, stack={}",
+        LOG.info("calculateResidualDistancesForPair: entry, owner={}, project={}, stack={}",
                  owner, project, stack);
 
         ResidualCalculator.Result result = null;
@@ -636,7 +640,7 @@ public class HierarchicalDataService {
                 pMatchTileSpec = qMatchTileSpec;
                 qMatchTileSpec = swapMatchTileSpec;
 
-                LOG.info("calculateResidual: normalized tile ordering, now pTileId is {} and qTileId is {}",
+                LOG.info("calculateResidualDistancesForPair: normalized tile ordering, now pTileId is {} and qTileId is {}",
                          pTileId, qTileId);
             }
 
@@ -666,6 +670,117 @@ public class HierarchicalDataService {
         }
 
         return result;
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/layerResidualCalculation")
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "VERY SLOW calculation of alignment residual stats for a layer",
+            notes = "Do not use - this was an experiment to see how slow dynamic server-side calculation would be")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "stack, match collection, or tile not found")
+    })
+    public List<ResidualCalculator.Result> calculateResidualDistancesForLayer(@PathParam("owner") final String owner,
+                                                                              @PathParam("project") final String project,
+                                                                              @PathParam("stack") final String stack,
+                                                                              @PathParam("z") final Double z,
+                                                                              @QueryParam("rmseThreshold") final Double rmseThreshold,
+                                                                              @Context final UriInfo uriInfo,
+                                                                              final ResidualCalculator.InputData inputDataTemplate) {
+
+        LOG.info("calculateResidualDistancesForLayer: entry, owner={}, project={}, stack={}, z={}",
+                 owner, project, stack, z);
+
+        final List<ResidualCalculator.Result> results = new ArrayList<>();
+
+        try {
+            final StackId matchStackId = inputDataTemplate.getMatchRenderStackId();
+
+            final StackId alignedStackId = new StackId(owner, project, stack);
+
+            final ResolvedTileSpecCollection alignedTiles = renderDao.getResolvedTiles(alignedStackId, z);
+            alignedTiles.resolveTileSpecs();
+
+            final Set<String> alignedSectionIds = new HashSet<>();
+            alignedTiles.getTileSpecs().forEach(ts -> alignedSectionIds.add(ts.getSectionId()));
+            alignedSectionIds.remove(null);
+
+            final Map<String, TileSpec> idToMatchTileSpec = new HashMap<>();
+            alignedTiles.getTileIds().forEach(tileId -> idToMatchTileSpec.put(tileId,
+                                                                              getMatchTileSpec(matchStackId, tileId)));
+
+            final MatchCollectionId matchCollectionId = inputDataTemplate.getMatchCollectionId();
+
+            final ResidualCalculator residualCalculator = new ResidualCalculator();
+
+            LOG.info("calculateResidualDistancesForLayer: found {} section ids", alignedSectionIds.size());
+
+            alignedSectionIds.forEach(sectionId -> {
+
+                final List<CanvasMatches> matchesList =
+                        matchDao.getMatchesWithinGroup(matchCollectionId,
+                                                       sectionId,
+                                                       false);
+
+                final ProcessTimer processTimer = new ProcessTimer(10000);
+                final AtomicInteger pairCount = new AtomicInteger(0);
+
+                matchesList.forEach(cm -> {
+
+                    final String pTileId = cm.getpId();
+                    final String qTileId = cm.getqId();
+
+                    if (alignedTiles.hasTileSpec(pTileId) && alignedTiles.hasTileSpec(qTileId)) {
+
+                        final TileSpec pMatchTileSpec = idToMatchTileSpec.get(pTileId);
+                        final TileSpec qMatchTileSpec = idToMatchTileSpec.get(qTileId);
+
+                        final List<PointMatch> worldMatchList = cm.getMatches().createPointMatches();
+                        final List<PointMatch> localMatchList =
+                                ResidualCalculator.convertMatchesToLocal(worldMatchList,
+                                                                         pMatchTileSpec,
+                                                                         qMatchTileSpec);
+
+                        if (localMatchList.size() == 0) {
+                            LOG.warn("calculateResidualDistancesForLayer: " + matchCollectionId + " has " +
+                                     worldMatchList.size() + " matches between " + pTileId + " and " +
+                                     qTileId + " but none of them are invertible");
+                        } else {
+                            final TileSpec pAlignedTileSpec = alignedTiles.getTileSpec(pTileId);
+                            final TileSpec qAlignedTileSpec = alignedTiles.getTileSpec(qTileId);
+                            final ResidualCalculator.InputData inputData = inputDataTemplate.copy(pTileId, qTileId);
+                            try {
+                                final ResidualCalculator.Result result = residualCalculator.run(alignedStackId,
+                                                                                                inputData,
+                                                                                                localMatchList,
+                                                                                                pAlignedTileSpec,
+                                                                                                qAlignedTileSpec);
+                                if ((rmseThreshold == null) || (result.getRootMeanSquareError() > rmseThreshold)) {
+                                    results.add(result);
+                                }
+                            } catch (final NoninvertibleModelException e) {
+                                LOG.warn("calculateResidualDistancesForLayer: failed to calculate residual for pair " +
+                                         pTileId + " and " + qTileId, e);
+                            }
+                        }
+                    }
+
+                    final int pc = pairCount.incrementAndGet();
+                    if (processTimer.hasIntervalPassed()) {
+                        LOG.info("calculateResidualDistancesForLayer: processed {} out of {} match pairs for section {}",
+                                 pc, matchesList.size(), sectionId);
+                    }
+                });
+
+            });
+
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return results;
     }
 
     private AffineModel2D getRelativeAlignedModel(final HierarchicalStack tierStack,

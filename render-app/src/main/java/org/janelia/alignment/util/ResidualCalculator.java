@@ -73,6 +73,15 @@ public class ResidualCalculator implements Serializable {
         Boolean getIncludeDetails() {
             return includeDetails;
         }
+
+        public InputData copy(final String pTileId,
+                              final String qTileId) {
+            return new InputData(pTileId,
+                                 qTileId,
+                                 this.matchRenderStackId,
+                                 this.matchCollectionId,
+                                 this.includeDetails);
+        }
     }
 
     public static class Result implements Serializable {
@@ -115,6 +124,10 @@ public class ResidualCalculator implements Serializable {
             } else {
                 this.distanceList = null;
             }
+        }
+
+        public Double getRootMeanSquareError() {
+            return rootMeanSquareError;
         }
 
         @Override
@@ -192,7 +205,8 @@ public class ResidualCalculator implements Serializable {
 
         }
 
-        LOG.info("run: exit, distanceList.size={}", distanceList.size());
+        LOG.info("run: exit, rmse is {}, distanceList.size is {} for pid {} and qId {}",
+                 result.rootMeanSquareError, distanceList.size(), inputData.pTileId, inputData.qTileId);
 
         return result;
     }
