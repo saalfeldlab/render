@@ -7,7 +7,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.Consumes;
@@ -26,7 +25,6 @@ import javax.ws.rs.core.UriInfo;
 
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
-import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.PointMatch;
 
 import org.janelia.alignment.RenderParameters;
@@ -36,7 +34,6 @@ import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -47,7 +44,6 @@ import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.alignment.transform.AffineWarpField;
 import org.janelia.alignment.transform.AffineWarpFieldTransform;
 import org.janelia.alignment.transform.ConsensusWarpFieldBuilder;
-import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.alignment.util.ResidualCalculator;
 import org.janelia.render.service.dao.MatchDao;
 import org.janelia.render.service.dao.RenderDao;
