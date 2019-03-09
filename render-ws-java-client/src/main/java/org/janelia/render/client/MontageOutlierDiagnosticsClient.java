@@ -201,7 +201,13 @@ public class MontageOutlierDiagnosticsClient {
         pairList.forEach(pair -> {
             final TileBounds pBounds = tileIdToBoundsMap.get(pair.pTileId);
             final TileBounds qBounds = tileIdToBoundsMap.get(pair.qTileId);
-            pair.render(z, pBounds, qBounds, imageDir);
+            if (pBounds == null) {
+                LOG.warn("skipping outlier with missing pTile: {}", pair);
+            } else if (qBounds == null) {
+                LOG.warn("skipping outlier with missing qTile: {}", pair);
+            } else {
+                pair.render(z, pBounds, qBounds, imageDir);
+            }
         });
 
         LOG.info("renderOutliersForZ: exit");
@@ -225,6 +231,11 @@ public class MontageOutlierDiagnosticsClient {
             this.qTileId = qTileId;
             this.maxResidualX = Double.parseDouble(maxResidualX);
             this.maxResidualY = Double.parseDouble(maxResidualY);
+        }
+
+        @Override
+        public String toString() {
+            return "(" + pTileId + ", " + qTileId + ")";
         }
 
         int scaleCoordinate(final double worldValue,
