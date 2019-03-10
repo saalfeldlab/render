@@ -171,16 +171,16 @@ public class WarpTransformClient
                 }
 
                 if (parameters.tileCluster.isDefined()) {
-                    buildTransformsForClusters(montageTiles,
-                                               alignTiles,
-                                               sectionDataList,
-                                               matchDataClient,
-                                               z,
-                                               parameters.tileCluster);
+                    org.janelia.render.client.WarpTransformClient.buildTransformsForClusters(montageTiles,
+                                                                                             alignTiles,
+                                                                                             sectionDataList,
+                                                                                             matchDataClient,
+                                                                                             z,
+                                                                                             parameters.tileCluster);
                 } else {
-                    buildTransformForZ(montageTiles,
-                                       alignTiles,
-                                       z);
+                    org.janelia.render.client.WarpTransformClient.buildTransformForZ(montageTiles,
+                                                                                     alignTiles,
+                                                                                     z);
                 }
 
                 final int totalNumberOfTiles = montageTiles.getTileCount();
@@ -225,158 +225,7 @@ public class WarpTransformClient
         }
     }
 
-    private static void buildTransformForZ(final ResolvedTileSpecCollection montageTiles,
-                                           final ResolvedTileSpecCollection alignTiles,
-                                           final Double z)
-            throws Exception {
 
-        final String transformId = z + "_TPS";
-        final TransformSpec warpTransformSpec = buildTransform(montageTiles.getTileSpecs(),
-                                                               alignTiles.getTileSpecs(),
-                                                               transformId);
-
-        montageTiles.addTransformSpecToCollection(warpTransformSpec);
-        montageTiles.addReferenceTransformToAllTiles(warpTransformSpec.getId(), false);
-
-        LOG.info("buildTransformForZ: processed {} tiles for z {}",
-                 montageTiles.getTileCount(), z);
-
-    }
-
-    private static void buildTransformsForClusters(final ResolvedTileSpecCollection montageTiles,
-                                           final ResolvedTileSpecCollection alignTiles,
-                                           final List<SectionData> sectionDataList,
-                                           final RenderDataClient matchDataClient,
-                                           final Double z,
-                                           final TileClusterParameters tileClusterParameters)
-            throws Exception {
-
-        final List<CanvasMatches> matchesList = new ArrayList<>();
-        for (final SectionData sectionData : sectionDataList) {
-            if (z.equals(sectionData.getZ())) {
-                matchesList.addAll(matchDataClient.getMatchesWithinGroup(sectionData.getSectionId()));
-            }
-        }
-
-        if (matchesList.size() == 0) {
-            throw new IllegalStateException("cannot determine clusters because no matches were found for z " + z);
-        }
-
-        final SortedConnectedCanvasIdClusters clusters = new SortedConnectedCanvasIdClusters(matchesList);
-        final List<Set<String>> connectedTileSets = clusters.getSortedConnectedTileIdSets();
-
-        LOG.info("buildTransformsForClusters: for z {}, found {} connected tile sets with sizes {}",
-                 z, clusters.size(), clusters.getClusterSizes());
-
-        final Set<String> largestCluster = connectedTileSets.get(connectedTileSets.size() - 1);
-        final int maxSmallClusterSize = tileClusterParameters.getEffectiveMaxSmallClusterSize(largestCluster.size());
-
-        final int tileCountBeforeRemoval = montageTiles.getTileCount();
-        int smallClusterCount = 0;
-
-        final List<Set<String>> largestConnectedTileSets = new ArrayList<>(connectedTileSets.size());
-        for (final Set<String> clusterTileIds : connectedTileSets) {
-
-            if (clusterTileIds.size() <= maxSmallClusterSize) {
-
-                montageTiles.removeTileSpecs(clusterTileIds);
-                smallClusterCount++;
-
-            } else {
-
-                final int beforeSize = clusterTileIds.size();
-
-                clusterTileIds.removeIf(tileId -> ! montageTiles.hasTileSpec(tileId));
-
-                if (beforeSize > clusterTileIds.size()) {
-                    LOG.info("buildTransformsForClusters: removed {} large cluster tiles that have matches but are missing from the montage stack",
-                             (beforeSize - clusterTileIds.size()));
-                }
-
-                largestConnectedTileSets.add(clusterTileIds);
-            }
-        }
-
-        final int removedTileCount = tileCountBeforeRemoval - montageTiles.getTileCount();
-
-        LOG.info("buildTransformsForClusters: removed {} tiles found in {} small ({}-tile or less) clusters",
-                 removedTileCount, smallClusterCount, maxSmallClusterSize);
-
-        // resolve the remaining montage tile spec transform references so that TPS calculations work
-        montageTiles.resolveTileSpecs();
-
-        final Collection<TileSpec> alignTileSpecs = alignTiles.getTileSpecs(); // note: resolves align transforms
-
-        int clusterIndex = 0;
-        for (final Set<String> clusterTileIds : largestConnectedTileSets) {
-
-            final List<TileSpec> clusterTileSpecs = new ArrayList<>(montageTiles.getTileCount());
-            final AtomicInteger alignCount = new AtomicInteger(0);
-            clusterTileIds.forEach(tileId -> {
-                final TileSpec tileSpec = montageTiles.getTileSpec(tileId);
-                if (tileSpec != null) {
-                    clusterTileSpecs.add(tileSpec);
-                    if (alignTiles.hasTileSpec(tileId)) {
-                        alignCount.getAndIncrement();
-                    }
-                }
-            });
-
-            if (clusterTileSpecs.size() == 0) {
-
-                LOG.info("buildTransformsForClusters: skipped build for z {} cluster {} because none of the {} tiles were found in the montage stack, missing tile ids are: {}",
-                         z, clusterIndex, clusterTileIds.size(), clusterTileIds);
-
-            } else if (alignCount.get() < 3) {
-
-                // Saalfeld said that there needs to be at least 3 aligned center points for TPS to work.
-                // He later clarified that the points must also not be co-linear, but we're not going to check for that here.
-                montageTiles.removeTileSpecs(clusterTileIds);
-
-                LOG.info("buildTransformsForClusters: removed {} montage tiles and skipped build for z {} cluster {} because less than 3 of the tiles were found in the align stack, removed tile ids are: {}",
-                         clusterTileIds.size(), z, clusterIndex, clusterTileIds);
-
-            } else {
-                
-                final String transformId = z + "_cluster_" + clusterIndex + "_TPS";
-
-                final TransformSpec warpTransformSpec = buildTransform(clusterTileSpecs,
-                                                                       alignTileSpecs,
-                                                                       transformId);
-                montageTiles.addTransformSpecToCollection(warpTransformSpec);
-                montageTiles.addReferenceTransformToTilesWithIds(warpTransformSpec.getId(), clusterTileIds, false);
-
-                LOG.info("buildTransformsForClusters: processed {} tiles for z {} cluster {}",
-                         clusterTileIds.size(), z, clusterIndex);
-
-            }
-
-            clusterIndex++;
-        }
-
-    }
-
-    private static TransformSpec buildTransform(final Collection<TileSpec> montageTiles,
-                                                final Collection<TileSpec> alignTiles,
-                                                final String transformId)
-            throws Exception {
-
-        LOG.info("buildTransform: deriving transform {}", transformId);
-
-        final AbstractWarpTransformBuilder< ? extends CoordinateTransform > transformBuilder =
-                new ThinPlateSplineBuilder(montageTiles, alignTiles);
-
-        final CoordinateTransform transform;
-
-        transform = transformBuilder.call();
-
-        LOG.info("buildTransform: completed {} transform derivation", transformId);
-
-        return new LeafTransformSpec(transformId,
-                                     null,
-                                     transform.getClass().getName(),
-                                     transform.toDataString());
-    }
 
     private static final Logger LOG = LoggerFactory.getLogger(WarpTransformClient.class);
 }
