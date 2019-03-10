@@ -64,7 +64,11 @@ public class UnconnectedTileRemovalClientTest {
         final SortedConnectedCanvasIdClusters clusters = new SortedConnectedCanvasIdClusters(matchesList);
         final List<Set<String>> sortedConnectedTileSets = clusters.getSortedConnectedTileIdSets();
 
-        int firstRemainingSetIndex = client.markSmallClustersAsUnconnected(z, sortedConnectedTileSets, unconnectedTileIds);
+        final Set<String> keeperTileIds = new HashSet<>();
+        int firstRemainingSetIndex = client.markSmallClustersAsUnconnected(z,
+                                                                           sortedConnectedTileSets,
+                                                                           keeperTileIds,
+                                                                           unconnectedTileIds);
 
         final String[] expectedUnconnectedTiles = {"I", "J", "K", "L", "M", "N", "O", "P", "X", "Y"};
         Assert.assertEquals("invalid number of small cluster tiles found ",
@@ -83,7 +87,10 @@ public class UnconnectedTileRemovalClientTest {
         parameters.tileCluster.maxSmallClusterSize = 1;
 
         client = new UnconnectedTileRemovalClient(parameters);
-        firstRemainingSetIndex = client.markSmallClustersAsUnconnected(z, sortedConnectedTileSets, unconnectedTileIds);
+        firstRemainingSetIndex = client.markSmallClustersAsUnconnected(z,
+                                                                       sortedConnectedTileSets,
+                                                                       keeperTileIds,
+                                                                       unconnectedTileIds);
 
         Assert.assertEquals("invalid firstRemainingSetIndex returned",
                             0, firstRemainingSetIndex);

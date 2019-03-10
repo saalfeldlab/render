@@ -9,7 +9,12 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -85,6 +90,22 @@ public class UnconnectedTileRemovalClient {
                               "after the stack's highest z value",
                 arity = 0)
         public boolean separateSmallerUnconnectedClusters = false;
+
+        @Parameter(
+                names = "--keeperOwner",
+                description = "Owner for the keeper stack (default is same as owner)")
+        public String keeperOwner;
+
+        @Parameter(
+                names = "--keeperProject",
+                description = "Project for the keeper stack (default is same as project)")
+        public String keeperProject;
+
+        @Parameter(
+                names = "--keeperStack",
+                description = "Keep tiles that exist in this stack regardless of their cluster size")
+        public String keeperStack;
+
 
         @Parameter(
                 names = "--renderIntersectingClusters",
@@ -167,6 +188,15 @@ public class UnconnectedTileRemovalClient {
             smallClusterZ = stackBounds.getMaxZ() + 1;
         }
 
+        final RenderDataClient keeperClient;
+        if (parameters.keeperStack != null) {
+            final String o = parameters.keeperOwner == null ? parameters.renderWeb.owner : parameters.keeperOwner;
+            final String p = parameters.keeperProject == null ? parameters.renderWeb.project : parameters.keeperProject;
+            keeperClient = new RenderDataClient(parameters.renderWeb.baseDataUrl, o, p);
+        } else {
+            keeperClient = null;
+        }
+
         int totalUnconnectedTiles = 0;
         int totalNumberOfSeparatedClusters = 0;
 
@@ -183,11 +213,16 @@ public class UnconnectedTileRemovalClient {
                 }
             }
 
+            final Set<String> keeperTileIds = new HashSet<>();
+            if (keeperClient != null) {
+                keeperClient.getTileBounds(parameters.keeperStack, z).forEach(tb -> keeperTileIds.add(tb.getTileId()));
+            }
+
             final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
             final Set<String> unconnectedTileIds = new HashSet<>();
             for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
                 final String tileId = tileSpec.getTileId();
-                if (! tileIdsWithMatches.contains(tileId)) {
+                if ((! tileIdsWithMatches.contains(tileId)) && (! keeperTileIds.contains(tileId))) {
                     unconnectedTileIds.add(tileId);
                }
             }
@@ -203,7 +238,7 @@ public class UnconnectedTileRemovalClient {
 
                 final int largestSetIndex = sortedConnectedTileSets.size() - 1;
                 final int firstRemainingSetIndex =
-                        markSmallClustersAsUnconnected(z, sortedConnectedTileSets, unconnectedTileIds);
+                        markSmallClustersAsUnconnected(z, sortedConnectedTileSets, keeperTileIds, unconnectedTileIds);
 
                 foundSmallerClustersToSeparate = (parameters.separateSmallerUnconnectedClusters) &&
                                                  (firstRemainingSetIndex < largestSetIndex);
@@ -310,6 +345,7 @@ public class UnconnectedTileRemovalClient {
 
     int markSmallClustersAsUnconnected(final Double z,
                                        final List<Set<String>> sortedConnectedTileSets,
+                                       final Set<String> keeperTileIds,
                                        final Set<String> unconnectedTileIds) {
 
         int firstRemainingClusterIndex = 0;
@@ -328,9 +364,26 @@ public class UnconnectedTileRemovalClient {
             for (int i = 0; i < largestSetIndex; i++) {
                 final Set<String> clusterTileIds = sortedConnectedTileSets.get(i);
                 if (clusterTileIds.size() <= maxSmallClusterSize) {
-                    unconnectedTileIds.addAll(clusterTileIds);
-                    LOG.info("markSmallClustersAsUnconnected: removed small {} tile cluster: {}",
-                             clusterTileIds.size(), clusterTileIds.stream().sorted().collect(Collectors.toList()));
+
+                    String keeperTileId = null;
+                    if (keeperTileIds.size() > 0) {
+                        for (final String tileId : clusterTileIds) {
+                            if (keeperTileIds.contains(tileId)) {
+                                keeperTileId = tileId;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (keeperTileId == null) {
+                        unconnectedTileIds.addAll(clusterTileIds);
+                        LOG.info("markSmallClustersAsUnconnected: removed small {} tile cluster: {}",
+                                 clusterTileIds.size(), getSortedSet(clusterTileIds));
+                    } else {
+                        LOG.info("markSmallClustersAsUnconnected: keeping small {} tile cluster with tile {}: {}",
+                                 clusterTileIds.size(), keeperTileId, getSortedSet(clusterTileIds));
+                    }
+
                 } else {
                     remainingClusterSizes.add(clusterTileIds.size());
                 }
@@ -372,7 +425,7 @@ public class UnconnectedTileRemovalClient {
                 LOG.info("separateSmallerRemainingClusters: changed z to {} for {} tile cluster: {}",
                          smallClusterZ,
                          remainingCluster.size(),
-                         remainingCluster.stream().sorted().collect(Collectors.toList()));
+                         getSortedSet(remainingCluster));
 
                 smallClusterZ += 1;
 
@@ -383,7 +436,7 @@ public class UnconnectedTileRemovalClient {
 
                 LOG.info("separateSmallerRemainingClusters: skip missing {} tile cluster: {}",
                          remainingCluster.size(),
-                         remainingCluster.stream().sorted().collect(Collectors.toList()));
+                         getSortedSet(remainingCluster));
 
             }
         }
@@ -560,18 +613,40 @@ public class UnconnectedTileRemovalClient {
             tileBoundsList.forEach(tb -> drawTileBounds(targetGraphics, parameters, tb, Color.RED));
             targetGraphics.dispose();
 
-            final String problemName = String.format("problem_overlap_%s_gz%1.0f_rz%1.0f_x%d_y%d.jpg",
+            final String problemName = String.format("problem_overlap_%s_gz%1.0f_rz%1.0f_x%d_y%d",
                                                      stackName, intersectingZ, z,
                                                      (int) parameters.getX(), (int) parameters.getY());
-            this.problemImageFile = new File(problemName).getAbsoluteFile();
+
+            this.problemImageFile = new File(problemName + ".jpg").getAbsoluteFile();
 
             try {
+                saveProblemTileIds(problemName);
                 Utils.saveImage(targetImage, this.problemImageFile, false, 0.85f);
             } catch (final IOException e) {
-                LOG.error("failed to save " + problemName, e);
+                LOG.error("failed to save data for " + problemName, e);
             }
         }
 
+        private void saveProblemTileIds(final String problemName)
+                throws IOException {
+            final List<String> greenIds = getQuotedTileIdList(intersectingTileBoundsList);
+            final List<String> redIds = getQuotedTileIdList(tileBoundsList);
+            final Path path = Paths.get("problem_overlap_tile_ids.json").toAbsolutePath();
+            final String tileIdData =
+                    "{\n" +
+                    "  \"problemName\": \"" + problemName + "\",\n" +
+                    "  \"greenTileIds\":\n    " + greenIds + ",\n" +
+                    "  \"redTileIds\":\n    " + redIds + "\n" +
+                    "},";
+            Files.write(path, tileIdData.getBytes(),
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.APPEND);
+        }
+
+        private List<String> getQuotedTileIdList(final Collection<TileBounds> tileBoundsList) {
+            return tileBoundsList.stream().map(tb -> "\"" + tb.getTileId() + "\"").collect(Collectors.toList());
+        }
     }
 
     private ResolvedTileSpecCollection getFilteredCollection(final ResolvedTileSpecCollection allTiles,
@@ -583,7 +658,9 @@ public class UnconnectedTileRemovalClient {
         return filteredTiles;
     }
 
-
+    private static List<String> getSortedSet(final Set<String> set) {
+        return set.stream().sorted().collect(Collectors.toList());
+    }
 
     private static final Logger LOG = LoggerFactory.getLogger(UnconnectedTileRemovalClient.class);
 }
