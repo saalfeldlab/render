@@ -236,24 +236,20 @@ public class UnconnectedTileRemovalClient {
                 LOG.info("removeTiles: for z {}, found {} connected tile sets with sizes {}",
                          z, clusters.size(), clusters.getClusterSizes());
 
-                final int largestSetIndex = sortedConnectedTileSets.size() - 1;
-                final int firstRemainingSetIndex =
+                final List<Set<String>> smallerRemainingClusters =
                         markSmallClustersAsUnconnected(z, sortedConnectedTileSets, keeperTileIds, unconnectedTileIds);
 
                 foundSmallerClustersToSeparate = (parameters.separateSmallerUnconnectedClusters) &&
-                                                 (firstRemainingSetIndex < largestSetIndex);
+                                                 (smallerRemainingClusters.size() > 0);
 
                 if (foundSmallerClustersToSeparate) {
 
                     renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
 
-                    final List<Set<String>> smallerRemainingTileSets =
-                            sortedConnectedTileSets.subList(firstRemainingSetIndex, largestSetIndex);
-
                     final double firstSeparatedZ = smallClusterZ;
 
                     separateSmallerRemainingClusters(resolvedTiles,
-                                                     smallerRemainingTileSets,
+                                                     smallerRemainingClusters,
                                                      renderDataClient);
 
                     final int numberOfSeparatedClusters = (int) (smallClusterZ - firstSeparatedZ);
@@ -343,12 +339,12 @@ public class UnconnectedTileRemovalClient {
         LOG.info("found {} unconnected tiles across all layers", totalUnconnectedTiles);
     }
 
-    int markSmallClustersAsUnconnected(final Double z,
-                                       final List<Set<String>> sortedConnectedTileSets,
-                                       final Set<String> keeperTileIds,
-                                       final Set<String> unconnectedTileIds) {
+    List<Set<String>> markSmallClustersAsUnconnected(final Double z,
+                                                     final List<Set<String>> sortedConnectedTileSets,
+                                                     final Set<String> keeperTileIds,
+                                                     final Set<String> unconnectedTileIds) {
 
-        int firstRemainingClusterIndex = 0;
+        final List<Set<String>> smallerRemainingClusters = new ArrayList<>();
 
         if (sortedConnectedTileSets.size() > 1) {
 
@@ -360,7 +356,6 @@ public class UnconnectedTileRemovalClient {
             LOG.info("markSmallClustersAsUnconnected: for z {}, maxSmallClusterSize is {}",
                      z, maxSmallClusterSize);
 
-            final List<Integer> remainingClusterSizes = new ArrayList<>();
             for (int i = 0; i < largestSetIndex; i++) {
                 final Set<String> clusterTileIds = sortedConnectedTileSets.get(i);
                 if (clusterTileIds.size() <= maxSmallClusterSize) {
@@ -380,24 +375,26 @@ public class UnconnectedTileRemovalClient {
                         LOG.info("markSmallClustersAsUnconnected: removed small {} tile cluster: {}",
                                  clusterTileIds.size(), getSortedSet(clusterTileIds));
                     } else {
+                        smallerRemainingClusters.add(clusterTileIds);
                         LOG.info("markSmallClustersAsUnconnected: keeping small {} tile cluster with tile {}: {}",
                                  clusterTileIds.size(), keeperTileId, getSortedSet(clusterTileIds));
                     }
 
                 } else {
-                    remainingClusterSizes.add(clusterTileIds.size());
+                    smallerRemainingClusters.add(clusterTileIds);
                 }
             }
 
+            final List<Integer> remainingClusterSizes =
+                    smallerRemainingClusters.stream().map(Set::size).sorted().collect(Collectors.toList());
             remainingClusterSizes.add(largestCluster.size());
-            firstRemainingClusterIndex = sortedConnectedTileSets.size() - remainingClusterSizes.size();
 
-            LOG.info("markSmallClustersAsUnconnected: for z {}, firstRemainingClusterIndex is {}, {} clusters remain with sizes {}",
-                     z, firstRemainingClusterIndex, remainingClusterSizes.size(), remainingClusterSizes);
+            LOG.info("markSmallClustersAsUnconnected: for z {}, {} clusters remain with sizes {}",
+                     z, remainingClusterSizes.size(), remainingClusterSizes);
 
         }
 
-        return firstRemainingClusterIndex;
+        return smallerRemainingClusters;
     }
 
     private void separateSmallerRemainingClusters(final ResolvedTileSpecCollection allTiles,
