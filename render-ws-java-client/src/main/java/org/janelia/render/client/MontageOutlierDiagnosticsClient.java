@@ -31,6 +31,7 @@ import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -170,18 +171,12 @@ public class MontageOutlierDiagnosticsClient {
         final File imageDir;
 
         if (batchByZ) {
-            final int zBatch = (int) (z / 100);
-            final Path imageDirPath = Paths.get(parameters.rootOutputDirectory,
-                                                String.format("problem_outlier_batch_%03d", zBatch)).toAbsolutePath();
-            imageDir = imageDirPath.toFile();
+            imageDir = FileUtil.createBatchedZDirectory(parameters.rootOutputDirectory,
+                                                        "problem_outlier_batch_",
+                                                        z);
         } else {
             imageDir = new File(parameters.rootOutputDirectory).getAbsoluteFile();
-        }
-
-        if (! imageDir.exists()) {
-            if (! imageDir.mkdirs()) {
-                throw new RuntimeException("failed to create " + imageDir.getAbsolutePath());
-            }
+            FileUtil.ensureWritableDirectory(imageDir);
         }
 
         return imageDir;

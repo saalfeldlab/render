@@ -142,6 +142,21 @@ public class FileUtil {
         return deleteSuccessful;
     }
 
+    public static File createBatchedZDirectory(final String rootOutputDirectory,
+                                               final String batchDirectoryPrefix,
+                                               final Double z) {
+
+        final String batchDirectoryFormat = batchDirectoryPrefix + "%03d";
+        final int zBatch = (int) (z / 100);
+        final Path imageDirPath = Paths.get(rootOutputDirectory,
+                                            String.format(batchDirectoryFormat, zBatch)).toAbsolutePath();
+        final File imageDir = imageDirPath.toFile();
+
+        ensureWritableDirectory(imageDir);
+
+        return imageDir;
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(FileUtil.class);
 
     private static final int DEFAULT_BUFFER_SIZE = 65536;
