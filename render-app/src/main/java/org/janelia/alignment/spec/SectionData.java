@@ -100,6 +100,10 @@ public class SectionData
         return (int) (maxY - minY + 0.5);
     }
 
+    public Bounds toBounds() {
+        return new Bounds(minX, minY, z, maxX, maxY, z);
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }

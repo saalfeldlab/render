@@ -4,10 +4,16 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import mpicbg.trakem2.transform.AffineModel2D;
+
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -16,9 +22,7 @@ import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.APPEND;
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST;
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.*;
 
 /**
  * Java client for adding a transform to all tiles in one or more sections of a stack.
@@ -78,9 +82,22 @@ public class TransformSectionClient {
         public ResolvedTileSpecCollection.TransformApplicationMethod transformApplicationMethod = APPEND;
 
         @Parameter(
+                names = "--layerMinimumXAndYBound",
+                description = "If specified, transformClass and transformData parameters are ignored " +
+                              "and tiles in each layer are simply translated so that the layer's " +
+                              "minimum X and Y bounds are this value")
+        public Integer layerMinimumXAndYBound;
+
+        @Parameter(
+                names = "--completeTargetStack",
+                description = "Complete the target stack after transforming all layers",
+                arity = 0)
+        public boolean completeTargetStack = false;
+
+        @Parameter(
                 description = "Z values",
                 required = true)
-        public List<String> zValues;
+        public List<Double> zValues;
 
         public String getTargetStack() {
             if ((targetStack == null) || (targetStack.trim().length() == 0)) {
@@ -104,8 +121,12 @@ public class TransformSectionClient {
 
                 client.setupDerivedStack();
 
-                for (final String z : parameters.zValues) {
-                    client.generateStackDataForZ(new Double(z));
+                for (final Double z : parameters.zValues) {
+                    client.transformTilesForZ(z);
+                }
+
+                if (parameters.completeTargetStack) {
+                    client.completeTargetStack();
                 }
             }
         };
@@ -118,8 +139,10 @@ public class TransformSectionClient {
 
     private final RenderDataClient sourceRenderDataClient;
     private final RenderDataClient targetRenderDataClient;
+    private final Map<Double, Bounds> zToBoundsMap;
 
-    private TransformSectionClient(final Parameters parameters) {
+    private TransformSectionClient(final Parameters parameters)
+            throws IOException {
 
         this.parameters = parameters;
 
@@ -142,26 +165,69 @@ public class TransformSectionClient {
                                                                parameters.targetProject);
         }
 
+        this.zToBoundsMap = new HashMap<>();
+
+        if (parameters.layerMinimumXAndYBound != null) {
+
+            // load section bounds before setting up derived stack in case source and target stacks are the same
+
+            final List<SectionData> sectionDataList = sourceRenderDataClient.getStackSectionData(parameters.stack,
+                                                                                                 null,
+                                                                                                 null,
+                                                                                                 parameters.zValues);
+            sectionDataList.forEach(sd -> {
+                final Bounds bounds = this.zToBoundsMap.get(sd.getZ());
+                if (bounds == null) {
+                    this.zToBoundsMap.put(sd.getZ(), sd.toBounds());
+                } else {
+                    this.zToBoundsMap.put(sd.getZ(), bounds.union(sd.toBounds()));
+                }
+            });
+        }
     }
 
-    public void setupDerivedStack()
+    private void setupDerivedStack()
             throws IOException {
         final StackMetaData sourceStackMetaData = sourceRenderDataClient.getStackMetaData(parameters.stack);
         targetRenderDataClient.setupDerivedStack(sourceStackMetaData, parameters.getTargetStack());
     }
 
-    private void generateStackDataForZ(final Double z)
+    private void completeTargetStack() throws Exception {
+        targetRenderDataClient.setStackState(parameters.targetStack, StackMetaData.StackState.COMPLETE);
+    }
+
+    private void transformTilesForZ(final Double z)
             throws Exception {
 
-        LOG.info("generateStackDataForZ: entry, z={}", z);
+        LOG.info("transformTilesForZ: entry, z={}", z);
 
         final ResolvedTileSpecCollection tiles = sourceRenderDataClient.getResolvedTiles(parameters.stack, z);
 
-        if (PRE_CONCATENATE_LAST.equals(parameters.transformApplicationMethod)) {
-            tiles.preConcatenateTransformToAllTiles(stackTransform);
+        final LeafTransformSpec layerTransform;
+        if (parameters.layerMinimumXAndYBound != null) {
+
+            final String layerTransformId = stackTransform.getId() + "_" + z;
+            final AffineModel2D model = new AffineModel2D();
+
+            final Bounds layerBounds = zToBoundsMap.get(z);
+            model.set(1, 0, 0, 1,
+                      (parameters.layerMinimumXAndYBound - layerBounds.getMinX()),
+                      (parameters.layerMinimumXAndYBound - layerBounds.getMinY()));
+
+            layerTransform = new LeafTransformSpec(layerTransformId,
+                                                   null,
+                                                   model.getClass().getName(),
+                                                   model.toDataString());
+
         } else {
-            tiles.addTransformSpecToCollection(stackTransform);
-            tiles.addReferenceTransformToAllTiles(stackTransform.getId(),
+            layerTransform = stackTransform;
+        }
+
+        if (PRE_CONCATENATE_LAST.equals(parameters.transformApplicationMethod)) {
+            tiles.preConcatenateTransformToAllTiles(layerTransform);
+        } else {
+            tiles.addTransformSpecToCollection(layerTransform);
+            tiles.addReferenceTransformToAllTiles(layerTransform.getId(),
                                                   REPLACE_LAST.equals(parameters.transformApplicationMethod));
         }
 
@@ -172,12 +238,12 @@ public class TransformSectionClient {
         }
         final int numberOfRemovedTiles = totalNumberOfTiles - tiles.getTileCount();
 
-        LOG.info("generateStackDataForZ: added transform and derived bounding boxes for {} tiles with z of {}, removed {} bad tiles",
+        LOG.info("transformTilesForZ: added transform and derived bounding boxes for {} tiles with z of {}, removed {} bad tiles",
                  totalNumberOfTiles, z, numberOfRemovedTiles);
 
         targetRenderDataClient.saveResolvedTiles(tiles, parameters.getTargetStack(), z);
 
-        LOG.info("generateStackDataForZ: exit, saved tiles and transforms for {}", z);
+        LOG.info("transformTilesForZ: exit, saved tiles and transforms for {}", z);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TransformSectionClient.class);
