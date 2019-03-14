@@ -1,4 +1,4 @@
-package org.janelia.render.client;
+package org.janelia.alignment.util;
 
 import java.io.Serializable;
 import java.net.URISyntaxException;
@@ -24,10 +24,10 @@ public class RenderWebServiceUrls implements Serializable {
         this(baseDataUrl, owner, projectOrMatchCollection, projectOrMatchCollection); // hack!
     }
 
-    public RenderWebServiceUrls(final String baseDataUrl,
-                                final String owner,
-                                final String project,
-                                final String matchCollection) {
+    private RenderWebServiceUrls(final String baseDataUrl,
+                                 final String owner,
+                                 final String project,
+                                 final String matchCollection) {
         this.baseDataUrl = baseDataUrl;
         this.owner = owner;
         this.project = project;

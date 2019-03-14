@@ -156,6 +156,10 @@ public class TileSpec implements Serializable {
         this.meshCellSize = meshCellSize;
     }
 
+    public TileBounds toTileBounds() {
+        return new TileBounds(tileId, getSectionId(), z, minX, minY, maxX, maxY);
+    }
+
     public int getNumberOfTrianglesCoveringWidth(final double meshCellSize) {
         return (int) (width / meshCellSize + 0.5);
     }

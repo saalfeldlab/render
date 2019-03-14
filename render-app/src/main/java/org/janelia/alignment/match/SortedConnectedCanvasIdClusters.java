@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * List of connected canvas clusters sorted by cluster size (smallest to largest).
+ * List of connected canvas clusters sorted by cluster size (largest to smallest).
  *
  * @author Eric Trautman
  */
@@ -47,7 +47,7 @@ public class SortedConnectedCanvasIdClusters
             sortedConnectedCanvasIdSets.add(connectedTileSet);
         }
 
-        sortedConnectedCanvasIdSets.sort(Comparator.comparingInt(Set::size));
+        sortedConnectedCanvasIdSets.sort((s1, s2) -> Integer.compare(s2.size(), s1.size()));
     }
 
     public List<Set<String>> getSortedConnectedTileIdSets() {

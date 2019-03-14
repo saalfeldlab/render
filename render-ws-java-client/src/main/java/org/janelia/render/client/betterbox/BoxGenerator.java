@@ -30,7 +30,7 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.LabelImageProcessorCache;
 import org.janelia.alignment.util.ProcessTimer;
-import org.janelia.render.client.RenderWebServiceUrls;
+import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.parameter.MaterializedBoxParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;

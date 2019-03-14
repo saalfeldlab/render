@@ -3,40 +3,20 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import org.janelia.alignment.ArgbRenderer;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.Utils;
-import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
-import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.match.TileIdsWithMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
-import org.janelia.alignment.spec.TileBounds;
-import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.alignment.spec.stack.StackStats;
-import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
@@ -83,15 +63,6 @@ public class UnconnectedTileRemovalClient {
         public String removedTilesStackName;
 
         @Parameter(
-                names = "--separateSmallerUnconnectedClusters",
-                description = "If specified and more than one cluster exists for a section after removal, " +
-                              "leave the largest cluster in that section and then separate any smaller clusters " +
-                              "into independent layers by assigning them sequential integral z values " +
-                              "after the stack's highest z value",
-                arity = 0)
-        public boolean separateSmallerUnconnectedClusters = false;
-
-        @Parameter(
                 names = "--keeperOwner",
                 description = "Owner for the keeper stack (default is same as owner)")
         public String keeperOwner;
@@ -106,12 +77,6 @@ public class UnconnectedTileRemovalClient {
                 description = "Keep tiles that exist in this stack regardless of their cluster size")
         public String keeperStack;
 
-
-        @Parameter(
-                names = "--renderIntersectingClusters",
-                description = "Render any cluster intersection areas for review",
-                arity = 0)
-        public boolean renderIntersectingClusters = false;
 
         @Parameter(
                 names = "--completeStacksAfterRemoval",
@@ -139,11 +104,7 @@ public class UnconnectedTileRemovalClient {
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
 
-                if ((parameters.tileCluster == null) || (parameters.tileCluster.matchCollection == null)) {
-                    throw new IllegalArgumentException("--matchCollection must be specified");
-                }
-
-                parameters.tileCluster.validate();
+                parameters.tileCluster.validate(true);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -155,9 +116,8 @@ public class UnconnectedTileRemovalClient {
     }
 
     private final Parameters parameters;
-    private Double smallClusterZ = null;
 
-    UnconnectedTileRemovalClient(final Parameters parameters) {
+    private UnconnectedTileRemovalClient(final Parameters parameters) {
         this.parameters = parameters;
     }
 
@@ -174,20 +134,6 @@ public class UnconnectedTileRemovalClient {
                                              parameters.removedTilesStackName;
 
 
-        if (parameters.separateSmallerUnconnectedClusters) {
-            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
-            Bounds stackBounds = null;
-            final StackStats stats = stackMetaData.getStats();
-            if (stats != null) {
-                stackBounds = stats.getStackBounds();
-            }
-            if (stackBounds == null) {
-                throw new IllegalStateException("Bounds are not defined for stack '" + parameters.stack +
-                                                "'. The stack likely needs to be COMPLETED." );
-            }
-            smallClusterZ = stackBounds.getMaxZ() + 1;
-        }
-
         final RenderDataClient keeperClient;
         if (parameters.keeperStack != null) {
             final String o = parameters.keeperOwner == null ? parameters.renderWeb.owner : parameters.keeperOwner;
@@ -198,21 +144,13 @@ public class UnconnectedTileRemovalClient {
         }
 
         int totalUnconnectedTiles = 0;
-        int totalNumberOfSeparatedClusters = 0;
 
         for (final Double z : parameters.zValues) {
 
-            final List<SectionData> sectionDataList = renderDataClient.getStackSectionData(parameters.stack, z, z);
-            final Set<String> tileIdsWithMatches = new HashSet<>();
-            final List<CanvasMatches> matchesList = new ArrayList<>();
-            for (final SectionData sectionData : sectionDataList) {
-                for (final CanvasMatches matches : matchDataClient.getMatchesWithinGroup(sectionData.getSectionId())) {
-                    matchesList.add(matches);
-                    tileIdsWithMatches.add(matches.getpId());
-                    tileIdsWithMatches.add(matches.getqId());
-                }
-            }
-
+            final TileIdsWithMatches tileIdsWithMatches = getTileIdsWithMatches(renderDataClient,
+                                                                                parameters.stack,
+                                                                                z,
+                                                                                matchDataClient);
             final Set<String> keeperTileIds = new HashSet<>();
             if (keeperClient != null) {
                 keeperClient.getTileBounds(parameters.keeperStack, z).forEach(tb -> keeperTileIds.add(tb.getTileId()));
@@ -227,38 +165,23 @@ public class UnconnectedTileRemovalClient {
                }
             }
 
-            boolean foundSmallerClustersToSeparate = false;
             if (parameters.tileCluster.isDefined()) {
 
-                final SortedConnectedCanvasIdClusters clusters = new SortedConnectedCanvasIdClusters(matchesList);
+                final SortedConnectedCanvasIdClusters clusters =
+                        new SortedConnectedCanvasIdClusters(tileIdsWithMatches.getCanvasMatchesList());
                 final List<Set<String>> sortedConnectedTileSets = clusters.getSortedConnectedTileIdSets();
 
                 LOG.info("removeTiles: for z {}, found {} connected tile sets with sizes {}",
                          z, clusters.size(), clusters.getClusterSizes());
 
-                final List<Set<String>> smallerRemainingClusters =
-                        markSmallClustersAsUnconnected(z, sortedConnectedTileSets, keeperTileIds, unconnectedTileIds);
-
-                foundSmallerClustersToSeparate = (parameters.separateSmallerUnconnectedClusters) &&
-                                                 (smallerRemainingClusters.size() > 0);
-
-                if (foundSmallerClustersToSeparate) {
-
-                    renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
-
-                    final double firstSeparatedZ = smallClusterZ;
-
-                    separateSmallerRemainingClusters(resolvedTiles,
-                                                     smallerRemainingClusters,
-                                                     renderDataClient);
-
-                    final int numberOfSeparatedClusters = (int) (smallClusterZ - firstSeparatedZ);
-                    totalNumberOfSeparatedClusters += numberOfSeparatedClusters;
-                }
-
+                markSmallClustersAsUnconnected(parameters.tileCluster,
+                                               z,
+                                               sortedConnectedTileSets,
+                                               keeperTileIds,
+                                               unconnectedTileIds);
             }
 
-            if ((unconnectedTileIds.size() > 0) || foundSmallerClustersToSeparate) {
+            if (unconnectedTileIds.size() > 0) {
 
                 LOG.info("removeTiles: found {} unconnected tiles for z {}", unconnectedTileIds.size(), z);
 
@@ -319,14 +242,10 @@ public class UnconnectedTileRemovalClient {
 
         }
 
-        if (parameters.completeStacksAfterRemoval &&
-            ((totalUnconnectedTiles > 0) || (totalNumberOfSeparatedClusters > 0))) {
+        if (parameters.completeStacksAfterRemoval && (totalUnconnectedTiles > 0)) {
 
             if (! parameters.reportRemovedTiles) {
                 renderDataClient.setStackState(parameters.stack, StackMetaData.StackState.COMPLETE);
-                if ((totalNumberOfSeparatedClusters > 0) && (parameters.zValues.size() == 1)) {
-                    findIntersectingSeparatedClusters(renderDataClient);
-                }
             }
 
             if (parameters.saveRemovedTiles) {
@@ -335,28 +254,45 @@ public class UnconnectedTileRemovalClient {
 
         }
 
-        LOG.info("separated {} small clusters into new layers", totalNumberOfSeparatedClusters);
         LOG.info("found {} unconnected tiles across all layers", totalUnconnectedTiles);
     }
 
-    List<Set<String>> markSmallClustersAsUnconnected(final Double z,
-                                                     final List<Set<String>> sortedConnectedTileSets,
-                                                     final Set<String> keeperTileIds,
-                                                     final Set<String> unconnectedTileIds) {
+    static TileIdsWithMatches getTileIdsWithMatches(final RenderDataClient stackClient,
+                                                    final String stackName,
+                                                    final Double z,
+                                                    final RenderDataClient matchClient)
+            throws IOException {
+
+        final List<SectionData> sectionDataList = stackClient.getStackSectionData(stackName, z, z);
+        final TileIdsWithMatches tileIdsWithMatches = new TileIdsWithMatches();
+        for (final SectionData sectionData : sectionDataList) {
+            tileIdsWithMatches.addMatches(matchClient.getMatchesWithinGroup(sectionData.getSectionId()));
+        }
+
+        return tileIdsWithMatches;
+    }
+
+    static List<Set<String>> markSmallClustersAsUnconnected(final TileClusterParameters clusterParameters,
+                                                            final Double z,
+                                                            final List<Set<String>> sortedConnectedTileSets,
+                                                            final Set<String> keeperTileIds,
+                                                            final Set<String> unconnectedTileIds) {
 
         final List<Set<String>> smallerRemainingClusters = new ArrayList<>();
 
         if (sortedConnectedTileSets.size() > 1) {
 
             // keep largest connected tile set regardless of size
-            final int largestSetIndex = sortedConnectedTileSets.size() - 1;
-            final Set<String> largestCluster = sortedConnectedTileSets.get(largestSetIndex);
-            final int maxSmallClusterSize = parameters.tileCluster.getEffectiveMaxSmallClusterSize(largestCluster.size());
+            final Set<String> largestCluster = sortedConnectedTileSets.get(0);
+            final int maxSmallClusterSize = clusterParameters.getEffectiveMaxSmallClusterSize(largestCluster.size());
 
             LOG.info("markSmallClustersAsUnconnected: for z {}, maxSmallClusterSize is {}",
                      z, maxSmallClusterSize);
 
-            for (int i = 0; i < largestSetIndex; i++) {
+            final List<Integer> remainingClusterSizes = new ArrayList<>();
+            remainingClusterSizes.add(largestCluster.size());
+
+            for (int i = 1; i < sortedConnectedTileSets.size(); i++) {
                 final Set<String> clusterTileIds = sortedConnectedTileSets.get(i);
                 if (clusterTileIds.size() <= maxSmallClusterSize) {
 
@@ -376,18 +312,16 @@ public class UnconnectedTileRemovalClient {
                                  clusterTileIds.size(), getSortedSet(clusterTileIds));
                     } else {
                         smallerRemainingClusters.add(clusterTileIds);
+                        remainingClusterSizes.add(clusterTileIds.size());
                         LOG.info("markSmallClustersAsUnconnected: keeping small {} tile cluster with tile {}: {}",
                                  clusterTileIds.size(), keeperTileId, getSortedSet(clusterTileIds));
                     }
 
                 } else {
                     smallerRemainingClusters.add(clusterTileIds);
+                    remainingClusterSizes.add(clusterTileIds.size());
                 }
             }
-
-            final List<Integer> remainingClusterSizes =
-                    smallerRemainingClusters.stream().map(Set::size).sorted().collect(Collectors.toList());
-            remainingClusterSizes.add(largestCluster.size());
 
             LOG.info("markSmallClustersAsUnconnected: for z {}, {} clusters remain with sizes {}",
                      z, remainingClusterSizes.size(), remainingClusterSizes);
@@ -397,257 +331,8 @@ public class UnconnectedTileRemovalClient {
         return smallerRemainingClusters;
     }
 
-    private void separateSmallerRemainingClusters(final ResolvedTileSpecCollection allTiles,
-                                                  final List<Set<String>> smallerRemainingTileSets,
-                                                  final RenderDataClient renderDataClient)
-            throws IOException {
-
-        LOG.info("separateSmallerRemainingClusters: separating {} clusters",
-                 smallerRemainingTileSets.size());
-
-        for (final Set<String> remainingCluster : smallerRemainingTileSets) {
-
-            final ResolvedTileSpecCollection filteredTiles = getFilteredCollection(allTiles, remainingCluster);
-
-            if (filteredTiles.hasTileSpecs()) {
-
-                allTiles.removeTileSpecs(remainingCluster);
-
-                for (final TileSpec tileSpec : filteredTiles.getTileSpecs()) {
-                    tileSpec.setZ(smallClusterZ);
-                }
-
-                renderDataClient.saveResolvedTiles(filteredTiles, parameters.stack, smallClusterZ);
-
-                LOG.info("separateSmallerRemainingClusters: changed z to {} for {} tile cluster: {}",
-                         smallClusterZ,
-                         remainingCluster.size(),
-                         getSortedSet(remainingCluster));
-
-                smallClusterZ += 1;
-
-            } else {
-
-                // NOTE: This happens when tiles in the cluster have matches but the tiles
-                //       were already dropped by another process (e.g. montage solve).
-
-                LOG.info("separateSmallerRemainingClusters: skip missing {} tile cluster: {}",
-                         remainingCluster.size(),
-                         getSortedSet(remainingCluster));
-
-            }
-        }
-
-    }
-
-    private List<Double> getZList(final RenderDataClient renderDataClient)
-            throws IOException {
-
-        final List<SectionData> stackSectionDataList = renderDataClient.getStackSectionData(parameters.stack,
-                                                                                            null,
-                                                                                            null);
-        return stackSectionDataList.stream()
-                .map(SectionData::getZ)
-                .distinct()
-                .sorted()
-                .collect(Collectors.toList());
-    }
-
-    private void findIntersectingSeparatedClusters(final RenderDataClient renderDataClient)
-            throws IOException {
-
-        final List<Double> zList = getZList(renderDataClient);
-
-        final Map<Double, Map<String, TileBounds>> zToBoundsMap = new HashMap<>();
-        final List<TileBoundsRTree> boundsRTrees = new ArrayList<>();
-        for (final Double z : zList) {
-            final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
-            final Map<String, TileBounds> boundsMap = new HashMap<>();
-            tileBoundsList.forEach(tileBounds -> boundsMap.put(tileBounds.getTileId(), tileBounds));
-            zToBoundsMap.put(z, boundsMap);
-            boundsRTrees.add(new TileBoundsRTree(z, tileBoundsList));
-        }
-
-        final List<OverlapProblem> overlapProblems = new ArrayList<>();
-        OverlapProblem overlapProblem;
-        for (int i = 0; i < zList.size(); i++) {
-
-            final Double z = zList.get(i);
-            final TileBoundsRTree boundsRTree = boundsRTrees.get(i);
-
-            for (int j = i + 1; j < zList.size(); j++) {
-
-                final Double otherZ = zList.get(j);
-                overlapProblem = null;
-
-                for (final TileBounds tileBounds : zToBoundsMap.get(otherZ).values()) {
-
-                    final List<TileBounds> intersectingTiles = boundsRTree.findTilesInBox(tileBounds.getMinX(),
-                                                                                          tileBounds.getMinY(),
-                                                                                          tileBounds.getMaxX(),
-                                                                                          tileBounds.getMaxY());
-                    if (intersectingTiles.size() > 0) {
-                        if (overlapProblem == null) {
-                            overlapProblem = new OverlapProblem(otherZ,
-                                                                tileBounds,
-                                                                z,
-                                                                intersectingTiles);
-                        } else {
-                            overlapProblem.addProblem(tileBounds, intersectingTiles);
-                        }
-                    }
-
-                }
-
-                if (overlapProblem != null) {
-                    overlapProblems.add(overlapProblem);
-                }
-            }
-
-        }
-
-        if (overlapProblems.size() > 0) {
-            if (parameters.renderIntersectingClusters) {
-                overlapProblems.forEach(op -> op.render(renderDataClient, parameters.stack));
-            }
-            overlapProblems.forEach(OverlapProblem::logProblemDetails);
-        } else {
-            LOG.info("no overlap problems found");
-        }
-    }
-
-    private class OverlapProblem {
-
-        private final Double z;
-        private final List<TileBounds> tileBoundsList;
-        private final Double intersectingZ;
-        private final List<TileBounds> intersectingTileBoundsList;
-        private final List<String> problemDetailsList;
-        private File problemImageFile;
-
-        OverlapProblem(final Double z,
-                       final TileBounds tileBounds,
-                       final Double intersectingZ,
-                       final List<TileBounds> intersectingTileBoundsList) {
-            this.z = z;
-            this.tileBoundsList = new ArrayList<>();
-            this.intersectingZ = intersectingZ;
-            this.intersectingTileBoundsList = new ArrayList<>();
-            this.problemDetailsList = new ArrayList<>();
-            this.problemImageFile = null;
-            addProblem(tileBounds, intersectingTileBoundsList);
-        }
-
-        void addProblem(final TileBounds tileBounds,
-                        final List<TileBounds> intersectingTileBoundsList)  {
-
-            this.tileBoundsList.add(tileBounds);
-            this.intersectingTileBoundsList.addAll(intersectingTileBoundsList);
-
-            final List<String> intersectingTileIds = intersectingTileBoundsList.stream()
-                    .map(TileBounds::getTileId)
-                    .collect(Collectors.toList());
-            final String details = "cluster overlap: z " + z + " tile " + tileBounds.getTileId() +
-                                   " overlaps z " + intersectingZ + " tile(s) " + intersectingTileIds;
-            this.problemDetailsList.add(details);
-        }
-
-        void logProblemDetails() {
-            problemDetailsList.forEach(LOG::warn);
-            if (problemImageFile != null) {
-                LOG.warn("cluster overlap image saved to {}\n", problemImageFile);
-            }
-        }
-
-        RenderParameters getParameters(final RenderDataClient renderDataClient,
-                                       final Bounds intersectingBounds,
-                                       final Double z) {
-            final String urlString =
-                    renderDataClient.getRenderParametersUrlString(parameters.stack,
-                                                                  intersectingBounds.getMinX(),
-                                                                  intersectingBounds.getMinY(),
-                                                                  z,
-                                                                  (int) intersectingBounds.getDeltaX(),
-                                                                  (int) intersectingBounds.getDeltaY(),
-                                                                  0.05,
-                                                                  null);
-            return RenderParameters.loadFromUrl(urlString);
-        }
-
-        void drawTileBounds(final Graphics2D targetGraphics,
-                            final RenderParameters renderParameters,
-                            final TileBounds tileBounds,
-                            final Color color) {
-            targetGraphics.setStroke(new BasicStroke(2));
-            targetGraphics.setColor(color);
-            final int x = (int) ((tileBounds.getMinX() - renderParameters.getX()) * renderParameters.getScale());
-            final int y = (int) ((tileBounds.getMinY() - renderParameters.getY()) * renderParameters.getScale());
-            final int width = (int) (tileBounds.getDeltaX() * renderParameters.getScale());
-            final int height = (int) (tileBounds.getDeltaY() * renderParameters.getScale());
-            targetGraphics.drawRect(x, y, width, height);
-        }
-
-        void render(final RenderDataClient renderDataClient,
-                    final String stackName) {
-
-            final List<Bounds> allBounds = new ArrayList<>(intersectingTileBoundsList);
-            allBounds.addAll(tileBoundsList);
-
-            @SuppressWarnings("OptionalGetWithoutIsPresent")
-            final Bounds problemBounds = allBounds.stream().reduce(Bounds::union).get();
-
-            final RenderParameters parameters = getParameters(renderDataClient, problemBounds, z);
-            final RenderParameters otherParameters = getParameters(renderDataClient, problemBounds, intersectingZ);
-            for (final TileSpec tileSpec : otherParameters.getTileSpecs()) {
-                parameters.addTileSpec(tileSpec);
-            }
-
-            final BufferedImage targetImage = parameters.openTargetImage();
-            ArgbRenderer.render(parameters, targetImage, ImageProcessorCache.DISABLED_CACHE);
-
-            final Graphics2D targetGraphics = targetImage.createGraphics();
-            intersectingTileBoundsList.forEach(tb -> drawTileBounds(targetGraphics, parameters, tb, Color.GREEN));
-            tileBoundsList.forEach(tb -> drawTileBounds(targetGraphics, parameters, tb, Color.RED));
-            targetGraphics.dispose();
-
-            final String problemName = String.format("problem_overlap_%s_gz%1.0f_rz%1.0f_x%d_y%d",
-                                                     stackName, intersectingZ, z,
-                                                     (int) parameters.getX(), (int) parameters.getY());
-
-            this.problemImageFile = new File(problemName + ".jpg").getAbsoluteFile();
-
-            try {
-                saveProblemTileIds(problemName);
-                Utils.saveImage(targetImage, this.problemImageFile, false, 0.85f);
-            } catch (final IOException e) {
-                LOG.error("failed to save data for " + problemName, e);
-            }
-        }
-
-        private void saveProblemTileIds(final String problemName)
-                throws IOException {
-            final List<String> greenIds = getQuotedTileIdList(intersectingTileBoundsList);
-            final List<String> redIds = getQuotedTileIdList(tileBoundsList);
-            final Path path = Paths.get("problem_overlap_tile_ids.json").toAbsolutePath();
-            final String tileIdData =
-                    "{\n" +
-                    "  \"problemName\": \"" + problemName + "\",\n" +
-                    "  \"greenTileIds\":\n    " + greenIds + ",\n" +
-                    "  \"redTileIds\":\n    " + redIds + "\n" +
-                    "},";
-            Files.write(path, tileIdData.getBytes(),
-                        StandardOpenOption.CREATE,
-                        StandardOpenOption.WRITE,
-                        StandardOpenOption.APPEND);
-        }
-
-        private List<String> getQuotedTileIdList(final Collection<TileBounds> tileBoundsList) {
-            return tileBoundsList.stream().map(tb -> "\"" + tb.getTileId() + "\"").collect(Collectors.toList());
-        }
-    }
-
-    private ResolvedTileSpecCollection getFilteredCollection(final ResolvedTileSpecCollection allTiles,
-                                                             final Set<String> keepTileIds) {
+    static ResolvedTileSpecCollection getFilteredCollection(final ResolvedTileSpecCollection allTiles,
+                                                            final Set<String> keepTileIds) {
         final ResolvedTileSpecCollection filteredTiles =
                 new ResolvedTileSpecCollection(allTiles.getTransformSpecs(),
                                                allTiles.getTileSpecs());

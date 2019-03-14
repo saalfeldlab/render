@@ -59,17 +59,17 @@ public class UnconnectedTileRemovalClientTest {
         final UnconnectedTileRemovalClient.Parameters parameters = new UnconnectedTileRemovalClient.Parameters();
         parameters.tileCluster.smallClusterFactor = 0.5; // should result in maxSmallClusterSize of 4 (0.5 * 8)
 
-        UnconnectedTileRemovalClient client = new UnconnectedTileRemovalClient(parameters);
         final Double z = 99.0;
         final SortedConnectedCanvasIdClusters clusters = new SortedConnectedCanvasIdClusters(matchesList);
         final List<Set<String>> sortedConnectedTileSets = clusters.getSortedConnectedTileIdSets();
 
         final Set<String> keeperTileIds = new HashSet<>();
         List<Set<String>> smallerRemainingClusters =
-                client.markSmallClustersAsUnconnected(z,
-                                                      sortedConnectedTileSets,
-                                                      keeperTileIds,
-                                                      unconnectedTileIds);
+                UnconnectedTileRemovalClient.markSmallClustersAsUnconnected(parameters.tileCluster,
+                                                                            z,
+                                                                            sortedConnectedTileSets,
+                                                                            keeperTileIds,
+                                                                            unconnectedTileIds);
 
         final String[] expectedUnconnectedTiles = {"I", "J", "K", "L", "M", "N", "O", "P", "X", "Y"};
         Assert.assertEquals("invalid number of small cluster tiles found ",
@@ -86,11 +86,12 @@ public class UnconnectedTileRemovalClientTest {
         // all-inclusive test
         parameters.tileCluster.maxSmallClusterSize = 1;
 
-        client = new UnconnectedTileRemovalClient(parameters);
-        smallerRemainingClusters = client.markSmallClustersAsUnconnected(z,
-                                                                         sortedConnectedTileSets,
-                                                                         keeperTileIds,
-                                                                         unconnectedTileIds);
+        smallerRemainingClusters =
+                UnconnectedTileRemovalClient.markSmallClustersAsUnconnected(parameters.tileCluster,
+                                                                            z,
+                                                                            sortedConnectedTileSets,
+                                                                            keeperTileIds,
+                                                                            unconnectedTileIds);
 
         Assert.assertEquals("all inclusive test: invalid number of smaller remaining clusters returned",
                             5, smallerRemainingClusters.size());

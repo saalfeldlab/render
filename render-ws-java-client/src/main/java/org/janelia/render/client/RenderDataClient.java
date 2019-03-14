@@ -37,6 +37,7 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.transform.ConsensusWarpFieldBuilder;
+import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.request.WaitingRetryHandler;
 import org.janelia.render.client.response.EmptyResponseHandler;

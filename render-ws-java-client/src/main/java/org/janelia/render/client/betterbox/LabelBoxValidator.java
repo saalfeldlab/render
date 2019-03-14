@@ -16,7 +16,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.betterbox.BoxData;
 import org.janelia.alignment.util.LabelImageProcessorCache;
-import org.janelia.render.client.RenderWebServiceUrls;
+import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.parameter.MaterializedBoxParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;

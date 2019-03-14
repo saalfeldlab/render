@@ -38,10 +38,14 @@ public class TileClusterParameters
                           "This value will be ignored if --maxSmallClusterSize is specified.")
     public Double smallClusterFactor;
 
-    public void validate()
+    public void validate() {
+        validate(false);
+    }
+
+    public void validate(final boolean isRequired)
             throws IllegalArgumentException {
 
-        if (isDefined()) {
+        if (isRequired || isDefined()) {
 
             if (matchCollection == null) {
                 throw new IllegalArgumentException(
