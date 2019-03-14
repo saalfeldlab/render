@@ -26,6 +26,8 @@ public class SplitClusterClientTest {
                 "--matchCollection", "FAFB_montage_fix",
                 "--maxSmallClusterSize", "0",
                 //"--renderIntersectingClusters", // will only work if source images and masks are local
+                //"--renderClustersMaxCount", "8", // will only work if source images and masks are local
+                //"--rootOutputDirectory", "/Users/trautmane/Desktop",
                 "--z", "27.0"
         };
         SplitClusterClient.main(effectiveArgs);

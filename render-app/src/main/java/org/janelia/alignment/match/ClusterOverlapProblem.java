@@ -8,6 +8,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +83,40 @@ public class ClusterOverlapProblem {
         return overlapProblems;
     }
 
+    public static RenderParameters getScaledRenderParametersForBounds(final RenderWebServiceUrls renderWebServiceUrls,
+                                                                      final String stackName,
+                                                                      final Double z,
+                                                                      final Bounds bounds,
+                                                                      final int maxHeightOrWidth) {
+
+        final int maxHeight = Math.min(maxHeightOrWidth, (int) bounds.getDeltaY());
+        final int maxWidth = Math.min(maxHeightOrWidth, (int) bounds.getDeltaX());
+
+        final double scaleX = maxWidth / bounds.getDeltaX();
+        final double scaleY = maxHeight / bounds.getDeltaY();
+        final double scale = Math.min(scaleX, scaleY);
+
+        final String urlString = renderWebServiceUrls.getRenderParametersUrlString(stackName,
+                                                                                   bounds.getMinX(),
+                                                                                   bounds.getMinY(),
+                                                                                   z,
+                                                                                   (int) bounds.getDeltaX(),
+                                                                                   (int) bounds.getDeltaY(),
+                                                                                   scale,
+                                                                                   null);
+        return RenderParameters.loadFromUrl(urlString);
+    }
+
+    public static void drawClusterBounds(final BufferedImage targetImage,
+                                         final RenderParameters renderParameters,
+                                         final Collection<TileBounds> clusterTileBounds,
+                                         final Color color) {
+        final Graphics2D targetGraphics = targetImage.createGraphics();
+        targetGraphics.setFont(ROW_COLUMN_FONT);
+        clusterTileBounds.forEach(tb -> drawTileBounds(targetGraphics, renderParameters, tb, color));
+        targetGraphics.dispose();
+    }
+
     private final Double originalZ;
     private final Double z;
     private final Map<String, TileBounds> tileIdToBounds;
@@ -148,12 +183,8 @@ public class ClusterOverlapProblem {
 
         final BufferedImage targetImage = parameters.openTargetImage();
         ArgbRenderer.render(parameters, targetImage, ImageProcessorCache.DISABLED_CACHE);
-
-        final Graphics2D targetGraphics = targetImage.createGraphics();
-        targetGraphics.setFont(ROW_COLUMN_FONT);
-        intersectingTileIdToBounds.values().forEach(tb -> drawTileBounds(targetGraphics, parameters, tb, Color.GREEN));
-        tileIdToBounds.values().forEach(tb -> drawTileBounds(targetGraphics, parameters, tb, Color.RED));
-        targetGraphics.dispose();
+        drawClusterBounds(targetImage, parameters, intersectingTileIdToBounds.values(), Color.GREEN);
+        drawClusterBounds(targetImage, parameters, tileIdToBounds.values(), Color.RED);
 
         this.problemName = String.format("problem_overlap_%s_z%1.0f_gz%1.0f_rz%1.0f_x%d_y%d",
                                          stackName, originalZ, intersectingZ, z,
@@ -182,29 +213,25 @@ public class ClusterOverlapProblem {
                                            final String stackName,
                                            final Bounds intersectingBounds) {
 
-        final int maxHeightOrWidth = 800;
-        final int maxHeight = Math.min(maxHeightOrWidth, (int) intersectingBounds.getDeltaY());
-        final int maxWidth = Math.min(maxHeightOrWidth, (int) intersectingBounds.getDeltaX());
-
-        final double scaleX = maxWidth / intersectingBounds.getDeltaX();
-        final double scaleY = maxHeight / intersectingBounds.getDeltaY();
-        final double scale = Math.min(scaleX, scaleY);
-
-        final String urlString = renderWebServiceUrls.getRenderParametersUrlString(stackName,
-                                                                                   intersectingBounds.getMinX(),
-                                                                                   intersectingBounds.getMinY(),
-                                                                                   originalZ,
-                                                                                   (int) intersectingBounds.getDeltaX(),
-                                                                                   (int) intersectingBounds.getDeltaY(),
-                                                                                   scale,
-                                                                                   null);
-        return RenderParameters.loadFromUrl(urlString);
+        return getScaledRenderParametersForBounds(renderWebServiceUrls,
+                                                  stackName,
+                                                  originalZ,
+                                                  intersectingBounds,
+                                                  800);
     }
 
-    private void drawTileBounds(final Graphics2D targetGraphics,
-                                final RenderParameters renderParameters,
-                                final TileBounds tileBounds,
-                                final Color color) {
+    private List<String> getQuotedTileIdList(final Set<String> tileIdSet) {
+        return tileIdSet.stream().sorted().map(id -> "\"" + id + "\"").collect(Collectors.toList());
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(ClusterOverlapProblem.class);
+
+    private static final Font ROW_COLUMN_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 16);
+
+    private static void drawTileBounds(final Graphics2D targetGraphics,
+                                       final RenderParameters renderParameters,
+                                       final TileBounds tileBounds,
+                                       final Color color) {
         targetGraphics.setStroke(new BasicStroke(2));
         targetGraphics.setColor(color);
         final int x = (int) ((tileBounds.getMinX() - renderParameters.getX()) * renderParameters.getScale());
@@ -222,12 +249,5 @@ public class ClusterOverlapProblem {
         targetGraphics.drawRect(x, y, width, height);
     }
 
-    private List<String> getQuotedTileIdList(final Set<String> tileIdSet) {
-        return tileIdSet.stream().sorted().map(id -> "\"" + id + "\"").collect(Collectors.toList());
-    }
-
-    private static final Logger LOG = LoggerFactory.getLogger(ClusterOverlapProblem.class);
-
-    private static final Font ROW_COLUMN_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 16);
 
 }

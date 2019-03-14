@@ -3,6 +3,8 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,14 +16,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.janelia.alignment.ArgbRenderer;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Utils;
 import org.janelia.alignment.match.ClusterOverlapProblem;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.match.TileIdsWithMatches;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.FileUtil;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -92,6 +99,11 @@ public class SplitClusterClient {
         public boolean renderIntersectingClusters = false;
 
         @Parameter(
+                names = "--renderClustersMaxCount",
+                description = "If specified, clusters with this number of tiles or fewer will be rendered for review")
+        public Integer renderClustersMaxCount;
+
+        @Parameter(
                 names = "--completeStacks",
                 description = "Complete target and/or removed tiles stacks after processing",
                 arity = 0)
@@ -145,6 +157,8 @@ public class SplitClusterClient {
             throws Exception {
 
         final RenderDataClient renderDataClient = parameters.renderWeb.getDataClient();
+        final RenderWebServiceUrls renderWebServiceUrls = renderDataClient.getUrls();
+
         final RenderDataClient matchDataClient =
                 parameters.tileCluster.getMatchDataClient(parameters.renderWeb.baseDataUrl,
                                                           parameters.renderWeb.owner);
@@ -220,26 +234,13 @@ public class SplitClusterClient {
 
             if (parameters.renderIntersectingClusters) {
 
-                final List<List<TileBounds>> clusterBoundsLists = new ArrayList<>();
-
-                for (final Set<String> clusterTileIds : sortedConnectedTileIdSets) {
-                    final List<TileBounds> clusterBoundsList = new ArrayList<>(clusterTileIds.size());
-                    for (final String tileId : clusterTileIds) {
-                        final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
-                        if (tileSpec != null) {
-                            clusterBoundsList.add(tileSpec.toTileBounds());
-                        }
-                    }
-                    if (clusterBoundsList.size() > 0) {
-                        clusterBoundsLists.add(clusterBoundsList);
-                    }
-                }
+                final List<List<TileBounds>> clusterBoundsLists = getClusterBoundsLists(resolvedTiles,
+                                                                                        sortedConnectedTileIdSets);
 
                 final List<ClusterOverlapProblem> overlapProblems =
                         ClusterOverlapProblem.findOverlapProblems(z, clusterBoundsLists);
 
                 if (overlapProblems.size() > 0) {
-                    final RenderWebServiceUrls renderWebServiceUrls = renderDataClient.getUrls();
                     final File imageDir = FileUtil.createBatchedZDirectory(parameters.rootOutputDirectory,
                                                                            "problem_overlap_batch_",
                                                                            z);
@@ -250,6 +251,13 @@ public class SplitClusterClient {
                     LOG.info("no overlap problems found");
                 }
 
+            }
+
+            if (parameters.renderClustersMaxCount != null) {
+                renderSmallClusters(z,
+                                    resolvedTiles,
+                                    sortedConnectedTileIdSets,
+                                    renderWebServiceUrls);
             }
 
             if ((parameters.targetStack != null) && (resolvedTiles.getTileCount() > 0)) {
@@ -270,6 +278,28 @@ public class SplitClusterClient {
 
         }
 
+    }
+
+    /**
+     * @return list of tile bounds lists for each cluster with at least one tile in the resolved tiles set.
+     */
+    private List<List<TileBounds>> getClusterBoundsLists(final ResolvedTileSpecCollection resolvedTiles,
+                                                         final List<Set<String>> sortedConnectedTileIdSets) {
+        final List<List<TileBounds>> clusterBoundsLists = new ArrayList<>();
+
+        for (final Set<String> clusterTileIds : sortedConnectedTileIdSets) {
+            final List<TileBounds> clusterBoundsList = new ArrayList<>(clusterTileIds.size());
+            for (final String tileId : clusterTileIds) {
+                final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
+                if (tileSpec != null) {
+                    clusterBoundsList.add(tileSpec.toTileBounds());
+                }
+            }
+            if (clusterBoundsList.size() > 0) {
+                clusterBoundsLists.add(clusterBoundsList);
+            }
+        }
+        return clusterBoundsLists;
     }
 
     private void saveProblemJson(final List<ClusterOverlapProblem> overlapProblems,
@@ -327,6 +357,7 @@ public class SplitClusterClient {
 
         setZForCluster(allTiles, originalZ, largestCluster, 0);
 
+        final List<Integer> missingClusterSizes = new ArrayList<>();
         int clusterIndex = 1;
         for (final Set<String> remainingCluster : smallerRemainingClusters) {
 
@@ -341,7 +372,64 @@ public class SplitClusterClient {
                 }
 
                 clusterIndex++;
+
+            } else {
+                missingClusterSizes.add(remainingCluster.size());
             }
+        }
+
+        if (missingClusterSizes.size() > 0) {
+            LOG.info("source stack is completely missing clusters with sizes {}", missingClusterSizes);
+        }
+    }
+
+    private void renderSmallClusters(final Double originalZ,
+                                     final ResolvedTileSpecCollection resolvedTiles,
+                                     final List<Set<String>> sortedConnectedTileIdSets,
+                                     final RenderWebServiceUrls renderWebServiceUrls) {
+
+        final List<List<TileBounds>> clusterBoundsLists = getClusterBoundsLists(resolvedTiles,
+                                                                                sortedConnectedTileIdSets);
+        int clusterNumber = 0;
+        File imageDir = null;
+        for (final List<TileBounds> clusterBoundsList : clusterBoundsLists) {
+
+            if ((clusterBoundsList.size() > 0) && (clusterBoundsList.size() <= parameters.renderClustersMaxCount)) {
+
+                final List<Bounds> boundsList = new ArrayList<>(clusterBoundsList);
+                @SuppressWarnings("OptionalGetWithoutIsPresent")
+                final Bounds clusterBounds = boundsList.stream().reduce(Bounds::union).get();
+
+                final RenderParameters renderParameters =
+                        ClusterOverlapProblem.getScaledRenderParametersForBounds(renderWebServiceUrls,
+                                                                                 parameters.stack,
+                                                                                 originalZ,
+                                                                                 clusterBounds,
+                                                                                 1200);
+
+                final BufferedImage targetImage = renderParameters.openTargetImage();
+                ArgbRenderer.render(renderParameters, targetImage, ImageProcessorCache.DISABLED_CACHE);
+                ClusterOverlapProblem.drawClusterBounds(targetImage, renderParameters, clusterBoundsList, Color.GREEN);
+
+                if (imageDir == null) {
+                    imageDir = FileUtil.createBatchedZDirectory(parameters.rootOutputDirectory,
+                                                                "z_cluster_batch_",
+                                                                originalZ);
+
+                }
+
+                final String fileName = String.format("z%1.0f_cluster_%03d.jpg", originalZ, clusterNumber);
+                final File imageFile = new File(imageDir, fileName).getAbsoluteFile();
+
+                try {
+                    Utils.saveImage(targetImage, imageFile, false, 0.85f);
+                } catch (final IOException e) {
+                    LOG.error("failed to save " + imageFile, e);
+                }
+
+            }
+
+            clusterNumber++;
         }
 
     }
