@@ -47,43 +47,7 @@
                         </configuration>
 
                     </execution>
-
-                    <execution>
-                        <id>shade-matlab</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-
-                        <configuration>
-
-                            <outputFile>target/${project.artifactId}-${project.version}-matlab.jar</outputFile>
-
-                            <filters>
-
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>org/slf4j/**</exclude>
-                                    </excludes>
-                                </filter>
-
-                            </filters>
-
-                            <artifactSet>
-                                <excludes>
-                                    <!-- conflicting logging already provided in jar:file:/Applications/MATLAB_R2013b.app/java/jarext/jxbrowser/slf4j-log4j12.jar -->
-                                    <exclude>org.slf4j:*</exclude>
-                                    <exclude>net.imagej:*</exclude>
-                                    <exclude>jama:*</exclude>
-                                    <exclude>commons-codec:*</exclude>
-                                </excludes>
-                            </artifactSet>
-
-                        </configuration>
-
-                    </execution>
-
+                    
                 </executions>
 
             </plugin>
