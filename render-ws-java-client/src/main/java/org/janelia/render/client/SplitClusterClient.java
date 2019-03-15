@@ -410,6 +410,12 @@ public class SplitClusterClient {
                                                                                  clusterBounds,
                                                                                  1200);
 
+                // remove nearby tiles that are not part of cluster
+                final Set<String> tileIdsToKeep = clusterBoundsList.stream()
+                        .map(TileBounds::getTileId)
+                        .collect(Collectors.toSet());
+                renderParameters.removeTileSpecsOutsideSet(tileIdsToKeep);
+
                 final BufferedImage targetImage = renderParameters.openTargetImage();
                 ArgbRenderer.render(renderParameters, targetImage, ImageProcessorCache.DISABLED_CACHE);
                 ClusterOverlapProblem.drawClusterBounds(targetImage, renderParameters, clusterBoundsList, Color.GREEN);

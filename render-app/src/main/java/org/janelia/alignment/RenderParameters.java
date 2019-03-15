@@ -572,7 +572,7 @@ public class RenderParameters implements Serializable {
         doFilter = (filter != null) && filter;
     }
 
-    public boolean isAddWarpFieldDebugOverlay() {
+    boolean isAddWarpFieldDebugOverlay() {
         return addWarpFieldDebugOverlay;
     }
 
@@ -639,6 +639,16 @@ public class RenderParameters implements Serializable {
     @SuppressWarnings("UnusedDeclaration")
     public void addTileSpecs(final Collection<TileSpec> tileSpec) {
         tileSpecs.addAll(tileSpec);
+    }
+
+    public void removeTileSpecsOutsideSet(final Set<String> tileIdsToKeep) {
+        final List<TileSpec> tileSpecsToKeep = new ArrayList<>(tileSpecs.size());
+        tileSpecs.forEach(ts -> {
+            if (tileIdsToKeep.contains(ts.getTileId())) {
+                tileSpecsToKeep.add(ts);
+            }
+        });
+        tileSpecs = tileSpecsToKeep;
     }
 
     public void flattenTransforms() {
