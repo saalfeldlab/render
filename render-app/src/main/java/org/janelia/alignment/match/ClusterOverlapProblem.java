@@ -12,7 +12,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.ArgbRenderer;
@@ -117,6 +116,17 @@ public class ClusterOverlapProblem {
         targetGraphics.dispose();
     }
 
+    public static String getTileIdListJson(final Collection<String> tileIds) {
+        final StringBuilder json = new StringBuilder();
+        tileIds.stream().sorted().forEach(tileId -> {
+            if (json.length() > 0) {
+                json.append(",\n");
+            }
+            json.append('"').append(tileId).append('"');
+        });
+        return "[\n" + json + "\n]";
+    }
+
     private final Double originalZ;
     private final Double z;
     private final Map<String, TileBounds> tileIdToBounds;
@@ -200,12 +210,12 @@ public class ClusterOverlapProblem {
     }
 
     public String toJson() {
-        final List<String> greenIds = getQuotedTileIdList(intersectingTileIdToBounds.keySet());
-        final List<String> redIds = getQuotedTileIdList(tileIdToBounds.keySet());
+        final String greenIdJson = getTileIdListJson(intersectingTileIdToBounds.keySet());
+        final String redIdJson = getTileIdListJson(tileIdToBounds.keySet());
         return "{\n" +
                "  \"problemName\":  \"" + problemName + "\",\n" +
-               "  \"greenTileIds\": " + greenIds + ",\n" +
-               "  \"redTileIds\":   " + redIds + "\n" +
+               "  \"greenTileIds\": " + greenIdJson + ",\n" +
+               "  \"redTileIds\":   " + redIdJson + "\n" +
                "}";
     }
 
@@ -218,10 +228,6 @@ public class ClusterOverlapProblem {
                                                   originalZ,
                                                   intersectingBounds,
                                                   800);
-    }
-
-    private List<String> getQuotedTileIdList(final Set<String> tileIdSet) {
-        return tileIdSet.stream().sorted().map(id -> "\"" + id + "\"").collect(Collectors.toList());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ClusterOverlapProblem.class);

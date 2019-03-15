@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
@@ -307,7 +308,7 @@ public class SplitClusterClient {
                                  final Double z)
             throws IOException {
 
-        final String jsonFileName = "problem_overlap_tile_ids_" + parameters.stack + "_z_" + z + ".json";
+        final String jsonFileName = String.format("problem_overlap_tile_ids_%s_z%06.0f.json", parameters.stack, z);
         final Path path = Paths.get(imageDir.getAbsolutePath(), jsonFileName);
 
         final StringBuilder json = new StringBuilder();
@@ -390,6 +391,8 @@ public class SplitClusterClient {
 
         final List<List<TileBounds>> clusterBoundsLists = getClusterBoundsLists(resolvedTiles,
                                                                                 sortedConnectedTileIdSets);
+        final StringBuilder renderedClusterJson = new StringBuilder();
+
         int clusterNumber = 0;
         File imageDir = null;
         for (final List<TileBounds> clusterBoundsList : clusterBoundsLists) {
@@ -418,7 +421,7 @@ public class SplitClusterClient {
 
                 }
 
-                final String fileName = String.format("z%1.0f_cluster_%03d.jpg", originalZ, clusterNumber);
+                final String fileName = String.format("z%06.0f_cluster_%03d.jpg", originalZ, clusterNumber);
                 final File imageFile = new File(imageDir, fileName).getAbsoluteFile();
 
                 try {
@@ -427,11 +430,36 @@ public class SplitClusterClient {
                     LOG.error("failed to save " + imageFile, e);
                 }
 
+                if (renderedClusterJson.length() == 0) {
+                    renderedClusterJson.append("[\n  ");
+                } else {
+                    renderedClusterJson.append(",\n  ");
+                }
+                renderedClusterJson.append(getClusterJson(clusterBoundsList, clusterNumber));
+
             }
 
             clusterNumber++;
         }
 
+        if (imageDir != null) {
+            renderedClusterJson.append("\n]");
+            final String fileName = String.format("z%06.0f_clusters.json", originalZ);
+            final Path path = Paths.get(imageDir.getAbsolutePath(), fileName);
+            try {
+                Files.write(path, renderedClusterJson.toString().getBytes());
+            } catch (final IOException e) {
+                LOG.error("failed to save " + path, e);
+            }
+        }
+
+    }
+
+    private String getClusterJson(final List<TileBounds> clusterBoundsList,
+                                  final int clusterNumber) {
+        final List<String> tileIds = clusterBoundsList.stream().map(TileBounds::getTileId).collect(Collectors.toList());
+        return "{\n  \"clusterNumber\": " + clusterNumber + ",\n  \"tileIds\": " +
+               ClusterOverlapProblem.getTileIdListJson(tileIds) + "\n}";
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(SplitClusterClient.class);

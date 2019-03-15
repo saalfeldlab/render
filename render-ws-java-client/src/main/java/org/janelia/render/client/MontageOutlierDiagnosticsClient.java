@@ -156,30 +156,13 @@ public class MontageOutlierDiagnosticsClient {
         final int totalOutlierPairs = zToOutlierPairsMap.values().stream().mapToInt(List::size).sum();
         LOG.info("run: loaded {} outlier pairs from {}", totalOutlierPairs, csvPath);
 
-        final boolean batchByZ = zToOutlierPairsMap.size() > 1;
-
         for (final Double z : zToOutlierPairsMap.keySet()) {
-            final File imageDir = getImageDir(z, batchByZ);
+            final File imageDir = FileUtil.createBatchedZDirectory(parameters.rootOutputDirectory,
+                                                                   "problem_outlier_batch_",
+                                                                   z);
             renderOutliersForZ(z, zToOutlierPairsMap.get(z), imageDir);
         }
 
-    }
-
-    private File getImageDir(final Double z,
-                             final boolean batchByZ) {
-
-        final File imageDir;
-
-        if (batchByZ) {
-            imageDir = FileUtil.createBatchedZDirectory(parameters.rootOutputDirectory,
-                                                        "problem_outlier_batch_",
-                                                        z);
-        } else {
-            imageDir = new File(parameters.rootOutputDirectory).getAbsoluteFile();
-            FileUtil.ensureWritableDirectory(imageDir);
-        }
-
-        return imageDir;
     }
 
     private void renderOutliersForZ(final Double z,
@@ -193,6 +176,8 @@ public class MontageOutlierDiagnosticsClient {
         final Map<String, TileBounds> tileIdToBoundsMap = new HashMap<>();
         tileBoundsList.forEach(tb -> tileIdToBoundsMap.put(tb.getTileId(), tb));
 
+        final StringBuilder outlierPairsJson = new StringBuilder();
+
         pairList.forEach(pair -> {
             final TileBounds pBounds = tileIdToBoundsMap.get(pair.pTileId);
             final TileBounds qBounds = tileIdToBoundsMap.get(pair.qTileId);
@@ -202,8 +187,19 @@ public class MontageOutlierDiagnosticsClient {
                 LOG.warn("skipping outlier with missing qTile: {}", pair);
             } else {
                 pair.render(z, pBounds, qBounds, imageDir);
+                if (outlierPairsJson.length() > 0) {
+                    outlierPairsJson.append(",\n");
+                }
+                outlierPairsJson.append(pair.toJson());
             }
         });
+
+        if (outlierPairsJson.length() > 0) {
+            final String jsonFileName = String.format("problem_outlier_%s_z%06.0f.json", stackName, z);
+            final Path path = Paths.get(imageDir.getAbsolutePath(), jsonFileName);
+            final String json = "{\n  \"outlierPairs\": [\n" + outlierPairsJson + "\n  ]\n}";
+            Files.write(path, json.getBytes());
+        }
 
         LOG.info("renderOutliersForZ: exit");
     }
@@ -231,6 +227,10 @@ public class MontageOutlierDiagnosticsClient {
         @Override
         public String toString() {
             return "(" + pTileId + ", " + qTileId + ")";
+        }
+
+        public String toJson() {
+            return "[\n  \"" + pTileId + "\",\n  \"" + qTileId + "\"\n]";
         }
 
         int scaleCoordinate(final double worldValue,
@@ -342,7 +342,7 @@ public class MontageOutlierDiagnosticsClient {
 
             targetGraphics.dispose();
 
-            final String problemName = String.format("problem_outlier_%s_z%04.0f_mr%04.0f_x%d_y%d_g%s_r%s.jpg",
+            final String problemName = String.format("problem_outlier_%s_z%06.0f_mr%04.0f_x%d_y%d_g%s_r%s.jpg",
                                                      stackName, z, maxResidualValue,
                                                      (int) renderParameters.getX(), (int) renderParameters.getY(),
                                                      pBounds.getTileId(), qBounds.getTileId());
