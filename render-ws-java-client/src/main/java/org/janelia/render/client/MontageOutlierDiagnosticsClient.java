@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -176,8 +177,6 @@ public class MontageOutlierDiagnosticsClient {
         final Map<String, TileBounds> tileIdToBoundsMap = new HashMap<>();
         tileBoundsList.forEach(tb -> tileIdToBoundsMap.put(tb.getTileId(), tb));
 
-        final StringBuilder outlierPairsJson = new StringBuilder();
-
         pairList.forEach(pair -> {
             final TileBounds pBounds = tileIdToBoundsMap.get(pair.pTileId);
             final TileBounds qBounds = tileIdToBoundsMap.get(pair.qTileId);
@@ -187,16 +186,24 @@ public class MontageOutlierDiagnosticsClient {
                 LOG.warn("skipping outlier with missing qTile: {}", pair);
             } else {
                 pair.render(z, pBounds, qBounds, imageDir);
-                if (outlierPairsJson.length() > 0) {
-                    outlierPairsJson.append(",\n");
-                }
-                outlierPairsJson.append(pair.toJson());
             }
         });
 
-        if (outlierPairsJson.length() > 0) {
+        if (pairList.size() > 0) {
+
             final String jsonFileName = String.format("problem_outlier_%s_z%06.0f.json", stackName, z);
             final Path path = Paths.get(imageDir.getAbsolutePath(), jsonFileName);
+
+            // sort the pair list by problem name so that the json order matches problem image order on filesystem
+            // note: problem name is set by render call above (hack-y)
+            final StringBuilder outlierPairsJson = new StringBuilder();
+            pairList.stream().sorted(Comparator.comparing(p -> p.problemName)).forEach(p -> {
+                if (outlierPairsJson.length() > 0) {
+                    outlierPairsJson.append(",\n");
+                }
+                outlierPairsJson.append(p.toJson());
+            });
+
             final String json = "{\n  \"outlierPairs\": [\n" + outlierPairsJson + "\n  ]\n}";
             Files.write(path, json.getBytes());
         }
@@ -211,6 +218,7 @@ public class MontageOutlierDiagnosticsClient {
         private final String qTileId;
         private final double maxResidualX;
         private final double maxResidualY;
+        private String problemName;
 
         OutlierPair(final String maxResidualValue,
                     final String pTileId,
@@ -222,6 +230,7 @@ public class MontageOutlierDiagnosticsClient {
             this.qTileId = qTileId;
             this.maxResidualX = Double.parseDouble(maxResidualX);
             this.maxResidualY = Double.parseDouble(maxResidualY);
+            this.problemName = null;
         }
 
         @Override
@@ -342,12 +351,12 @@ public class MontageOutlierDiagnosticsClient {
 
             targetGraphics.dispose();
 
-            final String problemName = String.format("problem_outlier_%s_z%06.0f_mr%04.0f_x%d_y%d_g%s_r%s.jpg",
-                                                     stackName, z, maxResidualValue,
-                                                     (int) renderParameters.getX(), (int) renderParameters.getY(),
-                                                     pBounds.getTileId(), qBounds.getTileId());
+            this.problemName = String.format("problem_outlier_%s_z%06.0f_mr%04.0f_x%d_y%d_g%s_r%s",
+                                             stackName, z, maxResidualValue,
+                                             (int) renderParameters.getX(), (int) renderParameters.getY(),
+                                             pBounds.getTileId(), qBounds.getTileId());
 
-            final File problemImageFile = new File(imageDir, problemName).getAbsoluteFile();
+            final File problemImageFile = new File(imageDir, problemName + ".jpg").getAbsoluteFile();
 
             try {
                 Utils.saveImage(targetImage, problemImageFile, false, 0.85f);
