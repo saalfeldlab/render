@@ -351,7 +351,7 @@ public class MontageOutlierDiagnosticsClient {
 
             targetGraphics.dispose();
 
-            this.problemName = String.format("problem_outlier_%s_z%06.0f_mr%04.0f_x%d_y%d_g%s_r%s",
+            this.problemName = String.format("problem_outlier_%s_z%06.0f_mr%04.0f_x%06d_y%06d_g%s_r%s",
                                              stackName, z, maxResidualValue,
                                              (int) renderParameters.getX(), (int) renderParameters.getY(),
                                              pBounds.getTileId(), qBounds.getTileId());
