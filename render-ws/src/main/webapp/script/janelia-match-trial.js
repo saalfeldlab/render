@@ -354,14 +354,14 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 JaneliaMatchTrial.prototype.getStandardDeviationHtml = function(xOrY,
                                                                 standardDeviationValues) {
     var html = '';
-    if (typeof standardDeviationValues !== 'undefined') {
+    if (Array.isArray(standardDeviationValues)) {
         if (standardDeviationValues.length > 1) {
             html = '<br/>Set Delta ' + xOrY + ' Standard Deviations: [ ' + this.getDeltaHtml(standardDeviationValues[0]);
             for (var i = 1; i < standardDeviationValues.length; i++) {
                 html = html + ', ' + this.getDeltaHtml(standardDeviationValues[i]);
             }
             html += ' ]';
-        } else {
+        } else if (standardDeviationValues.length === 1) {
             html = '<br/>Delta ' + xOrY + ' Standard Deviation: ' + this.getDeltaHtml(standardDeviationValues[0]);
         }
     }
