@@ -111,7 +111,8 @@ public class ValidateTilesClient {
             if (totalTilesRemoved == 0) {
                 renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
             }
-            renderDataClient.saveResolvedTiles(tiles, parameters.stack, z);
+            renderDataClient.deleteStack(parameters.stack, z);              // remove existing tiles for layer
+            renderDataClient.saveResolvedTiles(tiles, parameters.stack, z); // and replace with good tiles
             totalTilesRemoved += numberOfRemovedTiles;
         }
 
