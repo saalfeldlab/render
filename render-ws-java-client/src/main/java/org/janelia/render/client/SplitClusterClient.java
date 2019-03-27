@@ -184,20 +184,22 @@ public class SplitClusterClient {
 
         for (final Double z : parameters.zValues) {
 
+            final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
+            final Set<String> stackTileIds = new HashSet<>(resolvedTiles.getTileIds());
+
             final TileIdsWithMatches tileIdsWithMatches =
                     UnconnectedTileRemovalClient.getTileIdsWithMatches(renderDataClient,
                                                                        parameters.stack,
                                                                        z,
-                                                                       matchDataClient);
+                                                                       matchDataClient,
+                                                                       stackTileIds);
 
-            final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
             final Set<String> unconnectedTileIds = new HashSet<>();
-            for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
-                final String tileId = tileSpec.getTileId();
+            stackTileIds.forEach(tileId -> {
                 if (! tileIdsWithMatches.contains(tileId)) {
                     unconnectedTileIds.add(tileId);
-               }
-            }
+                }
+            });
 
             final SortedConnectedCanvasIdClusters clusters =
                     new SortedConnectedCanvasIdClusters(tileIdsWithMatches.getCanvasMatchesList());

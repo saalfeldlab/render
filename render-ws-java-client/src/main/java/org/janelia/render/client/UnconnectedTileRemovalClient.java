@@ -15,7 +15,6 @@ import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.match.TileIdsWithMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
-import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -109,7 +108,7 @@ public class UnconnectedTileRemovalClient {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final UnconnectedTileRemovalClient client = new UnconnectedTileRemovalClient(parameters);
-                client.removeTiles();
+                client.run();
             }
         };
         clientRunner.run();
@@ -121,7 +120,7 @@ public class UnconnectedTileRemovalClient {
         this.parameters = parameters;
     }
 
-    private void removeTiles()
+    private void run()
             throws Exception {
 
         final RenderDataClient renderDataClient = parameters.renderWeb.getDataClient();
@@ -147,23 +146,25 @@ public class UnconnectedTileRemovalClient {
 
         for (final Double z : parameters.zValues) {
 
+            final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
+            final Set<String> stackTileIds = new HashSet<>(resolvedTiles.getTileIds());
+
             final TileIdsWithMatches tileIdsWithMatches = getTileIdsWithMatches(renderDataClient,
                                                                                 parameters.stack,
                                                                                 z,
-                                                                                matchDataClient);
+                                                                                matchDataClient,
+                                                                                stackTileIds);
             final Set<String> keeperTileIds = new HashSet<>();
             if (keeperClient != null) {
                 keeperClient.getTileBounds(parameters.keeperStack, z).forEach(tb -> keeperTileIds.add(tb.getTileId()));
             }
 
-            final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
             final Set<String> unconnectedTileIds = new HashSet<>();
-            for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
-                final String tileId = tileSpec.getTileId();
+            stackTileIds.forEach(tileId -> {
                 if ((! tileIdsWithMatches.contains(tileId)) && (! keeperTileIds.contains(tileId))) {
                     unconnectedTileIds.add(tileId);
-               }
-            }
+                }
+            });
 
             if (parameters.tileCluster.isDefined()) {
 
@@ -171,7 +172,7 @@ public class UnconnectedTileRemovalClient {
                         new SortedConnectedCanvasIdClusters(tileIdsWithMatches.getCanvasMatchesList());
                 final List<Set<String>> sortedConnectedTileSets = clusters.getSortedConnectedTileIdSets();
 
-                LOG.info("removeTiles: for z {}, found {} connected tile sets with sizes {}",
+                LOG.info("run: for z {}, found {} connected tile sets with sizes {}",
                          z, clusters.size(), clusters.getClusterSizes());
 
                 markSmallClustersAsUnconnected(parameters.tileCluster,
@@ -183,7 +184,7 @@ public class UnconnectedTileRemovalClient {
 
             if (unconnectedTileIds.size() > 0) {
 
-                LOG.info("removeTiles: found {} unconnected tiles for z {}", unconnectedTileIds.size(), z);
+                LOG.info("run: found {} unconnected tiles for z {}", unconnectedTileIds.size(), z);
 
                 if (parameters.saveRemovedTiles) {
 
@@ -201,7 +202,7 @@ public class UnconnectedTileRemovalClient {
                         renderDataClient.saveResolvedTiles(removedTiles, removedTilesStackName, z);
 
                     } else {
-                        LOG.warn("removeTiles: skipping save of unconnected tiles for z {} since they have already been removed",
+                        LOG.warn("run: skipping save of unconnected tiles for z {} since they have already been removed",
                                  z);
                     }
 
@@ -222,11 +223,11 @@ public class UnconnectedTileRemovalClient {
 
                     if (resolvedTiles.getTileCount() > 0) {
 
-                        renderDataClient.deleteStack(parameters.stack, z);
+                        // NOTE: do not delete tiles from prior removal runs
                         renderDataClient.saveResolvedTiles(resolvedTiles, parameters.stack, z);
 
                     } else {
-                        LOG.warn("removeTiles: skipping removal of unconnected tiles for z {} since they have already been removed",
+                        LOG.warn("run: skipping removal of unconnected tiles for z {} since they have already been removed",
                                  z);
                     }
 
@@ -260,13 +261,15 @@ public class UnconnectedTileRemovalClient {
     static TileIdsWithMatches getTileIdsWithMatches(final RenderDataClient stackClient,
                                                     final String stackName,
                                                     final Double z,
-                                                    final RenderDataClient matchClient)
+                                                    final RenderDataClient matchClient,
+                                                    final Set<String> stackTileIds)
             throws IOException {
 
         final List<SectionData> sectionDataList = stackClient.getStackSectionData(stackName, z, z);
         final TileIdsWithMatches tileIdsWithMatches = new TileIdsWithMatches();
         for (final SectionData sectionData : sectionDataList) {
-            tileIdsWithMatches.addMatches(matchClient.getMatchesWithinGroup(sectionData.getSectionId()));
+            tileIdsWithMatches.addMatches(matchClient.getMatchesWithinGroup(sectionData.getSectionId()),
+                                          stackTileIds);
         }
 
         return tileIdsWithMatches;

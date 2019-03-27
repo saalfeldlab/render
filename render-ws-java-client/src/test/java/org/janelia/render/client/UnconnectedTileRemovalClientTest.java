@@ -19,6 +19,23 @@ import org.junit.Test;
  */
 public class UnconnectedTileRemovalClientTest {
 
+    public static void main(final String[] args) {
+
+        final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[] {
+                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+                "--owner", "flyTEM",
+                "--project", "FAFB_montage",
+                "--stack", "v15_montage_check_1503",
+                "--z", "1503",
+                "--matchCollection", "FAFB_montage_fix",
+                "--maxSmallClusterSize", "1",
+                "--reportRemovedTiles"
+        };
+
+        UnconnectedTileRemovalClient.main(effectiveArgs);
+
+    }
+
     @Test
     public void testParameterParsing() throws Exception {
         CommandLineParameters.parseHelp(new UnconnectedTileRemovalClient.Parameters());

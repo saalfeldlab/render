@@ -20,11 +20,22 @@ public class TileIdsWithMatches {
         this.tileIds = new HashSet<>();
     }
 
-    public void addMatches(final List<CanvasMatches> canvasMatchesList) {
+    /**
+     *
+     * @param  canvasMatchesList  list of matches for section (could include tiles not in stack).
+     * @param  stackTileIds       set of tile ids in stack.
+     *                            To be kept, match pair must have both tiles in stack.
+     */
+    public void addMatches(final List<CanvasMatches> canvasMatchesList,
+                           final Set<String> stackTileIds) {
         for (final CanvasMatches canvasMatches : canvasMatchesList) {
-            this.canvasMatchesList.add(canvasMatches);
-            this.tileIds.add(canvasMatches.getpId());
-            this.tileIds.add(canvasMatches.getqId());
+            final String pId = canvasMatches.getpId();
+            final String qId = canvasMatches.getqId();
+            if (stackTileIds.contains(pId) && stackTileIds.contains(qId)) {
+                this.canvasMatchesList.add(canvasMatches);
+                this.tileIds.add(pId);
+                this.tileIds.add(qId);
+            }
         }
     }
 
