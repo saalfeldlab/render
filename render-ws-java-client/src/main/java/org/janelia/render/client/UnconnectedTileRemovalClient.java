@@ -223,7 +223,7 @@ public class UnconnectedTileRemovalClient {
 
                     if (resolvedTiles.getTileCount() > 0) {
 
-                        // NOTE: do not delete tiles from prior removal runs
+                        renderDataClient.deleteStack(parameters.stack, z);
                         renderDataClient.saveResolvedTiles(resolvedTiles, parameters.stack, z);
 
                     } else {
