@@ -66,6 +66,12 @@ public class MontageOutlierDiagnosticsClient {
         public String outlierCsv;
 
         @Parameter(
+                names = "--onlyRenderMeanOutliers",
+                description = "Indicates that only mean residual outlier pairs should be rendered",
+                arity = 0)
+        public boolean onlyRenderMeanOutliers;
+
+        @Parameter(
                 names = "--matchOwner",
                 description = "Match collection owner (default is to use stack owner)")
         public String matchOwner;
@@ -130,6 +136,16 @@ public class MontageOutlierDiagnosticsClient {
         }
     }
 
+    private boolean acceptPair(final String[] csValues) {
+        boolean accept = true;
+        if (parameters.onlyRenderMeanOutliers) {
+            if (csValues.length > 6) {
+                accept = "1".equals(csValues[6].trim());
+            }
+        }
+        return accept;
+    }
+
     private void run()
             throws Exception {
 
@@ -141,7 +157,7 @@ public class MontageOutlierDiagnosticsClient {
         Files.lines(csvPath)
                 .skip(1)
                 .forEach(line -> {
-                    // Z,Max PM Residual,Tile 1,Tile 2,PM X,PM Y
+                    // Z,Max PM Residual,Tile 1,Tile 2,PM X,PM Y,Mean Tile Pair Residual Is Outlier
                     final String[] v = line.split(",");
                     if (v.length > 3) {
                         final Double z = new Double(v[0]);
@@ -149,7 +165,9 @@ public class MontageOutlierDiagnosticsClient {
                             final List<OutlierPair> pairList =
                                     zToOutlierPairsMap.computeIfAbsent(z,
                                                                        zValue -> new ArrayList<>());
-                            pairList.add(new OutlierPair(v[1], v[2], v[3], v[4], v[5]));
+                            if (acceptPair(v)) {
+                                pairList.add(new OutlierPair(v[1], v[2], v[3], v[4], v[5]));
+                            }
                         }
                     }
                 });
@@ -158,10 +176,13 @@ public class MontageOutlierDiagnosticsClient {
         LOG.info("run: loaded {} outlier pairs from {}", totalOutlierPairs, csvPath);
 
         for (final Double z : zToOutlierPairsMap.keySet()) {
-            final File imageDir = FileUtil.createBatchedZDirectory(parameters.rootOutputDirectory,
-                                                                   "problem_outlier_batch_",
-                                                                   z);
-            renderOutliersForZ(z, zToOutlierPairsMap.get(z), imageDir);
+            final List<OutlierPair> pairList = zToOutlierPairsMap.get(z);
+            if (pairList.size() > 0) {
+                final File imageDir = FileUtil.createBatchedZDirectory(parameters.rootOutputDirectory,
+                                                                       "problem_outlier_batch_",
+                                                                       z);
+                renderOutliersForZ(z, pairList, imageDir);
+            }
         }
 
     }
