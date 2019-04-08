@@ -37,6 +37,7 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -649,6 +650,10 @@ public class RenderParameters implements Serializable {
             }
         });
         tileSpecs = tileSpecsToKeep;
+    }
+
+    public void sortTileSpecs(final Comparator<TileSpec> comparator) {
+        tileSpecs.sort(comparator);
     }
 
     public void flattenTransforms() {
