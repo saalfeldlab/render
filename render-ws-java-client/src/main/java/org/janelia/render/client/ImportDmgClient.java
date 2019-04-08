@@ -20,6 +20,8 @@ import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -131,6 +133,9 @@ public class ImportDmgClient {
 
         LOG.info("importStackData: entry, z={}", z);
 
+        final List<TileBounds> sourceTileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
+        final TileBoundsRTree sourceTileBoundsRTree = new TileBoundsRTree(z, sourceTileBoundsList);
+
         final List<TileSpec> tileSpecs = new ArrayList<>();
 
         final double dWidth = parameters.width;
@@ -157,27 +162,37 @@ public class ImportDmgClient {
                 final int col = Integer.parseInt(m.group(2));
                 final double minX = col * dWidth;
                 final double minY = row * dHeight;
-                final String translateDataString = minX + " " + minY;
 
-                final LeafTransformSpec transformSpec = new LeafTransformSpec(TranslationModel2D.class.getName(),
-                                                                              translateDataString);
+                // DMG creates lots of empty tiles, check source bounds and only load DMG tiles with data ...
+                
+                final List<TileBounds> sourceBoxTileBounds =
+                        sourceTileBoundsRTree.findTilesInBox(minX, minY, (minX + dWidth), (minY + dHeight));
 
-                final ChannelSpec channelSpec = new ChannelSpec("dmg", null, null);
-                channelSpec.putMipmap(0, new ImageAndMask(path.toAbsolutePath().toString(), null));
+                if (sourceBoxTileBounds.size() > 0) {
 
-                final TileSpec tileSpec = new TileSpec();
-                final LayoutData layoutData =
-                        new LayoutData(z.toString(), null, null, row, col, minX, minY, null);
-                tileSpec.setLayout(layoutData);
-                tileSpec.setTileId(baseName);
-                tileSpec.setZ(z);
-                tileSpec.setWidth(dWidth);
-                tileSpec.setHeight(dHeight);
-                tileSpec.addChannel(channelSpec);
-                tileSpec.addTransformSpecs(Collections.singletonList(transformSpec));
-                tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
+                    final String translateDataString = minX + " " + minY;
 
-                tileSpecs.add(tileSpec);
+                    final LeafTransformSpec transformSpec = new LeafTransformSpec(TranslationModel2D.class.getName(),
+                                                                                  translateDataString);
+
+                    final ChannelSpec channelSpec = new ChannelSpec("dmg", null, null);
+                    channelSpec.putMipmap(0, new ImageAndMask(path.toAbsolutePath().toString(), null));
+
+                    final TileSpec tileSpec = new TileSpec();
+                    final LayoutData layoutData =
+                            new LayoutData(z.toString(), null, null, row, col, minX, minY, null);
+                    tileSpec.setLayout(layoutData);
+                    tileSpec.setTileId(baseName);
+                    tileSpec.setZ(z);
+                    tileSpec.setWidth(dWidth);
+                    tileSpec.setHeight(dHeight);
+                    tileSpec.addChannel(channelSpec);
+                    tileSpec.addTransformSpecs(Collections.singletonList(transformSpec));
+                    tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
+
+                    tileSpecs.add(tileSpec);
+
+                }
 
             } else if (baseName.endsWith(parameters.dmgFormat)) {
 
