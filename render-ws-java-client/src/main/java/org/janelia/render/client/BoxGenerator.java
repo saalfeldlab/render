@@ -404,6 +404,10 @@ public class BoxGenerator implements Serializable {
 
         if (renderParameters.hasTileSpecs()) {
 
+            if (boxParameters.sortByClusterGroupId) {
+                renderParameters.sortTileSpecs(MaterializedBoxParameters.CLUSTER_GROUP_ID_COMPARATOR);
+            }
+
             final BufferedImage levelZeroImage = BoxMipmapGenerator.renderBoxImage(renderParameters,
                                                                                    imageProcessorCache);
 

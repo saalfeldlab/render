@@ -386,7 +386,7 @@ public class BoxGenerator
                                                                      boxParameters.filterListName,
                                                                      boxParametersUrl);
 
-                LOG.info("renderBoxFile: loading {}", boxParametersUrl);
+                LOG.info("renderBox: loading {}", boxParametersUrl);
 
                 final RenderParameters renderParameters = RenderParameters.loadFromUrl(boxParametersUrl);
                 renderParameters.setSkipInterpolation(boxParameters.skipInterpolation);
@@ -402,10 +402,15 @@ public class BoxGenerator
                 }
 
                 if (renderParameters.hasTileSpecs()) {
+
+                    if (boxParameters.sortByClusterGroupId) {
+                        renderParameters.sortTileSpecs(MaterializedBoxParameters.CLUSTER_GROUP_ID_COMPARATOR);
+                    }
+
                     boxImage = BoxMipmapGenerator.renderBoxImage(renderParameters,
                                                                  imageProcessorCache);
                 } else {
-                    LOG.warn("renderBoxFile: box {} is empty (no tile specs)", boxData);
+                    LOG.warn("renderBox: box {} is empty (no tile specs)", boxData);
                 }
 
             } else {
@@ -417,7 +422,7 @@ public class BoxGenerator
                 if (renderedBoxParent.hasChildren()) {
                     boxImage = renderedBoxParent.buildImage(boxWidth, boxHeight);
                 } else {
-                    LOG.warn("renderBoxFile: box {} is empty (no rendered children)", boxData);
+                    LOG.warn("renderBox: box {} is empty (no rendered children)", boxData);
                 }
 
             }
