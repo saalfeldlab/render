@@ -8,7 +8,7 @@
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="../script/janelia-render.js?v=20180904_001"></script>
-    <script type="text/javascript" src="../script/janelia-match-trial.js?v=20190319_001"></script>
+    <script type="text/javascript" src="../script/janelia-match-trial.js?v=20190430_001"></script>
     <script type="text/javascript">
 
         var matchTrial;
@@ -25,7 +25,7 @@
 
             var owner = 'flyTEM';
 
-            var viewScale = queryParameters.get('viewScale', 1.0);
+            let viewScale = queryParameters.get('viewScale', 0.2);
 
             var canvas = document.getElementById("theCanvas");
 
@@ -168,6 +168,7 @@
         <tr>
             <td>SIFT Feature Parameters:</td>
             <td colspan="4">
+                renderScale: <span id="trialRenderScale" class="parameterValue"></span>
                 fdSize: <span id="trialFdSize" class="parameterValue"></span>
                 minScale: <span id="trialMinScale" class="parameterValue"></span>
                 maxScale: <span id="trialMaxScale" class="parameterValue"></span>

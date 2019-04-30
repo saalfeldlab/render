@@ -12,11 +12,22 @@ var JaneliaMatchTrialImage = function(renderParametersUrl, row, column, viewScal
     this.imageUrl = renderParametersUrl.replace('render-parameters', 'jpeg-image');
     this.row = row;
     this.column = column;
-    this.viewScale = viewScale; // TODO: use viewScale when loading image
+    this.viewScale = isNaN(viewScale) ? 0.2 : viewScale;
+    this.renderScale = viewScale;
     this.cellMargin = cellMargin;
 
-    var renderScale = parseFloat(new URL(renderParametersUrl).searchParams.get('scale'));
-    this.renderScale = isNaN(renderScale) ? 1.0 : renderScale;
+    // replace imageUrl scale with viewScale
+    let renderParametersScale = parseFloat(new URL(renderParametersUrl).searchParams.get('scale'));
+    let trialRenderScale = isNaN(renderParametersScale) ? 1.0 : renderParametersScale;
+
+    if (isNaN(renderParametersScale)) {
+        let separator = renderParametersUrl.includes('?') ? '&' : '?';
+        this.imageUrl = this.imageUrl + separator + 'scale=' + viewScale;
+    } else {
+        this.imageUrl = this.imageUrl.replace('scale=' + renderParametersScale, 'scale=' + this.renderScale);
+    }
+
+    $('#trialRenderScale').html(trialRenderScale);
 
     this.image = new Image();
     this.x = -1;
@@ -51,11 +62,11 @@ JaneliaMatchTrialImage.prototype.drawLoadedImage = function(canvas) {
 };
 
 JaneliaMatchTrialImage.prototype.getCanvasWidth = function() {
-    return (this.image.naturalWidth); // TODO: use viewScale when calculating canvas size
+    return (this.image.naturalWidth);
 };
 
 JaneliaMatchTrialImage.prototype.getCanvasHeight = function() {
-    return (this.image.naturalHeight); // TODO: use viewScale when calculating canvas size
+    return (this.image.naturalHeight);
 };
 
 var JaneliaMatchTrial = function(baseUrl, owner, canvas, viewScale) {
@@ -461,10 +472,10 @@ JaneliaMatchTrial.prototype.drawMatch = function(matches, matchIndex, pImage, qI
     var pMatches = matches.p;
     var qMatches = matches.q;
 
-    var px = (pMatches[0][matchIndex] * pImage.renderScale * pImage.viewScale) + pImage.x;
-    var py = (pMatches[1][matchIndex] * pImage.renderScale * pImage.viewScale) + pImage.y;
-    var qx = (qMatches[0][matchIndex] * qImage.renderScale * qImage.viewScale) + qImage.x;
-    var qy = (qMatches[1][matchIndex] * qImage.renderScale * qImage.viewScale) + qImage.y;
+    var px = (pMatches[0][matchIndex] * pImage.viewScale) + pImage.x;
+    var py = (pMatches[1][matchIndex] * pImage.viewScale) + pImage.y;
+    var qx = (qMatches[0][matchIndex] * qImage.viewScale) + qImage.x;
+    var qy = (qMatches[1][matchIndex] * qImage.viewScale) + qImage.y;
 
     context.beginPath();
     context.moveTo(px, py);
