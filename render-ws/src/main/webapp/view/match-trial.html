@@ -11,51 +11,51 @@
     <script type="text/javascript" src="../script/janelia-match-trial.js?v=20190430_001"></script>
     <script type="text/javascript">
 
-        var matchTrial;
+        let matchTrial;
 
         $( document ).ready(function() {
 
-            var util = new JaneliaScriptUtilities();
-            var queryParameters = new JaneliaQueryParameters();
+            const util = new JaneliaScriptUtilities();
+            const queryParameters = new JaneliaQueryParameters();
 
-            var baseUrl = util.getServicesBaseUrl();
+            const baseUrl = util.getServicesBaseUrl();
 
             // TODO: remove this when done debugging on localhost
             // baseUrl = "http://renderer-dev:8080/render-ws/v1";
 
-            var owner = 'flyTEM';
+            const owner = 'flyTEM';
 
-            let viewScale = queryParameters.get('viewScale', 0.2);
+            const viewScale = queryParameters.get('viewScale', 0.2);
 
-            var canvas = document.getElementById("theCanvas");
+            const canvas = document.getElementById("theCanvas");
 
             matchTrial = new JaneliaMatchTrial(baseUrl, owner, canvas, viewScale);
 
-            var matchTrialId = queryParameters.get('matchTrialId', 'TBD');
+            const matchTrialId = queryParameters.get('matchTrialId', 'TBD');
 
-            var newTrialButtonSelector = $('#newTrial');
-            var trialRunningSelector = $('#trialRunning');
+            const newTrialButtonSelector = $('#newTrial');
+            const trialRunningSelector = $('#trialRunning');
             trialRunningSelector.hide();
             
             if (matchTrialId === 'TBD') {
                 newTrialButtonSelector.hide();
                 $('#headerDiv').hide();
 
-                var pRenderParametersUrl = queryParameters.get('pRenderParametersUrl');
+                const pRenderParametersUrl = queryParameters.get('pRenderParametersUrl');
                 if (typeof pRenderParametersUrl !== 'undefined') {
                     $('#pRenderParametersUrl').val(pRenderParametersUrl);
                 }
 
-                var qRenderParametersUrl = queryParameters.get('qRenderParametersUrl');
+                const qRenderParametersUrl = queryParameters.get('qRenderParametersUrl');
                 if (typeof qRenderParametersUrl !== 'undefined') {
                     $('#qRenderParametersUrl').val(qRenderParametersUrl);
                 }
 
             } else {
                 $('#formDiv').hide();
-                var trialSuffix = matchTrialId.substring(matchTrialId.length - 7);
+                const trialSuffix = matchTrialId.substring(matchTrialId.length - 7);
                 $(document).attr('title', 'Match Trial ' + trialSuffix);
-                var trialDataUrl = matchTrial.matchTrialUrl + '/' + matchTrialId;
+                const trialDataUrl = matchTrial.matchTrialUrl + '/' + matchTrialId;
                 $('#trialId').html('<a target="_blank" href="' + trialDataUrl + '">' + trialSuffix + '</a>');
                 matchTrial.loadTrial(matchTrialId);
             }
@@ -64,7 +64,7 @@
                 matchTrial.openNewTrialWindow();
             });
 
-            var runTrialButtonSelector = $('#runTrial');
+            const runTrialButtonSelector = $('#runTrial');
             runTrialButtonSelector.on('click', function() {
                 matchTrial.runTrial(runTrialButtonSelector, trialRunningSelector, $('#message'));
             });

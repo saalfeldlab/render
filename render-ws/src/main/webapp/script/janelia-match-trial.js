@@ -6,8 +6,7 @@
  * @property {String} qId
  * @property {Array} matches
  */
-
-var JaneliaMatchTrialImage = function(renderParametersUrl, row, column, viewScale, cellMargin) {
+const JaneliaMatchTrialImage = function (renderParametersUrl, row, column, viewScale, cellMargin) {
 
     this.imageUrl = renderParametersUrl.replace('render-parameters', 'jpeg-image');
     this.row = row;
@@ -34,8 +33,8 @@ var JaneliaMatchTrialImage = function(renderParametersUrl, row, column, viewScal
     this.y = -1;
     this.imagePositioned = false;
 
-    var self = this;
-    this.image.onload = function() {
+    const self = this;
+    this.image.onload = function () {
         self.positionImage();
     };
 
@@ -49,15 +48,15 @@ JaneliaMatchTrialImage.prototype.loadImage = function() {
 };
 
 JaneliaMatchTrialImage.prototype.positionImage = function() {
-    var scaledWidth = this.image.naturalWidth;
-    var scaledHeight = this.image.naturalHeight;
+    const scaledWidth = this.image.naturalWidth;
+    const scaledHeight = this.image.naturalHeight;
     this.x = (this.column * (scaledWidth + this.cellMargin)) + this.cellMargin;
     this.y = (this.row * (scaledHeight + this.cellMargin)) + this.cellMargin;
     this.imagePositioned = true;
 };
 
 JaneliaMatchTrialImage.prototype.drawLoadedImage = function(canvas) {
-    var context = canvas.getContext("2d");
+    const context = canvas.getContext("2d");
     context.drawImage(this.image, this.x, this.y);
 };
 
@@ -69,7 +68,7 @@ JaneliaMatchTrialImage.prototype.getCanvasHeight = function() {
     return (this.image.naturalHeight);
 };
 
-var JaneliaMatchTrial = function(baseUrl, owner, canvas, viewScale) {
+const JaneliaMatchTrial = function (baseUrl, owner, canvas, viewScale) {
 
     this.baseUrl = baseUrl;
     this.owner = owner;
@@ -89,7 +88,7 @@ var JaneliaMatchTrial = function(baseUrl, owner, canvas, viewScale) {
 };
 
 JaneliaMatchTrial.prototype.clearCanvas = function() {
-    var context = this.canvas.getContext("2d");
+    const context = this.canvas.getContext("2d");
     context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 };
 
@@ -100,7 +99,7 @@ JaneliaMatchTrial.prototype.loadTrial = function(trialId) {
     this.matchCount = undefined;
     this.matchIndex = 0;
 
-    var self = this;
+    const self = this;
     $.ajax({
                url: self.matchTrialUrl + '/' + trialId,
                cache: false,
@@ -115,16 +114,16 @@ JaneliaMatchTrial.prototype.loadTrial = function(trialId) {
 
 JaneliaMatchTrial.prototype.openNewTrialWindow = function() {
 
-    var self = this;
-    var stop = window.location.href.indexOf('?');
-    var url;
+    const self = this;
+    const stop = window.location.href.indexOf('?');
+    let url;
     if (stop === -1) {
         url = window.location.href;
     } else {
         url = window.location.href.substring(0, stop);
     }
 
-    var newTrialWindow = window.open(url + '?matchTrialId=TBD', '_blank');
+    const newTrialWindow = window.open(url + '?matchTrialId=TBD', '_blank');
     newTrialWindow.focus();
 
     newTrialWindow.addEventListener('load', function() {
@@ -133,9 +132,13 @@ JaneliaMatchTrial.prototype.openNewTrialWindow = function() {
 
 };
 
+/**
+ * @typedef {Object} newTrialWindow
+ * @property {String} matchTrial
+ */
 JaneliaMatchTrial.prototype.initNewTrialWindow = function(newTrialWindow, retryCount) {
 
-    var self = this;
+    const self = this;
     if (typeof self.trialResults !== 'undefined') {
 
         if (typeof newTrialWindow.matchTrial !== 'undefined') {
@@ -153,15 +156,22 @@ JaneliaMatchTrial.prototype.initNewTrialWindow = function(newTrialWindow, retryC
 
 };
 
+/**
+ * @typedef {Object} parameters
+ * @property {String} featureAndMatchParameters
+ * @property {String} fillWithNoise
+ * @property {String} pRenderParametersUrl
+ * @property {String} qRenderParametersUrl
+ */
 JaneliaMatchTrial.prototype.initNewTrialForm = function(parameters) {
 
-    var fParams = parameters.featureAndMatchParameters.siftFeatureParameters;
+    const fParams = parameters.featureAndMatchParameters.siftFeatureParameters;
     $('#fdSize').val(fParams.fdSize);
     $('#minScale').val(fParams.minScale);
     $('#maxScale').val(fParams.maxScale);
     $('#steps').val(fParams.steps);
 
-    var mParams = parameters.featureAndMatchParameters.matchDerivationParameters;
+    const mParams = parameters.featureAndMatchParameters.matchDerivationParameters;
     $('#matchModelType').val(mParams.matchModelType);
     $('#matchRod').val(mParams.matchRod);
     $('#matchIterations').val(mParams.matchIterations);
@@ -173,7 +183,7 @@ JaneliaMatchTrial.prototype.initNewTrialForm = function(parameters) {
 
     $('#fillWithNoise').val(parameters.fillWithNoise);
 
-    var pClipPosition = parameters.featureAndMatchParameters.pClipPosition;
+    const pClipPosition = parameters.featureAndMatchParameters.pClipPosition;
     if ((typeof pClipPosition !== undefined) && (pClipPosition !== 'NO CLIP')) {
         $('#pClipPosition').val(pClipPosition);
         $('#clipPixels').val(parameters.featureAndMatchParameters.clipPixels);
@@ -185,38 +195,38 @@ JaneliaMatchTrial.prototype.initNewTrialForm = function(parameters) {
 
 JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRunningSelector, errorMessageSelector) {
 
-    var featureAndMatchParameters = {
-        "siftFeatureParameters" : {
-            "fdSize" : parseInt($('#fdSize').val()),
-            "minScale" : parseFloat($('#minScale').val()),
-            "maxScale" : parseFloat($('#maxScale').val()),
-            "steps" : parseInt($('#steps').val())
+    const featureAndMatchParameters = {
+        "siftFeatureParameters": {
+            "fdSize": parseInt($('#fdSize').val()),
+            "minScale": parseFloat($('#minScale').val()),
+            "maxScale": parseFloat($('#maxScale').val()),
+            "steps": parseInt($('#steps').val())
         },
-        "matchDerivationParameters" : {
-            "matchRod" : parseFloat($('#matchRod').val()),
-            "matchModelType" : this.util.getSelectedValue('matchModelType'),
-            "matchIterations" : parseInt($('#matchIterations').val()),
-            "matchMaxEpsilon" : parseFloat($('#matchMaxEpsilon').val()),
-            "matchMinInlierRatio" : parseFloat($('#matchMinInlierRatio').val()),
-            "matchMinNumInliers" : parseInt($('#matchMinNumInliers').val()),
-            "matchMaxTrust" : parseFloat($('#matchMaxTrust').val()),
-            "matchFilter" : this.util.getSelectedValue('matchFilter')
+        "matchDerivationParameters": {
+            "matchRod": parseFloat($('#matchRod').val()),
+            "matchModelType": this.util.getSelectedValue('matchModelType'),
+            "matchIterations": parseInt($('#matchIterations').val()),
+            "matchMaxEpsilon": parseFloat($('#matchMaxEpsilon').val()),
+            "matchMinInlierRatio": parseFloat($('#matchMinInlierRatio').val()),
+            "matchMinNumInliers": parseInt($('#matchMinNumInliers').val()),
+            "matchMaxTrust": parseFloat($('#matchMaxTrust').val()),
+            "matchFilter": this.util.getSelectedValue('matchFilter')
         }
     };
 
-    var pClipPosition = $('#pClipPosition').val();
+    const pClipPosition = $('#pClipPosition').val();
     if ((typeof pClipPosition !== undefined) && (pClipPosition !== 'NO CLIP')) {
         featureAndMatchParameters['pClipPosition'] = pClipPosition;
         featureAndMatchParameters['clipPixels'] = parseInt($('#clipPixels').val());
     }
 
-    var requestData = {
+    const requestData = {
         featureAndMatchParameters: featureAndMatchParameters,
         pRenderParametersUrl: $('#pRenderParametersUrl').val(),
         qRenderParametersUrl: $('#qRenderParametersUrl').val()
     };
 
-    var parametersUrlRegex = /.*render-parameters.*/;
+    const parametersUrlRegex = /.*render-parameters.*/;
     if (requestData.pRenderParametersUrl.match(parametersUrlRegex) &&
         requestData.pRenderParametersUrl.match(parametersUrlRegex)) {
 
@@ -224,7 +234,7 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
         runTrialButtonSelector.prop("disabled", true);
         trialRunningSelector.show();
 
-        var self = this;
+        const self = this;
         $.ajax({
                    type: "POST",
                    headers: {
@@ -235,7 +245,7 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
                    data: JSON.stringify(requestData),
                    cache: false,
                    success: function(data) {
-                       var stop = window.location.href.indexOf('?');
+                       const stop = window.location.href.indexOf('?');
                        window.location = window.location.href.substring(0, stop) +
                                          '?matchTrialId=' + data.id + '&viewScale=' + self.viewScale;
                    },
@@ -256,8 +266,8 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
 };
 
 JaneliaMatchTrial.prototype.getRenderParametersLink = function(parametersUrl) {
-    var splitUrl = parametersUrl.split('/');
-    var urlName;
+    const splitUrl = parametersUrl.split('/');
+    let urlName;
     if (splitUrl.length > 2) {
         urlName = splitUrl[splitUrl.length - 2];
     } else {
@@ -267,7 +277,7 @@ JaneliaMatchTrial.prototype.getRenderParametersLink = function(parametersUrl) {
 };
 
 /**
- * @param data.parameters
+ * @param data.parameters.featureAndMatchParameters.matchDerivationParameters.matchMaxNumInliers
  * @param {Array} data.matches
  * @param data.stats.pFeatureCount
  * @param data.stats.pFeatureDerivationMilliseconds
@@ -290,25 +300,25 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
     this.qImage = new JaneliaMatchTrialImage(data.parameters.qRenderParametersUrl, 0, 1, this.viewScale, this.cellMargin);
     this.qImage.loadImage();
 
-    var fParams = data.parameters.featureAndMatchParameters.siftFeatureParameters;
+    const fParams = data.parameters.featureAndMatchParameters.siftFeatureParameters;
     $('#trialFdSize').html(fParams.fdSize);
     $('#trialMinScale').html(fParams.minScale);
     $('#trialMaxScale').html(fParams.maxScale);
     $('#trialSteps').html(fParams.steps);
 
-    var pClipPosition = data.parameters.featureAndMatchParameters.pClipPosition;
+    let pClipPosition = data.parameters.featureAndMatchParameters.pClipPosition;
     if (typeof pClipPosition === 'undefined') {
         pClipPosition = 'n/a';
     }
 
-    var clipPixels = data.parameters.featureAndMatchParameters.clipPixels;
+    let clipPixels = data.parameters.featureAndMatchParameters.clipPixels;
     if (typeof clipPixels === 'undefined') {
         clipPixels = 'n/a';
     }
     $('#trialPClipPosition').html(pClipPosition);
     $('#trialClipPixels').html(clipPixels);
 
-    var mParams = data.parameters.featureAndMatchParameters.matchDerivationParameters;
+    const mParams = data.parameters.featureAndMatchParameters.matchDerivationParameters;
     $('#trialMatchModelType').html(mParams.matchModelType);
     $('#trialMatchRod').html(mParams.matchRod);
     $('#trialMatchIterations').html(mParams.matchIterations);
@@ -327,22 +337,22 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
     $('#trialpRenderParametersUrl').html(this.getRenderParametersLink(data.parameters.pRenderParametersUrl));
     $('#trialqRenderParametersUrl').html(this.getRenderParametersLink(data.parameters.qRenderParametersUrl));
 
-    var consensusSetMatches = this.trialResults.matches;
+    const consensusSetMatches = this.trialResults.matches;
     this.matchCount = 0;
-    for (var consensusSetIndex = 0; consensusSetIndex < consensusSetMatches.length; consensusSetIndex++) {
-        var matches = consensusSetMatches[consensusSetIndex];
+    for (let consensusSetIndex = 0; consensusSetIndex < consensusSetMatches.length; consensusSetIndex++) {
+        const matches = consensusSetMatches[consensusSetIndex];
         this.matchCount += matches.w.length;
     }
 
-    var stats = this.trialResults.stats;
+    const stats = this.trialResults.stats;
 
     $('#pFeatureStats').html(stats.pFeatureCount + ' features were derived in ' +
                              stats.pFeatureDerivationMilliseconds + ' ms');
     $('#qFeatureStats').html(stats.qFeatureCount + ' features were derived in ' +
                              stats.qFeatureDerivationMilliseconds + ' ms');
 
-    var csSizes = stats.consensusSetSizes;
-    var csText;
+    const csSizes = stats.consensusSetSizes;
+    let csText;
     if (csSizes.length === 1) {
         if (this.matchCount === 0) {
             csText = 'NO matches were '
@@ -353,9 +363,9 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
         csText = csSizes.length + ' consensus sets with [' + csSizes.toString() + '] matches were';
     }
 
-    var html = csText + ' derived in ' + stats.matchDerivationMilliseconds + ' ms' +
-               this.getStandardDeviationHtml('X', stats.consensusSetDeltaXStandardDeviations) +
-               this.getStandardDeviationHtml('Y', stats.consensusSetDeltaYStandardDeviations);
+    const html = csText + ' derived in ' + stats.matchDerivationMilliseconds + ' ms' +
+                 this.getStandardDeviationHtml('X', stats.consensusSetDeltaXStandardDeviations) +
+                 this.getStandardDeviationHtml('Y', stats.consensusSetDeltaYStandardDeviations);
 
     $('#matchStats').html(html);
 
@@ -364,11 +374,11 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 
 JaneliaMatchTrial.prototype.getStandardDeviationHtml = function(xOrY,
                                                                 standardDeviationValues) {
-    var html = '';
+    let html = '';
     if (Array.isArray(standardDeviationValues)) {
         if (standardDeviationValues.length > 1) {
             html = '<br/>Set Delta ' + xOrY + ' Standard Deviations: [ ' + this.getDeltaHtml(standardDeviationValues[0]);
-            for (var i = 1; i < standardDeviationValues.length; i++) {
+            for (let i = 1; i < standardDeviationValues.length; i++) {
                 html = html + ', ' + this.getDeltaHtml(standardDeviationValues[i]);
             }
             html += ' ]';
@@ -380,7 +390,7 @@ JaneliaMatchTrial.prototype.getStandardDeviationHtml = function(xOrY,
 };
 
 JaneliaMatchTrial.prototype.getDeltaHtml = function(value) {
-    var html = value.toFixed(1);
+    let html = value.toFixed(1);
     if (value > 8) {
         html = '<span style="color:red;">' + html + '</span>';
     }
@@ -395,7 +405,7 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
 
     if (this.pImage.imagePositioned && this.qImage.imagePositioned) {
 
-        var context = this.canvas.getContext("2d");
+        const context = this.canvas.getContext("2d");
 
         context.canvas.width = this.qImage.x + this.qImage.getCanvasWidth() + this.cellMargin;
         context.canvas.height =
@@ -407,14 +417,14 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
 
         if (this.matchCount > 0) {
 
-            var consensusSetMatches = this.trialResults.matches;
+            const consensusSetMatches = this.trialResults.matches;
 
             context.lineWidth = 1;
 
-            var matchInfoSelector = $('#matchInfo');
-            var consensusSetIndex = 0;
-            var matches;
-            var i;
+            const matchInfoSelector = $('#matchInfo');
+            let consensusSetIndex = 0;
+            let matches;
+            let i;
 
             if (typeof matchIndexDelta !== 'undefined') {
 
@@ -423,7 +433,7 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
                     this.matchIndex = this.matchCount - 1;
                 }
 
-                var lastI = 0;
+                let lastI = 0;
                 for (; consensusSetIndex < consensusSetMatches.length; consensusSetIndex++) {
                     matches = consensusSetMatches[consensusSetIndex];
                     i = this.matchIndex - lastI;
@@ -441,7 +451,7 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
 
                 this.matchIndex = 0;
 
-                var colors = ['#00ff00', '#f48342', '#42eef4', '#f442f1'];
+                const colors = ['#00ff00', '#f48342', '#42eef4', '#f442f1'];
 
                 for (; consensusSetIndex < consensusSetMatches.length; consensusSetIndex++) {
                     matches = consensusSetMatches[consensusSetIndex];
@@ -458,7 +468,7 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
 
     } else {
 
-        var self = this;
+        const self = this;
         setTimeout(function () {
             self.drawSelectedMatches(matchIndexDelta);
         }, 500);
@@ -469,13 +479,13 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
 
 JaneliaMatchTrial.prototype.drawMatch = function(matches, matchIndex, pImage, qImage, context) {
 
-    var pMatches = matches.p;
-    var qMatches = matches.q;
+    const pMatches = matches.p;
+    const qMatches = matches.q;
 
-    var px = (pMatches[0][matchIndex] * pImage.viewScale) + pImage.x;
-    var py = (pMatches[1][matchIndex] * pImage.viewScale) + pImage.y;
-    var qx = (qMatches[0][matchIndex] * qImage.viewScale) + qImage.x;
-    var qy = (qMatches[1][matchIndex] * qImage.viewScale) + qImage.y;
+    const px = (pMatches[0][matchIndex] * pImage.viewScale) + pImage.x;
+    const py = (pMatches[1][matchIndex] * pImage.viewScale) + pImage.y;
+    const qx = (qMatches[0][matchIndex] * qImage.viewScale) + qImage.x;
+    const qy = (qMatches[1][matchIndex] * qImage.viewScale) + qImage.y;
 
     context.beginPath();
     context.moveTo(px, py);
