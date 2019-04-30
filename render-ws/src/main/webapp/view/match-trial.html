@@ -11,7 +11,9 @@
     <script type="text/javascript" src="../script/janelia-match-trial.js?v=20190430_001"></script>
     <script type="text/javascript">
 
-        let matchTrial;
+        // TODO: figure out why matchTrial needs to be a var for initNewTrialWindow to work
+        // noinspection ES6ConvertVarToLetConst
+        var matchTrial;
 
         $( document ).ready(function() {
 
@@ -25,7 +27,8 @@
 
             const owner = 'flyTEM';
 
-            const viewScale = queryParameters.get('viewScale', 0.2);
+            // changed query parameter to 'scale' from 'viewScale' to better handle old URLs with viewScale=1.0
+            const viewScale = queryParameters.get('scale', 0.2);
 
             const canvas = document.getElementById("theCanvas");
 

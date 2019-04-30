@@ -247,7 +247,7 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
                    success: function(data) {
                        const stop = window.location.href.indexOf('?');
                        window.location = window.location.href.substring(0, stop) +
-                                         '?matchTrialId=' + data.id + '&viewScale=' + self.viewScale;
+                                         '?matchTrialId=' + data.id + '&scale=' + self.viewScale;
                    },
                    error: function(data, text, xhr) {
                        console.log(xhr);
