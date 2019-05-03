@@ -7,24 +7,18 @@
  * @property {Array} matches
  */
 const JaneliaMatchTrialImage = function (renderParametersUrl, row, column, viewScale, cellMargin) {
-
-    this.imageUrl = renderParametersUrl.replace('render-parameters', 'jpeg-image');
     this.row = row;
     this.column = column;
     this.viewScale = isNaN(viewScale) ? 0.2 : viewScale;
     this.renderScale = viewScale;
     this.cellMargin = cellMargin;
 
-    // replace imageUrl scale with viewScale
-    let renderParametersScale = parseFloat(new URL(renderParametersUrl).searchParams.get('scale'));
-    let trialRenderScale = isNaN(renderParametersScale) ? 1.0 : renderParametersScale;
-
-    if (isNaN(renderParametersScale)) {
-        let separator = renderParametersUrl.includes('?') ? '&' : '?';
-        this.imageUrl = this.imageUrl + separator + 'scale=' + viewScale;
-    } else {
-        this.imageUrl = this.imageUrl.replace('scale=' + renderParametersScale, 'scale=' + this.renderScale);
-    }
+    // use viewScale for rendering image
+    const trialImageUrl = new URL(renderParametersUrl.replace('render-parameters', 'jpeg-image'));
+    const renderParametersScale = parseFloat(trialImageUrl.searchParams.get('scale'));
+    const trialRenderScale = isNaN(renderParametersScale) ? 1.0 : renderParametersScale;
+    trialImageUrl.searchParams.set('scale', this.viewScale);
+    this.imageUrl = trialImageUrl.href;
 
     $('#trialRenderScale').html(trialRenderScale);
 
