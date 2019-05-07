@@ -113,6 +113,12 @@ public class CopyStackClient {
                 arity = 0)
         public boolean splitMergedSections = false;
 
+        @Parameter(
+                names = "--maxSectionsPerOriginalZ",
+                description = "Maximum number of sections for each layer " +
+                              "(for CATMAID it is best if this evenly divides into the source stack zResolution e.g. 40 for FAFB)")
+        public Integer maxSectionsPerOriginalZ = 40;
+
         String getToOwner() {
             if (toOwner == null) {
                 toOwner = renderWeb.owner;
@@ -159,7 +165,7 @@ public class CopyStackClient {
     private final Parameters parameters;
     private final RenderDataClient fromDataClient;
     private final RenderDataClient toDataClient;
-    private final Map<String, Integer> sectionIdToZMap;
+    private final Map<String, Double> sectionIdToZMap;
     private final LeafTransformSpec moveStackTransform;
 
     private CopyStackClient(final Parameters parameters) throws Exception {
@@ -173,7 +179,11 @@ public class CopyStackClient {
                                                  parameters.getToProject());
 
         if (parameters.splitMergedSections) {
-            this.sectionIdToZMap = getSectionIdToIntegralZMap();
+            if ((parameters.maxSectionsPerOriginalZ == null) || (parameters.maxSectionsPerOriginalZ < 1)) {
+                throw new IllegalArgumentException(
+                        "--maxSectionsPerOriginalZ must be specified when --splitMergedSections is specified");
+            }
+            this.sectionIdToZMap = getSectionIdToSplitZMap();
         } else {
             this.sectionIdToZMap = null;
         }
@@ -215,6 +225,17 @@ public class CopyStackClient {
 
     private void setUpDerivedStack() throws Exception {
         final StackMetaData fromStackMetaData = fromDataClient.getStackMetaData(parameters.fromStack);
+
+        if (parameters.splitMergedSections) {
+            // change resolution for split stack copies
+            final List<Double> resolutionValues = fromStackMetaData.getCurrentResolutionValues();
+            if (resolutionValues.size() == 3) {
+                final Double zResolution = resolutionValues.remove(2);
+                resolutionValues.add(zResolution / parameters.maxSectionsPerOriginalZ);
+                fromStackMetaData.setCurrentResolutionValues(resolutionValues);
+            }
+        }
+
         toDataClient.setupDerivedStack(fromStackMetaData, parameters.toStack);
     }
 
@@ -239,7 +260,7 @@ public class CopyStackClient {
         final Set<Double> toStackZValues = new LinkedHashSet<>();
         if (parameters.splitMergedSections) {
             for (final TileSpec tileSpec : sourceCollection.getTileSpecs()) {
-                final Double zValue = new Double(getContrivedZ(tileSpec.getLayout().getSectionId(), tileSpec.getZ()));
+                final Double zValue = sectionIdToZMap.get(tileSpec.getLayout().getSectionId());
                 toStackZValues.add(zValue);
                 tileSpec.setZ(zValue);
             }
@@ -317,57 +338,52 @@ public class CopyStackClient {
                  tileSpecCount);
     }
 
-    private Map<String, Integer> getSectionIdToIntegralZMap()
+    private Map<String, Double> getSectionIdToSplitZMap()
             throws IOException {
 
         final Comparator<SectionData> sectionComparator =
                 Comparator.comparingDouble(SectionData::getZ).thenComparing(SectionData::getSectionId);
 
         final List<SectionData> orderedSectionDataList =
-                fromDataClient.getStackSectionData(parameters.fromStack, null, null);
+                fromDataClient.getStackSectionData(parameters.fromStack, null, null, parameters.zValues);
 
         orderedSectionDataList.sort(sectionComparator);
 
-        final Map<String, Integer> sectionIdToZMap = new HashMap<>(orderedSectionDataList.size());
+        final Map<String, Double> sectionIdToZMap = new HashMap<>(orderedSectionDataList.size());
 
-        final int firstContrivedZ;
         if (orderedSectionDataList.size() > 0) {
 
-            // highlight contrived z values by making them abnormally large and ensuring no overlap with real z values
-            final Double lastZ = orderedSectionDataList.get(orderedSectionDataList.size() - 1).getZ();
-            if (lastZ < 50000) {
-                firstContrivedZ = 100000;
-            } else {
-                firstContrivedZ = lastZ.intValue() + 50000;
+            Double currentZ = null;
+            int sectionIndex = 0;
+            for (final SectionData sectionData : orderedSectionDataList) {
+
+                final Double sectionZ = sectionData.getZ();
+                if (sectionZ.equals(currentZ)) {
+                    sectionIndex++;
+                } else {
+                    currentZ = sectionZ;
+                    sectionIndex = 0;
+                }
+
+                if (sectionIndex > parameters.maxSectionsPerOriginalZ) {
+                    final Double problemZ = currentZ;
+                    final long problemCount =
+                            orderedSectionDataList.stream().filter(sd -> problemZ.equals(sd.getZ())).count();
+                    throw new IllegalArgumentException(problemCount + " sections exist for z " + currentZ +
+                                                       "but --maxSectionsPerOriginalZ is " +
+                                                       parameters.maxSectionsPerOriginalZ);
+                }
+
+                sectionIdToZMap.put(sectionData.getSectionId(),
+                                    ((currentZ * parameters.maxSectionsPerOriginalZ) + sectionIndex));
             }
 
-            SectionData sectionData;
-            for (int i = 0; i < orderedSectionDataList.size(); i++) {
-                sectionData = orderedSectionDataList.get(i);
-                sectionIdToZMap.put(getSectionWithZKey(sectionData.getSectionId(), sectionData.getZ()),
-                                    i + firstContrivedZ);
-            }
-
-        } else {
-            firstContrivedZ = 0;
         }
 
-        final int lastContrivedZ = firstContrivedZ + sectionIdToZMap.size() - 1;
-
-        LOG.info("getSectionIdToIntegralZMap: exit, mapped {} sections to z values {} - {}",
-                 sectionIdToZMap.size(), firstContrivedZ, lastContrivedZ);
+        LOG.info("getSectionIdToSplitZMap: exit, mapped split z values for {} sections",
+                 sectionIdToZMap.size());
 
         return sectionIdToZMap;
-    }
-
-    private String getSectionWithZKey(final String sectionId,
-                                      final Double z) {
-        return sectionId + "::" + z;
-    }
-
-    private Integer getContrivedZ(final String sectionId,
-                                  final Double z) {
-        return sectionIdToZMap.get(getSectionWithZKey(sectionId, z));
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CopyStackClient.class);
