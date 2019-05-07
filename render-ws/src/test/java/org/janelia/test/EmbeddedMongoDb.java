@@ -16,6 +16,7 @@ import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
 import de.flapdoodle.embed.mongo.config.IMongoImportConfig;
+import de.flapdoodle.embed.mongo.config.MongoCmdOptionsBuilder;
 import de.flapdoodle.embed.mongo.config.MongoImportConfigBuilder;
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
@@ -47,10 +48,17 @@ public class EmbeddedMongoDb {
         this.port = 12345;
 
         // see MongodForTestsFactory for example verbose startup options
-        this.mongodExecutable = STARTER.prepare(new MongodConfigBuilder()
-                                                        .version(version)
-                                                        .net(new Net(port, Network.localhostIsIPv6()))
-                                                        .build());
+        this.mongodExecutable = STARTER.prepare(
+                new MongodConfigBuilder()
+                        .version(version)
+                        .net(new Net(port, Network.localhostIsIPv6()))
+
+                        // use ephemeralForTest storage engine to fix super slow run times on Mac
+                        // see https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/issues/166
+                        .cmdOptions(new MongoCmdOptionsBuilder().useStorageEngine("ephemeralForTest").build())
+
+                        .build());
+
         this.mongodProcess = mongodExecutable.start();
 
         this.mongoClient = new MongoClient("localhost", port);
