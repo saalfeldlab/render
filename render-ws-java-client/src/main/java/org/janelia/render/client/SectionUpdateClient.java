@@ -55,6 +55,12 @@ public class SectionUpdateClient {
                 arity = 0)
         public boolean flattenAllLayers;
 
+        @Parameter(
+                names = "--stackResolutionZ",
+                description = "Z resolution (in nanometers) for the stack after layers have been flattened"
+        )
+        public Double stackResolutionZ;
+
         @Parameter(names = "--z", description = "Z value", required = true)
         public Double z;
 
@@ -169,6 +175,18 @@ public class SectionUpdateClient {
         renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
 
         zValues.stream().sorted().forEach(this::updateZ);
+
+        if ((parameters.flattenAllLayers) && (parameters.stackResolutionZ != null)) {
+
+            final List<Double> resolutionValues =
+                    renderDataClient.getStackMetaData(parameters.stack).getCurrentResolutionValues();
+
+            if ((resolutionValues != null) && (resolutionValues.size() > 2)) {
+                resolutionValues.set(2, parameters.stackResolutionZ);
+                renderDataClient.setStackResolutionValues(parameters.stack, resolutionValues);
+            }
+
+        }
 
         if (parameters.completeToStackAfterUpdate) {
             renderDataClient.setStackState(parameters.stack, StackMetaData.StackState.COMPLETE);
