@@ -2,7 +2,6 @@ package org.janelia.render.client;
 
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -36,7 +35,7 @@ public class TilePairClientTest {
     private String baseFileName;
 
     @Before
-    public void setup() throws Exception {
+    public void setup() {
         final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS");
         this.baseFileName = "test_tile_pairs_" + sdf.format(new Date());
     }
@@ -156,27 +155,43 @@ public class TilePairClientTest {
 
         private final List<Double> zValues;
 
-        public MockTilePairClient(final TilePairClient.Parameters p,
-                                  final Double... zValues)
+        MockTilePairClient(final TilePairClient.Parameters p,
+                           final Double... zValues)
                 throws IllegalArgumentException {
             super(p);
             this.zValues = Arrays.asList(zValues);
         }
 
         @Override
-        public List<Double> getZValues()
-                throws IOException {
+        public List<Double> getZValues() {
             return zValues;
         }
 
         @Nonnull
         @Override
-        public TileBoundsRTree buildRTree(final double z)
-                throws IOException {
+        public TileBoundsRTree buildRTree(final double z) {
             final List<TileBounds> tileBoundsList =
                     Arrays.asList(new TileBounds("a" + z, String.valueOf(z), z, 0.0, 0.0, 11.0, 22.0),
                                   new TileBounds("b" + z, String.valueOf(z), z, 9.0, 0.0, 30.0, 22.0));
             return new TileBoundsRTree(z, tileBoundsList);
         }
+    }
+
+    public static void main(final String[] args) {
+
+        final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[] {
+                "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
+                "--owner", "flyTEM",
+                "--project", "FAFB_montage",
+                "--stack", "check_923_split_rough",
+                "--xyNeighborFactor", "0.6",
+                "--excludeCornerNeighbors", "false",
+                "--excludeSameLayerNeighbors", "true",
+                "--excludeCompletelyObscuredTiles", "false",
+                "--zNeighborDistance", "40",
+                "--toJson", "/Users/trautmane/Desktop/test_pairs.json"
+        };
+        TilePairClient.main(effectiveArgs);
+
     }
 }

@@ -1190,17 +1190,29 @@ public class RenderDataClient {
     }
 
     /**
-     * @param  pGroupId      pGroupId (usually the section id).
+     * @param  pGroupId             pGroupId (usually the section id).
+     * @param  excludeMatchDetails  if true, only retrieve pair identifiers and exclude detailed match points.
      *
      * @return list of canvas matches with the specified pGroupId.
      *
      * @throws IOException
      *   if the request fails for any reason.
      */
-    public List<CanvasMatches> getMatchesWithPGroupId(final String pGroupId)
+    public List<CanvasMatches> getMatchesWithPGroupId(final String pGroupId,
+                                                      final boolean excludeMatchDetails)
             throws IOException {
 
-        final URI uri = getUri(urls.getMatchesWithPGroupIdUrlString(pGroupId));
+        final URI uri;
+        try {
+            final URIBuilder builder = new URIBuilder(urls.getMatchesWithPGroupIdUrlString(pGroupId));
+            if (excludeMatchDetails) {
+                builder.addParameter("excludeMatchDetails", String.valueOf(excludeMatchDetails));
+            }
+            uri = builder.build();
+        } catch (final URISyntaxException e) {
+            throw new IOException(e.getMessage(), e);
+        }
+
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
         final TypeReference<List<CanvasMatches>> typeReference = new TypeReference<List<CanvasMatches>>() {};

@@ -154,10 +154,15 @@ public class TilePairClient {
         )
         public String onlyIncludeTilesFromStack;
 
-        @Parameter(names = "--toJson", description = "JSON file where tile pairs are to be stored (.json, .gz, or .zip)", required = true)
+        @Parameter(
+                names = "--toJson",
+                description = "JSON file where tile pairs are to be stored (.json, .gz, or .zip)",
+                required = true)
         public String toJson;
 
-        @Parameter(names = "--maxPairsPerFile", description = "Maximum number of pairs to include in each file.")
+        @Parameter(
+                names = "--maxPairsPerFile",
+                description = "Maximum number of pairs to include in each file.")
         public Integer maxPairsPerFile = 100000;
 
         @ParametersDelegate
@@ -187,11 +192,8 @@ public class TilePairClient {
             return baseStack;
         }
 
-        String getExistingMatchOwner() {
-            if (existingMatchOwner == null) {
-                existingMatchOwner = renderWeb.owner;
-            }
-            return existingMatchOwner;
+        String getMatchOwner(final String explicitValue) {
+            return explicitValue == null ? renderWeb.owner : explicitValue;
         }
 
     }
@@ -317,9 +319,10 @@ public class TilePairClient {
         if (parameters.excludePairsInMatchCollection != null) {
 
             final String collectionName = parameters.excludePairsInMatchCollection;
-            final RenderDataClient matchDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
-                                                                          parameters.getExistingMatchOwner(),
-                                                                          collectionName);
+            final RenderDataClient matchDataClient =
+                    new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                         parameters.getMatchOwner(parameters.existingMatchOwner),
+                                         collectionName);
 
             final List<MatchCollectionMetaData> matchCollections = matchDataClient.getOwnerMatchCollections();
             final boolean foundCollection = matchCollections.stream()
@@ -590,7 +593,7 @@ public class TilePairClient {
             final List<String> groupIds = zToSectionIdMap.get(z);
             if (groupIds != null) {
                 for (final String pGroupId : groupIds) {
-                    for (final CanvasMatches canvasMatches : matchDataClient.getMatchesWithPGroupId(pGroupId)) {
+                    for (final CanvasMatches canvasMatches : matchDataClient.getMatchesWithPGroupId(pGroupId, true)) {
                         if (canvasMatches.size() > parameters.minExistingMatchCount) {
                             existingPairs.add(
                                     new OrderedCanvasIdPair(

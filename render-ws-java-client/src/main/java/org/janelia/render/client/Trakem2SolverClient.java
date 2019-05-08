@@ -288,7 +288,7 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
             LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
 
-            final List<CanvasMatches> matches = matchDataClient.getMatchesWithPGroupId(pGroupId);
+            final List<CanvasMatches> matches = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
             for (final CanvasMatches match : matches) {
 
                 final String pId = match.getpId();
