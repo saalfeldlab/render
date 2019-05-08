@@ -4,13 +4,17 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
+import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -84,6 +88,19 @@ public class TerraceLayersClient {
                 description = "Complete the target stack after transforming all layers",
                 arity = 0)
         public boolean completeTargetStack = false;
+
+        @Parameter(
+                names = "--roughMatchOwner",
+                description = "Owner of rough alignment match collection (default is owner)"
+        )
+        public String roughMatchOwner;
+
+        @Parameter(
+                names = "--roughMatchCollection",
+                description = "Name of rough alignment match collection that identifies connected layers.  " +
+                              "If specified, terrace translation will be applied for each connected group of layers."
+        )
+        public String roughMatchCollection;
 
         public String getTargetStack() {
             if ((targetStack == null) || (targetStack.trim().length() == 0)) {
@@ -170,30 +187,101 @@ public class TerraceLayersClient {
         LOG.info("terraceLayers: entry");
 
         final List<Double> sortedZs = zToBoundsMap.keySet().stream().sorted().collect(Collectors.toList());
+        final Map<Double, double[]> zToMinCoordinateMap = new HashMap<>();
 
-        double minX = parameters.minX;
-        double minY = parameters.minY;
+        if (parameters.roughMatchCollection != null) {
 
-        for (final Double z : sortedZs) {
+            mapMinCoordinatesByConnectedCluster(sortedZs, zToMinCoordinateMap);
 
-            final Bounds layerBounds = zToBoundsMap.get(z);
-            moveLayer(z, layerBounds, minX, minY);
+        } else {
 
-            if (parameters.verticalOrientation) {
-                minY = minY + layerBounds.getDeltaY() + parameters.margin;
-            } else {
-                minX = minX + layerBounds.getDeltaX() + parameters.margin;
+            double[] minCoordinate = { parameters.minX, parameters.minY };
+            for (final Double z : sortedZs) {
+                zToMinCoordinateMap.put(z, minCoordinate);
+                minCoordinate = updateMinCoordinate(zToBoundsMap.get(z), minCoordinate);
             }
 
+        }
+
+        for (final Double z : sortedZs) {
+            moveLayer(z, zToBoundsMap.get(z), zToMinCoordinateMap.get(z));
         }
 
         LOG.info("terraceLayers: exit");
     }
 
+    private double[] updateMinCoordinate(final Bounds bounds,
+                                         final double[] minCoordinate) {
+        final double[] updatedMinCoordinate;
+        if (parameters.verticalOrientation) {
+            updatedMinCoordinate = new double[] {
+                    minCoordinate[0],
+                    minCoordinate[1] + bounds.getDeltaY() + parameters.margin
+            };
+        } else {
+            updatedMinCoordinate = new double[] {
+                    minCoordinate[0] + bounds.getDeltaX() + parameters.margin,
+                    minCoordinate[1]
+            };
+        }
+        return updatedMinCoordinate;
+    }
+
+    private void mapMinCoordinatesByConnectedCluster(final List<Double> sortedZs,
+                                                     final Map<Double, double[]> zToMinCoordinateMap)
+            throws IOException {
+
+        double[] minCoordinate = { parameters.minX, parameters.minY };
+
+        final String roughMatchOwner =
+                parameters.roughMatchOwner == null ? parameters.renderWeb.owner : parameters.roughMatchOwner;
+
+        final RenderDataClient matchDataClient =
+                new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                     roughMatchOwner,
+                                     parameters.roughMatchCollection);
+
+        final List<CanvasMatches> roughMatches = new ArrayList<>();
+        for (final String pGroupId : matchDataClient.getMatchPGroupIds()) {
+            roughMatches.addAll(matchDataClient.getMatchesWithPGroupId(pGroupId, true));
+        }
+
+        final SortedConnectedCanvasIdClusters roughClusters = new SortedConnectedCanvasIdClusters(roughMatches);
+        final List<Set<String>> connectedGroupIdSets = roughClusters.getSortedConnectedGroupIdSets();
+
+        int connectedLayerCount = 0;
+        for (final Set<String> connectedGroupIdSet : connectedGroupIdSets) {
+            Bounds connectedBounds = null;
+            for (final String groupId : connectedGroupIdSet) {
+                final Double z = new Double(groupId);
+                final Bounds layerBounds = zToBoundsMap.get(z);
+                connectedBounds = connectedBounds == null ? layerBounds : connectedBounds.union(layerBounds);
+                connectedLayerCount++;
+            }
+
+            for (final String groupId : connectedGroupIdSet) {
+                final Double z = new Double(groupId);
+                zToBoundsMap.put(z, connectedBounds);
+                zToMinCoordinateMap.put(z, minCoordinate);
+            }
+
+            minCoordinate = updateMinCoordinate(connectedBounds, minCoordinate);
+        }
+
+        for (final Double z : sortedZs) {
+            if (! zToMinCoordinateMap.containsKey(z)) {
+                zToMinCoordinateMap.put(z, minCoordinate);
+                minCoordinate = updateMinCoordinate(zToBoundsMap.get(z), minCoordinate);
+            }
+        }
+
+        LOG.info("mapMinCoordinatesByConnectedCluster: exit, {} out of {} layers are connected",
+                 connectedLayerCount, sortedZs.size());
+    }
+
     private void moveLayer(final double z,
                            final Bounds layerBounds,
-                           final double toX,
-                           final double toY)
+                           final double[] minCoordinate)
             throws IOException {
 
         final ResolvedTileSpecCollection tiles = sourceRenderDataClient.getResolvedTiles(parameters.stack, z);
@@ -202,8 +290,8 @@ public class TerraceLayersClient {
         final AffineModel2D model = new AffineModel2D();
 
         model.set(1, 0, 0, 1,
-                  (toX - layerBounds.getMinX()),
-                  (toY - layerBounds.getMinY()));
+                  (minCoordinate[0] - layerBounds.getMinX()),
+                  (minCoordinate[1] - layerBounds.getMinY()));
 
         final LeafTransformSpec layerTransform = new LeafTransformSpec(layerTransformId,
                                                                        null,

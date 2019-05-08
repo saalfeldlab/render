@@ -2,7 +2,6 @@ package org.janelia.alignment.match;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -40,7 +39,6 @@ public class SortedConnectedCanvasIdClusters
         this.sortedConnectedCanvasIdSets = new ArrayList<>();
 
         while (connectionsMap.size() > 0) {
-            @SuppressWarnings("OptionalGetWithoutIsPresent")
             final CanvasId canvasId = connectionsMap.keySet().stream().findFirst().get();
             final Set<CanvasId> connectedTileSet = new HashSet<>();
             addConnectedCanvases(canvasId, connectionsMap, connectedTileSet);
@@ -48,6 +46,16 @@ public class SortedConnectedCanvasIdClusters
         }
 
         sortedConnectedCanvasIdSets.sort((s1, s2) -> Integer.compare(s2.size(), s1.size()));
+    }
+
+    public List<Set<String>> getSortedConnectedGroupIdSets() {
+        final List<Set<String>> groupIdSets = new ArrayList<>(sortedConnectedCanvasIdSets.size());
+        sortedConnectedCanvasIdSets.forEach(canvasIdSet -> {
+            final Set<String> groupIdSet = new HashSet<>(canvasIdSet.size());
+            canvasIdSet.forEach(canvasId -> groupIdSet.add(canvasId.getGroupId()));
+            groupIdSets.add(groupIdSet);
+        });
+        return groupIdSets;
     }
 
     public List<Set<String>> getSortedConnectedTileIdSets() {

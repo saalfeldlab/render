@@ -21,9 +21,10 @@ public class TerraceLayersClientTest {
                 "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                 "--owner", "flyTEM",
                 "--project", "FAFB_montage",
-                "--stack", "check_923_split_py_solve",
-                "--targetStack", "check_923_split_py_solve_terraced",
-                "--transformApplicationMethod", "PRE_CONCATENATE_LAST",
+                "--stack", "check_923_split_rough",
+                "--targetStack", "check_923_split_rough_terraced",
+//                "--transformApplicationMethod", "PRE_CONCATENATE_LAST",
+                "--roughMatchCollection", "FAFB_montage_check_923_split_py_solve_tier_0_0001x0001_000000",
                 "--completeTargetStack"
         };
         TerraceLayersClient.main(effectiveArgs);
