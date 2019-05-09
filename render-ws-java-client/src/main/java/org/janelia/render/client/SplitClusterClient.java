@@ -192,7 +192,8 @@ public class SplitClusterClient {
                                                                        parameters.stack,
                                                                        z,
                                                                        matchDataClient,
-                                                                       stackTileIds);
+                                                                       stackTileIds,
+                                                                       parameters.tileCluster.includeMatchesOutsideGroup);
 
             final Set<String> unconnectedTileIds = new HashSet<>();
             stackTileIds.forEach(tileId -> {

@@ -153,7 +153,8 @@ public class UnconnectedTileRemovalClient {
                                                                                 parameters.stack,
                                                                                 z,
                                                                                 matchDataClient,
-                                                                                stackTileIds);
+                                                                                stackTileIds,
+                                                                                parameters.tileCluster.includeMatchesOutsideGroup);
             final Set<String> keeperTileIds = new HashSet<>();
             if (keeperClient != null) {
                 keeperClient.getTileBounds(parameters.keeperStack, z).forEach(tb -> keeperTileIds.add(tb.getTileId()));
@@ -262,14 +263,20 @@ public class UnconnectedTileRemovalClient {
                                                     final String stackName,
                                                     final Double z,
                                                     final RenderDataClient matchClient,
-                                                    final Set<String> stackTileIds)
+                                                    final Set<String> stackTileIds,
+                                                    final boolean includeMatchesOutsideGroup)
             throws IOException {
 
         final List<SectionData> sectionDataList = stackClient.getStackSectionData(stackName, z, z);
         final TileIdsWithMatches tileIdsWithMatches = new TileIdsWithMatches();
         for (final SectionData sectionData : sectionDataList) {
-            tileIdsWithMatches.addMatches(matchClient.getMatchesWithinGroup(sectionData.getSectionId()),
-                                          stackTileIds);
+            if (includeMatchesOutsideGroup) {
+                tileIdsWithMatches.addMatches(matchClient.getMatchesWithPGroupId(sectionData.getSectionId(), true),
+                                              stackTileIds);
+            } else {
+                tileIdsWithMatches.addMatches(matchClient.getMatchesWithinGroup(sectionData.getSectionId()),
+                                              stackTileIds);
+            }
         }
 
         return tileIdsWithMatches;

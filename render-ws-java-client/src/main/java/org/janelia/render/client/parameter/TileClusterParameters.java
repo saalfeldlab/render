@@ -38,6 +38,13 @@ public class TileClusterParameters
                           "This value will be ignored if --maxSmallClusterSize is specified.")
     public Double smallClusterFactor;
 
+    @Parameter(
+            names = "--includeMatchesOutsideGroup",
+            description = "When determining connected clusters, include outside group matches (e.g. for merged reacquired sections)",
+            arity = 0)
+    public boolean includeMatchesOutsideGroup = false;
+
+
     public void validate() {
         validate(false);
     }
