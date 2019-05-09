@@ -31,7 +31,7 @@ public class ZFilter {
         final double maxValue = (maxZ == null) ? Double.MAX_VALUE : maxZ;
 
         // if range is not specified, exclude everything except explicit z values
-        if ((minZ == null) && (maxZ == null)) {
+        if ((minZ == null) && (maxZ == null) && (explicitZValues != null)) {
             minValue = Double.MAX_VALUE;
         }
 

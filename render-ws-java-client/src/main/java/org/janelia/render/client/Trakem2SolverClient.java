@@ -27,11 +27,13 @@ import mpicbg.models.TileConfiguration;
 import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.ModelType;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ScriptUtil;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -62,14 +64,12 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
         @Parameter(
                 names = "--minZ",
-                description = "Minimum (split) Z value for layers to be processed",
-                required = true)
+                description = "Minimum (split) Z value for layers to be processed")
         public Double minZ;
 
         @Parameter(
                 names = "--maxZ",
-                description = "Maximum (split) Z value for layers to be processed",
-                required = true)
+                description = "Maximum (split) Z value for layers to be processed")
         public Double maxZ;
 
         @Parameter(
@@ -189,14 +189,14 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                             "--baseDataUrl", "http://renderer-dev:8080/render-ws/v1",
                             "--owner", "flyTEM",
                             "--project", "FAFB_montage",
-                            "--stack", "split_0271_montage",
-                            "--targetStack", "split_0271_optimized_montage",
+                            "--stack", "check_923_split_rough",
+                            "--targetStack", "check_923_merged",
                             "--completeTargetStack",
-                            "--matchCollection", "FAFB_montage_fix",
-                            "--minZ", "100270",
-                            "--maxZ", "100272",
+                            "--matchCollection", "FAFB_montage_fix_test",
+//                            "--minZ", "100270",
+//                            "--maxZ", "100272",
                             "--regularizerModelType", "RIGID"
-//                            ,"--mergedZ", "271"
+                            ,"--mergedZ", "923"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -268,8 +268,37 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                     "stack " + parameters.stack + " does not contain any sections with the specified z values");
         }
 
+        Double minZForRun = parameters.minZ;
+        Double maxZForRun = parameters.maxZ;
+
+        if ((minZForRun == null) || (maxZForRun == null)) {
+            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
+            final StackStats stackStats = stackMetaData.getStats();
+            if (stackStats != null) {
+                final Bounds stackBounds = stackStats.getStackBounds();
+                if (stackBounds != null) {
+                    if (minZForRun == null) {
+                        minZForRun = stackBounds.getMinZ();
+                    }
+                    if (maxZForRun == null) {
+                        maxZForRun = stackBounds.getMaxZ();
+                    }
+                }
+            }
+
+            if ((minZForRun == null) || (maxZForRun == null)) {
+                throw new IllegalArgumentException(
+                        "Failed to derive min and/or max z values for stack " + parameters.stack +
+                        ".  Stack may need to be completed.");
+            }
+        }
+
+        final Double minZ = minZForRun;
+        final Double maxZ = maxZForRun;
+
         allSectionDataList.forEach(sd -> {
-            if (isZInRange(sd.getZ())) {
+            final Double z = sd.getZ();
+            if ((z != null) && (z.compareTo(minZ) >= 0) && (z.compareTo(maxZ) <= 0)) {
                 final List<Double> zListForSection = sectionIdToZMap.computeIfAbsent(sd.getSectionId(),
                                                                                      zList -> new ArrayList<>());
                 zListForSection.add(sd.getZ());
@@ -376,10 +405,6 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
         return new Tile<>(new InterpolatedAffineModel2D<>(lastTransformCopy,
                                                           regularizer,
                                                           parameters.startLambda)); // note: lambda gets reset during optimization loops
-    }
-
-    private boolean isZInRange(final Double z) {
-        return (z != null) && (z.compareTo(parameters.minZ) >= 0) && (z.compareTo(parameters.maxZ) <= 0);
     }
 
     private void saveTargetStackTiles(final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap)
