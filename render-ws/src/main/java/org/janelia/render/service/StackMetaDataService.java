@@ -420,7 +420,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/resolutionValues")
     @DELETE
     @ApiOperation(
-            tags = {"Section Data APIs"},
+            tags = {"Stack Data APIs"},
             value = "Deletes x, y, and z resolution values for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "stack is READ_ONLY"),
@@ -492,7 +492,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/materializedBoxRootPath")
     @DELETE
     @ApiOperation(
-            tags = {"Section Data APIs"},
+            tags = {"Stack Data APIs"},
             value = "Deletes materializedBoxRootPath for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "stack is READ_ONLY"),
@@ -564,7 +564,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/mipmapPathBuilder")
     @DELETE
     @ApiOperation(
-            tags = {"Section Data APIs"},
+            tags = {"Stack Data APIs"},
             value = "Deletes mipmap path builder specs for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "stack is READ_ONLY"),
@@ -636,7 +636,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/defaultChannel")
     @DELETE
     @ApiOperation(
-            tags = {"Section Data APIs"},
+            tags = {"Stack Data APIs"},
             value = "Deletes default channel for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "stack is READ_ONLY"),
@@ -714,7 +714,7 @@ public class StackMetaDataService {
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/cycle")
     @DELETE
     @ApiOperation(
-            tags = {"Section Data APIs"},
+            tags = {"Stack Data APIs"},
             value = "Deletes cycle data for stack")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "stack is READ_ONLY"),
