@@ -594,7 +594,7 @@ public class TilePairClient {
             if (groupIds != null) {
                 for (final String pGroupId : groupIds) {
                     for (final CanvasMatches canvasMatches : matchDataClient.getMatchesWithPGroupId(pGroupId, true)) {
-                        if (canvasMatches.size() > parameters.minExistingMatchCount) {
+                        if (canvasMatches.getMatchCount() > parameters.minExistingMatchCount) {
                             existingPairs.add(
                                     new OrderedCanvasIdPair(
                                             new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),
