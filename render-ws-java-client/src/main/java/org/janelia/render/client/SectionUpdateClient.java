@@ -38,6 +38,23 @@ public class SectionUpdateClient {
         public String stack;
 
         @Parameter(
+                names = "--targetOwner",
+                description = "Name of target stack owner (default is same as source stack owner)"
+        )
+        public String targetOwner;
+
+        @Parameter(
+                names = "--targetProject",
+                description = "Name of target stack project (default is same as source stack project)"
+        )
+        public String targetProject;
+
+        @Parameter(
+                names = "--targetStack",
+                description = "Name of target stack")
+        public String targetStack;
+
+        @Parameter(
                 names = "--sectionId",
                 description = "Section ID(s) for all tiles that should be moved to the new Z",
                 variableArity = true)
@@ -56,19 +73,24 @@ public class SectionUpdateClient {
         public boolean flattenAllLayers;
 
         @Parameter(
+                names = "--flattenByDivisor",
+                description = "Divide each layer's z by this value and assign the integral result as the new z")
+        public Integer flattenByDivisor;
+
+        @Parameter(
                 names = "--stackResolutionZ",
                 description = "Z resolution (in nanometers) for the stack after layers have been flattened"
         )
         public Double stackResolutionZ;
 
-        @Parameter(names = "--z", description = "Z value", required = true)
+        @Parameter(names = "--z", description = "new Z value for all layers (omit when using --flattenByDivisor)")
         public Double z;
 
         @Parameter(
-                names = "--completeToStackAfterUpdate",
+                names = "--completeTargetStack",
                 description = "Complete the stack after updating z values",
                 arity = 0)
-        public boolean completeToStackAfterUpdate = false;
+        public boolean completeTargetStack = false;
 
         @Parameter(
                 names = "--minX",
@@ -94,6 +116,13 @@ public class SectionUpdateClient {
         )
         public Double maxY;
 
+        private void validate()
+                throws IllegalArgumentException {
+            if ((z == null) && (flattenByDivisor == null)) {
+                throw new IllegalArgumentException("must specify either --z or --flattenByDivisor");
+            }
+        }
+
         private boolean isBoxSpecified() {
             return ((minX != null) && (minY != null) && (maxX != null) && (maxY != null));
         }
@@ -109,6 +138,7 @@ public class SectionUpdateClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
+                parameters.validate();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -121,11 +151,33 @@ public class SectionUpdateClient {
 
     private final Parameters parameters;
     private final RenderDataClient renderDataClient;
+    private final RenderDataClient targetClient;
+    private final String targetStack;
+    private final boolean isDerivedStack;
     private final Map<Double, Set<String>> zToSectionIds;
 
     private SectionUpdateClient(final Parameters parameters) {
         this.parameters = parameters;
         this.renderDataClient = parameters.renderWeb.getDataClient();
+
+        if ((parameters.targetOwner != null) ||
+            (parameters.targetProject != null)) {
+
+            final String targetOwner =
+                    parameters.targetOwner == null ? parameters.renderWeb.owner : parameters.targetOwner;
+            final String targetProject =
+                    parameters.targetProject == null ? parameters.renderWeb.project : parameters.targetProject;
+            this.targetClient = new RenderDataClient(parameters.renderWeb.baseDataUrl, targetOwner, targetProject);
+
+        } else {
+            this.targetClient = this.renderDataClient;
+        }
+
+        this.targetStack = parameters.targetStack == null ? parameters.stack : parameters.targetStack;
+
+        this.isDerivedStack = ((this.targetClient != this.renderDataClient) ||
+                               (! this.targetStack.equals(parameters.stack)));
+
         this.zToSectionIds = new HashMap<>();
     }
 
@@ -137,13 +189,17 @@ public class SectionUpdateClient {
 
         final Set<Double> zValues = new HashSet<>();
 
-        if (parameters.flattenAllLayers) {
+        if (parameters.flattenByDivisor != null) {
+
+            sectionDataList.forEach(sd -> zValues.add(sd.getZ()));
+
+        } else if (parameters.flattenAllLayers) {
 
             sectionDataList.stream()
                     .filter(sd -> ! parameters.z.equals(sd.getZ()))
                     .forEach(sd -> zValues.add(sd.getZ()));
 
-        } else  if (parameters.fromZList != null) {
+        } else if (parameters.fromZList != null) {
 
             final Set<Double> fromZSet = new HashSet<>(parameters.fromZList);
             sectionDataList.stream()
@@ -172,24 +228,31 @@ public class SectionUpdateClient {
             }
         }
 
-        renderDataClient.ensureStackIsInLoadingState(parameters.stack, null);
+        if (isDerivedStack) {
+            targetClient.setupDerivedStack(
+                    renderDataClient.getStackMetaData(parameters.stack),
+                    targetStack);
+        } else {
+            targetClient.ensureStackIsInLoadingState(parameters.stack, null);
+        }
 
         zValues.stream().sorted().forEach(this::updateZ);
 
-        if ((parameters.flattenAllLayers) && (parameters.stackResolutionZ != null)) {
+        if ((parameters.stackResolutionZ != null) &&
+            (parameters.flattenAllLayers || (parameters.flattenByDivisor != null))) {
 
             final List<Double> resolutionValues =
                     renderDataClient.getStackMetaData(parameters.stack).getCurrentResolutionValues();
 
             if ((resolutionValues != null) && (resolutionValues.size() > 2)) {
                 resolutionValues.set(2, parameters.stackResolutionZ);
-                renderDataClient.setStackResolutionValues(parameters.stack, resolutionValues);
+                targetClient.setStackResolutionValues(targetStack, resolutionValues);
             }
 
         }
 
-        if (parameters.completeToStackAfterUpdate) {
-            renderDataClient.setStackState(parameters.stack, StackMetaData.StackState.COMPLETE);
+        if (parameters.completeTargetStack) {
+            targetClient.setStackState(targetStack, StackMetaData.StackState.COMPLETE);
         }
 
     }
@@ -198,6 +261,13 @@ public class SectionUpdateClient {
 
         final String stack = parameters.stack;
         final Set<String> sectionIdSet = zToSectionIds == null ? null : zToSectionIds.get(z);
+
+        final Double updatedZ;
+        if (parameters.flattenByDivisor == null) {
+            updatedZ = parameters.z;
+        } else {
+            updatedZ = Math.floor(z / parameters.flattenByDivisor);
+        }
 
         try {
 
@@ -242,10 +312,10 @@ public class SectionUpdateClient {
             }
 
             for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
-                tileSpec.setZ(parameters.z);
+                tileSpec.setZ(updatedZ);
             }
 
-            renderDataClient.saveResolvedTiles(resolvedTiles, stack, null);
+            targetClient.saveResolvedTiles(resolvedTiles, targetStack, null);
 
         } catch (final IOException ioe) {
             throw new RuntimeException("wrapping exception for stream", ioe);
