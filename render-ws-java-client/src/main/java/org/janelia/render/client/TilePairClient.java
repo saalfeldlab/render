@@ -591,15 +591,27 @@ public class TilePairClient {
                 throws IOException {
 
             final List<String> groupIds = zToSectionIdMap.get(z);
+            Integer matchCount;
             if (groupIds != null) {
                 for (final String pGroupId : groupIds) {
                     for (final CanvasMatches canvasMatches : matchDataClient.getMatchesWithPGroupId(pGroupId, true)) {
-                        if (canvasMatches.getMatchCount() > parameters.minExistingMatchCount) {
-                            existingPairs.add(
-                                    new OrderedCanvasIdPair(
-                                            new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),
-                                            new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId())));
+
+                        final OrderedCanvasIdPair pair =  new OrderedCanvasIdPair(
+                                new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),
+                                new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId()));
+
+                        matchCount = canvasMatches.getMatchCount();
+
+                        if (parameters.minExistingMatchCount == 0) {
+                            existingPairs.add(pair);
+                        } else if (matchCount == null) {
+                            throw new IOException("match collection " + parameters.excludePairsInMatchCollection +
+                                                  " is missing newer matchCount field which is required " +
+                                                  "for the --minExistingMatchCount option");
+                        } else if (matchCount > parameters.minExistingMatchCount) {
+                            existingPairs.add(pair);
                         }
+
                     }
                 }
             }
