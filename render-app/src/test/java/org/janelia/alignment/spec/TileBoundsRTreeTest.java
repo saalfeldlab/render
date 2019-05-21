@@ -24,15 +24,14 @@ public class TileBoundsRTreeTest {
     private TileBoundsRTree tree;
 
     @Before
-    public void setup() throws Exception {
+    public void setup() {
         z = 1.0;
         tileBoundsList = buildListForZ(z);
         tree = new TileBoundsRTree(z, tileBoundsList);
     }
 
     @Test
-    public void testFindTiles()
-            throws Exception {
+    public void testFindTiles() {
 
         Set<String> expectedTileIds = new HashSet<>(Arrays.asList(getTileId(0, z),
                                                                   getTileId(1, z),
@@ -55,20 +54,27 @@ public class TileBoundsRTreeTest {
 
     }
 
+    @SuppressWarnings("MismatchedReadAndWriteOfArray")
     @Test
-    public void testGetCircleNeighbors()
-            throws Exception {
+    public void testGetCircleNeighbors() {
 
         final TileBoundsRTree treeForZ1 = new TileBoundsRTree(z,
-                                                              Arrays.asList(getTileBounds(0, z, 3, 10),
-                                                                            getTileBounds(1, z, 3, 10)));
+                                                              Arrays.asList(getTileBounds(0, z),
+                                                                            getTileBounds(1, z)));
         final TileBoundsRTree treeForZ2 = new TileBoundsRTree(2.0,
                                                               buildListForZ(2.0));
         final TileBoundsRTree treeForZ3 = new TileBoundsRTree(3.0,
                                                               buildListForZ(3.0));
         final List<TileBoundsRTree> neighborTrees = Arrays.asList(treeForZ2, treeForZ3);
+        final List<TileBounds> sourceTileBoundsList = treeForZ1.getTileBoundsList();
 
-        final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(neighborTrees, 1.1, null, false, false, false);
+        final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(sourceTileBoundsList,
+                                                                                    neighborTrees,
+                                                                                    1.1,
+                                                                                    null,
+                                                                                    false,
+                                                                                    false,
+                                                                                    false);
 
         // these are short-hand names for the pairs to clarify how many pairs are expected
         final String[] expectedPairs = {
@@ -85,7 +91,13 @@ public class TileBoundsRTreeTest {
         // all test tiles have width 10 and overlap by 1 pixel, radius of 1 should pair only tiles in same column
         final Double explicitRadius = 1.0;
         final Set<OrderedCanvasIdPair> neighborPairsWithExplicitRadius =
-                treeForZ1.getCircleNeighbors(neighborTrees, 1.1, explicitRadius, false, false, false);
+                treeForZ1.getCircleNeighbors(sourceTileBoundsList,
+                                             neighborTrees,
+                                             1.1,
+                                             explicitRadius,
+                                             false,
+                                             false,
+                                             false);
 
         final String[] expectedPairsForExplicitRadius = {
                 "z1-0,z2-0",
@@ -127,8 +139,7 @@ public class TileBoundsRTreeTest {
     }
 
     @Test
-    public void testFindCompletelyObscuredTiles()
-            throws Exception {
+    public void testFindCompletelyObscuredTiles() {
 
         List<TileBounds> completelyObscuredTiles = tree.findCompletelyObscuredTiles();
         Assert.assertEquals("incorrect number of obscured tiles found in default tree",
@@ -144,8 +155,7 @@ public class TileBoundsRTreeTest {
     }
 
     @Test
-    public void testFindVisibleTiles()
-            throws Exception {
+    public void testFindVisibleTiles() {
 
         List<TileBounds> visibleTiles = tree.findVisibleTiles();
         Assert.assertEquals("incorrect number of visible tiles found in default tree",
@@ -162,8 +172,7 @@ public class TileBoundsRTreeTest {
 
     private void validateSearchResults(final String context,
                                        final List<TileBounds> searchResults,
-                                       final Set<String> expectedTileIds)
-            throws Exception {
+                                       final Set<String> expectedTileIds) {
 
         Assert.assertEquals("invalid number of tiles returned for " + context,
                             expectedTileIds.size(), searchResults.size());
@@ -182,9 +191,9 @@ public class TileBoundsRTreeTest {
     }
 
     private TileBounds getTileBounds(final int tileIndex,
-                                     final double z,
-                                     final int tilesPerRow,
-                                     final double tileSize) {
+                                     final double z) {
+        final int tilesPerRow = 3;
+        final double tileSize = 10;
         final int row = tileIndex / tilesPerRow;
         final int col = tileIndex % tilesPerRow;
         final Double minX = col * (tileSize - 1.0);
@@ -206,7 +215,7 @@ public class TileBoundsRTreeTest {
 
         final List<TileBounds> list = new ArrayList<>();
         for (int i = 0; i < 9; i++) {
-            list.add(getTileBounds(i, z, 3, 10));
+            list.add(getTileBounds(i, z));
         }
 
         return list;

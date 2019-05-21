@@ -60,6 +60,13 @@ public class TileBoundsRTree {
     }
 
     /**
+     * @return list of all tile bounds in this tree.
+     */
+    public List<TileBounds> getTileBoundsList() {
+        return tileBoundsList;
+    }
+
+    /**
      * Add a tile to this tree.
      *
      * @param  tileBounds  bounds for the tile.
@@ -89,16 +96,16 @@ public class TileBoundsRTree {
     /**
      * @return all tiles that intersect the specified circle.
      */
-    public List<TileBounds> findTilesInCircle(final double centerX,
-                                              final double centerY,
-                                              final double radius) {
+    List<TileBounds> findTilesInCircle(final double centerX,
+                                       final double centerY,
+                                       final double radius) {
         return findTilesInCircle(Geometries.circle(centerX, centerY, radius));
     }
 
     /**
      * @return all tiles that intersect the specified circle.
      */
-    public List<TileBounds> findTilesInCircle(final Circle circle) {
+    private List<TileBounds> findTilesInCircle(final Circle circle) {
         final Observable<Entry<TileBounds, Geometry>> searchResults = tree.search(circle);
         return convertResultsToList(searchResults);
     }
@@ -138,6 +145,8 @@ public class TileBoundsRTree {
     }
 
     /**
+     * @param  sourceTileBoundsList  list of source tile bounds to check for neighbors.
+     *
      * @param  neighborTrees         list of trees for all neighboring sections to include in the pairing process.
      *
      * @param  neighborRadiusFactor  If explicitRadius is null, this factor is applied to max(width, height) of
@@ -156,7 +165,8 @@ public class TileBoundsRTree {
      *
      * @return set of distinct neighbor pairs between this tree's tiles and the specified neighbor trees' tiles.
      */
-    public Set<OrderedCanvasIdPair> getCircleNeighbors(final List<TileBoundsRTree> neighborTrees,
+    public Set<OrderedCanvasIdPair> getCircleNeighbors(final List<TileBounds> sourceTileBoundsList,
+                                                       final List<TileBoundsRTree> neighborTrees,
                                                        final double neighborRadiusFactor,
                                                        final Double explicitRadius,
                                                        final boolean excludeCornerNeighbors,
@@ -164,12 +174,12 @@ public class TileBoundsRTree {
                                                        final boolean excludeSameSectionNeighbors) {
 
         String firstTileId = null;
-        if (tileBoundsList.size() > 0) {
-            firstTileId = tileBoundsList.get(0).getTileId();
+        if (sourceTileBoundsList.size() > 0) {
+            firstTileId = sourceTileBoundsList.get(0).getTileId();
         }
 
-        LOG.debug("getCircleNeighbors: entry, {} tiles with z {}, {} neighborTrees, firstTileId is {}",
-                  tileBoundsList.size(), z, neighborTrees.size(), firstTileId);
+        LOG.debug("getCircleNeighbors: entry, checking {} tiles with z {}, {} neighborTrees, firstTileId is {}",
+                  sourceTileBoundsList.size(), z, neighborTrees.size(), firstTileId);
 
         final Set<OrderedCanvasIdPair> neighborTileIdPairs = new HashSet<>(50000);
 
@@ -180,7 +190,7 @@ public class TileBoundsRTree {
         double radius;
         Circle circle;
         List<TileBounds> searchResults;
-        for (final TileBounds tileBounds : tileBoundsList) {
+        for (final TileBounds tileBounds : sourceTileBoundsList) {
 
             tileWidth = tileBounds.getDeltaX();
             tileHeight = tileBounds.getDeltaY();
@@ -223,8 +233,8 @@ public class TileBoundsRTree {
      * @return true if the core tile is completely obscured by other tiles; otherwise false.
      *         Assumes tiles with lexicographically greater tileId values are drawn on top.
      */
-    public static boolean isCompletelyObscured(final TileBounds tile,
-                                               final List<TileBounds> intersectingTiles) {
+    private static boolean isCompletelyObscured(final TileBounds tile,
+                                                final List<TileBounds> intersectingTiles) {
         final String tileId = tile.getTileId();
         final Area tileArea = new Area(new Rectangle2D.Double(tile.getMinX(), tile.getMinY(),
                                                               tile.getDeltaX(), tile.getDeltaY()));
