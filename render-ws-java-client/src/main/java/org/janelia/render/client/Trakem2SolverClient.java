@@ -30,6 +30,7 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
@@ -490,6 +491,17 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                 }
 
                 final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
+
+                // check for accidental use of rough aligned stack ...
+                resolvedTiles.getTileSpecs().forEach(ts -> {
+                    if (ts.getLastTransform() instanceof ReferenceTransformSpec) {
+                        throw new IllegalStateException(
+                                "last transform for tile " + ts.getTileId() +
+                                " is a reference transform which will break this fragile client, " +
+                                "make sure --stack is not a rough aligned stack ");
+                    }
+                });
+
                 resolvedTiles.resolveTileSpecs();
                 zToTileSpecsMap.put(z, resolvedTiles);
                 totalTileCount += resolvedTiles.getTileCount();
