@@ -216,6 +216,24 @@ public class MatchDao {
         return getMatches(collection, query, excludeMatchDetails);
     }
 
+    public List<CanvasMatches> getMatchesBetweenGroups(final MatchCollectionId collectionId,
+                                                       final String pGroupId,
+                                                       final String qGroupId,
+                                                       final boolean excludeMatchDetails)
+            throws IllegalArgumentException, ObjectNotFoundException {
+
+        LOG.debug("getMatchesBetweenGroups: entry, collectionId={}, pGroupId={}, qGroupId={}",
+                  collectionId, pGroupId, qGroupId);
+
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+
+        validateRequiredGroupIds(pGroupId, qGroupId);
+
+        final Document query = getNormalizedGroupIdQuery(pGroupId, qGroupId);
+
+        return getMatches(collection, query, excludeMatchDetails);
+    }
+
     public void writeMatchesBetweenGroups(final MatchCollectionId collectionId,
                                           final List<MatchCollectionId> mergeCollectionIdList,
                                           final String pGroupId,
