@@ -266,6 +266,11 @@ public class SplitClusterClient {
 
             if ((parameters.targetStack != null) && (resolvedTiles.getTileCount() > 0)) {
                 targetClient.saveResolvedTiles(resolvedTiles, parameters.targetStack, null);
+
+                if (parameters.targetStack.equals(parameters.stack)) {
+                    // if source and target are same stack, remove tiles from source layer (z)
+                    targetClient.deleteStack(parameters.targetStack, z);
+                }
             }
 
         }
