@@ -267,6 +267,8 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                 allSectionDataList.stream()
                         .filter(sectionData -> zFilter.accept(sectionData.getZ()))
                         .map(SectionData::getSectionId)
+                        .distinct()
+                        .sorted()
                         .collect(Collectors.toList()));
 
         if (this.pGroupList.size() == 0) {
