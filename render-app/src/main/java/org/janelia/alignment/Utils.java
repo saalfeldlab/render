@@ -62,6 +62,7 @@ public class Utils {
     public static final String PNG_FORMAT = "png";
     public static final String TIFF_FORMAT = "tiff";
     public static final String TIF_FORMAT = "tif";
+    public static final String RAW_FORMAT = "raw";
 
     private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
 

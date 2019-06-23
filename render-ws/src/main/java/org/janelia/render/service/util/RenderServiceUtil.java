@@ -26,6 +26,7 @@ public class RenderServiceUtil {
     public static final String IMAGE_JPEG_MIME_TYPE = "image/jpeg";
     public static final String IMAGE_PNG_MIME_TYPE = "image/png";
     public static final String IMAGE_TIFF_MIME_TYPE = "image/tiff";
+    public static final String IMAGE_RAW_MIME_TYPE = "iapplication/octet-stream";
 
     public static void throwServiceException(final Throwable t)
             throws ServiceException {
@@ -91,6 +92,25 @@ public class RenderServiceUtil {
         return renderImageStream(renderParameters,
                                  Utils.PNG_FORMAT,
                                  IMAGE_PNG_MIME_TYPE,
+                                 maxTileSpecsToRender,
+                                 responseHelper,
+                                 render16bit);
+    }
+
+    public static Response renderRawImage(final RenderParameters renderParameters,
+                                          final Integer maxTileSpecsToRender,
+                                          final ResponseHelper responseHelper)
+    {
+        return renderRawImage(renderParameters, maxTileSpecsToRender, responseHelper, false);
+
+    }
+    public static Response renderRawImage(final RenderParameters renderParameters,
+                                          final Integer maxTileSpecsToRender,
+                                          final ResponseHelper responseHelper,
+                                          final boolean render16bit) {
+        return renderImageStream(renderParameters,
+                                 Utils.RAW_FORMAT,
+                                 IMAGE_RAW_MIME_TYPE,
                                  maxTileSpecsToRender,
                                  responseHelper,
                                  render16bit);

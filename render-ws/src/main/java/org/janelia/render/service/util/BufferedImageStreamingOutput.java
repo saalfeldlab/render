@@ -6,6 +6,7 @@ import java.awt.image.DataBufferUShort;
 import java.awt.image.SinglePixelPackedSampleModel;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.DataOutputStream;
 
 import javax.imageio.stream.ImageOutputStream;
 import javax.imageio.stream.MemoryCacheImageOutputStream;
@@ -52,7 +53,9 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
 
         LOG.info("write: entry");
 
-        if (Utils.PNG_FORMAT.equals(format)) {
+        if (Utils.RAW_FORMAT.equals(format)) {
+            writeRawImage(targetImage, outputStream);
+        } else if (Utils.PNG_FORMAT.equals(format)) {
             writePngImage(targetImage, 6, FilterType.FILTER_PAETH, outputStream);
         } else if (Utils.TIFF_FORMAT.equals(format)) {
             Utils.writeTiffImage(targetImage, outputStream);
@@ -97,7 +100,7 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
             pngWriter.setCompLevel(compressionLevel);
             pngWriter.setFilterType(filterType);
 
-            final DataBufferInt dataBuffer =((DataBufferInt) bufferedImage.getRaster().getDataBuffer());
+            final DataBufferInt dataBuffer = (DataBufferInt) bufferedImage.getRaster().getDataBuffer();
             if (dataBuffer.getNumBanks() != 1) {
                 throw new IOException("invalid number of banks (" + dataBuffer.getNumBanks() + "), must be 1");
             }
@@ -150,4 +153,34 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
 
     private static final Logger LOG = LoggerFactory.getLogger(BufferedImageStreamingOutput.class);
 
+    /**
+     * Writes raw bytes from {@link BufferedImage} to the specified {@link OutputStream}.
+     *
+     * @param  bufferedImage     image to write.
+     * @param  outputStream      target stream.
+     *
+     * @throws IOException
+     *   if the image is not ARGB or it's data buffer contains the wrong number of banks.
+     */
+    public static void writeRawImage(final BufferedImage bufferedImage,
+                                     final OutputStream outputStream)
+            throws IOException {
+
+            DataOutputStream dataStream = new DataOutputStream(outputStream);
+
+        if (bufferedImage.getType() == BufferedImage.TYPE_INT_ARGB) {
+            final DataBufferInt dataBuffer = (DataBufferInt) bufferedImage.getRaster().getDataBuffer();
+            for (int i:dataBuffer.getData()){
+                dataStream.writeInt(i);
+            }
+        } else if (bufferedImage.getType() == BufferedImage.TYPE_USHORT_GRAY) {
+            final DataBufferUShort dataBuffer = (DataBufferUShort) bufferedImage.getRaster().getDataBuffer();
+            for (int i:dataBuffer.getData()){
+                dataStream.writeShort(i);
+            }
+        } else {
+            throw new IOException("invalid image type (" + bufferedImage.getType() +
+                    "), must be BufferedImage.TYPE_INT_ARGB or BufferedImage.TYPE_USHORT_GRAY");
+        }
+    }
 }
