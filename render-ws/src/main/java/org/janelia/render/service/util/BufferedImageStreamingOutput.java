@@ -1,6 +1,7 @@
 package org.janelia.render.service.util;
 
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
 import java.awt.image.DataBufferInt;
 import java.awt.image.DataBufferUShort;
 import java.awt.image.SinglePixelPackedSampleModel;
@@ -173,6 +174,9 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
             for (int i:dataBuffer.getData()){
                 dataStream.writeInt(i);
             }
+        } else if (bufferedImage.getType() == BufferedImage.TYPE_BYTE_GRAY) {
+            final DataBufferByte dataBuffer = (DataBufferByte) bufferedImage.getRaster().getDataBuffer();
+            dataStream.write(dataBuffer.getData());
         } else if (bufferedImage.getType() == BufferedImage.TYPE_USHORT_GRAY) {
             final DataBufferUShort dataBuffer = (DataBufferUShort) bufferedImage.getRaster().getDataBuffer();
             for (int i:dataBuffer.getData()){
@@ -180,7 +184,7 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
             }
         } else {
             throw new IOException("invalid image type (" + bufferedImage.getType() +
-                    "), must be BufferedImage.TYPE_INT_ARGB or BufferedImage.TYPE_USHORT_GRAY");
+                    "), must be BufferedImage.TYPE_INT_ARGB, BufferedImage.TYPE_BYTE_GRAY or BufferedImage.TYPE_USHORT_GRAY");
         }
     }
 }

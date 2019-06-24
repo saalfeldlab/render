@@ -417,7 +417,7 @@ public class RenderImageService {
                                            @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
                                            @Context final Request request) {
 
-        LOG.info("renderRawImageForBox: entry");
+        LOG.info("renderRaw16ImageForBox: entry");
 
         final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
         if (responseHelper.isModified()) {
@@ -426,6 +426,39 @@ public class RenderImageService {
                                                    x, y, z, width, height, scale,
                                                    renderQueryParameters);
             return RenderServiceUtil.renderRawImage(renderParameters, maxTileSpecsToRender, responseHelper, true);
+        } else {
+            return responseHelper.getNotModifiedResponse();
+        }
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/raw-image")
+    @GET
+    @Produces(RenderServiceUtil.IMAGE_RAW_MIME_TYPE)
+    @ApiOperation(
+            tags = "Bounding Box Image APIs",
+            value = "Render raw image for the specified bounding box")
+    public Response renderRawImageForBox(@PathParam("owner") final String owner,
+                                           @PathParam("project") final String project,
+                                           @PathParam("stack") final String stack,
+                                           @PathParam("x") final Double x,
+                                           @PathParam("y") final Double y,
+                                           @PathParam("z") final Double z,
+                                           @PathParam("width") final Integer width,
+                                           @PathParam("height") final Integer height,
+                                           @PathParam("scale") final Double scale,
+                                           @BeanParam final RenderQueryParameters renderQueryParameters,
+                                           @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
+                                           @Context final Request request) {
+
+        LOG.info("renderRawImageForBox: entry");
+
+        final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
+        if (responseHelper.isModified()) {
+            final RenderParameters renderParameters =
+                    getRenderParametersForGroupBox(owner, project, stack, null,
+                                                   x, y, z, width, height, scale,
+                                                   renderQueryParameters);
+            return RenderServiceUtil.renderRawImage(renderParameters, maxTileSpecsToRender, responseHelper, false);
         } else {
             return responseHelper.getNotModifiedResponse();
         }
