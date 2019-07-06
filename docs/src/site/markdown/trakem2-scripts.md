@@ -154,7 +154,6 @@ Imports render tiles into an existing TrakEM2 project.
 ```
 open TrakEM2 project
 select menus File -> Import -> Render Web Services Layers
-select storage folder for new TrakEM2 project 
 enter import parameters (see descriptions below)
 progress is logged to ImageJ Log window
 process is complete when 'org.janelia.render.trakem2.ImportFromRender_Plugin.run: exit' is logged
@@ -186,15 +185,8 @@ Imports render tiles into a new TrakEM2 project.
 
 #### Usage:
 ```
-File -> New -> TrakEM2 (from Render Web Services)
-Select storage folder  
-```
-
-#### Usage:
-```
-open TrakEM2 project
-select menus File -> Import -> Render Web Services Layer
-if a TrakEM2 project is not open, select storage folder for new TrakEM2 project 
+select menus File -> New -> TrakEM2 (from Render Web Services)
+select storage folder for new TrakEM2 project 
 enter import parameters (see descriptions below)
 progress is logged to ImageJ Log window
 process is complete when 'org.janelia.render.trakem2.ImportFromRender_Plugin.run: exit' is logged
