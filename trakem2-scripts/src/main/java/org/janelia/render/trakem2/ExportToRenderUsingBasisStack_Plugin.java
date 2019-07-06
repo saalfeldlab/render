@@ -1,10 +1,11 @@
+package org.janelia.render.trakem2;
+
 import ij.IJ;
 import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,7 +17,6 @@ import java.util.regex.Pattern;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 import mpicbg.trakem2.transform.CoordinateTransform;
-import mpicbg.trakem2.transform.CoordinateTransformList;
 import mpicbg.trakem2.transform.TranslationModel2D;
 
 import org.janelia.alignment.spec.LeafTransformSpec;
@@ -28,98 +28,57 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.RenderDataClient;
 
-import ini.trakem2.Project;
-import ini.trakem2.display.Display;
 import ini.trakem2.display.Displayable;
 import ini.trakem2.display.Layer;
-import ini.trakem2.display.LayerSet;
 import ini.trakem2.display.Patch;
 import ini.trakem2.utils.Utils;
 
 /**
- * This plug-in exports TrakEM patch data into a render web services stack.
+ * This plug-in exports TrakEM patch data into a render web services stack using a basis stack
+ * to identify shared lens correction transformations.
+ *
+ * WARNING: this is a hack!
+ *
+ * Make sure transformation logic in {@link #exportPatches()} matches your use case before using.
  *
  * @author Eric Trautman
  */
-public class RenderWebServicesExport_Plugin
+public class ExportToRenderUsingBasisStack_Plugin
         implements PlugIn {
 
     @Override
     public void run(final String arg) {
 
-        System.out.println(">>>> RenderWebServicesExport_Plugin.run: entry >>>>");
+        Utils.log("\norg.janelia.render.trakem2.ExportToRenderUsingBasisStack_Plugin.run: entry");
 
-        PluginArgument pluginArgument = null;
-        try {
-            pluginArgument = PluginArgument.valueOf(arg);
-        } catch (final IllegalArgumentException e) {
-            e.printStackTrace(System.out);
-            IJ.error("Unsupported Plugin Argument",
-                     "unsupported arg '" + arg + "' specified for " + this.getClass().getName() + ", " +
-                     "valid values are: " + Arrays.asList(PluginArgument.values()));
+        if (exportData == null) {
+            exportData = new ExportData();
+        }
+        exportData.layerRange.setLayerSet();
+
+        final boolean wasCancelled = exportData.collectInputsAndLoadRenderData();
+        if (! wasCancelled) {
+            try {
+                exportPatches();
+            } catch (final Exception e) {
+                e.printStackTrace(System.out);
+                IJ.error("Export to Render Stack Failed",
+                         "Caught exception:\n" + e.getMessage());
+            }
         }
 
-        if (PluginArgument.EXPORT_TO_SERVICE.equals(pluginArgument)) {
-
-            final List<Project> projectList = Project.getProjects();
-
-            final LayerSet trakLayerSet;
-            final Display front = Display.getFront();
-            if (front == null) {
-                final Project trakProject = projectList.get(0);
-                trakLayerSet = trakProject.getRootLayerSet();
-            } else {
-                trakLayerSet = front.getLayerSet();
-            }
-
-            if (exportData == null) {
-                exportData = new ExportData();
-            }
-            exportData.setTrakLayerSet(trakLayerSet);
-
-
-            final boolean wasCancelled = exportData.loadRenderData();
-            if (! wasCancelled) {
-                try {
-                    exportPatches();
-                } catch (final Exception e) {
-                    e.printStackTrace(System.out);
-                    IJ.error("Export to Render Stack Failed",
-                             "Caught exception:\n" + e.getMessage());
-                }
-            }
-
-        }
-
-        System.out.println("<<<< RenderWebServicesExport_Plugin.run: exit <<<<");
-    }
-
-    private void flattenTransforms(final CoordinateTransform ct,
-                                   final List<CoordinateTransform> flattenedList) {
-        if (ct instanceof CoordinateTransformList) {
-            @SuppressWarnings("unchecked")
-            final CoordinateTransformList<CoordinateTransform> ctList =
-                    (CoordinateTransformList<CoordinateTransform>) ct;
-            for (final CoordinateTransform ctListItem : ctList.getList(null)) {
-                flattenTransforms(ctListItem, flattenedList);
-            }
-        } else {
-            flattenedList.add(ct);
-        }
+        Utils.log("\norg.janelia.render.trakem2.ExportToRenderUsingBasisStack_Plugin.run: exit");
     }
 
     private void exportPatches()
             throws IOException {
-
-        final Layer firstLayer = exportData.trakLayerSet.getLayer(exportData.trakMinZ);
-        final Layer lastLayer = exportData.trakLayerSet.getLayer(exportData.trakMaxZ);
 
         final Map<Double, ResolvedTileSpecCollection> zToTilesMap = new HashMap<>();
         final Map<Double, Set<String>> zToTileIdSetMap = new HashMap<>();
 
         final ProcessTimer timer = new ProcessTimer();
 
-        for (final Layer layer : exportData.trakLayerSet.getLayers(firstLayer, lastLayer)) {
+        for (final Layer layer : exportData.layerRange.getLayersInRange()) {
 
             // only grab visible patches since Stephan typically marks problem patches as not visible
             final List<Displayable> displayableList = layer.getDisplayables(Patch.class,
@@ -162,7 +121,7 @@ public class RenderWebServicesExport_Plugin
 
                     final CoordinateTransform ct = patch.getFullCoordinateTransform();
                     final List<CoordinateTransform> flattenedTransformList = new ArrayList<>();
-                    flattenTransforms(ct, flattenedTransformList);
+                    ExportToRenderAsIs_Plugin.flattenTransforms(ct, flattenedTransformList);
 
                     // TODO: revisit these assumptions - is there a more generic way to handle?
 
@@ -250,7 +209,6 @@ public class RenderWebServicesExport_Plugin
                                                         StackMetaData.StackState.COMPLETE);
         }
 
-        Utils.log("\nexportPatches: Done!");
     }
 
     private String getTransformLogInfo(final List<CoordinateTransform> flattenedTransformList) {
@@ -263,20 +221,13 @@ public class RenderWebServicesExport_Plugin
 
     private static ExportData exportData = null;
 
-    private enum PluginArgument {
-        EXPORT_TO_SERVICE
-    }
-
     private class ExportData {
-
-        private LayerSet trakLayerSet;
 
         private String baseDataUrl;
         private String basisRenderOwner;
         private String basisRenderProject;
         private String basisRenderStack;
-        private double trakMinZ;
-        private double trakMaxZ;
+        private final LayerRange layerRange;
         private String targetRenderOwner;
         private String targetRenderProject;
         private String targetRenderStack;
@@ -289,13 +240,12 @@ public class RenderWebServicesExport_Plugin
         private final Map<String, SectionData> sectionIdToDataMap;
         private final Map<Double, Double> trakZToTargetZMap;
 
-         ExportData() {
+        ExportData() {
             baseDataUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
             basisRenderOwner = "flyTEM";
             basisRenderProject = "FAFB00";
             basisRenderStack = "v12_acquire_merged";
-            trakMinZ = 2429.0;
-            trakMaxZ = 2429.3;
+            layerRange = new LayerRange(2429.0, 2429.3);
             targetRenderOwner = basisRenderOwner;
             targetRenderProject = "FAFB_montage";
             targetRenderStack = "trakem2_montage_2429_test_5";
@@ -304,10 +254,6 @@ public class RenderWebServicesExport_Plugin
 
             sectionIdToDataMap = new HashMap<>();
             trakZToTargetZMap = new HashMap<>();
-        }
-
-        void setTrakLayerSet(final LayerSet trakLayerSet) {
-            this.trakLayerSet = trakLayerSet;
         }
 
         boolean setParametersFromDialog() {
@@ -319,8 +265,7 @@ public class RenderWebServicesExport_Plugin
             dialog.addStringField("Basis Render Stack Owner", basisRenderOwner, defaultTextColumns);
             dialog.addStringField("Basis Render Stack Project", basisRenderProject, defaultTextColumns);
             dialog.addStringField("Basis Render Stack Name", basisRenderStack, defaultTextColumns);
-            dialog.addNumericField("TrakEM2 Min Z", trakMinZ, 1);
-            dialog.addNumericField("TrakEM2 Max Z", trakMaxZ, 1);
+            layerRange.addFieldsToDialog(dialog);
             dialog.addStringField("Target Render Stack Owner", targetRenderOwner, defaultTextColumns);
             dialog.addStringField("Target Render Stack Project", targetRenderProject, defaultTextColumns);
             dialog.addStringField("Target Render Stack Name", targetRenderStack, defaultTextColumns);
@@ -329,6 +274,7 @@ public class RenderWebServicesExport_Plugin
             dialog.addCheckbox("Complete Stack After Export", completeStackAfterExport);
 
             dialog.showDialog();
+            dialog.repaint(); // seems to help with missing dialog elements, but shouldn't be necessary
 
             final boolean wasCancelled = dialog.wasCanceled();
 
@@ -337,8 +283,7 @@ public class RenderWebServicesExport_Plugin
                 basisRenderOwner = dialog.getNextString().trim();
                 basisRenderProject = dialog.getNextString().trim();
                 basisRenderStack =  dialog.getNextString().trim();
-                trakMinZ = dialog.getNextNumber();
-                trakMaxZ = dialog.getNextNumber();
+                layerRange.setFieldsFromDialog(dialog);
                 targetRenderOwner = dialog.getNextString().trim();
                 targetRenderProject = dialog.getNextString().trim();
                 targetRenderStack =  dialog.getNextString().trim();
@@ -352,7 +297,7 @@ public class RenderWebServicesExport_Plugin
             return wasCancelled;
         }
 
-        boolean loadRenderData() {
+        boolean collectInputsAndLoadRenderData() {
 
             boolean wasCancelled = setParametersFromDialog();
 
@@ -360,17 +305,7 @@ public class RenderWebServicesExport_Plugin
 
                 try {
 
-                    final Layer firstLayer = exportData.trakLayerSet.getLayer(exportData.trakMinZ);
-                    if (firstLayer == null) {
-                        throw new IllegalArgumentException(
-                                "no layers found with min Z " + exportData.trakMinZ);
-                    }
-
-                    final Layer lastLayer = exportData.trakLayerSet.getLayer(exportData.trakMaxZ);
-                    if (lastLayer == null) {
-                        throw new IllegalArgumentException(
-                                "no layers found with max Z " + exportData.trakMaxZ);
-                    }
+                    layerRange.validate();
 
                     if (hasMappedZValues()) {
                         try {
@@ -406,7 +341,7 @@ public class RenderWebServicesExport_Plugin
                     e.printStackTrace(System.out);
                     IJ.error("Invalid Render Parameters",
                              "Specified parameters caused the following exception:\n" + e.getMessage());
-                    wasCancelled = loadRenderData();
+                    wasCancelled = collectInputsAndLoadRenderData();
                 }
             }
 
