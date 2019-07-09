@@ -1,3 +1,5 @@
+package org.janelia.render.trakem2;
+
 import ij.IJ;
 import ij.ImagePlus;
 import ij.Prefs;
@@ -35,6 +37,7 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.RenderDataClient;
 
 import ini.trakem2.Project;
@@ -50,24 +53,17 @@ import ini.trakem2.utils.Utils;
  *
  * @author Eric Trautman
  */
-public class RenderWebServicesImport_Plugin
+public class ImportFromRender_Plugin
         implements PlugIn {
 
     @Override
     public void run(final String arg) {
 
-        PluginArgument pluginArgument = null;
-        try {
-            pluginArgument = PluginArgument.valueOf(arg);
-        } catch (final IllegalArgumentException e) {
-            IJ.error("Unsupported Plugin Argument",
-                     "unsupported arg '" + arg + "' specified for " + this.getClass().getName() + ", " +
-                     "valid values are: " + Arrays.asList(PluginArgument.values()));
-        }
+        final PluginArgument pluginArgument = PluginArgument.checkedValueOf(arg, this);
 
         if (pluginArgument != null) {
 
-            Utils.log("\nRenderWebServicesImport_Plugin.run: entry");
+            Utils.log("\norg.janelia.render.trakem2.ImportFromRender_Plugin.run: entry");
 
             final List<Project> projectList = Project.getProjects();
 
@@ -86,7 +82,7 @@ public class RenderWebServicesImport_Plugin
                 String storageFolder = chooser.getDirectory();
 
                 if (storageFolder == null) {
-                    Utils.log("RenderWebServicesImport_Plugin.run: cancelled");
+                    Utils.log("org.janelia.render.trakem2.ImportFromRender_Plugin.run: cancelled");
                     return;
                 }
 
@@ -125,7 +121,7 @@ public class RenderWebServicesImport_Plugin
                 }
             }
 
-            Utils.log("\nRenderWebServicesImport_Plugin.run: exit");
+            Utils.log("\norg.janelia.render.trakem2.ImportFromRender_Plugin.run: exit");
         }
 
     }
@@ -151,6 +147,8 @@ public class RenderWebServicesImport_Plugin
         for (final RenderParameters layerRenderParameters : importData.layerRenderParametersList) {
             tileSpecList.addAll(layerRenderParameters.getTileSpecs());
         }
+
+        final ProcessTimer timer = new ProcessTimer();
 
         final StringBuilder skippedMasksCsvData = new StringBuilder();
         int tileCount = 0;
@@ -235,7 +233,7 @@ public class RenderWebServicesImport_Plugin
 
                 tileCount++;
 
-                if (tileCount % 100 == 0) {
+                if (timer.hasIntervalPassed()) {
                     Utils.log("convertTileSpecsToPatches: converted " + tileCount +
                               " out of " + tileSpecList.size() + " tiles");
                 }
@@ -275,7 +273,22 @@ public class RenderWebServicesImport_Plugin
     private static ImportData importData = null;
 
     private enum PluginArgument {
-        NEW_PROJECT, IMPORT_LAYER
+        NEW_PROJECT, IMPORT_LAYER;
+
+        public static PluginArgument checkedValueOf(final String arg,
+                                                    final PlugIn pluginInstance) {
+            PluginArgument pluginArgument = null;
+            try {
+                pluginArgument = PluginArgument.valueOf(arg);
+            } catch (final IllegalArgumentException e) {
+                e.printStackTrace(System.out);
+                IJ.error("Unsupported Plugin Argument",
+                         "unsupported arg '" + arg + "' specified for " + pluginInstance.getClass().getName() + ", " +
+                         "valid values are: " + Arrays.asList(PluginArgument.values()));
+            }
+            return pluginArgument;
+        }
+
     }
 
     private class ImportData {
@@ -309,10 +322,10 @@ public class RenderWebServicesImport_Plugin
             renderOwner = "flyTEM";
             renderProject = "FAFB00";
             renderStack = "v12_acquire_merged";
-            minZ = 2429.0;
+            minZ = 1.0;
             maxZ = minZ;
             imagePlusType = ImagePlus.GRAY8;
-            splitSections = true;
+            splitSections = false;
             loadMasks = false;
             replaceLastWithStage = false;
             numberOfMipmapThreads = 1;
@@ -341,14 +354,15 @@ public class RenderWebServicesImport_Plugin
             dialog.addStringField("Render Stack Name", renderStack, defaultTextColumns);
             dialog.addNumericField("Min Z", minZ, 1);
             dialog.addNumericField("Max Z", maxZ, 1);
-            dialog.addNumericField("Image Plus Type (use -1 to slowly derive dynamically)", imagePlusType, 0);
+            dialog.addNumericField("Image Plus Type (use '-1' to slowly derive dynamically)", imagePlusType, 0);
             dialog.addMessage("  note: image plus type values are: 0:GRAY8, 1:GRAY16, 2:GRAY32, 3:COLOR_256, 4:COLOR_RGB");
-            dialog.addCheckbox("Split Sections", splitSections);
             dialog.addCheckbox("Load Masks", loadMasks);
+            dialog.addCheckbox("Split Sections", splitSections);
             dialog.addCheckbox("Replace Last Transform With Stage", replaceLastWithStage);
             dialog.addNumericField("Number of threads for mipmaps", numberOfMipmapThreads, 0);
 
             dialog.showDialog();
+            dialog.repaint(); // seems to help with missing dialog elements, but shouldn't be necessary
 
             final boolean wasCancelled = dialog.wasCanceled();
 
@@ -360,8 +374,8 @@ public class RenderWebServicesImport_Plugin
                 minZ = dialog.getNextNumber();
                 maxZ = dialog.getNextNumber();
                 imagePlusType = new Double(dialog.getNextNumber()).intValue();
-                splitSections = dialog.getNextBoolean();
                 loadMasks = dialog.getNextBoolean();
+                splitSections = dialog.getNextBoolean();
                 replaceLastWithStage = dialog.getNextBoolean();
                 numberOfMipmapThreads = (int) dialog.getNextNumber();
             }
@@ -411,6 +425,7 @@ public class RenderWebServicesImport_Plugin
                         if (isNewProject) {
 
                             final TileSpec firstTileSpec = layerRenderParametersList.get(0).getTileSpecs().get(0);
+                            @SuppressWarnings("WrapperTypeMayBePrimitive")
                             final Double meshCellSize = firstTileSpec.getMeshCellSize();
                             trakProject.setProperty("mesh_resolution", String.valueOf(meshCellSize.intValue()));
                             trakProject.setProperty("n_mipmap_threads", String.valueOf(numberOfMipmapThreads));

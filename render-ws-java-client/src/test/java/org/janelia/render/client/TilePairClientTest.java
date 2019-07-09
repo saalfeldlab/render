@@ -2,6 +2,7 @@ package org.janelia.render.client;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -157,7 +158,7 @@ public class TilePairClientTest {
 
         MockTilePairClient(final TilePairClient.Parameters p,
                            final Double... zValues)
-                throws IllegalArgumentException {
+                throws IllegalArgumentException, IOException {
             super(p);
             this.zValues = Arrays.asList(zValues);
         }

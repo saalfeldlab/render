@@ -561,10 +561,28 @@ public class HierarchicalDataService {
             });
 
             final List<CanvasMatches> canvasMatchesList = new ArrayList<>();
-            distinctSectionIds.forEach(
-                    sectionId -> canvasMatchesList.addAll(matchDao.getMatchesWithinGroup(matchCollectionId,
-                                                                                         sectionId,
-                                                                                         true)));
+            final int numberOfSectionIds = distinctSectionIds.size();
+            if (numberOfSectionIds > 1) {
+                final List<String> sortedSectionIds = distinctSectionIds.stream().sorted().collect(Collectors.toList());
+                for (int i = 0; i < numberOfSectionIds; i++) {
+                    final String pGroupId = sortedSectionIds.get(i);
+                    canvasMatchesList.addAll(matchDao.getMatchesWithinGroup(matchCollectionId,
+                                                                            pGroupId,
+                                                                            true));
+                    for (int j = i + 1; j < numberOfSectionIds; j++) {
+                        final String qGroupId = sortedSectionIds.get(j);
+                        canvasMatchesList.addAll(matchDao.getMatchesBetweenGroups(matchCollectionId,
+                                                                                pGroupId,
+                                                                                qGroupId,
+                                                                                true));
+                    }
+                }
+            } else {
+                distinctSectionIds.forEach(
+                        sectionId -> canvasMatchesList.addAll(matchDao.getMatchesWithinGroup(matchCollectionId,
+                                                                                             sectionId,
+                                                                                             true)));
+            }
 
             final SortedConnectedCanvasIdClusters idClusters = new SortedConnectedCanvasIdClusters(canvasMatchesList);
 

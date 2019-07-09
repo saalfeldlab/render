@@ -198,7 +198,11 @@ public class WarpTransformClient {
         final List<CanvasMatches> matchesList = new ArrayList<>();
         for (final SectionData sectionData : sectionDataList) {
             if (z.equals(sectionData.getZ())) {
-                matchesList.addAll(matchDataClient.getMatchesWithinGroup(sectionData.getSectionId()));
+                if (tileClusterParameters.includeMatchesOutsideGroup) {
+                    matchesList.addAll(matchDataClient.getMatchesWithPGroupId(sectionData.getSectionId(), true));
+                } else {
+                    matchesList.addAll(matchDataClient.getMatchesWithinGroup(sectionData.getSectionId()));
+                }
             }
         }
 

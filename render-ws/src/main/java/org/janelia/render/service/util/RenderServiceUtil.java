@@ -26,7 +26,7 @@ public class RenderServiceUtil {
     public static final String IMAGE_JPEG_MIME_TYPE = "image/jpeg";
     public static final String IMAGE_PNG_MIME_TYPE = "image/png";
     public static final String IMAGE_TIFF_MIME_TYPE = "image/tiff";
-    public static final String IMAGE_RAW_MIME_TYPE = "iapplication/octet-stream";
+    public static final String IMAGE_RAW_MIME_TYPE = "application/octet-stream";
 
     public static void throwServiceException(final Throwable t)
             throws ServiceException {
@@ -51,7 +51,8 @@ public class RenderServiceUtil {
         try {
 
             final BufferedImage targetImage = validateParametersAndRenderImage(renderParameters,
-                                                                               true);
+                                                                               true,
+                                                                               false);
             final BufferedImageStreamingOutput out =
                     new BufferedImageStreamingOutput(targetImage,
                                                      Utils.JPEG_FORMAT,
@@ -80,11 +81,10 @@ public class RenderServiceUtil {
 
     public static Response renderPngImage(final RenderParameters renderParameters,
                                           final Integer maxTileSpecsToRender,
-                                          final ResponseHelper responseHelper)
-    {
+                                          final ResponseHelper responseHelper) {
         return renderPngImage(renderParameters, maxTileSpecsToRender, responseHelper, false);
-
     }
+
     public static Response renderPngImage(final RenderParameters renderParameters,
                                           final Integer maxTileSpecsToRender,
                                           final ResponseHelper responseHelper,
@@ -99,11 +99,11 @@ public class RenderServiceUtil {
 
     public static Response renderRawImage(final RenderParameters renderParameters,
                                           final Integer maxTileSpecsToRender,
-                                          final ResponseHelper responseHelper)
-    {
+                                          final ResponseHelper responseHelper) {
         return renderRawImage(renderParameters, maxTileSpecsToRender, responseHelper, false);
 
     }
+
     public static Response renderRawImage(final RenderParameters renderParameters,
                                           final Integer maxTileSpecsToRender,
                                           final ResponseHelper responseHelper,
@@ -135,18 +135,19 @@ public class RenderServiceUtil {
     }
 
     public static Response renderImageStream(final RenderParameters renderParameters,
-    final String format,
-    final String mimeType,
-    final Integer maxTileSpecsToRender,
-    final ResponseHelper responseHelper) {
-        return renderImageStream(renderParameters, format, mimeType, maxTileSpecsToRender, responseHelper,false);
-    }
-    public static Response renderImageStream(final RenderParameters renderParameters,
                                              final String format,
                                              final String mimeType,
                                              final Integer maxTileSpecsToRender,
-                                             final ResponseHelper responseHelper,
-                                             final boolean render16bit) {
+                                             final ResponseHelper responseHelper) {
+        return renderImageStream(renderParameters, format, mimeType, maxTileSpecsToRender, responseHelper, false);
+    }
+
+    private static Response renderImageStream(final RenderParameters renderParameters,
+                                              final String format,
+                                              final String mimeType,
+                                              final Integer maxTileSpecsToRender,
+                                              final ResponseHelper responseHelper,
+                                              final boolean render16bit) {
 
         LOG.info("renderImageStream: entry, format={}, mimeType={}", format, mimeType);
 
@@ -212,10 +213,7 @@ public class RenderServiceUtil {
 
         return response;
     }
-    private static BufferedImage validateParametersAndRenderImage(final RenderParameters renderParameters,
-                                                                  final boolean renderBoundingBoxesOnly){
-        return validateParametersAndRenderImage(renderParameters, renderBoundingBoxesOnly,false);
-    }
+
     private static BufferedImage validateParametersAndRenderImage(final RenderParameters renderParameters,
                                                                   final boolean renderBoundingBoxesOnly,
                                                                   final boolean render16bit)
@@ -224,7 +222,12 @@ public class RenderServiceUtil {
         LOG.info("validateParametersAndRenderImage: entry, renderParameters={}", renderParameters);
 
         renderParameters.initializeDerivedValues();
-        renderParameters.validate();
+
+        // only validate source images and masks if we are rendering real data
+        if (!renderBoundingBoxesOnly) {
+            renderParameters.validate();
+        }
+
         renderParameters.setNumberOfThreads(1); // service requests should always be single threaded
 
         final BufferedImage targetImage;
@@ -242,14 +245,12 @@ public class RenderServiceUtil {
                 ShortRenderer.render(renderParameters,
                                      targetImage,
                                      SharedImageProcessorCache.getInstance());
-            }
-            else{
+            } else {
                 targetImage = renderParameters.openTargetImage();
                 ArgbRenderer.render(renderParameters,
                                     targetImage,
                                     SharedImageProcessorCache.getInstance());
             }
-            
 
         }
 

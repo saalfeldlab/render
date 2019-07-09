@@ -27,9 +27,9 @@ public class HierarchicalRoughStackFunction
     private final TierZeroStack tierZeroStack;
     private final StackId roughStackId;
 
-    public HierarchicalRoughStackFunction(final String baseDataUrl,
-                                          final TierZeroStack tierZeroStack,
-                                          final StackId roughStackId) {
+    HierarchicalRoughStackFunction(final String baseDataUrl,
+                                   final TierZeroStack tierZeroStack,
+                                   final StackId roughStackId) {
         this.baseDataUrl = baseDataUrl;
         this.tierZeroStack = tierZeroStack;
         this.roughStackId = roughStackId;
@@ -67,7 +67,7 @@ public class HierarchicalRoughStackFunction
 
         final TileSpec layerTileSpec = tileSpecCollection.getTileSpecs().iterator().next();
 
-        final TransformSpec roughAlignmentTransform;
+        final LeafTransformSpec roughAlignmentTransform;
 
         final TransformSpec lastTransform = layerTileSpec.getLastTransform();
         final CoordinateTransform transformInstance = lastTransform.getNewInstance();
@@ -94,8 +94,9 @@ public class HierarchicalRoughStackFunction
         final ResolvedTileSpecCollection tileCollection =
                 montageDataClient.getResolvedTiles(montageStackId.getStack(), z);
 
-        tileCollection.addTransformSpecToCollection(roughAlignmentTransform);
-        tileCollection.addReferenceTransformToAllTiles(roughAlignmentTransform.getId(), false);
+        // tileCollection.addTransformSpecToCollection(roughAlignmentTransform);
+        // tileCollection.addReferenceTransformToAllTiles(roughAlignmentTransform.getId(), false);
+        tileCollection.preConcatenateTransformToAllTiles(roughAlignmentTransform);
 
         final RenderDataClient roughDataClient =
                 new RenderDataClient(baseDataUrl,

@@ -11,24 +11,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
-import mpicbg.models.IllDefinedDataPointsException;
+import mpicbg.models.ErrorStatistic;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
-import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
+import mpicbg.models.TileUtil;
 
 import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
@@ -154,6 +156,9 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                 arity = 0)
         public boolean completeTargetStack = false;
 
+        @Parameter(names = "--threads", description = "Number of threads to be used")
+        public int numberOfThreads = 1;
+
         public Parameters() {
         }
 
@@ -190,7 +195,8 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                             "--owner", "flyTEM",
                             "--project", "FAFB_montage",
                             "--stack", "check_923_split_rough",
-                            "--targetStack", "check_923_merged",
+                            "--targetStack", "check_923_merged_test",
+                            "--threads", "2",
                             "--completeTargetStack",
                             "--matchCollection", "FAFB_montage_fix_test",
 //                            "--minZ", "100270",
@@ -261,6 +267,8 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                 allSectionDataList.stream()
                         .filter(sectionData -> zFilter.accept(sectionData.getZ()))
                         .map(SectionData::getSectionId)
+                        .distinct()
+                        .sorted()
                         .collect(Collectors.toList()));
 
         if (this.pGroupList.size() == 0) {
@@ -307,7 +315,7 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
     }
 
     private void run()
-            throws IOException, NotEnoughDataPointsException, IllDefinedDataPointsException {
+            throws IOException, ExecutionException, InterruptedException {
 
         LOG.info("run: entry");
 
@@ -360,8 +368,19 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                     ((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
                 }
 
-                tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
+                // tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
 
+                final ErrorStatistic observer = new ErrorStatistic(parameters.maxPlateauWidth + 1 );
+                final float damp = 1.0f;
+                TileUtil.optimizeConcurrently(observer,
+                                              parameters.maxAllowedError,
+                                              parameters.maxIterations,
+                                              parameters.maxPlateauWidth,
+                                              damp,
+                                              tileConfig,
+                                              tileConfig.getTiles(),
+                                              tileConfig.getFixedTiles(),
+                                              parameters.numberOfThreads);
             }
         }
 
@@ -474,6 +493,17 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                 }
 
                 final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
+
+                // check for accidental use of rough aligned stack ...
+                resolvedTiles.getTileSpecs().forEach(ts -> {
+                    if (ts.getLastTransform() instanceof ReferenceTransformSpec) {
+                        throw new IllegalStateException(
+                                "last transform for tile " + ts.getTileId() +
+                                " is a reference transform which will break this fragile client, " +
+                                "make sure --stack is not a rough aligned stack ");
+                    }
+                });
+
                 resolvedTiles.resolveTileSpecs();
                 zToTileSpecsMap.put(z, resolvedTiles);
                 totalTileCount += resolvedTiles.getTileCount();
