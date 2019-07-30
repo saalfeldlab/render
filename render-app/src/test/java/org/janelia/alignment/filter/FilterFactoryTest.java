@@ -32,7 +32,7 @@ public class FilterFactoryTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         ArgbRendererTest.deleteTestFile(factoryFile);
     }
 
@@ -48,6 +48,7 @@ public class FilterFactoryTest {
         final List<FilterSpec> favoritesSpecList = new ArrayList<>();
         favoritesSpecList.add(FilterSpec.forFilter(new CLAHE()));
         favoritesSpecList.add(FilterSpec.forFilter(new EqualizeHistogram()));
+        favoritesSpecList.add(FilterSpec.forFilter(new Rank()));
         favoritesSpecList.add(FilterSpec.forFilter(new RollingBallSubtraction()));
         factory.addFilterList("favorites", favoritesSpecList);
 
