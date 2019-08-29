@@ -145,6 +145,21 @@ public class TileBoundsRTree {
     }
 
     /**
+     * @return nearest tiles to the specified bounding box, in ascending order of distance.
+     */
+    public List<TileBounds> findTilesNearestToBox(final double minX,
+                                                  final double minY,
+                                                  final double maxX,
+                                                  final double maxY,
+                                                  final double maxDistance,
+                                                  final int maxCount) {
+
+        final Rectangle rectangle = Geometries.rectangle(minX, minY, maxX, maxY);
+        final Observable<Entry<TileBounds, Geometry>> searchResults = tree.nearest(rectangle, maxDistance, maxCount);
+        return convertResultsToList(searchResults);
+    }
+
+    /**
      * @param  sourceTileBoundsList  list of source tile bounds to check for neighbors.
      *
      * @param  neighborTrees         list of trees for all neighboring sections to include in the pairing process.
