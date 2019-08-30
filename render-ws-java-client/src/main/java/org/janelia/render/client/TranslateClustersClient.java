@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
+import java.util.stream.Collectors;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
@@ -85,6 +86,13 @@ public class TranslateClustersClient {
         public Integer originOffset = 10;
 
         @Parameter(
+                names = "--excludeTileIdsMissingFromStacks",
+                description = "Name(s) of stack(s) that contain ids of tiles to be included in target stack (assumes owner and project are same as source stack).",
+                variableArity = true
+        )
+        public List<String> excludeTileIdsMissingFromStacks;
+
+        @Parameter(
                 names = "--completeTargetStack",
                 description = "Complete target stack after processing",
                 arity = 0)
@@ -158,6 +166,35 @@ public class TranslateClustersClient {
         for (final Double z : parameters.zValues) {
 
             final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
+
+            final Set<String> tileIdsToKeep = new HashSet<>();
+            String filterStack = null;
+            if (parameters.excludeTileIdsMissingFromStacks != null) {
+
+                for (final String tileIdStack : parameters.excludeTileIdsMissingFromStacks) {
+
+                    tileIdsToKeep.addAll(
+                            renderDataClient.getTileBounds(tileIdStack, z)
+                                    .stream()
+                                    .map(TileBounds::getTileId)
+                                    .collect(Collectors.toList()));
+
+                    // once a stack with tiles for the current z is found, use that as the filter
+                    if (tileIdsToKeep.size() > 0) {
+                        filterStack = tileIdStack;
+                        break;
+                    }
+                }
+
+            }
+
+            if (tileIdsToKeep.size() > 0) {
+                final int numberOfTilesBeforeFilter = resolvedTiles.getTileCount();
+                resolvedTiles.removeDifferentTileSpecs(tileIdsToKeep);
+                final int numberOfTilesRemoved = numberOfTilesBeforeFilter - resolvedTiles.getTileCount();
+                LOG.info("translateLayerClusters: removed {} tiles not found in {}", numberOfTilesRemoved, filterStack);
+            }
+
             final Set<String> stackTileIds = new HashSet<>(resolvedTiles.getTileIds());
 
             final TileIdsWithMatches tileIdsWithMatches =
@@ -188,14 +225,17 @@ public class TranslateClustersClient {
                                                                                 sortedConnectedTileIdSets,
                                                                                 new HashSet<>(),
                                                                                 unconnectedTileIds);
+
+            if (unconnectedTileIds.size() > 0) {
+                LOG.info("translateLayerClusters: removing {} unconnected tiles from z {}",
+                         unconnectedTileIds.size(), z);
+                resolvedTiles.removeTileSpecs(unconnectedTileIds);
+            }
+
             moveSmallClustersForLayer(resolvedTiles,
                                       z,
                                       sortedConnectedTileIdSets.get(0),
                                       smallerRemainingClusters);
-
-            LOG.info("translateLayerClusters: removing {} unconnected tiles from z {}", unconnectedTileIds.size(), z);
-
-            resolvedTiles.removeTileSpecs(unconnectedTileIds);
 
             moveLayerToOrigin(resolvedTiles, z);
 
