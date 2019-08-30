@@ -86,6 +86,13 @@ public class CopyStackClient {
                 arity = 0)
         public boolean moveToOrigin = false;
 
+        @Parameter(
+                names = "--excludeTileIdsMissingFromStacks",
+                description = "Name(s) of stack(s) that contain ids of tiles to be included in target stack (assumes owner and project are same as source stack).",
+                variableArity = true
+        )
+        public List<String> excludeTileIdsMissingFromStacks;
+
         @ParametersDelegate
         LayerBoundsParameters layerBounds = new LayerBoundsParameters();
 
@@ -269,6 +276,34 @@ public class CopyStackClient {
                      sourceCollection.getTileCount());
         } else {
             toStackZValues.add(z);
+        }
+
+        final Set<String> tileIdsToKeep = new HashSet<>();
+        String filterStack = null;
+        if (parameters.excludeTileIdsMissingFromStacks != null) {
+
+            for (final String tileIdStack : parameters.excludeTileIdsMissingFromStacks) {
+
+                tileIdsToKeep.addAll(
+                        toDataClient.getTileBounds(tileIdStack, z)
+                                .stream()
+                                .map(TileBounds::getTileId)
+                                .collect(Collectors.toList()));
+
+                // once a stack with tiles for the current z is found, use that as the filter
+                if (tileIdsToKeep.size() > 0) {
+                    filterStack = tileIdStack;
+                    break;
+                }
+            }
+
+        }
+
+        if (tileIdsToKeep.size() > 0) {
+            final int numberOfTilesBeforeFilter = sourceCollection.getTileCount();
+            sourceCollection.removeDifferentTileSpecs(tileIdsToKeep);
+            final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();
+            LOG.info("copyLayer: removed {} tiles not found in {}", numberOfTilesRemoved, filterStack);
         }
 
         if (moveStackTransform != null) {
