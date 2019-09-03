@@ -159,6 +159,7 @@ public class TranslateClustersClient {
 
         if (parameters.targetStack == null) {
             parameters.targetStack = parameters.stack;
+            targetClient.ensureStackIsInLoadingState(parameters.stack, sourceStackMetaData);
         } else {
             targetClient.setupDerivedStack(sourceStackMetaData, parameters.targetStack);
         }
