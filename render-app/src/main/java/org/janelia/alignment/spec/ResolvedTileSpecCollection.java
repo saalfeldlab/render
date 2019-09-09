@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import mpicbg.models.Affine2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.trakem2.transform.AffineModel2D;
 
@@ -201,24 +202,12 @@ public class ResolvedTileSpecCollection implements Serializable {
         TransformSpec newTransformSpec = transformSpec;
         if (PRE_CONCATENATE_LAST.equals(applicationMethod)) {
 
-            final TransformSpec lastTransformSpec = tileSpec.getLastTransform();
-            final CoordinateTransform lastTransform = lastTransformSpec.buildInstance();
-            if (lastTransform instanceof AffineModel2D) {
-                final AffineModel2D lastAffine = (AffineModel2D) lastTransform;
-                final CoordinateTransform newTransform = transformSpec.buildInstance();
-                if (newTransform instanceof AffineModel2D) {
-
-                    lastAffine.preConcatenate((AffineModel2D) newTransform);
-                    newTransformSpec = new LeafTransformSpec(AffineModel2D.class.getName(), lastAffine.toDataString());
-
-                } else {
-                    throw new IllegalArgumentException("concatenated transform must be an instance of " +
-                                                       AffineModel2D.class.getName());
-                }
-            } else {
-                throw new IllegalArgumentException("last transform for tile spec '" + tileId +
-                                                   "' must be an instance of " + AffineModel2D.class.getName());
-            }
+            final AffineModel2D lastAffine = getAffineModelForSpec("last",
+                                                                   tileSpec.getLastTransform());
+            final AffineModel2D preConcatenatedAffine = getAffineModelForSpec("pre-concatenated",
+                                                                              transformSpec);
+            lastAffine.preConcatenate(preConcatenatedAffine);
+            newTransformSpec = new LeafTransformSpec(AffineModel2D.class.getName(), lastAffine.toDataString());
 
             tileSpec.removeLastTransformSpec();
 
@@ -598,6 +587,22 @@ public class ResolvedTileSpecCollection implements Serializable {
     @ApiModelProperty(name = "transformIdToSpecMap")
     public Map<String, TransformSpec> getNullTransformIdToSpecMap() {
         return null;
+    }
+
+    @JsonIgnore
+    private AffineModel2D getAffineModelForSpec(final String context,
+                                                final TransformSpec transformSpec) {
+        final CoordinateTransform transform = transformSpec.buildInstance();
+        final AffineModel2D affineModel;
+        if (transform instanceof AffineModel2D) {
+            affineModel = (AffineModel2D) transform;
+        }  else if (transform instanceof Affine2D) {
+            affineModel = new AffineModel2D();
+            affineModel.set(((Affine2D) transform).createAffine());
+        } else {
+            throw new IllegalArgumentException(context + " transform must implement " + Affine2D.class.getName());
+        }
+        return affineModel;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ResolvedTileSpecCollection.class);
