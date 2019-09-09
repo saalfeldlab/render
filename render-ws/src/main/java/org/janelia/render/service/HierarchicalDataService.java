@@ -32,6 +32,7 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.CanvasNameToPointsMap;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
+import org.janelia.alignment.match.TileIdsWithMatches;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileBounds;
@@ -560,31 +561,37 @@ public class HierarchicalDataService {
                 }
             });
 
-            final List<CanvasMatches> canvasMatchesList = new ArrayList<>();
+            final Set<String> layerTileIds = tileIdToBoundsMap.keySet();
+            final TileIdsWithMatches tileIdsWithMatches = new TileIdsWithMatches();
+
             final int numberOfSectionIds = distinctSectionIds.size();
             if (numberOfSectionIds > 1) {
                 final List<String> sortedSectionIds = distinctSectionIds.stream().sorted().collect(Collectors.toList());
                 for (int i = 0; i < numberOfSectionIds; i++) {
                     final String pGroupId = sortedSectionIds.get(i);
-                    canvasMatchesList.addAll(matchDao.getMatchesWithinGroup(matchCollectionId,
-                                                                            pGroupId,
-                                                                            true));
+                    tileIdsWithMatches.addMatches(matchDao.getMatchesWithinGroup(matchCollectionId,
+                                                                                 pGroupId,
+                                                                                 true),
+                                                  layerTileIds);
                     for (int j = i + 1; j < numberOfSectionIds; j++) {
                         final String qGroupId = sortedSectionIds.get(j);
-                        canvasMatchesList.addAll(matchDao.getMatchesBetweenGroups(matchCollectionId,
+                        tileIdsWithMatches.addMatches(matchDao.getMatchesBetweenGroups(matchCollectionId,
                                                                                 pGroupId,
                                                                                 qGroupId,
-                                                                                true));
+                                                                                true),
+                                                      layerTileIds);
                     }
                 }
             } else {
                 distinctSectionIds.forEach(
-                        sectionId -> canvasMatchesList.addAll(matchDao.getMatchesWithinGroup(matchCollectionId,
+                        sectionId -> tileIdsWithMatches.addMatches(matchDao.getMatchesWithinGroup(matchCollectionId,
                                                                                              sectionId,
-                                                                                             true)));
+                                                                                             true),
+                                                                   layerTileIds));
             }
 
-            final SortedConnectedCanvasIdClusters idClusters = new SortedConnectedCanvasIdClusters(canvasMatchesList);
+            final SortedConnectedCanvasIdClusters idClusters =
+                    new SortedConnectedCanvasIdClusters(tileIdsWithMatches.getCanvasMatchesList());
 
             LOG.info("getClusteredTileBoundsForCollection: for z {}, found {} connected tile sets with sizes {}",
                      z, idClusters.size(), idClusters.getClusterSizes());
