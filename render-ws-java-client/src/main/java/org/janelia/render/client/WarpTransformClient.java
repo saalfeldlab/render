@@ -216,7 +216,7 @@ public class WarpTransformClient {
         LOG.info("buildTransformsForClusters: for z {}, found {} connected tile sets with sizes {}",
                  z, clusters.size(), clusters.getClusterSizes());
 
-        final Set<String> largestCluster = connectedTileSets.get(connectedTileSets.size() - 1);
+        final Set<String> largestCluster = connectedTileSets.get(0);
         final int maxSmallClusterSize = tileClusterParameters.getEffectiveMaxSmallClusterSize(largestCluster.size());
 
         final int tileCountBeforeRemoval = montageTiles.getTileCount();
