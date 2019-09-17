@@ -5,7 +5,9 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -20,6 +22,7 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -370,9 +373,10 @@ public class RigidTransformClient {
 
         private final TransformSpec largestClusterTransformSpec;
 
-        private TileBounds tileBounds;
-        private int row;
-        private int column;
+        private TileBoundsRTree layoutTree;
+        private Map<String, TileBounds> tileIdToSourceBoundsMap;
+        private Map<String, LayoutData> tileIdToSourceLayoutMap;
+
         private double rowDeltaY;
         private double columnDeltaX;
 
@@ -380,59 +384,113 @@ public class RigidTransformClient {
                                         final TransformSpec transformSpec) {
 
             this.largestClusterTransformSpec = transformSpec;
-            this.tileBounds = null;
 
             if (clusterTileSpecs.size() > 1) {
+                this.setSourceBoundsInfo(clusterTileSpecs);
+                this.setDeltaXAndY(clusterTileSpecs);
+            }
 
-                final TileSpec firstTileSpec = clusterTileSpecs.get(0);
-                final LayoutData layout = firstTileSpec.getLayout();
+        }
 
-                this.row = layout.getImageRow();
-                this.column = layout.getImageCol();
+        private void setSourceBoundsInfo(final List<TileSpec> clusterTileSpecs) {
 
-                for (final TileSpec tileSpec : clusterTileSpecs) {
+            this.tileIdToSourceBoundsMap = new HashMap<>();
+            this.tileIdToSourceLayoutMap = new HashMap<>();
 
-                    final LayoutData layoutB = tileSpec.getLayout();
-                    final int rowB = layoutB.getImageRow();
-                    final int columnB = layoutB.getImageCol();
+            final List<TileBounds> layoutBoundsList = new ArrayList<>(clusterTileSpecs.size());
 
-                    if ((this.row != rowB) && (this.column != columnB)) {
+            TileBounds layoutBounds = null;
+            for (final TileSpec tileSpec : clusterTileSpecs) {
+                final TileBounds tileBounds = tileSpec.toTileBounds();
+                tileIdToSourceBoundsMap.put(tileSpec.getTileId(), tileBounds);
+                tileIdToSourceLayoutMap.put(tileSpec.getTileId(), tileSpec.getLayout());
+                layoutBounds = getLayoutBounds(tileSpec);
+                layoutBoundsList.add(layoutBounds);
+            }
 
-                        this.tileBounds = firstTileSpec.toTileBounds();
-                        final TileBounds tileBoundsB = tileSpec.toTileBounds();
+            //noinspection ConstantConditions
+            this.layoutTree = new TileBoundsRTree(layoutBounds.getZ(), layoutBoundsList);
+        }
 
-                        final double rowDelta = this.row - rowB;
-                        final double columnDelta = this.column - columnB;
-                        final double deltaX = tileBounds.getCenterX() - tileBoundsB.getCenterX();
-                        final double deltaY = tileBounds.getCenterY() - tileBoundsB.getCenterY();
+        private void setDeltaXAndY(final List<TileSpec> clusterTileSpecs) {
 
-                        this.rowDeltaY = deltaY / rowDelta;
-                        this.columnDeltaX = deltaX / columnDelta;
+            final TileSpec firstTileSpec = clusterTileSpecs.get(0);
+            final LayoutData firstLayout = firstTileSpec.getLayout();
+            final int row = firstLayout.getImageRow();
+            final int column = firstLayout.getImageCol();
+            final TileBounds firstLayoutBounds = getLayoutBounds(firstTileSpec);
+            final List<TileBounds> nearestLayoutBoundsList =
+                    layoutTree.findTilesNearestToBox(firstLayoutBounds.getMinX(), firstLayoutBounds.getMinY(),
+                                                     firstLayoutBounds.getMaxX(), firstLayoutBounds.getMaxY(),
+                                                     100000, 100);
 
-                        LOG.info("LargestClusterStageData: columnDeltaX {}, rowDeltaY {} derived from tiles {} and {}",
-                                 (int) columnDeltaX, (int) rowDeltaY, firstTileSpec.getTileId(), tileSpec.getTileId());
+            for (final TileBounds nearestLayoutBounds : nearestLayoutBoundsList) {
 
-                        break;
-                    }
+                final String nearestTileId = nearestLayoutBounds.getTileId();
+                final TileBounds nearestTileBounds = tileIdToSourceBoundsMap.get(nearestTileId);
+                final LayoutData nearestLayout = tileIdToSourceLayoutMap.get(nearestTileId);
 
+                final int rowB = nearestLayout.getImageRow();
+                final int columnB = nearestLayout.getImageCol();
+
+                if ((row != rowB) && (column != columnB)) {
+
+                    final TileBounds tileBounds = firstTileSpec.toTileBounds();
+                    final double rowDelta = row - rowB;
+                    final double columnDelta = column - columnB;
+                    final double deltaX = tileBounds.getCenterX() - nearestTileBounds.getCenterX();
+                    final double deltaY = tileBounds.getCenterY() - nearestTileBounds.getCenterY();
+
+                    this.rowDeltaY = deltaY / rowDelta;
+                    this.columnDeltaX = deltaX / columnDelta;
+
+                    LOG.info("LargestClusterStageData: columnDeltaX {}, rowDeltaY {} derived from tiles {} and {}",
+                             (int) columnDeltaX, (int) rowDeltaY, firstTileSpec.getTileId(), nearestTileBounds.getTileId());
+
+                    break;
                 }
 
             }
 
         }
 
+        private TileBounds getLayoutBounds(final TileSpec forTileSpec) {
+            final int cell_size = 10;
+            final LayoutData layout = forTileSpec.getLayout();
+            final double minX = layout.getImageCol() * cell_size;
+            final double minY = layout.getImageRow() * cell_size;
+            return new TileBounds(forTileSpec.getTileId(),
+                                  forTileSpec.getSectionId(),
+                                  forTileSpec.getZ(),
+                                  minX,
+                                  minY,
+                                  (minX + cell_size),
+                                  (minY + cell_size));
+        }
+
         private LeafTransformSpec getRelativeStageTransform(final TileSpec clusterTileSpec) {
+
+            final TileBounds layoutBounds = getLayoutBounds(clusterTileSpec);
+            final List<TileBounds> nearestLayoutBounds =
+                    layoutTree.findTilesNearestToBox(layoutBounds.getMinX(), layoutBounds.getMinY(),
+                                                     layoutBounds.getMaxX(), layoutBounds.getMaxY(),
+                                                     100000, 1);
+            final String nearestTileId = nearestLayoutBounds.get(0).getTileId();
+            final TileBounds nearestTileBounds = tileIdToSourceBoundsMap.get(nearestTileId);
+            final LayoutData nearestLayout = tileIdToSourceLayoutMap.get(nearestTileId);
+            final int row = nearestLayout.getImageRow();
+            final int column = nearestLayout.getImageCol();
 
             final LayoutData layoutB = clusterTileSpec.getLayout();
             final int rowB = layoutB.getImageRow();
             final int columnB = layoutB.getImageCol();
-            final double rowDelta = row - rowB;
-            final double columnDelta = column - columnB;
-            final double stageX = tileBounds.getMinX() - (columnDelta * columnDeltaX);
-            final double stageY = tileBounds.getMinY() - (rowDelta * rowDeltaY);
+            final double rowDelta = nearestLayout.getImageRow() - rowB;
+            final double columnDelta = nearestLayout.getImageCol() - columnB;
+            final double stageX = nearestTileBounds.getMinX() - (columnDelta * columnDeltaX);
+            final double stageY = nearestTileBounds.getMinY() - (rowDelta * rowDeltaY);
 
             LOG.info("getRelativeStageTransform: given large cluster tile {} in column {}, row {} is at ({}, {}), estimated position for tile {} in column {}, row {} is ({}, {})",
-                     tileBounds.getTileId(), column, row, tileBounds.getMinX(), tileBounds.getMinY(),
+                     nearestTileId, column, row, nearestTileBounds.getMinX(), nearestTileBounds.getMinY(),
                      clusterTileSpec.getTileId(), columnB, rowB, stageX, stageY);
 
             final double tx = stageX - clusterTileSpec.getMinX();
@@ -448,7 +506,7 @@ public class RigidTransformClient {
         private void moveTilesBasedUponRelativeStagePosition(final ResolvedTileSpecCollection montageTiles,
                                                              final Set<String> clusterTileIds) {
 
-            if (tileBounds == null) {
+            if (tileIdToSourceBoundsMap.size() == 0) {
 
                 LOG.warn("moveTilesBasedUponRelativeStagePosition: no relative position data, skipping transform of {} montage tiles: {}",
                          clusterTileIds.size(), clusterTileIds);
