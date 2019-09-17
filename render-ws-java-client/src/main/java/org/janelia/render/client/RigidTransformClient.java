@@ -3,26 +3,23 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import mpicbg.trakem2.transform.TranslationModel2D;
 import mpicbg.trakem2.transform.CoordinateTransform;
+import mpicbg.trakem2.transform.TranslationModel2D;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.match.TileIdsWithMatches;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
-import org.janelia.alignment.spec.TileBounds;
-import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -47,11 +44,6 @@ import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApp
  *
  * TODO: refactor this and the WarpTransformClient(s) into one generic client
  *
- * transform independently,
- * terrace missing clusters and overlaps > threshold into separate stack,
- * for overlaps < threshold, render
- * for overlaps > threshold
- *
  * @author Eric Trautman
  */
 public class RigidTransformClient {
@@ -69,12 +61,6 @@ public class RigidTransformClient {
 
         @ParametersDelegate
         TileClusterParameters tileCluster = new TileClusterParameters();
-
-        @Parameter(
-                names = "--transformClustersIndependently",
-                description = "Transform clusters independently",
-                arity = 0)
-        public boolean transformClustersIndependently = false;
 
         @Parameter(
                 description = "Z values",
@@ -163,7 +149,7 @@ public class RigidTransformClient {
             alignTiles.removeDifferentTileSpecs(montageTiles.getTileIds());
         }
 
-        if (parameters.transformClustersIndependently) {
+        if (parameters.tileCluster.isDefined()) {
             buildTransformsForClusters(montageTiles,
                                        alignTiles,
                                        sectionDataList,
@@ -190,268 +176,9 @@ public class RigidTransformClient {
             throw new IllegalStateException("no tiles left to save after filtering invalid tiles for z " + z);
         }
 
-        if (parameters.tileCluster.isDefined()) {
-            translateOverlappingSmallClusters(z, montageTiles);
-        }
-
         targetDataClient.saveResolvedTiles(montageTiles, parameters.warp.targetStack, z);
 
         LOG.info("generateStackDataForZ: exit, saved tiles and transforms for {}", z);
-    }
-
-    private void translateOverlappingSmallClusters(final double z,
-                                                   final ResolvedTileSpecCollection montageTiles)
-            throws IOException {
-
-        final Set<String> stackTileIds = new HashSet<>(montageTiles.getTileIds());
-
-        final TileIdsWithMatches tileIdsWithMatches =
-                UnconnectedTileRemovalClient.getTileIdsWithMatches(montageDataClient,
-                                                                   parameters.warp.montageStack,
-                                                                   z,
-                                                                   matchDataClient,
-                                                                   stackTileIds,
-                                                                   parameters.tileCluster.includeMatchesOutsideGroup);
-
-        final Set<String> unconnectedTileIds = new HashSet<>();
-        stackTileIds.forEach(tileId -> {
-            if (! tileIdsWithMatches.contains(tileId)) {
-                unconnectedTileIds.add(tileId);
-            }
-        });
-
-        final SortedConnectedCanvasIdClusters clusters =
-                new SortedConnectedCanvasIdClusters(tileIdsWithMatches.getCanvasMatchesList());
-        final List<Set<String>> sortedConnectedTileIdSets = clusters.getSortedConnectedTileIdSets();
-
-        LOG.info("translateOverlappingSmallClusters: for z {}, found {} connected tile sets with sizes {}",
-                 z, clusters.size(), clusters.getClusterSizes());
-
-        final List<Set<String>> smallerRemainingClusters =
-                UnconnectedTileRemovalClient.markSmallClustersAsUnconnected(parameters.tileCluster,
-                                                                            z,
-                                                                            sortedConnectedTileIdSets,
-                                                                            new HashSet<>(),
-                                                                            unconnectedTileIds);
-
-        if (unconnectedTileIds.size() > 0) {
-            LOG.info("translateOverlappingSmallClusters: removing {} unconnected tiles from z {}",
-                     unconnectedTileIds.size(), z);
-            montageTiles.removeTileSpecs(unconnectedTileIds);
-        }
-
-        moveSmallClustersForLayer(montageTiles,
-                                  z,
-                                  sortedConnectedTileIdSets.get(0),
-                                  smallerRemainingClusters);
-
-    }
-
-    private void moveSmallClustersForLayer(final ResolvedTileSpecCollection montageTiles,
-                                           final Double z,
-                                           final Set<String> largestCluster,
-                                           final List<Set<String>> smallerRemainingClusters)
-            throws IllegalArgumentException {
-
-        LOG.info("moveSmallClustersForLayer: entry for z {}", z);
-
-        final List<TileBounds> tileBoundsList = new ArrayList<>(largestCluster.size());
-        Bounds completedBounds = new Bounds();
-
-        for (final String tileId : largestCluster) {
-            final TileSpec tileSpec = montageTiles.getTileSpec(tileId);
-            final TileBounds tileBounds = tileSpec.toTileBounds();
-            tileBoundsList.add(tileBounds);
-            completedBounds = completedBounds.union(tileBounds);
-        }
-
-        final TileBoundsRTree completedTree = new TileBoundsRTree(z, tileBoundsList);
-
-        for (final Set<String> smallCluster : smallerRemainingClusters) {
-
-                completedBounds = moveCluster(montageTiles,
-                                              completedTree,
-                                              completedBounds,
-                                              smallCluster,
-                                              0,
-                                              0,
-                                              0);
-            }
-
-         LOG.info("moveSmallClustersForLayer: exit for z {}", z);
-    }
-
-    private Bounds moveCluster(final ResolvedTileSpecCollection montageTiles,
-                               final TileBoundsRTree completedTree,
-                               final Bounds completedBounds,
-                               final Set<String> smallCluster,
-                               double moveX,
-                               double moveY,
-                               final int callDepth) {
-
-        if (callDepth > 5) {
-
-            LOG.warn("moveCluster: after {} attempts for {}, simply moving outside completed bounds",
-                     callDepth, getClusterInfo(smallCluster));
-
-            final double[] safeOffsets = getSmallestSafeOffsets(montageTiles, completedBounds, smallCluster, moveX, moveY);
-            moveX = safeOffsets[0];
-            moveY = safeOffsets[1];
-        }
-
-        boolean foundOverlap = false;
-        Bounds updatedCompletedBounds = completedBounds;
-
-        Bounds overlappingCompletedRegion = new Bounds();
-        Bounds overlappingSmallClusterRegion = new Bounds();
-
-        for (final String tileId : smallCluster) {
-            final TileSpec tileSpec = montageTiles.getTileSpec(tileId);
-            final double minX = tileSpec.getMinX() + moveX;
-            final double minY = tileSpec.getMinY() + moveY;
-            final double maxX = tileSpec.getMaxX() + moveX;
-            final double maxY = tileSpec.getMaxY() + moveY;
-
-            for (final TileBounds overlappingBounds : completedTree.findTilesInBox(minX, minY, maxX, maxY)) {
-                foundOverlap = true;
-                overlappingCompletedRegion = overlappingCompletedRegion.union(overlappingBounds);
-                overlappingSmallClusterRegion = overlappingSmallClusterRegion.union(new Bounds(minX, minY, maxX, maxY));
-            }
-        }
-
-        if (foundOverlap) {
-
-            double shiftX;
-            if (overlappingSmallClusterRegion.getMinX() < overlappingCompletedRegion.getMinX()) {
-                shiftX = overlappingCompletedRegion.getMinX() - overlappingSmallClusterRegion.getMaxX();
-            } else {
-                shiftX = overlappingCompletedRegion.getMaxX() - overlappingSmallClusterRegion.getMinX();
-            }
-
-            double shiftY;
-            if (overlappingSmallClusterRegion.getMinY() < overlappingCompletedRegion.getMinY()) {
-                shiftY = overlappingCompletedRegion.getMinY() - overlappingSmallClusterRegion.getMaxY();
-            } else {
-                shiftY = overlappingCompletedRegion.getMaxY() - overlappingSmallClusterRegion.getMinY();
-            }
-
-            if (Math.abs(shiftX) < Math.abs(shiftY)) {
-                shiftY = 0;
-                if (shiftX > 0) {
-                    shiftX += SHIFT_OFFSET;
-                } else {
-                    shiftX -= SHIFT_OFFSET;
-                }
-            }  else {
-                shiftX = 0;
-                if (shiftY > 0) {
-                    shiftY += SHIFT_OFFSET;
-                } else {
-                    shiftY -= SHIFT_OFFSET;
-                }
-            }
-
-            LOG.info("moveCluster: overlap with move ({}, {}) at callDepth {}, shifting additional ({}, {}) for {}",
-                     moveX, moveY, callDepth, shiftX, shiftY, getClusterInfo(smallCluster));
-
-            updatedCompletedBounds = moveCluster(montageTiles,
-                                                 completedTree,
-                                                 completedBounds,
-                                                 smallCluster,
-                                                 moveX + shiftX,
-                                                 moveY + shiftY,
-                                                 callDepth + 1);
-
-        } else if ((moveX != 0) || (moveY != 0)) {
-
-            final TranslationModel2D model = new TranslationModel2D();
-            model.set(moveX, moveY);
-            final String modelDataString = model.toDataString();
-            final LeafTransformSpec moveTransform = new LeafTransformSpec(model.getClass().getName(),
-                                                                          modelDataString);
-
-            LOG.info("moveCluster: applying translate {} to {}", modelDataString, getClusterInfo(smallCluster));
-
-            for (final String tileId : smallCluster) {
-                montageTiles.addTransformSpecToTile(tileId,
-                                                    moveTransform,
-                                                    ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST);
-                final TileSpec tileSpec = montageTiles.getTileSpec(tileId);
-                final TileBounds tileBounds = tileSpec.toTileBounds();
-                completedTree.addTile(tileBounds);
-                updatedCompletedBounds = updatedCompletedBounds.union(tileBounds);
-            }
-
-        } else {
-
-            for (final String tileId : smallCluster) {
-                final TileSpec tileSpec = montageTiles.getTileSpec(tileId);
-                final TileBounds tileBounds = tileSpec.toTileBounds();
-                completedTree.addTile(tileBounds);
-                updatedCompletedBounds = updatedCompletedBounds.union(tileBounds);
-            }
-
-        }
-
-        return updatedCompletedBounds;
-    }
-
-    private String getClusterInfo(final Set<String> clusterTileIds) {
-        final String tileId = clusterTileIds.stream().findFirst().orElse("?");
-        return clusterTileIds.size() + " tile cluster with tileId " + tileId;
-    }
-
-    @SuppressWarnings({"DuplicatedCode", "DuplicateExpressions"})
-    private double[] getSmallestSafeOffsets(final ResolvedTileSpecCollection allTiles,
-                                            final Bounds completedBounds,
-                                            final Set<String> smallCluster,
-                                            double moveX,
-                                            double moveY) {
-
-        Bounds smallClusterBox = new Bounds();
-        for (final String tileId : smallCluster) {
-            final TileSpec tileSpec = allTiles.getTileSpec(tileId);
-            final Bounds tileBounds = new Bounds(tileSpec.getMinX() + moveX,
-                                                 tileSpec.getMinY() + moveY,
-                                                 tileSpec.getMaxX() + moveX,
-                                                 tileSpec.getMaxY() + moveY);
-            smallClusterBox = smallClusterBox.union(tileBounds);
-        }
-
-        final double deltaTop = completedBounds.getMinY() - (smallClusterBox.getMaxY() + SHIFT_OFFSET);
-        final double deltaBottom = completedBounds.getMaxY() - (smallClusterBox.getMinY() - SHIFT_OFFSET);
-        final double deltaLeft = completedBounds.getMinX() - (smallClusterBox.getMaxX() + SHIFT_OFFSET);
-        final double deltaRight = completedBounds.getMaxX() - (smallClusterBox.getMinX() - SHIFT_OFFSET);
-
-        if (Math.abs(deltaTop) < Math.abs(deltaBottom)) {
-
-            if (Math.abs(deltaTop) < Math.abs(deltaLeft)) {
-                if (Math.abs(deltaTop) < Math.abs(deltaRight)) {
-                    moveY += deltaTop;
-                } else {
-                    moveX += deltaRight;
-                }
-            } else if (Math.abs(deltaLeft) < Math.abs(deltaRight)) {
-                moveX += deltaLeft;
-            } else {
-                moveX += deltaRight;
-            }
-
-        } else if (Math.abs(deltaBottom) < Math.abs(deltaLeft)) {
-
-            if (Math.abs(deltaBottom) < Math.abs(deltaRight)) {
-                moveY += deltaBottom;
-            } else {
-                moveX += deltaRight;
-            }
-
-        } else if (Math.abs(deltaLeft) < Math.abs(deltaRight)) {
-            moveX += deltaLeft;
-        } else {
-            moveX += deltaRight;
-        }
-
-        return new double[] {moveX, moveY};
     }
 
     private static void buildTransformForZ(final ResolvedTileSpecCollection montageTiles,
@@ -461,13 +188,13 @@ public class RigidTransformClient {
 
         final String transformId = z + "_rigid";
 
-        final TransformSpec warpTransformSpec = buildRigidTransform(montageTiles.getTileSpecs(),
-                                                                    alignTiles.getTileSpecs(),
-                                                                    transformId);
+        final TransformSpec rigidTransformSpec = buildRigidTransform(montageTiles.getTileSpecs(),
+                                                                     alignTiles.getTileSpecs(),
+                                                                     transformId);
 
         // TODO: add support for other transform application methods
         montageTiles.getTileSpecs().forEach(ts -> montageTiles.addTransformSpecToTile(ts.getTileId(),
-                                                                                      warpTransformSpec,
+                                                                                      rigidTransformSpec,
                                                                                       PRE_CONCATENATE_LAST));
 
         LOG.info("buildTransformForZ: processed {} tiles for z {}",
@@ -483,16 +210,25 @@ public class RigidTransformClient {
                                                    final TileClusterParameters tileClusterParameters)
             throws Exception {
 
-        final List<CanvasMatches> matchesList = new ArrayList<>();
+        final TileIdsWithMatches tileIdsWithMatches = new TileIdsWithMatches();
+        final Set<String> montageTileIds = montageTiles.getTileIds();
+
+        final List<CanvasMatches> allMatches = new ArrayList<>();
         for (final SectionData sectionData : sectionDataList) {
             if (z.equals(sectionData.getZ())) {
                 if (tileClusterParameters.includeMatchesOutsideGroup) {
-                    matchesList.addAll(matchDataClient.getMatchesWithPGroupId(sectionData.getSectionId(), true));
+                    allMatches.addAll(matchDataClient.getMatchesWithPGroupId(sectionData.getSectionId(),
+                                                                             true));
                 } else {
-                    matchesList.addAll(matchDataClient.getMatchesWithinGroup(sectionData.getSectionId()));
+                    allMatches.addAll(matchDataClient.getMatchesWithinGroup(sectionData.getSectionId(),
+                                                                            true));
                 }
             }
         }
+
+        // throw out matches for tiles not in the montage stack
+        tileIdsWithMatches.addMatches(allMatches, montageTileIds);
+        final List<CanvasMatches> matchesList = tileIdsWithMatches.getCanvasMatchesList();
 
         if (matchesList.size() == 0) {
             throw new IllegalStateException("cannot determine clusters because no matches were found for z " + z);
@@ -504,7 +240,7 @@ public class RigidTransformClient {
         LOG.info("buildTransformsForClusters: for z {}, found {} connected tile sets with sizes {}",
                  z, clusters.size(), clusters.getClusterSizes());
 
-        final Set<String> largestCluster = connectedTileSets.get(connectedTileSets.size() - 1);
+        final Set<String> largestCluster = connectedTileSets.get(0);
         final int maxSmallClusterSize = tileClusterParameters.getEffectiveMaxSmallClusterSize(largestCluster.size());
 
         final int tileCountBeforeRemoval = montageTiles.getTileCount();
@@ -546,6 +282,9 @@ public class RigidTransformClient {
 
         final Collection<TileSpec> alignTileSpecs = alignTiles.getTileSpecs(); // note: resolves align transforms
 
+        LargestClusterStageData largestClusterStageData = null;
+        final List<Set<String>> unalignedConnectedTileSets = new ArrayList<>(connectedTileSets.size());
+
         int clusterIndex = 0;
         for (final Set<String> clusterTileIds : largestConnectedTileSets) {
 
@@ -564,23 +303,26 @@ public class RigidTransformClient {
             // TODO: simplify Warp client in same way
             if (alignCount.get() < 2) {
 
-                // Saalfeld said that there needs to be at least 3 aligned center points for rigid alignment to work.
-                montageTiles.removeTileSpecs(clusterTileIds);
-
-                LOG.info("buildTransformsForClusters: removed {} montage tiles and skipped build for z {} cluster {} because less than 2 of the tiles were found in the align stack, removed tile ids are: {}",
-                         clusterTileIds.size(), z, clusterIndex, clusterTileIds);
+                // Saalfeld said that there needs to be at least 2 aligned center points for rigid alignment to work.
+                unalignedConnectedTileSets.add(clusterTileIds);
 
             } else {
 
                 final String transformId = z + "_cluster_" + clusterIndex + "_rigid";
 
-                final TransformSpec warpTransformSpec = buildRigidTransform(clusterTileSpecs,
-                                                                            alignTileSpecs,
-                                                                            transformId);
+                final TransformSpec rigidTransformSpec = buildRigidTransform(clusterTileSpecs,
+                                                                             alignTileSpecs,
+                                                                             transformId);
+
+                if (largestClusterStageData == null) {
+                    // derive largest cluster stage data before applying
+                    largestClusterStageData = new LargestClusterStageData(clusterTileSpecs,
+                                                                          rigidTransformSpec);
+                }
 
                 // TODO: add support for other transform application methods
                 clusterTileSpecs.forEach(ts -> montageTiles.addTransformSpecToTile(ts.getTileId(),
-                                                                                   warpTransformSpec,
+                                                                                   rigidTransformSpec,
                                                                                    PRE_CONCATENATE_LAST));
 
                 LOG.info("buildTransformsForClusters: processed {} tiles for z {} cluster {}",
@@ -591,6 +333,15 @@ public class RigidTransformClient {
             clusterIndex++;
         }
 
+        for (final Set<String> clusterTileIds : unalignedConnectedTileSets) {
+            if (largestClusterStageData != null) {
+                largestClusterStageData.moveTilesBasedUponRelativeStagePosition(montageTiles,
+                                                                                clusterTileIds);
+            } else {
+                LOG.warn("buildTransformsForClusters: missing largest cluster info, skipping transform for {} tile cluster: {}",
+                         clusterTileIds.size(), clusterTileIds);
+            }
+        }
     }
 
     private static TransformSpec buildRigidTransform(final Collection<TileSpec> montageTiles,
@@ -615,7 +366,111 @@ public class RigidTransformClient {
                                      transform.toDataString());
     }
 
+    private static class LargestClusterStageData {
+
+        private final TransformSpec largestClusterTransformSpec;
+
+        private Bounds bounds;
+        private int row;
+        private int column;
+        private double rowDeltaY;
+        private double columnDeltaX;
+
+        private LargestClusterStageData(final List<TileSpec> clusterTileSpecs,
+                                        final TransformSpec transformSpec) {
+
+            this.largestClusterTransformSpec = transformSpec;
+            this.bounds = null;
+
+            if (clusterTileSpecs.size() > 1) {
+
+                final TileSpec firstTileSpec = clusterTileSpecs.get(0);
+                final LayoutData layout = firstTileSpec.getLayout();
+
+                this.row = layout.getImageRow();
+                this.column = layout.getImageCol();
+
+                for (final TileSpec tileSpec : clusterTileSpecs) {
+
+                    final LayoutData layoutB = tileSpec.getLayout();
+                    final int rowB = layoutB.getImageRow();
+                    final int columnB = layoutB.getImageCol();
+
+                    if ((this.row != rowB) && (this.column != columnB)) {
+
+                        final double rowDelta = this.row - rowB;
+                        final double columnDelta = this.column - columnB;
+                        final double deltaX = firstTileSpec.getMinX() - tileSpec.getMinX();
+                        final double deltaY = firstTileSpec.getMinY() - tileSpec.getMinY();
+
+                        this.rowDeltaY = deltaY / rowDelta;
+                        this.columnDeltaX = deltaX / columnDelta;
+
+                        this.bounds = firstTileSpec.toTileBounds();
+
+                        LOG.info("LargestClusterStageData: columnDeltaX {}, rowDeltaY {} derived from tiles {} and {}",
+                                 (int) columnDeltaX, (int) rowDeltaY, firstTileSpec.getTileId(), tileSpec.getTileId());
+
+                        break;
+                    }
+
+                }
+
+            }
+
+        }
+
+        private LeafTransformSpec getRelativeStageTransform(final TileSpec clusterTileSpec) {
+
+            final LayoutData layoutB = clusterTileSpec.getLayout();
+            final int rowB = layoutB.getImageRow();
+            final int columnB = layoutB.getImageCol();
+            final double rowDelta = row - rowB;
+            final double columnDelta = column - columnB;
+            final double stageX = bounds.getMinX() - (columnDelta * columnDeltaX);
+            final double stageY = bounds.getMinY() - (rowDelta * rowDeltaY);
+            final double tx = clusterTileSpec.getMinX() - stageX;
+            final double ty = clusterTileSpec.getMinY() - stageY;
+
+            final TranslationModel2D model = new TranslationModel2D();
+            model.set(tx, ty);
+
+            return new LeafTransformSpec(model.getClass().getName(),
+                                         model.toDataString());
+        }
+
+        private void moveTilesBasedUponRelativeStagePosition(final ResolvedTileSpecCollection montageTiles,
+                                                             final Set<String> clusterTileIds) {
+
+            if (bounds == null) {
+
+                LOG.warn("moveTilesBasedUponRelativeStagePosition: no relative position data, skipping transform of {} montage tiles: {}",
+                         clusterTileIds.size(), clusterTileIds);
+
+            } else {
+
+                LOG.info("moveTilesBasedUponRelativeStagePosition: transforming {} montage tiles: {}",
+                         clusterTileIds.size(), clusterTileIds);
+
+                LeafTransformSpec relativeStageTransform = null;
+
+                for (final String tileId : clusterTileIds) {
+                    if (relativeStageTransform == null) {
+                        relativeStageTransform = getRelativeStageTransform(montageTiles.getTileSpec(tileId));
+                    }
+                    montageTiles.addTransformSpecToTile(tileId,
+                                                        relativeStageTransform,
+                                                        PRE_CONCATENATE_LAST);
+                    montageTiles.addTransformSpecToTile(tileId,
+                                                        largestClusterTransformSpec,
+                                                        PRE_CONCATENATE_LAST);
+                }
+
+            }
+        }
+
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(RigidTransformClient.class);
-    private static final double SHIFT_OFFSET = 20;
 
 }
