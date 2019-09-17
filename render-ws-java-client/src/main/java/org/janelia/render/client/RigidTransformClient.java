@@ -15,11 +15,11 @@ import mpicbg.trakem2.transform.TranslationModel2D;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.match.TileIdsWithMatches;
-import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
+import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -370,7 +370,7 @@ public class RigidTransformClient {
 
         private final TransformSpec largestClusterTransformSpec;
 
-        private Bounds bounds;
+        private TileBounds tileBounds;
         private int row;
         private int column;
         private double rowDeltaY;
@@ -380,7 +380,7 @@ public class RigidTransformClient {
                                         final TransformSpec transformSpec) {
 
             this.largestClusterTransformSpec = transformSpec;
-            this.bounds = null;
+            this.tileBounds = null;
 
             if (clusterTileSpecs.size() > 1) {
 
@@ -398,15 +398,16 @@ public class RigidTransformClient {
 
                     if ((this.row != rowB) && (this.column != columnB)) {
 
+                        this.tileBounds = firstTileSpec.toTileBounds();
+                        final TileBounds tileBoundsB = tileSpec.toTileBounds();
+
                         final double rowDelta = this.row - rowB;
                         final double columnDelta = this.column - columnB;
-                        final double deltaX = firstTileSpec.getMinX() - tileSpec.getMinX();
-                        final double deltaY = firstTileSpec.getMinY() - tileSpec.getMinY();
+                        final double deltaX = tileBounds.getCenterX() - tileBoundsB.getCenterX();
+                        final double deltaY = tileBounds.getCenterY() - tileBoundsB.getCenterY();
 
                         this.rowDeltaY = deltaY / rowDelta;
                         this.columnDeltaX = deltaX / columnDelta;
-
-                        this.bounds = firstTileSpec.toTileBounds();
 
                         LOG.info("LargestClusterStageData: columnDeltaX {}, rowDeltaY {} derived from tiles {} and {}",
                                  (int) columnDeltaX, (int) rowDeltaY, firstTileSpec.getTileId(), tileSpec.getTileId());
@@ -427,10 +428,15 @@ public class RigidTransformClient {
             final int columnB = layoutB.getImageCol();
             final double rowDelta = row - rowB;
             final double columnDelta = column - columnB;
-            final double stageX = bounds.getMinX() - (columnDelta * columnDeltaX);
-            final double stageY = bounds.getMinY() - (rowDelta * rowDeltaY);
-            final double tx = clusterTileSpec.getMinX() - stageX;
-            final double ty = clusterTileSpec.getMinY() - stageY;
+            final double stageX = tileBounds.getMinX() - (columnDelta * columnDeltaX);
+            final double stageY = tileBounds.getMinY() - (rowDelta * rowDeltaY);
+
+            LOG.info("getRelativeStageTransform: given large cluster tile {} in column {}, row {} is at ({}, {}), estimated position for tile {} in column {}, row {} is ({}, {})",
+                     tileBounds.getTileId(), column, row, tileBounds.getMinX(), tileBounds.getMinY(),
+                     clusterTileSpec.getTileId(), columnB, rowB, stageX, stageY);
+
+            final double tx = stageX - clusterTileSpec.getMinX();
+            final double ty = stageY - clusterTileSpec.getMinY();
 
             final TranslationModel2D model = new TranslationModel2D();
             model.set(tx, ty);
@@ -442,7 +448,7 @@ public class RigidTransformClient {
         private void moveTilesBasedUponRelativeStagePosition(final ResolvedTileSpecCollection montageTiles,
                                                              final Set<String> clusterTileIds) {
 
-            if (bounds == null) {
+            if (tileBounds == null) {
 
                 LOG.warn("moveTilesBasedUponRelativeStagePosition: no relative position data, skipping transform of {} montage tiles: {}",
                          clusterTileIds.size(), clusterTileIds);
