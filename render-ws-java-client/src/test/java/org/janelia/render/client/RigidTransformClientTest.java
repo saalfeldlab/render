@@ -21,7 +21,9 @@ public class RigidTransformClientTest {
                 "--baseDataUrl", "http://10.40.3.162:8080/render-ws/v1",
                 "--owner", "flyTEM",
                 "--project", "FAFB_montage",
-                "--stack", "v15_montage_20190901",
+//                "--stack", "v15_montage_20190901",
+                "--stack", "v15_montage_20190503_try2",
+                "--includeMatchesOutsideGroup",
                 "--alignProject", "FAFB00",
                 "--alignStack", "v14_align_tps_20170818",
                 "--targetProject", "FAFB_montage",
@@ -29,7 +31,8 @@ public class RigidTransformClientTest {
                 "--matchCollection", "FAFB_montage_fix",
                 "--maxSmallClusterSize", "3",
                 "--completeTargetStack",
-                "484", "1198", "1199", "1200", "3224", "5571"
+//                "484", "1198", "1199", "1200", "3224", "5571",
+                "271", "6704"
         };
 
         RigidTransformClient.main(effectiveArgs);

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import mpicbg.trakem2.transform.CoordinateTransform;
 import mpicbg.trakem2.transform.TranslationModel2D;
@@ -285,7 +286,7 @@ public class RigidTransformClient {
 
         final Collection<TileSpec> alignTileSpecs = alignTiles.getTileSpecs(); // note: resolves align transforms
 
-        LargestClusterStageData largestClusterStageData = null;
+        final SectionStageData sectionStageData = new SectionStageData(sectionDataList);
         final List<Set<String>> unalignedConnectedTileSets = new ArrayList<>(connectedTileSets.size());
 
         int clusterIndex = 0;
@@ -317,10 +318,10 @@ public class RigidTransformClient {
                                                                              alignTileSpecs,
                                                                              transformId);
 
-                if (largestClusterStageData == null) {
-                    // derive largest cluster stage data before applying
-                    largestClusterStageData = new LargestClusterStageData(clusterTileSpecs,
-                                                                          rigidTransformSpec);
+                if (sectionStageData.isMissingSections()) {
+                    // save tile specs "stage" data before applying rigid transform
+                    sectionStageData.addMissingSectionStageData(clusterTileSpecs,
+                                                                rigidTransformSpec);
                 }
 
                 // TODO: add support for other transform application methods
@@ -337,13 +338,28 @@ public class RigidTransformClient {
         }
 
         for (final Set<String> clusterTileIds : unalignedConnectedTileSets) {
-            if (largestClusterStageData != null) {
-                largestClusterStageData.moveTilesBasedUponRelativeStagePosition(montageTiles,
-                                                                                clusterTileIds);
-            } else {
-                LOG.warn("buildTransformsForClusters: missing largest cluster info, skipping transform for {} tile cluster: {}",
-                         clusterTileIds.size(), clusterTileIds);
+
+            TileSpec clusterTileSpec = null;
+            String sectionId = null;
+            LargestClusterStageData clusterStageData = null;
+            for (final String clusterTileId : clusterTileIds) {
+                clusterTileSpec = montageTiles.getTileSpec(clusterTileId);
+                sectionId = clusterTileSpec.getLayout().getSectionId();
+                clusterStageData = sectionStageData.getStageData(sectionId);
+                if (clusterStageData != null) {
+                    break;
+                }
             }
+
+            if (clusterStageData != null) {
+                clusterStageData.moveTilesBasedUponRelativeStagePosition(montageTiles,
+                                                                         clusterTileIds,
+                                                                         clusterTileSpec);
+            } else {
+                LOG.warn("buildTransformsForClusters: missing cluster stage data for section {}, skipping transform for {} tile cluster: {}",
+                         sectionId, clusterTileIds.size(), clusterTileIds);
+            }
+
         }
     }
 
@@ -367,6 +383,54 @@ public class RigidTransformClient {
                                      null,
                                      transform.getClass().getName(),
                                      transform.toDataString());
+    }
+
+    private static class SectionStageData {
+
+        private final Set<String> missingSectionIds;
+        private final Map<String, LargestClusterStageData> sectionIdStageDataMap;
+
+        private SectionStageData(final List<SectionData> sectionDataList) {
+            this.missingSectionIds =
+                    sectionDataList.stream().map(SectionData::getSectionId).collect(Collectors.toSet());
+            this.sectionIdStageDataMap = new HashMap<>();
+        }
+
+        private boolean isMissingSections() {
+            return missingSectionIds.size() > 0;
+        }
+
+        private LargestClusterStageData getStageData(final String forSectionId) {
+            return sectionIdStageDataMap.get(forSectionId);
+        }
+
+        private void addMissingSectionStageData(final List<TileSpec> clusterTileSpecs,
+                                                final TransformSpec transformSpec) {
+
+            final Map<String, List<TileSpec>> sectionIdToTileSpecs = new HashMap<>();
+            clusterTileSpecs.forEach(ts -> {
+                final String sectionId = ts.getLayout().getSectionId();
+                final List<TileSpec> sectionTileSpecs =
+                        sectionIdToTileSpecs.computeIfAbsent(sectionId, list -> new ArrayList<>());
+                sectionTileSpecs.add(ts);
+            });
+
+            final List<String> sortedSectionIds =
+                    sectionIdToTileSpecs.keySet().stream().sorted().collect(Collectors.toList());
+            for (final String sectionId : sortedSectionIds) {
+                if (missingSectionIds.contains(sectionId)) {
+
+                    final List<TileSpec> sectionTileSpecs = sectionIdToTileSpecs.get(sectionId);
+                    sectionIdStageDataMap.put(sectionId, new LargestClusterStageData(sectionTileSpecs,
+                                                                                     transformSpec));
+                    missingSectionIds.remove(sectionId);
+
+                    LOG.info("addMissingSectionStageData: stage data saved for section {}", sectionId);
+                }
+            }
+
+        }
+
     }
 
     private static class LargestClusterStageData {
@@ -504,33 +568,23 @@ public class RigidTransformClient {
         }
 
         private void moveTilesBasedUponRelativeStagePosition(final ResolvedTileSpecCollection montageTiles,
-                                                             final Set<String> clusterTileIds) {
+                                                             final Set<String> clusterTileIds,
+                                                             final TileSpec clusterTileSpec) {
 
-            if (tileIdToSourceBoundsMap.size() == 0) {
+            LOG.info("moveTilesBasedUponRelativeStagePosition: transforming {} montage tiles: {}",
+                     clusterTileIds.size(), clusterTileIds);
 
-                LOG.warn("moveTilesBasedUponRelativeStagePosition: no relative position data, skipping transform of {} montage tiles: {}",
-                         clusterTileIds.size(), clusterTileIds);
+            final LeafTransformSpec relativeStageTransform = getRelativeStageTransform(clusterTileSpec);
 
-            } else {
-
-                LOG.info("moveTilesBasedUponRelativeStagePosition: transforming {} montage tiles: {}",
-                         clusterTileIds.size(), clusterTileIds);
-
-                LeafTransformSpec relativeStageTransform = null;
-
-                for (final String tileId : clusterTileIds) {
-                    if (relativeStageTransform == null) {
-                        relativeStageTransform = getRelativeStageTransform(montageTiles.getTileSpec(tileId));
-                    }
-                    montageTiles.addTransformSpecToTile(tileId,
-                                                        relativeStageTransform,
-                                                        PRE_CONCATENATE_LAST);
-                    montageTiles.addTransformSpecToTile(tileId,
-                                                        largestClusterTransformSpec,
-                                                        PRE_CONCATENATE_LAST);
-                }
-
+            for (final String tileId : clusterTileIds) {
+                montageTiles.addTransformSpecToTile(tileId,
+                                                    relativeStageTransform,
+                                                    PRE_CONCATENATE_LAST);
+                montageTiles.addTransformSpecToTile(tileId,
+                                                    largestClusterTransformSpec,
+                                                    PRE_CONCATENATE_LAST);
             }
+
         }
 
     }
