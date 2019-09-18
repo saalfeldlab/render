@@ -485,6 +485,33 @@ public class MatchService {
         return response;
     }
 
+    @Path("v1/owner/{owner}/matchCollection/{matchCollection}/pGroup/{pGroupId}/matches")
+    @DELETE
+    @ApiOperation(
+            value = "Delete matches with the specified p group")
+    @ApiResponses(value = {
+            @ApiResponse(code = 404, message = "Match collection not found")
+    })
+    public Response deleteMatchesWithPGroup(@PathParam("owner") final String owner,
+                                            @PathParam("matchCollection") final String matchCollection,
+                                            @PathParam("pGroupId") final String pGroupId) {
+
+        LOG.info("deleteMatchesWithPGroup: entry, owner={}, matchCollection={}, pGroupId={}",
+                 owner, matchCollection, pGroupId);
+
+        final MatchCollectionId collectionId = getCollectionId(owner, matchCollection);
+
+        Response response = null;
+        try {
+            matchDao.removeMatchesWithPGroup(collectionId, pGroupId);
+            response = Response.ok().build();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return response;
+    }
+
     @Path("v1/owner/{owner}/matchCollection/{matchCollection}/group/{groupId}/matchesOutsideGroup")
     @DELETE
     @ApiOperation(

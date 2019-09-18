@@ -406,6 +406,25 @@ public class MatchDao {
                   result.getDeletedCount(), MongoUtil.fullName(collection), query.toJson());
     }
 
+    public void removeMatchesWithPGroup(final MatchCollectionId collectionId,
+                                        final String pGroupId)
+            throws IllegalArgumentException, ObjectNotFoundException {
+
+        LOG.debug("removeMatchesWithPGroup: entry, collectionId={}, pGroupId={}",
+                  collectionId, pGroupId);
+
+        MongoUtil.validateRequiredParameter("pGroupId", pGroupId);
+
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+
+        final Document query = new Document("pGroupId", pGroupId);
+
+        final DeleteResult result = collection.deleteMany(query);
+
+        LOG.debug("removeMatchesWithPGroup: removed {} matches using {}.delete({})",
+                  result.getDeletedCount(), MongoUtil.fullName(collection), query.toJson());
+    }
+
     public void removeMatchesOutsideGroup(final MatchCollectionId collectionId,
                                           final String groupId)
             throws IllegalArgumentException, ObjectNotFoundException {
