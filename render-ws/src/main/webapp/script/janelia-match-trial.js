@@ -109,15 +109,10 @@ JaneliaMatchTrial.prototype.loadTrial = function(trialId) {
 JaneliaMatchTrial.prototype.openNewTrialWindow = function() {
 
     const self = this;
-    const stop = window.location.href.indexOf('?');
-    let url;
-    if (stop === -1) {
-        url = window.location.href;
-    } else {
-        url = window.location.href.substring(0, stop);
-    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("matchTrialId", "TBD");
 
-    const newTrialWindow = window.open(url + '?matchTrialId=TBD', '_blank');
+    const newTrialWindow = window.open(url.href, '_blank');
     newTrialWindow.focus();
 
     newTrialWindow.addEventListener('load', function() {
@@ -222,7 +217,7 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
 
     const parametersUrlRegex = /.*render-parameters.*/;
     if (requestData.pRenderParametersUrl.match(parametersUrlRegex) &&
-        requestData.pRenderParametersUrl.match(parametersUrlRegex)) {
+        requestData.qRenderParametersUrl.match(parametersUrlRegex)) {
 
         errorMessageSelector.text('');
         runTrialButtonSelector.prop("disabled", true);
@@ -239,9 +234,9 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
                    data: JSON.stringify(requestData),
                    cache: false,
                    success: function(data) {
-                       const stop = window.location.href.indexOf('?');
-                       window.location = window.location.href.substring(0, stop) +
-                                         '?matchTrialId=' + data.id + '&scale=' + self.viewScale;
+                       const url = new URL(window.location.href);
+                       url.searchParams.set("matchTrialId", data.id);
+                       window.location = url;
                    },
                    error: function(data, text, xhr) {
                        console.log(xhr);
@@ -485,5 +480,81 @@ JaneliaMatchTrial.prototype.drawMatch = function(matches, matchIndex, pImage, qI
     context.moveTo(px, py);
     context.lineTo(qx, qy);
     context.stroke();
+};
+
+JaneliaMatchTrial.prototype.saveTrialResultsToCollection = function(saveToOwner, saveToCollection, errorMessageSelector) {
+
+    const FAFB_renderRegEx = /(.*\/render-ws).*\/owner\/([^\/]+)\/project\/([^\/]+)\/stack\/([^\/]+)\/tile\/([0-9]+\.([0-9]+\.[0-9]+))\/render-parameters.*/;
+    const pUrlMatch = this.trialResults.parameters.pRenderParametersUrl.match(FAFB_renderRegEx);
+    const qUrlMatch = this.trialResults.parameters.qRenderParametersUrl.match(FAFB_renderRegEx);
+
+    if ((typeof saveToCollection === 'undefined') || (saveToCollection.length === 0)) {
+
+        errorMessageSelector.text("alpha version of save feature requires saveToCollection query parameter to be defined");
+
+    } else if (this.trialResults.matches.length !== 1) {
+
+        errorMessageSelector.text("trial must have one and only one set of matches to save");
+
+    } else if (pUrlMatch && qUrlMatch) {
+
+        const baseViewUrl = pUrlMatch[1] + "/view";
+        const renderStackOwner = pUrlMatch[2];
+        const renderStackProject = pUrlMatch[3];
+        const renderStack = pUrlMatch[4];
+
+        const pTileId = pUrlMatch[5];
+        const pGroupId = pUrlMatch[6];
+        const qTileId = qUrlMatch[5];
+        const qGroupId = qUrlMatch[6];
+
+        const matchPairData = {
+            "pGroupId": pGroupId,
+            "pId": pTileId,
+            "qGroupId": qGroupId,
+            "qId": qTileId,
+            "matches": this.trialResults.matches[0]
+        };
+        const matchPairDataArray = [ matchPairData ];
+
+        const matchesUrl = this.baseUrl + "/owner/" + saveToOwner + "/matchCollection/" + saveToCollection + "/matches";
+        const tilePairUrl = baseViewUrl + "/tile-pair.html?renderScale=0.1&renderStackOwner=" + renderStackOwner +
+                            "&renderStackProject=" + renderStackProject +
+                            "&renderStack=" + renderStack +
+                            "&matchOwner=" + saveToOwner +
+                            "&matchCollection=" + saveToCollection +
+                            "&pGroupId=" + pGroupId +
+                            "&pId=" + pTileId +
+                            "&qGroupId=" + qGroupId +
+                            "&qId=" + qTileId;
+
+        errorMessageSelector.text("");
+
+        // noinspection JSUnusedLocalSymbols
+        $.ajax({
+                   type: "PUT",
+                   headers: {
+                       'Accept': 'application/json',
+                       'Content-Type': 'application/json'
+                   },
+                   url: matchesUrl,
+                   data: JSON.stringify(matchPairDataArray),
+                   cache: false,
+                   success: function(data) {
+                       const matchPairHtml = '<a target="_blank" href="' + tilePairUrl + '">match pair</a>';
+                       errorMessageSelector.html("saved " + matchPairHtml + " to " + saveToCollection);
+                   },
+                   error: function(data, text, xhr) {
+                       console.log(xhr);
+                       errorMessageSelector.text(data.statusText + ': ' + data.responseText);
+                   }
+               });
+
+    } else {
+
+        errorMessageSelector.text("alpha version of save feature cannot parse render URL(s) for this match trial");
+
+    }
+
 };
 
