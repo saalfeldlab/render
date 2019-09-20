@@ -37,6 +37,7 @@ var JaneliaTile2 = function(tileSpec, stackUrl, matchCollectionUrl, renderQueryP
     this.matches = [];
     this.matchIndex = -1;
     this.matchInfoSelector = undefined;
+    this.drawMatchLines = true;
 };
 
 JaneliaTile2.prototype.getMatchesUrl = function(qTile) {
@@ -52,6 +53,7 @@ JaneliaTile2.prototype.drawLoadedImage = function() {
     var context = this.canvas.getContext("2d");
     var canvasOffset = 4;
     var tileMargin = 4;
+    // TODO: fix this for cases where tiles are different sizes
     this.x = (this.column * (scaledWidth + tileMargin)) + canvasOffset;
     this.y = (this.row * (scaledHeight + tileMargin)) + canvasOffset;
     context.drawImage(this.image, this.x, this.y);
@@ -176,10 +178,21 @@ JaneliaTile2.prototype.drawMatch = function(canvasMatches, matchIndex, pTile, qT
     var qx = (qMatches[0][matchIndex] * this.scale) + qTile.x;
     var qy = (qMatches[1][matchIndex] * this.scale) + qTile.y;
 
-    context.beginPath();
-    context.moveTo(px, py);
-    context.lineTo(qx, qy);
-    context.stroke();
+    if (this.drawMatchLines) {
+        context.beginPath();
+        context.moveTo(px, py);
+        context.lineTo(qx, qy);
+        context.stroke();
+    } else {
+        const radius = 3;
+        const twoPI = Math.PI * 2;
+        context.beginPath();
+        context.arc(px, py, radius, 0, twoPI);
+        context.stroke();
+        context.beginPath();
+        context.arc(qx, qy, radius, 0, twoPI);
+        context.stroke();
+    }
 };
 
 var JaneliaTileWithNeighbors = function(baseUrl, owner, project, stack, matchOwner, matchCollection, renderQueryParameters, scale, canvas) {
@@ -193,6 +206,7 @@ var JaneliaTileWithNeighbors = function(baseUrl, owner, project, stack, matchOwn
     this.renderQueryParameters = renderQueryParameters;
     this.scale = scale;
     this.canvas = canvas;
+    this.neighborSizeFactor = 0.3;
 
     this.stackUrl = this.baseUrl + "/owner/" + this.owner + "/project/" + this.project + "/stack/" + this.stack;
     this.tileUrl = this.stackUrl + "/tile/";
@@ -206,7 +220,13 @@ var JaneliaTileWithNeighbors = function(baseUrl, owner, project, stack, matchOwn
         this.matchCollectionUrl = undefined;
     }
 
+    this.drawMatchLines = true;
+
     this.janeliaTileMap = {};
+};
+
+JaneliaTileWithNeighbors.prototype.setNeighborSizeFactor = function(factor) {
+    this.neighborSizeFactor = factor;
 };
 
 JaneliaTileWithNeighbors.prototype.setTileId = function(tileId) {
@@ -217,9 +237,11 @@ JaneliaTileWithNeighbors.prototype.setTileId = function(tileId) {
     var ctx = this.canvas.getContext("2d");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    const queryParameters = "?widthFactor=" + this.neighborSizeFactor + "&heightFactor=" + this.neighborSizeFactor;
+
     var self = this;
     $.ajax({
-               url: self.tileUrl + tileId + "/withNeighbors/render-parameters",
+               url: self.tileUrl + tileId + "/withNeighbors/render-parameters" + queryParameters,
                cache: false,
                success: function(data) {
                    self.loadNeighbors(data);
@@ -250,9 +272,15 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
     var originalTileWidth;
     var originalTileHeight;
 
+    let pageQueryParameters = new JaneliaQueryParameters();
+
     for (var index = 0; index < tileSpecs.length; index++) {
 
         tileSpec = tileSpecs[index];
+
+        if (tileSpec.layout.sectionId !== pageQueryParameters.get("sectionId", tileSpec.layout.sectionId)) {
+            continue;
+        }
 
         if (! sectionMap.hasOwnProperty(tileSpec.layout.sectionId)) {
             sectionMap[tileSpec.layout.sectionId] = {
@@ -333,8 +361,13 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
                                 firstColumnForSection +
                                 deriveRowOrColumn(tileId, sectionData.minXList, originalTileWidth));
                     } else {
+                        // TODO: revisit this
+                        let deltaRow = tileSpec.layout.imageRow - firstRow;
+                        // if (deltaRow > 4) {
+                        //     deltaRow = 4;
+                        // }
                         janeliaTile2.setRowAndColumn(
-                                tileSpec.layout.imageRow - firstRow,
+                                deltaRow,
                                 tileSpec.layout.imageCol - firstColumn);
                     }
                 }
@@ -459,7 +492,9 @@ JaneliaTileWithNeighbors.prototype.drawMatch = function(matchIndexDelta) {
         var context = this.canvas.getContext("2d");
         context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // noinspection JSObjectNullOrUndefined
         pTile.drawLoadedImage();
+        // noinspection JSObjectNullOrUndefined
         qTile.drawLoadedImage();
 
         var matchCount = canvasMatches.matches.w.length;
@@ -655,3 +690,112 @@ JaneliaTileWithNeighbors.prototype.deleteMatches = function(pairMatchesUrl) {
     }
     return false;
 };
+
+JaneliaTileWithNeighbors.prototype.runTrial = function(tileA, tileB, trialRunningSelector, errorMessageSelector) {
+
+    const orderedPair = this.getOrderedTileSpecPair(tileA.tileSpec, tileB.tileSpec);
+
+    const baseRenderUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/flyTEM/project/FAFB00/stack/v12_acquire/tile/";
+    const renderUrlSuffix = "/render-parameters?excludeMask=true&normalizeForMatching=true&width=2760&height=2330&filter=true&scale=0.7";
+    const pRenderUrl = baseRenderUrl + orderedPair.pTileSpec.tileId + renderUrlSuffix;
+    const qRenderUrl = baseRenderUrl + orderedPair.qTileSpec.tileId + renderUrlSuffix;
+
+    let pClipPosition = "TOP";
+    let deltaX = orderedPair.qTileSpec.minX - orderedPair.pTileSpec.minX;
+    let deltaY = orderedPair.qTileSpec.minY - orderedPair.pTileSpec.minY;
+
+    // if layout info is available, use original row and column instead of potentially rotated stack positions
+    if (orderedPair.pTileSpec.layout && orderedPair.qTileSpec.layout) {
+        deltaX = orderedPair.qTileSpec.layout.imageCol - orderedPair.pTileSpec.layout.imageCol;
+        deltaY = orderedPair.qTileSpec.layout.imageRow - orderedPair.pTileSpec.layout.imageRow;
+    }
+    
+    // noinspection JSSuspiciousNameCombination
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        pClipPosition = deltaX > 0 ? "LEFT" : "RIGHT";
+    } else if (deltaY < 0) {
+        pClipPosition = "BOTTOM";
+    }
+    
+    const featureAndMatchParameters = {
+        "siftFeatureParameters": {
+            "fdSize": 4,
+            "minScale": 0.8,
+            "maxScale": 1.0,
+            "steps": 3
+        },
+        "matchDerivationParameters": {
+            "matchRod": 0.92,
+            "matchModelType": "TRANSLATION",
+            "matchIterations": 1000,
+            "matchMaxEpsilon": 7,
+            "matchMinInlierRatio": 0.0,
+            "matchMinNumInliers": 7,
+            "matchMaxTrust": 4,
+            "matchFilter": "SINGLE_SET"
+        },
+        "pClipPosition": pClipPosition,
+        "clipPixels": 600
+    };
+
+    const requestData = {
+        featureAndMatchParameters: featureAndMatchParameters,
+        pRenderParametersUrl: pRenderUrl,
+        qRenderParametersUrl: qRenderUrl
+    };
+
+    const matchTrialUrl = this.baseUrl + "/owner/" + this.owner + "/matchTrial";
+    const baseViewUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/view/match-trial.html?matchTrialId=";
+    const viewParameters = "&scale=0.2&saveToCollection=" + this.matchCollection;
+
+    errorMessageSelector.text('');
+    trialRunningSelector.show();
+
+    $.ajax({
+               type: "POST",
+               headers: {
+                   'Accept': 'application/json',
+                   'Content-Type': 'application/json'
+               },
+               url: matchTrialUrl,
+               data: JSON.stringify(requestData),
+               cache: false,
+               success: function(data) {
+                   const matchTrialResultUrl = baseViewUrl + data.id + viewParameters;
+                   const win = window.open(matchTrialResultUrl);
+                   if (win) {
+                       win.focus();
+                   } else {
+                       alert('Please allow popups for this website');
+                   }
+                   trialRunningSelector.hide();
+               },
+               error: function(data, text, xhr) {
+                   console.log(xhr);
+                   errorMessageSelector.text(data.statusText + ': ' + data.responseText);
+                   trialRunningSelector.hide();
+               }
+           });
+
+};
+
+JaneliaTileWithNeighbors.prototype.toggleLinesAndPoints = function() {
+    this.drawMatchLines = ! this.drawMatchLines;
+    let neighborTileId;
+    for (neighborTileId in this.janeliaTileMap) {
+        if (this.janeliaTileMap.hasOwnProperty(neighborTileId)) {
+            let neighbor = this.janeliaTileMap[neighborTileId];
+            neighbor.drawMatchLines = this.drawMatchLines;
+        }
+    }
+
+    this.drawAllMatches();
+
+    const toggleLinesAndPointsSelector = $("#toggleLinesAndPoints");
+    if (this.drawMatchLines) {
+        toggleLinesAndPointsSelector.prop('value', 'Points')
+    } else {
+        toggleLinesAndPointsSelector.prop('value', 'Lines')
+    }
+};
+

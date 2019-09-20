@@ -45,7 +45,7 @@
             var renderQueryParameters = keyToDefaultRenderParametersMap[renderParametersKey];
             
             // Allow query string overrides of standard render flags
-            var renderFlags = ["excludeMask", "normalizeForMatching", "filter", "minIntensity", "maxIntensity"]
+            var renderFlags = ["excludeMask", "normalizeForMatching", "filter", "minIntensity", "maxIntensity"];
             renderFlags.forEach(flag => {
                 var value = queryParameters.get(flag);
                 if (typeof value !== 'undefined') {
@@ -53,7 +53,7 @@
                 }
             });
 
-            var renderQueryParameterString = $.param(renderQueryParameters)
+            var renderQueryParameterString = $.param(renderQueryParameters);
 
             var defaultRenderScale = 0.15;
             var renderScale = queryParameters.get('renderScale', defaultRenderScale);
@@ -108,9 +108,10 @@
         <tr>
             <td>Match View:</td>
             <td>
-                <input type='button' value='All Matches' onclick='tilePair.drawAllMatches()' />
-                <input type='button' value='Previous Match' onclick='tilePair.drawMatch(-1)' />
-                <input type='button' value='Next Match' onclick='tilePair.drawMatch(1)' />
+                <input type='button' value='All' onclick='tilePair.drawAllMatches()' />
+                <input type='button' value='Previous' onclick='tilePair.drawMatch(-1)' />
+                <input type='button' value='Next' onclick='tilePair.drawMatch(1)' />
+                <input id='toggleLinesAndPoints' type='button' value='Points' onclick='tilePair.toggleLinesAndPoints()' />
                 <input type='button' value='Rotate Tiles' onclick='tilePair.rotatePair()' />
             </td>
             <td id="matchInfo"></td>
