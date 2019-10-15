@@ -79,6 +79,8 @@ const JaneliaMatchTrial = function (baseUrl, owner, canvas, viewScale) {
     this.matchIndex = 0;
 
     this.util = new JaneliaScriptUtilities();
+
+    this.drawMatchLines = true;
 };
 
 JaneliaMatchTrial.prototype.clearCanvas = function() {
@@ -476,10 +478,34 @@ JaneliaMatchTrial.prototype.drawMatch = function(matches, matchIndex, pImage, qI
     const qx = (qMatches[0][matchIndex] * qImage.viewScale) + qImage.x;
     const qy = (qMatches[1][matchIndex] * qImage.viewScale) + qImage.y;
 
-    context.beginPath();
-    context.moveTo(px, py);
-    context.lineTo(qx, qy);
-    context.stroke();
+    if (this.drawMatchLines) {
+        context.beginPath();
+        context.moveTo(px, py);
+        context.lineTo(qx, qy);
+        context.stroke();
+    } else {
+        const radius = 3;
+        const twoPI = Math.PI * 2;
+        context.beginPath();
+        context.arc(px, py, radius, 0, twoPI);
+        context.stroke();
+        context.beginPath();
+        context.arc(qx, qy, radius, 0, twoPI);
+        context.stroke();
+    }
+
+};
+
+JaneliaMatchTrial.prototype.toggleLinesAndPoints = function() {
+    this.drawMatchLines = ! this.drawMatchLines;
+    this.drawSelectedMatches(undefined);
+
+    const toggleLinesAndPointsSelector = $("#toggleLinesAndPoints");
+    if (this.drawMatchLines) {
+        toggleLinesAndPointsSelector.prop('value', 'Points')
+    } else {
+        toggleLinesAndPointsSelector.prop('value', 'Lines')
+    }
 };
 
 JaneliaMatchTrial.prototype.saveTrialResultsToCollection = function(saveToOwner, saveToCollection, errorMessageSelector) {
