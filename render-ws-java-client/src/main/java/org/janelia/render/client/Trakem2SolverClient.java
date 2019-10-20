@@ -459,7 +459,12 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                 resolvedTiles.removeTileSpecs(tileIdsToRemove);
             }
 
-            targetDataClient.saveResolvedTiles(resolvedTiles, parameters.targetStack, null);
+            if (resolvedTiles.getTileCount() > 0) {
+                targetDataClient.saveResolvedTiles(resolvedTiles, parameters.targetStack, null);
+            } else {
+                LOG.info("skipping tile spec save since no specs are left to save");
+            }
+
         }
 
         LOG.info("saveTargetStackTiles: saved tiles for all split sections");
