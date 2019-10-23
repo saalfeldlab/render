@@ -354,9 +354,14 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
         csText = csSizes.length + ' consensus sets with [' + csSizes.toString() + '] matches were';
     }
 
-    const html = csText + ' derived in ' + stats.matchDerivationMilliseconds + ' ms' +
+    const totalSeconds = (stats.pFeatureDerivationMilliseconds +
+                          stats.qFeatureDerivationMilliseconds +
+                          stats.matchDerivationMilliseconds) / 1000;
+
+    const html = csText + " derived in " + stats.matchDerivationMilliseconds + " ms" +
                  this.getStandardDeviationHtml('X', stats.consensusSetDeltaXStandardDeviations) +
-                 this.getStandardDeviationHtml('Y', stats.consensusSetDeltaYStandardDeviations);
+                 this.getStandardDeviationHtml('Y', stats.consensusSetDeltaYStandardDeviations) +
+                 "<br/>Total processing time: " + totalSeconds + " s";
 
     $('#matchStats').html(html);
 

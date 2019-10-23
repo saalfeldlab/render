@@ -8,7 +8,7 @@
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="../script/janelia-render.js?v=20180904_001"></script>
-    <script type="text/javascript" src="../script/janelia-match-trial.js?v=20191015_001"></script>
+    <script type="text/javascript" src="../script/janelia-match-trial.js?v=20191023_001"></script>
     <script type="text/javascript">
 
         // TODO: figure out why matchTrial needs to be a var for initNewTrialWindow to work
@@ -45,13 +45,14 @@
 
             const saveToOwner = queryParameters.get("saveToOwner", "flyTEM");
             const saveToCollection = queryParameters.get("saveToCollection");
-            if (typeof saveToCollection !== 'undefined') {
+            if (typeof saveToCollection === 'undefined') {
+                saveToCollectionButtonSelector.hide();
+            } else {
                 saveToCollectionButtonSelector.val("Save To " + saveToCollection);
+                saveToCollectionButtonSelector.on('click', function() {
+                    matchTrial.saveTrialResultsToCollection(saveToOwner, saveToCollection, errorMessageSelector);
+                });
             }
-
-            saveToCollectionButtonSelector.on('click', function() {
-                matchTrial.saveTrialResultsToCollection(saveToOwner, saveToCollection, errorMessageSelector);
-            });
 
             if (matchTrialId === 'TBD') {
                 newTrialButtonSelector.hide();
