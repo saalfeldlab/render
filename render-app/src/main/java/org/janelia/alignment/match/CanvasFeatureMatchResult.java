@@ -3,6 +3,8 @@ package org.janelia.alignment.match;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
@@ -122,11 +124,17 @@ public class CanvasFeatureMatchResult implements Serializable {
                                                                         pOffsets,
                                                                         qOffsets);
             if (pairMaxDeltaStandardDeviation != null) {
-                inlierList.forEach(canvasMatches -> {
 
-                    final Matches m = canvasMatches.getMatches();
-                    final double dxStd = m.calculateStandardDeviationForDeltaX();
-                    final double dyStd = m.calculateStandardDeviationForDeltaY();
+                final List<List<Double>> worldDeltaStandardDeviations = getWorldDeltaStandardDeviations();
+                final List<Double> deltaXStandardDeviations = worldDeltaStandardDeviations.get(0);
+                final List<Double> deltaYStandardDeviations = worldDeltaStandardDeviations.get(1);
+
+                for (int i = 0; i < inlierList.size(); i++) {
+
+                    final CanvasMatches canvasMatches = inlierList.get(i);
+                    final double dxStd = deltaXStandardDeviations.get(i);
+                    final double dyStd = deltaYStandardDeviations.get(i);
+
                     if (dxStd > pairMaxDeltaStandardDeviation) {
 
                         LOG.warn("tossing matches between {} and {} because delta X standard deviation of {} is greater than {}",
@@ -141,7 +149,7 @@ public class CanvasFeatureMatchResult implements Serializable {
                         targetList.add(canvasMatches);
                     }
 
-                });
+                }
 
             } else {
                 targetList.addAll(inlierList);
@@ -153,6 +161,44 @@ public class CanvasFeatureMatchResult implements Serializable {
     @Override
     public String toString() {
         return "{'consensusSetSizes' : " + getConsensusSetSizes() + ", 'inlierRatio' : " + inlierRatio + '}';
+    }
+
+    List<List<Double>> getWorldDeltaStandardDeviations() {
+        final List<Double> deltaXStandardDeviations = new ArrayList<>();
+        final List<Double> deltaYStandardDeviations = new ArrayList<>();
+        for (final List<PointMatch> consensusSet : consensusSetInliers) {
+            final double[] worldDeltaXAndYStandardDeviation = getWorldDeltaXAndYStandardDeviation(consensusSet);
+            deltaXStandardDeviations.add(worldDeltaXAndYStandardDeviation[0]);
+            deltaYStandardDeviations.add(worldDeltaXAndYStandardDeviation[1]);
+        }
+        return Stream.of(deltaXStandardDeviations, deltaYStandardDeviations).collect(Collectors.toList());
+    }
+
+    public static double[] getWorldDeltaXAndYStandardDeviation(final List<PointMatch> pointMatchList) {
+        final double[] deltaWorldX = new double[pointMatchList.size()];
+        final double[] deltaWorldY = new double[pointMatchList.size()];
+        for (int i = 0; i < pointMatchList.size(); i++) {
+            final PointMatch pointMatch = pointMatchList.get(i);
+            final Point p = pointMatch.getP1();
+            final Point q = pointMatch.getP2();
+            deltaWorldX[i] = p.getW()[0] - q.getW()[0];
+            deltaWorldY[i] = p.getW()[1] - q.getW()[1];
+        }
+        return new double[] { calculateStandardDeviation(deltaWorldX), calculateStandardDeviation(deltaWorldY) };
+    }
+
+    private static double calculateStandardDeviation(final double[] values) {
+        double sum = 0.0;
+        double squaredDifferenceSum = 0.0;
+        for (final double v : values) {
+            sum += v;
+        }
+        final double mean = sum / values.length;
+        for (final double v : values) {
+            squaredDifferenceSum += Math.pow(v - mean, 2);
+        }
+        final double variance = squaredDifferenceSum / values.length;
+        return Math.sqrt(variance);
     }
 
     /**
@@ -190,9 +236,9 @@ public class CanvasFeatureMatchResult implements Serializable {
             double[] local1 = p1.getL();
             final int dimensionCount = local1.length;
 
-            final double p[][] = new double[dimensionCount][pointMatchCount];
-            final double q[][] = new double[dimensionCount][pointMatchCount];
-            final double w[] = new double[pointMatchCount];
+            final double[][] p = new double[dimensionCount][pointMatchCount];
+            final double[][] q = new double[dimensionCount][pointMatchCount];
+            final double[] w = new double[pointMatchCount];
 
             Point p2;
             double[] local2;
@@ -238,21 +284,21 @@ public class CanvasFeatureMatchResult implements Serializable {
      */
     public static List<PointMatch> convertMatchesToPointMatchList(final Matches matches) {
 
-        final double w[] = matches.getWs();
+        final double[] w = matches.getWs();
 
         final int pointMatchCount = w.length;
         final List<PointMatch> pointMatchList = new ArrayList<>(pointMatchCount);
 
         if (pointMatchCount > 0) {
-            final double p[][] = matches.getPs();
-            final double q[][] = matches.getQs();
+            final double[][] p = matches.getPs();
+            final double[][] q = matches.getQs();
 
             final int dimensionCount = p.length;
 
             for (int matchIndex = 0; matchIndex < pointMatchCount; matchIndex++) {
 
-                final double pLocal[] = new double[dimensionCount];
-                final double qLocal[] = new double[dimensionCount];
+                final double[] pLocal = new double[dimensionCount];
+                final double[] qLocal = new double[dimensionCount];
 
                 for (int dimensionIndex = 0; dimensionIndex < dimensionCount; dimensionIndex++) {
                     pLocal[dimensionIndex] = p[dimensionIndex][matchIndex];

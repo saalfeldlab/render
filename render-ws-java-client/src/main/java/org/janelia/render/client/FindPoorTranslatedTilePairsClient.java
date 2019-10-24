@@ -14,6 +14,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import mpicbg.models.PointMatch;
+
+import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
@@ -31,11 +34,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Java client for analyzing existing match data to identify poor quality tile pairs.
+ * Java client for analyzing existing match data to identify poor quality tile pairs
+ * that are expected to fit a TRANSLATION model.
  *
  * @author Eric Trautman
  */
-public class FindPoorTilePairsClient {
+public class FindPoorTranslatedTilePairsClient {
 
     public static class Parameters extends CommandLineParameters {
 
@@ -154,7 +158,7 @@ public class FindPoorTilePairsClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final FindPoorTilePairsClient client = new FindPoorTilePairsClient(parameters);
+                final FindPoorTranslatedTilePairsClient client = new FindPoorTranslatedTilePairsClient(parameters);
 
                 client.findAndSavePoorQualityMatchPairs();
             }
@@ -166,7 +170,7 @@ public class FindPoorTilePairsClient {
     private final Parameters parameters;
     private final RenderDataClient renderDataClient;
 
-    private FindPoorTilePairsClient(final Parameters parameters) throws IllegalArgumentException {
+    private FindPoorTranslatedTilePairsClient(final Parameters parameters) throws IllegalArgumentException {
 
         this.parameters = parameters;
         this.renderDataClient = parameters.renderWeb.getDataClient();
@@ -227,8 +231,14 @@ public class FindPoorTilePairsClient {
             canvasMatchesList.forEach(cm -> {
 
                 final Matches m = cm.getMatches();
-                final double dxStd = m.calculateStandardDeviationForDeltaX();
-                final double dyStd = m.calculateStandardDeviationForDeltaY();
+
+                // NOTE: each point match in list has local == world (so really just local info)
+                final List<PointMatch> localMatchList = m.createPointMatches();
+                final double[] deltaXAndYStandardDeviation =
+                        CanvasFeatureMatchResult.getWorldDeltaXAndYStandardDeviation(localMatchList);
+
+                final double dxStd = deltaXAndYStandardDeviation[0];
+                final double dyStd = deltaXAndYStandardDeviation[1];
                 if ((dxStd > parameters.pairMaxDeltaStandardDeviation) ||
                     (dyStd > parameters.pairMaxDeltaStandardDeviation)) {
 
@@ -261,6 +271,6 @@ public class FindPoorTilePairsClient {
         LOG.info("findAndSavePoorQualityMatchPairs: exit, saved {} total pairs", poorNeighborPairs.size());
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(FindPoorTilePairsClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FindPoorTranslatedTilePairsClient.class);
 
 }

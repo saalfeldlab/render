@@ -141,14 +141,14 @@ public class MatchTrial implements Serializable {
                                                                              pCanvasId.getClipOffsets(),
                                                                              qCanvasId.getClipOffsets());
         this.matches = new ArrayList<>(results.size());
-        final List<Double> deltaXStandardDeviations = new ArrayList<>();
-        final List<Double> deltaYStandardDeviations = new ArrayList<>();
         for (final CanvasMatches canvasMatches : results) {
             final Matches m = canvasMatches.getMatches();
             this.matches.add(m);
-            deltaXStandardDeviations.add(m.calculateStandardDeviationForDeltaX());
-            deltaYStandardDeviations.add(m.calculateStandardDeviationForDeltaY());
         }
+
+        final List<List<Double>> worldDeltaStandardDeviations = matchResult.getWorldDeltaStandardDeviations();
+        final List<Double> deltaXStandardDeviations = worldDeltaStandardDeviations.get(0);
+        final List<Double> deltaYStandardDeviations = worldDeltaStandardDeviations.get(1);
 
         this.stats = new MatchTrialStats(pCanvasData.featureList.size(),
                                          (qFeatureStart - pFeatureStart),

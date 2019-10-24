@@ -152,16 +152,6 @@ public class Matches implements Serializable {
         return buildPointList(getQs());
     }
 
-    public double calculateStandardDeviationForDeltaX() {
-        final double[] deltasForX = calculateDeltas(p[0], q[0]);
-        return calculateStandardDeviation(deltasForX);
-    }
-
-    public double calculateStandardDeviationForDeltaY() {
-        final double[] deltasForY = calculateDeltas(p[1], q[1]);
-        return calculateStandardDeviation(deltasForY);
-    }
-
     private static List<RealPoint> buildPointList(final double[][] locations) {
         final double[] xLocations = locations[0];
         final double[] yLocations = locations[1];
@@ -170,29 +160,6 @@ public class Matches implements Serializable {
             pointList.add(new RealPoint(xLocations[i], yLocations[i]));
         }
         return pointList;
-    }
-
-    private static double[] calculateDeltas(final double[] pValues,
-                                            final double[] qValues) {
-        final double deltas[] = new double[pValues.length];
-        for (int i = 0; i < pValues.length; i++) {
-            deltas[i] = pValues[i] - qValues[i];
-        }
-        return deltas;
-    }
-
-    private static double calculateStandardDeviation(final double[] values) {
-        double sum = 0.0;
-        double squaredDifferenceSum = 0.0;
-        for (final double v : values) {
-            sum += v;
-        }
-        final double mean = sum / values.length;
-        for (final double v : values) {
-            squaredDifferenceSum += Math.pow(v - mean, 2);
-        }
-        final double variance = squaredDifferenceSum / values.length;
-        return Math.sqrt(variance);
     }
 
 }
