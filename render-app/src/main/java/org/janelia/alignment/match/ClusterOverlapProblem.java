@@ -12,7 +12,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
@@ -217,6 +216,12 @@ public class ClusterOverlapProblem {
                "  \"greenTileIds\": " + greenIdJson + ",\n" +
                "  \"redTileIds\":   " + redIdJson + "\n" +
                "}";
+    }
+
+    public ClusterOverlapBounds getBounds() {
+        return new ClusterOverlapBounds(z,
+                                        intersectingTileIdToBounds.values(),
+                                        tileIdToBounds.values());
     }
 
     private RenderParameters getParameters(final RenderWebServiceUrls renderWebServiceUrls,
