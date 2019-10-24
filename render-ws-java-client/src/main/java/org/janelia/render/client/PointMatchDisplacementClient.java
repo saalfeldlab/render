@@ -315,7 +315,7 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
 
             LOG.info("run: num tile matches {}", matches.size());
 
-            double diff = 0;
+            List<Double> dists = new ArrayList<>();
             for (final CanvasMatches match : matches) {
 
                 final String pId = match.getpId();
@@ -348,13 +348,15 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
                     double[] pTransformed = pModel.apply(pLocation);
                     double[] qTransformed = qModel.apply(qLocation);
 
-                    matchDiff += dist(pTransformed, qTransformed);
+                    dists.add(dist(pTransformed, qTransformed));
                 }
-
-                diff += matchDiff / pList.size();
             }
 
-            LOG.info("run: tile {} has an average displacement of {}", pGroupId, diff);
+            DoubleSummaryStatistics stats = dists.stream().mapToDouble(Double::valueOf).summaryStatistics();
+            double avg = stats.getAverage();
+            double stdDev = Math.sqrt( dists.stream().map(x -> Math.pow(x - avg, 2)).mapToDouble(Double::valueOf).sum() / stats.getCount() );
+
+            LOG.info("run: tile {} has a displacement average of {} and standard deviation of {}", pGroupId, avg, stdDev);
         }
 
         LOG.info("run: exit");
