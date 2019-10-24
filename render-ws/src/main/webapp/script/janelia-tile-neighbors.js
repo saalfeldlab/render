@@ -223,6 +223,8 @@ var JaneliaTileWithNeighbors = function(baseUrl, owner, project, stack, matchOwn
     this.drawMatchLines = true;
 
     this.janeliaTileMap = {};
+
+    this.selectedTile = undefined;
 };
 
 JaneliaTileWithNeighbors.prototype.setNeighborSizeFactor = function(factor) {
@@ -252,6 +254,125 @@ JaneliaTileWithNeighbors.prototype.setTileId = function(tileId) {
            });
 };
 
+const JaneliaGridOrientation = function(tileSpecs,
+                                        columnOffset) {
+
+    this.columnOffset = columnOffset;
+    
+    const self = this;
+
+    let specA = tileSpecs[0];
+
+    this.minRow = specA.layout.imageRow;
+    this.maxRow = specA.layout.imageRow;
+    this.minColumn = specA.layout.imageCol;
+    this.maxColumn = specA.layout.imageCol;
+
+    for (let index = 1; index < tileSpecs.length; index++) {
+        const tileSpec = tileSpecs[index];
+        this.minRow = Math.min(this.minRow, tileSpec.layout.imageRow);
+        this.maxRow = Math.max(this.maxRow, tileSpec.layout.imageRow);
+        this.minColumn = Math.min(this.minColumn, tileSpec.layout.imageCol);
+        this.maxColumn = Math.max(this.maxColumn, tileSpec.layout.imageCol);
+    }
+
+    // assume actual orientation is same as layout:           AB
+    this.getViewRowAndColumn = function (forTileSpec) {    // CD
+        return {
+            row: forTileSpec.layout.imageRow - self.minRow,
+            column: forTileSpec.layout.imageCol - self.minColumn + self.columnOffset,
+            maxViewRow: self.maxRow - self.minRow,
+            maxViewColumn: self.maxColumn - self.minColumn + self.columnOffset
+        };
+    };
+
+    // // actual orientation is rotated 90 degrees from layout:  DA
+    // const rotate90 = function (forTileSpec) {              // CB
+    //     return {
+    //         row: forTileSpec.layout.imageCol - self.minColumn,
+    //         column: self.maxRow - forTileSpec.layout.imageRow + self.columnOffset,
+    //         maxViewColumn: self.maxRow - self.minRow + self.columnOffset
+    //     };
+    // };
+    //
+    // // actual orientation is rotated 180 degrees from layout: DC
+    // const rotate180 = function (forTileSpec) {             // BA
+    //     return {
+    //         row: self.maxRow - forTileSpec.layout.imageRow,
+    //         column: self.maxColumn - forTileSpec.layout.imageCol + self.columnOffset,
+    //         maxViewColumn: self.maxColumn - self.minColumn + self.columnOffset
+    //     };
+    // };
+    //
+    // // actual orientation is rotated 270 degrees from layout: BC
+    // const rotate270 = function (forTileSpec) {             // AD
+    //     return {
+    //         row: self.maxColumn - forTileSpec.layout.imageCol,
+    //         column: forTileSpec.layout.imageRow - self.minRow + self.columnOffset,
+    //         maxViewColumn: self.maxRow - self.minRow + self.columnOffset
+    //     };
+    // };
+    //
+    // if (tileSpecs.length > 1) {
+    //
+    //     let specB = tileSpecs[1];
+    //
+    //     if (specA.layout.imageRow > specB.layout.imageRow) {
+    //         specB = specA;
+    //         specA = tileSpecs[1];
+    //     } else if (specA.layout.imageRow === specB.layout.imageRow) {
+    //         if (specA.layout.imageCol > specB.layout.imageCol) {
+    //             specB = specA;
+    //             specA = tileSpecs[1];
+    //         }
+    //     }
+    //
+    //     const deltaX = specA.minX - specB.minX;
+    //     const deltaY = specA.minY - specB.minY;
+    //
+    //     if (specA.layout.imageRow === specB.layout.imageRow) {
+    //
+    //         if (Math.abs(deltaX) > Math.abs(deltaY)) {
+    //             if (specA.minX > specB.minX) {
+    //                 this.getViewRowAndColumn = rotate180;
+    //             } // else actual == layout
+    //         } else if (specA.minY < specB.minY) {
+    //             this.getViewRowAndColumn = rotate90;
+    //         } else {
+    //             this.getViewRowAndColumn = rotate270;
+    //         }
+    //
+    //     } else if (specA.layout.imageCol === specB.layout.imageCol) {
+    //
+    //         if (Math.abs(deltaY) > Math.abs(deltaX)) {
+    //             if (specA.minY > specB.minY) {
+    //                 this.getViewRowAndColumn = rotate180;
+    //             } // else actual == layout
+    //         } else if (specA.minX < specB.minX) {
+    //             this.getViewRowAndColumn = rotate270;
+    //         } else {
+    //             this.getViewRowAndColumn = rotate90;
+    //         }
+    //
+    //     } else if (deltaX > 0) {
+    //
+    //         if (deltaY > 0) {
+    //             this.getViewRowAndColumn = rotate180;
+    //         } else {
+    //             this.getViewRowAndColumn = rotate90;
+    //         }
+    //
+    //     } else if (deltaY > 0) {
+    //         this.getViewRowAndColumn = rotate270;
+    //     } // else actual == layout
+    //
+    // }
+
+    const viewRowAndColumnForSpecA = this.getViewRowAndColumn(specA);
+    this.maxViewRow = viewRowAndColumnForSpecA.maxViewRow;
+    this.maxViewColumn = viewRowAndColumnForSpecA.maxViewColumn;
+};
+
 /**
  * @param data
  * @param data.layout
@@ -260,126 +381,76 @@ JaneliaTileWithNeighbors.prototype.setTileId = function(tileId) {
  */
 JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
 
+    const tileSpecs = data["tileSpecs"];
+
     this.janeliaTileMap = {};
 
-    var sectionMap = {};
-    var tileSpecs = data["tileSpecs"];
-    var firstRow = undefined;
-    var firstColumn = undefined;
-
-    var tileSpec;
-    var sectionData;
-    var originalTileWidth;
-    var originalTileHeight;
+    const sectionToTileSpecsMap = {};
 
     let pageQueryParameters = new JaneliaQueryParameters();
 
-    for (var index = 0; index < tileSpecs.length; index++) {
+    for (let index = 0; index < tileSpecs.length; index++) {
 
-        tileSpec = tileSpecs[index];
+        const tileSpec = tileSpecs[index];
 
         if (tileSpec.layout.sectionId !== pageQueryParameters.get("sectionId", tileSpec.layout.sectionId)) {
             continue;
         }
 
-        if (! sectionMap.hasOwnProperty(tileSpec.layout.sectionId)) {
-            sectionMap[tileSpec.layout.sectionId] = {
-                minXList: [],
-                minYList: [],
-                janeliaTiles: {}
-            };
+        if (! sectionToTileSpecsMap.hasOwnProperty(tileSpec.layout.sectionId)) {
+            sectionToTileSpecsMap[tileSpec.layout.sectionId] = [];
         }
 
-        sectionData = sectionMap[tileSpec.layout.sectionId];
+        sectionToTileSpecsMap[tileSpec.layout.sectionId].push(tileSpec);
 
-        sectionData.minXList.push({"tileId": tileSpec.tileId, "value": tileSpec.minX});
-        sectionData.minYList.push({"tileId": tileSpec.tileId, "value": tileSpec.minY});
-
-        if ((typeof tileSpec.layout.imageRow !== 'undefined') &&
-            (typeof tileSpec.layout.imageCol !== 'undefined')) {
-            if (typeof firstRow === 'undefined') {
-                firstRow = tileSpec.layout.imageRow;
-                firstColumn = tileSpec.layout.imageCol;
-            } else {
-                firstRow = Math.min(firstRow, tileSpec.layout.imageRow);
-                firstColumn = Math.min(firstColumn, tileSpec.layout.imageCol);
-            }
-        }
-
-        if (this.tileId === tileSpec.tileId) {
-            originalTileWidth = tileSpec.width;
-            originalTileHeight = tileSpec.height;
-        }
-
-        sectionData.janeliaTiles[tileSpec.tileId] =
-                new JaneliaTile2(tileSpec, this.stackUrl, this.matchCollectionUrl, this.renderQueryParameters, this.scale, this.canvas, this.janeliaTileMap);
+        this.janeliaTileMap[tileSpec.tileId] =
+                new JaneliaTile2(tileSpec, this.stackUrl, this.matchCollectionUrl, this.renderQueryParameters,
+                                 this.scale, this.canvas, this.janeliaTileMap);
     }
 
-    var compareValues = function(a, b) {
-        return a.value - b.value;
-    };
+    let maxRow = 0;
+    let maxColumn = 0;
 
-    var deriveRowOrColumn = function(forTileId, list, size) {
-        var rowOrColumn = 0;
-        if ((list.length > 0) && (forTileId !== list[0].tileId)) {
-            for (var index = 1; index < list.length; index++) {
-                var prevDelta = list[index].value - list[index - 1].value;
-                if ((prevDelta / size) > 0.5) {
-                    rowOrColumn = rowOrColumn + 1;
-                }
-                if (forTileId === list[index].tileId) {
-                    break;
-                }
-            }
-        }
-        return rowOrColumn;
-    };
+    const sortedSectionIds = Object.keys(sectionToTileSpecsMap).sort();
 
-    var firstColumnForSection = 0;
-    var tileId;
-    var janeliaTile2;
+    let columnOffset = 0;
+    for (let i = 0; i < sortedSectionIds.length; i++) {
+        const sectionId = sortedSectionIds[i];
+        const sectionTileSpecs = sectionToTileSpecsMap[sectionId];
 
-    for (var sectionId in sectionMap) {
-        if (sectionMap.hasOwnProperty(sectionId)) {
-            sectionData = sectionMap[sectionId];
+        // TODO: consider saving orientation for later moves
 
-            sectionData.minXList.sort(compareValues);
-            sectionData.minYList.sort(compareValues);
+        const gridOrientation = new JaneliaGridOrientation(sectionTileSpecs,
+                                                           columnOffset);
 
-            for (tileId in sectionData.janeliaTiles) {
-                if (sectionData.janeliaTiles.hasOwnProperty(tileId)) {
+        maxRow = Math.max(maxRow, gridOrientation.maxViewRow);
+        maxColumn = Math.max(maxColumn, gridOrientation.maxViewColumn);
+        columnOffset = gridOrientation.maxViewColumn + 2;
 
-                    janeliaTile2 = sectionData.janeliaTiles[tileId];
-
-                    this.janeliaTileMap[tileId] = janeliaTile2;
-
-                    tileSpec = janeliaTile2.tileSpec;
-
-                    if (typeof firstRow === 'undefined') {
-                        janeliaTile2.setRowAndColumn(
-                                deriveRowOrColumn(tileId, sectionData.minYList, originalTileHeight),
-                                firstColumnForSection +
-                                deriveRowOrColumn(tileId, sectionData.minXList, originalTileWidth));
-                    } else {
-                        // TODO: revisit this
-                        let deltaRow = tileSpec.layout.imageRow - firstRow;
-                        // if (deltaRow > 4) {
-                        //     deltaRow = 4;
-                        // }
-                        janeliaTile2.setRowAndColumn(
-                                deltaRow,
-                                tileSpec.layout.imageCol - firstColumn);
-                    }
-                }
-            }
-            firstColumnForSection = firstColumnForSection + sectionData.minXList[sectionData.minXList.length - 1].value;
+        for (let j = 0; j < sectionTileSpecs.length; j++) {
+            const tileSpec = sectionTileSpecs[j];
+            const viewRowAndColumn = gridOrientation.getViewRowAndColumn(tileSpec);
+            const janeliaTile2 = this.janeliaTileMap[tileSpec.tileId];
+            janeliaTile2.setRowAndColumn(viewRowAndColumn.row, viewRowAndColumn.column);
         }
     }
+
+    const context = this.canvas.getContext("2d");
+    const canvasOffset = 4;
+    const tileMargin = 4;
+    // TODO: fix this for cases where tiles are different sizes and for non-FAFB tiles
+    const scaledWidth = 2760 * this.scale;
+    const scaledHeight = 2330 * this.scale;
+    const maxX = ((maxColumn + 1) * (scaledWidth + tileMargin)) + canvasOffset;
+    const maxY = ((maxRow + 1) * (scaledHeight + tileMargin)) + canvasOffset;
+
+    context.canvas.width = maxX;
+    context.canvas.height = maxY;
 
     // only load images (and then point matches) after rows and columns have been set for all tiles
-    for (tileId in this.janeliaTileMap) {
+    for (const tileId in this.janeliaTileMap) {
         if (this.janeliaTileMap.hasOwnProperty(tileId)) {
-            janeliaTile2 = this.janeliaTileMap[tileId];
+            const janeliaTile2 = this.janeliaTileMap[tileId];
             janeliaTile2.loadImage();
         }
     }
@@ -591,10 +662,13 @@ JaneliaTileWithNeighbors.prototype.move = function(rowDelta, columnDelta) {
 
 JaneliaTileWithNeighbors.prototype.selectTile = function(canvasClickX, canvasClickY, shiftKey) {
 
-    var selectedTile = undefined;
+    const previouslySelectedTile = this.selectedTile;
+
+    this.selectedTile = undefined;
 
     if ((typeof this.tileId !== 'undefined') && (this.tileId.length > 0)) {
 
+        const unselectedTiles = [];
         for (var neighborTileId in this.janeliaTileMap) {
             if (this.janeliaTileMap.hasOwnProperty(neighborTileId)) {
                 var neighbor = this.janeliaTileMap[neighborTileId];
@@ -604,33 +678,62 @@ JaneliaTileWithNeighbors.prototype.selectTile = function(canvasClickX, canvasCli
                         var maxY = neighbor.y + neighbor.image.naturalHeight;
                         if ((maxX >= canvasClickX) && (maxY >= canvasClickY)) {
 
-                            if (! shiftKey) {
-                                neighbor.setSelected(true);
-                            }
-
-                            selectedTile = neighbor;
+                            this.selectedTile = neighbor;
 
                         } else {
-
-                            if (! shiftKey) {
-                                neighbor.setSelected(false);
-                            }
-
+                            unselectedTiles.push(neighbor);
                         }
                     } else {
-
-                        if (! shiftKey) {
-                            neighbor.setSelected(false);
-                        }
-
+                        unselectedTiles.push(neighbor);
                     }
                 }
             }
         }
 
+        const self = this;
+
+        if ((self.selectedTile !== undefined) && (! shiftKey)) {
+
+            const ctx = this.canvas.getContext("2d");
+            ctx.clearRect(0, 0, self.canvas.width, self.canvas.height);
+
+            self.selectedTile.drawLoadedImage();
+            self.selectedTile.drawMatchLines = false;
+
+            const selectedTileId = self.selectedTile.tileSpec.tileId;
+            unselectedTiles.forEach(tile => {
+                tile.drawLoadedImage();
+                tile.matches.forEach(canvasMatches => {
+                    if ((canvasMatches.pId === selectedTileId) || (canvasMatches.qId === selectedTileId)) {
+                        self.selectedTile.drawMatches(canvasMatches);
+                    }
+                });
+            });
+
+            self.selectedTile.matches.forEach(canvasMatches => {
+                self.selectedTile.drawMatches(canvasMatches)
+            });
+
+            self.selectedTile.setSelected(true);
+
+        } else if (previouslySelectedTile !== undefined) {
+
+            previouslySelectedTile.setSelected(false);
+            previouslySelectedTile.drawMatchLines = true;
+
+            unselectedTiles.forEach(tile => {
+                if (tile.tileSpec.tileId !== previouslySelectedTile.tileSpec.tileId) {
+                    tile.matches.forEach(canvasMatches => {
+                        tile.drawMatches(canvasMatches)
+                    });
+                }
+            });
+
+        }
+
     }
 
-    return selectedTile;
+    return this.selectedTile;
 };
 
 JaneliaTileWithNeighbors.prototype.getOrderedTileSpecPair = function(tileSpecA, tileSpecB) {
@@ -695,7 +798,11 @@ JaneliaTileWithNeighbors.prototype.runTrial = function(tileA, tileB, trialRunnin
 
     const orderedPair = this.getOrderedTileSpecPair(tileA.tileSpec, tileB.tileSpec);
 
-    const baseRenderUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/flyTEM/project/FAFB00/stack/v12_acquire/tile/";
+    const queryParameters = new JaneliaQueryParameters();
+    const trialSourceStack = queryParameters.get("trialSourceStack", "v12_acquire");
+
+    const baseRenderUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/flyTEM/project/FAFB00/stack/" +
+                          trialSourceStack + "/tile/";
     const renderUrlSuffix = "/render-parameters?excludeMask=true&normalizeForMatching=true&width=2760&height=2330&filter=true&scale=0.7";
     const pRenderUrl = baseRenderUrl + orderedPair.pTileSpec.tileId + renderUrlSuffix;
     const qRenderUrl = baseRenderUrl + orderedPair.qTileSpec.tileId + renderUrlSuffix;
