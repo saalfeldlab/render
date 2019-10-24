@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Layer Tiles</title>
+
+    <link rel="stylesheet" href="../css/match.css">
+
+    <style>
+        body, html {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+        #controlsTable {
+            float: right;
+            vertical-align: top;
+            margin-left: 5px;
+            width: 380px;
+        }
+        #layerDiv {
+            width: 100%;
+            height: 100%;
+        }
+        #theCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            border-right: solid 1px black;
+        }
+        #theCanvasSelectionLayer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        a {
+            word-break: break-word;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f1f1f1;
+            min-width: 160px;
+            overflow: auto;
+            box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+        .dropdown-content p {
+            color: black;
+            text-decoration: underline;
+            padding: 5px;
+            margin: 5px;
+        }
+        .dropdown-content a {
+            color: black;
+            padding: 5px 20px;
+            text-decoration: none;
+            display: block;
+        }
+        .dropdown-content a:hover {background-color: #ddd;}
+
+        /*select.possibleLongName, option {*/
+            /*width: 250px;*/
+        /*}*/
+    </style>
+
+    <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
+
+    <!-- https://github.com/mourner/rbush -->
+    <script type="text/javascript" src="../script/rbush-3.0.0.min.js"></script>
+
+    <script type="text/javascript" src="../script/janelia-render.js?v=20180611_001"></script>
+    <script type="text/javascript" src="../script/janelia-tile-layer.js?v=20190306_003"></script>
+    <script type="text/javascript">
+
+        let tileLayer;
+
+        const selectTileDropdownOption = function(optionIndex) {
+            $('#selectedTileDropdown').css('display', 'none');
+            if (optionIndex === 0) {
+                tileLayer.viewSelectedTileNeighbors();
+            } else if ((optionIndex > 0) && (optionIndex < 4)) {
+                tileLayer.viewSelectedTileInCATMAID(optionIndex);
+            }
+            return false;
+        };
+
+        $( document ).ready(function() {
+
+            const util = new JaneliaScriptUtilities();
+            const queryParameters = new JaneliaQueryParameters();
+
+            const baseUrl = queryParameters.get('baseUrl', util.getServicesBaseUrl());
+            // TODO: remove this when done debugging on localhost
+            // const baseUrl = "http://renderer-dev:8080/render-ws/v1";
+
+            const owner = queryParameters.get('renderStackOwner');
+            const project = queryParameters.get('renderStackProject', '');
+            const stack = queryParameters.get('renderStack');
+
+            const matchOwner = queryParameters.get('matchOwner', owner);
+            const matchCollection = queryParameters.get('matchCollection');
+
+            const zText = queryParameters.get('z');
+            const useStackBoundsText = queryParameters.get('useStackBounds', 'false');
+            const boxScaleText = queryParameters.get('boxScale', '1.0');
+
+            const canvas = document.getElementById("theCanvas");
+            const selectionCanvas = document.getElementById("theCanvasSelectionLayer");
+            const selectionCanvasSelector = $("#theCanvasSelectionLayer");
+
+            tileLayer = new JaneliaTileLayer(
+                    baseUrl, owner, project, stack, zText,
+                    matchOwner, matchCollection,
+                    useStackBoundsText, boxScaleText, canvas, selectionCanvas,
+                    new JaneliaScriptUtilities());
+
+            $("#renderOwner").html(owner);
+            $("#renderProject").html(project);
+
+            const stackLinkHtml = '<a href="' + tileLayer.stackUrl + '" target="_blank">' + stack + '</a>';
+            $("#renderStack").html(stackLinkHtml);
+
+            //const zLinkHtml = 'Z ' + zText + ' <a href="' + tileLayer.getBoundsUrl() + '" target="_blank">Tile Bounds</a>';
+            //$("#zLink").html(zLinkHtml);
+            
+            tileLayer.changeZTitle();
+
+            const zValueSelector = $("#zValue");
+            zValueSelector.append(new Option(zText));
+            zValueSelector.val(zText);
+
+            zValueSelector.change(function() {
+                tileLayer.changeZ(zValueSelector.val());
+            });
+
+            // from https://stackoverflow.com/questions/14926366/mousewheel-event-in-modern-browsers
+            const zScrollEventHandler = function(event) {
+                // cross-browser wheel delta
+                const e = window.event || event; // old IE support
+                const delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+                tileLayer.scrollZ(delta);
+                return false;
+            };
+
+            // IE9, Chrome, Safari, Opera
+            selectionCanvas.addEventListener("mousewheel", zScrollEventHandler, false);
+            // Firefox
+            selectionCanvas.addEventListener("DOMMouseScroll", zScrollEventHandler, false);
+
+            selectionCanvasSelector.click(function(event) {
+                const dropdownSelector = $("#selectedTileDropdown");
+                dropdownSelector.css("display", "none");
+                
+                tileLayer.selectTile(event);
+                if (tileLayer.selectedTileBounds) {
+                    $("#selectedTileId").text("Tile " + tileLayer.selectedTileBounds.tileId);
+                    const menuOffset = 10;
+                    let dropDownTop = event.clientY + menuOffset;
+                    let dropDownLeft = event.clientX + menuOffset;
+                    const layerDivSelector = $("#layerDiv");
+                    if (dropdownSelector.height() > (layerDivSelector.height() - dropDownTop)) {
+                        dropDownTop = event.clientY - dropdownSelector.height() - menuOffset;
+                    }
+                    if (dropdownSelector.width() > (layerDivSelector.width() - dropDownLeft)) {
+                        dropDownLeft = event.clientX - dropdownSelector.width() - menuOffset;
+                    }
+                    dropdownSelector.css({top: dropDownTop, left: dropDownLeft + 10, display: "block" });
+                }
+
+            });
+            // canvasSelector.mousemove(function(event) {
+            //     tileLayer.handleMouseMove(event);
+            // });
+
+            if (tileLayer.useStackBounds) {
+                $("#useStackBounds").prop("checked", true);
+            } else {
+                $("#useLayerBounds").prop("checked", true);
+            }
+
+            const boxScaleSelector = $("#boxScale");
+            const boxScaleSliderValue = Math.floor(tileLayer.boxScale * 100);
+            boxScaleSelector.val(boxScaleSliderValue);
+            boxScaleSelector.change(function() {
+                const boxScale = boxScaleSelector.val() / 100.0;
+                tileLayer.setBoxScale(boxScale);
+            });
+
+            const missingConnectionsThresholdSelector = $("#missingConnectionsThreshold");
+            missingConnectionsThresholdSelector.change(function() {
+                const threshold = parseInt(missingConnectionsThresholdSelector.val());
+                if (isFinite(threshold)) {
+                    tileLayer.setMissingConnectionMatchCountThreshold(threshold);
+                }
+            });
+
+        });
+
+    </script>
+
+</head>
+
+<body onresize="tileLayer.resizeCanvas()">
+
+<div id="layerDiv" >
+    <div id="canvasDiv">
+        <canvas id="theCanvas"></canvas>
+        <canvas id="theCanvasSelectionLayer"></canvas>
+        <div id="selectedTileDropdown" class="dropdown-content">
+            <p id="selectedTileId"></p>
+            <a onclick="return selectTileDropdownOption(0);">view neighbors</a>
+            <a onclick="return selectTileDropdownOption(1);">view in CATMAID (level 1)</a>
+            <a onclick="return selectTileDropdownOption(2);">view in CATMAID (level 2)</a>
+            <a onclick="return selectTileDropdownOption(3);">view in CATMAID (level 3)</a>
+        </div>
+    </div>
+    <table id="controlsTable" class="data_table">
+        <tr><td colspan="2">  <span id="message" class="error"></span>  </td></tr>
+        <tr><td>Render Owner:</td>                  <td><span id="renderOwner"></span></td></tr>
+        <tr><td>Render Project:</td>                <td><span id="renderProject"></span></td></tr>
+        <tr><td>Render Stack:</td>                  <td><span id="renderStack"></span></td></tr>
+        <tr><td><label for="zValue">Z:</label></td> <td><select id="zValue"></select></td></tr>
+        <tr><td>View Bounds:</td>
+            <td>
+                <label>
+                    <input id="useLayerBounds" type="radio" name="viewBounds" value="layer" onclick="tileLayer.setViewBounds(false)" checked>Layer
+                </label>
+                <label>
+                    <input id="useStackBounds" type="radio" name="viewBounds" value="stack" onclick="tileLayer.setViewBounds(true)">Stack
+                </label>
+             </td>
+        </tr>
+        <tr><td>Box Scale:</td>
+            <td><label>0.1 <input id="boxScale" type="range" min="10" max="100" value="100" class="slider"> 1.0</label></td>
+        </tr>
+        <tr><td>Tile Stats:</td>                  <td><span id="clusterInfo"></span></td></tr>
+        <tr><td>&nbsp;&nbsp;Widths:</td>          <td><span id="tileWidthInfo"></span></td></tr>
+        <tr><td>&nbsp;&nbsp;Heights:</td>         <td><span id="tileHeightInfo"></span></td></tr>
+        <tr><td>Missing Connections:</td>
+            <td>
+                <span id="missingConnectionsCount" style="margin-right:10px">0</span>
+                <label>Threshold:&nbsp;<input id="missingConnectionsThreshold" type="number" min="0" max="9999" value="0" required></label>
+            </td>
+        </tr>
+    </table>
+</div>
+
+</body>
+</html>
