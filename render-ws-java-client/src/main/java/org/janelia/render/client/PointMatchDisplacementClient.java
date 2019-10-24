@@ -3,13 +3,13 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 import mpicbg.models.*;
-import org.janelia.alignment.match.CanvasFeatureMatchResult;
+import net.imglib2.RealPoint;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.*;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
-import org.janelia.alignment.util.ScriptUtil;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -20,8 +20,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
 
 /**
  * Java client for running TrakEM2 tile optimizer.
@@ -180,6 +178,17 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
                             "--maxZ", "10262",
                             "--regularizerModelType", "RIGID"
                             ,"--mergedZ", "923"
+//                            "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+//                            "--owner", "hessh",
+//                            "--project", "Z1217_19m_VNC",
+//                            "--stack", "Sec26_v1_affine_1_9604",
+//                            "--threads", "1",
+//                            "--completeTargetStack",
+//                            "--matchCollection", "Z127_19m_VNC_Sec26_v1",
+//                            "--minZ", "8250",
+//                            "--maxZ", "8262",
+//                            "--regularizerModelType", "RIGID"
+//                            ,"--mergedZ", "923"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -298,14 +307,15 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
 
         final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
 
-        for (final String pGroupId : pGroupList) {
+        for (final String pGroupId : pGroupList) {// loop over Z-coords
 
             LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
 
             final List<CanvasMatches> matches = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
 
-            LOG.info("run: num matches {}", matches.size());
+            LOG.info("run: num tile matches {}", matches.size());
 
+            double diff = 0;
             for (final CanvasMatches match : matches) {
 
                 final String pId = match.getpId();
@@ -321,145 +331,40 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
                     continue;
                 }
 
-                final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p =
-                        idToTileMap.computeIfAbsent(pId, pTile -> buildTileFromSpec(pTileSpec));
+                final CoordinateTransformList<CoordinateTransform> pModel = pTileSpec.getTransformList();
+                final CoordinateTransformList<CoordinateTransform> qModel = qTileSpec.getTransformList();
 
-                final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> q =
-                        idToTileMap.computeIfAbsent(qId,
-                                                    qTile -> buildTileFromSpec(qTileSpec));
+                Matches pairMatches = match.getMatches();
+                List<RealPoint> pList = pairMatches.getPList();
+                List<RealPoint> qList = pairMatches.getQList();
 
-                p.connect(q,
-                          CanvasFeatureMatchResult.convertMatchesToPointMatchList(match.getMatches()));
+                double[] pLocation = new double[3];
+                double[] qLocation = new double[3];
+
+                double matchDiff = 0;
+                for( int matchId = 0; matchId < pList.size(); ++matchId ) {
+                    pList.get(matchId).localize(pLocation);
+                    qList.get(matchId).localize(qLocation);
+                    double[] pTransformed = pModel.apply(pLocation);
+                    double[] qTransformed = qModel.apply(qLocation);
+
+                    matchDiff += dist(pTransformed, qTransformed);
+                }
+
+                diff += matchDiff / pList.size();
             }
+
+            LOG.info("run: tile {} has an average displacement of {}", pGroupId, diff);
         }
-
-        final TileConfiguration tileConfig = new TileConfiguration();
-        tileConfig.addTiles(idToTileMap.values());
-
-//        LOG.info("run: optimizing {} tiles", idToTileMap.size());
-//
-//        final double[] lambdaValues = new double[] { 1, 0.5, 0.1, 0.01 };
-//
-//        for (final double lambda : lambdaValues) {
-//            if (lambda <= parameters.startLambda) {
-//
-//                for (final Tile tile : idToTileMap.values()) {
-//                    ((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
-//                }
-//
-//                // tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
-//
-//                final ErrorStatistic observer = new ErrorStatistic(parameters.maxPlateauWidth + 1 );
-//                final float damp = 1.0f;
-//                TileUtil.optimizeConcurrently(observer,
-//                                              parameters.maxAllowedError,
-//                                              parameters.maxIterations,
-//                                              parameters.maxPlateauWidth,
-//                                              damp,
-//                                              tileConfig,
-//                                              tileConfig.getTiles(),
-//                                              tileConfig.getFixedTiles(),
-//                                              parameters.numberOfThreads);
-//            }
-//        }
-//
-//        if (parameters.targetStack == null) {
-//
-//            for (final String tileId : idToTileMap.keySet()) {
-//                final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = idToTileMap.get(tileId);
-//                final InterpolatedAffineModel2D model = tile.getModel();
-//                LOG.info("tile {} model is {}", tileId, model.createAffineModel2D());
-//            }
-//
-//        } else {
-//
-//            saveTargetStackTiles(idToTileMap);
-//
-//        }
 
         LOG.info("run: exit");
     }
 
-    private Tile<InterpolatedAffineModel2D<AffineModel2D, B>> buildTileFromSpec(final TileSpec tileSpec) {
-
-        final CoordinateTransformList<CoordinateTransform> transformList = tileSpec.getTransformList();
-        final AffineModel2D lastTransform = (AffineModel2D)
-                transformList.get(transformList.getList(null).size() - 1);
-        final AffineModel2D lastTransformCopy = lastTransform.copy();
-
-        final double sampleWidth = (tileSpec.getWidth() - 1.0) / (parameters.samplesPerDimension - 1.0);
-        final double sampleHeight = (tileSpec.getHeight() - 1.0) / (parameters.samplesPerDimension - 1.0);
-
-        final B regularizer = parameters.regularizerModelType.getInstance();
-
-        try {
-            ScriptUtil.fit(regularizer, lastTransformCopy, sampleWidth, sampleHeight, parameters.samplesPerDimension);
-        } catch (final Throwable t) {
-            throw new IllegalArgumentException(regularizer.getClass() + " model derivation failed for tile '" +
-                                               tileSpec.getTileId() + "', cause: " + t.getMessage(),
-                                               t);
-        }
-
-        return new Tile<>(new InterpolatedAffineModel2D<>(lastTransformCopy,
-                                                          regularizer,
-                                                          parameters.startLambda)); // note: lambda gets reset during optimization loops
-    }
-
-    private void saveTargetStackTiles(final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap)
-            throws IOException {
-
-        LOG.info("saveTargetStackTiles: entry");
-
-        for (final ResolvedTileSpecCollection resolvedTiles : zToTileSpecsMap.values()) {
-
-            final Set<String> tileIdsToRemove = new HashSet<>();
-
-            for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
-
-                final String tileId = tileSpec.getTileId();
-                final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = idToTileMap.get(tileId);
-
-                if (tile == null) {
-                    tileIdsToRemove.add(tileId);
-                } else {
-                    resolvedTiles.addTransformSpecToTile(tileId,
-                                                         getTransformSpec(tile.getModel()),
-                                                         REPLACE_LAST);
-                }
-
-                if (parameters.mergedZ != null) {
-                    tileSpec.setZ(parameters.mergedZ);
-                }
-
-            }
-
-            if (tileIdsToRemove.size() > 0) {
-                LOG.info("removed {} unaligned tile specs from target collection", tileIdsToRemove.size());
-                resolvedTiles.removeTileSpecs(tileIdsToRemove);
-            }
-
-            if (resolvedTiles.getTileCount() > 0) {
-                targetDataClient.saveResolvedTiles(resolvedTiles, parameters.targetStack, null);
-            } else {
-                LOG.info("skipping tile spec save since no specs are left to save");
-            }
-
-        }
-
-        LOG.info("saveTargetStackTiles: saved tiles for all split sections");
-
-        if (parameters.completeTargetStack) {
-            targetDataClient.setStackState(parameters.targetStack, StackMetaData.StackState.COMPLETE);
-        }
-
-        LOG.info("saveTargetStackTiles: exit");
-    }
-
-    private LeafTransformSpec getTransformSpec(final InterpolatedAffineModel2D forModel) {
-        final double[] m = new double[6];
-        forModel.createAffineModel2D().toArray(m);
-        final String data = String.valueOf(m[0]) + ' ' + m[1] + ' ' + m[2] + ' ' + m[3] + ' ' + m[4] + ' ' + m[5];
-        return new LeafTransformSpec(mpicbg.trakem2.transform.AffineModel2D.class.getName(), data);
+    private double dist(double[] a, double[] b) {
+        double val = 0;
+        for( int k =0; k < 3; ++k )
+            val += Math.pow((a[k] - b[k]), 2);
+        return Math.sqrt(val);
     }
 
     private TileSpec getTileSpec(final String sectionId,
