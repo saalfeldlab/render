@@ -158,8 +158,8 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
                             "--stack", "v1_1_affine_filtered_1_37010",
                             "--threads", "1",
                             "--matchCollection", "Sec07_v1_filtered",
-                            "--minZ", "8250",
-                            "--maxZ", "8262",
+                            "--minZ", "24826",
+                            "--maxZ", "26200",
                             "--numTileNeighbors", "10",
                             "--scoreMatrixImageFile", "score_matrix"
                     };
@@ -343,25 +343,27 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
             LOG.info("run: tile {} has a displacement average of {} and standard deviation of {}", pGroupId, avg, stdDev);
 
             // Note: this code assumes that pGroupId is always the same Z
-            double pZ = zPairDists.get(0)[0];
-            HashMap<Double, List<Double>> qZDists = new HashMap<>();
-            for( double[] pair : zPairDists ) {
-                //LOG.info("run: pair pZ {}, qZ {}, d {}", pair[0], pair[1], pair[2]);
-                if( !qZDists.containsKey(pair[1]) )
-                    qZDists.put(pair[1], new ArrayList<>());
-                qZDists.get(pair[1]).add(pair[2]);
-            }
+            if( !zPairDists.isEmpty()) {
+                double pZ = zPairDists.get(0)[0];
+                HashMap<Double, List<Double>> qZDists = new HashMap<>();
+                for (double[] pair : zPairDists) {
+                    //LOG.info("run: pair pZ {}, qZ {}, d {}", pair[0], pair[1], pair[2]);
+                    if (!qZDists.containsKey(pair[1]))
+                        qZDists.put(pair[1], new ArrayList<>());
+                    qZDists.get(pair[1]).add(pair[2]);
+                }
 
-            for( double qZ : qZDists.keySet() ) {
-                stats = qZDists.get(qZ).stream().mapToDouble(Double::valueOf).summaryStatistics();
-                double zAvg = stats.getAverage();
-                stdDev = Math.sqrt( qZDists.get(qZ).stream().map(x -> Math.pow(x - zAvg, 2)).mapToDouble(Double::valueOf).sum() / stats.getCount() );
+                for (double qZ : qZDists.keySet()) {
+                    stats = qZDists.get(qZ).stream().mapToDouble(Double::valueOf).summaryStatistics();
+                    double zAvg = stats.getAverage();
+                    stdDev = Math.sqrt(qZDists.get(qZ).stream().map(x -> Math.pow(x - zAvg, 2)).mapToDouble(Double::valueOf).sum() / stats.getCount());
 
-                long[] pos = new long[]{(long) (pZ - parameters.minZ), (long) (qZ - parameters.minZ)};
-                avgMatrixRA.setPosition(pos);
-                avgMatrixRA.get().set(zAvg);
-                stdDevMatrixRA.setPosition(pos);
-                stdDevMatrixRA.get().set(stdDev);
+                    long[] pos = new long[]{(long) (pZ - parameters.minZ), (long) (qZ - parameters.minZ)};
+                    avgMatrixRA.setPosition(pos);
+                    avgMatrixRA.get().set(zAvg);
+                    stdDevMatrixRA.setPosition(pos);
+                    stdDevMatrixRA.get().set(stdDev);
+                }
             }
         }
 
