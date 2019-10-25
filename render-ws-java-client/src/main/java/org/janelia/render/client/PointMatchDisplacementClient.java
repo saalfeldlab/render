@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  * @author Stephan Saalfeld
  * @author Eric Trautman
  */
-public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> {
+public class PointMatchDisplacementClient<B extends Model<B> & Affine2D<B>> {
 
     public static class Parameters extends CommandLineParameters {
 
@@ -155,7 +155,7 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
                             "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
                             "--project", "Sec07",
-                            "--stack", "v1_1_affine_filtered_1_37010",
+                            "--stack", "v1_frozen_20190610",
                             "--threads", "1",
                             "--matchCollection", "Sec07_v1_filtered",
                             "--minZ", "24826",
@@ -197,8 +197,8 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
         this.parameters = parameters;
         this.renderDataClient = parameters.renderWeb.getDataClient();
         this.matchDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
-                                                    parameters.matchOwner,
-                                                    parameters.matchCollection);
+                parameters.matchOwner,
+                parameters.matchCollection);
 
         this.sectionIdToZMap = new TreeMap<>();
         this.zToTileSpecsMap = new HashMap<>();
@@ -208,19 +208,19 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
             this.targetDataClient = null;
         } else {
             this.targetDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
-                                                         parameters.targetOwner,
-                                                         parameters.targetProject);
+                    parameters.targetOwner,
+                    parameters.targetProject);
 
             final StackMetaData sourceStackMetaData = renderDataClient.getStackMetaData(parameters.stack);
             targetDataClient.setupDerivedStack(sourceStackMetaData, parameters.targetStack);
         }
 
         final ZFilter zFilter = new ZFilter(parameters.minZ,
-                                            parameters.maxZ,
-                                            null);
+                parameters.maxZ,
+                null);
         final List<SectionData> allSectionDataList = renderDataClient.getStackSectionData(parameters.stack,
-                                                                                          null,
-                                                                                          null);
+                null,
+                null);
         this.pGroupList = new ArrayList<>(allSectionDataList.size());
         this.pGroupList.addAll(
                 allSectionDataList.stream()
@@ -256,7 +256,7 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
             if ((minZForRun == null) || (maxZForRun == null)) {
                 throw new IllegalArgumentException(
                         "Failed to derive min and/or max z values for stack " + parameters.stack +
-                        ".  Stack may need to be completed.");
+                                ".  Stack may need to be completed.");
             }
         }
 
@@ -267,7 +267,7 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
             final Double z = sd.getZ();
             if ((z != null) && (z.compareTo(minZ) >= 0) && (z.compareTo(maxZ) <= 0)) {
                 final List<Double> zListForSection = sectionIdToZMap.computeIfAbsent(sd.getSectionId(),
-                                                                                     zList -> new ArrayList<>());
+                        zList -> new ArrayList<>());
                 zListForSection.add(sd.getZ());
             }
         });
@@ -303,7 +303,7 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
                 final TileSpec pTileSpec = getTileSpec(pGroupId, pId);
 
                 final String qGroupId = match.getqGroupId();
-                if( pGroupList.contains(qGroupId) ) {
+                if (pGroupList.contains(qGroupId)) {
                     final String qId = match.getqId();
                     final TileSpec qTileSpec = getTileSpec(qGroupId, qId);
 
@@ -339,11 +339,11 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
 
             DoubleSummaryStatistics stats = dists.stream().mapToDouble(Double::valueOf).summaryStatistics();
             double avg = stats.getAverage();
-            double stdDev = Math.sqrt( dists.stream().map(x -> Math.pow(x - avg, 2)).mapToDouble(Double::valueOf).sum() / stats.getCount() );
+            double stdDev = Math.sqrt(dists.stream().map(x -> Math.pow(x - avg, 2)).mapToDouble(Double::valueOf).sum() / stats.getCount());
             LOG.info("run: tile {} has a displacement average of {} and standard deviation of {}", pGroupId, avg, stdDev);
 
             // Note: this code assumes that pGroupId is always the same Z
-            if( !zPairDists.isEmpty()) {
+            if (!zPairDists.isEmpty()) {
                 double pZ = zPairDists.get(0)[0];
                 HashMap<Double, List<Double>> qZDists = new HashMap<>();
                 for (double[] pair : zPairDists) {
@@ -378,7 +378,7 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
 
     private double dist(double[] a, double[] b) {
         double val = 0;
-        for( int k =0; k < 3; ++k )
+        for (int k = 0; k < 3; ++k)
             val += Math.pow((a[k] - b[k]), 2);
         return Math.sqrt(val);
     }
@@ -391,7 +391,7 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
 
         for (final Double z : sectionIdToZMap.get(sectionId)) {
 
-            if (! zToTileSpecsMap.containsKey(z)) {
+            if (!zToTileSpecsMap.containsKey(z)) {
 
                 if (totalTileCount > 100000) {
                     throw new IllegalArgumentException("More than 100000 tiles need to be loaded - please reduce z values");
@@ -404,8 +404,8 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
                     if (ts.getLastTransform() instanceof ReferenceTransformSpec) {
                         throw new IllegalStateException(
                                 "last transform for tile " + ts.getTileId() +
-                                " is a reference transform which will break this fragile client, " +
-                                "make sure --stack is not a rough aligned stack ");
+                                        " is a reference transform which will break this fragile client, " +
+                                        "make sure --stack is not a rough aligned stack ");
                     }
                 });
 
