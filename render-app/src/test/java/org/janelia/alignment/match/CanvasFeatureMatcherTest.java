@@ -1,19 +1,3 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.alignment.match;
 
 import java.net.URL;
@@ -26,6 +10,7 @@ import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.PointMatch;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -50,7 +35,7 @@ public class CanvasFeatureMatcherTest {
     }
 
     @Test
-    public void testFilterConsensusMatches() throws Exception {
+    public void testFilterConsensusMatches() {
 
         findAndValidateFoldTestConsensusSets();
 
@@ -65,7 +50,7 @@ public class CanvasFeatureMatcherTest {
     // You can comment out the Ignore annotation and update parameters to run the test manually.
     @Ignore
     @Test
-    public void findFolds() throws Exception {
+    public void findFolds() {
 
         final String baseDataUrl = "http://renderer-dev:8080/render-ws/v1";
         // tier 1, gridSize 3, maxEpsilon 5f
@@ -107,9 +92,9 @@ public class CanvasFeatureMatcherTest {
      * @throws IllegalArgumentException
      *   if the collection contains more than 100 p groups.
      */
-    public static List<CanvasMatches> getCanvasMatches(final String baseDataUrl,
-                                                       final String matchOwner,
-                                                       final String matchCollection)
+    private static List<CanvasMatches> getCanvasMatches(final String baseDataUrl,
+                                                        final String matchOwner,
+                                                        final String matchCollection)
             throws IllegalArgumentException {
 
         final List<CanvasMatches> canvasMatchesList = new ArrayList<>();
@@ -162,6 +147,7 @@ public class CanvasFeatureMatcherTest {
                             expectedInliersSizeAfterFilter, inliers.size());
     }
 
+    @SuppressWarnings("SameParameterValue")
     private void findFoldsForMatchCollection(final String baseDataUrl,
                                              final String matchOwner,
                                              final float maxEpsilon,
@@ -201,15 +187,17 @@ public class CanvasFeatureMatcherTest {
 
     private static CanvasFeatureMatcher getTestMatcher(final float maxEpsilon,
                                                        final int minNumInliers) {
-        return new CanvasFeatureMatcher(0.92f,
-                                        ModelType.RIGID,
-                                        1000,
-                                        maxEpsilon,
-                                        0.0f,
-                                        minNumInliers,
-                                        3.0,
-                                        null,
-                                        CanvasFeatureMatcher.FilterType.SINGLE_SET);
+        final MatchDerivationParameters matchParameters =
+                new MatchDerivationParameters(0.92f,
+                                              ModelType.RIGID,
+                                              1000,
+                                              maxEpsilon,
+                                              0.0f,
+                                              minNumInliers,
+                                              3.0,
+                                              null,
+                                              CanvasFeatureMatcher.FilterType.SINGLE_SET);
+        return new CanvasFeatureMatcher(matchParameters);
     }
 
     private static List<List<PointMatch>> validateConsensusSets(final String context,

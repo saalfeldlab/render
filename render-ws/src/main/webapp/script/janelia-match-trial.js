@@ -80,7 +80,7 @@ const JaneliaMatchTrial = function (baseUrl, owner, canvas, viewScale) {
 
     this.util = new JaneliaScriptUtilities();
 
-    this.drawMatchLines = true;
+    this.drawMatchLines = false;
 };
 
 JaneliaMatchTrial.prototype.clearCanvas = function() {
@@ -156,14 +156,25 @@ JaneliaMatchTrial.prototype.initNewTrialWindow = function(newTrialWindow, retryC
  */
 JaneliaMatchTrial.prototype.initNewTrialForm = function(parameters) {
 
-    const fParams = parameters.featureAndMatchParameters.siftFeatureParameters;
-    $('#fdSize').val(fParams.fdSize);
-    $('#minScale').val(fParams.minScale);
-    $('#maxScale').val(fParams.maxScale);
-    $('#steps').val(fParams.steps);
+    const fmParams = parameters.featureAndMatchParameters;
+    $('#fdSize').val(fmParams.siftFeatureParameters.fdSize);
+    $('#minScale').val(fmParams.siftFeatureParameters.minScale);
+    $('#maxScale').val(fmParams.siftFeatureParameters.maxScale);
+    $('#steps').val(fmParams.siftFeatureParameters.steps);
 
-    const mParams = parameters.featureAndMatchParameters.matchDerivationParameters;
+    const mParams = fmParams.matchDerivationParameters;
     $('#matchModelType').val(mParams.matchModelType);
+
+    const matchRegularizerModelType = mParams.matchRegularizerModelType;
+    const matchInterpolatedModelLambda = mParams.matchInterpolatedModelLambda;
+
+    if ((typeof matchRegularizerModelType !== "undefined") &&
+        (matchRegularizerModelType !== "NOT INTERPOLATED") &&
+        (typeof matchInterpolatedModelLambda !== "undefined")) {
+        $("#matchRegularizerModelType").val(matchRegularizerModelType);
+        $("#matchInterpolatedModelLambda").val(matchInterpolatedModelLambda);
+    }
+
     $('#matchRod').val(mParams.matchRod);
     $('#matchIterations').val(mParams.matchIterations);
     $('#matchMaxEpsilon').val(mParams.matchMaxEpsilon);
@@ -174,10 +185,10 @@ JaneliaMatchTrial.prototype.initNewTrialForm = function(parameters) {
 
     $('#fillWithNoise').val(parameters.fillWithNoise);
 
-    const pClipPosition = parameters.featureAndMatchParameters.pClipPosition;
-    if ((typeof pClipPosition !== undefined) && (pClipPosition !== 'NO CLIP')) {
+    const pClipPosition = fmParams.pClipPosition;
+    if ((typeof pClipPosition !== "undefined") && (pClipPosition !== "NO CLIP")) {
         $('#pClipPosition').val(pClipPosition);
-        $('#clipPixels').val(parameters.featureAndMatchParameters.clipPixels);
+        $('#clipPixels').val(fmParams.clipPixels);
     }
 
     $('#pRenderParametersUrl').val(parameters.pRenderParametersUrl);
@@ -205,8 +216,20 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
         }
     };
 
+    const matchRegularizerModelType = $("#matchRegularizerModelType").val();
+    const matchInterpolatedModelLambda = $("#matchInterpolatedModelLambda").val();
+
+    if ((typeof matchRegularizerModelType !== "undefined") &&
+        (matchRegularizerModelType !== "NOT INTERPOLATED") &&
+        (typeof matchInterpolatedModelLambda !== "undefined")) {
+
+        const mParams = featureAndMatchParameters["matchDerivationParameters"];
+        mParams["matchRegularizerModelType"] = matchRegularizerModelType;
+        mParams["matchInterpolatedModelLambda"] = parseFloat(matchInterpolatedModelLambda);
+    }
+
     const pClipPosition = $('#pClipPosition').val();
-    if ((typeof pClipPosition !== undefined) && (pClipPosition !== 'NO CLIP')) {
+    if ((typeof pClipPosition !== "undefined") && (pClipPosition !== "NO CLIP")) {
         featureAndMatchParameters['pClipPosition'] = pClipPosition;
         featureAndMatchParameters['clipPixels'] = parseInt($('#clipPixels').val());
     }
@@ -291,23 +314,25 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
     this.qImage = new JaneliaMatchTrialImage(data.parameters.qRenderParametersUrl, 0, 1, this.viewScale, this.cellMargin);
     this.qImage.loadImage();
 
-    const fParams = data.parameters.featureAndMatchParameters.siftFeatureParameters;
-    $('#trialFdSize').html(fParams.fdSize);
-    $('#trialMinScale').html(fParams.minScale);
-    $('#trialMaxScale').html(fParams.maxScale);
-    $('#trialSteps').html(fParams.steps);
+    const fmParams = data.parameters.featureAndMatchParameters;
 
-    let pClipPosition = data.parameters.featureAndMatchParameters.pClipPosition;
-    if (typeof pClipPosition === 'undefined') {
-        pClipPosition = 'n/a';
-    }
+    $('#trialFdSize').html(fmParams.siftFeatureParameters.fdSize);
+    $('#trialMinScale').html(fmParams.siftFeatureParameters.minScale);
+    $('#trialMaxScale').html(fmParams.siftFeatureParameters.maxScale);
+    $('#trialSteps').html(fmParams.siftFeatureParameters.steps);
 
-    let clipPixels = data.parameters.featureAndMatchParameters.clipPixels;
-    if (typeof clipPixels === 'undefined') {
-        clipPixels = 'n/a';
+    if ((typeof fmParams.pClipPosition !== 'undefined') &&
+        (typeof fmParams.clipPixels !== 'undefined')) {
+        const trialClipRowHtml =
+                '<td>Clip Parameters:</td>' +
+                '<td colspan="4">' +
+                '  pRelativePosition: <span class="parameterValue">' + fmParams.pClipPosition + '</span>' +
+                '  clipPixels: <span class="parameterValue">' + fmParams.clipPixels + '</span>' +
+                '</td>';
+        $('#trialClipRow').html(trialClipRowHtml);
+    } else {
+        $('#trialClipRow').hide();
     }
-    $('#trialPClipPosition').html(pClipPosition);
-    $('#trialClipPixels').html(clipPixels);
 
     const mParams = data.parameters.featureAndMatchParameters.matchDerivationParameters;
     $('#trialMatchModelType').html(mParams.matchModelType);
@@ -318,6 +343,15 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
     $('#trialMatchMinNumInliers').html(mParams.matchMinNumInliers);
     $('#trialMatchMaxTrust').html(mParams.matchMaxTrust);
     $('#trialMatchFilter').html(mParams.matchFilter);
+
+    let interpolatedModelFieldsHtml = "";
+    if ((typeof mParams.matchRegularizerModelType !== "undefined") &&
+        (typeof mParams.matchInterpolatedModelLambda !== "undefined")) {
+        interpolatedModelFieldsHtml =
+                'regularizerModelType: <span class="parameterValue">' + mParams.matchRegularizerModelType + '</span> ' +
+                'interpolatedModelLambda: <span class="parameterValue">' + mParams.matchInterpolatedModelLambda + '</span>';
+    }
+    $('#trialInterpolatedModelFields').html(interpolatedModelFieldsHtml);
 
     if (typeof mParams.matchMaxNumInliers !== 'undefined') {
         $('#trialMatchMaxNumInliers').html(mParams.matchMaxNumInliers);

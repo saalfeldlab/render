@@ -33,6 +33,8 @@ public class MatchTrialTest {
         final MatchDerivationParameters matchDerivationParameters = new MatchDerivationParameters();
         matchDerivationParameters.matchRod = 0.95f;
         matchDerivationParameters.matchModelType = ModelType.AFFINE;
+        matchDerivationParameters.matchRegularizerModelType = ModelType.RIGID;
+        matchDerivationParameters.matchInterpolatedModelLambda = 0.1;
         matchDerivationParameters.matchIterations = 1000;
         matchDerivationParameters.matchMaxEpsilon = 5.0f;
         matchDerivationParameters.matchMinInlierRatio = 0.0f;

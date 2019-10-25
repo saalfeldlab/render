@@ -4,7 +4,7 @@ import com.beust.jcommander.Parameter;
 
 import java.io.Serializable;
 
-import org.janelia.alignment.match.CanvasFeatureMatcher;
+import org.janelia.alignment.match.CanvasFeatureMatcher.FilterType;
 import org.janelia.alignment.match.ModelType;
 
 /**
@@ -18,6 +18,28 @@ public class MatchDerivationParameters implements Serializable {
         setDefaults();
     }
 
+    public MatchDerivationParameters(final float rod,
+                                     final ModelType modelType,
+                                     final int iterations,
+                                     final float maxEpsilon,
+                                     final float minInlierRatio,
+                                     final int minNumInliers,
+                                     final double maxTrust,
+                                     final Integer maxNumInliers,
+                                     final FilterType filterType) {
+        this.matchRod = rod;
+        this.matchModelType = modelType;
+        this.matchRegularizerModelType = null;
+        this.matchInterpolatedModelLambda = null;
+        this.matchIterations = iterations;
+        this.matchMaxEpsilon = maxEpsilon;
+        this.matchMinInlierRatio = minInlierRatio;
+        this.matchMinNumInliers = minNumInliers;
+        this.matchMaxTrust = maxTrust;
+        this.matchMaxNumInliers = maxNumInliers;
+        this.matchFilter = filterType;
+    }
+
     @Parameter(
             names = "--matchRod",
             description = "Ratio of distances for matches"
@@ -29,6 +51,18 @@ public class MatchDerivationParameters implements Serializable {
             description = "Type of model for match filtering"
     )
     public ModelType matchModelType;
+
+    @Parameter(
+            names = "--matchRegularizerModelType",
+            description = "Type of regularizer model for interpolated match filtering (omit for standard filtering)"
+    )
+    public ModelType matchRegularizerModelType;
+
+    @Parameter(
+            names = "--matchInterpolatedModelLambda",
+            description = "Lambda for interpolated match filtering (omit for standard filtering)"
+    )
+    public Double matchInterpolatedModelLambda;
 
     @Parameter(
             names = "--matchIterations",
@@ -70,7 +104,7 @@ public class MatchDerivationParameters implements Serializable {
             names = "--matchFilter",
             description = "Identifies if and how matches should be filtered"
     )
-    public CanvasFeatureMatcher.FilterType matchFilter = CanvasFeatureMatcher.FilterType.SINGLE_SET;
+    public FilterType matchFilter = FilterType.SINGLE_SET;
 
     @Parameter(
             names = "--pairMaxDeltaStandardDeviation",

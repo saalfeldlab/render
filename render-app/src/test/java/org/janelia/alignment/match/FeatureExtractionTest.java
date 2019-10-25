@@ -1,23 +1,6 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.alignment.match;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Formatter;
 import java.util.List;
@@ -26,6 +9,7 @@ import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -53,7 +37,7 @@ public class FeatureExtractionTest {
     private boolean printFeatureList;
 
     @Before
-    public void setup() throws Exception {
+    public void setup() {
 
         testResourcePath = "src/test/resources/match-test";
 
@@ -77,12 +61,12 @@ public class FeatureExtractionTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
 
         if ((featureList != null) && (featureList.size() > 0)) {
 
             final FeatureSorter sorter = new FeatureSorter();
-            Collections.sort(featureList, sorter.comparator);
+            featureList.sort(sorter.comparator);
             if (printFeatureList) {
                 LOG.info(sorter.formatList(featureList));
             }
@@ -95,7 +79,7 @@ public class FeatureExtractionTest {
     }
 
     @Test
-    public void testCenterTile() throws Exception {
+    public void testCenterTile() {
 
         LOG.info("\n\n***** Test Center Tile *****\n");
 
@@ -107,7 +91,7 @@ public class FeatureExtractionTest {
     }
 
     @Test
-    public void testEdgeTile() throws Exception {
+    public void testEdgeTile() {
 
         LOG.info("\n\n***** Test Edge Tile *****\n");
 
@@ -119,7 +103,7 @@ public class FeatureExtractionTest {
     }
 
     @Test
-    public void testMatch() throws Exception {
+    public void testMatch() {
 
         LOG.info("\n\n***** Test Match *****\n");
 
@@ -165,22 +149,22 @@ public class FeatureExtractionTest {
         final List<Feature> qFeatureList = featureExtractor.extractFeatures(qTileRenderParameters,
                                                                             getRenderFile(qTileRenderParameters));
 
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(0.92f,
-                                                                      ModelType.AFFINE,
-                                                                      1000,
-                                                                      20.0f,
-                                                                      0.0f,
-                                                                      10,
-                                                                      3,
-                                                                      null,
-                                                                      CanvasFeatureMatcher.FilterType.SINGLE_SET);
+        final MatchDerivationParameters matchParameters =
+                new MatchDerivationParameters(0.92f,
+                                              ModelType.AFFINE,
+                                              1000,
+                                              20.0f,
+                                              0.0f,
+                                              10,
+                                              3,
+                                              null,
+                                              CanvasFeatureMatcher.FilterType.SINGLE_SET);
+        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(matchParameters);
         matcher.deriveMatchResult(pFeatureList, qFeatureList);
-
-
     }
 
     @Test
-    public void testMatch2() throws Exception {
+    public void testMatch2() {
 
         LOG.info("\n\n***** Test Match 2 *****\n");
 
@@ -215,15 +199,17 @@ public class FeatureExtractionTest {
         final List<Feature> qFeatureList = featureExtractor.extractFeatures(qTileRenderParameters,
                                                                             getRenderFile(qTileRenderParameters));
 
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(0.92f,
-                                                                      ModelType.AFFINE,
-                                                                      1000,
-                                                                      20.0f,
-                                                                      0.0f,
-                                                                      10,
-                                                                      3,
-                                                                      null,
-                                                                      CanvasFeatureMatcher.FilterType.SINGLE_SET);
+        final MatchDerivationParameters matchParameters =
+                new MatchDerivationParameters(0.92f,
+                                              ModelType.AFFINE,
+                                              1000,
+                                              20.0f,
+                                              0.0f,
+                                              10,
+                                              3,
+                                              null,
+                                              CanvasFeatureMatcher.FilterType.SINGLE_SET);
+        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(matchParameters);
         final CanvasFeatureMatchResult result = matcher.deriveMatchResult(pFeatureList, qFeatureList);
 
         System.out.println(result.toString());
@@ -307,43 +293,38 @@ public class FeatureExtractionTest {
                "}";
     }
 
-    private class FeatureSorter {
+    private static class FeatureSorter {
 
-        public int sameCount = 0;
+        int sameCount = 0;
 
-        public Comparator<Feature> comparator = new Comparator<Feature>() {
-
-            @Override
-            public int compare(final Feature o1,
-                               final Feature o2) {
-                double dResult = 0.0;
-                for (int i = 0; i < o1.location.length; i++) {
-                    if (i < o2.location.length) {
-                        dResult = o1.location[i] - o2.location[i];
-                        if (dResult != 0) {
-                            break;
-                        }
-
+        Comparator<Feature> comparator = (o1, o2) -> {
+            double dResult = 0.0;
+            for (int i = 0; i < o1.location.length; i++) {
+                if (i < o2.location.length) {
+                    dResult = o1.location[i] - o2.location[i];
+                    if (dResult != 0) {
+                        break;
                     }
-                }
 
-                final int result;
-                if (dResult > 0) {
-                    result = 1;
-                } else if (dResult < 0) {
-                    result = -1;
-                } else {
-                    result = o1.location.length - o2.location.length;
-                    if (result == 0) {
-                        sameCount++;
-                    }
                 }
-
-                return result;
             }
+
+            final int result;
+            if (dResult > 0) {
+                result = 1;
+            } else if (dResult < 0) {
+                result = -1;
+            } else {
+                result = o1.location.length - o2.location.length;
+                if (result == 0) {
+                    sameCount++;
+                }
+            }
+
+            return result;
         };
 
-        public String formatList(final List<Feature> featureList) {
+        String formatList(final List<Feature> featureList) {
             final StringBuilder sb = new StringBuilder(featureList.size() * 60);
             final Formatter formatter = new Formatter(sb);
             sb.append('\n');

@@ -8,7 +8,7 @@
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="../script/janelia-render.js?v=20180904_001"></script>
-    <script type="text/javascript" src="../script/janelia-match-trial.js?v=20191023_001"></script>
+    <script type="text/javascript" src="../script/janelia-match-trial.js?v=20191025_001"></script>
     <script type="text/javascript">
 
         // TODO: figure out why matchTrial needs to be a var for initNewTrialWindow to work
@@ -128,15 +128,30 @@
                         <option>TRANSLATION</option>
                     </select>
                 </label>
-                <label>ROD: <input id="matchRod" type="number" step="0.01" min="0.0" max="1.0" value="0.95" required></label>
-                <label>iterations: <input id="matchIterations" type="number" min="1" max="10000" value="1000" required></label>
-                <label>maxEpsilon: <input id="matchMaxEpsilon" type="number" step="0.1" min="0.0" max="100.0" value="5.0" required></label>
+                <label>regularizerModelType:
+                    <select id="matchRegularizerModelType" required>
+                        <option>NOT INTERPOLATED</option>
+                        <option>AFFINE</option>
+                        <option>RIGID</option>
+                        <option>SIMILARITY</option>
+                        <option>TRANSLATION</option>
+                    </select>
+                </label>
+                <label>interpolatedModelLambda: <input id="matchInterpolatedModelLambda" type="number" step="0.01" min="0.0" max="1.0"></label>
             </td>
         </tr>
         <tr>
             <td></td>
             <td>
+                <label>ROD: <input id="matchRod" type="number" step="0.01" min="0.0" max="1.0" value="0.95" required></label>
+                <label>iterations: <input id="matchIterations" type="number" min="1" max="10000" value="1000" required></label>
+                <label>maxEpsilon: <input id="matchMaxEpsilon" type="number" step="0.1" min="0.0" max="100.0" value="5.0" required></label>
                 <label>minInlierRatio: <input id="matchMinInlierRatio" type="number" step="0.01" min="0.0" max="1.0" value="0.0" required></label>
+            </td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>
                 <label>minNumInliers: <input id="matchMinNumInliers" type="number" min="0" max="1000" value="8" required></label>
                 <label>maxTrust: <input id="matchMaxTrust" type="number" step="0.1" min="0.0" max="100.0" value="30.0" required></label>
                 <label>filter:
@@ -200,27 +215,27 @@
             <td>Match Parameters:</td>
             <td colspan="4">
                 modelType: <span id="trialMatchModelType" class="parameterValue"></span>
-                ROD: <span id="trialMatchRod" class="parameterValue"></span>
-                iterations: <span id="trialMatchIterations" class="parameterValue"></span>
-                maxEpsilon: <span id="trialMatchMaxEpsilon" class="parameterValue"></span>
+                <span id="trialInterpolatedModelFields"></span>
             </td>
         </tr>
         <tr>
             <td></td>
             <td colspan="4">
+                ROD: <span id="trialMatchRod" class="parameterValue"></span>
+                iterations: <span id="trialMatchIterations" class="parameterValue"></span>
+                maxEpsilon: <span id="trialMatchMaxEpsilon" class="parameterValue"></span>
                 minInlierRatio: <span id="trialMatchMinInlierRatio" class="parameterValue"></span>
+            </td>
+        </tr>
+        <tr>
+            <td></td>
+            <td colspan="4">
                 minNumInliers: <span id="trialMatchMinNumInliers" class="parameterValue"></span>
                 maxTrust: <span id="trialMatchMaxTrust" class="parameterValue"></span>
                 filter: <span id="trialMatchFilter" class="parameterValue"></span>
             </td>
         </tr>
-        <tr>
-            <td>Clip Parameters:</td>
-            <td colspan="4">
-                pRelativePosition: <span id="trialPClipPosition" class="parameterValue"></span>
-                clipPixels: <span id="trialClipPixels" class="parameterValue"></span>
-            </td>
-        </tr>
+        <tr id="trialClipRow"></tr>
         <tr>
             <td>P Render Parameters URL:</td>
             <td id="trialpRenderParametersUrl"></td>
@@ -246,7 +261,7 @@
                 <input type='button' value='All Matches' onclick='matchTrial.drawAllMatches()' />
                 <input type='button' value='Previous Match' onclick='matchTrial.drawSelectedMatches(-1)' />
                 <input type='button' value='Next Match' onclick='matchTrial.drawSelectedMatches(1)' />
-                <input id='toggleLinesAndPoints' type='button' value='Points' onclick='matchTrial.toggleLinesAndPoints()' />
+                <input id='toggleLinesAndPoints' type='button' value='Lines' onclick='matchTrial.toggleLinesAndPoints()' />
             </td>
             <td id="matchInfo" colspan="3"></td>
         </tr>

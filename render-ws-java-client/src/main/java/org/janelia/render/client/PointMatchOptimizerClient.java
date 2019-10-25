@@ -178,15 +178,9 @@ public class PointMatchOptimizerClient {
 
             LOG.info("run: testing match rod {}", rod);
 
-            matcher = new CanvasFeatureMatcher(rod,
-                                               parameters.matchDerivation.matchModelType,
-                                               parameters.matchDerivation.matchIterations,
-                                               parameters.matchDerivation.matchMaxEpsilon,
-                                               parameters.matchDerivation.matchMinInlierRatio,
-                                               parameters.matchDerivation.matchMinNumInliers,
-                                               parameters.matchDerivation.matchMaxTrust,
-                                               null,
-                                               CanvasFeatureMatcher.FilterType.SINGLE_SET);
+            parameters.matchDerivation.matchRod = rod;
+
+            matcher = new CanvasFeatureMatcher(parameters.matchDerivation);
             matchResult = matcher.deriveMatchResult(pFeatureList, qFeatureList);
 
             inlierCount = matchResult.getInlierPointMatchList().size();

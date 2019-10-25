@@ -116,15 +116,7 @@ public class MatchTrial implements Serializable {
         final MatchDerivationParameters matchDerivationParameters =
                 featureAndMatchParameters.getMatchDerivationParameters();
 
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(matchDerivationParameters.matchRod,
-                                                                      matchDerivationParameters.matchModelType,
-                                                                      matchDerivationParameters.matchIterations,
-                                                                      matchDerivationParameters.matchMaxEpsilon,
-                                                                      matchDerivationParameters.matchMinInlierRatio,
-                                                                      matchDerivationParameters.matchMinNumInliers,
-                                                                      matchDerivationParameters.matchMaxTrust,
-                                                                      matchDerivationParameters.matchMaxNumInliers,
-                                                                      matchDerivationParameters.matchFilter);
+        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(matchDerivationParameters);
 
         final CanvasFeatureMatchResult matchResult =
                 matcher.deriveMatchResult(pCanvasData.getFeatureList(), qCanvasData.getFeatureList());

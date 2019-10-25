@@ -97,22 +97,13 @@ public class RansacFilterClient {
 
     public void run() throws Exception {
 
-        final CanvasFeatureMatcher matcher =
-                new CanvasFeatureMatcher(parameters.matchDerivation.matchRod,
-                                         parameters.matchDerivation.matchModelType,
-                                         parameters.matchDerivation.matchIterations,
-                                         parameters.matchDerivation.matchMaxEpsilon,
-                                         parameters.matchDerivation.matchMinInlierRatio,
-                                         parameters.matchDerivation.matchMinNumInliers,
-                                         parameters.matchDerivation.matchMaxTrust,
-                                         parameters.matchDerivation.matchMaxNumInliers,
-                                         parameters.matchDerivation.matchFilter);
+        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(parameters.matchDerivation);
 
         final List<CanvasMatches> inlierCanvasMatchesLists = new ArrayList<>();
 
         for (final CanvasMatches pair : loadMatchData(parameters.candidateFile)) {
 
-            final Model model = parameters.matchDerivation.matchModelType.getInstance();
+            final Model model = matcher.getModel();
             final List<PointMatch> candidates = new ArrayList<>(
                     CanvasFeatureMatchResult.convertMatchesToPointMatchList(pair.getMatches()));
 
