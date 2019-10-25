@@ -2,8 +2,16 @@ package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+import ij.IJ;
+import ij.ImagePlus;
 import mpicbg.models.*;
+import net.imglib2.RandomAccess;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
+import net.imglib2.img.cell.CellImg;
+import net.imglib2.img.cell.CellImgFactory;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.type.numeric.real.DoubleType;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.ModelType;
@@ -64,46 +72,6 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
         public String matchCollection;
 
         @Parameter(
-                names = "--regularizerModelType",
-                description = "Type of model for regularizer",
-                required = true
-        )
-        public ModelType regularizerModelType;
-
-        @Parameter(
-                names = "--samplesPerDimension",
-                description = "Samples per dimension"
-        )
-        public Integer samplesPerDimension = 2;
-
-        @Parameter(
-                names = "--maxAllowedError",
-                description = "Max allowed error"
-        )
-        public Double maxAllowedError = 200.0;
-
-        @Parameter(
-                names = "--maxIterations",
-                description = "Max iterations"
-        )
-        public Integer maxIterations = 2000;
-
-        @Parameter(
-                names = "--maxPlateauWidth",
-                description = "Max allowed error"
-        )
-        public Integer maxPlateauWidth = 200;
-
-        @Parameter(
-                names = "--startLambda",
-                description = "Starting lambda for optimizer.  " +
-                              "Optimizer loops through lambdas 1.0, 0.5, 0.1. 0.01.  " +
-                              "If you know your starting alignment is good, " +
-                              "set this to one of the smaller values to improve performance."
-        )
-        public Double startLambda = 1.0;
-
-        @Parameter(
                 names = "--targetOwner",
                 description = "Owner name for aligned result stack (default is same as owner)"
         )
@@ -121,16 +89,14 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
         public String targetStack;
 
         @Parameter(
-                names = "--mergedZ",
-                description = "Z value for all aligned tiles (if omitted, original split z values are kept)"
-        )
-        public Double mergedZ;
+                names = "--numTileNeighbors",
+                description = "Number of neighboring tiles to compare")
+        public int numTileNeighbors = -1;
 
         @Parameter(
-                names = "--completeTargetStack",
-                description = "Complete the target stack after processing",
-                arity = 0)
-        public boolean completeTargetStack = false;
+                names = "--scoreMatrixImageFile",
+                description = "Basename for image of the resulting score matrix (will create '<scoreMatrixImageFile>_avg.tif and _stddev.tif)")
+        public String scoreMatrixImageFile;
 
         @Parameter(names = "--threads", description = "Number of threads to be used")
         public int numberOfThreads = 1;
@@ -152,6 +118,14 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
             if (this.targetProject == null) {
                 this.targetProject = renderWeb.project;
             }
+
+            if (this.numTileNeighbors == -1) {
+                this.numTileNeighbors = 10;
+            }
+
+            if (this.scoreMatrixImageFile == null) {
+                this.scoreMatrixImageFile = "score_matrix.png";
+            }
         }
 
     }
@@ -167,28 +141,27 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
                 // TODO: remove testing hack ...
                 if (args.length == 0) {
                     final String[] testArgs = {
-                            "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                            "--owner", "Z1217_33m",
-                            "--project", "Sec29",
-                            "--stack", "v1_1_affine_1_12824",
-                            "--threads", "1",
-                            "--completeTargetStack",
-                            "--matchCollection", "Sec29_v1",
-                            "--minZ", "10250",
-                            "--maxZ", "10262",
-                            "--regularizerModelType", "RIGID"
-                            ,"--mergedZ", "923"
 //                            "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-//                            "--owner", "hessh",
-//                            "--project", "Z1217_19m_VNC",
-//                            "--stack", "Sec26_v1_affine_1_9604",
+//                            "--owner", "Z1217_33m",
+//                            "--project", "Sec29",
+//                            "--stack", "v1_1_affine_1_12824",
 //                            "--threads", "1",
 //                            "--completeTargetStack",
-//                            "--matchCollection", "Z127_19m_VNC_Sec26_v1",
-//                            "--minZ", "8250",
-//                            "--maxZ", "8262",
+//                            "--matchCollection", "Sec29_v1",
+//                            "--minZ", "10250",
+//                            "--maxZ", "10262",
 //                            "--regularizerModelType", "RIGID"
 //                            ,"--mergedZ", "923"
+                            "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+                            "--owner", "Z1217_19m",
+                            "--project", "Sec07",
+                            "--stack", "v1_1_affine_filtered_1_37010",
+                            "--threads", "1",
+                            "--matchCollection", "Sec07_v1_filtered",
+                            "--minZ", "8250",
+                            "--maxZ", "8262",
+                            "--numTileNeighbors", "10",
+                            "--scoreMatrixImageFile", "score_matrix"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -307,6 +280,13 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
 
         final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
 
+        final CellImgFactory<DoubleType> cellImgFactory = new CellImgFactory<>(new DoubleType());
+        final double numZ = parameters.maxZ - parameters.minZ + 1;
+        final RandomAccessibleInterval<DoubleType> avgMatrix = cellImgFactory.create((long) numZ, (long) numZ);
+        RandomAccess<DoubleType> avgMatrixRA = avgMatrix.randomAccess();
+        final RandomAccessibleInterval<DoubleType> stdDevMatrix = cellImgFactory.create((long) numZ, (long) numZ);
+        RandomAccess<DoubleType> stdDevMatrixRA = stdDevMatrix.randomAccess();
+
         for (final String pGroupId : pGroupList) {// loop over Z-coords
 
             LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
@@ -316,6 +296,7 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
             LOG.info("run: num tile matches {}", matches.size());
 
             List<Double> dists = new ArrayList<>();
+            List<double[]> zPairDists = new ArrayList<>();
             for (final CanvasMatches match : matches) {
 
                 final String pId = match.getpId();
@@ -349,7 +330,9 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
                         double[] pTransformed = pModel.apply(pLocation);
                         double[] qTransformed = qModel.apply(qLocation);
 
-                        dists.add(dist(pTransformed, qTransformed));
+                        double d = dist(pTransformed, qTransformed);
+                        dists.add(d);
+                        zPairDists.add(new double[]{pTileSpec.getZ(), qTileSpec.getZ(), d});
                     }
                 }
             }
@@ -357,9 +340,36 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
             DoubleSummaryStatistics stats = dists.stream().mapToDouble(Double::valueOf).summaryStatistics();
             double avg = stats.getAverage();
             double stdDev = Math.sqrt( dists.stream().map(x -> Math.pow(x - avg, 2)).mapToDouble(Double::valueOf).sum() / stats.getCount() );
-
             LOG.info("run: tile {} has a displacement average of {} and standard deviation of {}", pGroupId, avg, stdDev);
+
+            // Note: this code assumes that pGroupId is always the same Z
+            double pZ = zPairDists.get(0)[0];
+            HashMap<Double, List<Double>> qZDists = new HashMap<>();
+            for( double[] pair : zPairDists ) {
+                //LOG.info("run: pair pZ {}, qZ {}, d {}", pair[0], pair[1], pair[2]);
+                if( !qZDists.containsKey(pair[1]) )
+                    qZDists.put(pair[1], new ArrayList<>());
+                qZDists.get(pair[1]).add(pair[2]);
+            }
+
+            for( double qZ : qZDists.keySet() ) {
+                stats = qZDists.get(qZ).stream().mapToDouble(Double::valueOf).summaryStatistics();
+                double zAvg = stats.getAverage();
+                stdDev = Math.sqrt( qZDists.get(qZ).stream().map(x -> Math.pow(x - zAvg, 2)).mapToDouble(Double::valueOf).sum() / stats.getCount() );
+
+                long[] pos = new long[]{(long) (pZ - parameters.minZ), (long) (qZ - parameters.minZ)};
+                avgMatrixRA.setPosition(pos);
+                avgMatrixRA.get().set(zAvg);
+                stdDevMatrixRA.setPosition(pos);
+                stdDevMatrixRA.get().set(stdDev);
+            }
         }
+
+        ImagePlus avgImp = ImageJFunctions.wrap(avgMatrix, "average_distance");
+        IJ.save(avgImp, parameters.scoreMatrixImageFile + "_avg.tif");
+
+        ImagePlus stdDevImp = ImageJFunctions.wrap(avgMatrix, "std_dev_distance");
+        IJ.save(stdDevImp, parameters.scoreMatrixImageFile + "_stddev.tif");
 
         LOG.info("run: exit");
     }
