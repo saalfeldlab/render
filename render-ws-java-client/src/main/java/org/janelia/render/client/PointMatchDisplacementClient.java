@@ -322,33 +322,35 @@ public class PointMatchDisplacementClient<B extends Model< B > & Affine2D< B >> 
                 final TileSpec pTileSpec = getTileSpec(pGroupId, pId);
 
                 final String qGroupId = match.getqGroupId();
-                final String qId = match.getqId();
-                final TileSpec qTileSpec = getTileSpec(qGroupId, qId);
+                if( pGroupList.contains(qGroupId) ) {
+                    final String qId = match.getqId();
+                    final TileSpec qTileSpec = getTileSpec(qGroupId, qId);
 
-                if ((pTileSpec == null) || (qTileSpec == null)) {
-                    LOG.info("run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}",
-                             pId, qId, parameters.stack);
-                    continue;
-                }
+                    if ((pTileSpec == null) || (qTileSpec == null)) {
+                        LOG.info("run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}",
+                                pId, qId, parameters.stack);
+                        continue;
+                    }
 
-                final CoordinateTransformList<CoordinateTransform> pModel = pTileSpec.getTransformList();
-                final CoordinateTransformList<CoordinateTransform> qModel = qTileSpec.getTransformList();
+                    final CoordinateTransformList<CoordinateTransform> pModel = pTileSpec.getTransformList();
+                    final CoordinateTransformList<CoordinateTransform> qModel = qTileSpec.getTransformList();
 
-                Matches pairMatches = match.getMatches();
-                List<RealPoint> pList = pairMatches.getPList();
-                List<RealPoint> qList = pairMatches.getQList();
+                    Matches pairMatches = match.getMatches();
+                    List<RealPoint> pList = pairMatches.getPList();
+                    List<RealPoint> qList = pairMatches.getQList();
 
-                double[] pLocation = new double[3];
-                double[] qLocation = new double[3];
+                    double[] pLocation = new double[3];
+                    double[] qLocation = new double[3];
 
-                double matchDiff = 0;
-                for( int matchId = 0; matchId < pList.size(); ++matchId ) {
-                    pList.get(matchId).localize(pLocation);
-                    qList.get(matchId).localize(qLocation);
-                    double[] pTransformed = pModel.apply(pLocation);
-                    double[] qTransformed = qModel.apply(qLocation);
+                    double matchDiff = 0;
+                    for (int matchId = 0; matchId < pList.size(); ++matchId) {
+                        pList.get(matchId).localize(pLocation);
+                        qList.get(matchId).localize(qLocation);
+                        double[] pTransformed = pModel.apply(pLocation);
+                        double[] qTransformed = qModel.apply(qLocation);
 
-                    dists.add(dist(pTransformed, qTransformed));
+                        dists.add(dist(pTransformed, qTransformed));
+                    }
                 }
             }
 
