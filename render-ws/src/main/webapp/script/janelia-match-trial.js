@@ -503,14 +503,35 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
 
                 this.matchIndex = 0;
 
-                const colors = ['#00ff00', '#f48342', '#42eef4', '#f442f1'];
+                if (consensusSetMatches.length === 1) {
 
-                for (; consensusSetIndex < consensusSetMatches.length; consensusSetIndex++) {
-                    matches = consensusSetMatches[consensusSetIndex];
+                    matches = consensusSetMatches[0];
+
+                    const colors = ['#00ff00', '#f48342', '#42eef4', '#f442f1'];
+
                     for (i = 0; i < matches.w.length; i++) {
                         context.strokeStyle = colors[i % colors.length];
                         this.drawMatch(matches, i, this.pImage, this.qImage, context);
                     }
+
+                } else {
+
+                    // color set adapted from https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
+                    const colors = [
+                        '#4363d8', '#e6194b', '#3cb44b', '#ffe119',
+                        '#f58231', '#911eb4', '#46f0f0', '#f032e6',
+                        '#bcf60c', '#fabebe', '#008080', '#e6beff',
+                        '#9a6324', '#800000', '#aaffc3',
+                    ];
+
+                    for (; consensusSetIndex < consensusSetMatches.length; consensusSetIndex++) {
+                        matches = consensusSetMatches[consensusSetIndex];
+                        context.strokeStyle = colors[consensusSetIndex % colors.length];
+                        for (i = 0; i < matches.w.length; i++) {
+                            this.drawMatch(matches, i, this.pImage, this.qImage, context);
+                        }
+                    }
+
                 }
 
                 matchInfoSelector.html(this.matchCount + ' total matches');
