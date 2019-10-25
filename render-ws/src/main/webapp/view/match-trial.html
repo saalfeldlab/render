@@ -8,7 +8,7 @@
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="../script/janelia-render.js?v=20180904_001"></script>
-    <script type="text/javascript" src="../script/janelia-match-trial.js?v=20191025_001"></script>
+    <script type="text/javascript" src="../script/janelia-match-trial.js?v=20191025_003"></script>
     <script type="text/javascript">
 
         // TODO: figure out why matchTrial needs to be a var for initNewTrialWindow to work
@@ -74,6 +74,10 @@
                 $(document).attr('title', 'Match Trial ' + trialSuffix);
                 const trialDataUrl = matchTrial.matchTrialUrl + '/' + matchTrialId;
                 $('#trialId').html('<a target="_blank" href="' + trialDataUrl + '">' + trialSuffix + '</a>');
+
+                const matchTrialDate = new Date(parseInt(matchTrialId.substring(0, 8), 16) * 1000);
+                $('#trialStartTime').html(matchTrialDate.toLocaleString());
+
                 matchTrial.loadTrial(matchTrialId);
             }
 
@@ -95,7 +99,7 @@
 
 <h3>
     Match Trial <span id="trialId"></span>
-    <input id="newTrial" type="button" style="margin-left:40px" value="Edit Parameters">
+    <input id="newTrial" type="button" style="margin-left:40px" value="Create New Trial">
     <input id="saveToCollection" type="button" style="margin-left:40px" value="Save To Collection">
 </h3>
 
@@ -198,6 +202,10 @@
 
 <div id="headerDiv" class="header_div">
     <table class="data_table">
+        <tr>
+            <td>Summary:</td>
+            <td colspan="4">started at <span id="trialStartTime"></span><span id="trialElapsedMessage"></span></td>
+        </tr>
         <tr>
             <td colspan="4"><hr/></td>
         </tr>

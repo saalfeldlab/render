@@ -185,7 +185,6 @@ public class SIFTPointMatchClient
                                                featureRenderParameters.renderScale,
                                                pClipOffsets,
                                                qClipOffsets,
-                                               matchDerivationParameters.pairMaxDeltaStandardDeviation,
                                                matchList);
         }
 

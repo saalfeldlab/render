@@ -5,7 +5,6 @@ import java.util.List;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.PointMatch;
 
-import org.janelia.alignment.match.CanvasFeatureMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.spec.TileSpec;
@@ -110,12 +109,6 @@ public class ResidualCalculatorTest {
                                                                         qAlignedTileSpec);
         System.out.println(ResidualCalculator.Result.getHeader());
         System.out.println(result.toString());
-
-        final double[] worldDeltaXAndYStandardDeviation =
-                CanvasFeatureMatchResult.getWorldDeltaXAndYStandardDeviation(worldMatchList);
-
-        System.out.println(" worldDeltaXAndYStandardDeviation: " + worldDeltaXAndYStandardDeviation[0] +
-                           ", " + worldDeltaXAndYStandardDeviation[1]);
     }
 
 }

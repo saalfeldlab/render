@@ -68,6 +68,10 @@ public class CanvasFeatureMatcher implements Serializable {
         this.filterType = matchParameters.matchFilter;
     }
 
+    FilterType getFilterType() {
+        return filterType;
+    }
+
     /**
      * @param  canvas1Features  feature list for first canvas.
      * @param  canvas2Features  feature list for second canvas.
@@ -91,21 +95,21 @@ public class CanvasFeatureMatcher implements Serializable {
         CanvasFeatureMatchResult result = null;
         switch (filterType) {
             case NONE:
-                result = new CanvasFeatureMatchResult(Collections.singletonList(candidates), candidates.size());
+                result = new CanvasFeatureMatchResult(this, Collections.singletonList(candidates), candidates.size());
                 break;
             case SINGLE_SET:
                 final List<PointMatch> inliers = filterMatches(candidates, model);
-                result = new CanvasFeatureMatchResult(Collections.singletonList(inliers), candidates.size());
+                result = new CanvasFeatureMatchResult(this, Collections.singletonList(inliers), candidates.size());
                 break;
             case CONSENSUS_SETS:
                 final List<List<PointMatch>> consensusMatches = filterConsensusMatches(candidates);
-                result = new CanvasFeatureMatchResult(consensusMatches, candidates.size());
+                result = new CanvasFeatureMatchResult(this, consensusMatches, candidates.size());
                 break;
             case AGGREGATED_CONSENSUS_SETS:
                 final List<PointMatch> aggregatedMatches = new ArrayList<>(candidates.size());
                 filterConsensusMatches(candidates).forEach(aggregatedMatches::addAll);
 
-                result = new CanvasFeatureMatchResult(Collections.singletonList(aggregatedMatches), candidates.size());
+                result = new CanvasFeatureMatchResult(this, Collections.singletonList(aggregatedMatches), candidates.size());
                 break;
         }
 

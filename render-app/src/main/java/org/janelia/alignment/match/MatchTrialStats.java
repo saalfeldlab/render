@@ -20,11 +20,15 @@ public class MatchTrialStats
     private final Long qFeatureDerivationMilliseconds;
     private final List<Integer> consensusSetSizes;
     private final Long matchDerivationMilliseconds;
+    private final Double aggregateDeltaXStandardDeviation;
+    private final Double aggregateDeltaYStandardDeviation;
     private final List<Double> consensusSetDeltaXStandardDeviations;
     private final List<Double> consensusSetDeltaYStandardDeviations;
 
     public MatchTrialStats() {
         this(null,
+             null,
+             null,
              null,
              null,
              null,
@@ -40,6 +44,8 @@ public class MatchTrialStats
                            final Long qFeatureDerivationMilliseconds,
                            final List<Integer> consensusSetSizes,
                            final Long matchDerivationMilliseconds,
+                           final Double aggregateDeltaXStandardDeviation,
+                           final Double aggregateDeltaYStandardDeviation,
                            final List<Double> consensusSetDeltaXStandardDeviations,
                            final List<Double> consensusSetDeltaYStandardDeviations) {
         this.pFeatureCount = pFeatureCount;
@@ -48,6 +54,8 @@ public class MatchTrialStats
         this.qFeatureDerivationMilliseconds = qFeatureDerivationMilliseconds;
         this.consensusSetSizes = consensusSetSizes;
         this.matchDerivationMilliseconds = matchDerivationMilliseconds;
+        this.aggregateDeltaXStandardDeviation = aggregateDeltaXStandardDeviation;
+        this.aggregateDeltaYStandardDeviation = aggregateDeltaYStandardDeviation;
         this.consensusSetDeltaXStandardDeviations = consensusSetDeltaXStandardDeviations;
         this.consensusSetDeltaYStandardDeviations = consensusSetDeltaYStandardDeviations;
     }

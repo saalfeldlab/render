@@ -138,9 +138,9 @@ public class MatchTrial implements Serializable {
             this.matches.add(m);
         }
 
-        final List<List<Double>> worldDeltaStandardDeviations = matchResult.getWorldDeltaStandardDeviations();
-        final List<Double> deltaXStandardDeviations = worldDeltaStandardDeviations.get(0);
-        final List<Double> deltaYStandardDeviations = worldDeltaStandardDeviations.get(1);
+        final PointMatchQualityStats pointMatchQualityStats = matchResult.calculateQualityStats();
+        final double[] aggregateDeltaXAndYStandardDeviation =
+                pointMatchQualityStats.getAggregateDeltaXAndYStandardDeviation();
 
         this.stats = new MatchTrialStats(pCanvasData.featureList.size(),
                                          (qFeatureStart - pFeatureStart),
@@ -148,8 +148,10 @@ public class MatchTrial implements Serializable {
                                          (matchStart - qFeatureStart),
                                          matchResult.getConsensusSetSizes(),
                                          (matchStop - matchStart),
-                                         deltaXStandardDeviations,
-                                         deltaYStandardDeviations);
+                                         aggregateDeltaXAndYStandardDeviation[0],
+                                         aggregateDeltaXAndYStandardDeviation[1],
+                                         pointMatchQualityStats.getConsensusSetDeltaXStandardDeviations(),
+                                         pointMatchQualityStats.getConsensusSetDeltaYStandardDeviations());
     }
 
     public String toJson() {

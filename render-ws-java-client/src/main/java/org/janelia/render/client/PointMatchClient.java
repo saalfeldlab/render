@@ -418,7 +418,7 @@ public class PointMatchClient {
 
         final List<CanvasMatches> canvasMatchesList = new ArrayList<>(matcherList.size());
         for (final CanvasFeatureMatcherThread matcherThread : matcherList) {
-            matcherThread.addMatchesToList(canvasMatchesList, parameters.match.pairMaxDeltaStandardDeviation);
+            matcherThread.addMatchesToList(canvasMatchesList);
         }
 
         LOG.info("deriveMatches: exit");
@@ -599,8 +599,7 @@ public class PointMatchClient {
             matchResult = matcher.deriveMatchResult(pCanvasData.featureList, qCanvasData.featureList);
         }
 
-        void addMatchesToList(final List<CanvasMatches> targetList,
-                              final Double pairMaxDeltaStandardDeviation) {
+        void addMatchesToList(final List<CanvasMatches> targetList) {
             matchResult.addInlierMatchesToList(pCanvasData.canvasId.getGroupId(),
                                                pCanvasData.canvasId.getId(),
                                                qCanvasData.canvasId.getGroupId(),
@@ -608,7 +607,6 @@ public class PointMatchClient {
                                                pCanvasData.renderScale,
                                                pCanvasData.canvasId.getClipOffsets(),
                                                qCanvasData.canvasId.getClipOffsets(),
-                                               pairMaxDeltaStandardDeviation,
                                                targetList);
         }
 

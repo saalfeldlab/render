@@ -185,7 +185,6 @@ public class SIFTPointMatchClient
                         featureStorageParameters.requireStoredFeatures);
 
         final double renderScale = featureRenderParameters.renderScale;
-        final Double pairMaxDeltaStandardDeviation = matchDerivationParameters.pairMaxDeltaStandardDeviation;
 
         // broadcast to all nodes
         final Broadcast<Long> broadcastCacheMaxKilobytes = sparkContext.broadcast(cacheMaxKilobytes);
@@ -243,7 +242,6 @@ public class SIFTPointMatchClient
                                                            renderScale,
                                                            pClipOffsets,
                                                            qClipOffsets,
-                                                           pairMaxDeltaStandardDeviation,
                                                            matchList);
                     }
 

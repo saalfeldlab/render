@@ -106,14 +106,6 @@ public class MatchDerivationParameters implements Serializable {
     )
     public FilterType matchFilter = FilterType.SINGLE_SET;
 
-    @Parameter(
-            names = "--pairMaxDeltaStandardDeviation",
-            description = "Reject match pairs with delta x or delta y standard deviations greater than this number. " +
-                          "If you plan to use the EM_aligner for a montage solve, this value should be set to 8 " +
-                          "( see https://github.com/khaledkhairy/EM_aligner/blob/master/matlab_compiled/solve_montage_SL.m#L160 )."
-    )
-    public Double pairMaxDeltaStandardDeviation;
-
     void setDefaults() {
         if (matchRod == null) {
             matchRod = 0.92f;

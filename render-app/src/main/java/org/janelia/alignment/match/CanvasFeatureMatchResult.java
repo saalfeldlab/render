@@ -3,14 +3,12 @@ package org.janelia.alignment.match;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+import mpicbg.models.Model;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.janelia.alignment.match.CanvasFeatureMatcher.FilterType.AGGREGATED_CONSENSUS_SETS;
 
 /**
  * Encapsulates key data elements from canvas feature match derivation.
@@ -19,13 +17,16 @@ import org.slf4j.LoggerFactory;
  */
 public class CanvasFeatureMatchResult implements Serializable {
 
+    private final CanvasFeatureMatcher matcher;
     private final List<List<PointMatch>> consensusSetInliers;
     private final int totalNumberOfInliers;
     private final double inlierRatio;
 
-    public CanvasFeatureMatchResult(final List<List<PointMatch>> consensusSetInliers,
+    public CanvasFeatureMatchResult(final CanvasFeatureMatcher matcher,
+                                    final List<List<PointMatch>> consensusSetInliers,
                                     final int totalNumberOfCandidates) {
 
+        this.matcher = matcher;
         this.consensusSetInliers = consensusSetInliers;
         int totalNumberOfInliers = 0;
         for (final List<PointMatch> setInliers : consensusSetInliers) {
@@ -111,7 +112,6 @@ public class CanvasFeatureMatchResult implements Serializable {
                                        final Double renderScale,
                                        final double[] pOffsets,
                                        final double[] qOffsets,
-                                       final Double pairMaxDeltaStandardDeviation,
                                        final List<CanvasMatches> targetList) {
 
         if (foundMatches()) {
@@ -123,82 +123,36 @@ public class CanvasFeatureMatchResult implements Serializable {
                                                                         renderScale,
                                                                         pOffsets,
                                                                         qOffsets);
-            if (pairMaxDeltaStandardDeviation != null) {
+            targetList.addAll(inlierList);
 
-                final List<List<Double>> worldDeltaStandardDeviations = getWorldDeltaStandardDeviations();
-                final List<Double> deltaXStandardDeviations = worldDeltaStandardDeviations.get(0);
-                final List<Double> deltaYStandardDeviations = worldDeltaStandardDeviations.get(1);
-
-                for (int i = 0; i < inlierList.size(); i++) {
-
-                    final CanvasMatches canvasMatches = inlierList.get(i);
-                    final double dxStd = deltaXStandardDeviations.get(i);
-                    final double dyStd = deltaYStandardDeviations.get(i);
-
-                    if (dxStd > pairMaxDeltaStandardDeviation) {
-
-                        LOG.warn("tossing matches between {} and {} because delta X standard deviation of {} is greater than {}",
-                                 canvasMatches.getpId(), canvasMatches.getqId(), dxStd, pairMaxDeltaStandardDeviation);
-
-                    } else if (dyStd > pairMaxDeltaStandardDeviation) {
-
-                        LOG.warn("tossing matches between {} and {} because delta Y standard deviation of {} is greater than {}",
-                                 canvasMatches.getpId(), canvasMatches.getqId(), dyStd, pairMaxDeltaStandardDeviation);
-
-                    } else {
-                        targetList.add(canvasMatches);
-                    }
-
-                }
-
-            } else {
-                targetList.addAll(inlierList);
-            }
         }
 
+    }
+
+    PointMatchQualityStats calculateQualityStats()
+            throws IllegalArgumentException {
+
+        final PointMatchQualityStats qualityStats = new PointMatchQualityStats();
+
+        final Model aggregateModel;
+        if (AGGREGATED_CONSENSUS_SETS.equals(matcher.getFilterType()) || (consensusSetInliers.size() > 1)) {
+            aggregateModel = matcher.getModel();
+        } else {
+            aggregateModel = null;
+        }
+
+        try {
+            qualityStats.calculate(consensusSetInliers, aggregateModel);
+        } catch (final Exception e) {
+            throw new IllegalArgumentException("failed to fit aggregate model for point match quality calculation", e);
+        }
+
+        return qualityStats;
     }
 
     @Override
     public String toString() {
         return "{'consensusSetSizes' : " + getConsensusSetSizes() + ", 'inlierRatio' : " + inlierRatio + '}';
-    }
-
-    List<List<Double>> getWorldDeltaStandardDeviations() {
-        final List<Double> deltaXStandardDeviations = new ArrayList<>();
-        final List<Double> deltaYStandardDeviations = new ArrayList<>();
-        for (final List<PointMatch> consensusSet : consensusSetInliers) {
-            final double[] worldDeltaXAndYStandardDeviation = getWorldDeltaXAndYStandardDeviation(consensusSet);
-            deltaXStandardDeviations.add(worldDeltaXAndYStandardDeviation[0]);
-            deltaYStandardDeviations.add(worldDeltaXAndYStandardDeviation[1]);
-        }
-        return Stream.of(deltaXStandardDeviations, deltaYStandardDeviations).collect(Collectors.toList());
-    }
-
-    public static double[] getWorldDeltaXAndYStandardDeviation(final List<PointMatch> pointMatchList) {
-        final double[] deltaWorldX = new double[pointMatchList.size()];
-        final double[] deltaWorldY = new double[pointMatchList.size()];
-        for (int i = 0; i < pointMatchList.size(); i++) {
-            final PointMatch pointMatch = pointMatchList.get(i);
-            final Point p = pointMatch.getP1();
-            final Point q = pointMatch.getP2();
-            deltaWorldX[i] = p.getW()[0] - q.getW()[0];
-            deltaWorldY[i] = p.getW()[1] - q.getW()[1];
-        }
-        return new double[] { calculateStandardDeviation(deltaWorldX), calculateStandardDeviation(deltaWorldY) };
-    }
-
-    private static double calculateStandardDeviation(final double[] values) {
-        double sum = 0.0;
-        double squaredDifferenceSum = 0.0;
-        for (final double v : values) {
-            sum += v;
-        }
-        final double mean = sum / values.length;
-        for (final double v : values) {
-            squaredDifferenceSum += Math.pow(v - mean, 2);
-        }
-        final double variance = squaredDifferenceSum / values.length;
-        return Math.sqrt(variance);
     }
 
     /**
@@ -312,5 +266,4 @@ public class CanvasFeatureMatchResult implements Serializable {
         return pointMatchList;
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureMatchResult.class);
 }

@@ -298,6 +298,8 @@ JaneliaMatchTrial.prototype.getRenderParametersLink = function(parametersUrl) {
  * @param data.stats.qFeatureCount
  * @param data.stats.qFeatureDerivationMilliseconds
  * @param {Array} data.stats.consensusSetSizes
+ * @param data.stats.aggregateDeltaXStandardDeviation
+ * @param data.stats.aggregateDeltaYStandardDeviation
  * @param {Array} data.stats.consensusSetDeltaXStandardDeviations
  * @param {Array} data.stats.consensusSetDeltaYStandardDeviations
  * @param data.stats.matchDerivationMilliseconds
@@ -392,10 +394,24 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
                           stats.qFeatureDerivationMilliseconds +
                           stats.matchDerivationMilliseconds) / 1000;
 
+    $('#trialElapsedMessage').html(', took ' + totalSeconds + ' seconds to process');
+
+    // hack to populate aggregate std dev for older match trials that have only one consensus set ...
+    if ((typeof stats.aggregateDeltaXStandardDeviation === 'undefined') &&
+        (mParams.matchFilter !== 'AGGREGATED_CONSENSUS_SETS') &&
+        (stats.consensusSetDeltaXStandardDeviations.length === 1)) {
+
+        stats.aggregateDeltaXStandardDeviation = stats.consensusSetDeltaXStandardDeviations[0];
+        stats.aggregateDeltaYStandardDeviation = stats.consensusSetDeltaYStandardDeviations[0];
+    }
+
     const html = csText + " derived in " + stats.matchDerivationMilliseconds + " ms" +
-                 this.getStandardDeviationHtml('X', stats.consensusSetDeltaXStandardDeviations) +
-                 this.getStandardDeviationHtml('Y', stats.consensusSetDeltaYStandardDeviations) +
-                 "<br/>Total processing time: " + totalSeconds + " s";
+                 this.getStandardDeviationHtml('X',
+                                               stats.aggregateDeltaXStandardDeviation,
+                                               stats.consensusSetDeltaXStandardDeviations) +
+                 this.getStandardDeviationHtml('Y',
+                                               stats.aggregateDeltaYStandardDeviation,
+                                               stats.consensusSetDeltaYStandardDeviations);
 
     $('#matchStats').html(html);
 
@@ -403,17 +419,23 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 };
 
 JaneliaMatchTrial.prototype.getStandardDeviationHtml = function(xOrY,
+                                                                aggregateStandardDeviationValue,
                                                                 standardDeviationValues) {
-    let html = '';
+    let html = '<br/>Delta ' + xOrY + ' Standard Deviation:';
     if (Array.isArray(standardDeviationValues)) {
         if (standardDeviationValues.length > 1) {
-            html = '<br/>Set Delta ' + xOrY + ' Standard Deviations: [ ' + this.getDeltaHtml(standardDeviationValues[0]);
+            if (typeof aggregateStandardDeviationValue !== 'undefined') {
+                html += ' aggregate ' + this.getDeltaHtml(aggregateStandardDeviationValue) + ',';
+            }
+            html += ' sets [ ' + this.getDeltaHtml(standardDeviationValues[0]);
             for (let i = 1; i < standardDeviationValues.length; i++) {
                 html = html + ', ' + this.getDeltaHtml(standardDeviationValues[i]);
             }
             html += ' ]';
-        } else if (standardDeviationValues.length === 1) {
-            html = '<br/>Delta ' + xOrY + ' Standard Deviation: ' + this.getDeltaHtml(standardDeviationValues[0]);
+        } else if (typeof aggregateStandardDeviationValue !== 'undefined') {
+            html += ' ' + this.getDeltaHtml(aggregateStandardDeviationValue);
+        } else {
+            html += ' n/a';
         }
     }
     return html;
