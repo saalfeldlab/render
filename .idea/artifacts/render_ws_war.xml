@@ -1,7 +1,13 @@
 <component name="ArtifactManager">
   <artifact type="war" name="render-ws:war">
     <output-path>$PROJECT_DIR$/render-ws/target</output-path>
-    <root id="archive" name="render-ws-2.0.1-SNAPSHOT.war">
+    <properties id="maven-jee-properties">
+      <options>
+        <module>render-ws</module>
+        <packaging>war</packaging>
+      </options>
+    </properties>
+    <root id="archive" name="render-ws-2.1.0-SNAPSHOT.war">
       <element id="artifact" artifact-name="render-ws:war exploded" />
     </root>
   </artifact>

@@ -1,25 +1,32 @@
 <component name="ArtifactManager">
   <artifact type="exploded-war" name="render-ws:war exploded">
-    <output-path>$PROJECT_DIR$/render-ws/target/render-ws-2.0.1-SNAPSHOT</output-path>
+    <output-path>$PROJECT_DIR$/render-ws/target/render-ws-2.1.0-SNAPSHOT</output-path>
+    <properties id="maven-jee-properties">
+      <options>
+        <exploded>true</exploded>
+        <module>render-ws</module>
+        <packaging>war</packaging>
+      </options>
+    </properties>
     <root id="root">
       <element id="directory" name="WEB-INF">
         <element id="directory" name="classes">
           <element id="module-output" name="render-ws" />
         </element>
         <element id="directory" name="lib">
-          <element id="archive" name="render-app-2.0.1-SNAPSHOT.jar">
+          <element id="archive" name="render-app-2.1.0-SNAPSHOT.jar">
             <element id="module-output" name="render-app" />
           </element>
           <element id="library" level="project" name="Maven: mpicbg:mpicbg_:1.0.1" />
           <element id="library" level="project" name="Maven: mpicbg:mpicbg:1.0.1" />
           <element id="library" level="project" name="Maven: gov.nist.math:jama:1.0.3" />
           <element id="library" level="project" name="Maven: jama:jama:1.0.2" />
-          <element id="library" level="project" name="Maven: net.imagej:ij:1.49m" />
-          <element id="library" level="project" name="Maven: net.imglib2:imglib2:4.2.1" />
-          <element id="library" level="project" name="Maven: net.imglib2:imglib2-realtransform:2.0.0-beta-37" />
+          <element id="library" level="project" name="Maven: net.imagej:ij:1.52d" />
+          <element id="library" level="project" name="Maven: net.imglib2:imglib2:5.3.0" />
+          <element id="library" level="project" name="Maven: net.imglib2:imglib2-realtransform:2.0.0" />
           <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-databind:2.6.7" />
           <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-annotations:2.6.0" />
-          <element id="library" level="project" name="Maven: com.google.guava:guava:18.0" />
+          <element id="library" level="project" name="Maven: com.google.guava:guava:19.0" />
           <element id="library" level="project" name="Maven: com.google.code.findbugs:jsr305:3.0.0" />
           <element id="library" level="project" name="Maven: com.beust:jcommander:1.72" />
           <element id="library" level="project" name="Maven: sc.fiji:mpicbg-trakem2:1.2.2" />
@@ -60,7 +67,7 @@
           <element id="library" level="project" name="Maven: commons-collections:commons-collections:3.2.1" />
           <element id="library" level="project" name="Maven: commons-lang:commons-lang:2.4" />
           <element id="library" level="project" name="Maven: oro:oro:2.0.8" />
-          <element id="library" level="project" name="Maven: org.mongodb:mongo-java-driver:3.2.0" />
+          <element id="library" level="project" name="Maven: org.mongodb:mongo-java-driver:3.10.0" />
           <element id="library" level="project" name="Maven: io.swagger:swagger-annotations:1.5.12" />
           <element id="library" level="project" name="Maven: io.swagger:swagger-jaxrs:1.5.12" />
           <element id="library" level="project" name="Maven: io.swagger:swagger-core:1.5.12" />
@@ -76,7 +83,7 @@
         </element>
       </element>
       <element id="directory" name="META-INF">
-        <element id="file-copy" path="$PROJECT_DIR$/render-ws/target/render-ws-2.0.1-SNAPSHOT/META-INF/MANIFEST.MF" />
+        <element id="file-copy" path="$PROJECT_DIR$/render-ws/target/render-ws-2.1.0-SNAPSHOT/META-INF/MANIFEST.MF" />
       </element>
       <element id="javaee-facet-resources" facet="render-ws/web/Web" />
     </root>
