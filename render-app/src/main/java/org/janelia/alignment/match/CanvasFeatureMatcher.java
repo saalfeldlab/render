@@ -7,6 +7,8 @@ import java.util.List;
 
 import mpicbg.ij.FeatureTransform;
 import mpicbg.imagefeatures.Feature;
+import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
+import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Model;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.PointMatch;
@@ -15,6 +17,9 @@ import mpicbg.util.Timer;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import plugin.DescriptorParameters;
+import process.GeometricDescriptorMatcher;
 
 /**
  * Derives point matches between the features of two canvases, filtering out outlier matches.
@@ -76,44 +81,50 @@ public class CanvasFeatureMatcher implements Serializable {
      * @param  canvas1Features  feature list for first canvas.
      * @param  canvas2Features  feature list for second canvas.
      *
-     * @return match results for the specified feature lists.
+     * @return SIFT match results for the specified feature lists.
      */
-    public CanvasFeatureMatchResult deriveMatchResult(final List<Feature> canvas1Features,
-                                                      final List<Feature> canvas2Features) {
+    public CanvasFeatureMatchResult deriveSIFTMatchResult(final List<Feature> canvas1Features,
+                                                          final List<Feature> canvas2Features) {
 
-        LOG.info("deriveMatchResult: entry, canvas1Features.size={}, canvas2Features.size={}",
+        LOG.info("deriveSIFTMatchResult: entry, canvas1Features.size={}, canvas2Features.size={}",
                  canvas1Features.size(), canvas2Features.size());
 
         final Timer timer = new Timer();
         timer.start();
 
-        final Model model = getModel();
         final List<PointMatch> candidates = new ArrayList<>(canvas1Features.size());
 
         FeatureTransform.matchFeatures(canvas1Features, canvas2Features, candidates, rod);
 
-        CanvasFeatureMatchResult result = null;
-        switch (filterType) {
-            case NONE:
-                result = new CanvasFeatureMatchResult(this, Collections.singletonList(candidates), candidates.size());
-                break;
-            case SINGLE_SET:
-                final List<PointMatch> inliers = filterMatches(candidates, model);
-                result = new CanvasFeatureMatchResult(this, Collections.singletonList(inliers), candidates.size());
-                break;
-            case CONSENSUS_SETS:
-                final List<List<PointMatch>> consensusMatches = filterConsensusMatches(candidates);
-                result = new CanvasFeatureMatchResult(this, consensusMatches, candidates.size());
-                break;
-            case AGGREGATED_CONSENSUS_SETS:
-                final List<PointMatch> aggregatedMatches = new ArrayList<>(candidates.size());
-                filterConsensusMatches(candidates).forEach(aggregatedMatches::addAll);
+        final CanvasFeatureMatchResult result = buildMatchResult(candidates);
 
-                result = new CanvasFeatureMatchResult(this, Collections.singletonList(aggregatedMatches), candidates.size());
-                break;
-        }
+        LOG.info("deriveSIFTMatchResult: exit, result={}, elapsedTime={}s", result, (timer.stop() / 1000));
 
-        LOG.info("deriveMatchResult: exit, result={}, elapsedTime={}s", result, (timer.stop() / 1000));
+        return result;
+    }
+
+    // TODO: once basics are working, factor out shared match filter logic so that Geometric method is not in a CanvasFeature... container
+
+    /**
+     * @return geometric descriptor match results for the specified canvases.
+     */
+    CanvasFeatureMatchResult deriveGeometricDescriptorMatchResult(final List<DifferenceOfGaussianPeak<FloatType>> canvas1Peaks,
+                                                                  final List<DifferenceOfGaussianPeak<FloatType>> canvas2Peaks,
+                                                                  final DescriptorParameters descriptorParameters) {
+
+        LOG.info("deriveGeometricDescriptorMatchResult: entry");
+
+        final Timer timer = new Timer();
+        timer.start();
+
+        final List<PointMatch> candidates =
+                GeometricDescriptorMatcher.descriptorBasedRegistration(canvas1Peaks,
+                                                                       canvas2Peaks,
+                                                                       descriptorParameters);
+
+        final CanvasFeatureMatchResult result = buildMatchResult(candidates);
+
+        LOG.info("deriveGeometricDescriptorMatchResult: exit, result={}, elapsedTime={}s", result, (timer.stop() / 1000));
 
         return result;
     }
@@ -235,6 +246,33 @@ public class CanvasFeatureMatcher implements Serializable {
             Collections.shuffle(inliers);
             inliers.subList(maxNumInliers, inliers.size()).clear();
         }
+    }
+
+    private CanvasFeatureMatchResult buildMatchResult(final List<PointMatch> candidates) {
+
+        CanvasFeatureMatchResult result = null;
+        switch (filterType) {
+            case NONE:
+                result = new CanvasFeatureMatchResult(this, Collections.singletonList(candidates), candidates.size());
+                break;
+            case SINGLE_SET:
+                final Model model = getModel();
+                final List<PointMatch> inliers = filterMatches(candidates, model);
+                result = new CanvasFeatureMatchResult(this, Collections.singletonList(inliers), candidates.size());
+                break;
+            case CONSENSUS_SETS:
+                final List<List<PointMatch>> consensusMatches = filterConsensusMatches(candidates);
+                result = new CanvasFeatureMatchResult(this, consensusMatches, candidates.size());
+                break;
+            case AGGREGATED_CONSENSUS_SETS:
+                final List<PointMatch> aggregatedMatches = new ArrayList<>(candidates.size());
+                filterConsensusMatches(candidates).forEach(aggregatedMatches::addAll);
+
+                result = new CanvasFeatureMatchResult(this, Collections.singletonList(aggregatedMatches), candidates.size());
+                break;
+        }
+
+        return result;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureMatcher.class);

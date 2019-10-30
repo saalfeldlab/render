@@ -160,7 +160,7 @@ public class FeatureExtractionTest {
                                               null,
                                               CanvasFeatureMatcher.FilterType.SINGLE_SET);
         final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(matchParameters);
-        matcher.deriveMatchResult(pFeatureList, qFeatureList);
+        matcher.deriveSIFTMatchResult(pFeatureList, qFeatureList);
     }
 
     @Test
@@ -210,7 +210,7 @@ public class FeatureExtractionTest {
                                               null,
                                               CanvasFeatureMatcher.FilterType.SINGLE_SET);
         final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(matchParameters);
-        final CanvasFeatureMatchResult result = matcher.deriveMatchResult(pFeatureList, qFeatureList);
+        final CanvasFeatureMatchResult result = matcher.deriveSIFTMatchResult(pFeatureList, qFeatureList);
 
         System.out.println(result.toString());
 

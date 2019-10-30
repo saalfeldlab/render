@@ -181,7 +181,7 @@ public class PointMatchOptimizerClient {
             parameters.matchDerivation.matchRod = rod;
 
             matcher = new CanvasFeatureMatcher(parameters.matchDerivation);
-            matchResult = matcher.deriveMatchResult(pFeatureList, qFeatureList);
+            matchResult = matcher.deriveSIFTMatchResult(pFeatureList, qFeatureList);
 
             inlierCount = matchResult.getInlierPointMatchList().size();
 

@@ -172,8 +172,8 @@ public class SIFTPointMatchClient
 
             LOG.info("generateMatchesForPairs: derive matches between {} and {}", p, q);
 
-            matchResult = featureMatcher.deriveMatchResult(pFeatures.getFeatureList(),
-                                                           qFeatures.getFeatureList());
+            matchResult = featureMatcher.deriveSIFTMatchResult(pFeatures.getFeatureList(),
+                                                               qFeatures.getFeatureList());
 
             final double[] pClipOffsets = pFeatures.getClipOffsets();
             final double[] qClipOffsets = qFeatures.getClipOffsets();

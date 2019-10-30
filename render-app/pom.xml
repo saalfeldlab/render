@@ -128,6 +128,12 @@
         </dependency>
 
         <dependency>
+            <groupId>sc.fiji</groupId>
+            <artifactId>Descriptor_based_registration</artifactId>
+            <version>2.1.2</version>
+        </dependency>
+
+        <dependency>
             <groupId>jitk</groupId>
             <artifactId>jitk-tps</artifactId>
         </dependency>

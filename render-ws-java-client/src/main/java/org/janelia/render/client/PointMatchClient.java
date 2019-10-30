@@ -596,7 +596,7 @@ public class PointMatchClient {
 
         @Override
         public void run() {
-            matchResult = matcher.deriveMatchResult(pCanvasData.featureList, qCanvasData.featureList);
+            matchResult = matcher.deriveSIFTMatchResult(pCanvasData.featureList, qCanvasData.featureList);
         }
 
         void addMatchesToList(final List<CanvasMatches> targetList) {
