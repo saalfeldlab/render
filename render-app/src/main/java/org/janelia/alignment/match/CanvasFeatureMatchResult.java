@@ -51,6 +51,13 @@ public class CanvasFeatureMatchResult implements Serializable {
         return consensusSetInliers.get(0);
     }
 
+    /**
+     * @return collection of nested inlier matches.
+     */
+    public List<List<PointMatch>> getInlierPointMatchLists() {
+        return consensusSetInliers;
+    }
+
     List<Integer> getConsensusSetSizes() {
         final List<Integer> sizes = new ArrayList<>();
         if (consensusSetInliers != null) {
