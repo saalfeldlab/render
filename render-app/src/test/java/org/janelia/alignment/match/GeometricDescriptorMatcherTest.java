@@ -1,13 +1,7 @@
 package org.janelia.alignment.match;
 
-import ij.ImagePlus;
-
 import java.awt.image.BufferedImage;
 import java.util.List;
-
-import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
-import mpicbg.imglib.type.numeric.real.FloatType;
-import mpicbg.models.PointMatch;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
@@ -16,6 +10,10 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import ij.ImagePlus;
+import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
+import mpicbg.imglib.type.numeric.real.FloatType;
+import mpicbg.models.PointMatch;
 import plugin.DescriptorParameters;
 
 /**
@@ -73,8 +71,8 @@ public class GeometricDescriptorMatcherTest {
         // -------------------------------------------------------------------
         // run test ...
 
-        final BufferedImage image1 = renderTile(tileId1, renderScale);
-        final BufferedImage image2 = renderTile(tileId2, renderScale);
+        final BufferedImage image1 = renderTile(tileId1, renderScale, false);
+        final BufferedImage image2 = renderTile(tileId2, renderScale, false);
 
         final CanvasPeakExtractor extractor = new CanvasPeakExtractor(descriptorParameters);
 
@@ -103,8 +101,9 @@ public class GeometricDescriptorMatcherTest {
         ip2.show();
     }
 
-    private BufferedImage renderTile(final String tileId,
-                                     final double renderScale) {
+    protected static BufferedImage renderTile(final String tileId,
+                                     final double renderScale,
+                                     final boolean filter) {
 
         final String baseTileUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/";
         final String urlSuffix = "/render-parameters?scale=" + renderScale;
@@ -113,6 +112,7 @@ public class GeometricDescriptorMatcherTest {
         final String url = baseTileUrl + tileId + urlSuffix;
 
         final RenderParameters renderParameters = RenderParameters.loadFromUrl(url);
+        renderParameters.setDoFilter( filter );
         renderParameters.initializeDerivedValues();
 
         renderParameters.validate();
