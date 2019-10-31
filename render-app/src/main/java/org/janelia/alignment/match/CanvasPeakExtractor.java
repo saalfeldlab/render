@@ -125,7 +125,7 @@ public class CanvasPeakExtractor
 
         final DescriptorParameters normalizedParameters = new DescriptorParameters();
 
-        normalizedParameters.dimensionality = 2;        // rendered result is always 2D
+        normalizedParameters.dimensionality = descriptorParameters.dimensionality;  // rendered result is always 2D
         normalizedParameters.similarOrientation = true; // TODO: should be false for rotated canvases
         normalizedParameters.channel1 = 0;              // rendered result is always single channel
         normalizedParameters.channel2 = 0;              // rendered result is always single channel
