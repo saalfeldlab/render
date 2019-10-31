@@ -10,10 +10,13 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import ij.ImageJ;
 import ij.ImagePlus;
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
+import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.PointMatch;
+import mpicbg.spim.segmentation.InteractiveDoG;
 import plugin.DescriptorParameters;
 
 /**
@@ -41,17 +44,15 @@ public class GeometricDescriptorMatcherTest {
 
         final DescriptorParameters descriptorParameters = new DescriptorParameters();
 
-        // descriptorParameters.dimensionality = 2; // set internally later
+        descriptorParameters.dimensionality = 2; // always 2
         descriptorParameters.numNeighbors = 3;
         descriptorParameters.redundancy = 1;
         descriptorParameters.significance = 2;
 
         // TODO: make sure "sigma" mentioned in wiki page test set is saved to correct parameter here
-        final double defaultSigma = 2.0;
         final double testSigma = 2.06;
-        descriptorParameters.sigma = new double[] { testSigma, defaultSigma };
         descriptorParameters.sigma1 = testSigma;
-        descriptorParameters.sigma2 = defaultSigma;
+        descriptorParameters.sigma2 = InteractiveDoG.computeSigma2( (float)descriptorParameters.sigma1, InteractiveDoG.standardSensitivity );
 
         descriptorParameters.threshold = 0.018;
         descriptorParameters.lookForMinima = true;
@@ -91,6 +92,8 @@ public class GeometricDescriptorMatcherTest {
 
         // NOTE: assumes matchFilter is SINGLE_SET
         final List<PointMatch> inliers = result.getInlierPointMatchList();
+
+        //SimpleMultiThreading.threadHaltUnClean();
 
         // -------------------------------------------------------------------
         // display results ...
