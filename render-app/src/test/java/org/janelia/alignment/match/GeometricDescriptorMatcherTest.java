@@ -3,8 +3,8 @@ package org.janelia.alignment.match;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
-import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.ShortRenderer;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Ignore;
@@ -41,6 +41,7 @@ public class GeometricDescriptorMatcherTest {
 
         final DescriptorParameters descriptorParameters = new DescriptorParameters();
 
+        // descriptorParameters.dimensionality = 2; // set internally later
         descriptorParameters.numNeighbors = 3;
         descriptorParameters.redundancy = 1;
         descriptorParameters.significance = 2;
@@ -117,8 +118,21 @@ public class GeometricDescriptorMatcherTest {
 
         renderParameters.validate();
 
-        final BufferedImage bufferedImage = renderParameters.openTargetImage();
-        ArgbRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
+        // RGB
+        //final BufferedImage bufferedImage = renderParameters.openTargetImage();
+        //ArgbRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
+
+        // 8 bit (almost identical to RGB when converted to gray)
+        final BufferedImage bufferedImage = renderParameters.openTargetImage( BufferedImage.TYPE_BYTE_GRAY );
+        ShortRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
+
+        // 16 bit
+        //final BufferedImage bufferedImage = renderParameters.openTargetImage( BufferedImage.TYPE_USHORT_GRAY );
+        //ShortRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
+
+        //new ImageJ();
+        //new ImagePlus( "", bufferedImage ).show();
+        //SimpleMultiThreading.threadHaltUnClean();
 
         return bufferedImage;
     }
