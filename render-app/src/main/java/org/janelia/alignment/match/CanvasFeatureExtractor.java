@@ -102,7 +102,7 @@ public class CanvasFeatureExtractor implements Serializable {
      *
      * @return list of extracted features.
      */
-    private List<Feature> extractFeaturesFromImage(final BufferedImage bufferedImage) {
+    public List<Feature> extractFeaturesFromImage(final BufferedImage bufferedImage) {
 
         final Timer timer = new Timer();
         timer.start();
