@@ -54,6 +54,8 @@ public class GeometricDescriptorMatcherTest {
         descriptorParameters.sigma2 = defaultSigma;
 
         descriptorParameters.threshold = 0.018;
+        descriptorParameters.lookForMinima = true;
+        descriptorParameters.lookForMaxima = false;
 
         final MatchDerivationParameters matchFilterParameters = new MatchDerivationParameters();
         matchFilterParameters.matchModelType = ModelType.RIGID;
