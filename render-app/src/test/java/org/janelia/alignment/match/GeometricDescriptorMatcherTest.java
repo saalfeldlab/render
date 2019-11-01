@@ -24,7 +24,7 @@ import plugin.DescriptorParameters;
  *
  * Comment Ignore annotation below to run tests using JUnit.
  */
-@Ignore
+//@Ignore
 public class GeometricDescriptorMatcherTest {
 
     @Test
@@ -50,11 +50,10 @@ public class GeometricDescriptorMatcherTest {
         descriptorParameters.significance = 2;
 
         // TODO: make sure "sigma" mentioned in wiki page test set is saved to correct parameter here
-        final double testSigma = 2.06;
-        descriptorParameters.sigma1 = testSigma;
+        descriptorParameters.sigma1 = 2.04;
         descriptorParameters.sigma2 = InteractiveDoG.computeSigma2( (float)descriptorParameters.sigma1, InteractiveDoG.standardSensitivity );
 
-        descriptorParameters.threshold = 0.018;
+        descriptorParameters.threshold = 0.008;
         descriptorParameters.lookForMinima = true;
         descriptorParameters.lookForMaxima = false;
 
@@ -85,10 +84,22 @@ public class GeometricDescriptorMatcherTest {
         final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractor.extractPeaksFromImage(image1);
         final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractor.extractPeaksFromImage(image2);
 
+        for ( int i = canvasPeaks1.size() - 1; i >= 0; --i )
+        	if ( canvasPeaks1.get( i ).getPosition( 0 ) < 2200 )
+        		canvasPeaks1.remove( i );
+
+        for ( int i = canvasPeaks2.size() - 1; i >= 0; --i )
+        	if ( canvasPeaks2.get( i ).getPosition( 0 ) < 2200 )
+        		canvasPeaks2.remove( i );
+
+        System.out.println( canvasPeaks1.size() );
+        System.out.println( canvasPeaks2.size() );
+
         final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(matchFilterParameters);
 
+        // important, we need to use the adjusted parameters here as well
         final CanvasFeatureMatchResult result =
-                matcher.deriveGeometricDescriptorMatchResult(canvasPeaks1, canvasPeaks2, descriptorParameters);
+                matcher.deriveGeometricDescriptorMatchResult(canvasPeaks1, canvasPeaks2, extractor.getAdjustedParameters() );
 
         // NOTE: assumes matchFilter is SINGLE_SET
         final List<PointMatch> inliers = result.getInlierPointMatchList();
