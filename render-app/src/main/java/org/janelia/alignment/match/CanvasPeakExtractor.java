@@ -43,6 +43,8 @@ public class CanvasPeakExtractor
         this.coreDescriptorParameters = cloneParametersForRenderUseCase(descriptorParameters);
     }
 
+    public DescriptorParameters getAdjustedParameters() { return coreDescriptorParameters; }
+
     /**
      * Extract Gaussian peaks from canvas built from specified render parameters.
      *
