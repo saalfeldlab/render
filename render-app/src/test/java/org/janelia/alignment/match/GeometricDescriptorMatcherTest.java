@@ -24,7 +24,7 @@ import plugin.DescriptorParameters;
  *
  * Comment Ignore annotation below to run tests using JUnit.
  */
-//@Ignore
+@Ignore
 public class GeometricDescriptorMatcherTest {
 
     @Test
