@@ -174,8 +174,12 @@ public class GeometricDescriptorMatcherTest {
 		for ( final DifferenceOfGaussianPeak< FloatType > p : canvasPeaks )
 			list1.add( new Point( new double[] { p.getSubPixelPosition( 0 ), p.getSubPixelPosition( 1 ) } ) );
 
+		setPointRois( list1, imp1 );
+	}
+
+	protected static void setPointRois( List< Point > list1, final ImagePlus imp1 )
+	{
 		PointRoi points = mpicbg.ij.util.Util.pointsToPointRoi( list1 );
-		
 		imp1.setRoi( points );
 	}
 
