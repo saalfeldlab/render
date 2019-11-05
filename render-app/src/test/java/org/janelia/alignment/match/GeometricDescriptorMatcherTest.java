@@ -1,7 +1,6 @@
 package org.janelia.alignment.match;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,8 +10,9 @@ import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import ij.ImageJ;
 import ij.ImagePlus;
 import ij.gui.PointRoi;
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
@@ -21,9 +21,6 @@ import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.spim.segmentation.InteractiveDoG;
-import net.imglib2.KDTree;
-import net.imglib2.RealPoint;
-import net.imglib2.neighborsearch.KNearestNeighborSearchOnKDTree;
 import plugin.DescriptorParameters;
 
 /**
@@ -66,20 +63,17 @@ public class GeometricDescriptorMatcherTest {
         List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractor.extractPeaksFromImage(image1);
         List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractor.extractPeaksFromImage(image2);
 
-        /*
-        for ( int i = canvasPeaks1.size() - 1; i >= 0; --i )
-        	if ( canvasPeaks1.get( i ).getPosition( 0 ) < 2200 )
-        		canvasPeaks1.remove( i );
+        LOG.debug( "#detections: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
-        for ( int i = canvasPeaks2.size() - 1; i >= 0; --i )
-        	if ( canvasPeaks2.get( i ).getPosition( 0 ) < 2200 )
-        		canvasPeaks2.remove( i );
-		*/
-        canvasPeaks1 = thinOut( canvasPeaks1, 0, 10, false );
-        canvasPeaks2 = thinOut( canvasPeaks2, 0, 10, false );
+        //canvasPeaks1 = GeometricDescriptorSIFTMatcherTest.thinOut( canvasPeaks1, 0, 10, false );
+        //canvasPeaks2 = GeometricDescriptorSIFTMatcherTest.thinOut( canvasPeaks2, 0, 10, false );
 
-        System.out.println( canvasPeaks1.size() );
-        System.out.println( canvasPeaks2.size() );
+        //LOG.debug( "#detections after thinning: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
+
+        canvasPeaks1 = GeometricDescriptorSIFTMatcherTest.nonMaximalSuppression( canvasPeaks1, 30 );
+        canvasPeaks2 = GeometricDescriptorSIFTMatcherTest.nonMaximalSuppression( canvasPeaks2, 30 );
+
+        LOG.debug( "#detections after thinning: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
         final ImagePlus ip1 = new ImagePlus(tileId1, image1);
         final ImagePlus ip2 = new ImagePlus(tileId2, image2);
@@ -89,6 +83,8 @@ public class GeometricDescriptorMatcherTest {
 
         ip1.show();
         ip2.show();
+
+        //SimpleMultiThreading.threadHaltUnClean();
 
         // important, we need to use the adjusted parameters here as well
         final CanvasFeatureMatchResult result =
@@ -109,46 +105,6 @@ public class GeometricDescriptorMatcherTest {
 
         // -------------------------------------------------------------------
         // display results ...
-    }
-
-    public static List< DifferenceOfGaussianPeak< FloatType > > thinOut( final List< DifferenceOfGaussianPeak< FloatType > > canvasPeaks, final double minDistance, final double maxDistance, final boolean keepRange )
-    {
-		// assemble the list of points (we need two lists as the KDTree sorts the list)
-		// we assume that the order of list2 is preserved
-		final List< RealPoint > list1 = new ArrayList< RealPoint >();
-		final List< RealPoint > list2 = new ArrayList< RealPoint >();
-
-		for ( final DifferenceOfGaussianPeak<FloatType> ip : canvasPeaks )
-		{
-			list1.add ( new RealPoint(
-					ip.getSubPixelPosition( 0 ),
-					ip.getSubPixelPosition( 1 ) ) );
-
-			list2.add ( new RealPoint(
-					ip.getSubPixelPosition( 0 ),
-					ip.getSubPixelPosition( 1 ) ) );
-		}
-
-		// make the KDTree
-		final KDTree< RealPoint > tree = new KDTree< RealPoint >( list1, list1 );
-
-		// Nearest neighbor for each point, populate the new list
-		final KNearestNeighborSearchOnKDTree< RealPoint > nn = new KNearestNeighborSearchOnKDTree< RealPoint >( tree, 2 );
-		final List< DifferenceOfGaussianPeak< FloatType > > newIPs = new ArrayList<>();
-
-		for ( int j = 0; j < list2.size(); ++j )
-		{
-			final RealPoint p = list2.get( j );
-			nn.search( p );
-			
-			// first nearest neighbor is the point itself, we need the second nearest
-			final double d = nn.getDistance( 1 );
-			
-			if ( ( keepRange && d >= minDistance && d <= maxDistance ) || ( !keepRange && ( d < minDistance || d > maxDistance ) ) )
-				newIPs.add( canvasPeaks.get( j ) );
-		}
-
-		return newIPs;
     }
 
 	protected static void setPointRois( final ImagePlus imp1, final ImagePlus imp2, final List<PointMatch> inliers )
@@ -253,4 +209,5 @@ public class GeometricDescriptorMatcherTest {
         return bufferedImage;
     }
 
+    private static final Logger LOG = LoggerFactory.getLogger(GeometricDescriptorMatcherTest.class);
 }
