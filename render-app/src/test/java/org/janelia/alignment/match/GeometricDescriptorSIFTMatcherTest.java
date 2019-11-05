@@ -112,8 +112,6 @@ public class GeometricDescriptorSIFTMatcherTest {
         impSIFT1.show();
         impSIFT2.show();
 
-        SimpleMultiThreading.threadHaltUnClean();
-
         //
         // NOW Run Geometric Descriptor matching using the set inliers for masking
         //
@@ -139,6 +137,9 @@ public class GeometricDescriptorSIFTMatcherTest {
         final ImagePlus impGeo2 = new ImagePlus(tileId2 + "_Geo", imageGeo2);
 
         final Pair< ArrayList< Point >, ArrayList< Point > > adjustedInliers = adjustInliers( inliers, renderScaleSIFT, renderScaleGeo );
+
+		drawBlockedRegions( adjustedInliers.getA(), blockRadiusGeo, impGeo1 );
+		drawBlockedRegions( adjustedInliers.getB(), blockRadiusGeo, impGeo2 );
 
         //drawBlockedRegions( impSIFT1, impSIFT2, blockRadiusSIFT, inliers );
         GeometricDescriptorMatcherTest.setPointRois( adjustedInliers.getA(), impGeo1 );
