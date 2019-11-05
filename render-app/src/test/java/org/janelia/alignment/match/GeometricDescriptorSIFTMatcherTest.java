@@ -9,6 +9,7 @@ import java.util.List;
 
 import org.janelia.alignment.match.CanvasFeatureMatcher.FilterType;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +36,7 @@ import net.imglib2.util.ValuePair;
  *
  * Comment Ignore annotation below to run tests using JUnit.
  */
-//@Ignore
+@Ignore
 public class GeometricDescriptorSIFTMatcherTest {
 
     @Test
