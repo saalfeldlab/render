@@ -160,7 +160,7 @@ public class CanvasPeakExtractor
         normalizedParameters.sigma1 = descriptorParameters.sigma1;
         normalizedParameters.sigma2 = descriptorParameters.sigma2;
         normalizedParameters.threshold = descriptorParameters.threshold;
-        normalizedParameters.localization = descriptorParameters.localization;
+        normalizedParameters.localization = 1; //localizationChoice = { "None", "3-dimensional quadratic fit", "Gaussian mask localization fit" };
         normalizedParameters.lookForMaxima = descriptorParameters.lookForMaxima;  // not relevant now but may be later
         normalizedParameters.lookForMinima = descriptorParameters.lookForMinima;
         normalizedParameters.numNeighbors = descriptorParameters.numNeighbors;
