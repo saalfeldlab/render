@@ -109,22 +109,26 @@ public class GeometricDescriptorSIFTMatcherTest {
 
         LOG.debug( "#inliersSIFT: " + inliersSIFT.size() );
 
-        //final ImagePlus impSIFT1 = new ImagePlus(tileId1 + "_SIFT", imageSIFT1);
-        //final ImagePlus impSIFT2 = new ImagePlus(tileId2 + "_SIFT", imageSIFT2);
-
-        //drawBlockedRegions( impSIFT1, impSIFT2, blockRadiusSIFT, inliers );
-        //GeometricDescriptorMatcherTest.setPointRois( impSIFT1, impSIFT2, inliers );
-
-        //impSIFT1.show();
-        //impSIFT2.show();
+        /*
+        // debug
+        final ImagePlus impSIFT1 = new ImagePlus(tileId1 + "_SIFT", imageSIFT1);
+        final ImagePlus impSIFT2 = new ImagePlus(tileId2 + "_SIFT", imageSIFT2);
+        drawBlockedRegions( impSIFT1, impSIFT2, blockRadiusSIFT, inliersSIFT );
+        GeometricDescriptorMatcherTest.setPointRois( impSIFT1, impSIFT2, inliersSIFT );
+        impSIFT1.show();
+        impSIFT2.show();
+		*/
 
         //
         // NOW Run Geometric Descriptor matching using the set inliers for masking
         //
 
         // Geometric descriptor parameters
+        final double nonMaxSuppressionRadiusFull = 60;
+
         final double renderScaleGeo = 0.25;
         final double blockRadiusGeo = blockRadiusFull * renderScaleGeo;
+        final double nonMaxSuppressionRadius = nonMaxSuppressionRadiusFull * renderScaleGeo;
 
         final CanvasPeakExtractor extractorGeo = new CanvasPeakExtractor( GeometricDescriptorMatcherTest.getInitialDescriptorParameters() );
         final CanvasFeatureMatcher matcherGeo = new CanvasFeatureMatcher( GeometricDescriptorMatcherTest.getMatchFilterParameters() );
@@ -144,12 +148,18 @@ public class GeometricDescriptorSIFTMatcherTest {
         final ByteProcessor img2 = ((ColorProcessor)impGeo2.getProcessor()).getChannel( 1, null );
         final ByteProcessor mask2 = ((ColorProcessor)impGeo2.getProcessor()).getChannel( 4, null );
 
+        // adjust the locations of the inliers to the potentially difference renderScale
         final Pair< ArrayList< Point >, ArrayList< Point > > adjustedInliers = adjustInliers( inliersSIFT, renderScaleSIFT, renderScaleGeo );
 
-		//drawBlockedRegions( adjustedInliers.getA(), blockRadiusGeo, impGeo1 );
-		//drawBlockedRegions( adjustedInliers.getB(), blockRadiusGeo, impGeo2 );
-		//GeometricDescriptorMatcherTest.setPointRois( adjustedInliers.getA(), impGeo1 );
-		//GeometricDescriptorMatcherTest.setPointRois( adjustedInliers.getB(), impGeo2 );
+        /*
+        // debug
+		drawBlockedRegions( adjustedInliers.getA(), blockRadiusGeo, impGeo1 );
+		drawBlockedRegions( adjustedInliers.getB(), blockRadiusGeo, impGeo2 );
+		GeometricDescriptorMatcherTest.setPointRois( adjustedInliers.getA(), impGeo1 );
+		GeometricDescriptorMatcherTest.setPointRois( adjustedInliers.getB(), impGeo2 );
+		impGeo1.show();
+		impGeo2.show();
+		*/
 
         // extract DoG peaks for Descriptor-based registration
         List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractorGeo.extractPeaksFromImage(img1, mask1);
@@ -163,15 +173,15 @@ public class GeometricDescriptorSIFTMatcherTest {
 
         LOG.debug( "#detections after filtering by sift: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
-        // filter DoG peaks by max number
+        // filter DoG peaks by max number (doesn't work too well)
         //canvasPeaks1 = limitList( 2000, 1, canvasPeaks1 );
         //canvasPeaks2 = limitList( 2000, 1, canvasPeaks2 );
 
         //LOG.debug( "#detections after filtering by max number: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
-     // filter DoG peaks by nonMaximalSuppression
-        canvasPeaks1 = GeometricDescriptorSIFTMatcherTest.nonMaximalSuppression( canvasPeaks1, 15 );
-        canvasPeaks2 = GeometricDescriptorSIFTMatcherTest.nonMaximalSuppression( canvasPeaks2, 15 );
+        // filter DoG peaks by nonMaximalSuppression
+        canvasPeaks1 = GeometricDescriptorSIFTMatcherTest.nonMaximalSuppression( canvasPeaks1, nonMaxSuppressionRadius );
+        canvasPeaks2 = GeometricDescriptorSIFTMatcherTest.nonMaximalSuppression( canvasPeaks2, nonMaxSuppressionRadius );
 
         LOG.debug( "#detections after nonMaximalSuppression: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
@@ -195,7 +205,8 @@ public class GeometricDescriptorSIFTMatcherTest {
         GeometricDescriptorMatcherTest.setPointRois( ipnew1, ipnew2, inliersGeo );
 
         ipnew1.show();
-        ipnew2.show();
+        //ipnew2.show();
+
         SimpleMultiThreading.threadHaltUnClean();
     }
 
