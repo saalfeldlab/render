@@ -15,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ij.ImagePlus;
+import ij.process.ByteProcessor;
+import ij.process.ColorProcessor;
 import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
@@ -136,6 +138,12 @@ public class GeometricDescriptorSIFTMatcherTest {
         final ImagePlus impGeo1 = new ImagePlus(tileId1 + "_Geo", imageGeo1);
         final ImagePlus impGeo2 = new ImagePlus(tileId2 + "_Geo", imageGeo2);
 
+        final ByteProcessor img1 = ((ColorProcessor)impGeo1.getProcessor()).getChannel( 1, null );
+        final ByteProcessor mask1 = ((ColorProcessor)impGeo1.getProcessor()).getChannel( 4, null );
+
+        final ByteProcessor img2 = ((ColorProcessor)impGeo2.getProcessor()).getChannel( 1, null );
+        final ByteProcessor mask2 = ((ColorProcessor)impGeo2.getProcessor()).getChannel( 4, null );
+
         final Pair< ArrayList< Point >, ArrayList< Point > > adjustedInliers = adjustInliers( inliersSIFT, renderScaleSIFT, renderScaleGeo );
 
 		//drawBlockedRegions( adjustedInliers.getA(), blockRadiusGeo, impGeo1 );
@@ -144,8 +152,8 @@ public class GeometricDescriptorSIFTMatcherTest {
 		//GeometricDescriptorMatcherTest.setPointRois( adjustedInliers.getB(), impGeo2 );
 
         // extract DoG peaks for Descriptor-based registration
-        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractorGeo.extractPeaksFromImage(imageGeo1);
-        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractorGeo.extractPeaksFromImage(imageGeo2);
+        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractorGeo.extractPeaksFromImage(img1, mask1);
+        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractorGeo.extractPeaksFromImage(img2, mask2);
 
         LOG.debug( "#detections: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 

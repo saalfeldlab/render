@@ -4,8 +4,8 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.ShortRenderer;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Ignore;
@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 
 import ij.ImagePlus;
 import ij.gui.PointRoi;
+import ij.process.ByteProcessor;
+import ij.process.ColorProcessor;
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.imglib.type.numeric.real.FloatType;
@@ -60,8 +62,17 @@ public class GeometricDescriptorMatcherTest {
         final BufferedImage image1 = renderTile(tileId1, renderScale, false);
         final BufferedImage image2 = renderTile(tileId2, renderScale, false);
 
-        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractor.extractPeaksFromImage(image1);
-        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractor.extractPeaksFromImage(image2);
+        final ImagePlus ip1 = new ImagePlus(tileId1, image1);
+        final ImagePlus ip2 = new ImagePlus(tileId2, image2);
+
+        final ByteProcessor img1 = ((ColorProcessor)ip1.getProcessor()).getChannel( 1, null );
+        final ByteProcessor mask1 = ((ColorProcessor)ip1.getProcessor()).getChannel( 4, null );
+
+        final ByteProcessor img2 = ((ColorProcessor)ip2.getProcessor()).getChannel( 1, null );
+        final ByteProcessor mask2 = ((ColorProcessor)ip2.getProcessor()).getChannel( 4, null );
+
+        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractor.extractPeaksFromImage(img1, mask1);
+        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractor.extractPeaksFromImage(img2, mask2);
 
         LOG.debug( "#detections: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
@@ -74,9 +85,6 @@ public class GeometricDescriptorMatcherTest {
         canvasPeaks2 = GeometricDescriptorSIFTMatcherTest.nonMaximalSuppression( canvasPeaks2, 30 );
 
         LOG.debug( "#detections after thinning: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
-
-        final ImagePlus ip1 = new ImagePlus(tileId1, image1);
-        final ImagePlus ip2 = new ImagePlus(tileId2, image2);
 
         setPointRois( ip1, canvasPeaks1 );
         setPointRois( ip2, canvasPeaks2 );
@@ -190,13 +198,14 @@ public class GeometricDescriptorMatcherTest {
 
         renderParameters.validate();
 
-        // RGB
-        //final BufferedImage bufferedImage = renderParameters.openTargetImage();
-        //ArgbRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
+        // RGB (the alpha channel contains a mask for the left stripe to ignore)
+        final BufferedImage bufferedImage = renderParameters.openTargetImage();
+        ArgbRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
 
         // 8 bit (almost identical to RGB when converted to gray)
-        final BufferedImage bufferedImage = renderParameters.openTargetImage( BufferedImage.TYPE_BYTE_GRAY );
-        ShortRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
+        //final BufferedImage bufferedImage = renderParameters.openTargetImage( BufferedImage.TYPE_BYTE_GRAY );
+        //ShortRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
+        // TODO: Write ByteRenderer? Somehow the ShortRendered also works for 8-bit when providing a BufferedImage.TYPE_BYTE_GRAY
 
         // 16 bit
         //final BufferedImage bufferedImage = renderParameters.openTargetImage( BufferedImage.TYPE_USHORT_GRAY );

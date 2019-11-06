@@ -2,6 +2,9 @@ package org.janelia.alignment.match;
 
 import ij.ImagePlus;
 import ij.gui.Roi;
+import ij.process.ByteProcessor;
+import ij.process.ColorProcessor;
+import ij.process.ImageProcessor;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -81,7 +84,12 @@ public class CanvasPeakExtractor
             }
         }
 
-        return extractPeaksFromImage(bufferedImage);
+        final ImagePlus ip = new ImagePlus( "", bufferedImage);
+
+        final ByteProcessor img = ((ColorProcessor)ip.getProcessor()).getChannel( 1, null );
+        final ByteProcessor mask = ((ColorProcessor)ip.getProcessor()).getChannel( 4, null );
+
+        return extractPeaksFromImage( img, mask );
     }
 
     /**
@@ -91,16 +99,19 @@ public class CanvasPeakExtractor
      *
      * @return list of peaks.
      */
-    List<DifferenceOfGaussianPeak<FloatType>> extractPeaksFromImage(final BufferedImage bufferedImage) {
+    List<DifferenceOfGaussianPeak<FloatType>> extractPeaksFromImage( final ImageProcessor image, final ByteProcessor mask ) {
 
         final Timer timer = new Timer();
         timer.start();
+
+        if ( ColorProcessor.class.isInstance( image ) )
+        	throw new RuntimeException( "DoG needs a single-channel processor, no ColorProcessor" );
 
         LOG.info("extractPeaksFromImage: entry");
 
         // Let imagePlus determine correct processor - original use of ColorProcessor resulted in
         // fewer extracted features when bufferedImage was loaded from disk.
-        final ImagePlus imagePlus = new ImagePlus("", bufferedImage);
+        final ImagePlus imagePlus = new ImagePlus("", image);
 
         final DescriptorParameters clonedParameters = cloneParametersForRenderUseCase(coreDescriptorParameters);
 
@@ -116,6 +127,16 @@ public class CanvasPeakExtractor
                                   timePoint,
                                   clonedParameters,
                                   minMax);
+
+        for ( int i = peakList.size() - 1; i >= 0; --i )
+        {
+        	final int x = peakList.get( i ).getPosition( 0 );
+        	final int y = peakList.get( i ).getPosition( 1 );
+
+        	// make sure it's not on or next to a mask
+        	if ( mask.get( x, y ) == 0 || mask.get( x + 1, y ) == 0 || mask.get( x - 1, y ) == 0 || mask.get( x, y + 1 ) == 0 || mask.get( x, y - 1 ) == 0 )
+        		peakList.remove( i );
+        }
 
         LOG.info("extractPeaksFromImage: exit, extracted " + peakList.size() + " peaks, elapsedTime=" +
                  timer.stop() + "ms");
