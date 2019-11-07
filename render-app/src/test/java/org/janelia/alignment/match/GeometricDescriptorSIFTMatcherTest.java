@@ -1,5 +1,9 @@
 package org.janelia.alignment.match;
 
+import ij.ImagePlus;
+import ij.process.ByteProcessor;
+import ij.process.ColorProcessor;
+
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -7,16 +11,6 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
-import org.janelia.alignment.match.CanvasFeatureMatcher.FilterType;
-import org.janelia.alignment.match.parameters.MatchDerivationParameters;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import ij.ImagePlus;
-import ij.process.ByteProcessor;
-import ij.process.ColorProcessor;
 import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
@@ -25,6 +19,14 @@ import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.spim.io.IOFunctions;
+
+import org.janelia.alignment.match.CanvasFeatureMatcher.FilterType;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.imglib2.KDTree;
 import net.imglib2.RealPoint;
 import net.imglib2.neighborsearch.KNearestNeighborSearchOnKDTree;
@@ -34,15 +36,16 @@ import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
 /**
- * Runs peak extraction for two tiles.
- *
- * Comment Ignore annotation below to run tests using JUnit.
+ * Runs SIFT match derivation followed by peak extraction for two tiles.
  */
-@Ignore
 public class GeometricDescriptorSIFTMatcherTest {
 
-    @Test
-    public void testMatch() {
+	@Test
+	public void testNothing() {
+		Assert.assertTrue(true);
+	}
+
+	public static void main(final String[] args) {
 
         // -------------------------------------------------------------------
         // NOTES:
@@ -210,7 +213,7 @@ public class GeometricDescriptorSIFTMatcherTest {
         SimpleMultiThreading.threadHaltUnClean();
     }
 
-	public static String[] limitDetectionChoice = { "Brightest", "Around median (of those above threshold)", "Weakest (above threshold)" };	
+	public static String[] limitDetectionChoice = { "Brightest", "Around median (of those above threshold)", "Weakest (above threshold)" };
 
 	public static List< DifferenceOfGaussianPeak<FloatType> > limitList( final int maxDetections, final int maxDetectionsTypeIndex, final List< DifferenceOfGaussianPeak<FloatType> > list )
 	{

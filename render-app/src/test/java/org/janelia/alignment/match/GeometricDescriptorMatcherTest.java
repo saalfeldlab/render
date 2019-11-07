@@ -1,40 +1,43 @@
 package org.janelia.alignment.match;
 
-import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.janelia.alignment.ArgbRenderer;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.match.parameters.MatchDerivationParameters;
-import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import ij.ImagePlus;
 import ij.gui.PointRoi;
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
+
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
+
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.spim.segmentation.InteractiveDoG;
+
+import org.janelia.alignment.ArgbRenderer;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.janelia.alignment.util.ImageProcessorCache;
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import plugin.DescriptorParameters;
 
 /**
  * Runs peak extraction for two tiles.
- *
- * Comment Ignore annotation below to run tests using JUnit.
- */
-@Ignore
+  */
 public class GeometricDescriptorMatcherTest {
 
     @Test
-    public void testMatch() {
+    public void testNothing() {
+        Assert.assertTrue(true);
+    }
+
+    public static void main(final String[] args) {
 
         // -------------------------------------------------------------------
         // NOTES:
