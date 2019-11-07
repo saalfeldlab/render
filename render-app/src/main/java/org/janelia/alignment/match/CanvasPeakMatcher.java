@@ -22,11 +22,11 @@ import process.Particle;
 import static process.GeometricDescriptorMatcher.getCorrespondenceCandidatesPublic;
 
 /**
- * Derives geometric descriptor match results for the specified canvases, filtering out outlier matches.
+ * Derives geometric descriptor peak match results for the specified canvases, filtering out outlier matches.
  *
  * @author Stephan Preibisch
  */
-public class CanvasGeometricDescriptorMatcher
+public class CanvasPeakMatcher
         implements Serializable {
 
     private final DescriptorParameters descriptorParameters;
@@ -35,8 +35,8 @@ public class CanvasGeometricDescriptorMatcher
     /**
      * Sets up everything that is needed to derive geometric descriptor match results from the peak lists of two canvases.
      */
-    public CanvasGeometricDescriptorMatcher(final DescriptorParameters descriptorParameters,
-                                            final MatchDerivationParameters matchParameters) {
+    public CanvasPeakMatcher(final DescriptorParameters descriptorParameters,
+                             final MatchDerivationParameters matchParameters) {
         this.descriptorParameters = descriptorParameters;
         this.matchFilter = new MatchFilter(matchParameters);
     }
@@ -117,5 +117,5 @@ public class CanvasGeometricDescriptorMatcher
         return candidates;
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(CanvasGeometricDescriptorMatcher.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CanvasPeakMatcher.class);
 }

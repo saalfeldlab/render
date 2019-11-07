@@ -66,8 +66,8 @@ public class Renderer {
      * @param  renderParameters     specifies what to render.
      * @param  imageProcessorCache  cache of source tile data.
      */
-    private Renderer(final RenderParameters renderParameters,
-                     final ImageProcessorCache imageProcessorCache) {
+    public Renderer(final RenderParameters renderParameters,
+                    final ImageProcessorCache imageProcessorCache) {
         this.renderParameters = renderParameters;
         this.imageProcessorCache = imageProcessorCache;
     }
@@ -145,7 +145,7 @@ public class Renderer {
      * @throws IllegalArgumentException
      *   if rendering fails for any reason.
      */
-    private ImageProcessorWithMasks renderImageProcessorWithMasks()
+    public ImageProcessorWithMasks renderImageProcessorWithMasks()
             throws IllegalArgumentException {
 
         ImageProcessorWithMasks worldTarget = null;

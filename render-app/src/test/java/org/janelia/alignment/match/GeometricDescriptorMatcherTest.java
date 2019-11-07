@@ -54,9 +54,9 @@ public class GeometricDescriptorMatcherTest {
         final CanvasPeakExtractor extractor = new CanvasPeakExtractor( getInitialDescriptorParameters() );
 
         final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters();
-        final CanvasGeometricDescriptorMatcher peakMatcher =
-                new CanvasGeometricDescriptorMatcher(getInitialDescriptorParameters(),
-                                                     matchDerivationParameters);
+        final CanvasPeakMatcher peakMatcher =
+                new CanvasPeakMatcher(getInitialDescriptorParameters(),
+                                      matchDerivationParameters);
 
         final double renderScale = 0.25;
 

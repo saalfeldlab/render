@@ -134,9 +134,9 @@ public class GeometricDescriptorSIFTMatcherTest {
         final double nonMaxSuppressionRadius = nonMaxSuppressionRadiusFull * renderScaleGeo;
 
         final CanvasPeakExtractor extractorGeo = new CanvasPeakExtractor( GeometricDescriptorMatcherTest.getInitialDescriptorParameters() );
-        final CanvasGeometricDescriptorMatcher matcherGeo =
-				new CanvasGeometricDescriptorMatcher(GeometricDescriptorMatcherTest.getInitialDescriptorParameters(),
-													 GeometricDescriptorMatcherTest.getMatchFilterParameters() );
+        final CanvasPeakMatcher matcherGeo =
+				new CanvasPeakMatcher(GeometricDescriptorMatcherTest.getInitialDescriptorParameters(),
+									  GeometricDescriptorMatcherTest.getMatchFilterParameters() );
 
         // -------------------------------------------------------------------
         // run test ...
