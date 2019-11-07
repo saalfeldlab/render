@@ -24,6 +24,9 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -94,9 +97,14 @@ public class PointMatchDisplacementClient<B extends Model<B> & Affine2D<B>> {
         public int numTileNeighbors = -1;
 
         @Parameter(
-                names = "--scoreMatrixImageFile",
-                description = "Basename for image of the resulting score matrix (will create '<scoreMatrixImageFile>_avg.tif and _stddev.tif)")
+                names = "--scoreMatrixFile",
+                description = "Basename for image of the resulting score matrix (will create '<scoreMatrixFile>_avg.tif and _stddev.tif)")
         public String scoreMatrixImageFile;
+
+        @Parameter(
+                names = "--scoreAvgThreshold",
+                description = "Average score threshold for reporting a pair as problematic")
+        public Double scoreAvgThreshold = Double.POSITIVE_INFINITY;
 
         @Parameter(names = "--threads", description = "Number of threads to be used")
         public int numberOfThreads = 1;
@@ -158,10 +166,12 @@ public class PointMatchDisplacementClient<B extends Model<B> & Affine2D<B>> {
                             "--stack", "v1_frozen_20190610",
                             "--threads", "1",
                             "--matchCollection", "Sec07_v1_filtered",
-                            "--minZ", "24826",
-                            "--maxZ", "26200",
+//                            "--minZ", "24826",
+//                            "--maxZ", "26200",
+                            "--minZ", "20000",
+                            "--maxZ", "30000",
                             "--numTileNeighbors", "10",
-                            "--scoreMatrixImageFile", "score_matrix"
+                            "--scoreMatrixFile", "score_matrix3"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -287,6 +297,10 @@ public class PointMatchDisplacementClient<B extends Model<B> & Affine2D<B>> {
         final RandomAccessibleInterval<DoubleType> stdDevMatrix = cellImgFactory.create((long) numZ, (long) numZ);
         RandomAccess<DoubleType> stdDevMatrixRA = stdDevMatrix.randomAccess();
 
+        long totalPointPairs = 0;
+
+        BufferedWriter writer = new BufferedWriter(new FileWriter(parameters.scoreMatrixImageFile + "_cloud.points"));
+
         for (final String pGroupId : pGroupList) {// loop over Z-coords
 
             LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
@@ -333,6 +347,8 @@ public class PointMatchDisplacementClient<B extends Model<B> & Affine2D<B>> {
                         double d = dist(pTransformed, qTransformed);
                         dists.add(d);
                         zPairDists.add(new double[]{pTileSpec.getZ(), qTileSpec.getZ(), d});
+
+                        writer.write(pLocation[0] + "\t" + pLocation[1] + "\t" + pTileSpec.getZ() + "\t" + d + "\n" );
                     }
                 }
             }
@@ -340,7 +356,9 @@ public class PointMatchDisplacementClient<B extends Model<B> & Affine2D<B>> {
             DoubleSummaryStatistics stats = dists.stream().mapToDouble(Double::valueOf).summaryStatistics();
             double avg = stats.getAverage();
             double stdDev = Math.sqrt(dists.stream().map(x -> Math.pow(x - avg, 2)).mapToDouble(Double::valueOf).sum() / stats.getCount());
-            LOG.info("run: tile {} has a displacement average of {} and standard deviation of {}", pGroupId, avg, stdDev);
+            LOG.info("run: tile {} has a displacement average of {} and standard deviation of {} for {} point pairs", pGroupId, avg, stdDev, stats.getCount());
+
+            totalPointPairs += stats.getCount();
 
             // Note: this code assumes that pGroupId is always the same Z
             if (!zPairDists.isEmpty()) {
@@ -367,14 +385,33 @@ public class PointMatchDisplacementClient<B extends Model<B> & Affine2D<B>> {
             }
         }
 
+        writer.close();
+
+        LOG.info("Total number of point pairs {}", totalPointPairs);
+
         ImagePlus avgImp = ImageJFunctions.wrap(avgMatrix, "average_distance");
         IJ.save(avgImp, parameters.scoreMatrixImageFile + "_avg.tif");
 
         ImagePlus stdDevImp = ImageJFunctions.wrap(avgMatrix, "std_dev_distance");
         IJ.save(stdDevImp, parameters.scoreMatrixImageFile + "_stddev.tif");
 
+//        long[] pos = new long[2];
+//        for( pos[0]=0; pos[0] < avgMatrix.dimension(0); ++pos[0] ) {
+//            for( pos[1]=0; pos[1] < avgMatrix.dimension(1); ++pos[1] ) {
+//                avgMatrixRA.setPosition(pos);
+//                if( avgMatrixRA.get().get() > parameters.scoreAvgThreshold ) {
+//                    LOG.info("run: slab pair avg error of {} exceeds score threshold, inspect {}", avgMatrixRA.get().get(), getPairLink(pos[0], pos[1]));
+//                }
+//            }
+//        }
+
         LOG.info("run: exit");
     }
+
+//    private String getPairLink( long p, long q ) {
+//        //renderer-dev:8080/render-ws/view/tile-pair.html?pId=19-02-20_222736_0-0-0.25445.0&qId=19-02-20_223102_0-0-0.25448.0&renderScale=0.055436762493070404&renderStackOwner=Z1217_19m&renderStackProject=Sec07&renderStack=v1_frozen_20190610&matchOwner=Z1217_19m&matchCollection=Sec07_v1_filtered
+//
+//    }
 
     private double dist(double[] a, double[] b) {
         double val = 0;

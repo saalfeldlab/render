@@ -67,6 +67,17 @@
         </plugins>
     </build>
 
+    <repositories>
+		<repository>
+		    <id>jitpack.io</id>
+		    <url>https://jitpack.io</url>
+		</repository>
+		<repository>
+			<id>scijava.public</id>
+			<url>https://maven.scijava.org/content/groups/public</url>
+		</repository>
+    </repositories>
+
     <dependencies>
 
         <dependency>
@@ -104,6 +115,12 @@
             <groupId>net.imglib2</groupId>
             <artifactId>imglib2-ij</artifactId>
             <version>2.0.0-beta-45</version>
+        </dependency>
+
+        <dependency>
+            <groupId>sc.iview</groupId>
+            <artifactId>sciview</artifactId>
+            <version>9088345</version>
         </dependency>
 
     </dependencies>
