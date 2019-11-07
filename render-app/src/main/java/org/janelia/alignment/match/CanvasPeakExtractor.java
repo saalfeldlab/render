@@ -95,11 +95,9 @@ public class CanvasPeakExtractor
     /**
      * Extract Gaussian peaks from specified buffered image.
      *
-     * @param  bufferedImage  image to process.
-     *
      * @return list of peaks.
      */
-    List<DifferenceOfGaussianPeak<FloatType>> extractPeaksFromImage( final ImageProcessor image, final ByteProcessor mask ) {
+    List<DifferenceOfGaussianPeak<FloatType>> extractPeaksFromImage( final ImageProcessor image, final ImageProcessor mask ) {
 
         final Timer timer = new Timer();
         timer.start();

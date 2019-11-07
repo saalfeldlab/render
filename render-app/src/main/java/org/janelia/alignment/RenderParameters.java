@@ -668,10 +668,14 @@ public class RenderParameters implements Serializable {
         this.mipmapPathBuilder = mipmapPathBuilder;
     }
 
-    private void applyMipmapPathBuilderToTileSpecs() {
+    public void applyMipmapPathBuilderToTileSpecs() {
         if (hasMipmapPathBuilder()) {
             for (final TileSpec spec : tileSpecs) {
                 spec.setMipmapPathBuilder(mipmapPathBuilder);
+            }
+        } else {
+            for (final TileSpec spec : tileSpecs) {
+                spec.setMipmapPathBuilder(null);
             }
         }
     }

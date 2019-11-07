@@ -19,7 +19,11 @@ import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.spim.io.IOFunctions;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import mpicbg.util.Timer;
 
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.MatchFilter.FilterType;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.junit.Assert;
@@ -35,17 +39,19 @@ import net.imglib2.neighborsearch.RadiusNeighborSearchOnKDTree;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
+import static org.janelia.alignment.match.GeometricDescriptorMatcherTest.*;
+
 /**
  * Runs SIFT match derivation followed by peak extraction for two tiles.
  */
 public class GeometricDescriptorSIFTMatcherTest {
 
-	@Test
-	public void testNothing() {
+    @Test
+    public void testNothing() {
 		Assert.assertTrue(true);
 	}
 
-	public static void main(final String[] args) {
+    public static void main(final String[] args) {
 
         // -------------------------------------------------------------------
         // NOTES:
@@ -58,7 +64,7 @@ public class GeometricDescriptorSIFTMatcherTest {
 
         // -------------------------------------------------------------------
 
-    	// RUN SIFT HERE
+        // RUN SIFT HERE
         final String tileId1 = "19-02-21_105501_0-0-0.26101.0";
         final String tileId2 = "19-02-21_161150_0-0-0.26102.0";
 
@@ -84,8 +90,11 @@ public class GeometricDescriptorSIFTMatcherTest {
         final double renderScaleSIFT = 0.15;
         final double blockRadiusSIFT = blockRadiusFull * renderScaleSIFT;
 
-        final BufferedImage imageSIFT1 = GeometricDescriptorMatcherTest.renderTile(tileId1, renderScaleSIFT, true);
-        final BufferedImage imageSIFT2 = GeometricDescriptorMatcherTest.renderTile(tileId2, renderScaleSIFT, true);
+        final RenderParameters renderParametersTile1 = getRenderParametersForTile(tileId1, renderScaleSIFT, true);
+        final RenderParameters renderParametersTile2 = getRenderParametersForTile(tileId2, renderScaleSIFT, true);
+
+        final BufferedImage imageSIFT1 = renderImage(renderParametersTile1);
+        final BufferedImage imageSIFT2 = renderImage(renderParametersTile2);
 
         final FloatArray2DSIFT.Param coreSiftParameters = new FloatArray2DSIFT.Param();
         coreSiftParameters.fdSize = 4;
@@ -97,7 +106,7 @@ public class GeometricDescriptorSIFTMatcherTest {
         List< Feature > f1 = canvasFeatureExtractor.extractFeaturesFromImage( imageSIFT1 );
         List< Feature > f2 = canvasFeatureExtractor.extractFeaturesFromImage( imageSIFT2 );
 
-    	// GET INLIERS
+        // GET INLIERS
         MatchDerivationParameters ransacParam = new MatchDerivationParameters( 0.92f, ModelType.AFFINE, 1000, 50, 0, 10, 4, null, FilterType.SINGLE_SET );
         ransacParam.matchRegularizerModelType = ModelType.RIGID;
         ransacParam.matchInterpolatedModelLambda = 0.25;
@@ -120,7 +129,7 @@ public class GeometricDescriptorSIFTMatcherTest {
         GeometricDescriptorMatcherTest.setPointRois( impSIFT1, impSIFT2, inliersSIFT );
         impSIFT1.show();
         impSIFT2.show();
-		*/
+        */
 
         //
         // NOW Run Geometric Descriptor matching using the set inliers for masking
@@ -141,17 +150,41 @@ public class GeometricDescriptorSIFTMatcherTest {
         // -------------------------------------------------------------------
         // run test ...
 
-        final BufferedImage imageGeo1 = GeometricDescriptorMatcherTest.renderTile(tileId1, renderScaleGeo, false);
-        final BufferedImage imageGeo2 = GeometricDescriptorMatcherTest.renderTile(tileId2, renderScaleGeo, false);
+        renderParametersTile1.setScale(renderScaleGeo);
+        renderParametersTile2.setScale(renderScaleGeo);
 
-        final ImagePlus impGeo1 = new ImagePlus(tileId1 + "_Geo", imageGeo1);
-        final ImagePlus impGeo2 = new ImagePlus(tileId2 + "_Geo", imageGeo2);
+        final boolean useImage = true;
 
-        final ByteProcessor img1 = ((ColorProcessor)impGeo1.getProcessor()).getChannel( 1, null );
-        final ByteProcessor mask1 = ((ColorProcessor)impGeo1.getProcessor()).getChannel( 4, null );
+        final ImageProcessorWithMasks geo1;
+        final ImageProcessorWithMasks geo2;
 
-        final ByteProcessor img2 = ((ColorProcessor)impGeo2.getProcessor()).getChannel( 1, null );
-        final ByteProcessor mask2 = ((ColorProcessor)impGeo2.getProcessor()).getChannel( 4, null );
+        LOG.info("useImage is " + useImage);
+
+        if (useImage) {
+
+            final BufferedImage imageGeo1 = renderImage(renderParametersTile1);
+            final BufferedImage imageGeo2 = renderImage(renderParametersTile2);
+            final ColorProcessor cp1 = new ColorProcessor(imageGeo1);
+            final ColorProcessor cp2 = new ColorProcessor(imageGeo2);
+
+            geo1 = new ImageProcessorWithMasks(cp1.getChannel(1, null),
+                                               cp1.getChannel(4, null),
+                                               null);
+            geo2 = new ImageProcessorWithMasks(cp2.getChannel(1, null),
+                                               cp2.getChannel(4, null),
+                                               null);
+
+        } else {
+
+            geo1 = renderProcessorWithMasks(renderParametersTile1);
+            geo2 = renderProcessorWithMasks(renderParametersTile2);
+
+        }
+
+        LOG.info("finished geo render");
+
+        final ImagePlus impGeo1 = new ImagePlus(tileId1 + "_Geo", geo1.ip.duplicate());
+        final ImagePlus impGeo2 = new ImagePlus(tileId2 + "_Geo", geo2.ip.duplicate());
 
         // adjust the locations of the inliers to the potentially difference renderScale
         final Pair< ArrayList< Point >, ArrayList< Point > > adjustedInliers = adjustInliers( inliersSIFT, renderScaleSIFT, renderScaleGeo );
@@ -167,8 +200,8 @@ public class GeometricDescriptorSIFTMatcherTest {
 		*/
 
         // extract DoG peaks for Descriptor-based registration
-        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractorGeo.extractPeaksFromImage(img1, mask1);
-        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractorGeo.extractPeaksFromImage(img2, mask2);
+        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractorGeo.extractPeaksFromImage(geo1.ip, geo1.mask);
+        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractorGeo.extractPeaksFromImage(geo2.ip, geo2.mask);
 
         LOG.debug( "#detections: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
@@ -204,8 +237,8 @@ public class GeometricDescriptorSIFTMatcherTest {
         final List<PointMatch> inliersGeo = resultGeo.getInlierPointMatchList();
         LOG.debug( "#inliersGeo: " + inliersGeo.size() );
 
-        final ImagePlus ipnew1 = new ImagePlus(tileId1, imageGeo1);
-        final ImagePlus ipnew2 = new ImagePlus(tileId2, imageGeo2);
+        final ImagePlus ipnew1 = new ImagePlus(tileId1, geo1.ip.duplicate());
+        final ImagePlus ipnew2 = new ImagePlus(tileId2, geo2.ip.duplicate());
 
         GeometricDescriptorMatcherTest.setPointRois( ipnew1, ipnew2, inliersGeo );
 
@@ -247,9 +280,9 @@ public class GeometricDescriptorSIFTMatcherTest {
 			{
 				// median
 				final int median = list.size() / 2;
-				
+
 				IOFunctions.println( "Medium intensity: " + Math.abs( list.get( median ).getImgValue().get() ) );
-				
+
 				final int from = median - maxDetections/2;
 				final int to = median + maxDetections/2;
 
@@ -357,10 +390,10 @@ public class GeometricDescriptorSIFTMatcherTest {
 		{
 			final RealPoint p = list2.get( j );
 			nn.search( p );
-			
+
 			// first nearest neighbor is the point itself, we need the second nearest
 			final double d = nn.getDistance( 1 );
-			
+
 			if ( ( keepRange && d >= minDistance && d <= maxDistance ) || ( !keepRange && ( d < minDistance || d > maxDistance ) ) )
 				newIPs.add( canvasPeaks.get( j ) );
 		}
@@ -459,10 +492,10 @@ public class GeometricDescriptorSIFTMatcherTest {
 			{
 				final RealPoint p = new RealPoint( x, y );
 				nn.search( p );
-	
+
 				// first nearest neighbor is the point itself, we need the second nearest
 				final double d = nn.getDistance();
-	
+
 				if ( d <= radius )
 					imp.getProcessor().set( x, y, 255 );
 			}

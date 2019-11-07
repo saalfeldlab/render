@@ -15,9 +15,11 @@ import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.spim.segmentation.InteractiveDoG;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Renderer;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Assert;
@@ -66,8 +68,11 @@ public class GeometricDescriptorMatcherTest {
         // -------------------------------------------------------------------
         // run test ...
 
-        final BufferedImage image1 = renderTile(tileId1, renderScale, false);
-        final BufferedImage image2 = renderTile(tileId2, renderScale, false);
+        final RenderParameters renderParametersTile1 = getRenderParametersForTile(tileId1, renderScale, false);
+        final RenderParameters renderParametersTile2 = getRenderParametersForTile(tileId2, renderScale, false);
+
+        final BufferedImage image1 = renderImage(renderParametersTile1);
+        final BufferedImage image2 = renderImage(renderParametersTile2);
 
         final ImagePlus ip1 = new ImagePlus(tileId1, image1);
         final ImagePlus ip2 = new ImagePlus(tileId2, image2);
@@ -188,10 +193,9 @@ public class GeometricDescriptorMatcherTest {
         return matchFilterParameters;
     }
 
-    protected static BufferedImage renderTile(final String tileId,
-                                     final double renderScale,
-                                     final boolean filter) {
-
+    static RenderParameters getRenderParametersForTile(final String tileId,
+                                                       final double renderScale,
+                                                       final boolean filter) {
         final String baseTileUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/";
         final String urlSuffix = "/render-parameters?scale=" + renderScale;
         // TODO: add &fillWithNoise=true ?
@@ -204,6 +208,14 @@ public class GeometricDescriptorMatcherTest {
 
         renderParameters.validate();
 
+        // remove mipmapPathBuilder so that we don't get exceptions when /nrs is not mounted
+        renderParameters.setMipmapPathBuilder(null);
+        renderParameters.applyMipmapPathBuilderToTileSpecs();
+
+        return renderParameters;
+    }
+
+    static BufferedImage renderImage(final RenderParameters renderParameters) {
         // RGB (the alpha channel contains a mask for the left stripe to ignore)
         final BufferedImage bufferedImage = renderParameters.openTargetImage();
         ArgbRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
@@ -222,6 +234,11 @@ public class GeometricDescriptorMatcherTest {
         //SimpleMultiThreading.threadHaltUnClean();
 
         return bufferedImage;
+    }
+
+    static ImageProcessorWithMasks renderProcessorWithMasks(final RenderParameters renderParameters) {
+        final Renderer renderer = new Renderer(renderParameters, ImageProcessorCache.DISABLED_CACHE);
+        return renderer.renderImageProcessorWithMasks();
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(GeometricDescriptorMatcherTest.class);
