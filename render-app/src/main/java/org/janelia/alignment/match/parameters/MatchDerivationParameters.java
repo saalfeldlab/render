@@ -4,7 +4,7 @@ import com.beust.jcommander.Parameter;
 
 import java.io.Serializable;
 
-import org.janelia.alignment.match.CanvasFeatureMatcher.FilterType;
+import org.janelia.alignment.match.MatchFilter.FilterType;
 import org.janelia.alignment.match.ModelType;
 
 /**

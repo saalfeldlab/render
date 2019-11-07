@@ -9,20 +9,18 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-import mpicbg.models.Model;
 import mpicbg.models.PointMatch;
 
 import org.apache.commons.io.FilenameUtils;
-import org.janelia.alignment.match.CanvasFeatureMatchResult;
-import org.janelia.alignment.match.CanvasFeatureMatcher;
+import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.ConsensusSetData;
+import org.janelia.alignment.match.MatchFilter;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +37,7 @@ import org.slf4j.LoggerFactory;
  * For example, the options --candidateFile /a/candidates.json --outputDirectory /b
  * would have results written to /b/candidates_filtered.json
  *
- * Note that if a matchFilter of {@link CanvasFeatureMatcher.FilterType#CONSENSUS_SETS} is specified,
+ * Note that if a matchFilter of {@link MatchFilter.FilterType#CONSENSUS_SETS} is specified,
  * the pId and qId values for pairs with multiple sets will be modified to include the set index.
  * For example, { ..., "pId": "a", "qId": "b", ... } might become
  * { ..., "pId": "a_set_0", "qId": "b_set_0", ... }, { ..., "pId": "a_set_1", "qId": "b_set_1", ... }.
@@ -97,27 +95,16 @@ public class RansacFilterClient {
 
     public void run() throws Exception {
 
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(parameters.matchDerivation);
+        final MatchFilter matchFilter = new MatchFilter(parameters.matchDerivation);
 
         final List<CanvasMatches> inlierCanvasMatchesLists = new ArrayList<>();
 
         for (final CanvasMatches pair : loadMatchData(parameters.candidateFile)) {
 
-            final Model model = matcher.getModel();
             final List<PointMatch> candidates = new ArrayList<>(
-                    CanvasFeatureMatchResult.convertMatchesToPointMatchList(pair.getMatches()));
+                    CanvasMatchResult.convertMatchesToPointMatchList(pair.getMatches()));
 
-            List<List<PointMatch>> inliersLists = new ArrayList<>();
-            switch (parameters.matchDerivation.matchFilter) {
-                case SINGLE_SET:
-                    inliersLists = Collections.singletonList(matcher.filterMatches(candidates, model));
-                    break;
-                case CONSENSUS_SETS:
-                    inliersLists = matcher.filterConsensusMatches(candidates);
-                    break;
-                case NONE:
-                    throw new IllegalArgumentException("--matchFilter indicates no filtering needed");
-            }
+            final List<List<PointMatch>> inliersLists = matchFilter.filterConsensusMatches(candidates);
 
             final int numberOfConsensusSets = inliersLists.size();
 
@@ -130,8 +117,8 @@ public class RansacFilterClient {
                                           pair.getpId() + setSuffix,
                                           pair.getqGroupId(),
                                           pair.getqId() + setSuffix,
-                                          CanvasFeatureMatchResult.convertPointMatchListToMatches(inliersLists.get(i),
-                                                                                                  1.0));
+                                          CanvasMatchResult.convertPointMatchListToMatches(inliersLists.get(i),
+                                                                                           1.0));
                     filteredCanvasMatches.setConsensusSetData(new ConsensusSetData(i, pair.getpId(), pair.getqId()));
                 } else {
                     filteredCanvasMatches =
@@ -139,8 +126,8 @@ public class RansacFilterClient {
                                               pair.getpId(),
                                               pair.getqGroupId(),
                                               pair.getqId(),
-                                              CanvasFeatureMatchResult.convertPointMatchListToMatches(inliersLists.get(i),
-                                                                                                      1.0));
+                                              CanvasMatchResult.convertPointMatchListToMatches(inliersLists.get(i),
+                                                                                               1.0));
                 }
                 inlierCanvasMatchesLists.add(filteredCanvasMatches);
             }

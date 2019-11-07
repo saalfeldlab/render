@@ -20,7 +20,7 @@ import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.spim.io.IOFunctions;
 
-import org.janelia.alignment.match.CanvasFeatureMatcher.FilterType;
+import org.janelia.alignment.match.MatchFilter.FilterType;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.junit.Assert;
 import org.junit.Test;
@@ -104,8 +104,8 @@ public class GeometricDescriptorSIFTMatcherTest {
 
         final CanvasFeatureMatcher matcherSIFT = new CanvasFeatureMatcher(ransacParam);
 
-        final CanvasFeatureMatchResult resultSIFT =
-        		matcherSIFT.deriveSIFTMatchResult( f1, f2 );
+        final CanvasMatchResult resultSIFT =
+        		matcherSIFT.deriveMatchResult(f1, f2 );
 
         // NOTE: assumes matchFilter is SINGLE_SET (supports multi-model matching)
         final List<PointMatch> inliersSIFT = resultSIFT.getInlierPointMatchLists().get( 0 );
@@ -134,7 +134,9 @@ public class GeometricDescriptorSIFTMatcherTest {
         final double nonMaxSuppressionRadius = nonMaxSuppressionRadiusFull * renderScaleGeo;
 
         final CanvasPeakExtractor extractorGeo = new CanvasPeakExtractor( GeometricDescriptorMatcherTest.getInitialDescriptorParameters() );
-        final CanvasFeatureMatcher matcherGeo = new CanvasFeatureMatcher( GeometricDescriptorMatcherTest.getMatchFilterParameters() );
+        final CanvasGeometricDescriptorMatcher matcherGeo =
+				new CanvasGeometricDescriptorMatcher(GeometricDescriptorMatcherTest.getInitialDescriptorParameters(),
+													 GeometricDescriptorMatcherTest.getMatchFilterParameters() );
 
         // -------------------------------------------------------------------
         // run test ...
@@ -195,8 +197,8 @@ public class GeometricDescriptorSIFTMatcherTest {
         impGeo2.show();
 
         // important, we need to use the adjusted parameters here as well
-        final CanvasFeatureMatchResult resultGeo =
-        		matcherGeo.deriveGeometricDescriptorMatchResult(canvasPeaks1, canvasPeaks2, extractorGeo.getAdjustedParameters() );
+        final CanvasMatchResult resultGeo =
+        		matcherGeo.deriveMatchResult(canvasPeaks1, canvasPeaks2);
 
         // NOTE: assumes matchFilter is SINGLE_SET
         final List<PointMatch> inliersGeo = resultGeo.getInlierPointMatchList();

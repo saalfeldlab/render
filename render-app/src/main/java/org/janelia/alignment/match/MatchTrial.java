@@ -118,8 +118,8 @@ public class MatchTrial implements Serializable {
 
         final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(matchDerivationParameters);
 
-        final CanvasFeatureMatchResult matchResult =
-                matcher.deriveSIFTMatchResult(pCanvasData.getFeatureList(), qCanvasData.getFeatureList());
+        final CanvasMatchResult matchResult =
+                matcher.deriveMatchResult(pCanvasData.getFeatureList(), qCanvasData.getFeatureList());
 
         final long matchStop = System.currentTimeMillis();
 

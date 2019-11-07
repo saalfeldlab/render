@@ -20,7 +20,7 @@ import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
-import org.janelia.alignment.match.CanvasFeatureMatchResult;
+import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
@@ -584,7 +584,7 @@ public class PointMatchClient {
 
         private final CanvasFeatureMatcher matcher;
 
-        private CanvasFeatureMatchResult matchResult;
+        private CanvasMatchResult matchResult;
 
         CanvasFeatureMatcherThread(final CanvasData pCanvasData,
                                    final CanvasData qCanvasData,
@@ -596,7 +596,7 @@ public class PointMatchClient {
 
         @Override
         public void run() {
-            matchResult = matcher.deriveSIFTMatchResult(pCanvasData.featureList, qCanvasData.featureList);
+            matchResult = matcher.deriveMatchResult(pCanvasData.featureList, qCanvasData.featureList);
         }
 
         void addMatchesToList(final List<CanvasMatches> targetList) {

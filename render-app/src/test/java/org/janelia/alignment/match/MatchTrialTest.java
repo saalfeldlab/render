@@ -40,7 +40,7 @@ public class MatchTrialTest {
         matchDerivationParameters.matchMinInlierRatio = 0.0f;
         matchDerivationParameters.matchMaxTrust = 30.0;
         matchDerivationParameters.matchMinNumInliers = 20;
-        matchDerivationParameters.matchFilter = CanvasFeatureMatcher.FilterType.AGGREGATED_CONSENSUS_SETS;
+        matchDerivationParameters.matchFilter = MatchFilter.FilterType.AGGREGATED_CONSENSUS_SETS;
 
         final FeatureAndMatchParameters featureAndMatchParameters =
                 new FeatureAndMatchParameters(featureExtractionParameters,

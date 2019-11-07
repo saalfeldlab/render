@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 import org.janelia.alignment.match.CanvasFeatureExtractor;
-import org.janelia.alignment.match.CanvasFeatureMatchResult;
+import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
@@ -162,7 +162,7 @@ public class SIFTPointMatchClient
         CanvasId q;
         CachedCanvasFeatures pFeatures;
         CachedCanvasFeatures qFeatures;
-        CanvasFeatureMatchResult matchResult;
+        CanvasMatchResult matchResult;
         for (final OrderedCanvasIdPair pair : renderableCanvasIdPairs.getNeighborPairs()) {
             p = pair.getP();
             q = pair.getQ();
@@ -172,8 +172,8 @@ public class SIFTPointMatchClient
 
             LOG.info("generateMatchesForPairs: derive matches between {} and {}", p, q);
 
-            matchResult = featureMatcher.deriveSIFTMatchResult(pFeatures.getFeatureList(),
-                                                               qFeatures.getFeatureList());
+            matchResult = featureMatcher.deriveMatchResult(pFeatures.getFeatureList(),
+                                                           qFeatures.getFeatureList());
 
             final double[] pClipOffsets = pFeatures.getClipOffsets();
             final double[] qClipOffsets = qFeatures.getClipOffsets();

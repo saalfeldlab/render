@@ -25,7 +25,7 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 
-import org.janelia.alignment.match.CanvasFeatureMatchResult;
+import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.Bounds;
@@ -350,7 +350,7 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                                                     qTile -> buildTileFromSpec(qTileSpec));
 
                 p.connect(q,
-                          CanvasFeatureMatchResult.convertMatchesToPointMatchList(match.getMatches()));
+                          CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()));
             }
         }
 

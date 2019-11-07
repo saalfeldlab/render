@@ -15,7 +15,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.broadcast.Broadcast;
-import org.janelia.alignment.match.CanvasFeatureMatchResult;
+import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
@@ -215,7 +215,7 @@ public class SIFTPointMatchClient
                     CanvasId q;
                     CachedCanvasFeatures pFeatures;
                     CachedCanvasFeatures qFeatures;
-                    CanvasFeatureMatchResult matchResult;
+                    CanvasMatchResult matchResult;
                     while (pairIterator.hasNext()) {
 
                         pair = pairIterator.next();
@@ -229,8 +229,8 @@ public class SIFTPointMatchClient
 
                         log.info("derive matches between {} and {}", p, q);
 
-                        matchResult = featureMatcher.deriveSIFTMatchResult(pFeatures.getFeatureList(),
-                                                                           qFeatures.getFeatureList());
+                        matchResult = featureMatcher.deriveMatchResult(pFeatures.getFeatureList(),
+                                                                       qFeatures.getFeatureList());
 
                         final double[] pClipOffsets = pFeatures.getClipOffsets();
                         final double[] qClipOffsets = qFeatures.getClipOffsets();

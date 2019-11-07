@@ -25,7 +25,7 @@ public class CanvasFeatureMatcherTest {
         final CanvasMatches canvasMatches = CanvasMatches.fromJson(SCALED_MATCH_JSON);
 
         final List<PointMatch> candidates =
-                CanvasFeatureMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
+                CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
 
         testRANSACFilterWithMinValue(candidates, 6, 6);
         testRANSACFilterWithMinValue(candidates, 10, 0);
@@ -196,7 +196,7 @@ public class CanvasFeatureMatcherTest {
                                               minNumInliers,
                                               3.0,
                                               null,
-                                              CanvasFeatureMatcher.FilterType.SINGLE_SET);
+                                              MatchFilter.FilterType.SINGLE_SET);
         return new CanvasFeatureMatcher(matchParameters);
     }
 
@@ -206,9 +206,9 @@ public class CanvasFeatureMatcherTest {
                                                                 final Integer expectedNumberOfConsensusSets) {
 
         final List<PointMatch> candidates =
-                CanvasFeatureMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
+                CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
 
-        final List<List<PointMatch>> consensusSets = matcher.filterConsensusMatches(candidates);
+        final List<List<PointMatch>> consensusSets = matcher.getMatchFilter().filterConsensusMatches(candidates);
 
         if (expectedNumberOfConsensusSets != null) {
             Assert.assertEquals("filter found invalid number of consensus sets for " + context,

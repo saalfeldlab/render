@@ -52,7 +52,11 @@ public class GeometricDescriptorMatcherTest {
         // setup test parameters ...
 
         final CanvasPeakExtractor extractor = new CanvasPeakExtractor( getInitialDescriptorParameters() );
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher( getMatchFilterParameters() );
+
+        final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters();
+        final CanvasGeometricDescriptorMatcher peakMatcher =
+                new CanvasGeometricDescriptorMatcher(getInitialDescriptorParameters(),
+                                                     matchDerivationParameters);
 
         final double renderScale = 0.25;
 
@@ -98,8 +102,7 @@ public class GeometricDescriptorMatcherTest {
         //SimpleMultiThreading.threadHaltUnClean();
 
         // important, we need to use the adjusted parameters here as well
-        final CanvasFeatureMatchResult result =
-                matcher.deriveGeometricDescriptorMatchResult(canvasPeaks1, canvasPeaks2, extractor.getAdjustedParameters() );
+        final CanvasMatchResult result = peakMatcher.deriveMatchResult(canvasPeaks1, canvasPeaks2);
 
         // NOTE: assumes matchFilter is SINGLE_SET
         final List<PointMatch> inliers = result.getInlierPointMatchList();
@@ -180,7 +183,7 @@ public class GeometricDescriptorMatcherTest {
         matchFilterParameters.matchMinInlierRatio = 0.0f;
         matchFilterParameters.matchMinNumInliers = 4;
         matchFilterParameters.matchMaxTrust = 3.0;
-        matchFilterParameters.matchFilter = CanvasFeatureMatcher.FilterType.SINGLE_SET; // warning: changing this will break getInlierPointMatchList call below
+        matchFilterParameters.matchFilter = MatchFilter.FilterType.SINGLE_SET; // warning: changing this will break getInlierPointMatchList call below
 
         return matchFilterParameters;
     }

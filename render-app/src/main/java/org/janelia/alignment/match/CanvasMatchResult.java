@@ -8,25 +8,26 @@ import mpicbg.models.Model;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
-import static org.janelia.alignment.match.CanvasFeatureMatcher.FilterType.AGGREGATED_CONSENSUS_SETS;
+import static org.janelia.alignment.match.MatchFilter.FilterType.AGGREGATED_CONSENSUS_SETS;
 
 /**
- * Encapsulates key data elements from canvas feature match derivation.
+ * Encapsulates key data elements from canvas match derivation.
  *
  * @author Eric Trautman
  */
-public class CanvasFeatureMatchResult implements Serializable {
+public class CanvasMatchResult
+        implements Serializable {
 
-    private final CanvasFeatureMatcher matcher;
+    private final MatchFilter matchFilter;
     private final List<List<PointMatch>> consensusSetInliers;
     private final int totalNumberOfInliers;
     private final double inlierRatio;
 
-    public CanvasFeatureMatchResult(final CanvasFeatureMatcher matcher,
-                                    final List<List<PointMatch>> consensusSetInliers,
-                                    final int totalNumberOfCandidates) {
+    public CanvasMatchResult(final MatchFilter matchFilter,
+                             final List<List<PointMatch>> consensusSetInliers,
+                             final int totalNumberOfCandidates) {
 
-        this.matcher = matcher;
+        this.matchFilter = matchFilter;
         this.consensusSetInliers = consensusSetInliers;
         int totalNumberOfInliers = 0;
         for (final List<PointMatch> setInliers : consensusSetInliers) {
@@ -54,7 +55,7 @@ public class CanvasFeatureMatchResult implements Serializable {
     /**
      * @return collection of nested inlier matches.
      */
-    public List<List<PointMatch>> getInlierPointMatchLists() {
+    List<List<PointMatch>> getInlierPointMatchLists() {
         return consensusSetInliers;
     }
 
@@ -142,8 +143,8 @@ public class CanvasFeatureMatchResult implements Serializable {
         final PointMatchQualityStats qualityStats = new PointMatchQualityStats();
 
         final Model aggregateModel;
-        if (AGGREGATED_CONSENSUS_SETS.equals(matcher.getFilterType()) || (consensusSetInliers.size() > 1)) {
-            aggregateModel = matcher.getModel();
+        if (AGGREGATED_CONSENSUS_SETS.equals(matchFilter.getFilterType()) || (consensusSetInliers.size() > 1)) {
+            aggregateModel = matchFilter.getModel();
         } else {
             aggregateModel = null;
         }

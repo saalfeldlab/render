@@ -13,7 +13,7 @@ import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
-import org.janelia.alignment.match.CanvasFeatureMatchResult;
+import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
@@ -173,7 +173,7 @@ public class PointMatchOptimizerClient {
         int inlierCount = 0;
 
         CanvasFeatureMatcher matcher;
-        CanvasFeatureMatchResult matchResult;
+        CanvasMatchResult matchResult;
         while ((optimalRod == null) && (rod > 0f) && (rod < 1.1f)) {
 
             LOG.info("run: testing match rod {}", rod);
@@ -181,7 +181,7 @@ public class PointMatchOptimizerClient {
             parameters.matchDerivation.matchRod = rod;
 
             matcher = new CanvasFeatureMatcher(parameters.matchDerivation);
-            matchResult = matcher.deriveSIFTMatchResult(pFeatureList, qFeatureList);
+            matchResult = matcher.deriveMatchResult(pFeatureList, qFeatureList);
 
             inlierCount = matchResult.getInlierPointMatchList().size();
 

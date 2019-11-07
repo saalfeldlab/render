@@ -1,19 +1,3 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.alignment.match;
 
 import java.util.ArrayList;
@@ -26,11 +10,11 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * Tests the {@link CanvasFeatureMatchResult} class.
+ * Tests the {@link CanvasMatchResult} class.
  *
  * @author Eric Trautman
  */
-public class CanvasFeatureMatchResultTest {
+public class CanvasMatchResultTest {
 
     @Test
     public void testConvertMethods() throws Exception {
@@ -41,11 +25,11 @@ public class CanvasFeatureMatchResultTest {
             originalList.add(new PointMatch(new Point(new double[]{i,i*2}), new Point(new double[]{i*10,i*20}), i*0.1));
         }
 
-        final Matches matches = CanvasFeatureMatchResult.convertPointMatchListToMatches(originalList, 1.0);
+        final Matches matches = CanvasMatchResult.convertPointMatchListToMatches(originalList, 1.0);
 
         Assert.assertEquals("incorrect number of matches weights", originalList.size(), matches.getWs().length);
 
-        final List<PointMatch> convertedList = CanvasFeatureMatchResult.convertMatchesToPointMatchList(matches);
+        final List<PointMatch> convertedList = CanvasMatchResult.convertMatchesToPointMatchList(matches);
 
         Assert.assertEquals("incorrect number of point matches", originalList.size(), convertedList.size());
 
