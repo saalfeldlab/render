@@ -4,7 +4,9 @@ import ij.ImagePlus;
 import ij.gui.Roi;
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
+import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
+import ij.process.ShortProcessor;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -16,6 +18,7 @@ import java.util.List;
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
+import mpicbg.spim.segmentation.InteractiveDoG;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import mpicbg.util.Timer;
 
@@ -127,10 +130,15 @@ public class CanvasPeakExtractor
         final ByteProcessor maskProcessor;
         if (imageProcessor instanceof ColorProcessor) {
             pixelProcessor = ((ColorProcessor) imageProcessor).getChannel(1, null);
-            // TODO: is there a good way to determine if there is no mask?
             maskProcessor = ((ColorProcessor) imageProcessor).getChannel(4, null);
-        } else {
-            throw new IllegalArgumentException("peaks cannot be extracted from " + imagePlus.toString());
+        } else if ((imageProcessor instanceof ByteProcessor) ||
+                   (imageProcessor instanceof FloatProcessor) ||
+                   (imageProcessor instanceof ShortProcessor)) {
+            pixelProcessor = imageProcessor;
+            maskProcessor = null;
+        } else  {
+            throw new IllegalArgumentException(
+                    "peaks cannot be extracted from " + imageProcessor.getClass().getSimpleName() + " instances");
         }
 
         return extractPeaksFromImageAndMask(pixelProcessor, maskProcessor);

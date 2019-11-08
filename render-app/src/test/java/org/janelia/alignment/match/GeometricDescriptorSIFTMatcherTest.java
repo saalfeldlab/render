@@ -149,8 +149,11 @@ public class GeometricDescriptorSIFTMatcherTest {
         // -------------------------------------------------------------------
         // run test ...
 
+        // modify SIFT render parameters for Geo
         renderParametersTile1.setScale(renderScaleGeo);
+        renderParametersTile1.setDoFilter(false);
         renderParametersTile2.setScale(renderScaleGeo);
+        renderParametersTile2.setDoFilter(false);
 
         final ImageProcessorWithMasks geo1 = renderProcessorWithMasks(renderParametersTile1);
         final ImageProcessorWithMasks geo2 = renderProcessorWithMasks(renderParametersTile2);
