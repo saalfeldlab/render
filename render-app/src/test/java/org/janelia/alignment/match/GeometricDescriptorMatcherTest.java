@@ -12,20 +12,18 @@ import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import mpicbg.spim.segmentation.InteractiveDoG;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
+import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import plugin.DescriptorParameters;
 
 /**
  * Runs peak extraction for two tiles.
@@ -51,14 +49,15 @@ public class GeometricDescriptorMatcherTest {
         // -------------------------------------------------------------------
         // setup test parameters ...
 
-        final CanvasPeakExtractor extractor = new CanvasPeakExtractor(getInitialDescriptorParameters(),
-                                                                      null,
-                                                                      120.0);
+        final GeometricDescriptorParameters gdParameters = getInitialDescriptorParameters();
+        gdParameters.fullScaleBlockRadius = null;
+        gdParameters.fullScaleNonMaxSuppressionRadius = 120.0;
+
+        final CanvasPeakExtractor extractor = new CanvasPeakExtractor(gdParameters);
 
         final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters();
-        final CanvasPeakMatcher peakMatcher =
-                new CanvasPeakMatcher(getInitialDescriptorParameters(),
-                                      matchDerivationParameters);
+        final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters,
+                                                                    matchDerivationParameters);
 
         final double peakRenderScale = 0.25;
 
@@ -153,29 +152,30 @@ public class GeometricDescriptorMatcherTest {
 	}
 
 
-    protected static DescriptorParameters getInitialDescriptorParameters()
-    {
-        final DescriptorParameters descriptorParameters = new DescriptorParameters();
+    static GeometricDescriptorParameters getInitialDescriptorParameters() {
 
-        descriptorParameters.dimensionality = 2; // always 2
-        descriptorParameters.numNeighbors = 3;
-        descriptorParameters.redundancy = 1;
-        descriptorParameters.significance = 2;
+        final GeometricDescriptorParameters parameters = new GeometricDescriptorParameters();
 
-        // TODO: make sure "sigma" mentioned in wiki page test set is saved to correct parameter here
-        descriptorParameters.sigma1 = 2.04;
-        descriptorParameters.sigma2 = InteractiveDoG.computeSigma2( (float)descriptorParameters.sigma1, InteractiveDoG.standardSensitivity );
+        parameters.numberOfNeighbors = 3;
+        parameters.redundancy = 1;
+        parameters.significance = 2.0;
+        parameters.sigma = 2.04;
+        parameters.threshold = 0.008;
+        parameters.localization = GeometricDescriptorParameters.LocalizationFitType.NONE;
 
-        descriptorParameters.threshold = 0.008;
-        descriptorParameters.lookForMinima = true;
-        descriptorParameters.lookForMaxima = false;
+        parameters.lookForMinima = true;
+        parameters.lookForMaxima = false;
 
-        return descriptorParameters;
+        parameters.fullScaleBlockRadius = 300.0;
+        parameters.fullScaleNonMaxSuppressionRadius = 60.0;
+
+        return parameters;
     }
 
-    protected static MatchDerivationParameters getMatchFilterParameters()
-    {
+    static MatchDerivationParameters getMatchFilterParameters() {
+
         final MatchDerivationParameters matchFilterParameters = new MatchDerivationParameters();
+
         matchFilterParameters.matchModelType = ModelType.RIGID;
         matchFilterParameters.matchIterations = 1000;
         matchFilterParameters.matchMaxEpsilon = 20.0f;

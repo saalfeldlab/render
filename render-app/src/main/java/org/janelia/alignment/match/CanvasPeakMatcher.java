@@ -11,6 +11,7 @@ import mpicbg.pointdescriptor.matcher.Matcher;
 import mpicbg.pointdescriptor.matcher.SubsetMatcher;
 import mpicbg.util.Timer;
 
+import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,15 +30,15 @@ import static process.GeometricDescriptorMatcher.getCorrespondenceCandidatesPubl
 public class CanvasPeakMatcher
         implements Serializable {
 
-    private final DescriptorParameters descriptorParameters;
+    private final GeometricDescriptorParameters gdParameters;
     private final MatchFilter matchFilter;
 
     /**
      * Sets up everything that is needed to derive geometric descriptor match results from the peak lists of two canvases.
      */
-    public CanvasPeakMatcher(final DescriptorParameters descriptorParameters,
+    public CanvasPeakMatcher(final GeometricDescriptorParameters gdParameters,
                              final MatchDerivationParameters matchParameters) {
-        this.descriptorParameters = descriptorParameters;
+        this.gdParameters = gdParameters;
         this.matchFilter = new MatchFilter(matchParameters);
     }
 
@@ -68,6 +69,8 @@ public class CanvasPeakMatcher
      */
     private List<PointMatch> getCandidateMatches(final List<DifferenceOfGaussianPeak<FloatType>> canvas1Peaks,
                                                  final List<DifferenceOfGaussianPeak<FloatType>> canvas2Peaks) {
+
+        final DescriptorParameters descriptorParameters = gdParameters.toDescriptorParameters();
 
         final float zStretching = 1; // dimensionality is always 2, so set zStretching to 1
 

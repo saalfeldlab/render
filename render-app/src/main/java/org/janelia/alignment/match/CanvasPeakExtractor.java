@@ -1,7 +1,6 @@
 package org.janelia.alignment.match;
 
 import ij.ImagePlus;
-import ij.gui.Roi;
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
@@ -12,13 +11,11 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
-import mpicbg.spim.segmentation.InteractiveDoG;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import mpicbg.util.Timer;
 
@@ -26,6 +23,7 @@ import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,27 +44,16 @@ import static process.Matching.extractCandidates;
 public class CanvasPeakExtractor
         implements Serializable {
 
-    private final DescriptorParameters coreDescriptorParameters;
-    private final Double fullScaleBlockRadius;
-    private final Double fullScaleNonMaxSuppressionRadius;
+    private final GeometricDescriptorParameters gdParameters;
 
     /**
      * Sets up everything that is needed to extract the peak list for a canvas.
      *
-     * @param  descriptorParameters              core descriptor parameters for peak extraction.
-     * @param  fullScaleBlockRadius              (optional) full scale block radius for {@link #filterPeaksByInliers}.
-     * @param  fullScaleNonMaxSuppressionRadius  (optional) full scale non-max suppression radius
-     *                                           for {@link #nonMaximalSuppression}.
+     * @param  gdParameters              core descriptor parameters for peak extraction.
      */
-    CanvasPeakExtractor(final DescriptorParameters descriptorParameters,
-                        final Double fullScaleBlockRadius,
-                        final Double fullScaleNonMaxSuppressionRadius) {
+    CanvasPeakExtractor(final GeometricDescriptorParameters gdParameters) {
 
-        // clone provided parameters since they (might?) get modified during peak extraction
-        this.coreDescriptorParameters = cloneParametersForRenderUseCase(descriptorParameters);
-
-        this.fullScaleBlockRadius = fullScaleBlockRadius;
-        this.fullScaleNonMaxSuppressionRadius = fullScaleNonMaxSuppressionRadius;
+        this.gdParameters = gdParameters;
     }
 
     /**
@@ -164,7 +151,7 @@ public class CanvasPeakExtractor
 
         final ImagePlus imagePlus = new ImagePlus("", image);
 
-        final DescriptorParameters clonedParameters = cloneParametersForRenderUseCase(coreDescriptorParameters);
+        final DescriptorParameters descriptorParameters = gdParameters.toDescriptorParameters();
 
         final int channel = 0;       // rendered result is always single channel, so set channel to 0
         final int timePoint = 0;     // timePoint is always 0 for pair wise matching
@@ -176,7 +163,7 @@ public class CanvasPeakExtractor
                 extractCandidates(imagePlus,
                                   channel,
                                   timePoint,
-                                  clonedParameters,
+                                  descriptorParameters,
                                   minMax);
 
         // if a mask exists, remove any peaks on or next to a masked pixel
@@ -206,9 +193,9 @@ public class CanvasPeakExtractor
                               final List<Point> inlierPoints,
                               final double inlierRenderScale) {
 
-        if (fullScaleBlockRadius != null) {
+        if (gdParameters.fullScaleBlockRadius != null) {
 
-            final double scaledBlockRadius = peakRenderScale * fullScaleBlockRadius;
+            final double scaledBlockRadius = peakRenderScale * gdParameters.fullScaleBlockRadius;
 
             LOG.info("filterPeaksByInliers: entry, peakRenderScale: {}, inlierRenderScale: {}, scaledBlockRadius: {}",
                      peakRenderScale, inlierRenderScale, scaledBlockRadius);
@@ -251,9 +238,9 @@ public class CanvasPeakExtractor
 
         List<DifferenceOfGaussianPeak<FloatType>> filteredPeaks = canvasPeaks;
 
-        if (fullScaleNonMaxSuppressionRadius != null) {
+        if (gdParameters.fullScaleNonMaxSuppressionRadius != null) {
 
-            final double scaledNonMaxSuppressionRadius = fullScaleNonMaxSuppressionRadius * peakRenderScale;
+            final double scaledNonMaxSuppressionRadius = gdParameters.fullScaleNonMaxSuppressionRadius * peakRenderScale;
 
             LOG.info("nonMaximalSuppression: entry, peakRenderScale: {}, scaledNonMaxSuppressionRadius: {}",
                      peakRenderScale, scaledNonMaxSuppressionRadius);
@@ -265,7 +252,7 @@ public class CanvasPeakExtractor
                 filteredPeaks.add(p.copy());
             }
 
-            final List<RealPoint> list = new ArrayList<RealPoint>();
+            final List<RealPoint> list = new ArrayList<>();
 
             for (final DifferenceOfGaussianPeak<FloatType> p : canvasPeaks) {
                 list.add(new RealPoint(p.getSubPixelPosition(0), p.getSubPixelPosition(1)));
@@ -324,44 +311,6 @@ public class CanvasPeakExtractor
         return adjustedInlierPoints;
     }
 
-    private static DescriptorParameters cloneParametersForRenderUseCase(final DescriptorParameters descriptorParameters) {
-
-        final DescriptorParameters normalizedParameters = new DescriptorParameters();
-
-        normalizedParameters.dimensionality = descriptorParameters.dimensionality;  // rendered result is always 2D
-        normalizedParameters.similarOrientation = true; // TODO: should be false for rotated canvases
-        normalizedParameters.channel1 = 0;              // rendered result is always single channel
-        normalizedParameters.channel2 = 0;              // rendered result is always single channel
-
-        if (descriptorParameters.sigma != null) {
-            normalizedParameters.sigma = Arrays.copyOf((descriptorParameters.sigma), descriptorParameters.sigma.length);
-        }
-
-        normalizedParameters.sigma1 = descriptorParameters.sigma1;
-        normalizedParameters.sigma2 = descriptorParameters.sigma2;
-        normalizedParameters.threshold = descriptorParameters.threshold;
-        normalizedParameters.localization = 1; //localizationChoice = { "None", "3-dimensional quadratic fit", "Gaussian mask localization fit" };
-        normalizedParameters.lookForMaxima = descriptorParameters.lookForMaxima;  // not relevant now but may be later
-        normalizedParameters.lookForMinima = descriptorParameters.lookForMinima;
-        normalizedParameters.numNeighbors = descriptorParameters.numNeighbors;
-        normalizedParameters.redundancy = descriptorParameters.redundancy;
-        normalizedParameters.significance = descriptorParameters.significance;
-
-        if (descriptorParameters.roi1 != null) {
-            normalizedParameters.roi1 = (Roi) descriptorParameters.roi1.clone();
-        }
-
-        if (descriptorParameters.roi2 != null) {
-            normalizedParameters.roi2 = (Roi) descriptorParameters.roi2.clone();
-        }
-
-        // set static class defaults for render use case (just in case they are used somewhere)
-        DescriptorParameters.minMaxType = 2;
-        DescriptorParameters.min = 0;
-        DescriptorParameters.max = 255; //TODO: if this is actually used, 16-bit cases will cause trouble
-
-        return normalizedParameters;
-    }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasPeakExtractor.class);
 }

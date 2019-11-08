@@ -21,6 +21,7 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWith
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.MatchFilter.FilterType;
+import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.junit.Assert;
 import org.junit.Test;
@@ -64,9 +65,6 @@ public class GeometricDescriptorSIFTMatcherTest {
         // -------------------------------------------------------------------
         // run test ...
 
-        // blocking geometric descriptor matching in the following radius (original image scale)
-        final double blockRadiusFull = 300;
-
         /*
 		renderScale: 0.15 fdSize: 4 minScale: 0.25 maxScale: 1 steps: 3
 		Match Parameters:	modelType: AFFINE regularizerModelType: RIGID interpolatedModelLambda: 0.25
@@ -81,7 +79,6 @@ public class GeometricDescriptorSIFTMatcherTest {
         siftParam.maxScale = 1.0;
         siftParam.steps = 3;*/
         final double renderScaleSIFT = 0.15;
-        final double blockRadiusSIFT = blockRadiusFull * renderScaleSIFT;
 
         final RenderParameters renderParametersTile1 = getRenderParametersForTile(tileId1, renderScaleSIFT, true);
         final RenderParameters renderParametersTile2 = getRenderParametersForTile(tileId2, renderScaleSIFT, true);
@@ -105,22 +102,24 @@ public class GeometricDescriptorSIFTMatcherTest {
         ransacParam.matchInterpolatedModelLambda = 0.25;
 
         final CanvasFeatureMatcher matcherSIFT = new CanvasFeatureMatcher(ransacParam);
-
-        final CanvasMatchResult resultSIFT =
-        		matcherSIFT.deriveMatchResult(f1, f2 );
+        final CanvasMatchResult resultSIFT = matcherSIFT.deriveMatchResult(f1, f2);
 
         // NOTE: assumes matchFilter is SINGLE_SET (supports multi-model matching)
         final List<PointMatch> inliersSIFT = resultSIFT.getInlierPointMatchLists().get( 0 );
 
         final List<Point> inlierPoints1 = new ArrayList<>();
         PointMatch.sourcePoints(inliersSIFT, inlierPoints1);
+
         final List<Point> inlierPoints2 = new ArrayList<>();
         PointMatch.targetPoints(inliersSIFT, inlierPoints2);
 
-		LOG.debug( "#inliersSIFT: " + inliersSIFT.size() );
+        LOG.debug( "#inliersSIFT: " + inliersSIFT.size() );
+
+        final GeometricDescriptorParameters gdParameters = getInitialDescriptorParameters();
 
         /*
         // debug
+        final double blockRadiusSIFT = gdParameters.fullScaleBlockRadius * renderScaleSIFT;
         final ImagePlus impSIFT1 = new ImagePlus(tileId1 + "_SIFT", imageSIFT1);
         final ImagePlus impSIFT2 = new ImagePlus(tileId2 + "_SIFT", imageSIFT2);
         drawBlockedRegions( impSIFT1, impSIFT2, blockRadiusSIFT, inliersSIFT );
@@ -134,17 +133,12 @@ public class GeometricDescriptorSIFTMatcherTest {
         //
 
         // Geometric descriptor parameters
-        final double nonMaxSuppressionRadiusFull = 60;
-
         final double renderScaleGeo = 0.25;
 
-        final CanvasPeakExtractor extractorGeo =
-				new CanvasPeakExtractor(GeometricDescriptorMatcherTest.getInitialDescriptorParameters(),
-										blockRadiusFull,
-										nonMaxSuppressionRadiusFull);
+        final CanvasPeakExtractor extractorGeo = new CanvasPeakExtractor(gdParameters);
         final CanvasPeakMatcher matcherGeo =
-				new CanvasPeakMatcher(GeometricDescriptorMatcherTest.getInitialDescriptorParameters(),
-									  GeometricDescriptorMatcherTest.getMatchFilterParameters() );
+                new CanvasPeakMatcher(gdParameters,
+                                      GeometricDescriptorMatcherTest.getMatchFilterParameters());
 
         // -------------------------------------------------------------------
         // run test ...
@@ -163,6 +157,7 @@ public class GeometricDescriptorSIFTMatcherTest {
 
         /*
         // debug
+        final double blockRadiusGeo = gdParameters.fullScaleBlockRadius * renderScaleGeo;
 		drawBlockedRegions( adjustedInliers.getA(), blockRadiusGeo, impGeo1 );
 		drawBlockedRegions( adjustedInliers.getB(), blockRadiusGeo, impGeo2 );
 		GeometricDescriptorMatcherTest.setPointRois( adjustedInliers.getA(), impGeo1 );
@@ -202,8 +197,7 @@ public class GeometricDescriptorSIFTMatcherTest {
         impGeo2.show();
 
         // important, we need to use the adjusted parameters here as well
-        final CanvasMatchResult resultGeo =
-        		matcherGeo.deriveMatchResult(canvasPeaks1, canvasPeaks2);
+        final CanvasMatchResult resultGeo = matcherGeo.deriveMatchResult(canvasPeaks1, canvasPeaks2);
 
         // NOTE: assumes matchFilter is SINGLE_SET
         final List<PointMatch> inliersGeo = resultGeo.getInlierPointMatchList();
