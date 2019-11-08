@@ -104,8 +104,10 @@ public class GeometricDescriptorSIFTMatcherTest {
         final CanvasFeatureMatcher matcherSIFT = new CanvasFeatureMatcher(ransacParam);
         final CanvasMatchResult resultSIFT = matcherSIFT.deriveMatchResult(f1, f2);
 
-        // NOTE: assumes matchFilter is SINGLE_SET (supports multi-model matching)
-        final List<PointMatch> inliersSIFT = resultSIFT.getInlierPointMatchLists().get( 0 );
+        final List<PointMatch> inliersSIFT = new ArrayList<>();
+        for (final List<PointMatch> consensusSetMatches : resultSIFT.getInlierPointMatchLists()) {
+            inliersSIFT.addAll(consensusSetMatches);
+        }
 
         final List<Point> inlierPoints1 = new ArrayList<>();
         PointMatch.sourcePoints(inliersSIFT, inlierPoints1);
