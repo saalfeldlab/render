@@ -2,8 +2,6 @@ package org.janelia.alignment.match;
 
 import ij.ImagePlus;
 import ij.gui.PointRoi;
-import ij.process.ByteProcessor;
-import ij.process.ColorProcessor;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -53,14 +51,16 @@ public class GeometricDescriptorMatcherTest {
         // -------------------------------------------------------------------
         // setup test parameters ...
 
-        final CanvasPeakExtractor extractor = new CanvasPeakExtractor( getInitialDescriptorParameters() );
+        final CanvasPeakExtractor extractor = new CanvasPeakExtractor(getInitialDescriptorParameters(),
+                                                                      null,
+                                                                      120.0);
 
         final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters();
         final CanvasPeakMatcher peakMatcher =
                 new CanvasPeakMatcher(getInitialDescriptorParameters(),
                                       matchDerivationParameters);
 
-        final double renderScale = 0.25;
+        final double peakRenderScale = 0.25;
 
         final String tileId1 = "19-02-21_105501_0-0-0.26101.0";
         final String tileId2 = "19-02-21_161150_0-0-0.26102.0";
@@ -68,23 +68,14 @@ public class GeometricDescriptorMatcherTest {
         // -------------------------------------------------------------------
         // run test ...
 
-        final RenderParameters renderParametersTile1 = getRenderParametersForTile(tileId1, renderScale, false);
-        final RenderParameters renderParametersTile2 = getRenderParametersForTile(tileId2, renderScale, false);
+        final RenderParameters renderParametersTile1 = getRenderParametersForTile(tileId1, peakRenderScale, false);
+        final RenderParameters renderParametersTile2 = getRenderParametersForTile(tileId2, peakRenderScale, false);
 
         final BufferedImage image1 = renderImage(renderParametersTile1);
         final BufferedImage image2 = renderImage(renderParametersTile2);
 
-        final ImagePlus ip1 = new ImagePlus(tileId1, image1);
-        final ImagePlus ip2 = new ImagePlus(tileId2, image2);
-
-        final ByteProcessor img1 = ((ColorProcessor)ip1.getProcessor()).getChannel( 1, null );
-        final ByteProcessor mask1 = ((ColorProcessor)ip1.getProcessor()).getChannel( 4, null );
-
-        final ByteProcessor img2 = ((ColorProcessor)ip2.getProcessor()).getChannel( 1, null );
-        final ByteProcessor mask2 = ((ColorProcessor)ip2.getProcessor()).getChannel( 4, null );
-
-        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractor.extractPeaksFromImage(img1, mask1);
-        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractor.extractPeaksFromImage(img2, mask2);
+        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractor.extractPeaksFromImage(image1);
+        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractor.extractPeaksFromImage(image2);
 
         LOG.debug( "#detections: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
@@ -93,10 +84,13 @@ public class GeometricDescriptorMatcherTest {
 
         //LOG.debug( "#detections after thinning: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
-        canvasPeaks1 = GeometricDescriptorSIFTMatcherTest.nonMaximalSuppression( canvasPeaks1, 30 );
-        canvasPeaks2 = GeometricDescriptorSIFTMatcherTest.nonMaximalSuppression( canvasPeaks2, 30 );
+        canvasPeaks1 = extractor.nonMaximalSuppression(canvasPeaks1, peakRenderScale);
+        canvasPeaks2 = extractor.nonMaximalSuppression(canvasPeaks2, peakRenderScale);
 
         LOG.debug( "#detections after thinning: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
+
+        final ImagePlus ip1 = new ImagePlus("peak_" + tileId1, image1);
+        final ImagePlus ip2 = new ImagePlus("peak_" + tileId2, image2);
 
         setPointRois( ip1, canvasPeaks1 );
         setPointRois( ip2, canvasPeaks2 );
@@ -112,13 +106,13 @@ public class GeometricDescriptorMatcherTest {
         // NOTE: assumes matchFilter is SINGLE_SET
         final List<PointMatch> inliers = result.getInlierPointMatchList();
 
-        final ImagePlus ipnew1 = new ImagePlus(tileId1, image1);
-        final ImagePlus ipnew2 = new ImagePlus(tileId2, image2);
+        final ImagePlus ipnew1 = new ImagePlus("match_" + tileId1, image1);
+        final ImagePlus ipnew2 = new ImagePlus("match_" + tileId2, image2);
 
         setPointRois( ipnew1, ipnew2, inliers );
 
         ipnew1.show();
-        ipnew2.show();
+        //ipnew2.show();
 
         SimpleMultiThreading.threadHaltUnClean();
 

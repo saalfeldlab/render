@@ -1,8 +1,6 @@
 package org.janelia.alignment.match;
 
 import ij.ImagePlus;
-import ij.process.ByteProcessor;
-import ij.process.ColorProcessor;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -19,9 +17,7 @@ import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.spim.io.IOFunctions;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
-import mpicbg.util.Timer;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.MatchFilter.FilterType;
@@ -35,9 +31,6 @@ import net.imglib2.KDTree;
 import net.imglib2.RealPoint;
 import net.imglib2.neighborsearch.KNearestNeighborSearchOnKDTree;
 import net.imglib2.neighborsearch.NearestNeighborSearchOnKDTree;
-import net.imglib2.neighborsearch.RadiusNeighborSearchOnKDTree;
-import net.imglib2.util.Pair;
-import net.imglib2.util.ValuePair;
 
 import static org.janelia.alignment.match.GeometricDescriptorMatcherTest.*;
 
@@ -119,7 +112,12 @@ public class GeometricDescriptorSIFTMatcherTest {
         // NOTE: assumes matchFilter is SINGLE_SET (supports multi-model matching)
         final List<PointMatch> inliersSIFT = resultSIFT.getInlierPointMatchLists().get( 0 );
 
-        LOG.debug( "#inliersSIFT: " + inliersSIFT.size() );
+        final List<Point> inlierPoints1 = new ArrayList<>();
+        PointMatch.sourcePoints(inliersSIFT, inlierPoints1);
+        final List<Point> inlierPoints2 = new ArrayList<>();
+        PointMatch.targetPoints(inliersSIFT, inlierPoints2);
+
+		LOG.debug( "#inliersSIFT: " + inliersSIFT.size() );
 
         /*
         // debug
@@ -139,10 +137,11 @@ public class GeometricDescriptorSIFTMatcherTest {
         final double nonMaxSuppressionRadiusFull = 60;
 
         final double renderScaleGeo = 0.25;
-        final double blockRadiusGeo = blockRadiusFull * renderScaleGeo;
-        final double nonMaxSuppressionRadius = nonMaxSuppressionRadiusFull * renderScaleGeo;
 
-        final CanvasPeakExtractor extractorGeo = new CanvasPeakExtractor( GeometricDescriptorMatcherTest.getInitialDescriptorParameters() );
+        final CanvasPeakExtractor extractorGeo =
+				new CanvasPeakExtractor(GeometricDescriptorMatcherTest.getInitialDescriptorParameters(),
+										blockRadiusFull,
+										nonMaxSuppressionRadiusFull);
         final CanvasPeakMatcher matcherGeo =
 				new CanvasPeakMatcher(GeometricDescriptorMatcherTest.getInitialDescriptorParameters(),
 									  GeometricDescriptorMatcherTest.getMatchFilterParameters() );
@@ -153,41 +152,11 @@ public class GeometricDescriptorSIFTMatcherTest {
         renderParametersTile1.setScale(renderScaleGeo);
         renderParametersTile2.setScale(renderScaleGeo);
 
-        final boolean useImage = true;
+        final ImageProcessorWithMasks geo1 = renderProcessorWithMasks(renderParametersTile1);
+        final ImageProcessorWithMasks geo2 = renderProcessorWithMasks(renderParametersTile2);
 
-        final ImageProcessorWithMasks geo1;
-        final ImageProcessorWithMasks geo2;
-
-        LOG.info("useImage is " + useImage);
-
-        if (useImage) {
-
-            final BufferedImage imageGeo1 = renderImage(renderParametersTile1);
-            final BufferedImage imageGeo2 = renderImage(renderParametersTile2);
-            final ColorProcessor cp1 = new ColorProcessor(imageGeo1);
-            final ColorProcessor cp2 = new ColorProcessor(imageGeo2);
-
-            geo1 = new ImageProcessorWithMasks(cp1.getChannel(1, null),
-                                               cp1.getChannel(4, null),
-                                               null);
-            geo2 = new ImageProcessorWithMasks(cp2.getChannel(1, null),
-                                               cp2.getChannel(4, null),
-                                               null);
-
-        } else {
-
-            geo1 = renderProcessorWithMasks(renderParametersTile1);
-            geo2 = renderProcessorWithMasks(renderParametersTile2);
-
-        }
-
-        LOG.info("finished geo render");
-
-        final ImagePlus impGeo1 = new ImagePlus(tileId1 + "_Geo", geo1.ip.duplicate());
-        final ImagePlus impGeo2 = new ImagePlus(tileId2 + "_Geo", geo2.ip.duplicate());
-
-        // adjust the locations of the inliers to the potentially difference renderScale
-        final Pair< ArrayList< Point >, ArrayList< Point > > adjustedInliers = adjustInliers( inliersSIFT, renderScaleSIFT, renderScaleGeo );
+        final ImagePlus impGeo1 = new ImagePlus("peak_" + tileId1, geo1.ip);
+        final ImagePlus impGeo2 = new ImagePlus("peak_" + tileId2, geo2.ip);
 
         /*
         // debug
@@ -200,14 +169,14 @@ public class GeometricDescriptorSIFTMatcherTest {
 		*/
 
         // extract DoG peaks for Descriptor-based registration
-        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractorGeo.extractPeaksFromImage(geo1.ip, geo1.mask);
-        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractorGeo.extractPeaksFromImage(geo2.ip, geo2.mask);
+        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractorGeo.extractPeaksFromImageAndMask(geo1.ip, geo1.mask);
+        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractorGeo.extractPeaksFromImageAndMask(geo2.ip, geo2.mask);
 
         LOG.debug( "#detections: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
         // filter DoG peaks for Descriptor-based registration using the SIFT matches
-        filterDogByInliers( canvasPeaks1, adjustedInliers.getA(), blockRadiusGeo );
-        filterDogByInliers( canvasPeaks2, adjustedInliers.getB(), blockRadiusGeo );
+        extractorGeo.filterPeaksByInliers(canvasPeaks1, renderScaleGeo, inlierPoints1, renderScaleSIFT);
+        extractorGeo.filterPeaksByInliers(canvasPeaks2, renderScaleGeo, inlierPoints2, renderScaleSIFT);
 
         LOG.debug( "#detections after filtering by sift: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
@@ -218,8 +187,8 @@ public class GeometricDescriptorSIFTMatcherTest {
         //LOG.debug( "#detections after filtering by max number: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
         // filter DoG peaks by nonMaximalSuppression
-        canvasPeaks1 = GeometricDescriptorSIFTMatcherTest.nonMaximalSuppression( canvasPeaks1, nonMaxSuppressionRadius );
-        canvasPeaks2 = GeometricDescriptorSIFTMatcherTest.nonMaximalSuppression( canvasPeaks2, nonMaxSuppressionRadius );
+        canvasPeaks1 = extractorGeo.nonMaximalSuppression(canvasPeaks1, renderScaleGeo);
+        canvasPeaks2 = extractorGeo.nonMaximalSuppression(canvasPeaks2, renderScaleGeo);
 
         LOG.debug( "#detections after nonMaximalSuppression: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
@@ -237,8 +206,8 @@ public class GeometricDescriptorSIFTMatcherTest {
         final List<PointMatch> inliersGeo = resultGeo.getInlierPointMatchList();
         LOG.debug( "#inliersGeo: " + inliersGeo.size() );
 
-        final ImagePlus ipnew1 = new ImagePlus(tileId1, geo1.ip.duplicate());
-        final ImagePlus ipnew2 = new ImagePlus(tileId2, geo2.ip.duplicate());
+        final ImagePlus ipnew1 = new ImagePlus("match_" + tileId1, geo1.ip.duplicate());
+        final ImagePlus ipnew2 = new ImagePlus("match_" + tileId2, geo2.ip.duplicate());
 
         GeometricDescriptorMatcherTest.setPointRois( ipnew1, ipnew2, inliersGeo );
 
@@ -315,51 +284,6 @@ public class GeometricDescriptorSIFTMatcherTest {
 		} );
 	}
 
-	public static List<DifferenceOfGaussianPeak<FloatType>> nonMaximalSuppression( final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks, final double radius )
-	{
-		// used for querying
-		final ArrayList< DifferenceOfGaussianPeak<FloatType> > canvasPeaks2 = new ArrayList<>();
-
-		for ( final DifferenceOfGaussianPeak<FloatType> p : canvasPeaks )
-			canvasPeaks2.add( p.copy() );
-
-		final List< RealPoint > list = new ArrayList< RealPoint >();
-
-		for ( final DifferenceOfGaussianPeak<FloatType> p : canvasPeaks )
-			list.add ( new RealPoint( p.getSubPixelPosition( 0 ), p.getSubPixelPosition( 1 ) ) );
-
-		// make the KDTree
-		final KDTree< DifferenceOfGaussianPeak<FloatType> > tree = new KDTree<>( canvasPeaks, list );
-
-		// Nearest neighbor for each point, populate the new list
-		final RadiusNeighborSearchOnKDTree< DifferenceOfGaussianPeak<FloatType> > nn = new RadiusNeighborSearchOnKDTree<>( tree );
-
-		for ( int i = canvasPeaks2.size() - 1; i >= 0; --i )
-		{
-			final DifferenceOfGaussianPeak<FloatType> ip = canvasPeaks2.get( i );
-			final RealPoint p = new RealPoint(
-					ip.getSubPixelPosition( 0 ),
-					ip.getSubPixelPosition( 1 ) );
-			nn.search( p, radius, false );
-
-			// if am I am not the biggest point within the radius remove myself
-			boolean isBiggest = true;
-
-			for ( int j = 0; j < nn.numNeighbors(); ++j )
-			{
-				if ( Math.abs( nn.getSampler( j ).get().getValue().get() ) > Math.abs( ip.getValue().get() ) )
-				{
-					isBiggest = false;
-					break;
-				}
-			}
-
-			if ( !isBiggest )
-				canvasPeaks2.remove( i );
-		}
-
-		return canvasPeaks2;
-	}
 
     public static List< DifferenceOfGaussianPeak< FloatType > > thinOut( final List< DifferenceOfGaussianPeak< FloatType > > canvasPeaks, final double minDistance, final double maxDistance, final boolean keepRange )
     {
@@ -399,61 +323,6 @@ public class GeometricDescriptorSIFTMatcherTest {
 		}
 
 		return newIPs;
-    }
-
-	public static void filterDogByInliers( final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks, final List<Point> inliers, final double radius )
-	{
-		// make a KDTree from the inliers
-		final List< RealPoint > list = new ArrayList< RealPoint >();
-
-		for ( final Point p : inliers )
-			list.add ( new RealPoint( p.getL()[ 0 ], p.getL()[ 1 ] ) );
-
-		// make the KDTree
-		final KDTree< RealPoint > tree = new KDTree< RealPoint >( list, list );
-
-		// Nearest neighbor for each point, populate the new list
-		final NearestNeighborSearchOnKDTree< RealPoint > nn = new NearestNeighborSearchOnKDTree< RealPoint >( tree );
-
-		for ( int i = canvasPeaks.size() - 1; i >= 0; --i )
-		{
-			final DifferenceOfGaussianPeak<FloatType> ip = canvasPeaks.get( i );
-			final RealPoint p = new RealPoint(
-					ip.getSubPixelPosition( 0 ),
-					ip.getSubPixelPosition( 1 ) );
-			nn.search( p );
-
-			// first nearest neighbor is the point itself, we need the second nearest
-			final double d = nn.getDistance();
-
-			if ( d <= radius )
-				canvasPeaks.remove( i );
-		}
-	}
-
-    protected static Pair< ArrayList< Point >, ArrayList< Point > > adjustInliers( final List<PointMatch> inliers, final double scaleSIFT, final double scaleGeo )
-    {
-    	final ArrayList< Point > sourcePoints = new ArrayList<>();
-    	final ArrayList< Point > targetPoints = new ArrayList<>();
-
-    	PointMatch.sourcePoints( inliers, sourcePoints );
-    	PointMatch.targetPoints( inliers, targetPoints );
-
-    	// TODO: do not ignore world coordinates
-    	for ( final Point p : sourcePoints )
-    	{
-    		p.getL()[ 0 ] = (p.getL()[ 0 ] / scaleSIFT) * scaleGeo;
-    		p.getL()[ 1 ] = (p.getL()[ 1 ] / scaleSIFT) * scaleGeo;
-    	}
-
-    	// TODO: do not ignore world coordinates
-    	for ( final Point p : targetPoints )
-    	{
-    		p.getL()[ 0 ] = (p.getL()[ 0 ] / scaleSIFT) * scaleGeo;
-    		p.getL()[ 1 ] = (p.getL()[ 1 ] / scaleSIFT) * scaleGeo;
-    	}
-
-    	return new ValuePair< ArrayList<Point>, ArrayList<Point> >( sourcePoints, targetPoints );
     }
 
 	protected static void drawBlockedRegions( final ImagePlus imp1, final ImagePlus imp2, final double radius, final List<PointMatch> inliers )

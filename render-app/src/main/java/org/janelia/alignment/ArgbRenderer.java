@@ -167,7 +167,7 @@ public class ArgbRenderer {
 
     private static final Renderer.ImageOpener OPENER = RenderParameters::openTargetImage;
 
-    private static final Renderer.ProcessorWithMasksConverter CONVERTER =
+    public static final Renderer.ProcessorWithMasksConverter CONVERTER =
             (renderParameters, renderedImageProcessorWithMasks) -> targetToARGBImage(renderedImageProcessorWithMasks,
                                                                                      renderParameters.binaryMask());
 }

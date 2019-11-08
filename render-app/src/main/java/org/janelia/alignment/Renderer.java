@@ -108,7 +108,7 @@ public class Renderer {
 
         final long saveStop = System.currentTimeMillis();
 
-        LOG.debug("validateRenderAndSaveImage: processing took {} milliseconds (open target: [}, render tiles:{}, save target:{})",
+        LOG.debug("validateRenderAndSaveImage: processing took {} milliseconds (open target: {}, render tiles:{}, save target:{})",
                   saveStop - mainStart,
                   renderStart - openStart,
                   saveStart - renderStart,
@@ -183,8 +183,8 @@ public class Renderer {
      * @throws IllegalArgumentException
      *   if rendering fails for any reason.
      */
-    private void renderToBufferedImage(final ProcessorWithMasksConverter converter,
-                                       final BufferedImage targetImage)
+    public ImageProcessorWithMasks renderToBufferedImage(final ProcessorWithMasksConverter converter,
+                                                         final BufferedImage targetImage)
             throws IllegalArgumentException {
 
         final int numberOfTileSpecs = renderParameters.numberOfTileSpecs();
@@ -237,6 +237,8 @@ public class Renderer {
                   numberOfTileSpecs,
                   System.currentTimeMillis() - tileLoopStart,
                   drawImageStop - drawImageStart);
+
+        return worldTarget;
     }
 
     /**
