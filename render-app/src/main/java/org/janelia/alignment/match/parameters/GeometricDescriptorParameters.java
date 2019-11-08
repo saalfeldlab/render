@@ -90,6 +90,13 @@ public class GeometricDescriptorParameters
     public boolean lookForMaxima = false;
 
     @Parameter(
+            names = "--gdSimilarOrientation",
+            description = "...",
+            arity = 1
+    )
+    public Boolean similarOrientation;
+
+    @Parameter(
             names = "--gdFullScaleBlockRadius",
             description = "..."
     )
@@ -101,7 +108,7 @@ public class GeometricDescriptorParameters
     )
     public Double fullScaleNonMaxSuppressionRadius;
 
-    private void setDefaults() {
+    void setDefaults() {
 
         if (numberOfNeighbors == null) {
             numberOfNeighbors = 3;
@@ -121,6 +128,9 @@ public class GeometricDescriptorParameters
         if (localization == null) {
             localization = LocalizationFitType.NONE;
         }
+        if (similarOrientation == null) {
+            similarOrientation = true;
+        }
 
     }
 
@@ -129,7 +139,6 @@ public class GeometricDescriptorParameters
 
         // static parameters
         dp.dimensionality = 2;
-        dp.similarOrientation = true;
         dp.channel1 = 0;
         dp.channel2 = 0;
 
@@ -145,7 +154,8 @@ public class GeometricDescriptorParameters
         dp.localization = localization.code;
         dp.lookForMinima = lookForMinima;
         dp.lookForMaxima = lookForMaxima;
-        
+        dp.similarOrientation = similarOrientation;
+
         return dp;
     }
 }
