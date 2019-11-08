@@ -193,9 +193,31 @@ public class CanvasPeakExtractor
                               final List<Point> inlierPoints,
                               final double inlierRenderScale) {
 
-        if (gdParameters.fullScaleBlockRadius != null) {
+        filterPeaksByInliers(gdParameters.fullScaleBlockRadius,
+                             canvasPeaks,
+                             peakRenderScale,
+                             inlierPoints,
+                             inlierRenderScale);
+    }
 
-            final double scaledBlockRadius = peakRenderScale * gdParameters.fullScaleBlockRadius;
+    List<DifferenceOfGaussianPeak<FloatType>> nonMaximalSuppression(final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks,
+                                                                    final double peakRenderScale) {
+
+        return nonMaximalSuppression(gdParameters.fullScaleNonMaxSuppressionRadius,
+                                     canvasPeaks,
+                                     peakRenderScale);
+    }
+
+    @SuppressWarnings("WeakerAccess")
+    public static void filterPeaksByInliers(final Double fullScaleBlockRadius,
+                                            final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks,
+                                            final double peakRenderScale,
+                                            final List<Point> inlierPoints,
+                                            final double inlierRenderScale) {
+
+        if (fullScaleBlockRadius != null) {
+
+            final double scaledBlockRadius = peakRenderScale * fullScaleBlockRadius;
 
             LOG.info("filterPeaksByInliers: entry, peakRenderScale: {}, inlierRenderScale: {}, scaledBlockRadius: {}",
                      peakRenderScale, inlierRenderScale, scaledBlockRadius);
@@ -233,14 +255,16 @@ public class CanvasPeakExtractor
 
     }
 
-    List<DifferenceOfGaussianPeak<FloatType>> nonMaximalSuppression(final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks,
-                                                                    final double peakRenderScale) {
+    @SuppressWarnings("WeakerAccess")
+    public static List<DifferenceOfGaussianPeak<FloatType>> nonMaximalSuppression(final Double fullScaleNonMaxSuppressionRadius,
+                                                                                  final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks,
+                                                                                  final double peakRenderScale) {
 
         List<DifferenceOfGaussianPeak<FloatType>> filteredPeaks = canvasPeaks;
 
-        if (gdParameters.fullScaleNonMaxSuppressionRadius != null) {
+        if (fullScaleNonMaxSuppressionRadius != null) {
 
-            final double scaledNonMaxSuppressionRadius = gdParameters.fullScaleNonMaxSuppressionRadius * peakRenderScale;
+            final double scaledNonMaxSuppressionRadius = fullScaleNonMaxSuppressionRadius * peakRenderScale;
 
             LOG.info("nonMaximalSuppression: entry, peakRenderScale: {}, scaledNonMaxSuppressionRadius: {}",
                      peakRenderScale, scaledNonMaxSuppressionRadius);
@@ -295,9 +319,10 @@ public class CanvasPeakExtractor
         return filteredPeaks;
     }
 
-    private static List<RealPoint> adjustInliers(final double peakRenderScale,
-                                                 final List<Point> inlierPoints,
-                                                 final double inlierRenderScale) {
+    @SuppressWarnings("WeakerAccess")
+    public static List<RealPoint> adjustInliers(final double peakRenderScale,
+                                                final List<Point> inlierPoints,
+                                                final double inlierRenderScale) {
 
         final List<RealPoint> adjustedInlierPoints = new ArrayList<>(inlierPoints.size());
 
