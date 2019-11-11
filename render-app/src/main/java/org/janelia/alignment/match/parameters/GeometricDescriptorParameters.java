@@ -132,7 +132,7 @@ public class GeometricDescriptorParameters
             threshold = 0.008;
         }
         if (localization == null) {
-            localization = LocalizationFitType.NONE;
+            localization = LocalizationFitType.THREE_D_QUADRATIC;
         }
         if (similarOrientation == null) {
             similarOrientation = true;
