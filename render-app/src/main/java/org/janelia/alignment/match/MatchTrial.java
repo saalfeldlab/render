@@ -1,17 +1,27 @@
 package org.janelia.alignment.match;
 
 import java.io.Serializable;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
+import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
+import mpicbg.imglib.type.numeric.real.FloatType;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
 
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URIBuilder;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.parameters.FeatureAndMatchParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.GeometricDescriptorAndMatchFilterParameters;
+import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.match.parameters.MatchTrialParameters;
 import org.janelia.alignment.spec.Bounds;
@@ -27,6 +37,7 @@ public class MatchTrial implements Serializable {
     private final MatchTrialParameters parameters;
     private List<Matches> matches;
     private MatchTrialStats stats;
+    private GeometricDescriptorMatchStats gdStats;
 
     @SuppressWarnings("unused")
     public MatchTrial() {
@@ -65,7 +76,8 @@ public class MatchTrial implements Serializable {
         final MatchTrial copy = new MatchTrial(parameters);
         copy.id = id;
         copy.matches = this.matches;
-        copy.stats =this.stats;
+        copy.stats = this.stats;
+        copy.gdStats = this.gdStats;
         return copy;
     }
 
@@ -92,66 +104,151 @@ public class MatchTrial implements Serializable {
 
         }
 
-        final long pFeatureStart = System.currentTimeMillis();
         final String groupId = "trial";
+        final FeatureExtractionParameters siftFeatureParameters = featureAndMatchParameters.getSiftFeatureParameters();
+
+        final long pFeatureStart = System.currentTimeMillis();
 
         final CanvasData pCanvasData = new CanvasData(parameters.getpRenderParametersUrl(),
                                                       new CanvasId(groupId, "P", pClipPosition),
                                                       parameters);
+        final List<Feature> pFeatureList = pCanvasData.extractFeatures(siftFeatureParameters);
 
         final long qFeatureStart = System.currentTimeMillis();
 
         final CanvasData qCanvasData = new CanvasData(parameters.getqRenderParametersUrl(),
                                                       new CanvasId(groupId, "Q", qClipPosition),
                                                       parameters);
+        final List<Feature> qFeatureList = qCanvasData.extractFeatures(siftFeatureParameters);
 
-        if (pCanvasData.getRenderScale() - qCanvasData.getRenderScale() != 0.0) {
+        if (pCanvasData.getSiftRenderScale() - qCanvasData.getSiftRenderScale() != 0.0) {
             throw new IllegalArgumentException(
                     "render scales for both canvases must be the same but pCanvas scale is " +
-                    pCanvasData.getRenderScale() + " while qCanvas render scale is " + qCanvasData.getRenderScale());
+                    pCanvasData.getSiftRenderScale() + " while qCanvas render scale is " +
+                    qCanvasData.getSiftRenderScale());
         }
 
         final long matchStart = System.currentTimeMillis();
 
-        final MatchDerivationParameters matchDerivationParameters =
+        final MatchDerivationParameters siftMatchDerivationParameters =
                 featureAndMatchParameters.getMatchDerivationParameters();
 
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(matchDerivationParameters);
-
-        final CanvasMatchResult matchResult =
-                matcher.deriveMatchResult(pCanvasData.getFeatureList(), qCanvasData.getFeatureList());
+        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(siftMatchDerivationParameters);
+        final CanvasMatchResult siftMatchResult = matcher.deriveMatchResult(pFeatureList, qFeatureList);
 
         final long matchStop = System.currentTimeMillis();
 
         final CanvasId pCanvasId = pCanvasData.getCanvasId();
         final CanvasId qCanvasId = qCanvasData.getCanvasId();
-        final List<CanvasMatches> results = matchResult.getInlierMatchesList(pCanvasId.getGroupId(),
-                                                                             pCanvasId.getId(),
-                                                                             qCanvasId.getGroupId(),
-                                                                             qCanvasId.getId(),
-                                                                             pCanvasData.getRenderScale(),
-                                                                             pCanvasId.getClipOffsets(),
-                                                                             qCanvasId.getClipOffsets());
-        this.matches = new ArrayList<>(results.size());
-        for (final CanvasMatches canvasMatches : results) {
+        final List<CanvasMatches> siftResults = siftMatchResult.getInlierMatchesList(pCanvasId.getGroupId(),
+                                                                                     pCanvasId.getId(),
+                                                                                     qCanvasId.getGroupId(),
+                                                                                     qCanvasId.getId(),
+                                                                                     pCanvasData.getSiftRenderScale(),
+                                                                                     pCanvasId.getClipOffsets(),
+                                                                                     qCanvasId.getClipOffsets());
+        this.matches = new ArrayList<>(siftResults.size());
+        for (final CanvasMatches canvasMatches : siftResults) {
             final Matches m = canvasMatches.getMatches();
             this.matches.add(m);
         }
 
-        final PointMatchQualityStats pointMatchQualityStats = matchResult.calculateQualityStats();
-        final double[] aggregateDeltaXAndYStandardDeviation =
-                pointMatchQualityStats.getAggregateDeltaXAndYStandardDeviation();
 
-        this.stats = new MatchTrialStats(pCanvasData.featureList.size(),
+        if (parameters.hasGeometricDescriptorAndMatchFilterParameters()) {
+
+            // run Geometric Descriptor matching using the SIFT result inliers (if they exist) for masking
+
+            final GeometricDescriptorAndMatchFilterParameters gdmfParameters =
+                    parameters.getGeometricDescriptorAndMatchFilterParameters();
+
+            final List<PointMatch> inliersSIFT = new ArrayList<>();
+            for (final List<PointMatch> consensusSetMatches : siftMatchResult.getInlierPointMatchLists()) {
+                inliersSIFT.addAll(consensusSetMatches);
+            }
+
+            final List<Point> pInlierPoints = new ArrayList<>();
+            final List<Point> qInlierPoints = new ArrayList<>();
+
+            if (inliersSIFT.size() > 0) {
+                PointMatch.sourcePoints(inliersSIFT, pInlierPoints);
+                PointMatch.targetPoints(inliersSIFT, qInlierPoints);
+            }
+
+            final GeometricDescriptorParameters gdParameters = gdmfParameters.getGeometricDescriptorParameters();
+
+            final double peakRenderScale = gdmfParameters.getRenderScale();
+
+            final long pPeakStart = System.currentTimeMillis();
+            final List<DifferenceOfGaussianPeak<FloatType>> pCanvasPeaks =
+                    pCanvasData.extractPeaks(gdParameters,
+                                             peakRenderScale,
+                                             gdmfParameters.getRenderWithFilter(),
+                                             gdmfParameters.getRenderFilterListName(),
+                                             pInlierPoints);
+            final long qPeakStart = System.currentTimeMillis();
+            final List<DifferenceOfGaussianPeak<FloatType>> qCanvasPeaks =
+                    qCanvasData.extractPeaks(gdParameters,
+                                             peakRenderScale,
+                                             gdmfParameters.getRenderWithFilter(),
+                                             gdmfParameters.getRenderFilterListName(),
+                                             qInlierPoints);
+
+            final long gdMatchStart = System.currentTimeMillis();
+            final MatchDerivationParameters gdMatchDerivationParameters =
+                    gdmfParameters.hasMatchDerivationParameters() ?
+                    gdmfParameters.getMatchDerivationParameters() : siftMatchDerivationParameters;
+
+            final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters, gdMatchDerivationParameters);
+            final CanvasMatchResult gdMatchResult = peakMatcher.deriveMatchResult(pCanvasPeaks, qCanvasPeaks);
+
+            final long gdMatchStop = System.currentTimeMillis();
+
+            final List<CanvasMatches> gdResults = gdMatchResult.getInlierMatchesList(pCanvasId.getGroupId(),
+                                                                                     pCanvasId.getId(),
+                                                                                     qCanvasId.getGroupId(),
+                                                                                     qCanvasId.getId(),
+                                                                                     peakRenderScale,
+                                                                                     pCanvasId.getClipOffsets(),
+                                                                                     qCanvasId.getClipOffsets());
+
+            final PointMatchQualityStats gdQualityStats = gdMatchResult.calculateQualityStats();
+            final double[] gdAggregateDeltaXAndYStandardDeviation =
+                    gdQualityStats.getAggregateDeltaXAndYStandardDeviation();
+
+            this.gdStats = new GeometricDescriptorMatchStats(pCanvasPeaks.size(),
+                                                             (qPeakStart - pPeakStart),
+                                                             qCanvasPeaks.size(),
+                                                             (gdMatchStart - qPeakStart),
+                                                             gdMatchResult.getConsensusSetSizes(),
+                                                             (gdMatchStop - gdMatchStart),
+                                                             gdAggregateDeltaXAndYStandardDeviation[0],
+                                                             gdAggregateDeltaXAndYStandardDeviation[1],
+                                                             gdQualityStats.getConsensusSetDeltaXStandardDeviations(),
+                                                             gdQualityStats.getConsensusSetDeltaYStandardDeviations());
+
+            for (final CanvasMatches canvasMatches : gdResults) {
+                final Matches m = canvasMatches.getMatches();
+                if ((gdParameters.gdStoredMatchWeight != null) && (m.w != null)) {
+                    Arrays.fill(m.w, gdParameters.gdStoredMatchWeight);
+                }
+                this.matches.add(m);
+            }
+        }
+
+        final PointMatchQualityStats siftQualityStats = siftMatchResult.calculateQualityStats();
+        final double[] aggregateDeltaXAndYStandardDeviation =
+                siftQualityStats.getAggregateDeltaXAndYStandardDeviation();
+
+        this.stats = new MatchTrialStats(pFeatureList.size(),
                                          (qFeatureStart - pFeatureStart),
-                                         qCanvasData.featureList.size(),
+                                         qFeatureList.size(),
                                          (matchStart - qFeatureStart),
-                                         matchResult.getConsensusSetSizes(),
+                                         siftMatchResult.getConsensusSetSizes(),
                                          (matchStop - matchStart),
                                          aggregateDeltaXAndYStandardDeviation[0],
                                          aggregateDeltaXAndYStandardDeviation[1],
-                                         pointMatchQualityStats.getConsensusSetDeltaXStandardDeviations(),
-                                         pointMatchQualityStats.getConsensusSetDeltaYStandardDeviations());
+                                         siftQualityStats.getConsensusSetDeltaXStandardDeviations(),
+                                         siftQualityStats.getConsensusSetDeltaYStandardDeviations());
     }
 
     public String toJson() {
@@ -166,28 +263,31 @@ public class MatchTrial implements Serializable {
             new JsonUtils.Helper<>(MatchTrial.class);
 
     /**
-     * Helper class to hold data (render parameters, features, etc.) for each canvas.
+     * Helper class to hold data for each rendered canvas.
      */
     private static class CanvasData {
 
-        private final RenderParameters renderParameters;
+        private final String siftRenderParametersUrl;
+        private final RenderParameters siftRenderParameters;
+        private final Double siftRenderScale;
         private final CanvasId canvasId;
-        private final List<Feature> featureList;
 
         CanvasData(final String renderParametersUrl,
                    final CanvasId canvasId,
                    final MatchTrialParameters trialParameters)
                 throws IllegalArgumentException {
 
-            this.renderParameters = RenderParameters.loadFromUrl(renderParametersUrl);
+            this.siftRenderParametersUrl = renderParametersUrl;
+            this.siftRenderParameters = RenderParameters.loadFromUrl(renderParametersUrl);
+            this.siftRenderScale = this.siftRenderParameters.getScale();
             this.canvasId = canvasId;
 
             if (canvasId.getRelativePosition() != null) {
 
-                final Bounds bounds = new Bounds(renderParameters.x,
-                                                 renderParameters.y,
-                                                 renderParameters.x + renderParameters.width,
-                                                 renderParameters.y + renderParameters.height);
+                final Bounds bounds = new Bounds(siftRenderParameters.x,
+                                                 siftRenderParameters.y,
+                                                 siftRenderParameters.x + siftRenderParameters.width,
+                                                 siftRenderParameters.y + siftRenderParameters.height);
 
                 final FeatureRenderClipParameters clipParameters =
                         trialParameters.getFeatureAndMatchParameters().getClipParameters();
@@ -195,12 +295,17 @@ public class MatchTrial implements Serializable {
                 final Integer clipHeight = clipParameters.clipHeight;
 
                 canvasId.setClipOffsets((int) bounds.getDeltaX(), (int) bounds.getDeltaY(), clipWidth, clipHeight);
-                renderParameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
+                siftRenderParameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
 
             }
 
-            final FeatureExtractionParameters siftFeatureParameters =
-                    trialParameters.getFeatureAndMatchParameters().getSiftFeatureParameters();
+        }
+
+        public CanvasId getCanvasId() {
+            return canvasId;
+        }
+
+        List<Feature> extractFeatures(final FeatureExtractionParameters siftFeatureParameters) {
 
             final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
             siftParameters.fdSize = siftFeatureParameters.fdSize;
@@ -209,21 +314,49 @@ public class MatchTrial implements Serializable {
             final CanvasFeatureExtractor extractor = new CanvasFeatureExtractor(siftParameters,
                                                                                 siftFeatureParameters.minScale,
                                                                                 siftFeatureParameters.maxScale,
-                                                                                renderParameters.isFillWithNoise());
+                                                                                siftRenderParameters.isFillWithNoise());
 
-            this.featureList = extractor.extractFeatures(renderParameters, null);
+            return extractor.extractFeatures(siftRenderParameters, null);
         }
 
-        public CanvasId getCanvasId() {
-            return canvasId;
+        List<DifferenceOfGaussianPeak<FloatType>> extractPeaks(final GeometricDescriptorParameters gdParameters,
+                                                               final double peakRenderScale,
+                                                               final Boolean renderWithFilter,
+                                                               final String renderFilterListName,
+                                                               final List<Point> siftInlierPoints) {
+
+            final CanvasPeakExtractor peakExtractor = new CanvasPeakExtractor(gdParameters);
+
+            final RenderParameters peakRenderParameters;
+            try {
+                final URIBuilder builder = new URIBuilder(siftRenderParametersUrl);
+                final List<NameValuePair> queryParams = builder.getQueryParams();
+                final String filterListNameKey = "filterListName";
+                queryParams.removeIf(pair -> filterListNameKey.equals(pair.getName()));
+                builder.setParameters(queryParams);
+                builder.setParameter("scale", String.valueOf(peakRenderScale));
+                builder.setParameter("filter", String.valueOf((renderWithFilter != null) && renderWithFilter));
+                if (renderFilterListName != null) {
+                    builder.setParameter(filterListNameKey, renderFilterListName);
+                }
+                peakRenderParameters = RenderParameters.loadFromUrl(builder.toString());
+            } catch (final URISyntaxException e) {
+                throw new IllegalStateException(
+                        "failed to create peak render parameters URL from " + siftRenderParametersUrl, e);
+            }
+
+            final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks =
+                    peakExtractor.extractPeaks(peakRenderParameters, null);
+
+            if (siftInlierPoints.size() > 0) {
+                peakExtractor.filterPeaksByInliers(canvasPeaks, peakRenderScale, siftInlierPoints, siftRenderScale);
+            }
+
+            return peakExtractor.nonMaximalSuppression(canvasPeaks, peakRenderScale);
         }
 
-        List<Feature> getFeatureList() {
-            return featureList;
-        }
-
-        public Double getRenderScale() {
-            return renderParameters.getScale();
+        Double getSiftRenderScale() {
+            return siftRenderScale;
         }
 
         @Override

@@ -23,6 +23,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.MatchFilter.FilterType;
 import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.janelia.alignment.util.ImageDebugUtil;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -31,7 +32,8 @@ import org.slf4j.LoggerFactory;
 import net.imglib2.KDTree;
 import net.imglib2.RealPoint;
 import net.imglib2.neighborsearch.KNearestNeighborSearchOnKDTree;
-import net.imglib2.neighborsearch.NearestNeighborSearchOnKDTree;
+import net.imglib2.util.Pair;
+import net.imglib2.util.ValuePair;
 
 import static org.janelia.alignment.match.GeometricDescriptorMatcherTest.*;
 
@@ -92,22 +94,19 @@ public class GeometricDescriptorSIFTMatcherTest {
         final double minScale = 0.25;
         final double maxScale = 1.0;
 
-        CanvasFeatureExtractor canvasFeatureExtractor = new CanvasFeatureExtractor( coreSiftParameters, minScale, maxScale, true );
-        List< Feature > f1 = canvasFeatureExtractor.extractFeaturesFromImage( imageSIFT1 );
-        List< Feature > f2 = canvasFeatureExtractor.extractFeaturesFromImage( imageSIFT2 );
+        final CanvasFeatureExtractor canvasFeatureExtractor = new CanvasFeatureExtractor( coreSiftParameters, minScale, maxScale, true );
+        final List< Feature > f1 = canvasFeatureExtractor.extractFeaturesFromImage( imageSIFT1 );
+        final List< Feature > f2 = canvasFeatureExtractor.extractFeaturesFromImage( imageSIFT2 );
 
         // GET INLIERS
-        MatchDerivationParameters ransacParam = new MatchDerivationParameters( 0.92f, ModelType.AFFINE, 1000, 50, 0, 10, 4, null, FilterType.SINGLE_SET );
+        final MatchDerivationParameters ransacParam = new MatchDerivationParameters( 0.92f, ModelType.AFFINE, 1000, 50, 0, 10, 4, null, FilterType.SINGLE_SET );
         ransacParam.matchRegularizerModelType = ModelType.RIGID;
         ransacParam.matchInterpolatedModelLambda = 0.25;
 
         final CanvasFeatureMatcher matcherSIFT = new CanvasFeatureMatcher(ransacParam);
         final CanvasMatchResult resultSIFT = matcherSIFT.deriveMatchResult(f1, f2);
 
-        final List<PointMatch> inliersSIFT = new ArrayList<>();
-        for (final List<PointMatch> consensusSetMatches : resultSIFT.getInlierPointMatchLists()) {
-            inliersSIFT.addAll(consensusSetMatches);
-        }
+        final List<PointMatch> inliersSIFT = resultSIFT.getInlierPointMatchList();
 
         final List<Point> inlierPoints1 = new ArrayList<>();
         PointMatch.sourcePoints(inliersSIFT, inlierPoints1);
@@ -124,8 +123,10 @@ public class GeometricDescriptorSIFTMatcherTest {
         final double blockRadiusSIFT = gdParameters.fullScaleBlockRadius * renderScaleSIFT;
         final ImagePlus impSIFT1 = new ImagePlus(tileId1 + "_SIFT", imageSIFT1);
         final ImagePlus impSIFT2 = new ImagePlus(tileId2 + "_SIFT", imageSIFT2);
-        drawBlockedRegions( impSIFT1, impSIFT2, blockRadiusSIFT, inliersSIFT );
-        GeometricDescriptorMatcherTest.setPointRois( impSIFT1, impSIFT2, inliersSIFT );
+        ImageDebugUtil.drawBlockedRegions(inlierPoints1, blockRadiusSIFT, impSIFT1);
+        ImageDebugUtil.setPointRois(inlierPoints1, impSIFT1);
+        ImageDebugUtil.drawBlockedRegions(inlierPoints2, blockRadiusSIFT, impSIFT2);
+        ImageDebugUtil.setPointRois(inlierPoints2, impSIFT2);
         impSIFT1.show();
         impSIFT2.show();
         */
@@ -160,13 +161,17 @@ public class GeometricDescriptorSIFTMatcherTest {
         /*
         // debug
         final double blockRadiusGeo = gdParameters.fullScaleBlockRadius * renderScaleGeo;
-		drawBlockedRegions( adjustedInliers.getA(), blockRadiusGeo, impGeo1 );
-		drawBlockedRegions( adjustedInliers.getB(), blockRadiusGeo, impGeo2 );
-		GeometricDescriptorMatcherTest.setPointRois( adjustedInliers.getA(), impGeo1 );
-		GeometricDescriptorMatcherTest.setPointRois( adjustedInliers.getB(), impGeo2 );
-		impGeo1.show();
-		impGeo2.show();
-		*/
+        // adjust the locations of the inliers to the potentially difference renderScale
+        final Pair< ArrayList< Point >, ArrayList< Point > >
+                adjustedInliers = adjustInliers(inliersSIFT, renderScaleSIFT, renderScaleGeo );
+
+        ImageDebugUtil.drawBlockedRegions( adjustedInliers.getA(), blockRadiusGeo, impGeo1 );
+        ImageDebugUtil.drawBlockedRegions( adjustedInliers.getB(), blockRadiusGeo, impGeo2 );
+        ImageDebugUtil.setPointRois( adjustedInliers.getA(), impGeo1 );
+        ImageDebugUtil.setPointRois( adjustedInliers.getB(), impGeo2 );
+        impGeo1.show();
+        impGeo2.show();
+        */
 
         // extract DoG peaks for Descriptor-based registration
         List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractorGeo.extractPeaksFromImageAndMask(geo1.ip, geo1.mask);
@@ -192,8 +197,8 @@ public class GeometricDescriptorSIFTMatcherTest {
 
         LOG.debug( "#detections after nonMaximalSuppression: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
-		GeometricDescriptorMatcherTest.setPointRois( impGeo1, canvasPeaks1 );
-		GeometricDescriptorMatcherTest.setPointRois( impGeo2, canvasPeaks2 );
+        ImageDebugUtil.setPeakPointRois(canvasPeaks1, impGeo1);
+        ImageDebugUtil.setPeakPointRois(canvasPeaks2, impGeo2);
 
         impGeo1.show();
         impGeo2.show();
@@ -201,14 +206,13 @@ public class GeometricDescriptorSIFTMatcherTest {
         // important, we need to use the adjusted parameters here as well
         final CanvasMatchResult resultGeo = matcherGeo.deriveMatchResult(canvasPeaks1, canvasPeaks2);
 
-        // NOTE: assumes matchFilter is SINGLE_SET
         final List<PointMatch> inliersGeo = resultGeo.getInlierPointMatchList();
         LOG.debug( "#inliersGeo: " + inliersGeo.size() );
 
         final ImagePlus ipnew1 = new ImagePlus("match_" + tileId1, geo1.ip.duplicate());
         final ImagePlus ipnew2 = new ImagePlus("match_" + tileId2, geo2.ip.duplicate());
 
-        GeometricDescriptorMatcherTest.setPointRois( ipnew1, ipnew2, inliersGeo );
+        ImageDebugUtil.setPointMatchRois(inliersGeo, ipnew1, ipnew2);
 
         ipnew1.show();
         //ipnew2.show();
@@ -324,49 +328,29 @@ public class GeometricDescriptorSIFTMatcherTest {
 		return newIPs;
     }
 
-	protected static void drawBlockedRegions( final ImagePlus imp1, final ImagePlus imp2, final double radius, final List<PointMatch> inliers )
+	static Pair< ArrayList< Point >, ArrayList< Point > > adjustInliers( final List<PointMatch> inliers, final double scaleSIFT, final double scaleGeo )
 	{
-        final ArrayList<Point> list1 = new ArrayList<Point>();
-        final ArrayList<Point> list2 = new ArrayList<Point>();
+		final ArrayList< Point > sourcePoints = new ArrayList<>();
+		final ArrayList< Point > targetPoints = new ArrayList<>();
 
-		PointMatch.sourcePoints( inliers, list1 );
-		PointMatch.targetPoints( inliers, list2 );
+		PointMatch.sourcePoints( inliers, sourcePoints );
+		PointMatch.targetPoints( inliers, targetPoints );
 
-		drawBlockedRegions( list1, radius, imp1 );
-		drawBlockedRegions( list2, radius, imp2 );
-	}
-
-	public static void drawBlockedRegions( final ArrayList<Point> inliers, final double radius, final ImagePlus imp )
-	{
-		// assemble the list of points (we need two lists as the KDTree sorts the list)
-		// we assume that the order of list2 is preserved
-		final List< RealPoint > list1 = new ArrayList< RealPoint >();
-		final List< RealPoint > list2 = new ArrayList< RealPoint >();
-
-		for ( final Point p : inliers )
+		// TODO: do not ignore world coordinates
+		for ( final Point p : sourcePoints )
 		{
-			list1.add ( new RealPoint( p.getL()[ 0 ], p.getL()[ 1 ] ) );
-			list2.add ( new RealPoint( p.getL()[ 0 ], p.getL()[ 1 ] ) );
+			p.getL()[ 0 ] = (p.getL()[ 0 ] / scaleSIFT) * scaleGeo;
+			p.getL()[ 1 ] = (p.getL()[ 1 ] / scaleSIFT) * scaleGeo;
 		}
 
-		// make the KDTree
-		final KDTree< RealPoint > tree = new KDTree< RealPoint >( list1, list1 );
+		// TODO: do not ignore world coordinates
+		for ( final Point p : targetPoints )
+		{
+			p.getL()[ 0 ] = (p.getL()[ 0 ] / scaleSIFT) * scaleGeo;
+			p.getL()[ 1 ] = (p.getL()[ 1 ] / scaleSIFT) * scaleGeo;
+		}
 
-		// Nearest neighbor for each point, populate the new list
-		final NearestNeighborSearchOnKDTree< RealPoint > nn = new NearestNeighborSearchOnKDTree< RealPoint >( tree );
-
-		for ( int y = 0; y < imp.getHeight(); ++y )
-			for ( int x = 0; x < imp.getWidth(); ++x )
-			{
-				final RealPoint p = new RealPoint( x, y );
-				nn.search( p );
-
-				// first nearest neighbor is the point itself, we need the second nearest
-				final double d = nn.getDistance();
-
-				if ( d <= radius )
-					imp.getProcessor().set( x, y, 255 );
-			}
+		return new ValuePair<>(sourcePoints, targetPoints );
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(GeometricDescriptorSIFTMatcherTest.class);

@@ -108,6 +108,12 @@ public class GeometricDescriptorParameters
     )
     public Double fullScaleNonMaxSuppressionRadius;
 
+    @Parameter(
+            names = "--gdStoredMatchWeight",
+            description = "..."
+    )
+    public Double gdStoredMatchWeight;
+
     void setDefaults() {
 
         if (numberOfNeighbors == null) {

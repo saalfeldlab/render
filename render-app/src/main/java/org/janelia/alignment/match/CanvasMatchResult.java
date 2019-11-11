@@ -49,7 +49,16 @@ public class CanvasMatchResult
      * @return collection of inlier matches.
      */
     public List<PointMatch> getInlierPointMatchList() {
-        return consensusSetInliers.get(0);
+        final List<PointMatch> list;
+        if (consensusSetInliers.size() == 1) {
+            list = consensusSetInliers.get(0);
+        } else {
+            list = new ArrayList<>();
+            for (final List<PointMatch> consensusSetList : consensusSetInliers) {
+                list.addAll(consensusSetList);
+            }
+        }
+        return list;
     }
 
     /**

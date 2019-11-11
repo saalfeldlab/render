@@ -1,16 +1,13 @@
 package org.janelia.alignment.match;
 
 import ij.ImagePlus;
-import ij.gui.PointRoi;
 
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
 import java.util.List;
 
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.imglib.type.numeric.real.FloatType;
-import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
@@ -19,6 +16,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.janelia.alignment.util.ImageDebugUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Assert;
 import org.junit.Test;
@@ -91,8 +89,8 @@ public class GeometricDescriptorMatcherTest {
         final ImagePlus ip1 = new ImagePlus("peak_" + tileId1, image1);
         final ImagePlus ip2 = new ImagePlus("peak_" + tileId2, image2);
 
-        setPointRois( ip1, canvasPeaks1 );
-        setPointRois( ip2, canvasPeaks2 );
+        ImageDebugUtil.setPeakPointRois(canvasPeaks1, ip1);
+        ImageDebugUtil.setPeakPointRois(canvasPeaks2, ip2);
 
         ip1.show();
         ip2.show();
@@ -102,13 +100,12 @@ public class GeometricDescriptorMatcherTest {
         // important, we need to use the adjusted parameters here as well
         final CanvasMatchResult result = peakMatcher.deriveMatchResult(canvasPeaks1, canvasPeaks2);
 
-        // NOTE: assumes matchFilter is SINGLE_SET
         final List<PointMatch> inliers = result.getInlierPointMatchList();
 
         final ImagePlus ipnew1 = new ImagePlus("match_" + tileId1, image1);
         final ImagePlus ipnew2 = new ImagePlus("match_" + tileId2, image2);
 
-        setPointRois( ipnew1, ipnew2, inliers );
+        ImageDebugUtil.setPointMatchRois(inliers, ipnew1, ipnew2);
 
         ipnew1.show();
         //ipnew2.show();
@@ -118,39 +115,6 @@ public class GeometricDescriptorMatcherTest {
         // -------------------------------------------------------------------
         // display results ...
     }
-
-	protected static void setPointRois( final ImagePlus imp1, final ImagePlus imp2, final List<PointMatch> inliers )
-	{
-		final ArrayList<Point> list1 = new ArrayList<Point>();
-		final ArrayList<Point> list2 = new ArrayList<Point>();
-
-		PointMatch.sourcePoints( inliers, list1 );
-		PointMatch.targetPoints( inliers, list2 );
-		
-		PointRoi sourcePoints = mpicbg.ij.util.Util.pointsToPointRoi(list1);
-		PointRoi targetPoints = mpicbg.ij.util.Util.pointsToPointRoi(list2);
-		
-		imp1.setRoi( sourcePoints );
-		imp2.setRoi( targetPoints );
-		
-	}
-
-	protected static void setPointRois( final ImagePlus imp1, List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks )
-	{
-		final ArrayList<Point> list1 = new ArrayList<Point>();
-
-		for ( final DifferenceOfGaussianPeak< FloatType > p : canvasPeaks )
-			list1.add( new Point( new double[] { p.getSubPixelPosition( 0 ), p.getSubPixelPosition( 1 ) } ) );
-
-		setPointRois( list1, imp1 );
-	}
-
-	protected static void setPointRois( List< Point > list1, final ImagePlus imp1 )
-	{
-		PointRoi points = mpicbg.ij.util.Util.pointsToPointRoi( list1 );
-		imp1.setRoi( points );
-	}
-
 
     static GeometricDescriptorParameters getInitialDescriptorParameters() {
 
@@ -182,7 +146,7 @@ public class GeometricDescriptorMatcherTest {
         matchFilterParameters.matchMinInlierRatio = 0.0f;
         matchFilterParameters.matchMinNumInliers = 4;
         matchFilterParameters.matchMaxTrust = 3.0;
-        matchFilterParameters.matchFilter = MatchFilter.FilterType.SINGLE_SET; // warning: changing this will break getInlierPointMatchList call below
+        matchFilterParameters.matchFilter = MatchFilter.FilterType.SINGLE_SET;
 
         return matchFilterParameters;
     }

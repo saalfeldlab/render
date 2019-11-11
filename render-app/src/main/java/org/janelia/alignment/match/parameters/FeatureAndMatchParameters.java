@@ -47,6 +47,32 @@ public class FeatureAndMatchParameters implements Serializable {
 
     @JsonIgnore
     public FeatureRenderClipParameters getClipParameters() {
+        return getClipParameters(pClipPosition, clipPixels);
+    }
+
+    void validateAndSetDefaults() throws IllegalArgumentException {
+
+        if (siftFeatureParameters == null) {
+            throw new IllegalArgumentException("siftFeatureParameters must be defined");
+        } else {
+            siftFeatureParameters.setDefaults();
+        }
+
+        validateMatchParametersAndSetDefaults("feature",
+                                              matchDerivationParameters);
+
+        if (pClipPosition != null) {
+            if (clipPixels == null) {
+                throw new IllegalArgumentException("clipPixels must be defined when pClipPosition is defined");
+            }
+        } else if (clipPixels != null) {
+            throw new IllegalArgumentException("pClipPosition must be defined when clipPixels is defined");
+        }
+
+    }
+
+    private static FeatureRenderClipParameters getClipParameters(final MontageRelativePosition pClipPosition,
+                                                                 final Integer clipPixels) {
         final FeatureRenderClipParameters clipParameters = new FeatureRenderClipParameters();
         if (pClipPosition != null) {
             if (MontageRelativePosition.TOP.equals(pClipPosition) ||
@@ -59,27 +85,15 @@ public class FeatureAndMatchParameters implements Serializable {
         return clipParameters;
     }
 
-    void validateAndSetDefaults() throws IllegalArgumentException {
-
-        if (siftFeatureParameters == null) {
-            throw new IllegalArgumentException("siftFeatureParameters must be defined");
-        } else {
-            siftFeatureParameters.setDefaults();
-        }
+    static void validateMatchParametersAndSetDefaults(final String context,
+                                                      final MatchDerivationParameters matchDerivationParameters) throws IllegalArgumentException {
 
         if (matchDerivationParameters == null) {
-            throw new IllegalArgumentException("matchDerivationParameters must be defined");
+            throw new IllegalArgumentException(context + " matchDerivationParameters must be defined");
         } else {
             matchDerivationParameters.setDefaults();
         }
 
-        if (pClipPosition != null) {
-            if (clipPixels == null) {
-                throw new IllegalArgumentException("clipPixels must be defined when pClipPosition is defined");
-            }
-        } else if (clipPixels != null) {
-            throw new IllegalArgumentException("pClipPosition must be defined when clipPixels is defined");
-        }
     }
 
 }

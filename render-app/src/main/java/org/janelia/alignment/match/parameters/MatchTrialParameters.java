@@ -12,18 +12,21 @@ public class MatchTrialParameters implements Serializable {
     private final FeatureAndMatchParameters featureAndMatchParameters;
     private final String pRenderParametersUrl;
     private final String qRenderParametersUrl;
+    private final GeometricDescriptorAndMatchFilterParameters geometricDescriptorAndMatchFilterParameters;
 
     @SuppressWarnings("unused")
     public MatchTrialParameters() {
-        this(null, null, null);
+        this(null, null, null, null);
     }
 
     public MatchTrialParameters(final FeatureAndMatchParameters featureAndMatchParameters,
                                 final String pRenderParametersUrl,
-                                final String qRenderParametersUrl) {
+                                final String qRenderParametersUrl,
+                                final GeometricDescriptorAndMatchFilterParameters geometricDescriptorAndMatchFilterParameters) {
         this.featureAndMatchParameters = featureAndMatchParameters;
         this.pRenderParametersUrl = pRenderParametersUrl;
         this.qRenderParametersUrl = qRenderParametersUrl;
+        this.geometricDescriptorAndMatchFilterParameters = geometricDescriptorAndMatchFilterParameters;
     }
 
     public FeatureAndMatchParameters getFeatureAndMatchParameters() {
@@ -36,6 +39,14 @@ public class MatchTrialParameters implements Serializable {
 
     public String getqRenderParametersUrl() {
         return qRenderParametersUrl;
+    }
+
+    public boolean hasGeometricDescriptorAndMatchFilterParameters() {
+        return geometricDescriptorAndMatchFilterParameters != null;
+    }
+
+    public GeometricDescriptorAndMatchFilterParameters getGeometricDescriptorAndMatchFilterParameters() {
+        return geometricDescriptorAndMatchFilterParameters;
     }
 
     public void validateAndSetDefaults() throws IllegalArgumentException {
@@ -52,6 +63,10 @@ public class MatchTrialParameters implements Serializable {
 
         if (qRenderParametersUrl == null) {
             throw new IllegalArgumentException("qRenderParametersUrl is not defined");
+        }
+
+        if (geometricDescriptorAndMatchFilterParameters != null) {
+            geometricDescriptorAndMatchFilterParameters.validateAndSetDefaults();
         }
     }
 
