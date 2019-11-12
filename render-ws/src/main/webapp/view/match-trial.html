@@ -70,6 +70,7 @@
 
             } else {
                 $('#formDiv').hide();
+                $('#gdDiv').hide();
                 const trialSuffix = matchTrialId.substring(matchTrialId.length - 7);
                 $(document).attr('title', 'Match Trial ' + trialSuffix);
                 const trialDataUrl = matchTrial.matchTrialUrl + '/' + matchTrialId;
@@ -201,11 +202,15 @@
 </div>
 
 <div id="headerDiv" class="header_div">
+
     <table class="data_table">
         <tr>
             <td>Summary:</td>
-            <td colspan="4">started at <span id="trialStartTime"></span><span id="trialElapsedMessage"></span></td>
+            <td>started at <span id="trialStartTime"></span><span id="trialElapsedMessage"></span></td>
         </tr>
+    </table>
+
+    <table class="data_table">
         <tr>
             <td colspan="4"><hr/></td>
         </tr>
@@ -263,6 +268,92 @@
             <td>Match Stats:</td>
             <td id="matchStats" colspan="4"></td>
         </tr>
+    </table>
+
+    <div id="gdDiv">
+        <table class="data_table">
+            <tr>
+                <td colspan="4"><hr/></td>
+            </tr>
+            <tr>
+                <td>Geometric Descriptor Parameters:</td>
+                <td colspan="4">
+                    renderScale: <span id="gdTrialRenderScale" class="parameterValue"></span>
+                    renderWithFilter: <span id="gdTrialRenderWithFilter" class="parameterValue"></span>
+                    <span id="gdTrialRenderFilterListNameLabel">renderFilterListName: </span><span id="gdTrialRenderFilterListName" class="parameterValue"></span>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td colspan="4">
+                    similarOrientation: <span id="gdTrialSimilarOrientation" class="parameterValue"></span>
+                    numberOfNeighbors: <span id="gdTrialNumberOfNeighbors" class="parameterValue"></span>
+                    redundancy: <span id="gdTrialRedundancy" class="parameterValue"></span>
+                    significance: <span id="gdTrialSignificance" class="parameterValue"></span>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td colspan="4">
+                    sigma: <span id="gdTrialSigma" class="parameterValue"></span>
+                    threshold: <span id="gdTrialThreshold" class="parameterValue"></span>
+                    localization: <span id="gdTrialLocalization" class="parameterValue"></span>
+                    lookForMinima: <span id="gdTrialLookForMinima" class="parameterValue"></span>
+                    lookForMaxima: <span id="gdTrialLookForMaxima" class="parameterValue"></span>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td colspan="4">
+                    fullScaleBlockRadius: <span id="gdTrialFullScaleBlockRadius" class="parameterValue"></span>
+                    fullScaleNonMaxSuppressionRadius: <span id="gdTrialFullScaleNonMaxSuppressionRadius" class="parameterValue"></span>
+                    storedMatchWeight: <span id="gdTrialStoredMatchWeight" class="parameterValue"></span>
+                </td>
+            </tr>
+            <tr>
+                <td>Match Parameters:</td>
+                <td colspan="4">
+                    modelType: <span id="gdTrialMatchModelType" class="parameterValue"></span>
+                    <span id="gdTrialInterpolatedModelFields"></span>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td colspan="4">
+                    ROD: <span id="gdTrialMatchRod" class="parameterValue"></span>
+                    iterations: <span id="gdTrialMatchIterations" class="parameterValue"></span>
+                    maxEpsilon: <span id="gdTrialMatchMaxEpsilon" class="parameterValue"></span>
+                    minInlierRatio: <span id="gdTrialMatchMinInlierRatio" class="parameterValue"></span>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td colspan="4">
+                    minNumInliers: <span id="gdTrialMatchMinNumInliers" class="parameterValue"></span>
+                    maxTrust: <span id="gdTrialMatchMaxTrust" class="parameterValue"></span>
+                    filter: <span id="gdTrialMatchFilter" class="parameterValue"></span>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="4"><hr/></td>
+            </tr>
+            <tr>
+                <td>P Peak Stats:</td>
+                <td id="pPeakStats"></td>
+                <td>Q Peak Stats:</td>
+                <td id="qPeakStats"></td>
+            </tr>
+            <tr>
+                <td>Match Stats:</td>
+                <td id="gdMatchStats" colspan="4"></td>
+            </tr>
+        </table>
+    </div>
+
+    <table class="data_table">
+        <tr>
+            <td colspan="4"><hr/></td>
+        </tr>
         <tr>
             <td>Match View:</td>
             <td>
@@ -274,6 +365,7 @@
             <td id="matchInfo" colspan="3"></td>
         </tr>
     </table>
+
 </div>
 
 <div id="tileDiv">

@@ -292,6 +292,7 @@ JaneliaMatchTrial.prototype.getRenderParametersLink = function(parametersUrl) {
 
 /**
  * @param data.parameters.featureAndMatchParameters.matchDerivationParameters.matchMaxNumInliers
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.numberOfNeighbors
  * @param {Array} data.matches
  * @param data.stats.pFeatureCount
  * @param data.stats.pFeatureDerivationMilliseconds
@@ -310,10 +311,12 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 
     //console.log(data);
 
-    this.pImage = new JaneliaMatchTrialImage(data.parameters.pRenderParametersUrl, 0, 0, this.viewScale, this.cellMargin);
+    this.pImage =
+            new JaneliaMatchTrialImage(data.parameters.pRenderParametersUrl, 0, 0, this.viewScale, this.cellMargin);
     this.pImage.loadImage();
 
-    this.qImage = new JaneliaMatchTrialImage(data.parameters.qRenderParametersUrl, 0, 1, this.viewScale, this.cellMargin);
+    this.qImage =
+            new JaneliaMatchTrialImage(data.parameters.qRenderParametersUrl, 0, 1, this.viewScale, this.cellMargin);
     this.qImage.loadImage();
 
     const fmParams = data.parameters.featureAndMatchParameters;
@@ -336,40 +339,39 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
         $('#trialClipRow').hide();
     }
 
-    const mParams = data.parameters.featureAndMatchParameters.matchDerivationParameters;
-    $('#trialMatchModelType').html(mParams.matchModelType);
-    $('#trialMatchRod').html(mParams.matchRod);
-    $('#trialMatchIterations').html(mParams.matchIterations);
-    $('#trialMatchMaxEpsilon').html(mParams.matchMaxEpsilon);
-    $('#trialMatchMinInlierRatio').html(mParams.matchMinInlierRatio);
-    $('#trialMatchMinNumInliers').html(mParams.matchMinNumInliers);
-    $('#trialMatchMaxTrust').html(mParams.matchMaxTrust);
-    $('#trialMatchFilter').html(mParams.matchFilter);
+    const setMatchData = function (mParams,
+                                   selectPrefix) {
+        $('#' + selectPrefix + 'MatchModelType').html(mParams.matchModelType);
+        $('#' + selectPrefix + 'MatchRod').html(mParams.matchRod);
+        $('#' + selectPrefix + 'MatchIterations').html(mParams.matchIterations);
+        $('#' + selectPrefix + 'MatchMaxEpsilon').html(mParams.matchMaxEpsilon);
+        $('#' + selectPrefix + 'MatchMinInlierRatio').html(mParams.matchMinInlierRatio);
+        $('#' + selectPrefix + 'MatchMinNumInliers').html(mParams.matchMinNumInliers);
+        $('#' + selectPrefix + 'MatchMaxTrust').html(mParams.matchMaxTrust);
+        $('#' + selectPrefix + 'MatchFilter').html(mParams.matchFilter);
 
-    let interpolatedModelFieldsHtml = "";
-    if ((typeof mParams.matchRegularizerModelType !== "undefined") &&
-        (typeof mParams.matchInterpolatedModelLambda !== "undefined")) {
-        interpolatedModelFieldsHtml =
-                'regularizerModelType: <span class="parameterValue">' + mParams.matchRegularizerModelType + '</span> ' +
-                'interpolatedModelLambda: <span class="parameterValue">' + mParams.matchInterpolatedModelLambda + '</span>';
-    }
-    $('#trialInterpolatedModelFields').html(interpolatedModelFieldsHtml);
+        let interpolatedModelFieldsHtml = "";
+        if ((typeof mParams.matchRegularizerModelType !== "undefined") &&
+            (typeof mParams.matchInterpolatedModelLambda !== "undefined")) {
+            interpolatedModelFieldsHtml =
+                    'regularizerModelType: <span class="parameterValue">' + mParams.matchRegularizerModelType +
+                    '</span> ' +
+                    'interpolatedModelLambda: <span class="parameterValue">' + mParams.matchInterpolatedModelLambda +
+                    '</span>';
+        }
+        $('#' + selectPrefix + 'InterpolatedModelFields').html(interpolatedModelFieldsHtml);
 
-    if (typeof mParams.matchMaxNumInliers !== 'undefined') {
-        $('#trialMatchMaxNumInliers').html(mParams.matchMaxNumInliers);
-    }
+        if (typeof mParams.matchMaxNumInliers !== 'undefined') {
+            $('#' + selectPrefix + 'MatchMaxNumInliers').html(mParams.matchMaxNumInliers);
+        }
+    };
+
+    setMatchData(data.parameters.featureAndMatchParameters.matchDerivationParameters, 'trial');
 
     $('#trialFillWithNoise').html(data.parameters.fillWithNoise);
 
     $('#trialpRenderParametersUrl').html(this.getRenderParametersLink(data.parameters.pRenderParametersUrl));
     $('#trialqRenderParametersUrl').html(this.getRenderParametersLink(data.parameters.qRenderParametersUrl));
-
-    const consensusSetMatches = this.trialResults.matches;
-    this.matchCount = 0;
-    for (let consensusSetIndex = 0; consensusSetIndex < consensusSetMatches.length; consensusSetIndex++) {
-        const matches = consensusSetMatches[consensusSetIndex];
-        this.matchCount += matches.w.length;
-    }
 
     const stats = this.trialResults.stats;
 
@@ -378,23 +380,113 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
     $('#qFeatureStats').html(stats.qFeatureCount + ' features were derived in ' +
                              stats.qFeatureDerivationMilliseconds + ' ms');
 
-    const csSizes = stats.consensusSetSizes;
-    let csText;
-    if (csSizes.length === 1) {
-        if (this.matchCount === 0) {
-            csText = 'NO matches were '
-        } else {
-            csText = '1 consensus set with ' + this.matchCount + ' matches was';
+    const getDeltaHtml = function(value) {
+        let html = value.toFixed(1);
+        if (value > 8) {
+            html = '<span style="color:red;">' + html + '</span>';
         }
-    } else {
-        csText = csSizes.length + ' consensus sets with [' + csSizes.toString() + '] matches were';
+        return html;
+    };
+
+    const getStandardDeviationHtml = function(xOrY,
+                                              aggregateStandardDeviationValue,
+                                              standardDeviationValues) {
+        let html = '<br/>Delta ' + xOrY + ' Standard Deviation:';
+        if (Array.isArray(standardDeviationValues)) {
+            if (standardDeviationValues.length > 1) {
+                if (typeof aggregateStandardDeviationValue !== 'undefined') {
+                    html += ' aggregate ' + getDeltaHtml(aggregateStandardDeviationValue) + ',';
+                }
+                html += ' sets [ ' + getDeltaHtml(standardDeviationValues[0]);
+                for (let i = 1; i < standardDeviationValues.length; i++) {
+                    html = html + ', ' + getDeltaHtml(standardDeviationValues[i]);
+                }
+                html += ' ]';
+            } else if (typeof aggregateStandardDeviationValue !== 'undefined') {
+                html += ' ' + getDeltaHtml(aggregateStandardDeviationValue);
+            } else {
+                html += ' n/a';
+            }
+        }
+        return html;
+    };
+
+    const getMatchStatsHtml = function (matchStats) {
+        const csSizes = matchStats.consensusSetSizes;
+        let csText;
+        if (csSizes.length === 1) {
+            if (csSizes[0] === 0) {
+                csText = 'NO matches were '
+            } else {
+                csText = '1 consensus set with ' + csSizes[0] + ' matches was';
+            }
+        } else {
+            csText = csSizes.length + ' consensus sets with [' + csSizes.toString() + '] matches were';
+        }
+
+        return csText + " derived in " + matchStats.matchDerivationMilliseconds + " ms<br/>" +
+               getStandardDeviationHtml('X',
+                                        matchStats.aggregateDeltaXStandardDeviation,
+                                        matchStats.consensusSetDeltaXStandardDeviations) +
+               getStandardDeviationHtml('Y',
+                                        matchStats.aggregateDeltaYStandardDeviation,
+                                        matchStats.consensusSetDeltaYStandardDeviations);
+    };
+
+    $('#matchStats').html(getMatchStatsHtml(stats));
+
+    let gdTotalMs = 0;
+
+    if (typeof data.parameters.geometricDescriptorAndMatchFilterParameters !== 'undefined') {
+
+        const gdam = data.parameters.geometricDescriptorAndMatchFilterParameters;
+        const gdParams = gdam.geometricDescriptorParameters;
+
+        $('#gdTrialRenderScale').html(gdam.renderScale);
+        $('#gdTrialRenderWithFilter').html(gdam.renderWithFilter.toString());
+        if (typeof gdam.renderFilterListName === "undefined") {
+            $('#gdTrialRenderFilterListNameLabel').hide();
+        } else {
+            $('#gdTrialRenderFilterListName').html(gdam.renderFilterListName);
+        }
+
+        $('#gdTrialSimilarOrientation').html(gdParams.similarOrientation.toString());
+        $('#gdTrialNumberOfNeighbors').html(gdParams.numberOfNeighbors);
+        $('#gdTrialRedundancy').html(gdParams.redundancy);
+        $('#gdTrialSignificance').html(gdParams.significance);
+
+        $('#gdTrialSigma').html(gdParams.sigma);
+        $('#gdTrialThreshold').html(gdParams.threshold);
+        $('#gdTrialLocalization').html(gdParams.localization);
+        $('#gdTrialLookForMinima').html(gdParams.lookForMinima.toString());
+        $('#gdTrialLookForMaxima').html(gdParams.lookForMaxima.toString());
+
+        $('#gdTrialFullScaleBlockRadius').html(gdParams.fullScaleBlockRadius);
+        $('#gdTrialFullScaleNonMaxSuppressionRadius').html(gdParams.fullScaleNonMaxSuppressionRadius);
+        $('#gdTrialStoredMatchWeight').html(gdParams.gdStoredMatchWeight);
+
+        setMatchData(gdam.matchDerivationParameters, 'gdTrial');
+
+        const gdStats = data.gdStats;
+        $('#pPeakStats').html(gdStats.pPeakCount + ' peaks were derived in ' +
+                              gdStats.pPeakDerivationMilliseconds + ' ms');
+        $('#qPeakStats').html(gdStats.qPeakCount + ' peaks were derived in ' +
+                              gdStats.qPeakDerivationMilliseconds + ' ms');
+
+        $('#gdMatchStats').html(getMatchStatsHtml(gdStats));
+
+        $('#gdDiv').show();
+
+        gdTotalMs = (gdStats.pPeakDerivationMilliseconds +
+                     gdStats.qPeakDerivationMilliseconds +
+                     gdStats.matchDerivationMilliseconds)
+
     }
 
-    const totalSeconds = (stats.pFeatureDerivationMilliseconds +
-                          stats.qFeatureDerivationMilliseconds +
-                          stats.matchDerivationMilliseconds) / 1000;
+    const totalMs = stats.pFeatureDerivationMilliseconds + stats.qFeatureDerivationMilliseconds +
+                    stats.matchDerivationMilliseconds + gdTotalMs;
 
-    $('#trialElapsedMessage').html(', took ' + totalSeconds + ' seconds to process');
+    $('#trialElapsedMessage').html(', took ' + this.util.numberWithCommas(totalMs) + ' ms to process');
 
     // hack to populate aggregate std dev for older match trials that have only one consensus set ...
     if ((typeof stats.aggregateDeltaXStandardDeviation === 'undefined') &&
@@ -405,48 +497,14 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
         stats.aggregateDeltaYStandardDeviation = stats.consensusSetDeltaYStandardDeviations[0];
     }
 
-    const html = csText + " derived in " + stats.matchDerivationMilliseconds + " ms" +
-                 this.getStandardDeviationHtml('X',
-                                               stats.aggregateDeltaXStandardDeviation,
-                                               stats.consensusSetDeltaXStandardDeviations) +
-                 this.getStandardDeviationHtml('Y',
-                                               stats.aggregateDeltaYStandardDeviation,
-                                               stats.consensusSetDeltaYStandardDeviations);
-
-    $('#matchStats').html(html);
+    const consensusSetMatches = this.trialResults.matches;
+    this.matchCount = 0;
+    for (let consensusSetIndex = 0; consensusSetIndex < consensusSetMatches.length; consensusSetIndex++) {
+        const matches = consensusSetMatches[consensusSetIndex];
+        this.matchCount += matches.w.length;
+    }
 
     this.drawAllMatches();
-};
-
-JaneliaMatchTrial.prototype.getStandardDeviationHtml = function(xOrY,
-                                                                aggregateStandardDeviationValue,
-                                                                standardDeviationValues) {
-    let html = '<br/>Delta ' + xOrY + ' Standard Deviation:';
-    if (Array.isArray(standardDeviationValues)) {
-        if (standardDeviationValues.length > 1) {
-            if (typeof aggregateStandardDeviationValue !== 'undefined') {
-                html += ' aggregate ' + this.getDeltaHtml(aggregateStandardDeviationValue) + ',';
-            }
-            html += ' sets [ ' + this.getDeltaHtml(standardDeviationValues[0]);
-            for (let i = 1; i < standardDeviationValues.length; i++) {
-                html = html + ', ' + this.getDeltaHtml(standardDeviationValues[i]);
-            }
-            html += ' ]';
-        } else if (typeof aggregateStandardDeviationValue !== 'undefined') {
-            html += ' ' + this.getDeltaHtml(aggregateStandardDeviationValue);
-        } else {
-            html += ' n/a';
-        }
-    }
-    return html;
-};
-
-JaneliaMatchTrial.prototype.getDeltaHtml = function(value) {
-    let html = value.toFixed(1);
-    if (value > 8) {
-        html = '<span style="color:red;">' + html + '</span>';
-    }
-    return html;
 };
 
 JaneliaMatchTrial.prototype.drawAllMatches = function() {

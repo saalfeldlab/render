@@ -94,7 +94,7 @@ public class GeometricDescriptorParameters
             description = "...",
             arity = 1
     )
-    public Boolean similarOrientation;
+    public boolean similarOrientation = true;
 
     @Parameter(
             names = "--gdFullScaleBlockRadius",
@@ -133,9 +133,6 @@ public class GeometricDescriptorParameters
         }
         if (localization == null) {
             localization = LocalizationFitType.THREE_D_QUADRATIC;
-        }
-        if (similarOrientation == null) {
-            similarOrientation = true;
         }
 
     }
