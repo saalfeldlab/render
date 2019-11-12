@@ -16,9 +16,9 @@ public class GeometricDescriptorParameters
 
     public enum LocalizationFitType {
 
-        NONE(1),
-        THREE_D_QUADRATIC(2),
-        GAUSSIAN_MASK_LOCALIZATION(3);
+        NONE(0),
+        THREE_D_QUADRATIC(1);
+        // GAUSSIAN_MASK_LOCALIZATION(2);  // not currently supported
 
         private final int code;
 

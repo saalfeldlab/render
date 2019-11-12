@@ -22,7 +22,7 @@
     <repositories>
         <!-- NB: for project parent -->
         <repository>
-            <id>imagej.public</id>
+            <id>scijava.public</id>
             <url>https://maven.scijava.org/content/groups/public</url>
         </repository>
     </repositories>
@@ -39,7 +39,7 @@
             <dependency>
                 <groupId>net.imglib2</groupId>
                 <artifactId>imglib2</artifactId>
-                <version>5.3.0</version>
+                <version>5.6.3</version>
             </dependency>
 
             <dependency>

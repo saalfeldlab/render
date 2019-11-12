@@ -64,7 +64,7 @@ public class MatchTrialTest {
         gdParameters.significance = 2.0;
         gdParameters.sigma = 2.04;
         gdParameters.threshold = 0.008;
-        gdParameters.localization = GeometricDescriptorParameters.LocalizationFitType.NONE;
+        gdParameters.localization = GeometricDescriptorParameters.LocalizationFitType.THREE_D_QUADRATIC;
         gdParameters.lookForMinima = true;
         gdParameters.lookForMaxima = false;
         gdParameters.fullScaleBlockRadius = 300.0;
