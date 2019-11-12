@@ -58,6 +58,18 @@
                 newTrialButtonSelector.hide();
                 $('#headerDiv').hide();
 
+                const gdFormSelector = $('#gdFormDiv');
+                gdFormSelector.hide();
+
+                const includeGeometricSelector = $('#includeGeometric');
+                includeGeometricSelector.on('click', function() {
+                    if (includeGeometricSelector.is(':checked')) {
+                        gdFormSelector.show();
+                    } else {
+                        gdFormSelector.hide();
+                    }
+                });
+
                 const pRenderParametersUrl = queryParameters.get('pRenderParametersUrl');
                 if (typeof pRenderParametersUrl !== 'undefined') {
                     $('#pRenderParametersUrl').val(pRenderParametersUrl);
@@ -70,7 +82,7 @@
 
             } else {
                 $('#formDiv').hide();
-                $('#gdDiv').hide();
+                $('#gdHeaderDiv').hide();
                 const trialSuffix = matchTrialId.substring(matchTrialId.length - 7);
                 $(document).attr('title', 'Match Trial ' + trialSuffix);
                 const trialDataUrl = matchTrial.matchTrialUrl + '/' + matchTrialId;
@@ -109,10 +121,8 @@
 <span id="trialRunning" class="trialSpinner"></span>
 
 <div id="formDiv" class="header_div">
+    <hr/>
     <table class="data_table">
-        <tr>
-            <td colspan="2"><hr/></td>
-        </tr>
         <tr>
             <td>SIFT Feature Parameters:</td>
             <td>
@@ -192,13 +202,118 @@
             <td><label for="qRenderParametersUrl">qRenderParametersUrl:</label></td>
             <td><textarea id="qRenderParametersUrl" rows="5" cols="120" required></textarea></td>
         </tr>
+    </table>
+
+    <hr/>
+
+    <table class="data_table">
         <tr>
-            <td colspan="2"><hr/></td>
+            <td><label>Geometric Descriptor Match: <input id="includeGeometric" type="checkbox"></label></td>
         </tr>
+    </table>
+
+    <div id="gdFormDiv">
+
+        <table class="data_table">
+            <tr>
+                <td>Geometric Descriptor Parameters:</td>
+                <td>
+                    <label>renderScale: <input id="gdRenderScale" type="number" step="0.01" min="0.0" max="1.0" value="0.5"></label>
+                    <label>renderWithFilter: <input id="gdRenderWithFilter" type="checkbox"></label>
+                    <label>renderFilterListName: <input id="gdRenderFilterListName" type="text"></label>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <label>similarOrientation: <input id="gdSimilarOrientation" type="checkbox"></label>
+                    <label>numberOfNeighbors: <input id="gdNumberOfNeighbors" type="number" min="0" max="100" value="3"></label>
+                    <label>redundancy: <input id="gdRedundancy" type="number" min="0" max="100" value="3"></label>
+                    <label>significance: <input id="gdSignificance" step="0.01" min="0.0" max="1.0" value="0.5"></label>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <label>sigma: <input id="gdSigma" step="0.01" min="0.0" max="1.0" value="0.5"></label>
+                    <label>threshold: <input id="gdThreshold" step="0.01" min="0.0" max="1.0" value="0.5"></label>
+                    <label>localization:
+                        <select id="gdLocalization">
+                            <option>NONE</option>
+                            <option selected>THREE_D_QUADRATIC</option>
+                            <option>GAUSSIAN_MASK_LOCALIZATION</option>
+                        </select>
+                    </label>
+                    <label>lookForMinima: <input id="gdLookForMinima" type="checkbox"></label>
+                    <label>lookForMaxima: <input id="gdLookForMaxima" type="checkbox"></label>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <label>fullScaleBlockRadius: <input id="gdFullScaleBlockRadius" type="number" min="0" max="500" value="300"></label>
+                    <label>fullScaleNonMaxSuppressionRadius: <input id="gdFullScaleNonMaxSuppressionRadius" min="0" max="500" value="60"></label>
+                    <label>storedMatchWeight: <input id="gdStoredMatchWeight" step="0.01" min="0.0" max="1.0" value="0.4"></label>
+                </td>
+            </tr>
+            <tr>
+                <td>Match Parameters:</td>
+                <td>
+                    <label>modelType:
+                        <select id="gdMatchModelType" required>
+                            <option>AFFINE</option>
+                            <option>RIGID</option>
+                            <option>SIMILARITY</option>
+                            <option>TRANSLATION</option>
+                        </select>
+                    </label>
+                    <label>regularizerModelType:
+                        <select id="gdMatchRegularizerModelType" required>
+                            <option>NOT INTERPOLATED</option>
+                            <option>AFFINE</option>
+                            <option>RIGID</option>
+                            <option>SIMILARITY</option>
+                            <option>TRANSLATION</option>
+                        </select>
+                    </label>
+                    <label>interpolatedModelLambda: <input id="gdMatchInterpolatedModelLambda" type="number" step="0.01" min="0.0" max="1.0"></label>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <label>iterations: <input id="gdMatchIterations" type="number" min="1" max="10000" value="1000" required></label>
+                    <label>maxEpsilon: <input id="gdMatchMaxEpsilon" type="number" step="0.1" min="0.0" max="100.0" value="5.0" required></label>
+                    <label>minInlierRatio: <input id="gdMatchMinInlierRatio" type="number" step="0.01" min="0.0" max="1.0" value="0.0" required></label>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <label>minNumInliers: <input id="gdMatchMinNumInliers" type="number" min="0" max="1000" value="8" required></label>
+                    <label>maxTrust: <input id="gdMatchMaxTrust" type="number" step="0.1" min="0.0" max="100.0" value="30.0" required></label>
+                    <label>filter:
+                        <select id="gdMatchFilter" required>
+                            <option>AGGREGATED_CONSENSUS_SETS</option>
+                            <option>CONSENSUS_SETS</option>
+                            <option>NONE</option>
+                            <option>SINGLE_SET</option>
+                        </select>
+                    </label>
+                </td>
+            </tr>
+        </table>
+
+    </div>
+
+    <hr/>
+
+    <table class="data_table">
         <tr>
             <td><input id="runTrial" type="button" value="Run Trial"></td>
         </tr>
     </table>
+
 </div>
 
 <div id="headerDiv" class="header_div">
@@ -270,7 +385,7 @@
         </tr>
     </table>
 
-    <div id="gdDiv">
+    <div id="gdHeaderDiv">
         <table class="data_table">
             <tr>
                 <td colspan="4"><hr/></td>
@@ -320,7 +435,6 @@
             <tr>
                 <td></td>
                 <td colspan="4">
-                    ROD: <span id="gdTrialMatchRod" class="parameterValue"></span>
                     iterations: <span id="gdTrialMatchIterations" class="parameterValue"></span>
                     maxEpsilon: <span id="gdTrialMatchMaxEpsilon" class="parameterValue"></span>
                     minInlierRatio: <span id="gdTrialMatchMinInlierRatio" class="parameterValue"></span>

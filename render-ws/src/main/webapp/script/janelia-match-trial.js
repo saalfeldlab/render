@@ -162,26 +162,32 @@ JaneliaMatchTrial.prototype.initNewTrialForm = function(parameters) {
     $('#maxScale').val(fmParams.siftFeatureParameters.maxScale);
     $('#steps').val(fmParams.siftFeatureParameters.steps);
 
-    const mParams = fmParams.matchDerivationParameters;
-    $('#matchModelType').val(mParams.matchModelType);
+    const initMatchDerivationParameters = function(mParams, selectorPrefix) {
+        $('#' + selectorPrefix + 'ModelType').val(mParams.matchModelType);
 
-    const matchRegularizerModelType = mParams.matchRegularizerModelType;
-    const matchInterpolatedModelLambda = mParams.matchInterpolatedModelLambda;
+        const matchRegularizerModelType = mParams.matchRegularizerModelType;
+        const matchInterpolatedModelLambda = mParams.matchInterpolatedModelLambda;
 
-    if ((typeof matchRegularizerModelType !== "undefined") &&
-        (matchRegularizerModelType !== "NOT INTERPOLATED") &&
-        (typeof matchInterpolatedModelLambda !== "undefined")) {
-        $("#matchRegularizerModelType").val(matchRegularizerModelType);
-        $("#matchInterpolatedModelLambda").val(matchInterpolatedModelLambda);
-    }
+        if ((typeof matchRegularizerModelType !== "undefined") &&
+            (matchRegularizerModelType !== "NOT INTERPOLATED") &&
+            (typeof matchInterpolatedModelLambda !== "undefined")) {
+            $('#' + selectorPrefix + 'RegularizerModelType').val(matchRegularizerModelType);
+            $('#' + selectorPrefix + 'InterpolatedModelLambda').val(matchInterpolatedModelLambda);
+        }
 
-    $('#matchRod').val(mParams.matchRod);
-    $('#matchIterations').val(mParams.matchIterations);
-    $('#matchMaxEpsilon').val(mParams.matchMaxEpsilon);
-    $('#matchMinInlierRatio').val(mParams.matchMinInlierRatio);
-    $('#matchMinNumInliers').val(mParams.matchMinNumInliers);
-    $('#matchMaxTrust').val(mParams.matchMaxTrust);
-    $('#matchFilter').val(mParams.matchFilter);
+        if (selectorPrefix === 'match') {
+            $('#' + selectorPrefix + 'Rod').val(mParams.matchRod);
+        }
+
+        $('#' + selectorPrefix + 'Iterations').val(mParams.matchIterations);
+        $('#' + selectorPrefix + 'MaxEpsilon').val(mParams.matchMaxEpsilon);
+        $('#' + selectorPrefix + 'MinInlierRatio').val(mParams.matchMinInlierRatio);
+        $('#' + selectorPrefix + 'MinNumInliers').val(mParams.matchMinNumInliers);
+        $('#' + selectorPrefix + 'MaxTrust').val(mParams.matchMaxTrust);
+        $('#' + selectorPrefix + 'Filter').val(mParams.matchFilter);
+    };
+
+    initMatchDerivationParameters(fmParams.matchDerivationParameters, 'match');
 
     $('#fillWithNoise').val(parameters.fillWithNoise);
 
@@ -193,9 +199,68 @@ JaneliaMatchTrial.prototype.initNewTrialForm = function(parameters) {
 
     $('#pRenderParametersUrl').val(parameters.pRenderParametersUrl);
     $('#qRenderParametersUrl').val(parameters.qRenderParametersUrl);
+
+    const gdamp = parameters.geometricDescriptorAndMatchFilterParameters;
+    if (typeof gdamp !== 'undefined') {
+
+        $('#gdRenderScale').val(gdamp.renderScale);
+        $('#gdRenderWithFilter').prop('checked', gdamp.renderWithFilter);
+        if (typeof gdamp.filterListName !== 'undefined') {
+            $('#gdFilterListName').val(gdamp.filterListName);
+        }
+
+        const gdParams = gdamp.geometricDescriptorParameters;
+        $('#gdNumberOfNeighbors').val(gdParams.numberOfNeighbors);
+        $('#gdRedundancy').val(gdParams.redundancy);
+        $('#gdSignificance').val(gdParams.significance);
+        $('#gdSigma').val(gdParams.sigma);
+        $('#gdThreshold').val(gdParams.threshold);
+        $('#gdLocalization').val(gdParams.localization);
+        $('#gdLookForMinima').prop('checked', gdParams.lookForMinima);
+        $('#gdLookForMaxima').prop('checked', gdParams.lookForMaxima);
+        $('#gdSimilarOrientation').prop('checked', gdParams.similarOrientation);
+        $('#gdFullScaleBlockRadius').val(gdParams.fullScaleBlockRadius);
+        $('#gdFullScaleNonMaxSuppressionRadius').val(gdParams.fullScaleNonMaxSuppressionRadius);
+        $('#gdStoredMatchWeight').val(gdParams.gdStoredMatchWeight);
+
+        initMatchDerivationParameters(gdamp.matchDerivationParameters, 'gdMatch');
+
+        $('#includeGeometric').prop('checked', true);
+        $('#gdFormDiv').show();
+    }
+
 };
 
 JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRunningSelector, errorMessageSelector) {
+
+    const self = this;
+
+    const getMatchDerivationParameters = function(selectorPrefix) {
+        const p = {
+            "matchModelType": self.util.getSelectedValue(selectorPrefix + 'ModelType'),
+            "matchIterations": parseInt($('#' + selectorPrefix + 'Iterations').val()),
+            "matchMaxEpsilon": parseFloat($('#' + selectorPrefix + 'MaxEpsilon').val()),
+            "matchMinInlierRatio": parseFloat($('#' + selectorPrefix + 'MinInlierRatio').val()),
+            "matchMinNumInliers": parseInt($('#' + selectorPrefix + 'MinNumInliers').val()),
+            "matchMaxTrust": parseFloat($('#' + selectorPrefix + 'MaxTrust').val()),
+            "matchFilter": self.util.getSelectedValue(selectorPrefix + 'Filter')
+        };
+        if (selectorPrefix === 'match') {
+            p["matchRod"] = parseFloat($('#' + selectorPrefix + 'Rod').val());
+        }
+        const matchRegularizerModelType = $('#' + selectorPrefix + 'RegularizerModelType').val();
+        const matchInterpolatedModelLambda = $('#' + selectorPrefix + 'InterpolatedModelLambda').val();
+
+        if ((typeof matchRegularizerModelType !== "undefined") &&
+            (matchRegularizerModelType !== "NOT INTERPOLATED") &&
+            (typeof matchInterpolatedModelLambda !== "undefined")) {
+
+            p["matchRegularizerModelType"] = matchRegularizerModelType;
+            p["matchInterpolatedModelLambda"] = parseFloat(matchInterpolatedModelLambda);
+        }
+
+        return p;
+    };
 
     const featureAndMatchParameters = {
         "siftFeatureParameters": {
@@ -204,29 +269,8 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
             "maxScale": parseFloat($('#maxScale').val()),
             "steps": parseInt($('#steps').val())
         },
-        "matchDerivationParameters": {
-            "matchRod": parseFloat($('#matchRod').val()),
-            "matchModelType": this.util.getSelectedValue('matchModelType'),
-            "matchIterations": parseInt($('#matchIterations').val()),
-            "matchMaxEpsilon": parseFloat($('#matchMaxEpsilon').val()),
-            "matchMinInlierRatio": parseFloat($('#matchMinInlierRatio').val()),
-            "matchMinNumInliers": parseInt($('#matchMinNumInliers').val()),
-            "matchMaxTrust": parseFloat($('#matchMaxTrust').val()),
-            "matchFilter": this.util.getSelectedValue('matchFilter')
-        }
+        "matchDerivationParameters": getMatchDerivationParameters('match')
     };
-
-    const matchRegularizerModelType = $("#matchRegularizerModelType").val();
-    const matchInterpolatedModelLambda = $("#matchInterpolatedModelLambda").val();
-
-    if ((typeof matchRegularizerModelType !== "undefined") &&
-        (matchRegularizerModelType !== "NOT INTERPOLATED") &&
-        (typeof matchInterpolatedModelLambda !== "undefined")) {
-
-        const mParams = featureAndMatchParameters["matchDerivationParameters"];
-        mParams["matchRegularizerModelType"] = matchRegularizerModelType;
-        mParams["matchInterpolatedModelLambda"] = parseFloat(matchInterpolatedModelLambda);
-    }
 
     const pClipPosition = $('#pClipPosition').val();
     if ((typeof pClipPosition !== "undefined") && (pClipPosition !== "NO CLIP")) {
@@ -239,6 +283,33 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
         pRenderParametersUrl: $('#pRenderParametersUrl').val(),
         qRenderParametersUrl: $('#qRenderParametersUrl').val()
     };
+
+    if ($('#includeGeometric').is(':checked')) {
+        const p = {
+            "geometricDescriptorParameters": {
+                "numberOfNeighbors": parseInt($('#gdNumberOfNeighbors').val()),
+                "redundancy": parseInt($('#gdRedundancy').val()),
+                "significance": parseFloat($('#gdSignificance').val()),
+                "sigma": parseFloat($('#gdSigma').val()),
+                "threshold": parseFloat($('#gdThreshold').val()),
+                "localization": $('#gdLocalization').val(),
+                "lookForMinima": $('#gdLookForMinima').is(':checked'),
+                "lookForMaxima": $('#gdLookForMaxima').is(':checked'),
+                "similarOrientation": $('#gdSimilarOrientation').is(':checked'),
+                "fullScaleBlockRadius": parseFloat($('#gdFullScaleBlockRadius').val()),
+                "fullScaleNonMaxSuppressionRadius": parseFloat($('#gdFullScaleNonMaxSuppressionRadius').val()),
+                "gdStoredMatchWeight": parseFloat($('#gdStoredMatchWeight').val())
+            },
+            "matchDerivationParameters": getMatchDerivationParameters('gdMatch'),
+            "renderScale": parseFloat($('#gdRenderScale').val()),
+            "renderWithFilter": $('#gdRenderWithFilter').is(':checked')
+        };
+        const filterListName = $('#gdRenderFilterListName').val().trim();
+        if (filterListName.length > 0) {
+            p["renderFilterListName"] = filterListName;
+        }
+        requestData["geometricDescriptorAndMatchFilterParameters"] = p;
+    }
 
     const parametersUrlRegex = /.*render-parameters.*/;
     if (requestData.pRenderParametersUrl.match(parametersUrlRegex) &&
@@ -342,7 +413,9 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
     const setMatchData = function (mParams,
                                    selectPrefix) {
         $('#' + selectPrefix + 'MatchModelType').html(mParams.matchModelType);
-        $('#' + selectPrefix + 'MatchRod').html(mParams.matchRod);
+        if (selectPrefix === 'trial') {
+            $('#' + selectPrefix + 'MatchRod').html(mParams.matchRod);
+        }
         $('#' + selectPrefix + 'MatchIterations').html(mParams.matchIterations);
         $('#' + selectPrefix + 'MatchMaxEpsilon').html(mParams.matchMaxEpsilon);
         $('#' + selectPrefix + 'MatchMinInlierRatio').html(mParams.matchMinInlierRatio);
@@ -439,15 +512,15 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 
     if (typeof data.parameters.geometricDescriptorAndMatchFilterParameters !== 'undefined') {
 
-        const gdam = data.parameters.geometricDescriptorAndMatchFilterParameters;
-        const gdParams = gdam.geometricDescriptorParameters;
+        const gdamp = data.parameters.geometricDescriptorAndMatchFilterParameters;
+        const gdParams = gdamp.geometricDescriptorParameters;
 
-        $('#gdTrialRenderScale').html(gdam.renderScale);
-        $('#gdTrialRenderWithFilter').html(gdam.renderWithFilter.toString());
-        if (typeof gdam.renderFilterListName === "undefined") {
+        $('#gdTrialRenderScale').html(gdamp.renderScale);
+        $('#gdTrialRenderWithFilter').html(gdamp.renderWithFilter.toString());
+        if (typeof gdamp.renderFilterListName === "undefined") {
             $('#gdTrialRenderFilterListNameLabel').hide();
         } else {
-            $('#gdTrialRenderFilterListName').html(gdam.renderFilterListName);
+            $('#gdTrialRenderFilterListName').html(gdamp.renderFilterListName);
         }
 
         $('#gdTrialSimilarOrientation').html(gdParams.similarOrientation.toString());
@@ -465,7 +538,7 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
         $('#gdTrialFullScaleNonMaxSuppressionRadius').html(gdParams.fullScaleNonMaxSuppressionRadius);
         $('#gdTrialStoredMatchWeight').html(gdParams.gdStoredMatchWeight);
 
-        setMatchData(gdam.matchDerivationParameters, 'gdTrial');
+        setMatchData(gdamp.matchDerivationParameters, 'gdTrial');
 
         const gdStats = data.gdStats;
         $('#pPeakStats').html(gdStats.pPeakCount + ' peaks were derived in ' +
@@ -475,7 +548,7 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 
         $('#gdMatchStats').html(getMatchStatsHtml(gdStats));
 
-        $('#gdDiv').show();
+        $('#gdHeaderDiv').show();
 
         gdTotalMs = (gdStats.pPeakDerivationMilliseconds +
                      gdStats.qPeakDerivationMilliseconds +
@@ -658,7 +731,7 @@ JaneliaMatchTrial.prototype.saveTrialResultsToCollection = function(saveToOwner,
 
         errorMessageSelector.text("alpha version of save feature requires saveToCollection query parameter to be defined");
 
-    } else if (this.trialResults.matches.length !== 1) {
+    } else if (this.trialResults.matches.length !== 1) {  // TODO: handle multiple match sets ...
 
         errorMessageSelector.text("trial must have one and only one set of matches to save");
 
