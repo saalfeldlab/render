@@ -1,10 +1,13 @@
 package org.janelia.alignment.match;
 
 import ij.ImagePlus;
+import ij.gui.OvalRoi;
 import ij.gui.Overlay;
 import ij.gui.PolygonRoi;
 import ij.gui.Roi;
+import ij.process.ImageProcessor;
 
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +18,7 @@ import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import net.imglib2.util.Util;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
@@ -123,18 +127,35 @@ public class GeometricDescriptorMatcherTest {
         }
         else
         {
-        	LOG.debug( "Convex hull 1: " + convexHull1.size() );
-        	LOG.debug( "Convex hull 2: " + convexHull2.size() );
-
         	PolygonRoi r1 = createPolygon( convexHull1 );
         	PolygonRoi r2 = createPolygon( convexHull2 );
 
+        	final long sqArea1 = sqArea( ipnew1.getProcessor() );
+        	final long sqArea2 = sqArea( ipnew2.getProcessor() );
+
+        	final double area1 = polygonArea( convexHull1 ); //areaBruteForce( ipnew1.getProcessor(), r1 );
+        	final double area2 = polygonArea( convexHull2 ); //areaBruteForce( ipnew2.getProcessor(), r2 );
+
+        	final double relArea1 = area1/sqArea1;
+        	final double relArea2 = area2/sqArea2;
+
+        	final double[] c1 = centerofmassBruteForce( ipnew1.getProcessor(), r1 );
+        	final double[] c2 = centerofmassBruteForce( ipnew2.getProcessor(), r2 );
+
+        	LOG.debug( "Convex hull 1: " + convexHull1.size() + ", area=" + area1 + "/" + sqArea1 + " (" + Math.round( 100.0*relArea1 ) + "%)" );
+        	LOG.debug( "center of mass 1: " + Util.printCoordinates( c1 ) );
+        	LOG.debug( "" );
+        	LOG.debug( "Convex hull 2: " + convexHull2.size() + ", area=" + area2 + "/" + sqArea2 + " (" + Math.round( 100.0*relArea2 ) + "%)" );
+        	LOG.debug( "center of mass 2: " + Util.printCoordinates( c2 ) );
+
         	Overlay o1 = new Overlay();
         	o1.add( r1 );
+        	o1.add( new OvalRoi( c1[ 0 ] - 15, c1[ 1 ] - 15, 30, 30 ) );
         	ipnew1.setOverlay( o1 );
 
         	Overlay o2 = new Overlay();
         	o2.add( r2 );
+        	o2.add( new OvalRoi( c2[ 0 ] - 15, c2[ 1 ] - 15, 30, 30 ) );
         	ipnew2.setOverlay( o2 );
         }
 
@@ -145,6 +166,23 @@ public class GeometricDescriptorMatcherTest {
 
         // -------------------------------------------------------------------
         // display results ...
+    }
+
+
+    // from: https://www.mathopenref.com/coordpolygonarea2.html
+    static double polygonArea( final List< Point > convexHull ) 
+    {
+		final int numPoints = convexHull.size();
+		double area = 0;         // Accumulates area in the loop
+		int j = numPoints-1;  // The last vertex is the 'previous' one to the first
+		
+		for ( int i=0; i<numPoints; i++)
+		{
+			area += ( convexHull.get( j ).getL()[ 0 ] + convexHull.get( i ).getL()[ 0 ] ) * (convexHull.get( j ).getL()[ 1 ] - convexHull.get( i ).getL()[ 1 ] );
+			j = i;  //j is previous vertex to i
+		}
+
+		return Math.abs( area/2 );
     }
 
     static PolygonRoi createPolygon( final List< Point > points )
@@ -160,6 +198,8 @@ public class GeometricDescriptorMatcherTest {
 
     	return new PolygonRoi( xPoints, yPoints, Roi.POLYGON );
     }
+
+    // from: https://www.geeksforgeeks.org/convex-hull-set-1-jarviss-algorithm-or-wrapping/
 
     // To find orientation of ordered triplet (p, q, r). 
     // The function returns following values 
@@ -228,7 +268,52 @@ public class GeometricDescriptorMatcherTest {
 
         return hull;
     }
- 
+
+    static long sqArea( final ImageProcessor r )
+    {
+    	return ( r.getWidth() ) * ( r.getHeight() );
+    }
+
+    static long areaBruteForce( final ImageProcessor r, final PolygonRoi roi )
+    {
+    	return areaBruteForce( new Rectangle( 0, 0, r.getWidth(), r.getHeight() ), roi );
+    }
+
+    static long areaBruteForce( final Rectangle r, final PolygonRoi roi )
+    {
+    	long area = 0;
+
+    	for ( int y = r.y; y < r.height + r.y; ++y )
+    		for ( int x = r.x; x < r.width + r.x; ++x )
+    			if ( roi.contains( x, y ) )
+    				++area;
+
+    	return area;
+    }
+
+    static double[] centerofmassBruteForce( final ImageProcessor r, final PolygonRoi roi )
+    {
+    	return centerofmassBruteForce( new Rectangle( 0, 0, r.getWidth(), r.getHeight() ), roi );
+    }
+
+    //TODO: proper center of mass computation
+    static double[] centerofmassBruteForce( final Rectangle r, final PolygonRoi roi )
+    {
+    	long cx = 0, cy = 0;
+    	long count = 0;
+
+    	for ( int y = r.y; y < r.height + r.y; ++y )
+    		for ( int x = r.x; x < r.width + r.x; ++x )
+    			if ( roi.contains( x, y ) )
+    			{
+    				cx += x;
+    				cy += y;
+    				++count;
+    			}
+
+    	return new double[] { (double)cx / (double)count, (double)cy /(double)count };
+    }
+
     static GeometricDescriptorParameters getInitialDescriptorParameters() {
 
         final GeometricDescriptorParameters parameters = new GeometricDescriptorParameters();
