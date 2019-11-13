@@ -36,36 +36,31 @@ public class GeometricDescriptorParameters
 
     @Parameter(
             names = "--gdNumberOfNeighbors",
-            description = "...",
-            required = true
+            description = "Number of neighbors to include when looking for peak"
     )
     public Integer numberOfNeighbors;
 
     @Parameter(
             names = "--gdRedundancy",
-            description = "...",
-            required = true
+            description = "Redundancy for peak evaluation"
     )
     public Integer redundancy;
 
     @Parameter(
             names = "--gdSignificance",
-            description = "...",
-            required = true
+            description = "Factor for identifying corresponding descriptors"
     )
     public Double significance;
 
     @Parameter(
             names = "--gdSigma",
-            description = "...",
-            required = true
+            description = "Factor for Gaussian folding"
     )
     public Double sigma;
 
     @Parameter(
             names = "--gdThreshold",
-            description = "...",
-            required = true
+            description = "Minimum peak value threshold"
     )
     public Double threshold;
 
