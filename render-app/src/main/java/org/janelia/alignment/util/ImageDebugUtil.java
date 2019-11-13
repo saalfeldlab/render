@@ -58,12 +58,10 @@ public class ImageDebugUtil {
     public static void setPointMatchRois(final List<PointMatch> pointMatchList,
                                          final ImagePlus pImagePlus,
                                          final ImagePlus qImagePlus) {
-        final List<Point> pInlierPoints = new ArrayList<>();
-        PointMatch.sourcePoints(pointMatchList, pInlierPoints);
+        final List<Point> pInlierPoints = getSourcePoints( pointMatchList );
         setPointRois(pInlierPoints, pImagePlus);
 
-        final List<Point> qInlierPoints = new ArrayList<>();
-        PointMatch.targetPoints(pointMatchList, qInlierPoints);
+        final List<Point> qInlierPoints = getTargetPoints( pointMatchList );
         setPointRois(qInlierPoints, qImagePlus);
     }
 
@@ -73,12 +71,32 @@ public class ImageDebugUtil {
         imagePlus.setRoi(points);
     }
 
-    public static void setPeakPointRois(final List<DifferenceOfGaussianPeak<FloatType>> peakList,
-                                        final ImagePlus imagePlus) {
+    public static List<Point> getSourcePoints(final List<PointMatch> pointMatchList)
+    {
+    	final List<Point> pInlierPoints = new ArrayList<>();
+        PointMatch.sourcePoints(pointMatchList, pInlierPoints);
+        return pInlierPoints;
+    }
+
+    public static List<Point> getTargetPoints(final List<PointMatch> pointMatchList)
+    {
+    	final List<Point> qInlierPoints = new ArrayList<>();
+        PointMatch.targetPoints(pointMatchList, qInlierPoints);
+        return qInlierPoints;
+    }
+
+    public static List<Point> getPoints( final List<DifferenceOfGaussianPeak<FloatType>> peakList )
+    {
         final List<Point> pointList = new ArrayList<>();
         for (final DifferenceOfGaussianPeak<FloatType> p : peakList) {
             pointList.add(new Point(new double[]{p.getSubPixelPosition(0), p.getSubPixelPosition(1)}));
         }
+        return pointList;
+    }
+
+    public static void setPeakPointRois(final List<DifferenceOfGaussianPeak<FloatType>> peakList,
+                                        final ImagePlus imagePlus) {
+        final List<Point> pointList = getPoints( peakList );
         setPointRois(pointList, imagePlus);
     }
 
