@@ -139,8 +139,8 @@ public class GeometricDescriptorMatcherTest {
         	final double relArea1 = area1/sqArea1;
         	final double relArea2 = area2/sqArea2;
 
-        	final double[] c1 = centerofmassBruteForce( ipnew1.getProcessor(), r1 );
-        	final double[] c2 = centerofmassBruteForce( ipnew2.getProcessor(), r2 );
+        	final double[] c1 = centerofmassBruteForce( r1 );
+        	final double[] c2 = centerofmassBruteForce( r2 );
 
         	LOG.debug( "Convex hull 1: " + convexHull1.size() + ", area=" + area1 + "/" + sqArea1 + " (" + Math.round( 100.0*relArea1 ) + "%)" );
         	LOG.debug( "center of mass 1: " + Util.printCoordinates( c1 ) );
@@ -291,14 +291,11 @@ public class GeometricDescriptorMatcherTest {
     	return area;
     }
 
-    static double[] centerofmassBruteForce( final ImageProcessor r, final PolygonRoi roi )
-    {
-    	return centerofmassBruteForce( new Rectangle( 0, 0, r.getWidth(), r.getHeight() ), roi );
-    }
-
     //TODO: proper center of mass computation
-    static double[] centerofmassBruteForce( final Rectangle r, final PolygonRoi roi )
+    static double[] centerofmassBruteForce( final PolygonRoi roi )
     {
+    	final Rectangle r = roi.getBounds();
+
     	long cx = 0, cy = 0;
     	long count = 0;
 
