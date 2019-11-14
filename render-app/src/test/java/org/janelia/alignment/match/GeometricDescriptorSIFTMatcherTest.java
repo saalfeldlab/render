@@ -55,14 +55,18 @@ public class GeometricDescriptorSIFTMatcherTest {
         //   1. make sure /groups/flyem/data is mounted
         //      -- on Mac, after mount need to ln -s /Volumes/flyemdata /groups/flyem/data
         //
-        //   2. update test parameters
-        //      -- tests assume tiles are in Z1217_19m :: Sec07 :: v1_acquire  stack
+        //   2. update testTilePairIndex (and possibly TEST_TILE_PAIRS)
 
         // -------------------------------------------------------------------
 
         // RUN SIFT HERE
-        final String tileId1 = "19-02-21_105501_0-0-0.26101.0";
-        final String tileId2 = "19-02-21_161150_0-0-0.26102.0";
+        final int testTilePairIndex = 0;
+
+        final String owner = TEST_TILE_PAIRS[testTilePairIndex][0];
+        final String project = TEST_TILE_PAIRS[testTilePairIndex][1];
+        final String stack = TEST_TILE_PAIRS[testTilePairIndex][2];
+        final String tileId1 = TEST_TILE_PAIRS[testTilePairIndex][3];
+        final String tileId2 = TEST_TILE_PAIRS[testTilePairIndex][4];
 
         // -------------------------------------------------------------------
         // run test ...
@@ -82,8 +86,10 @@ public class GeometricDescriptorSIFTMatcherTest {
         siftParam.steps = 3;*/
         final double renderScaleSIFT = 0.15;
 
-        final RenderParameters renderParametersTile1 = getRenderParametersForTile(tileId1, renderScaleSIFT, true);
-        final RenderParameters renderParametersTile2 = getRenderParametersForTile(tileId2, renderScaleSIFT, true);
+        final RenderParameters renderParametersTile1 =
+                getRenderParametersForTile(owner, project, stack, tileId1, renderScaleSIFT, true);
+        final RenderParameters renderParametersTile2 =
+                getRenderParametersForTile(owner, project, stack, tileId2, renderScaleSIFT, true);
 
         final BufferedImage imageSIFT1 = renderImage(renderParametersTile1);
         final BufferedImage imageSIFT2 = renderImage(renderParametersTile2);

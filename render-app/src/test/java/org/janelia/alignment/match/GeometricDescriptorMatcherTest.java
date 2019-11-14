@@ -18,7 +18,6 @@ import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
-import net.imglib2.util.Util;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
@@ -32,12 +31,23 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.esotericsoftware.minlog.Log;
+import net.imglib2.util.Util;
 
 /**
  * Runs peak extraction for two tiles.
   */
 public class GeometricDescriptorMatcherTest {
+
+    static String[][] TEST_TILE_PAIRS = {
+            // owner,          project, stack,        tile1,                           tile2
+            { "Z1217_19m",    "Sec07", "v1_acquire", "19-02-21_105501_0-0-0.26101.0", "19-02-21_161150_0-0-0.26102.0" }, // 0. VNC Sec07, cross, mix of resin and tissue
+            { "Z1217_19m",    "Sec07", "v1_acquire", "19-02-21_105501_0-0-0.26101.0", "19-02-21_105501_0-0-1.26101.0" }, // 1. VNC Sec07, montage, mostly resin overlap
+            { "Z1217_19m",    "Sec07", "v1_acquire", "19-02-18_221123_0-0-1.23001.0", "19-02-18_221123_0-0-2.23001.0" }, // 2. VNC Sec07, montage, mix of resin and tissue overlap
+            { "Z1217_19m",    "Sec07", "v1_acquire", "19-02-11_060620_0-0-0.14002.0", "19-02-11_060620_0-0-1.14002.0" }, // 3. VNC Sec07, montage, mostly tissue overlap
+            { "Z1217_33m_BR", "Sec09", "v1_acquire", "19-08-22_095727_0-0-0.500.0",   "19-08-22_095727_0-0-1.500.0"   }, // 4. BR  Sec09, montage, mostly resin overlap
+            { "Z1217_33m_BR", "Sec09", "v1_acquire", "19-08-26_141500_0-0-0.5500.0",  "19-08-26_141500_0-0-1.5500.0"  }, // 5. BR  Sec09, montage, mix of resin and tissue overlap
+            { "Z1217_33m_BR", "Sec09", "v1_acquire", "19-08-30_172535_0-0-1.10500.0", "19-08-30_172535_0-0-2.10500.0" }  // 6. BR  Sec09, montage, mostly tissue overlap
+    };
 
     @Test
     public void testNothing() {
@@ -46,14 +56,13 @@ public class GeometricDescriptorMatcherTest {
 
     public static void main(final String[] args) {
 
-        // -------------------------------------------------------------------
+       // -------------------------------------------------------------------
         // NOTES:
         //
         //   1. make sure /groups/flyem/data is mounted
         //      -- on Mac, after mount need to ln -s /Volumes/flyemdata /groups/flyem/data
         //
-        //   2. update test parameters
-        //      -- tests assume tiles are in Z1217_19m :: Sec07 :: v1_acquire  stack
+        //   2. update testTilePairIndex (and possibly TEST_TILE_PAIRS)
 
         // -------------------------------------------------------------------
         // setup test parameters ...
@@ -70,14 +79,21 @@ public class GeometricDescriptorMatcherTest {
 
         final double peakRenderScale = 0.25;
 
-        final String tileId1 = "19-02-21_105501_0-0-0.26101.0";
-        final String tileId2 = "19-02-21_161150_0-0-0.26102.0";
+        final int testTilePairIndex = 0;
+
+        final String owner = TEST_TILE_PAIRS[testTilePairIndex][0];
+        final String project = TEST_TILE_PAIRS[testTilePairIndex][1];
+        final String stack = TEST_TILE_PAIRS[testTilePairIndex][2];
+        final String tileId1 = TEST_TILE_PAIRS[testTilePairIndex][3];
+        final String tileId2 = TEST_TILE_PAIRS[testTilePairIndex][4];
 
         // -------------------------------------------------------------------
         // run test ...
 
-        final RenderParameters renderParametersTile1 = getRenderParametersForTile(tileId1, peakRenderScale, false);
-        final RenderParameters renderParametersTile2 = getRenderParametersForTile(tileId2, peakRenderScale, false);
+        final RenderParameters renderParametersTile1 =
+                getRenderParametersForTile(owner, project, stack, tileId1, peakRenderScale, false);
+        final RenderParameters renderParametersTile2 =
+                getRenderParametersForTile(owner, project, stack, tileId2, peakRenderScale, false);
 
         final BufferedImage image1 = renderImage(renderParametersTile1);
         final BufferedImage image2 = renderImage(renderParametersTile2);
@@ -346,10 +362,14 @@ public class GeometricDescriptorMatcherTest {
         return matchFilterParameters;
     }
 
-    static RenderParameters getRenderParametersForTile(final String tileId,
+    static RenderParameters getRenderParametersForTile(final String owner,
+                                                       final String project,
+                                                       final String stack,
+                                                       final String tileId,
                                                        final double renderScale,
                                                        final boolean filter) {
-        final String baseTileUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/";
+        final String baseTileUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/" + owner +
+                                   "/project/" + project + "/stack/" + stack + "/tile/";
         final String urlSuffix = "/render-parameters?scale=" + renderScale;
         // TODO: add &fillWithNoise=true ?
         // TODO: add &excludeMask=true ?
