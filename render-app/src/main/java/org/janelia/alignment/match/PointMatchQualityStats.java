@@ -35,21 +35,29 @@ public class PointMatchQualityStats
 
         final List<PointMatch> aggregatedInliers = new ArrayList<>();
         for (final List<PointMatch> consensusSet : consensusSetInliers) {
-            final double[] worldDeltaXAndYStandardDeviation = getWorldDeltaXAndYStandardDeviation(consensusSet);
-            consensusSetDeltaXStandardDeviations.add(worldDeltaXAndYStandardDeviation[0]);
-            consensusSetDeltaYStandardDeviations.add(worldDeltaXAndYStandardDeviation[1]);
-            if (aggregateModel != null) {
-                consensusSet.forEach(pm -> aggregatedInliers.add(new PointMatch(pm.getP1().clone(),
-                                                                                pm.getP2().clone())));
+            if (consensusSet.size() > 0) {
+                final double[] worldDeltaXAndYStandardDeviation = getWorldDeltaXAndYStandardDeviation(consensusSet);
+                consensusSetDeltaXStandardDeviations.add(worldDeltaXAndYStandardDeviation[0]);
+                consensusSetDeltaYStandardDeviations.add(worldDeltaXAndYStandardDeviation[1]);
+                if (aggregateModel != null) {
+                    consensusSet.forEach(pm -> aggregatedInliers.add(new PointMatch(pm.getP1().clone(),
+                                                                                    pm.getP2().clone())));
+                }
             }
         }
 
-        if (aggregateModel == null) {
-            aggregateDeltaXAndYStandardDeviation = new double[] { consensusSetDeltaXStandardDeviations.get(0),
-                                                                  consensusSetDeltaYStandardDeviations.get(0) };
-        } else {
-            aggregateModel.fit(aggregatedInliers);
-            this.aggregateDeltaXAndYStandardDeviation = getWorldDeltaXAndYStandardDeviation(aggregatedInliers);
+        if (consensusSetDeltaXStandardDeviations.size() > 0) {
+
+            if (aggregateModel == null) {
+                aggregateDeltaXAndYStandardDeviation = new double[]{
+                        consensusSetDeltaXStandardDeviations.get(0),
+                        consensusSetDeltaYStandardDeviations.get(0)
+                };
+            } else {
+                aggregateModel.fit(aggregatedInliers);
+                this.aggregateDeltaXAndYStandardDeviation = getWorldDeltaXAndYStandardDeviation(aggregatedInliers);
+            }
+
         }
     }
 
