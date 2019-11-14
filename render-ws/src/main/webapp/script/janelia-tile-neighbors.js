@@ -38,6 +38,18 @@ var JaneliaTile2 = function(tileSpec, stackUrl, matchCollectionUrl, renderQueryP
     this.matchIndex = -1;
     this.matchInfoSelector = undefined;
     this.drawMatchLines = true;
+
+    const imageUrlParams = new URLSearchParams(new URL(this.imageUrl).search);
+    if (imageUrlParams.has('width')) {
+        this.scaledWidth = Math.ceil(parseFloat(imageUrlParams.get('width')) * this.scale);
+    } else {
+        this.scaledWidth = Math.ceil((tileSpec.maxX - tileSpec.minX) * this.scale);
+    }
+    if (imageUrlParams.has('height')) {
+        this.scaledHeight = Math.ceil(parseFloat(imageUrlParams.get('height')) * this.scale);
+    } else {
+        this.scaledHeight = Math.ceil((tileSpec.maxY - tileSpec.minY) * this.scale);
+    }
 };
 
 JaneliaTile2.prototype.getMatchesUrl = function(qTile) {
@@ -47,15 +59,14 @@ JaneliaTile2.prototype.getMatchesUrl = function(qTile) {
 };
 
 JaneliaTile2.prototype.drawLoadedImage = function() {
-    var scaledWidth = this.image.naturalWidth;
-    var scaledHeight = this.image.naturalHeight;
+    //const naturalWidth = this.image.naturalWidth;
+    //const naturalHeight = this.image.naturalHeight;
 
     var context = this.canvas.getContext("2d");
     var canvasOffset = 4;
     var tileMargin = 4;
-    // TODO: fix this for cases where tiles are different sizes
-    this.x = (this.column * (scaledWidth + tileMargin)) + canvasOffset;
-    this.y = (this.row * (scaledHeight + tileMargin)) + canvasOffset;
+    this.x = (this.column * (this.scaledWidth + tileMargin)) + canvasOffset;
+    this.y = (this.row * (this.scaledHeight + tileMargin)) + canvasOffset;
     context.drawImage(this.image, this.x, this.y);
 
     this.imagePositioned = true;
@@ -82,7 +93,9 @@ JaneliaTile2.prototype.setSelected = function(isSelected) {
     }
 };
 
-JaneliaTile2.prototype.loadImage = function() {
+JaneliaTile2.prototype.loadImage = function(maxScaledWidth, maxScaledHeight) {
+    this.scaledWidth = maxScaledWidth;
+    this.scaledHeight = maxScaledHeight;
     this.imagePositioned = false;
     this.image.src = this.imageUrl;
 };
@@ -389,6 +402,9 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
 
     let pageQueryParameters = new JaneliaQueryParameters();
 
+    let maxScaledTileWidth = 0;
+    let maxScaledTileHeight = 0;
+
     for (let index = 0; index < tileSpecs.length; index++) {
 
         const tileSpec = tileSpecs[index];
@@ -403,9 +419,12 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
 
         sectionToTileSpecsMap[tileSpec.layout.sectionId].push(tileSpec);
 
-        this.janeliaTileMap[tileSpec.tileId] =
-                new JaneliaTile2(tileSpec, this.stackUrl, this.matchCollectionUrl, this.renderQueryParameters,
-                                 this.scale, this.canvas, this.janeliaTileMap);
+        const tile = new JaneliaTile2(tileSpec, this.stackUrl, this.matchCollectionUrl, this.renderQueryParameters,
+                                      this.scale, this.canvas, this.janeliaTileMap);
+        this.janeliaTileMap[tileSpec.tileId] = tile;
+
+        maxScaledTileWidth = Math.max(maxScaledTileWidth, tile.scaledWidth);
+        maxScaledTileHeight = Math.max(maxScaledTileHeight, tile.scaledHeight);
     }
 
     let maxRow = 0;
@@ -438,11 +457,8 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
     const context = this.canvas.getContext("2d");
     const canvasOffset = 4;
     const tileMargin = 4;
-    // TODO: fix this for cases where tiles are different sizes and for non-FAFB tiles
-    const scaledWidth = 2760 * this.scale;
-    const scaledHeight = 2330 * this.scale;
-    const maxX = ((maxColumn + 1) * (scaledWidth + tileMargin)) + canvasOffset;
-    const maxY = ((maxRow + 1) * (scaledHeight + tileMargin)) + canvasOffset;
+    const maxX = canvasOffset + ((maxColumn + 1) * (maxScaledTileWidth + tileMargin)) + canvasOffset;
+    const maxY = canvasOffset + ((maxRow + 1) * (maxScaledTileHeight + tileMargin)) + canvasOffset;
 
     context.canvas.width = maxX;
     context.canvas.height = maxY;
@@ -451,7 +467,7 @@ JaneliaTileWithNeighbors.prototype.loadNeighbors = function(data) {
     for (const tileId in this.janeliaTileMap) {
         if (this.janeliaTileMap.hasOwnProperty(tileId)) {
             const janeliaTile2 = this.janeliaTileMap[tileId];
-            janeliaTile2.loadImage();
+            janeliaTile2.loadImage(maxScaledTileWidth, maxScaledTileHeight);
         }
     }
 
@@ -513,8 +529,8 @@ JaneliaTileWithNeighbors.prototype.buildTilePair = function(tileSpec, otherTileS
     context.canvas.width = canvasWidth;
     context.canvas.height = canvasHeight;
 
-    pTile.loadImage();
-    qTile.loadImage();
+    pTile.loadImage(pTileWidth, pTileHeight);
+    qTile.loadImage(pTileWidth, pTileHeight);
 
     var matchesUrl = pTile.getMatchesUrl(qTile);
     $('#pairMatchesLink').html('(<a href=\"' + matchesUrl + '" target="_blank"">pair matches</a>)');

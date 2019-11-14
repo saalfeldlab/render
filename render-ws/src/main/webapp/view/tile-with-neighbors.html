@@ -8,7 +8,7 @@
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="../script/janelia-render.js?v=20180611_001"></script>
-    <script type="text/javascript" src="../script/janelia-tile-neighbors.js?v=20190517_001"></script>
+    <script type="text/javascript" src="../script/janelia-tile-neighbors.js?v=20191114_001"></script>
     <script type="text/javascript">
 
         var tileWithNeighbors;
@@ -45,7 +45,9 @@
             // The parameters here are for the FAFB00 project.
             // The SPC parameters used in Fall 2016 were simply 'normalizeForMatching=true&filter=true'.
             var defaultRenderQueryParameters = "excludeMask=true&normalizeForMatching=true&width=2760&height=2330";
-            // var defaultRenderQueryParameters = "excludeMask=true&width=2760&height=2330";
+            if (owner !== 'flyTEM') {
+                defaultRenderQueryParameters = "normalizeForMatching=true&filter=true";
+            }
 
             var defaultRenderScale = 0.15;
             var renderScale = queryParameters.get('renderScale', defaultRenderScale);
