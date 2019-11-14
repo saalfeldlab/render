@@ -1,11 +1,5 @@
 package org.janelia.alignment.match;
 
-import java.util.Arrays;
-
-import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussian;
-import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
-import mpicbg.imglib.type.numeric.real.FloatType;
-
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.parameters.FeatureAndMatchParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
@@ -14,7 +8,7 @@ import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.match.parameters.MatchTrialParameters;
 
-import static org.janelia.alignment.match.MatchFilter.*;
+import static org.janelia.alignment.match.MatchFilter.FilterType;
 
 /**
  * Tests the {@link MatchTrial} class.
@@ -35,7 +29,7 @@ public class MatchTrialTest {
                                  "&filter=" + siftDoFilter;
 
         final String pTileId = "19-02-21_105501_0-0-0.26101.0";
-        final String qTileId = "19-02-21_161150_0-0-0.26102.0";
+        final String qTileId = "19-02-21_161150_0-0-0.26102.0"; // "19-02-21_105501_0-0-1.26101.0";
 
         final String pTileUrl = baseTileUrl + pTileId + urlSuffix;
         final String qTileUrl = baseTileUrl + qTileId + urlSuffix;
@@ -61,8 +55,8 @@ public class MatchTrialTest {
         final FeatureAndMatchParameters featureAndMatchParameters =
                 new FeatureAndMatchParameters(siftFeatureParameters,
                                               siftMatchParameters,
-                                              null,
-                                              null);
+                                              null, // MontageRelativePosition.LEFT,
+                                              null); // 500);
 
         final GeometricDescriptorParameters gdParameters = new GeometricDescriptorParameters();
         gdParameters.numberOfNeighbors = 3;
@@ -74,7 +68,7 @@ public class MatchTrialTest {
         gdParameters.lookForMinima = true;
         gdParameters.lookForMaxima = false;
         gdParameters.fullScaleBlockRadius = 300.0;
-        gdParameters.fullScaleNonMaxSuppressionRadius = 60.0;
+        gdParameters.fullScaleNonMaxSuppressionRadius = 60.0; // 30.0
         gdParameters.gdStoredMatchWeight = 0.4;
 
         final MatchDerivationParameters gdMatchParameters = new MatchDerivationParameters();
@@ -86,7 +80,7 @@ public class MatchTrialTest {
         gdMatchParameters.matchMaxTrust = 3.0;
         gdMatchParameters.matchFilter = FilterType.SINGLE_SET;
 
-        final double gdRenderScale = 0.25;
+        final double gdRenderScale = 0.25;  // 0.5
 
         final GeometricDescriptorAndMatchFilterParameters gdAndMatchParameters =
                 new GeometricDescriptorAndMatchFilterParameters(gdRenderScale,

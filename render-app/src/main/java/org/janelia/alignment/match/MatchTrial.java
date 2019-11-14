@@ -1,7 +1,6 @@
 package org.janelia.alignment.match;
 
 import java.io.Serializable;
-import java.lang.instrument.Instrumentation;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -112,14 +111,14 @@ public class MatchTrial implements Serializable {
 
         final CanvasData pCanvasData = new CanvasData(parameters.getpRenderParametersUrl(),
                                                       new CanvasId(groupId, "P", pClipPosition),
-                                                      parameters);
+                                                      clipParameters);
         final List<Feature> pFeatureList = pCanvasData.extractFeatures(siftFeatureParameters);
 
         final long qFeatureStart = System.currentTimeMillis();
 
         final CanvasData qCanvasData = new CanvasData(parameters.getqRenderParametersUrl(),
                                                       new CanvasId(groupId, "Q", qClipPosition),
-                                                      parameters);
+                                                      clipParameters);
         final List<Feature> qFeatureList = qCanvasData.extractFeatures(siftFeatureParameters);
 
         if (pCanvasData.getSiftRenderScale() - qCanvasData.getSiftRenderScale() != 0.0) {
@@ -268,34 +267,20 @@ public class MatchTrial implements Serializable {
         private final RenderParameters siftRenderParameters;
         private final Double siftRenderScale;
         private final CanvasId canvasId;
+        private final FeatureRenderClipParameters clipParameters;
 
         CanvasData(final String renderParametersUrl,
                    final CanvasId canvasId,
-                   final MatchTrialParameters trialParameters)
+                   final FeatureRenderClipParameters clipParameters)
                 throws IllegalArgumentException {
 
             this.siftRenderParametersUrl = renderParametersUrl;
             this.siftRenderParameters = RenderParameters.loadFromUrl(renderParametersUrl);
             this.siftRenderScale = this.siftRenderParameters.getScale();
             this.canvasId = canvasId;
+            this.clipParameters = clipParameters;
 
-            if (canvasId.getRelativePosition() != null) {
-
-                final Bounds bounds = new Bounds(siftRenderParameters.x,
-                                                 siftRenderParameters.y,
-                                                 siftRenderParameters.x + siftRenderParameters.width,
-                                                 siftRenderParameters.y + siftRenderParameters.height);
-
-                final FeatureRenderClipParameters clipParameters =
-                        trialParameters.getFeatureAndMatchParameters().getClipParameters();
-                final Integer clipWidth = clipParameters.clipWidth;
-                final Integer clipHeight = clipParameters.clipHeight;
-
-                canvasId.setClipOffsets((int) bounds.getDeltaX(), (int) bounds.getDeltaY(), clipWidth, clipHeight);
-                siftRenderParameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
-
-            }
-
+            this.applyClipIfNecessary(canvasId, siftRenderParameters, clipParameters);
         }
 
         public CanvasId getCanvasId() {
@@ -329,7 +314,9 @@ public class MatchTrial implements Serializable {
                 final URIBuilder builder = new URIBuilder(siftRenderParametersUrl);
                 final List<NameValuePair> queryParams = builder.getQueryParams();
                 final String filterListNameKey = "filterListName";
-                queryParams.removeIf(pair -> filterListNameKey.equals(pair.getName()));
+                final String fillWithNoiseKey = "fillWithNoise";
+                queryParams.removeIf(pair -> (filterListNameKey.equals(pair.getName()) ||
+                                              (fillWithNoiseKey.equals(pair.getName()))) );
                 builder.setParameters(queryParams);
                 builder.setParameter("scale", String.valueOf(peakRenderScale));
                 builder.setParameter("filter", String.valueOf((renderWithFilter != null) && renderWithFilter));
@@ -341,6 +328,8 @@ public class MatchTrial implements Serializable {
                 throw new IllegalStateException(
                         "failed to create peak render parameters URL from " + siftRenderParametersUrl, e);
             }
+
+            this.applyClipIfNecessary(canvasId, peakRenderParameters, clipParameters);
 
             final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks =
                     peakExtractor.extractPeaks(peakRenderParameters, null);
@@ -359,6 +348,24 @@ public class MatchTrial implements Serializable {
         @Override
         public String toString() {
             return canvasId.getId();
+        }
+
+        private void applyClipIfNecessary(final CanvasId canvasId,
+                                          final RenderParameters renderParameters,
+                                          final FeatureRenderClipParameters clipParameters) {
+            if (canvasId.getRelativePosition() != null) {
+                final Bounds bounds = new Bounds(renderParameters.x,
+                                                 renderParameters.y,
+                                                 renderParameters.x + renderParameters.width,
+                                                 renderParameters.y + renderParameters.height);
+
+                final Integer clipWidth = clipParameters.clipWidth;
+                final Integer clipHeight = clipParameters.clipHeight;
+
+                canvasId.setClipOffsets((int) bounds.getDeltaX(), (int) bounds.getDeltaY(), clipWidth, clipHeight);
+                renderParameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
+            }
+
         }
 
     }
