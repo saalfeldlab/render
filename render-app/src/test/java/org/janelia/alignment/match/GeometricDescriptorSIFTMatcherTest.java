@@ -68,6 +68,8 @@ public class GeometricDescriptorSIFTMatcherTest {
         final String tileId1 = TEST_TILE_PAIRS[testTilePairIndex][3];
         final String tileId2 = TEST_TILE_PAIRS[testTilePairIndex][4];
 
+        final Integer clipSize = TEST_TILE_PAIRS[testTilePairIndex].length > 5 ? null : 500;
+
         // -------------------------------------------------------------------
         // run test ...
 
@@ -87,9 +89,9 @@ public class GeometricDescriptorSIFTMatcherTest {
         final double renderScaleSIFT = 0.15;
 
         final RenderParameters renderParametersTile1 =
-                getRenderParametersForTile(owner, project, stack, tileId1, renderScaleSIFT, true);
+                getRenderParametersForTile(owner, project, stack, tileId1, renderScaleSIFT, true, clipSize, MontageRelativePosition.LEFT);
         final RenderParameters renderParametersTile2 =
-                getRenderParametersForTile(owner, project, stack, tileId2, renderScaleSIFT, true);
+                getRenderParametersForTile(owner, project, stack, tileId2, renderScaleSIFT, true, clipSize, MontageRelativePosition.RIGHT);
 
         final BufferedImage imageSIFT1 = renderImage(renderParametersTile1);
         final BufferedImage imageSIFT2 = renderImage(renderParametersTile2);

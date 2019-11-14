@@ -40,13 +40,13 @@ public class GeometricDescriptorMatcherTest {
 
     static String[][] TEST_TILE_PAIRS = {
             // owner,          project, stack,        tile1,                           tile2
-            { "Z1217_19m",    "Sec07", "v1_acquire", "19-02-21_105501_0-0-0.26101.0", "19-02-21_161150_0-0-0.26102.0" }, // 0. VNC Sec07, cross, mix of resin and tissue
-            { "Z1217_19m",    "Sec07", "v1_acquire", "19-02-21_105501_0-0-0.26101.0", "19-02-21_105501_0-0-1.26101.0" }, // 1. VNC Sec07, montage, mostly resin overlap
-            { "Z1217_19m",    "Sec07", "v1_acquire", "19-02-18_221123_0-0-1.23001.0", "19-02-18_221123_0-0-2.23001.0" }, // 2. VNC Sec07, montage, mix of resin and tissue overlap
-            { "Z1217_19m",    "Sec07", "v1_acquire", "19-02-11_060620_0-0-0.14002.0", "19-02-11_060620_0-0-1.14002.0" }, // 3. VNC Sec07, montage, mostly tissue overlap
-            { "Z1217_33m_BR", "Sec09", "v1_acquire", "19-08-22_095727_0-0-0.500.0",   "19-08-22_095727_0-0-1.500.0"   }, // 4. BR  Sec09, montage, mostly resin overlap
-            { "Z1217_33m_BR", "Sec09", "v1_acquire", "19-08-26_141500_0-0-0.5500.0",  "19-08-26_141500_0-0-1.5500.0"  }, // 5. BR  Sec09, montage, mix of resin and tissue overlap
-            { "Z1217_33m_BR", "Sec09", "v1_acquire", "19-08-30_172535_0-0-1.10500.0", "19-08-30_172535_0-0-2.10500.0" }  // 6. BR  Sec09, montage, mostly tissue overlap
+            { "Z1217_19m",    "Sec07", "v1_acquire", "19-02-21_105501_0-0-0.26101.0", "19-02-21_161150_0-0-0.26102.0", "cross" }, // 0. VNC Sec07, cross, mix of resin and tissue
+            { "Z1217_19m",    "Sec07", "v1_acquire", "19-02-21_105501_0-0-0.26101.0", "19-02-21_105501_0-0-1.26101.0" },          // 1. VNC Sec07, montage, mostly resin overlap
+            { "Z1217_19m",    "Sec07", "v1_acquire", "19-02-18_221123_0-0-1.23001.0", "19-02-18_221123_0-0-2.23001.0" },          // 2. VNC Sec07, montage, mix of resin and tissue overlap
+            { "Z1217_19m",    "Sec07", "v1_acquire", "19-02-11_060620_0-0-0.14002.0", "19-02-11_060620_0-0-1.14002.0" },          // 3. VNC Sec07, montage, mostly tissue overlap
+            { "Z1217_33m_BR", "Sec09", "v1_acquire", "19-08-22_095727_0-0-0.500.0",   "19-08-22_095727_0-0-1.500.0"   },          // 4. BR  Sec09, montage, mostly resin overlap
+            { "Z1217_33m_BR", "Sec09", "v1_acquire", "19-08-26_141500_0-0-0.5500.0",  "19-08-26_141500_0-0-1.5500.0"  },          // 5. BR  Sec09, montage, mix of resin and tissue overlap
+            { "Z1217_33m_BR", "Sec09", "v1_acquire", "19-08-30_172535_0-0-1.10500.0", "19-08-30_172535_0-0-2.10500.0" }           // 6. BR  Sec09, montage, mostly tissue overlap
     };
 
     @Test
@@ -87,13 +87,15 @@ public class GeometricDescriptorMatcherTest {
         final String tileId1 = TEST_TILE_PAIRS[testTilePairIndex][3];
         final String tileId2 = TEST_TILE_PAIRS[testTilePairIndex][4];
 
+        final Integer clipSize = TEST_TILE_PAIRS[testTilePairIndex].length > 5 ? null : 500;
+
         // -------------------------------------------------------------------
         // run test ...
 
         final RenderParameters renderParametersTile1 =
-                getRenderParametersForTile(owner, project, stack, tileId1, peakRenderScale, false);
+                getRenderParametersForTile(owner, project, stack, tileId1, peakRenderScale, false, clipSize, MontageRelativePosition.LEFT);
         final RenderParameters renderParametersTile2 =
-                getRenderParametersForTile(owner, project, stack, tileId2, peakRenderScale, false);
+                getRenderParametersForTile(owner, project, stack, tileId2, peakRenderScale, false, clipSize, MontageRelativePosition.RIGHT);
 
         final BufferedImage image1 = renderImage(renderParametersTile1);
         final BufferedImage image2 = renderImage(renderParametersTile2);
@@ -367,7 +369,9 @@ public class GeometricDescriptorMatcherTest {
                                                        final String stack,
                                                        final String tileId,
                                                        final double renderScale,
-                                                       final boolean filter) {
+                                                       final boolean filter,
+                                                       final Integer clipSize,
+                                                       final MontageRelativePosition relativePosition) {
         final String baseTileUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/" + owner +
                                    "/project/" + project + "/stack/" + stack + "/tile/";
         final String urlSuffix = "/render-parameters?scale=" + renderScale;
@@ -384,6 +388,12 @@ public class GeometricDescriptorMatcherTest {
         // remove mipmapPathBuilder so that we don't get exceptions when /nrs is not mounted
         renderParameters.setMipmapPathBuilder(null);
         renderParameters.applyMipmapPathBuilderToTileSpecs();
+
+        if ((clipSize != null) && (relativePosition != null)) {
+            final CanvasId canvasId = new CanvasId("GROUP_ID", tileId, relativePosition);
+            canvasId.setClipOffsets(renderParameters.getWidth(), renderParameters.getHeight(), clipSize, clipSize);
+            renderParameters.clipForMontagePair(canvasId, clipSize, clipSize);
+        }
 
         return renderParameters;
     }
