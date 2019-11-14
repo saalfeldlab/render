@@ -1,5 +1,11 @@
 package org.janelia.alignment.match;
 
+import java.util.Arrays;
+
+import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussian;
+import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
+import mpicbg.imglib.type.numeric.real.FloatType;
+
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.parameters.FeatureAndMatchParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
@@ -83,11 +89,12 @@ public class MatchTrialTest {
         final double gdRenderScale = 0.25;
 
         final GeometricDescriptorAndMatchFilterParameters gdAndMatchParameters =
-                new GeometricDescriptorAndMatchFilterParameters(gdParameters,
-                                                                gdMatchParameters,
-                                                                gdRenderScale,
+                new GeometricDescriptorAndMatchFilterParameters(gdRenderScale,
                                                                 false,
-                                                                null);
+                                                                null,
+                                                                null,
+                                                                gdParameters,
+                                                                gdMatchParameters);
 
         final MatchTrialParameters trialParameters = new MatchTrialParameters(featureAndMatchParameters,
                                                                               pTileUrl,

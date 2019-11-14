@@ -217,6 +217,20 @@ public class CanvasDataCache {
         return (CachedCanvasFeatures) getData(canvasId);
     }
 
+    /**
+     * @return the cached peak data for the specified canvas.
+     *
+     * @throws IllegalStateException
+     *   if the data cannot be cached locally.
+     *
+     * @throws ClassCastException
+     *   if this cache is not managing {@link CachedCanvasPeaks} data.
+     */
+    public CachedCanvasPeaks getCanvasPeaks(final CanvasId canvasId)
+            throws IllegalStateException, ClassCastException {
+        return (CachedCanvasPeaks) getData(canvasId);
+    }
+
     @Override
     public String toString() {
         return "CanvasDataCache{" +

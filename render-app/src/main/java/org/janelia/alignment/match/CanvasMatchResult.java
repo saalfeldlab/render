@@ -64,7 +64,7 @@ public class CanvasMatchResult
     /**
      * @return collection of nested inlier matches.
      */
-    List<List<PointMatch>> getInlierPointMatchLists() {
+    public List<List<PointMatch>> getInlierPointMatchLists() {
         return consensusSetInliers;
     }
 
@@ -86,13 +86,13 @@ public class CanvasMatchResult
      *
      * @return collection of inlier matches.
      */
-    List<CanvasMatches> getInlierMatchesList(final String pGroupId,
-                                             final String pId,
-                                             final String qGroupId,
-                                             final String qId,
-                                             final Double renderScale,
-                                             final double[] pOffsets,
-                                             final double[] qOffsets) {
+    public List<CanvasMatches> getInlierMatchesList(final String pGroupId,
+                                                    final String pId,
+                                                    final String qGroupId,
+                                                    final String qId,
+                                                    final Double renderScale,
+                                                    final double[] pOffsets,
+                                                    final double[] qOffsets) {
 
         final List<CanvasMatches> list = new ArrayList<>();
 

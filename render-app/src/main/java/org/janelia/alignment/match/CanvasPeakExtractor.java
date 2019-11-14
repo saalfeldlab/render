@@ -51,7 +51,7 @@ public class CanvasPeakExtractor
      *
      * @param  gdParameters              core descriptor parameters for peak extraction.
      */
-    CanvasPeakExtractor(final GeometricDescriptorParameters gdParameters) {
+    public CanvasPeakExtractor(final GeometricDescriptorParameters gdParameters) {
 
         this.gdParameters = gdParameters;
     }
@@ -188,10 +188,10 @@ public class CanvasPeakExtractor
         return peakList;
     }
 
-    void filterPeaksByInliers(final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks,
-                              final double peakRenderScale,
-                              final List<Point> inlierPoints,
-                              final double inlierRenderScale) {
+    public void filterPeaksByInliers(final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks,
+                                     final double peakRenderScale,
+                                     final List<Point> inlierPoints,
+                                     final double inlierRenderScale) {
 
         filterPeaksByInliers(gdParameters.fullScaleBlockRadius,
                              canvasPeaks,
@@ -200,8 +200,8 @@ public class CanvasPeakExtractor
                              inlierRenderScale);
     }
 
-    List<DifferenceOfGaussianPeak<FloatType>> nonMaximalSuppression(final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks,
-                                                                    final double peakRenderScale) {
+    public List<DifferenceOfGaussianPeak<FloatType>> nonMaximalSuppression(final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks,
+                                                                           final double peakRenderScale) {
 
         return nonMaximalSuppression(gdParameters.fullScaleNonMaxSuppressionRadius,
                                      canvasPeaks,
@@ -215,7 +215,7 @@ public class CanvasPeakExtractor
                                             final List<Point> inlierPoints,
                                             final double inlierRenderScale) {
 
-        if (fullScaleBlockRadius != null) {
+        if ((fullScaleBlockRadius != null) && (canvasPeaks.size() > 0) && (inlierPoints.size() > 0)) {
 
             final double scaledBlockRadius = peakRenderScale * fullScaleBlockRadius;
 
@@ -262,7 +262,7 @@ public class CanvasPeakExtractor
 
         List<DifferenceOfGaussianPeak<FloatType>> filteredPeaks = canvasPeaks;
 
-        if (fullScaleNonMaxSuppressionRadius != null) {
+        if ((fullScaleNonMaxSuppressionRadius != null) && (canvasPeaks.size() > 0)) {
 
             final double scaledNonMaxSuppressionRadius = fullScaleNonMaxSuppressionRadius * peakRenderScale;
 

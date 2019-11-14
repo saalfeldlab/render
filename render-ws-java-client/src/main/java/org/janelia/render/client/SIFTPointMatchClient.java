@@ -7,25 +7,36 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import mpicbg.imagefeatures.FloatArray2DSIFT;
+import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
+import mpicbg.imglib.type.numeric.real.FloatType;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
 
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.CanvasPeakExtractor;
+import org.janelia.alignment.match.CanvasPeakMatcher;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
+import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.GeometricDescriptorAndMatchFilterParameters;
+import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.render.client.cache.CachedCanvasFeatures;
 import org.janelia.render.client.cache.CanvasDataCache;
 import org.janelia.render.client.cache.CanvasFeatureListLoader;
+import org.janelia.render.client.cache.CanvasPeakListLoader;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.FeatureRenderParameters;
 import org.janelia.render.client.parameter.FeatureStorageParameters;
@@ -61,6 +72,10 @@ public class SIFTPointMatchClient
         @ParametersDelegate
         MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
+        @ParametersDelegate
+        GeometricDescriptorAndMatchFilterParameters geometricDescriptorAndMatch =
+                new GeometricDescriptorAndMatchFilterParameters();
+
         @Parameter(
                 names = "--pairJson",
                 description = "JSON file where tile pairs are stored (.json, .gz, or .zip)",
@@ -78,6 +93,10 @@ public class SIFTPointMatchClient
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
+
+                if (parameters.geometricDescriptorAndMatch.hasGeometricDescriptorParameters()) {
+                    parameters.geometricDescriptorAndMatch.validateAndSetDefaults();
+                }
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -156,6 +175,33 @@ public class SIFTPointMatchClient
         final CanvasDataCache dataCache = CanvasDataCache.getSharedCache(cacheMaxKilobytes, featureLoader);
         final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(matchDerivationParameters);
 
+        final GeometricDescriptorAndMatchFilterParameters gdam = parameters.geometricDescriptorAndMatch;
+
+        final CanvasDataCache peakDataCache;
+        final CanvasPeakExtractor peakExtractor;
+        if (gdam.hasGeometricDescriptorParameters()) {
+
+            final CanvasRenderParametersUrlTemplate gdUrlTemplateForRun =
+                    CanvasRenderParametersUrlTemplate.getTemplateForRun(
+                            renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl),
+                            featureRenderParameters.renderFullScaleWidth,
+                            featureRenderParameters.renderFullScaleHeight,
+                            gdam.getRenderScale(),
+                            gdam.getRenderWithFilter(),
+                            gdam.getRenderFilterListName(),
+                            featureRenderParameters.renderWithoutMask);
+
+            peakExtractor = new CanvasPeakExtractor(gdam.getGeometricDescriptorParameters());
+            final long peakCacheMaxKilobytes = gdam.getMaxPeakCacheGb() * 1000000;
+
+            final CanvasPeakListLoader peakLoader = new CanvasPeakListLoader(gdUrlTemplateForRun, peakExtractor);
+            peakDataCache = CanvasDataCache.getSharedCache(peakCacheMaxKilobytes, peakLoader);
+
+        } else {
+            peakDataCache = null;
+            peakExtractor = null;
+        }
+
         final List<CanvasMatches> matchList = new ArrayList<>();
 
         CanvasId p;
@@ -178,6 +224,8 @@ public class SIFTPointMatchClient
             final double[] pClipOffsets = pFeatures.getClipOffsets();
             final double[] qClipOffsets = qFeatures.getClipOffsets();
 
+            // TODO: quality check matchResult
+
             matchResult.addInlierMatchesToList(p.getGroupId(),
                                                p.getId(),
                                                q.getGroupId(),
@@ -186,6 +234,67 @@ public class SIFTPointMatchClient
                                                pClipOffsets,
                                                qClipOffsets,
                                                matchList);
+
+            if (peakExtractor != null) {
+
+                // run Geometric Descriptor matching using the SIFT result inliers (if they exist) for masking
+
+                final GeometricDescriptorParameters gdParameters = gdam.getGeometricDescriptorParameters();
+
+                final double peakRenderScale = gdam.getRenderScale();
+
+                final List<DifferenceOfGaussianPeak<FloatType>> pCanvasPeaks =
+                        peakDataCache.getCanvasPeaks(p).getPeakList();
+                final List<DifferenceOfGaussianPeak<FloatType>> qCanvasPeaks =
+                        peakDataCache.getCanvasPeaks(q).getPeakList();
+
+                final List<PointMatch> inliersSIFT = matchResult.getInlierPointMatchList();
+
+                CanvasMatches siftCanvasMatches = null;
+                if (inliersSIFT.size() > 0) {
+                    final double siftRenderScale = featureRenderParameters.renderScale;
+                    final List<Point> pInlierPoints = new ArrayList<>();
+                    final List<Point> qInlierPoints = new ArrayList<>();
+                    PointMatch.sourcePoints(inliersSIFT, pInlierPoints);
+                    PointMatch.targetPoints(inliersSIFT, qInlierPoints);
+                    peakExtractor.filterPeaksByInliers(pCanvasPeaks, peakRenderScale, pInlierPoints, siftRenderScale);
+                    peakExtractor.filterPeaksByInliers(qCanvasPeaks, peakRenderScale, qInlierPoints, siftRenderScale);
+                    siftCanvasMatches = matchList.get(matchList.size() - 1);
+                }
+
+                final MatchDerivationParameters gdMatchDerivationParameters =
+                        gdam.hasMatchDerivationParameters() ?
+                        gdam.getMatchDerivationParameters() : parameters.matchDerivation;
+
+                final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters, gdMatchDerivationParameters);
+                final CanvasMatchResult gdMatchResult = peakMatcher.deriveMatchResult(pCanvasPeaks, qCanvasPeaks);
+
+                final List<CanvasMatches> gdResults = gdMatchResult.getInlierMatchesList(p.getGroupId(),
+                                                                                         p.getId(),
+                                                                                         q.getGroupId(),
+                                                                                         q.getId(),
+                                                                                         peakRenderScale,
+                                                                                         pClipOffsets,
+                                                                                         qClipOffsets);
+
+                // TODO: quality check gdResults
+
+                for (final CanvasMatches gdCanvasMatches : gdResults) {
+                    final Matches m = gdCanvasMatches.getMatches();
+                    if (gdParameters.gdStoredMatchWeight != null) {
+                        final double[] w = m.getWs();
+                        if (w != null) {
+                            Arrays.fill(w, gdParameters.gdStoredMatchWeight);
+                        }
+                    }
+                    if (siftCanvasMatches == null) {
+                        matchList.add(gdCanvasMatches);
+                    } else {
+                        siftCanvasMatches.append(m);
+                    }
+                }
+
+            }
         }
 
         final int pairCount = renderableCanvasIdPairs.size();

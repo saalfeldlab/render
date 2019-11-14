@@ -163,5 +163,11 @@
             <version>1.11.82</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.jerolba</groupId>
+            <artifactId>jmnemohistosyne</artifactId>
+            <version>0.2.3</version>
+        </dependency>
+        
     </dependencies>
 </project>

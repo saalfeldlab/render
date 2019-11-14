@@ -1,6 +1,7 @@
 package org.janelia.alignment.match;
 
 import java.io.Serializable;
+import java.lang.instrument.Instrumentation;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -161,11 +162,7 @@ public class MatchTrial implements Serializable {
             final GeometricDescriptorAndMatchFilterParameters gdmfParameters =
                     parameters.getGeometricDescriptorAndMatchFilterParameters();
 
-            final List<PointMatch> inliersSIFT = new ArrayList<>();
-            for (final List<PointMatch> consensusSetMatches : siftMatchResult.getInlierPointMatchLists()) {
-                inliersSIFT.addAll(consensusSetMatches);
-            }
-
+            final List<PointMatch> inliersSIFT = siftMatchResult.getInlierPointMatchList();
             final List<Point> pInlierPoints = new ArrayList<>();
             final List<Point> qInlierPoints = new ArrayList<>();
 

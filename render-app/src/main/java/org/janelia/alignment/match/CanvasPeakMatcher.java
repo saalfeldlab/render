@@ -45,8 +45,8 @@ public class CanvasPeakMatcher
     /**
      * @return match results for the specified geometric descriptor peaks.
      */
-    CanvasMatchResult deriveMatchResult(final List<DifferenceOfGaussianPeak<FloatType>> canvas1Peaks,
-                                        final List<DifferenceOfGaussianPeak<FloatType>> canvas2Peaks) {
+    public CanvasMatchResult deriveMatchResult(final List<DifferenceOfGaussianPeak<FloatType>> canvas1Peaks,
+                                               final List<DifferenceOfGaussianPeak<FloatType>> canvas2Peaks) {
 
         LOG.info("deriveMatchResult: entry");
 
