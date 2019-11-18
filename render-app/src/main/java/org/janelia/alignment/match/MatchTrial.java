@@ -40,7 +40,7 @@ public class MatchTrial implements Serializable {
     private GeometricDescriptorMatchStats gdStats;
 
     @SuppressWarnings("unused")
-    public MatchTrial() {
+    MatchTrial() {
         this(null);
     }
 
@@ -121,11 +121,11 @@ public class MatchTrial implements Serializable {
                                                       clipParameters);
         final List<Feature> qFeatureList = qCanvasData.extractFeatures(siftFeatureParameters);
 
-        if (pCanvasData.getSiftRenderScale() - qCanvasData.getSiftRenderScale() != 0.0) {
+        if (pCanvasData.siftRenderScale != qCanvasData.siftRenderScale) {
             throw new IllegalArgumentException(
                     "render scales for both canvases must be the same but pCanvas scale is " +
-                    pCanvasData.getSiftRenderScale() + " while qCanvas render scale is " +
-                    qCanvasData.getSiftRenderScale());
+                    pCanvasData.siftRenderScale + " while qCanvas render scale is " +
+                    qCanvasData.siftRenderScale);
         }
 
         final long matchStart = System.currentTimeMillis();
@@ -144,7 +144,7 @@ public class MatchTrial implements Serializable {
                                                                                      pCanvasId.getId(),
                                                                                      qCanvasId.getGroupId(),
                                                                                      qCanvasId.getId(),
-                                                                                     pCanvasData.getSiftRenderScale(),
+                                                                                     pCanvasData.siftRenderScale,
                                                                                      pCanvasId.getClipOffsets(),
                                                                                      qCanvasId.getClipOffsets());
         this.matches = new ArrayList<>(siftResults.size());
@@ -207,20 +207,16 @@ public class MatchTrial implements Serializable {
                                                                                      pCanvasId.getClipOffsets(),
                                                                                      qCanvasId.getClipOffsets());
 
-            final PointMatchQualityStats gdQualityStats = gdMatchResult.calculateQualityStats();
-            final double[] gdAggregateDeltaXAndYStandardDeviation =
-                    gdQualityStats.getAggregateDeltaXAndYStandardDeviation();
-
+            final PointMatchQualityStats gdQualityStats =
+                    gdMatchResult.calculateQualityStats(pCanvasData.peakRenderParameters,
+                                                        qCanvasData.peakRenderParameters);
             this.gdStats = new GeometricDescriptorMatchStats(pCanvasPeaks.size(),
                                                              (qPeakStart - pPeakStart),
                                                              qCanvasPeaks.size(),
                                                              (gdMatchStart - qPeakStart),
                                                              gdMatchResult.getConsensusSetSizes(),
                                                              (gdMatchStop - gdMatchStart),
-                                                             gdAggregateDeltaXAndYStandardDeviation[0],
-                                                             gdAggregateDeltaXAndYStandardDeviation[1],
-                                                             gdQualityStats.getConsensusSetDeltaXStandardDeviations(),
-                                                             gdQualityStats.getConsensusSetDeltaYStandardDeviations());
+                                                             gdQualityStats);
 
             for (final CanvasMatches canvasMatches : gdResults) {
                 final Matches m = canvasMatches.getMatches();
@@ -231,9 +227,9 @@ public class MatchTrial implements Serializable {
             }
         }
 
-        final PointMatchQualityStats siftQualityStats = siftMatchResult.calculateQualityStats();
-        final double[] aggregateDeltaXAndYStandardDeviation =
-                siftQualityStats.getAggregateDeltaXAndYStandardDeviation();
+        final PointMatchQualityStats siftQualityStats =
+                siftMatchResult.calculateQualityStats(pCanvasData.siftRenderParameters,
+                                                      qCanvasData.siftRenderParameters);
 
         this.stats = new MatchTrialStats(pFeatureList.size(),
                                          (qFeatureStart - pFeatureStart),
@@ -241,10 +237,7 @@ public class MatchTrial implements Serializable {
                                          (matchStart - qFeatureStart),
                                          siftMatchResult.getConsensusSetSizes(),
                                          (matchStop - matchStart),
-                                         aggregateDeltaXAndYStandardDeviation[0],
-                                         aggregateDeltaXAndYStandardDeviation[1],
-                                         siftQualityStats.getConsensusSetDeltaXStandardDeviations(),
-                                         siftQualityStats.getConsensusSetDeltaYStandardDeviations());
+                                         siftQualityStats);
     }
 
     public String toJson() {
@@ -265,7 +258,8 @@ public class MatchTrial implements Serializable {
 
         private final String siftRenderParametersUrl;
         private final RenderParameters siftRenderParameters;
-        private final Double siftRenderScale;
+        private RenderParameters peakRenderParameters;
+        private final double siftRenderScale;
         private final CanvasId canvasId;
         private final FeatureRenderClipParameters clipParameters;
 
@@ -277,6 +271,7 @@ public class MatchTrial implements Serializable {
             this.siftRenderParametersUrl = renderParametersUrl;
             this.siftRenderParameters = RenderParameters.loadFromUrl(renderParametersUrl);
             this.siftRenderScale = this.siftRenderParameters.getScale();
+            this.peakRenderParameters = null;
             this.canvasId = canvasId;
             this.clipParameters = clipParameters;
 
@@ -309,7 +304,6 @@ public class MatchTrial implements Serializable {
 
             final CanvasPeakExtractor peakExtractor = new CanvasPeakExtractor(gdParameters);
 
-            final RenderParameters peakRenderParameters;
             try {
                 final URIBuilder builder = new URIBuilder(siftRenderParametersUrl);
                 final List<NameValuePair> queryParams = builder.getQueryParams();
@@ -339,10 +333,6 @@ public class MatchTrial implements Serializable {
             }
 
             return peakExtractor.nonMaximalSuppression(canvasPeaks, peakRenderScale);
-        }
-
-        Double getSiftRenderScale() {
-            return siftRenderScale;
         }
 
         @Override

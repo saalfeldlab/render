@@ -4,12 +4,10 @@ import ij.ImagePlus;
 import ij.gui.OvalRoi;
 import ij.gui.Overlay;
 import ij.gui.PolygonRoi;
-import ij.gui.Roi;
 import ij.process.ImageProcessor;
 
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
 import java.util.List;
 
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
@@ -136,29 +134,24 @@ public class GeometricDescriptorMatcherTest {
 
         ImageDebugUtil.setPointMatchRois(inliers, ipnew1, ipnew2);
 
-        final ArrayList< Point > convexHull1 = convexHull( ImageDebugUtil.getSourcePoints( inliers ) );
-        final ArrayList< Point > convexHull2 = convexHull( ImageDebugUtil.getTargetPoints( inliers ) );
+        if (inliers.size() > 3) {
+            final List< Point > convexHull1 = ConvexHull.deriveConvexHull( ImageDebugUtil.getSourcePoints( inliers ) );
+            final List< Point > convexHull2 = ConvexHull.deriveConvexHull( ImageDebugUtil.getTargetPoints( inliers ) );
 
-        if ( convexHull1 == null || convexHull2 == null )
-        {
-        	LOG.debug( "No convex hull found" );
-        }
-        else
-        {
-        	PolygonRoi r1 = createPolygon( convexHull1 );
-        	PolygonRoi r2 = createPolygon( convexHull2 );
+        	final PolygonRoi r1 = ConvexHull.createPolygon( convexHull1 );
+        	final PolygonRoi r2 = ConvexHull.createPolygon( convexHull2 );
 
-        	final long sqArea1 = sqArea( ipnew1.getProcessor() );
-        	final long sqArea2 = sqArea( ipnew2.getProcessor() );
+        	final long sqArea1 = ipnew1.getWidth() * ipnew1.getHeight();
+        	final long sqArea2 = ipnew2.getWidth() * ipnew2.getHeight();
 
-        	final double area1 = polygonArea( convexHull1 ); //areaBruteForce( ipnew1.getProcessor(), r1 );
-        	final double area2 = polygonArea( convexHull2 ); //areaBruteForce( ipnew2.getProcessor(), r2 );
+        	final double area1 = ConvexHull.calculatePolygonArea( convexHull1 ); //areaBruteForce( ipnew1.getProcessor(), r1 );
+        	final double area2 = ConvexHull.calculatePolygonArea( convexHull2 ); //areaBruteForce( ipnew2.getProcessor(), r2 );
 
         	final double relArea1 = area1/sqArea1;
         	final double relArea2 = area2/sqArea2;
 
-        	final double[] c1 = centerofmassBruteForce( r1 );
-        	final double[] c2 = centerofmassBruteForce( r2 );
+        	final double[] c1 = ConvexHull.calculateCenterOfMassBruteForce( r1 );
+        	final double[] c2 = ConvexHull.calculateCenterOfMassBruteForce( r2 );
 
         	LOG.debug( "Convex hull 1: " + convexHull1.size() + ", area=" + area1 + "/" + sqArea1 + " (" + Math.round( 100.0*relArea1 ) + "%)" );
         	LOG.debug( "center of mass 1: " + Util.printCoordinates( c1 ) );
@@ -166,15 +159,17 @@ public class GeometricDescriptorMatcherTest {
         	LOG.debug( "Convex hull 2: " + convexHull2.size() + ", area=" + area2 + "/" + sqArea2 + " (" + Math.round( 100.0*relArea2 ) + "%)" );
         	LOG.debug( "center of mass 2: " + Util.printCoordinates( c2 ) );
 
-        	Overlay o1 = new Overlay();
+        	final Overlay o1 = new Overlay();
         	o1.add( r1 );
         	o1.add( new OvalRoi( c1[ 0 ] - 15, c1[ 1 ] - 15, 30, 30 ) );
         	ipnew1.setOverlay( o1 );
 
-        	Overlay o2 = new Overlay();
+        	final Overlay o2 = new Overlay();
         	o2.add( r2 );
         	o2.add( new OvalRoi( c2[ 0 ] - 15, c2[ 1 ] - 15, 30, 30 ) );
         	ipnew2.setOverlay( o2 );
+        } else {
+            LOG.debug( "not enough points to derive convex hull" );
         }
 
         ipnew1.show();
@@ -187,117 +182,13 @@ public class GeometricDescriptorMatcherTest {
     }
 
 
-    // from: https://www.mathopenref.com/coordpolygonarea2.html
-    static double polygonArea( final List< Point > convexHull ) 
-    {
-		final int numPoints = convexHull.size();
-		double area = 0;         // Accumulates area in the loop
-		int j = numPoints-1;  // The last vertex is the 'previous' one to the first
-		
-		for ( int i=0; i<numPoints; i++)
-		{
-			area += ( convexHull.get( j ).getL()[ 0 ] + convexHull.get( i ).getL()[ 0 ] ) * (convexHull.get( j ).getL()[ 1 ] - convexHull.get( i ).getL()[ 1 ] );
-			j = i;  //j is previous vertex to i
-		}
-
-		return Math.abs( area/2 );
-    }
-
-    static PolygonRoi createPolygon( final List< Point > points )
-    {
-    	final float[] xPoints = new float[ points.size() ];
-    	final float[] yPoints = new float[ points.size() ];
-
-    	for ( int i = 0; i < xPoints.length; ++i )
-    	{
-    		xPoints[ i ] = (float)points.get( i ).getL()[ 0 ];
-    		yPoints[ i ] = (float)points.get( i ).getL()[ 1 ];
-    	}
-
-    	return new PolygonRoi( xPoints, yPoints, Roi.POLYGON );
-    }
-
-    // from: https://www.geeksforgeeks.org/convex-hull-set-1-jarviss-algorithm-or-wrapping/
-
-    // To find orientation of ordered triplet (p, q, r). 
-    // The function returns following values 
-    // 0 --> p, q and r are colinear 
-    // 1 --> Clockwise 
-    // 2 --> Counterclockwise 
-    public static int orientation( final Point p, final Point q, final Point r )
-    { 
-        double val = (q.getL()[ 1 ] - p.getL()[ 1 ]) * (r.getL()[ 0 ] - q.getL()[ 0 ]) -
-                     (q.getL()[ 0 ] - p.getL()[ 0 ]) * (r.getL()[ 1 ] - q.getL()[ 1 ] );
-       
-        if (val == 0) return 0;  // collinear 
-        return (val > 0)? 1: 2; // clock or counterclock wise 
-    }
-
-    // Prints convex hull of a set of n points. 
-    public static ArrayList<Point> convexHull( final List< Point > points )
-    {
-    	final int size = points.size();
-
-        // There must be at least 3 points 
-        if ( size < 3 ) return null;
-       
-        // Initialize Result 
-        ArrayList<Point> hull = new ArrayList<>(); 
-       
-        // Find the leftmost point 
-        int l = 0;
-        for (int i = 1; i < size; i++) 
-            if ( points.get( i ).getL()[ 0 ] <  points.get( l ).getL()[ 0 ] )
-                l = i;
-
-        // Start from leftmost point, keep moving  
-        // counterclockwise until reach the start point 
-        // again. This loop runs O(h) times where h is 
-        // number of points in result or output. 
-        int p = l, q; 
-        do
-        { 
-            // Add current point to result 
-            hull.add(points.get( p ) );
-
-            // Search for a point 'q' such that  
-            // orientation(p, x, q) is counterclockwise  
-            // for all points 'x'. The idea is to keep  
-            // track of last visited most counterclock- 
-            // wise point in q. If any point 'i' is more  
-            // counterclock-wise than q, then update q. 
-            q = (p + 1) % size; 
-              
-            for (int i = 0; i < size; i++) 
-            { 
-               // If i is more counterclockwise than  
-               // current q, then update q 
-               if (orientation(points.get( p ), points.get( i ), points.get( q ) ) == 2) 
-                   q = i;
-            }
-
-            // Now q is the most counterclockwise with 
-            // respect to p. Set p as q for next iteration,  
-            // so that q is added to result 'hull' 
-            p = q; 
-       
-        } while (p != l);  // While we don't come to first  
-                           // point 
-
-        return hull;
-    }
-
-    static long sqArea( final ImageProcessor r )
-    {
-    	return ( r.getWidth() ) * ( r.getHeight() );
-    }
-
-    static long areaBruteForce( final ImageProcessor r, final PolygonRoi roi )
+    @SuppressWarnings("unused")
+    static long areaBruteForce(final ImageProcessor r, final PolygonRoi roi )
     {
     	return areaBruteForce( new Rectangle( 0, 0, r.getWidth(), r.getHeight() ), roi );
     }
 
-    static long areaBruteForce( final Rectangle r, final PolygonRoi roi )
+    private static long areaBruteForce( final Rectangle r, final PolygonRoi roi )
     {
     	long area = 0;
 
@@ -307,26 +198,6 @@ public class GeometricDescriptorMatcherTest {
     				++area;
 
     	return area;
-    }
-
-    //TODO: proper center of mass computation
-    static double[] centerofmassBruteForce( final PolygonRoi roi )
-    {
-    	final Rectangle r = roi.getBounds();
-
-    	long cx = 0, cy = 0;
-    	long count = 0;
-
-    	for ( int y = r.y; y < r.height + r.y; ++y )
-    		for ( int x = r.x; x < r.width + r.x; ++x )
-    			if ( roi.contains( x, y ) )
-    			{
-    				cx += x;
-    				cy += y;
-    				++count;
-    			}
-
-    	return new double[] { (double)cx / (double)count, (double)cy /(double)count };
     }
 
     static GeometricDescriptorParameters getInitialDescriptorParameters() {

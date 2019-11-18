@@ -8,6 +8,8 @@ import mpicbg.models.Model;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
+import org.janelia.alignment.RenderParameters;
+
 import static org.janelia.alignment.match.MatchFilter.FilterType.AGGREGATED_CONSENSUS_SETS;
 
 /**
@@ -46,7 +48,7 @@ public class CanvasMatchResult
     }
 
     /**
-     * @return collection of inlier matches.
+     * @return collection of aggregated inlier matches.
      */
     public List<PointMatch> getInlierPointMatchList() {
         final List<PointMatch> list;
@@ -59,13 +61,6 @@ public class CanvasMatchResult
             }
         }
         return list;
-    }
-
-    /**
-     * @return collection of nested inlier matches.
-     */
-    public List<List<PointMatch>> getInlierPointMatchLists() {
-        return consensusSetInliers;
     }
 
     List<Integer> getConsensusSetSizes() {
@@ -146,7 +141,8 @@ public class CanvasMatchResult
 
     }
 
-    PointMatchQualityStats calculateQualityStats()
+    PointMatchQualityStats calculateQualityStats(final RenderParameters pRenderParameters,
+                                                 final RenderParameters qRenderParameters)
             throws IllegalArgumentException {
 
         final PointMatchQualityStats qualityStats = new PointMatchQualityStats();
@@ -159,7 +155,7 @@ public class CanvasMatchResult
         }
 
         try {
-            qualityStats.calculate(consensusSetInliers, aggregateModel);
+            qualityStats.calculate(pRenderParameters, qRenderParameters, consensusSetInliers, aggregateModel);
         } catch (final Exception e) {
             throw new IllegalArgumentException("failed to fit aggregate model for point match quality calculation", e);
         }

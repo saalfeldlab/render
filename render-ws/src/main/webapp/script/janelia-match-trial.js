@@ -380,6 +380,8 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 
     this.trialResults = data;
 
+    const self = this;
+
     //console.log(data);
 
     this.pImage =
@@ -474,12 +476,26 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
                 for (let i = 1; i < standardDeviationValues.length; i++) {
                     html = html + ', ' + getDeltaHtml(standardDeviationValues[i]);
                 }
-                html += ' ]';
+                html += ' ] pixels';
             } else if (typeof aggregateStandardDeviationValue !== 'undefined') {
-                html += ' ' + getDeltaHtml(aggregateStandardDeviationValue);
+                html += ' ' + getDeltaHtml(aggregateStandardDeviationValue) + ' pixels';
             } else {
                 html += ' n/a';
             }
+        }
+        return html;
+    };
+
+    const getConvexHullHtml = function(pOrQ,
+                                       convexHullArea,
+                                       imageArea) {
+        let html = '';
+        if ((typeof convexHullArea !== 'undefined') && (typeof imageArea !== 'undefined')) {
+            const formattedHullArea = self.util.numberWithCommas(Math.round(convexHullArea));
+            const formattedImageArea = self.util.numberWithCommas(imageArea);
+            const areaPercentage = Math.round(convexHullArea / imageArea * 100);
+            html = '<br/>' + pOrQ + ' canvas pixel areas, image: ' + formattedImageArea +
+                   ', convex hull: ' + formattedHullArea + ' (' + areaPercentage + '%)';
         }
         return html;
     };
@@ -503,7 +519,9 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
                                         matchStats.consensusSetDeltaXStandardDeviations) +
                getStandardDeviationHtml('Y',
                                         matchStats.aggregateDeltaYStandardDeviation,
-                                        matchStats.consensusSetDeltaYStandardDeviations);
+                                        matchStats.consensusSetDeltaYStandardDeviations) +
+               getConvexHullHtml('P', matchStats.pConvexHullArea, matchStats.pImageArea) +
+               getConvexHullHtml('Q', matchStats.qConvexHullArea, matchStats.qImageArea)
     };
 
     $('#matchStats').html(getMatchStatsHtml(stats));

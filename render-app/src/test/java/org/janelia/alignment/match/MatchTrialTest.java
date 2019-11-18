@@ -7,6 +7,8 @@ import org.janelia.alignment.match.parameters.GeometricDescriptorAndMatchFilterP
 import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.match.parameters.MatchTrialParameters;
+import org.junit.Assert;
+import org.junit.Test;
 
 import static org.janelia.alignment.match.MatchFilter.FilterType;
 
@@ -17,7 +19,26 @@ import static org.janelia.alignment.match.MatchFilter.FilterType;
  */
 public class MatchTrialTest {
 
+    @Test
+    public void testConstructors() {
+        final MatchTrial matchTrial = new MatchTrial();
+        Assert.assertNull(matchTrial.getStats());
+
+        final MatchTrialStats stats = new MatchTrialStats();
+        Assert.assertNotNull(stats);
+
+        final GeometricDescriptorMatchStats gdStats = new GeometricDescriptorMatchStats();
+        Assert.assertNotNull(gdStats);
+    }
+
     public static void main(final String[] args) {
+
+        // To replicate Preibisch GeometricDescriptorMatcherTest:
+        //   final double siftRenderScale = 0.01;
+        //   ...
+        //   gdParameters.localization = GeometricDescriptorParameters.LocalizationFitType.NONE;
+        //   gdParameters.fullScaleBlockRadius = 0.0;
+        //   gdParameters.fullScaleNonMaxSuppressionRadius = 120.0; // 30.0
 
         final double siftRenderScale = 0.15;
         final boolean siftDoFilter = true;

@@ -24,12 +24,13 @@ public class MatchTrialStats
     private final Double aggregateDeltaYStandardDeviation;
     private final List<Double> consensusSetDeltaXStandardDeviations;
     private final List<Double> consensusSetDeltaYStandardDeviations;
+    private final Long pImageArea;
+    private final Long qImageArea;
+    private final Long pConvexHullArea;
+    private final Long qConvexHullArea;
 
     public MatchTrialStats() {
         this(null,
-             null,
-             null,
-             null,
              null,
              null,
              null,
@@ -44,20 +45,42 @@ public class MatchTrialStats
                            final Long qFeatureDerivationMilliseconds,
                            final List<Integer> consensusSetSizes,
                            final Long matchDerivationMilliseconds,
-                           final Double aggregateDeltaXStandardDeviation,
-                           final Double aggregateDeltaYStandardDeviation,
-                           final List<Double> consensusSetDeltaXStandardDeviations,
-                           final List<Double> consensusSetDeltaYStandardDeviations) {
+                           final PointMatchQualityStats pointMatchQualityStats) {
         this.pFeatureCount = pFeatureCount;
         this.pFeatureDerivationMilliseconds = pFeatureDerivationMilliseconds;
         this.qFeatureCount = qFeatureCount;
         this.qFeatureDerivationMilliseconds = qFeatureDerivationMilliseconds;
         this.consensusSetSizes = consensusSetSizes;
         this.matchDerivationMilliseconds = matchDerivationMilliseconds;
-        this.aggregateDeltaXStandardDeviation = aggregateDeltaXStandardDeviation;
-        this.aggregateDeltaYStandardDeviation = aggregateDeltaYStandardDeviation;
-        this.consensusSetDeltaXStandardDeviations = consensusSetDeltaXStandardDeviations;
-        this.consensusSetDeltaYStandardDeviations = consensusSetDeltaYStandardDeviations;
+
+        if (pointMatchQualityStats != null) {
+
+            final double[] aggregateDeltaXAndYStandardDeviation =
+                    pointMatchQualityStats.getAggregateDeltaXAndYStandardDeviation();
+            this.aggregateDeltaXStandardDeviation = aggregateDeltaXAndYStandardDeviation[0];
+            this.aggregateDeltaYStandardDeviation = aggregateDeltaXAndYStandardDeviation[1];
+            this.consensusSetDeltaXStandardDeviations =
+                    pointMatchQualityStats.getConsensusSetDeltaXStandardDeviations();
+            this.consensusSetDeltaYStandardDeviations =
+                    pointMatchQualityStats.getConsensusSetDeltaYStandardDeviations();
+            this.pImageArea = pointMatchQualityStats.getpImageArea();
+            this.pConvexHullArea = pointMatchQualityStats.getpConvexHullArea().longValue();
+            this.qImageArea = pointMatchQualityStats.getqImageArea();
+            this.qConvexHullArea = pointMatchQualityStats.getqConvexHullArea().longValue();
+
+        } else {
+
+            this.aggregateDeltaXStandardDeviation = null;
+            this.aggregateDeltaYStandardDeviation = null;
+            this.consensusSetDeltaXStandardDeviations = null;
+            this.consensusSetDeltaYStandardDeviations = null;
+            this.pImageArea = null;
+            this.pConvexHullArea = null;
+            this.qImageArea = null;
+            this.qConvexHullArea = null;
+            
+        }
+
     }
 
     public String toJson() {
