@@ -8,6 +8,8 @@ import com.google.common.cache.RemovalListeners;
 import com.google.common.cache.Weigher;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -25,7 +27,7 @@ import org.slf4j.LoggerFactory;
  */
 public class CanvasDataCache {
 
-    private static CanvasDataCache sharedCache;
+    private static final Map<Class, CanvasDataCache> SHARED_DATA_CLASS_TO_CACHE_MAP = new HashMap<>();
 
     /**
      * @param  kilobyteCapacity  expected capacity of the shared cache.
@@ -40,32 +42,35 @@ public class CanvasDataCache {
                                                  final CanvasDataLoader canvasDataLoader)
             throws IllegalArgumentException {
 
+        final Class dataClass = canvasDataLoader.getDataClass();
+        CanvasDataCache sharedCache = SHARED_DATA_CLASS_TO_CACHE_MAP.get(dataClass);
+
         if (sharedCache == null) {
-            setSharedCache(kilobyteCapacity, canvasDataLoader);
+            sharedCache = setSharedCache(kilobyteCapacity, canvasDataLoader);
         }
 
         if (sharedCache.kilobyteCapacity != kilobyteCapacity) {
-            throw new IllegalArgumentException("The exisitng shared cache has capacity " +
-                                               sharedCache.kilobyteCapacity + " KB but a cache with capicity " +
+            throw new IllegalArgumentException("The existing shared cache has capacity " +
+                                               sharedCache.kilobyteCapacity + " KB but a cache with capacity " +
                                                kilobyteCapacity + " KB was requested.");
-        }
-
-        if (! sharedCache.canvasDataLoader.getDataClass().equals(canvasDataLoader.getDataClass())) {
-            throw new IllegalArgumentException("The exisitng shared cache manages " +
-                                               sharedCache.canvasDataLoader.getDataClass() +
-                                               " elements but a cache that manages " +
-                                               canvasDataLoader.getDataClass() + " elements was requested.");
         }
 
         return sharedCache;
     }
 
-    private static synchronized void setSharedCache(final long kilobyteCapacity,
-                                                    final CanvasDataLoader canvasDataLoader) {
+    private static synchronized CanvasDataCache setSharedCache(final long kilobyteCapacity,
+                                                               final CanvasDataLoader canvasDataLoader) {
+
+        final Class dataClass = canvasDataLoader.getDataClass();
+        CanvasDataCache sharedCache = SHARED_DATA_CLASS_TO_CACHE_MAP.get(dataClass);
+
         if (sharedCache == null) {
             // creates "the" shared cache with statistics recording enabled
             sharedCache = new CanvasDataCache(kilobyteCapacity, canvasDataLoader, true);
+            SHARED_DATA_CLASS_TO_CACHE_MAP.put(dataClass, sharedCache);
         }
+
+        return sharedCache;
     }
 
     private final long kilobyteCapacity;
