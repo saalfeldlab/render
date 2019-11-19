@@ -11,6 +11,8 @@ import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
 import org.janelia.alignment.RenderParameters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Container for calculating and storing point match quality stats.
@@ -24,10 +26,18 @@ public class PointMatchQualityStats
     private List<Double> consensusSetDeltaXStandardDeviations;
     private List<Double> consensusSetDeltaYStandardDeviations;
     private double[] aggregateDeltaXAndYStandardDeviation;
-    private Long pImageArea;
-    private Long qImageArea;
+
+    private Long pImageWidth;
+    private Long pImageHeight;
     private Double pConvexHullArea;
+    private Double pCoverageWidth;
+    private Double pCoverageHeight;
+
+    private Long qImageWidth;
+    private Long qImageHeight;
     private Double qConvexHullArea;
+    private Double qCoverageWidth;
+    private Double qCoverageHeight;
 
     PointMatchQualityStats() {
     }
@@ -49,8 +59,11 @@ public class PointMatchQualityStats
         }
 
         // render parameters width and height are full scale
-        pImageArea = (long) pRenderParameters.getWidth() * pRenderParameters.getHeight();
-        qImageArea = (long) qRenderParameters.getWidth() * qRenderParameters.getHeight();
+        pImageWidth = (long) pRenderParameters.getWidth();
+        pImageHeight = (long) pRenderParameters.getHeight();
+
+        qImageWidth = (long) qRenderParameters.getWidth();
+        qImageHeight = (long) qRenderParameters.getHeight();
 
         pConvexHullArea = 0.0;
         qConvexHullArea = 0.0;
@@ -61,8 +74,9 @@ public class PointMatchQualityStats
                 final double[] worldDeltaXAndYStandardDeviation = getWorldDeltaXAndYStandardDeviation(consensusSet);
                 consensusSetDeltaXStandardDeviations.add(worldDeltaXAndYStandardDeviation[0] / renderScale);
                 consensusSetDeltaYStandardDeviations.add(worldDeltaXAndYStandardDeviation[1] / renderScale);
-                consensusSet.forEach(pm -> aggregatedInliers.add(new PointMatch(pm.getP1().clone(),
-                                                                                pm.getP2().clone())));
+                for (final PointMatch pm : consensusSet) {
+                    aggregatedInliers.add(new PointMatch(pm.getP1().clone(), pm.getP2().clone()));
+                }
             }
         }
 
@@ -86,6 +100,11 @@ public class PointMatchQualityStats
             PointMatch.targetPoints(aggregatedInliers, qAggregatedPointList);
             qConvexHullArea = calculateConvexHullArea(qAggregatedPointList, renderScale);
 
+            pCoverageWidth = calculateCoverageDistance(pAggregatedPointList, renderScale, 0);
+            pCoverageHeight = calculateCoverageDistance(pAggregatedPointList, renderScale, 1);
+
+            qCoverageWidth = calculateCoverageDistance(qAggregatedPointList, renderScale, 0);
+            qCoverageHeight = calculateCoverageDistance(qAggregatedPointList, renderScale, 1);
         }
     }
 
@@ -102,11 +121,11 @@ public class PointMatchQualityStats
     }
 
     Long getpImageArea() {
-        return pImageArea;
+        return pImageWidth * pImageHeight;
     }
 
     Long getqImageArea() {
-        return qImageArea;
+        return qImageWidth * qImageHeight;
     }
 
     Double getpConvexHullArea() {
@@ -117,15 +136,35 @@ public class PointMatchQualityStats
         return qConvexHullArea;
     }
 
-//    @JsonIgnore
-//    public double getpConvexHullAreaPercentage() {
-//        return pConvexHullArea / pImageArea;
-//    }
-//
-//    @JsonIgnore
-//    public double getqConvexHullAreaPercentage() {
-//        return pConvexHullArea / pImageArea;
-//    }
+    public boolean hasSufficientAreaCoverage(final double minPercentage) {
+        final double pCoveragePercentage = pConvexHullArea / getpImageArea();
+        final double qCoveragePercentage = qConvexHullArea / getqImageArea();
+        return hasSufficientCoverage("area", pCoveragePercentage, qCoveragePercentage, minPercentage);
+    }
+
+    public boolean hasSufficientWidthCoverage(final double minPercentage) {
+        final double pCoveragePercentage = pCoverageWidth / pImageWidth;
+        final double qCoveragePercentage = qCoverageWidth / qImageWidth;
+        return hasSufficientCoverage("width", pCoveragePercentage, qCoveragePercentage, minPercentage);
+    }
+
+    public boolean hasSufficientHeightCoverage(final double minPercentage) {
+        final double pCoveragePercentage = pCoverageHeight / pImageHeight;
+        final double qCoveragePercentage = qCoverageHeight / qImageHeight;
+        return hasSufficientCoverage("height", pCoveragePercentage, qCoveragePercentage, minPercentage);
+    }
+
+    private static boolean hasSufficientCoverage(final String context,
+                                                 final double pCoveragePercentage,
+                                                 final double qCoveragePercentage,
+                                                 final double minPercentage) {
+        // TODO: confirm max is what we want here
+        final double coveragePercentage = Math.max(pCoveragePercentage, qCoveragePercentage);
+        final boolean result = (coveragePercentage >= minPercentage);
+        LOG.debug("hasSufficientCoverage: returning {} for p {} coverage of {}% and q {} coverage of {}%",
+                  result, context, pCoveragePercentage, context, qCoveragePercentage);
+        return result;
+    }
 
     private static double[] getWorldDeltaXAndYStandardDeviation(final List<PointMatch> pointMatchList) {
         final double[] deltaWorldX = new double[pointMatchList.size()];
@@ -161,5 +200,23 @@ public class PointMatchQualityStats
         return pScaledConvexHullArea / renderScale / renderScale;
     }
 
+    private static double calculateCoverageDistance(final List<Point> aggregatedPointList,
+                                                    final double renderScale,
+                                                    final int dimension) {
+        double distance = 0.0;
+        if (aggregatedPointList.size() > 0) {
+            double min = Double.MAX_VALUE;
+            double max = -Double.MAX_VALUE;
+            for (final Point p : aggregatedPointList) {
+                final double value = p.getL()[dimension];
+                min = Math.min(min, value);
+                max = Math.max(max, value);
+            }
+            distance = Math.abs(max - min) / renderScale;
+        }
+        return distance;
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(PointMatchQualityStats.class);
 
 }

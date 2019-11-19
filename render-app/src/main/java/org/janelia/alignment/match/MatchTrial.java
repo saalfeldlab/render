@@ -170,29 +170,29 @@ public class MatchTrial implements Serializable {
                 PointMatch.targetPoints(inliersSIFT, qInlierPoints);
             }
 
-            final GeometricDescriptorParameters gdParameters = gdmfParameters.getGeometricDescriptorParameters();
+            final GeometricDescriptorParameters gdParameters = gdmfParameters.geometricDescriptorParameters;
 
-            final double peakRenderScale = gdmfParameters.getRenderScale();
+            final double peakRenderScale = gdmfParameters.renderScale;
 
             final long pPeakStart = System.currentTimeMillis();
             final List<DifferenceOfGaussianPeak<FloatType>> pCanvasPeaks =
                     pCanvasData.extractPeaks(gdParameters,
                                              peakRenderScale,
-                                             gdmfParameters.getRenderWithFilter(),
-                                             gdmfParameters.getRenderFilterListName(),
+                                             gdmfParameters.renderWithFilter,
+                                             gdmfParameters.renderFilterListName,
                                              pInlierPoints);
             final long qPeakStart = System.currentTimeMillis();
             final List<DifferenceOfGaussianPeak<FloatType>> qCanvasPeaks =
                     qCanvasData.extractPeaks(gdParameters,
                                              peakRenderScale,
-                                             gdmfParameters.getRenderWithFilter(),
-                                             gdmfParameters.getRenderFilterListName(),
+                                             gdmfParameters.renderWithFilter,
+                                             gdmfParameters.renderFilterListName,
                                              qInlierPoints);
 
             final long gdMatchStart = System.currentTimeMillis();
             final MatchDerivationParameters gdMatchDerivationParameters =
                     gdmfParameters.hasMatchDerivationParameters() ?
-                    gdmfParameters.getMatchDerivationParameters() : siftMatchDerivationParameters;
+                    gdmfParameters.matchDerivationParameters : siftMatchDerivationParameters;
 
             final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters, gdMatchDerivationParameters);
             final CanvasMatchResult gdMatchResult = peakMatcher.deriveMatchResult(pCanvasPeaks, qCanvasPeaks);

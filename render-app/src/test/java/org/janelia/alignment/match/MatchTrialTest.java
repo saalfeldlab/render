@@ -104,12 +104,10 @@ public class MatchTrialTest {
         final double gdRenderScale = 0.25;  // 0.5
 
         final GeometricDescriptorAndMatchFilterParameters gdAndMatchParameters =
-                new GeometricDescriptorAndMatchFilterParameters(gdRenderScale,
-                                                                false,
-                                                                null,
-                                                                null,
-                                                                gdParameters,
-                                                                gdMatchParameters);
+                new GeometricDescriptorAndMatchFilterParameters();
+        gdAndMatchParameters.renderScale = gdRenderScale;
+        gdAndMatchParameters.geometricDescriptorParameters = gdParameters;
+        gdAndMatchParameters.matchDerivationParameters = gdMatchParameters;
 
         final MatchTrialParameters trialParameters = new MatchTrialParameters(featureAndMatchParameters,
                                                                               pTileUrl,

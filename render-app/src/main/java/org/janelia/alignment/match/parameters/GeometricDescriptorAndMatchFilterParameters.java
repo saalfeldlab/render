@@ -18,87 +18,76 @@ public class GeometricDescriptorAndMatchFilterParameters
             names = "--gdRenderScale",
             description = "Rendered canvas scale for Geometric Descriptor matching"
     )
-    private final Double renderScale;
+    public Double renderScale;
 
     @Parameter(
             names = "--gdRenderWithFilter",
             description = "Indicates whether rendered canvases for Geometric Descriptor matching should use the default intensity correction filter",
             arity = 1
     )
-    private final Boolean renderWithFilter;
+    public Boolean renderWithFilter;
 
     @Parameter(
-            names = "--gdRenderScale",
+            names = "--gdRenderFilterListName",
             description = "Rendered canvas scale for Geometric Descriptor matching"
     )
-    private final String renderFilterListName;
+    public String renderFilterListName;
 
     @Parameter(
             names = { "--gdMaxPeakCacheGb" },
             description = "Maximum number of gigabytes of peaks to cache")
     @JsonIgnore
-    private Integer maxPeakCacheGb;
+    public Integer maxPeakCacheGb;
 
     @ParametersDelegate
-    private final GeometricDescriptorParameters geometricDescriptorParameters;
+    public GeometricDescriptorParameters geometricDescriptorParameters = new GeometricDescriptorParameters();
 
     // cannot use @ParametersDelegate MatchDerivationParameters here because we need to differentiate from SIFT match derivation parameters
-    private final MatchDerivationParameters matchDerivationParameters;
+    public MatchDerivationParameters matchDerivationParameters;
 
     @ParametersDelegate
     @JsonIgnore
-    private final GeometricCommandLineMatchDerivationParameters commandLineMatchDerivationParameters;
+    @SuppressWarnings("FieldMayBeFinal")
+    private GeometricCommandLineMatchDerivationParameters commandLineMatchDerivationParameters =
+            new GeometricCommandLineMatchDerivationParameters();
+
+    @Parameter(
+            names = { "--gdSufficientCombinedInliers" },
+            description = "Minimum number of combined SIFT and GD inliers for storage.  " +
+                          "GD matching will only be performed if the number of SIFT matches is less than this number.  " +
+                          "Omit parameter to perform GD matching regardless of SIFT results.")
+    public Integer sufficientCombinedInliers;
+
+    @Parameter(
+            names = { "--gdSufficientCombinedCoverageArea" },
+            description = "Minimum combined inlier convex hull area percentage for storage.  " +
+                          "GD matching will only be performed if the SIFT inlier area is less than this number.  " +
+                          "Omit parameter to perform GD matching regardless of SIFT results.")
+    public Double sufficientCombinedCoverageArea;
+
+    @Parameter(
+            names = { "--gdSufficientCombinedCoverageDistance" },
+            description = "Minimum combined inlier convex hull area percentage for storage.  " +
+                          "GD matching will only be performed if the SIFT inlier area is less than this number.  " +
+                          "Omit parameter to perform GD matching regardless of SIFT results.")
+    public Double sufficientCombinedCoverageDistance;
 
     @SuppressWarnings("unused")
     public GeometricDescriptorAndMatchFilterParameters() {
-        this(null, null, null, null, null, null);
-    }
-
-    public GeometricDescriptorAndMatchFilterParameters(final Double renderScale,
-                                                       final Boolean renderWithFilter,
-                                                       final String renderFilterListName,
-                                                       final Integer maxPeakCacheGb,
-                                                       final GeometricDescriptorParameters geometricDescriptorParameters,
-                                                       final MatchDerivationParameters matchDerivationParameters) {
-        this.renderScale = renderScale;
-        this.renderWithFilter = renderWithFilter;
-        this.renderFilterListName = renderFilterListName;
-        this.maxPeakCacheGb = maxPeakCacheGb;
-        this.geometricDescriptorParameters = geometricDescriptorParameters;
-        this.matchDerivationParameters = matchDerivationParameters;
-        this.commandLineMatchDerivationParameters = new GeometricCommandLineMatchDerivationParameters();
     }
 
     public boolean hasGeometricDescriptorParameters() {
         return geometricDescriptorParameters != null;
     }
 
-    public GeometricDescriptorParameters getGeometricDescriptorParameters() {
-        return geometricDescriptorParameters;
-    }
-
     public boolean hasMatchDerivationParameters() {
         return matchDerivationParameters != null;
     }
 
-    public MatchDerivationParameters getMatchDerivationParameters() {
-        return matchDerivationParameters;
-    }
-
-    public Double getRenderScale() {
-        return renderScale;
-    }
-
-    public Boolean getRenderWithFilter() {
-        return renderWithFilter;
-    }
-
-    public String getRenderFilterListName() {
-        return renderFilterListName;
-    }
-
-    public Integer getMaxPeakCacheGb() {
-        return maxPeakCacheGb;
+    public boolean hasSufficiencyConstraints() {
+        return (sufficientCombinedInliers != null) ||
+               (sufficientCombinedCoverageArea != null) ||
+               (sufficientCombinedCoverageDistance != null);
     }
 
     public void validateAndSetDefaults() throws IllegalArgumentException {
@@ -107,11 +96,7 @@ public class GeometricDescriptorAndMatchFilterParameters
             maxPeakCacheGb = 2;
         }
 
-        if (geometricDescriptorParameters == null) {
-            throw new IllegalArgumentException("geometricDescriptorParameters must be defined");
-        } else {
-            geometricDescriptorParameters.setDefaults();
-        }
+        geometricDescriptorParameters.setDefaults();
 
         if (matchDerivationParameters != null) {
             commandLineMatchDerivationParameters.applyToMatchDerivationParameters(matchDerivationParameters);

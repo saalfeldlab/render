@@ -47,6 +47,10 @@ public class CanvasMatchResult
         return totalNumberOfInliers > 0;
     }
 
+    public int getTotalNumberOfInliers() {
+        return totalNumberOfInliers;
+    }
+
     /**
      * @return collection of aggregated inlier matches.
      */
@@ -141,8 +145,8 @@ public class CanvasMatchResult
 
     }
 
-    PointMatchQualityStats calculateQualityStats(final RenderParameters pRenderParameters,
-                                                 final RenderParameters qRenderParameters)
+    public PointMatchQualityStats calculateQualityStats(final RenderParameters pRenderParameters,
+                                                        final RenderParameters qRenderParameters)
             throws IllegalArgumentException {
 
         final PointMatchQualityStats qualityStats = new PointMatchQualityStats();
