@@ -43,7 +43,7 @@ public class GeometricDescriptorAndMatchFilterParameters
     public GeometricDescriptorParameters geometricDescriptorParameters = new GeometricDescriptorParameters();
 
     // cannot use @ParametersDelegate MatchDerivationParameters here because we need to differentiate from SIFT match derivation parameters
-    public MatchDerivationParameters matchDerivationParameters;
+    public MatchDerivationParameters matchDerivationParameters = new MatchDerivationParameters();
 
     @ParametersDelegate
     @JsonIgnore
@@ -52,25 +52,25 @@ public class GeometricDescriptorAndMatchFilterParameters
             new GeometricCommandLineMatchDerivationParameters();
 
     @Parameter(
-            names = { "--gdSufficientCombinedInliers" },
+            names = { "--gdMinCombinedInliers" },
             description = "Minimum number of combined SIFT and GD inliers for storage.  " +
                           "GD matching will only be performed if the number of SIFT matches is less than this number.  " +
                           "Omit parameter to perform GD matching regardless of SIFT results.")
-    public Integer sufficientCombinedInliers;
+    public Integer minCombinedInliers;
 
     @Parameter(
-            names = { "--gdSufficientCombinedCoverageArea" },
+            names = { "--gdMinCombinedCoverageAreaPercentage" },
             description = "Minimum combined inlier convex hull area percentage for storage.  " +
                           "GD matching will only be performed if the SIFT inlier area is less than this number.  " +
                           "Omit parameter to perform GD matching regardless of SIFT results.")
-    public Double sufficientCombinedCoverageArea;
+    public Double minCombinedCoverageAreaPercentage;
 
     @Parameter(
-            names = { "--gdSufficientCombinedCoverageDistance" },
+            names = { "--gdMinCombinedCoverageDistancePercentage" },
             description = "Minimum combined inlier convex hull area percentage for storage.  " +
                           "GD matching will only be performed if the SIFT inlier area is less than this number.  " +
                           "Omit parameter to perform GD matching regardless of SIFT results.")
-    public Double sufficientCombinedCoverageDistance;
+    public Double minCombinedCoverageDistancePercentage;
 
     @SuppressWarnings("unused")
     public GeometricDescriptorAndMatchFilterParameters() {
@@ -85,9 +85,9 @@ public class GeometricDescriptorAndMatchFilterParameters
     }
 
     public boolean hasSufficiencyConstraints() {
-        return (sufficientCombinedInliers != null) ||
-               (sufficientCombinedCoverageArea != null) ||
-               (sufficientCombinedCoverageDistance != null);
+        return (minCombinedInliers != null) ||
+               (minCombinedCoverageAreaPercentage != null) ||
+               (minCombinedCoverageDistancePercentage != null);
     }
 
     public void validateAndSetDefaults() throws IllegalArgumentException {

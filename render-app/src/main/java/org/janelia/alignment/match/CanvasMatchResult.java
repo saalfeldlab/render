@@ -145,18 +145,22 @@ public class CanvasMatchResult
 
     }
 
-    public PointMatchQualityStats calculateQualityStats(final RenderParameters pRenderParameters,
-                                                        final RenderParameters qRenderParameters)
-            throws IllegalArgumentException {
-
-        final PointMatchQualityStats qualityStats = new PointMatchQualityStats();
-
+    public Model getAggregateModelForQualityChecks() {
         final Model aggregateModel;
         if (AGGREGATED_CONSENSUS_SETS.equals(matchFilter.getFilterType()) || (consensusSetInliers.size() > 1)) {
             aggregateModel = matchFilter.getModel();
         } else {
             aggregateModel = null;
         }
+        return aggregateModel;
+    }
+
+    public PointMatchQualityStats calculateQualityStats(final RenderParameters pRenderParameters,
+                                                        final RenderParameters qRenderParameters)
+            throws IllegalArgumentException {
+
+        final PointMatchQualityStats qualityStats = new PointMatchQualityStats();
+        final Model aggregateModel = getAggregateModelForQualityChecks();
 
         try {
             qualityStats.calculate(pRenderParameters, qRenderParameters, consensusSetInliers, aggregateModel);
