@@ -30,7 +30,7 @@ public class CanvasPeakListLoader
      */
     public CanvasPeakListLoader(final CanvasRenderParametersUrlTemplate urlTemplate,
                                 final CanvasPeakExtractor peakExtractor) {
-        super(urlTemplate, CachedCanvasFeatures.class);
+        super(urlTemplate, CachedCanvasPeaks.class);
         this.peakExtractor = peakExtractor;
     }
 
@@ -43,11 +43,12 @@ public class CanvasPeakListLoader
         LOG.info("load: extracting peaks for {} with offsets ({}, {})", canvasId, offsets[0], offsets[1]);
         final List<DifferenceOfGaussianPeak<FloatType>> peakList = peakExtractor.extractPeaks(renderParameters, null);
 
-        peakExtractor.nonMaximalSuppression(peakList, renderParameters.getScale());
+        final List<DifferenceOfGaussianPeak<FloatType>> filteredPeakList =
+                peakExtractor.nonMaximalSuppression(peakList, renderParameters.getScale());
 
         LOG.info("load: exit");
 
-        return new CachedCanvasPeaks(peakList, offsets);
+        return new CachedCanvasPeaks(filteredPeakList, offsets);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasPeakListLoader.class);
