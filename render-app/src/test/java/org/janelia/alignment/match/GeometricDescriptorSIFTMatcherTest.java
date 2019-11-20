@@ -1,6 +1,8 @@
 package org.janelia.alignment.match;
 
+import ij.ImageJ;
 import ij.ImagePlus;
+import ij.process.ImageProcessor;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -14,6 +16,9 @@ import mpicbg.imagefeatures.FloatArray2DSIFT;
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.imglib.type.numeric.real.FloatType;
+import mpicbg.models.IllDefinedDataPointsException;
+import mpicbg.models.Model;
+import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.spim.io.IOFunctions;
@@ -32,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import net.imglib2.KDTree;
 import net.imglib2.RealPoint;
 import net.imglib2.neighborsearch.KNearestNeighborSearchOnKDTree;
+import net.imglib2.neighborsearch.NearestNeighborSearchOnKDTree;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -126,7 +132,12 @@ public class GeometricDescriptorSIFTMatcherTest {
 
         final GeometricDescriptorParameters gdParameters = getInitialDescriptorParameters();
 
-        /*
+        new ImageJ();
+
+        // needs to be replaced above later
+        final ImageProcessorWithMasks imageSIFT1b = renderProcessorWithMasks(renderParametersTile1);
+        final ImageProcessorWithMasks imageSIFT2b = renderProcessorWithMasks(renderParametersTile2);
+
         // debug
         final double blockRadiusSIFT = gdParameters.fullScaleBlockRadius * renderScaleSIFT;
         final ImagePlus impSIFT1 = new ImagePlus(tileId1 + "_SIFT", imageSIFT1);
@@ -137,7 +148,8 @@ public class GeometricDescriptorSIFTMatcherTest {
         ImageDebugUtil.setPointRois(inlierPoints2, impSIFT2);
         impSIFT1.show();
         impSIFT2.show();
-        */
+
+        SimpleMultiThreading.threadHaltUnClean();
 
         //
         // NOW Run Geometric Descriptor matching using the set inliers for masking
@@ -227,6 +239,78 @@ public class GeometricDescriptorSIFTMatcherTest {
 
         SimpleMultiThreading.threadHaltUnClean();
     }
+
+	public static void computeArea(
+			final ImageProcessor imageP,
+			final ImageProcessor maskP,
+			final ImageProcessor imageQ,
+			final ImageProcessor maskQ,
+			final List<PointMatch> inliersSIFT,
+			final Model< ? > model,
+			final double blockRadiusSIFT )
+	{
+		try
+		{
+			model.fit( inliersSIFT );
+		}
+		catch ( NotEnoughDataPointsException | IllDefinedDataPointsException e )
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		}
+
+		final List<Point> inlierPointsP = new ArrayList<>();
+        PointMatch.sourcePoints(inliersSIFT, inlierPointsP);
+
+        final List<RealPoint> realPointListP = new ArrayList<>();
+
+        for (final Point p : inlierPointsP)
+        	realPointListP.add(new RealPoint(p.getL()[0], p.getL()[1]));
+
+        final NearestNeighborSearchOnKDTree<RealPoint> nnP =
+        		new NearestNeighborSearchOnKDTree<>(new KDTree<>(realPointListP, realPointListP));
+
+        //final List<Point> inlierPointsQ = new ArrayList<>();
+        //PointMatch.targetPoints(inliersSIFT, inlierPointsQ);
+
+        final double[] tmp = new double[ 2 ];
+        long totalOverlap = 0;
+        long coveredBySIFT = 0;
+
+        for ( int y = 0; y < imageP.getHeight(); ++y )
+        	for ( int x = 0; x < imageP.getWidth(); ++x )
+        	{
+        		// is inside the mask of P
+        		if ( maskP.getf( x, y ) > 0 )
+        		{
+        			tmp[ 0 ] = x;
+        			tmp[ 1 ] = y;
+        			model.applyInPlace( tmp );
+
+        			if ( tmp[ 0 ] >= 0 && tmp[ 0 ] <= imageQ.getWidth() - 1 && 
+        				 tmp[ 1 ] >= 0 && tmp[ 1 ] <= imageQ.getHeight() - 1 &&
+        				 maskQ.getf( (int)Math.round( tmp[ 0 ] ), (int)Math.round( tmp[ 1 ] ) ) > 0 )
+        			{
+        				// is inside Q and inside the mask of Q
+        				++totalOverlap;
+
+        				// test if covered by SIFT
+        				final RealPoint p = new RealPoint(x, y);
+        				nnP.search(p);
+
+                        // first nearest neighbor is the point itself, we need the second nearest
+                        final double d = nnP.getDistance();
+
+                        if (d <= blockRadiusSIFT)
+                        		++coveredBySIFT;
+        			}
+        		}
+        	}
+
+        System.out.println( "total: " + totalOverlap );
+        System.out.println( "sift: " + coveredBySIFT );
+	}
 
 	public static String[] limitDetectionChoice = { "Brightest", "Around median (of those above threshold)", "Weakest (above threshold)" };
 
