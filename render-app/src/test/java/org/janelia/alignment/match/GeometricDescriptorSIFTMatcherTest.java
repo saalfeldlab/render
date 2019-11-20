@@ -23,7 +23,6 @@ import mpicbg.models.Model;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import mpicbg.models.RigidModel2D;
 import mpicbg.spim.io.IOFunctions;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
@@ -141,11 +140,23 @@ public class GeometricDescriptorSIFTMatcherTest {
         final ImageProcessorWithMasks imageSIFT1b = renderProcessorWithMasks(renderParametersTile1);
         final ImageProcessorWithMasks imageSIFT2b = renderProcessorWithMasks(renderParametersTile2);
 
-        // debug
         final double blockRadiusSIFT = gdParameters.fullScaleBlockRadius * renderScaleSIFT;
         
-        computeArea( imageSIFT1b.ip, imageSIFT1b.mask, imageSIFT2b.ip, imageSIFT2b.mask, inliersSIFT, new RigidModel2D(), blockRadiusSIFT );
+        final Pair< Long, Long > coverage = 
+        		computeCoverage(
+        				imageSIFT1b.ip,
+        				imageSIFT1b.mask,
+        				imageSIFT2b.ip,
+        				imageSIFT2b.mask,
+        				inliersSIFT,
+        				new AffineModel2D(), // model used to fit the inliers and tranform Q
+        				blockRadiusSIFT );
+        
+        LOG.debug( "area coverage [%]: " + (double)coverage.getA() / (double)coverage.getB() * 100 );
+        //SimpleMultiThreading.threadHaltUnClean();
 
+        // debug
+        /*
         final ImagePlus impSIFT1 = new ImagePlus(tileId1 + "_SIFT", imageSIFT1);
         final ImagePlus impSIFT2 = new ImagePlus(tileId2 + "_SIFT", imageSIFT2);
         ImageDebugUtil.drawBlockedRegions(inlierPoints1, blockRadiusSIFT, impSIFT1);
@@ -155,7 +166,7 @@ public class GeometricDescriptorSIFTMatcherTest {
         impSIFT1.show();
         impSIFT2.show();
 
-        SimpleMultiThreading.threadHaltUnClean();
+        SimpleMultiThreading.threadHaltUnClean();*/
 
         //
         // NOW Run Geometric Descriptor matching using the set inliers for masking
@@ -246,7 +257,7 @@ public class GeometricDescriptorSIFTMatcherTest {
         SimpleMultiThreading.threadHaltUnClean();
     }
 
-	public static void computeArea(
+	public static Pair< Long, Long > computeCoverage(
 			final ImageProcessor imageP,
 			final ImageProcessor maskP,
 			final ImageProcessor imageQ,
@@ -255,9 +266,10 @@ public class GeometricDescriptorSIFTMatcherTest {
 			final Model< ? > model,
 			final double blockRadiusSIFT )
 	{
-		ImagePlus impP = new ImagePlus( "p", new FloatProcessor( imageP.getWidth(), imageP.getHeight()  ));
-		ImagePlus impQ = new ImagePlus( "q", new FloatProcessor( imageP.getWidth(), imageP.getHeight()  ));
-		ImagePlus impPO = new ImagePlus( "poverlap", new FloatProcessor( imageP.getWidth(), imageP.getHeight()  ));
+		// debug
+		//ImagePlus impP = new ImagePlus( "p", new FloatProcessor( imageP.getWidth(), imageP.getHeight()  ));
+		//ImagePlus impQ = new ImagePlus( "q", new FloatProcessor( imageP.getWidth(), imageP.getHeight()  ));
+		//ImagePlus impPO = new ImagePlus( "poverlap", new FloatProcessor( imageP.getWidth(), imageP.getHeight()  ));
 
 		try
 		{
@@ -267,7 +279,7 @@ public class GeometricDescriptorSIFTMatcherTest {
 		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return;
+			return null;
 		}
 
 		final List<Point> inlierPointsP = new ArrayList<>();
@@ -288,7 +300,7 @@ public class GeometricDescriptorSIFTMatcherTest {
         for ( int y = 0; y < imageP.getHeight(); ++y )
         	for ( int x = 0; x < imageP.getWidth(); ++x )
         	{
-        		impP.getProcessor().setf( x, y, imageP.getf( x, y ) );
+        		//impP.getProcessor().setf( x, y, imageP.getf( x, y ) );
   
         		// is inside the mask of P
         		if ( maskP.getf( x, y ) > 0 )
@@ -301,8 +313,8 @@ public class GeometricDescriptorSIFTMatcherTest {
         				 tmp[ 1 ] >= 0 && tmp[ 1 ] <= imageQ.getHeight() - 1 &&
         				 maskQ.getf( (int)Math.round( tmp[ 0 ] ), (int)Math.round( tmp[ 1 ] ) ) > 0 )
         			{
-                			impQ.getProcessor().setf( x, y, imageQ.getf( (int)Math.round( tmp[ 0 ] ), (int)Math.round( tmp[ 1 ] ) ) );
-                			impPO.getProcessor().setf( x, y, 1 );
+                			//impQ.getProcessor().setf( x, y, imageQ.getf( (int)Math.round( tmp[ 0 ] ), (int)Math.round( tmp[ 1 ] ) ) );
+                			//impPO.getProcessor().setf( x, y, 1 );
 
         				// is inside Q and inside the mask of Q
         				++totalOverlap;
@@ -317,18 +329,17 @@ public class GeometricDescriptorSIFTMatcherTest {
                         if (d <= blockRadiusSIFT)
                         {
                         		++coveredBySIFT;
-                        		impPO.getProcessor().setf( x, y, impPO.getProcessor().getf( x, y ) + 1 );
+                        		//impPO.getProcessor().setf( x, y, impPO.getProcessor().getf( x, y ) + 1 );
                         }
         			}
         		}
         	}
 
-        System.out.println( "total: " + totalOverlap );
-        System.out.println( "sift: " + coveredBySIFT );
-        
-        impP.show();
-        impQ.show();
-        impPO.show();
+        //impP.show();
+        //impQ.show();
+        //impPO.show();
+
+        return new ValuePair< Long, Long >( coveredBySIFT, totalOverlap );
 	}
 
 	public static String[] limitDetectionChoice = { "Brightest", "Around median (of those above threshold)", "Weakest (above threshold)" };
