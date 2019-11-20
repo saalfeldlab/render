@@ -108,7 +108,10 @@ public class SIFTPointMatchClientTest {
         parameters.geometricDescriptorAndMatch.renderScale = 0.25; // 0.5
         parameters.geometricDescriptorAndMatch.geometricDescriptorParameters = gdParameters;
         parameters.geometricDescriptorAndMatch.matchDerivationParameters = gdMatchParameters;
-        
+
+        parameters.geometricDescriptorAndMatch.minCombinedInliers = 600;
+        parameters.geometricDescriptorAndMatch.minCombinedCoverageAreaPercentage = 48.5;
+
         parameters.geometricDescriptorAndMatch.validateAndSetDefaults();
 
         client.generateMatchesForPairs(renderableCanvasIdPairs,
