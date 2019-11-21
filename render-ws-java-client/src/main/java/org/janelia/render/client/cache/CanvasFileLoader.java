@@ -25,7 +25,6 @@ public class CanvasFileLoader
         extends CanvasDataLoader {
 
     private final String canvasFormat;
-    private final boolean fillWithNoise;
     private final File rootDirectory;
 
     /**
@@ -34,11 +33,9 @@ public class CanvasFileLoader
      * @param  parentDirectory              parent directory for all rendered canvas files.
      */
     public CanvasFileLoader(final CanvasRenderParametersUrlTemplate urlTemplate,
-                            final boolean fillWithNoise,
                             final String canvasFormat,
                             final File parentDirectory) {
         super(urlTemplate, CachedCanvasFile.class);
-        this.fillWithNoise = fillWithNoise;
         this.canvasFormat = canvasFormat;
         this.rootDirectory = new File(parentDirectory, FILE_CACHE_DIRECTORY_NAME);
     }
@@ -56,7 +53,6 @@ public class CanvasFileLoader
         final RenderParameters renderParameters = getRenderParameters(canvasId);
 
         final BufferedImage bufferedImage = renderParameters.openTargetImage();
-        renderParameters.setFillWithNoise(fillWithNoise);
 
         ArgbRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
 

@@ -12,10 +12,12 @@ import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URIBuilder;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Renderer;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.parameters.FeatureAndMatchParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
@@ -25,6 +27,7 @@ import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.match.parameters.MatchTrialParameters;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.util.ImageProcessorCache;
 
 /**
  * Encapsulates all information for a match trial.
@@ -37,7 +40,7 @@ public class MatchTrial implements Serializable {
     private final MatchTrialParameters parameters;
     private List<Matches> matches;
     private MatchTrialStats stats;
-    private GeometricDescriptorMatchStats gdStats;
+    private MatchTrialStats gdStats;
 
     @SuppressWarnings("unused")
     MatchTrial() {
@@ -153,7 +156,6 @@ public class MatchTrial implements Serializable {
             this.matches.add(m);
         }
 
-
         if (parameters.hasGeometricDescriptorAndMatchFilterParameters()) {
 
             // run Geometric Descriptor matching using the SIFT result inliers (if they exist) for masking
@@ -190,9 +192,7 @@ public class MatchTrial implements Serializable {
                                              qInlierPoints);
 
             final long gdMatchStart = System.currentTimeMillis();
-            final MatchDerivationParameters gdMatchDerivationParameters =
-                    gdmfParameters.hasMatchDerivationParameters() ?
-                    gdmfParameters.matchDerivationParameters : siftMatchDerivationParameters;
+            final MatchDerivationParameters gdMatchDerivationParameters = gdmfParameters.matchDerivationParameters;
 
             final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters, gdMatchDerivationParameters);
             final CanvasMatchResult gdMatchResult = peakMatcher.deriveMatchResult(pCanvasPeaks, qCanvasPeaks);
@@ -209,14 +209,18 @@ public class MatchTrial implements Serializable {
 
             final PointMatchQualityStats gdQualityStats =
                     gdMatchResult.calculateQualityStats(pCanvasData.peakRenderParameters,
-                                                        qCanvasData.peakRenderParameters);
-            this.gdStats = new GeometricDescriptorMatchStats(pCanvasPeaks.size(),
-                                                             (qPeakStart - pPeakStart),
-                                                             qCanvasPeaks.size(),
-                                                             (gdMatchStart - qPeakStart),
-                                                             gdMatchResult.getConsensusSetSizes(),
-                                                             (gdMatchStop - gdMatchStart),
-                                                             gdQualityStats);
+                                                        pCanvasData.peakImageProcessorWithMasks.mask,
+                                                        qCanvasData.peakRenderParameters,
+                                                        qCanvasData.peakImageProcessorWithMasks.mask,
+                                                        siftMatchDerivationParameters.matchFullScaleCoverageRadius);
+            
+            this.gdStats = new MatchTrialStats(pCanvasPeaks.size(),
+                                               (qPeakStart - pPeakStart),
+                                               qCanvasPeaks.size(),
+                                               (gdMatchStart - qPeakStart),
+                                               gdMatchResult.getConsensusSetSizes(),
+                                               (gdMatchStop - gdMatchStart),
+                                               gdQualityStats);
 
             for (final CanvasMatches canvasMatches : gdResults) {
                 final Matches m = canvasMatches.getMatches();
@@ -229,7 +233,10 @@ public class MatchTrial implements Serializable {
 
         final PointMatchQualityStats siftQualityStats =
                 siftMatchResult.calculateQualityStats(pCanvasData.siftRenderParameters,
-                                                      qCanvasData.siftRenderParameters);
+                                                      pCanvasData.siftImageProcessorWithMasks.mask,
+                                                      qCanvasData.siftRenderParameters,
+                                                      qCanvasData.siftImageProcessorWithMasks.mask,
+                                                      siftMatchDerivationParameters.matchFullScaleCoverageRadius);
 
         this.stats = new MatchTrialStats(pFeatureList.size(),
                                          (qFeatureStart - pFeatureStart),
@@ -258,8 +265,10 @@ public class MatchTrial implements Serializable {
 
         private final String siftRenderParametersUrl;
         private final RenderParameters siftRenderParameters;
-        private RenderParameters peakRenderParameters;
         private final double siftRenderScale;
+        private ImageProcessorWithMasks siftImageProcessorWithMasks;
+        private RenderParameters peakRenderParameters;
+        private ImageProcessorWithMasks peakImageProcessorWithMasks;
         private final CanvasId canvasId;
         private final FeatureRenderClipParameters clipParameters;
 
@@ -271,7 +280,9 @@ public class MatchTrial implements Serializable {
             this.siftRenderParametersUrl = renderParametersUrl;
             this.siftRenderParameters = RenderParameters.loadFromUrl(renderParametersUrl);
             this.siftRenderScale = this.siftRenderParameters.getScale();
+            this.siftImageProcessorWithMasks = null;
             this.peakRenderParameters = null;
+            this.peakImageProcessorWithMasks = null;
             this.canvasId = canvasId;
             this.clipParameters = clipParameters;
 
@@ -290,10 +301,13 @@ public class MatchTrial implements Serializable {
 
             final CanvasFeatureExtractor extractor = new CanvasFeatureExtractor(siftParameters,
                                                                                 siftFeatureParameters.minScale,
-                                                                                siftFeatureParameters.maxScale,
-                                                                                siftRenderParameters.isFillWithNoise());
+                                                                                siftFeatureParameters.maxScale);
 
-            return extractor.extractFeatures(siftRenderParameters, null);
+            siftImageProcessorWithMasks = Renderer.renderImageProcessorWithMasks(siftRenderParameters,
+                                                                                 ImageProcessorCache.DISABLED_CACHE);
+
+            return extractor.extractFeaturesFromImageAndMask(siftImageProcessorWithMasks.ip,
+                                                             siftImageProcessorWithMasks.mask);
         }
 
         List<DifferenceOfGaussianPeak<FloatType>> extractPeaks(final GeometricDescriptorParameters gdParameters,
@@ -325,8 +339,12 @@ public class MatchTrial implements Serializable {
 
             this.applyClipIfNecessary(canvasId, peakRenderParameters, clipParameters);
 
+            peakImageProcessorWithMasks = Renderer.renderImageProcessorWithMasks(peakRenderParameters,
+                                                                                 ImageProcessorCache.DISABLED_CACHE);
+
             final List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks =
-                    peakExtractor.extractPeaks(peakRenderParameters, null);
+                    peakExtractor.extractPeaksFromImageAndMask(peakImageProcessorWithMasks.ip,
+                                                               peakImageProcessorWithMasks.mask);
 
             if (siftInlierPoints.size() > 0) {
                 peakExtractor.filterPeaksByInliers(canvasPeaks, peakRenderScale, siftInlierPoints, siftRenderScale);

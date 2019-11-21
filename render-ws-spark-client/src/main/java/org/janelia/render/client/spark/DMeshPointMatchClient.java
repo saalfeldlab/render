@@ -152,7 +152,6 @@ public class DMeshPointMatchClient
         final CanvasFileLoader fileLoader =
                 new CanvasFileLoader(
                         urlTemplateForRun,
-                        parameters.featureRender.fillWithNoise,
                         parameters.format,
                         new File(parameters.imageCacheParentDirectory));
 

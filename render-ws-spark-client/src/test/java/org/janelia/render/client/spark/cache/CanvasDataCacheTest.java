@@ -29,7 +29,7 @@ public class CanvasDataCacheTest {
         siftParameters.fdSize = 8;
         siftParameters.steps = 3;
 
-        final CanvasFeatureExtractor featureExtractor = new CanvasFeatureExtractor(siftParameters, 0.38, 0.82, true);
+        final CanvasFeatureExtractor featureExtractor = new CanvasFeatureExtractor(siftParameters, 0.38, 0.82);
 
         final String templateString = "src/test/resources/canvas-render-parameters.json";
         final CanvasRenderParametersUrlTemplate template = new CanvasRenderParametersUrlTemplate(templateString);

@@ -116,12 +116,6 @@ public class HierarchicalAlignmentClient
         public boolean renderWithFilter = true;
 
         @Parameter(
-                names = "--fillWithNoise",
-                description = "Fill each canvas image with noise before rendering to improve point match derivation",
-                arity = 1)
-        public boolean fillWithNoise = true;
-
-        @Parameter(
                 names = "--channel",
                 description = "Name of channel to use for alignment (omit if data is not multi-channel)"
         )
@@ -465,7 +459,6 @@ public class HierarchicalAlignmentClient
         }
 
         final FeatureRenderParameters featureRenderParameters = new FeatureRenderParameters();
-        featureRenderParameters.fillWithNoise = parameters.fillWithNoise;
         featureRenderParameters.renderWithFilter = parameters.renderWithFilter;
         featureRenderParameters.renderWithoutMask = false; // always include masks because we are rendering scapes
         featureRenderParameters.renderScale = 1.0; // always render full scale because canvases are already scaled down

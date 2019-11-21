@@ -251,6 +251,7 @@ public class SIFTPointMatchClient
                 // GD parameters have been specified
                 appendGeometricMatchesIfNecessary(featureRenderParameters,
                                                   siftUrlTemplateForRun,
+                                                  matchDerivationParameters.matchFullScaleCoverageRadius,
                                                   gdam,
                                                   peakDataCache,
                                                   peakExtractor,
@@ -274,6 +275,7 @@ public class SIFTPointMatchClient
 
     private void appendGeometricMatchesIfNecessary(final FeatureRenderParameters featureRenderParameters,
                                                    final CanvasRenderParametersUrlTemplate siftUrlTemplateForRun,
+                                                   final double siftFullScaleOverlapBlockRadius,
                                                    final GeometricDescriptorAndMatchFilterParameters gdam,
                                                    final CanvasDataCache peakDataCache,
                                                    final CanvasPeakExtractor peakExtractor,
@@ -287,8 +289,13 @@ public class SIFTPointMatchClient
         // TODO: remove duplicate parameters load (done here and by cache feature loader)
         final RenderParameters pRenderParameters = siftUrlTemplateForRun.getRenderParameters(p);
         final RenderParameters qRenderParameters = siftUrlTemplateForRun.getRenderParameters(q);
+
         final PointMatchQualityStats siftQualityStats =
-                matchResult.calculateQualityStats(pRenderParameters, qRenderParameters);
+                matchResult.calculateQualityStats(pRenderParameters,
+                                                  null, // TODO: cache and add mask processors
+                                                  qRenderParameters,
+                                                  null, // TODO: cache and add mask processors
+                                                  siftFullScaleOverlapBlockRadius);
 
         if (gdam.hasSufficiencyConstraints()) {
 
@@ -296,9 +303,7 @@ public class SIFTPointMatchClient
 
             if (siftQualityStats.hasSufficientQuantity(gdam.minCombinedInliers)) {
 
-                if (siftQualityStats.hasSufficientCoverage(gdam.minCombinedCoverageAreaPercentage,
-                                                           gdam.minCombinedCoverageDistancePercentage,
-                                                           p.getRelativePosition())) {
+                if (siftQualityStats.hasSufficientCoverage(gdam.minCombinedCoveragePercentage)) {
 
                     LOG.info("appendGeometricMatchesIfNecessary: saving {} SIFT matches and skipping Geometric process",
                              matchResult.getTotalNumberOfInliers());
@@ -317,13 +322,15 @@ public class SIFTPointMatchClient
                     LOG.info("appendGeometricMatchesIfNecessary: running Geometric process");
 
                     findGeometricDescriptorMatches(featureRenderParameters,
+                                                   siftFullScaleOverlapBlockRadius,
                                                    gdam,
-                                                   siftQualityStats,
                                                    peakDataCache,
                                                    peakExtractor,
                                                    matchList,
                                                    p,
+                                                   pRenderParameters,
                                                    q,
+                                                   qRenderParameters,
                                                    matchResult,
                                                    pClipOffsets,
                                                    qClipOffsets);
@@ -340,13 +347,15 @@ public class SIFTPointMatchClient
             LOG.info("appendGeometricMatchesIfNecessary: running Geometric process since sufficiency constraints are not defined");
 
             findGeometricDescriptorMatches(featureRenderParameters,
+                                           siftFullScaleOverlapBlockRadius,
                                            gdam,
-                                           siftQualityStats,
                                            peakDataCache,
                                            peakExtractor,
                                            matchList,
                                            p,
+                                           pRenderParameters,
                                            q,
+                                           qRenderParameters,
                                            matchResult,
                                            pClipOffsets,
                                            qClipOffsets);
@@ -355,13 +364,15 @@ public class SIFTPointMatchClient
     }
 
     private void findGeometricDescriptorMatches(final FeatureRenderParameters featureRenderParameters,
+                                                final double siftFullScaleOverlapBlockRadius,
                                                 final GeometricDescriptorAndMatchFilterParameters gdam,
-                                                final PointMatchQualityStats siftQualityStats,
                                                 final CanvasDataCache peakDataCache,
                                                 final CanvasPeakExtractor peakExtractor,
                                                 final List<CanvasMatches> matchList,
                                                 final CanvasId p,
+                                                final RenderParameters pRenderParameters,
                                                 final CanvasId q,
+                                                final RenderParameters qRenderParameters,
                                                 final CanvasMatchResult siftMatchResult,
                                                 final double[] pClipOffsets,
                                                 final double[] qClipOffsets) {
@@ -443,12 +454,15 @@ public class SIFTPointMatchClient
 
                 try {
                     combinedQualityStats.calculate(1.0,
-                                                   siftQualityStats.getpImageWidth(),
-                                                   siftQualityStats.getpImageHeight(),
-                                                   siftQualityStats.getqImageWidth(),
-                                                   siftQualityStats.getqImageHeight(),
+                                                   pRenderParameters.getWidth(),
+                                                   pRenderParameters.getHeight(),
+                                                   null, // TODO: cache and add mask processors
+                                                   qRenderParameters.getWidth(),
+                                                   qRenderParameters.getHeight(),
+                                                   null, // TODO: cache and add mask processors
                                                    Collections.singletonList(combinedFullScaleInliers),
-                                                   aggregateModel);
+                                                   aggregateModel,
+                                                   siftFullScaleOverlapBlockRadius);
                 } catch (final Exception e) {
                     throw new IllegalArgumentException("failed to fit aggregate model for point match quality calculation", e);
                 }
@@ -456,9 +470,7 @@ public class SIFTPointMatchClient
 
                 if (combinedQualityStats.hasSufficientQuantity(gdam.minCombinedInliers)) {
 
-                    if (combinedQualityStats.hasSufficientCoverage(gdam.minCombinedCoverageAreaPercentage,
-                                                                   gdam.minCombinedCoverageDistancePercentage,
-                                                                   p.getRelativePosition())) {
+                    if (combinedQualityStats.hasSufficientCoverage(gdam.minCombinedCoveragePercentage)) {
 
                         LOG.info("findGeometricDescriptorMatches: saving {} combined matches",
                                  combinedFullScaleInliers.size());
@@ -517,8 +529,7 @@ public class SIFTPointMatchClient
 
         return new CanvasFeatureExtractor(siftParameters,
                                           featureExtraction.minScale,
-                                          featureExtraction.maxScale,
-                                          featureRender.fillWithNoise);
+                                          featureExtraction.maxScale);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(SIFTPointMatchClient.class);

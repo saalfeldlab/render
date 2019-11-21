@@ -21,7 +21,7 @@ import org.junit.Test;
 public class RenderRawTileTest {
 
     @Test
-    public void testRender() throws Exception {
+    public void testRender() {
 
         final ImageAndMask imageWithoutMask = new ImageAndMask("src/test/resources/raw-tile-test/raw-tile.png", null);
         final ImageProcessorCache imageProcessorCache = new ImageProcessorCache();
@@ -44,6 +44,7 @@ public class RenderRawTileTest {
 
         tileRenderParameters.addTileSpec(tileSpec);
         tileRenderParameters.setSkipInterpolation(true);
+        tileRenderParameters.initializeDerivedValues();
 
         final BufferedImage renderedImage = tileRenderParameters.openTargetImage();
 

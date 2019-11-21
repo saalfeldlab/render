@@ -61,7 +61,6 @@ public class SIFTPointMatchClientTest {
         parameters.featureRender.renderScale = 0.15;
         parameters.featureRender.renderWithFilter = true;
         parameters.featureRender.renderWithoutMask = false;
-        parameters.featureRender.fillWithNoise = true;
 
         parameters.featureRenderClip = new FeatureRenderClipParameters(); // no clip
 
@@ -110,7 +109,7 @@ public class SIFTPointMatchClientTest {
         parameters.geometricDescriptorAndMatch.matchDerivationParameters = gdMatchParameters;
 
         parameters.geometricDescriptorAndMatch.minCombinedInliers = 600;
-        parameters.geometricDescriptorAndMatch.minCombinedCoverageAreaPercentage = 48.5;
+        parameters.geometricDescriptorAndMatch.minCombinedCoveragePercentage = 25.0;
 
         parameters.geometricDescriptorAndMatch.validateAndSetDefaults();
 

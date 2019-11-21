@@ -21,6 +21,7 @@ import ij.process.ByteProcessor;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.util.Set;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
@@ -38,6 +39,7 @@ import org.slf4j.LoggerFactory;
  * @author Stephan Saalfeld
  * @author Eric Trautman
  */
+@SuppressWarnings("WeakerAccess")
 public class Renderer {
 
     public interface ImageOpener {
@@ -73,13 +75,141 @@ public class Renderer {
     }
 
     /**
+     * @return the rendered pixel and mask processors
+     *         (see {@link #renderImageProcessorWithMasks(RenderParameters, ImageProcessorCache, File)}).
+     */
+    public static ImageProcessorWithMasks renderImageProcessorWithMasks(final RenderParameters renderParameters,
+                                                                        final ImageProcessorCache imageProcessorCache)
+            throws IllegalArgumentException, IllegalStateException {
+
+        return renderImageProcessorWithMasks(renderParameters, imageProcessorCache, null);
+    }
+
+    /**
+     * Renders the specified parameters returning the rendered pixel and mask processors.
+     * Multi-channel sources are averaged (per specification) into a single channel result.
+     *
+     * @param  renderParameters     identifies what to render.
+     * @param  imageProcessorCache  cache for source image data.
+     * @param  debugFile            optional debug file.
+     *                              If non-null, attempt will be made to save rendered results to disk.
+     *                              If the save fails, a warning will be logged but processing will continue.
+     *
+     * @return the rendered pixel and mask processors.
+     *
+     * @throws IllegalArgumentException
+     *   if invalid parameters are provided.
+     *
+     * @throws IllegalStateException
+     *   if the parameters have not been initialized.
+     */
+    public static ImageProcessorWithMasks renderImageProcessorWithMasks(final RenderParameters renderParameters,
+                                                                        final ImageProcessorCache imageProcessorCache,
+                                                                        final File debugFile)
+            throws IllegalArgumentException, IllegalStateException {
+
+        renderParameters.validate();
+
+        final Renderer renderer = new Renderer(renderParameters, imageProcessorCache);
+
+        final ImageProcessorWithMasks imageProcessorWithMasks;
+        if (debugFile == null) {
+
+            ImageProcessorWithMasks worldTarget = null;
+
+            if (renderParameters.numberOfTileSpecs() > 0) {
+                final RenderedCanvasMipmapSource renderedCanvasMipmapSource =
+                        new RenderedCanvasMipmapSource(renderParameters, imageProcessorCache);
+
+                final MipmapSource canvas;
+                final Set<String> channelNames = renderParameters.getChannelNames();
+                final int numberOfTargetChannels = channelNames.size();
+                if (numberOfTargetChannels > 1) {
+                    canvas = new AveragedChannelMipmapSource("averaged_canvas",
+                                                             renderedCanvasMipmapSource,
+                                                             renderParameters.getChannelNamesAndWeights());
+                } else {
+                    canvas = renderedCanvasMipmapSource;
+                }
+
+                final ChannelMap canvasChannels = canvas.getChannels(0);
+                if (canvasChannels.size() > 0) {
+                    worldTarget = canvasChannels.getFirstChannel();
+                }
+            }
+
+            imageProcessorWithMasks = worldTarget;
+
+        } else {
+
+            final BufferedImage bufferedImage = renderParameters.openTargetImage();
+            imageProcessorWithMasks = renderer.renderToBufferedImage(ArgbRenderer.CONVERTER, bufferedImage);
+
+            try {
+                Utils.saveImage(bufferedImage,
+                                debugFile,
+                                renderParameters.isConvertToGray(),
+                                renderParameters.getQuality());
+            } catch (final Throwable t) {
+                LOG.warn("renderImageProcessorWithMasks: failed to save " + debugFile.getAbsolutePath(), t);
+            }
+
+        }
+
+        return imageProcessorWithMasks;
+    }
+
+    /**
+     * Constructs a renderer instance and renders to the specified image.
+     *
+     * @param  renderParameters     specifies what to render.
+     * @param  targetImage          target for rendered result.
+     * @param  imageProcessorCache  cache of source tile data.
+     * @param  converter            converts to the desired output type.
+     *
+     * @throws IllegalArgumentException
+     *   if rendering fails for any reason.
+     */
+    public static void renderToBufferedImage(final RenderParameters renderParameters,
+                                             final BufferedImage targetImage,
+                                             final ImageProcessorCache imageProcessorCache,
+                                             final ProcessorWithMasksConverter converter)
+            throws IllegalArgumentException {
+        final Renderer renderer = new Renderer(renderParameters, imageProcessorCache);
+        renderer.renderToBufferedImage(converter, targetImage);
+    }
+
+    /**
+     * Constructs a renderer instance and saves the rendered result to disk.
+     *
+     * @param  args         command line arguments for constructing a {@link RenderParameters} instance.
+     * @param  imageOpener  creates an empty target image with appropriate dimensions and type.
+     * @param  converter    converts to the desired output type.
+     *
+     * @throws Exception
+     *   if rendering fails for any reason.
+     */
+    public static void renderUsingCommandLineArguments(final String[] args,
+                                                       final ImageOpener imageOpener,
+                                                       final ProcessorWithMasksConverter converter)
+            throws Exception {
+        final RenderParameters renderParameters = RenderParameters.parseCommandLineArgs(args);
+        if (renderParameters.displayHelp()) {
+            renderParameters.showUsage();
+        } else {
+            final Renderer renderer = new Renderer(renderParameters, new ImageProcessorCache());
+            renderer.validateRenderAndSaveImage(imageOpener, converter);
+        }
+    }
+
+    /**
      * Validates this renderer's parameters, renders the image they specify, and saves the result to disk.
      *
      * @throws Exception
      *   if any part of the process fails.
      */
-    private void validateRenderAndSaveImage(final ImageOpener imageOpener,
-                                            final ProcessorWithMasksConverter converter)
+    public void validateRenderAndSaveImage(final ImageOpener imageOpener,
+                                           final ProcessorWithMasksConverter converter)
             throws Exception {
 
         final long mainStart = System.currentTimeMillis();
@@ -116,66 +246,10 @@ public class Renderer {
     }
 
     /**
-     * @return a rendered channel map.
+     * Renders to the specified target image.
      *
-     * @throws IllegalArgumentException
-     *   if rendering fails for any reason.
-     */
-    @SuppressWarnings("unused")
-    public ChannelMap renderChannelMap()
-            throws IllegalArgumentException {
-
-        final ChannelMap canvasChannels;
-
-        if (renderParameters.numberOfTileSpecs() > 0) {
-            final RenderedCanvasMipmapSource renderedCanvasMipmapSource =
-                    new RenderedCanvasMipmapSource(renderParameters, imageProcessorCache);
-            canvasChannels = renderedCanvasMipmapSource.getChannels(0);
-        } else {
-            canvasChannels = new ChannelMap();
-        }
-
-        return canvasChannels;
-    }
-
-    /**
-     * @return a rendered processor with masks.
-     *         If multiple channels exist, they are averaged per the spec into a single channel.
-     *
-     * @throws IllegalArgumentException
-     *   if rendering fails for any reason.
-     */
-    public ImageProcessorWithMasks renderImageProcessorWithMasks()
-            throws IllegalArgumentException {
-
-        ImageProcessorWithMasks worldTarget = null;
-
-        if (renderParameters.numberOfTileSpecs() > 0) {
-            final RenderedCanvasMipmapSource renderedCanvasMipmapSource =
-                    new RenderedCanvasMipmapSource(renderParameters, imageProcessorCache);
-
-            final MipmapSource canvas;
-            final Set<String> channelNames = renderParameters.getChannelNames();
-            final int numberOfTargetChannels = channelNames.size();
-            if (numberOfTargetChannels > 1) {
-                canvas = new AveragedChannelMipmapSource("averaged_canvas",
-                                                         renderedCanvasMipmapSource,
-                                                         renderParameters.getChannelNamesAndWeights());
-            } else {
-                canvas = renderedCanvasMipmapSource;
-            }
-
-            final ChannelMap canvasChannels = canvas.getChannels(0);
-            if (canvasChannels.size() > 0) {
-                worldTarget = canvasChannels.getFirstChannel();
-            }
-        }
-
-        return worldTarget;
-    }
-
-    /**
-     * Renders to the specified image.
+     * If background parameters (backgroundRGBColor or fillWithNoise) are specified,
+     * fills target with background before overlaying rendered (potentially masked) result.
      *
      * @param  converter    converts to the desired output type.
      * @param  targetImage  target for rendered result.
@@ -183,8 +257,8 @@ public class Renderer {
      * @throws IllegalArgumentException
      *   if rendering fails for any reason.
      */
-    public ImageProcessorWithMasks renderToBufferedImage(final ProcessorWithMasksConverter converter,
-                                                         final BufferedImage targetImage)
+    private ImageProcessorWithMasks renderToBufferedImage(final ProcessorWithMasksConverter converter,
+                                                          final BufferedImage targetImage)
             throws IllegalArgumentException {
 
         final int numberOfTileSpecs = renderParameters.numberOfTileSpecs();
@@ -194,7 +268,8 @@ public class Renderer {
 
         final long tileLoopStart = System.currentTimeMillis();
 
-        final ImageProcessorWithMasks worldTarget = renderImageProcessorWithMasks();
+        final ImageProcessorWithMasks worldTarget = renderImageProcessorWithMasks(renderParameters,
+                                                                                  imageProcessorCache);
 
         final long drawImageStart = System.currentTimeMillis();
 
@@ -242,46 +317,26 @@ public class Renderer {
     }
 
     /**
-     * Constructs a renderer instance and renders to the specified image.
-     *
-     * @param  renderParameters     specifies what to render.
-     * @param  targetImage          target for rendered result.
-     * @param  imageProcessorCache  cache of source tile data.
-     * @param  converter            converts to the desired output type.
+     * @return a rendered channel map.
      *
      * @throws IllegalArgumentException
      *   if rendering fails for any reason.
      */
-    static void renderToBufferedImage(final RenderParameters renderParameters,
-                                      final BufferedImage targetImage,
-                                      final ImageProcessorCache imageProcessorCache,
-                                      final ProcessorWithMasksConverter converter)
+    @SuppressWarnings("unused")
+    private ChannelMap renderChannelMap()
             throws IllegalArgumentException {
-        final Renderer renderer = new Renderer(renderParameters, imageProcessorCache);
-        renderer.renderToBufferedImage(converter, targetImage);
-    }
 
-    /**
-     * Constructs a renderer instance and saves the rendered result to disk.
-     *
-     * @param  args         command line arguments for constructing a {@link RenderParameters} instance.
-     * @param  imageOpener  creates an empty target image with appropriate dimensions and type.
-     * @param  converter    converts to the desired output type.
-     *
-     * @throws Exception
-     *   if rendering fails for any reason.
-     */
-    static void renderUsingCommandLineArguments(final String[] args,
-                                                final ImageOpener imageOpener,
-                                                final ProcessorWithMasksConverter converter)
-            throws Exception {
-        final RenderParameters renderParameters = RenderParameters.parseCommandLineArgs(args);
-        if (renderParameters.displayHelp()) {
-            renderParameters.showUsage();
+        final ChannelMap canvasChannels;
+
+        if (renderParameters.numberOfTileSpecs() > 0) {
+            final RenderedCanvasMipmapSource renderedCanvasMipmapSource =
+                    new RenderedCanvasMipmapSource(renderParameters, imageProcessorCache);
+            canvasChannels = renderedCanvasMipmapSource.getChannels(0);
         } else {
-            final Renderer renderer = new Renderer(renderParameters, new ImageProcessorCache());
-            renderer.validateRenderAndSaveImage(imageOpener, converter);
+            canvasChannels = new ChannelMap();
         }
+
+        return canvasChannels;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(Renderer.class);

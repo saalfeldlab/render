@@ -1,19 +1,3 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.alignment;
 
 import com.google.common.cache.CacheStats;
@@ -55,7 +39,7 @@ public class ArgbRendererTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         deleteTestFile(outputFile);
     }
 
@@ -294,7 +278,7 @@ public class ArgbRendererTest {
     }
 
     @Test
-    public void testExcludeMask() throws Exception {
+    public void testExcludeMask() {
 
         final String imageUrl = "src/test/resources/stitch-test/col0075_row0021_cam1.png";
         final String maskUrl = "src/test/resources/stitch-test/test_mask.jpg";
@@ -335,6 +319,7 @@ public class ArgbRendererTest {
         Assert.assertTrue("image is empty", hasAtLeastOneNonZeroPixel);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private RenderParameters getParametersForTile(final String imageUrl,
                                                   final String maskUrl,
                                                   final int fullScaleWidth,
@@ -356,6 +341,7 @@ public class ArgbRendererTest {
                                                                  fullScaleHeight,
                                                                  scale);
         parameters.addTileSpec(tileSpec);
+        parameters.initializeDerivedValues();
 
         return parameters;
     }
@@ -392,7 +378,7 @@ public class ArgbRendererTest {
                             expectedDigestString, actualDigestString);
     }
 
-    public static String getDigestString(final File file) throws Exception {
+    static String getDigestString(final File file) throws Exception {
         final MessageDigest messageDigest = MessageDigest.getInstance("MD5");
         final FileInputStream fileInputStream = new FileInputStream(file);
         final DigestInputStream digestInputStream = new DigestInputStream(fileInputStream, messageDigest);

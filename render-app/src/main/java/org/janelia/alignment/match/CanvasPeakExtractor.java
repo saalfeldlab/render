@@ -1,13 +1,9 @@
 package org.janelia.alignment.match;
 
 import ij.ImagePlus;
-import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
-import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
-import ij.process.ShortProcessor;
 
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -19,12 +15,11 @@ import mpicbg.models.Point;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import mpicbg.util.Timer;
 
-import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
-import org.janelia.alignment.Utils;
 import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.alignment.util.ImageProcessorUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,60 +71,40 @@ public class CanvasPeakExtractor
 
         renderParameters.validate();
 
-        final Renderer renderer = new Renderer(renderParameters, ImageProcessorCache.DISABLED_CACHE);
-
-        final ImageProcessorWithMasks imageProcessorWithMasks;
-        if (renderFile == null) {
-
-            imageProcessorWithMasks = renderer.renderImageProcessorWithMasks();
-
-        } else {
-
-            final BufferedImage bufferedImage = renderParameters.openTargetImage();
-            imageProcessorWithMasks = renderer.renderToBufferedImage(ArgbRenderer.CONVERTER, bufferedImage);
-
-            try {
-                Utils.saveImage(bufferedImage,
-                                renderFile,
-                                renderParameters.isConvertToGray(),
-                                renderParameters.getQuality());
-            } catch (final Throwable t) {
-                LOG.warn("extractPeaks: failed to save " + renderFile.getAbsolutePath(), t);
-            }
-
-       }
+        final ImageProcessorWithMasks imageProcessorWithMasks =
+                Renderer.renderImageProcessorWithMasks(renderParameters, ImageProcessorCache.DISABLED_CACHE, renderFile);
 
         return extractPeaksFromImageAndMask(imageProcessorWithMasks.ip,
                                             imageProcessorWithMasks.mask);
     }
 
-    /**
-     * Extract Gaussian peaks from specified buffered image.
-     *
-     * @return list of peaks.
-     */
-    List<DifferenceOfGaussianPeak<FloatType>> extractPeaksFromImage(final BufferedImage bufferedImage) {
-
-        final ImagePlus imagePlus = new ImagePlus("", bufferedImage);
-        final ImageProcessor imageProcessor = imagePlus.getProcessor();
-
-        final ImageProcessor pixelProcessor;
-        final ByteProcessor maskProcessor;
-        if (imageProcessor instanceof ColorProcessor) {
-            pixelProcessor = ((ColorProcessor) imageProcessor).getChannel(1, null);
-            maskProcessor = ((ColorProcessor) imageProcessor).getChannel(4, null);
-        } else if ((imageProcessor instanceof ByteProcessor) ||
-                   (imageProcessor instanceof FloatProcessor) ||
-                   (imageProcessor instanceof ShortProcessor)) {
-            pixelProcessor = imageProcessor;
-            maskProcessor = null;
-        } else  {
-            throw new IllegalArgumentException(
-                    "peaks cannot be extracted from " + imageProcessor.getClass().getSimpleName() + " instances");
-        }
-
-        return extractPeaksFromImageAndMask(pixelProcessor, maskProcessor);
-    }
+//    /**
+//     * Extract Gaussian peaks from specified buffered image.
+//     *
+//     * @return list of peaks.
+//     */
+//    List<DifferenceOfGaussianPeak<FloatType>> extractPeaksFromImage(final BufferedImage bufferedImage) {
+//
+//        final ImagePlus imagePlus = new ImagePlus("", bufferedImage);
+//        final ImageProcessor imageProcessor = imagePlus.getProcessor();
+//
+//        final ImageProcessor pixelProcessor;
+//        final ByteProcessor maskProcessor;
+//        if (imageProcessor instanceof ColorProcessor) {
+//            pixelProcessor = ((ColorProcessor) imageProcessor).getChannel(1, null);
+//            maskProcessor = ((ColorProcessor) imageProcessor).getChannel(4, null);
+//        } else if ((imageProcessor instanceof ByteProcessor) ||
+//                   (imageProcessor instanceof FloatProcessor) ||
+//                   (imageProcessor instanceof ShortProcessor)) {
+//            pixelProcessor = imageProcessor;
+//            maskProcessor = null;
+//        } else  {
+//            throw new IllegalArgumentException(
+//                    "peaks cannot be extracted from " + imageProcessor.getClass().getSimpleName() + " instances");
+//        }
+//
+//        return extractPeaksFromImageAndMask(pixelProcessor, maskProcessor);
+//    }
 
     /**
      * Extract Gaussian peaks from specified image and mask processors.
@@ -170,12 +145,8 @@ public class CanvasPeakExtractor
         if (mask != null) {
 
             for (int i = peakList.size() - 1; i >= 0; --i) {
-                final int x = peakList.get(i).getPosition(0);
-                final int y = peakList.get(i).getPosition(1);
-
-                if (mask.get(x, y) == 0 || mask.get(x + 1, y) == 0 || mask.get(x - 1, y) == 0 ||
-                    mask.get(x, y + 1) == 0 ||
-                    mask.get(x, y - 1) == 0) {
+                final DifferenceOfGaussianPeak<FloatType> peak = peakList.get(i);
+                if ( ImageProcessorUtil.isMasked(mask, peak.getPosition(0), peak.getPosition(1)) ) {
                     peakList.remove(i);
                 }
             }

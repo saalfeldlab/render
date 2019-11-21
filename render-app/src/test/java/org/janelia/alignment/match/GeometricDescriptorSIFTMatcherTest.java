@@ -2,13 +2,8 @@ package org.janelia.alignment.match;
 
 import ij.ImageJ;
 import ij.ImagePlus;
-import ij.process.FloatProcessor;
-import ij.process.ImageProcessor;
 
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
@@ -18,19 +13,18 @@ import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.IllDefinedDataPointsException;
-import mpicbg.models.Model;
-import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.spim.io.IOFunctions;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Renderer;
 import org.janelia.alignment.match.MatchFilter.FilterType;
 import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.util.ImageDebugUtil;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -39,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import net.imglib2.KDTree;
 import net.imglib2.RealPoint;
 import net.imglib2.neighborsearch.KNearestNeighborSearchOnKDTree;
-import net.imglib2.neighborsearch.NearestNeighborSearchOnKDTree;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -101,8 +94,8 @@ public class GeometricDescriptorSIFTMatcherTest {
         final RenderParameters renderParametersTile2 =
                 getRenderParametersForTile(owner, project, stack, tileId2, renderScaleSIFT, true, clipSize, MontageRelativePosition.RIGHT);
 
-        final BufferedImage imageSIFT1 = renderImage(renderParametersTile1);
-        final BufferedImage imageSIFT2 = renderImage(renderParametersTile2);
+        final ImageProcessorWithMasks ipmSIFT1 = Renderer.renderImageProcessorWithMasks(renderParametersTile1, ImageProcessorCache.DISABLED_CACHE);
+        final ImageProcessorWithMasks ipmSIFT2 = Renderer.renderImageProcessorWithMasks(renderParametersTile2, ImageProcessorCache.DISABLED_CACHE);
 
         final FloatArray2DSIFT.Param coreSiftParameters = new FloatArray2DSIFT.Param();
         coreSiftParameters.fdSize = 4;
@@ -110,9 +103,9 @@ public class GeometricDescriptorSIFTMatcherTest {
         final double minScale = 0.25;
         final double maxScale = 1.0;
 
-        final CanvasFeatureExtractor canvasFeatureExtractor = new CanvasFeatureExtractor( coreSiftParameters, minScale, maxScale, true );
-        final List< Feature > f1 = canvasFeatureExtractor.extractFeaturesFromImage( imageSIFT1 );
-        final List< Feature > f2 = canvasFeatureExtractor.extractFeaturesFromImage( imageSIFT2 );
+        final CanvasFeatureExtractor canvasFeatureExtractor = new CanvasFeatureExtractor( coreSiftParameters, minScale, maxScale );
+        final List< Feature > f1 = canvasFeatureExtractor.extractFeaturesFromImageAndMask( ipmSIFT1.ip, ipmSIFT1.mask );
+        final List< Feature > f2 = canvasFeatureExtractor.extractFeaturesFromImageAndMask( ipmSIFT2.ip, ipmSIFT2.mask );
 
         // GET INLIERS
         final MatchDerivationParameters ransacParam = new MatchDerivationParameters( 0.92f, ModelType.AFFINE, 1000, 50, 0, 10, 4, null, FilterType.SINGLE_SET );
@@ -136,29 +129,22 @@ public class GeometricDescriptorSIFTMatcherTest {
 
         new ImageJ();
 
-        // needs to be replaced above later
-        final ImageProcessorWithMasks imageSIFT1b = renderProcessorWithMasks(renderParametersTile1);
-        final ImageProcessorWithMasks imageSIFT2b = renderProcessorWithMasks(renderParametersTile2);
-
         final double blockRadiusSIFT = gdParameters.fullScaleBlockRadius * renderScaleSIFT;
         
         final Pair< Long, Long > coverage = 
-        		computeCoverage(
-        				imageSIFT1b.ip,
-        				imageSIFT1b.mask,
-        				imageSIFT2b.ip,
-        				imageSIFT2b.mask,
-        				inliersSIFT,
-        				new AffineModel2D(), // model used to fit the inliers and tranform Q
-        				blockRadiusSIFT );
+                CoverageUtils.computeOverlappingCoverage(ipmSIFT1.ip, ipmSIFT1.mask,
+                                                         ipmSIFT2.ip, ipmSIFT2.mask,
+                                                         inliersSIFT,
+                                                         new AffineModel2D(), // model used to fit the inliers and tranform Q
+                                                         blockRadiusSIFT );
         
         LOG.debug( "area coverage [%]: " + (double)coverage.getA() / (double)coverage.getB() * 100 );
         //SimpleMultiThreading.threadHaltUnClean();
 
         // debug
         /*
-        final ImagePlus impSIFT1 = new ImagePlus(tileId1 + "_SIFT", imageSIFT1);
-        final ImagePlus impSIFT2 = new ImagePlus(tileId2 + "_SIFT", imageSIFT2);
+        final ImagePlus impSIFT1 = new ImagePlus(tileId1 + "_SIFT", ipmSIFT1.ip);
+        final ImagePlus impSIFT2 = new ImagePlus(tileId2 + "_SIFT", ipmSIFT1.ip);
         ImageDebugUtil.drawBlockedRegions(inlierPoints1, blockRadiusSIFT, impSIFT1);
         ImageDebugUtil.setPointRois(inlierPoints1, impSIFT1);
         ImageDebugUtil.drawBlockedRegions(inlierPoints2, blockRadiusSIFT, impSIFT2);
@@ -189,8 +175,8 @@ public class GeometricDescriptorSIFTMatcherTest {
         renderParametersTile2.setScale(renderScaleGeo);
         renderParametersTile2.setDoFilter(false);
 
-        final ImageProcessorWithMasks geo1 = renderProcessorWithMasks(renderParametersTile1);
-        final ImageProcessorWithMasks geo2 = renderProcessorWithMasks(renderParametersTile2);
+        final ImageProcessorWithMasks geo1 = Renderer.renderImageProcessorWithMasks(renderParametersTile1, ImageProcessorCache.DISABLED_CACHE);
+        final ImageProcessorWithMasks geo2 = Renderer.renderImageProcessorWithMasks(renderParametersTile2, ImageProcessorCache.DISABLED_CACHE);
 
         final ImagePlus impGeo1 = new ImagePlus("peak_" + tileId1, geo1.ip);
         final ImagePlus impGeo2 = new ImagePlus("peak_" + tileId2, geo2.ip);
@@ -257,94 +243,10 @@ public class GeometricDescriptorSIFTMatcherTest {
         SimpleMultiThreading.threadHaltUnClean();
     }
 
-	public static Pair< Long, Long > computeCoverage(
-			final ImageProcessor imageP,
-			final ImageProcessor maskP,
-			final ImageProcessor imageQ,
-			final ImageProcessor maskQ,
-			final List<PointMatch> inliersSIFT,
-			final Model< ? > model,
-			final double blockRadiusSIFT )
-	{
-		// debug
-		//ImagePlus impP = new ImagePlus( "p", new FloatProcessor( imageP.getWidth(), imageP.getHeight()  ));
-		//ImagePlus impQ = new ImagePlus( "q", new FloatProcessor( imageP.getWidth(), imageP.getHeight()  ));
-		//ImagePlus impPO = new ImagePlus( "poverlap", new FloatProcessor( imageP.getWidth(), imageP.getHeight()  ));
+	private static final String[] limitDetectionChoice = {"Brightest", "Around median (of those above threshold)", "Weakest (above threshold)" };
 
-		try
-		{
-			model.fit( inliersSIFT );
-		}
-		catch ( NotEnoughDataPointsException | IllDefinedDataPointsException e )
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
-		}
-
-		final List<Point> inlierPointsP = new ArrayList<>();
-        PointMatch.sourcePoints(inliersSIFT, inlierPointsP);
-
-        final List<RealPoint> realPointListP = new ArrayList<>();
-
-        for (final Point p : inlierPointsP)
-        	realPointListP.add(new RealPoint(p.getL()[0], p.getL()[1]));
-
-        final NearestNeighborSearchOnKDTree<RealPoint> nnP =
-        		new NearestNeighborSearchOnKDTree<>(new KDTree<>(realPointListP, realPointListP));
-
-        final double[] tmp = new double[ 2 ];
-        long totalOverlap = 0;
-        long coveredBySIFT = 0;
-
-        for ( int y = 0; y < imageP.getHeight(); ++y )
-        	for ( int x = 0; x < imageP.getWidth(); ++x )
-        	{
-        		//impP.getProcessor().setf( x, y, imageP.getf( x, y ) );
-  
-        		// is inside the mask of P
-        		if ( maskP.getf( x, y ) > 0 )
-        		{
-        			tmp[ 0 ] = x;
-        			tmp[ 1 ] = y;
-        			model.applyInPlace( tmp );
-
-        			if ( tmp[ 0 ] >= 0 && tmp[ 0 ] <= imageQ.getWidth() - 1 && 
-        				 tmp[ 1 ] >= 0 && tmp[ 1 ] <= imageQ.getHeight() - 1 &&
-        				 maskQ.getf( (int)Math.round( tmp[ 0 ] ), (int)Math.round( tmp[ 1 ] ) ) > 0 )
-        			{
-                			//impQ.getProcessor().setf( x, y, imageQ.getf( (int)Math.round( tmp[ 0 ] ), (int)Math.round( tmp[ 1 ] ) ) );
-                			//impPO.getProcessor().setf( x, y, 1 );
-
-        				// is inside Q and inside the mask of Q
-        				++totalOverlap;
-
-        				// test if covered by SIFT
-        				final RealPoint p = new RealPoint(x, y);
-        				nnP.search(p);
-
-                        // first nearest neighbor is the point itself, we need the second nearest
-                        final double d = nnP.getDistance();
-
-                        if (d <= blockRadiusSIFT)
-                        {
-                        		++coveredBySIFT;
-                        		//impPO.getProcessor().setf( x, y, impPO.getProcessor().getf( x, y ) + 1 );
-                        }
-        			}
-        		}
-        	}
-
-        //impP.show();
-        //impQ.show();
-        //impPO.show();
-
-        return new ValuePair< Long, Long >( coveredBySIFT, totalOverlap );
-	}
-
-	public static String[] limitDetectionChoice = { "Brightest", "Around median (of those above threshold)", "Weakest (above threshold)" };
-
-	public static List< DifferenceOfGaussianPeak<FloatType> > limitList( final int maxDetections, final int maxDetectionsTypeIndex, final List< DifferenceOfGaussianPeak<FloatType> > list )
+	@SuppressWarnings("unused")
+	public static List< DifferenceOfGaussianPeak<FloatType> > limitList(final int maxDetections, final int maxDetectionsTypeIndex, final List< DifferenceOfGaussianPeak<FloatType> > list )
 	{
 		if ( list.size() <= maxDetections )
 		{
@@ -388,34 +290,23 @@ public class GeometricDescriptorSIFTMatcherTest {
 		}
 	}
 
-	public static void sortDetections( final List< DifferenceOfGaussianPeak<FloatType> > list )
+	private static void sortDetections(final List<DifferenceOfGaussianPeak<FloatType>> list)
 	{
-		Collections.sort( list, new Comparator< DifferenceOfGaussianPeak<FloatType> >()
-		{
-
-			@Override
-			public int compare( final DifferenceOfGaussianPeak<FloatType> o1, final DifferenceOfGaussianPeak<FloatType> o2 )
-			{
-				final double v1 = Math.abs( o1.getValue().get() );
-				final double v2 = Math.abs( o2.getValue().get() );
-
-				if ( v1 < v2 )
-					return 1;
-				else if ( v1 == v2 )
-					return 0;
-				else
-					return -1;
-			}
-		} );
+		list.sort((o1, o2) -> {
+			final double v1 = Math.abs(o1.getValue().get());
+			final double v2 = Math.abs(o2.getValue().get());
+			return Double.compare(v2, v1);
+		});
 	}
 
 
+	@SuppressWarnings("unused")
     public static List< DifferenceOfGaussianPeak< FloatType > > thinOut( final List< DifferenceOfGaussianPeak< FloatType > > canvasPeaks, final double minDistance, final double maxDistance, final boolean keepRange )
     {
 		// assemble the list of points (we need two lists as the KDTree sorts the list)
 		// we assume that the order of list2 is preserved
-		final List< RealPoint > list1 = new ArrayList< RealPoint >();
-		final List< RealPoint > list2 = new ArrayList< RealPoint >();
+		final List< RealPoint > list1 = new ArrayList<>();
+		final List< RealPoint > list2 = new ArrayList<>();
 
 		for ( final DifferenceOfGaussianPeak<FloatType> ip : canvasPeaks )
 		{
@@ -429,10 +320,10 @@ public class GeometricDescriptorSIFTMatcherTest {
 		}
 
 		// make the KDTree
-		final KDTree< RealPoint > tree = new KDTree< RealPoint >( list1, list1 );
+		final KDTree< RealPoint > tree = new KDTree<>(list1, list1);
 
 		// Nearest neighbor for each point, populate the new list
-		final KNearestNeighborSearchOnKDTree< RealPoint > nn = new KNearestNeighborSearchOnKDTree< RealPoint >( tree, 2 );
+		final KNearestNeighborSearchOnKDTree< RealPoint > nn = new KNearestNeighborSearchOnKDTree<>(tree, 2);
 		final List< DifferenceOfGaussianPeak< FloatType > > newIPs = new ArrayList<>();
 
 		for ( int j = 0; j < list2.size(); ++j )
@@ -450,6 +341,7 @@ public class GeometricDescriptorSIFTMatcherTest {
 		return newIPs;
     }
 
+	@SuppressWarnings("unused")
 	static Pair< ArrayList< Point >, ArrayList< Point > > adjustInliers( final List<PointMatch> inliers, final double scaleSIFT, final double scaleGeo )
 	{
 		final ArrayList< Point > sourcePoints = new ArrayList<>();

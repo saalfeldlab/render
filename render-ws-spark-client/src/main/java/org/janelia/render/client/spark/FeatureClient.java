@@ -172,8 +172,7 @@ public class FeatureClient
         final CanvasFeatureExtractor featureExtractor =
                 new CanvasFeatureExtractor(siftParameters,
                                            featureExtractionParameters.minScale,
-                                           featureExtractionParameters.maxScale,
-                                           featureRenderParameters.fillWithNoise);
+                                           featureExtractionParameters.maxScale);
 
         final CanvasFeatureListLoader featureLoader = new CanvasFeatureListLoader(urlTemplateForRun,
                                                                                   featureExtractor);

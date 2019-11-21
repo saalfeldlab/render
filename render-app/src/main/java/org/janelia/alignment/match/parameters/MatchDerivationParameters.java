@@ -106,6 +106,12 @@ public class MatchDerivationParameters implements Serializable {
     )
     public FilterType matchFilter = FilterType.SINGLE_SET;
 
+    @Parameter(
+            names = "--matchFullScaleCoverageRadius",
+            description = "Full scale radius to use for coverage analysis"
+    )
+    public Double matchFullScaleCoverageRadius;
+
     void setDefaults() {
         if (matchRod == null) {
             matchRod = 0.92f;
@@ -127,6 +133,9 @@ public class MatchDerivationParameters implements Serializable {
         }
         if (matchMaxTrust == null) {
             matchMaxTrust = 3.0;
+        }
+        if (matchFullScaleCoverageRadius == null) {
+            matchFullScaleCoverageRadius = 100.0;
         }
     }
 

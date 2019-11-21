@@ -51,8 +51,7 @@ public class FeatureExtractionTest {
 
         canvasFeatureExtractor = new CanvasFeatureExtractor(coreSiftParameters,
                                                             minScale,
-                                                            maxScale,
-                                                            true);
+                                                            maxScale);
 
         saveTileImage = false;    // set this to true if you want to see the generated tile image
         printFeatureList = false; // set this to true if you want to see list of features
@@ -132,8 +131,7 @@ public class FeatureExtractionTest {
 
         final CanvasFeatureExtractor featureExtractor = new CanvasFeatureExtractor(coreSiftParameters,
                                                                                    minScale,
-                                                                                   maxScale,
-                                                                                   true);
+                                                                                   maxScale);
 
         // edge pair:   151215050312010004.12.0 151215050312010005.12.0
         // center pair: 151215050312008005.12.0 151215050312007005.12.0
@@ -182,8 +180,7 @@ public class FeatureExtractionTest {
 
         final CanvasFeatureExtractor featureExtractor = new CanvasFeatureExtractor(coreSiftParameters,
                                                                                    minScale,
-                                                                                   maxScale,
-                                                                                   true);
+                                                                                   maxScale);
 
         final String stackUrl = "http://tem-services:8080/render-ws/v1/owner/flyTEM/project/FAFB00/stack/v10_acquire";
         final String urlSuffix = "/render-parameters?excludeMask=true?filter=true";

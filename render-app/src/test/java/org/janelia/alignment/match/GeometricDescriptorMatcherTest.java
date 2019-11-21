@@ -7,7 +7,6 @@ import ij.gui.PolygonRoi;
 import ij.process.ImageProcessor;
 
 import java.awt.Rectangle;
-import java.awt.image.BufferedImage;
 import java.util.List;
 
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
@@ -17,7 +16,6 @@ import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
-import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
@@ -95,11 +93,13 @@ public class GeometricDescriptorMatcherTest {
         final RenderParameters renderParametersTile2 =
                 getRenderParametersForTile(owner, project, stack, tileId2, peakRenderScale, false, clipSize, MontageRelativePosition.RIGHT);
 
-        final BufferedImage image1 = renderImage(renderParametersTile1);
-        final BufferedImage image2 = renderImage(renderParametersTile2);
+        final ImageProcessorWithMasks ipm1 = Renderer.renderImageProcessorWithMasks(renderParametersTile1, ImageProcessorCache.DISABLED_CACHE);
+        final ImageProcessorWithMasks ipm2 = Renderer.renderImageProcessorWithMasks(renderParametersTile2, ImageProcessorCache.DISABLED_CACHE);
 
-        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 = extractor.extractPeaksFromImage(image1);
-        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 = extractor.extractPeaksFromImage(image2);
+        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks1 =
+                extractor.extractPeaksFromImageAndMask(ipm1.ip, ipm1.mask);
+        List<DifferenceOfGaussianPeak<FloatType>> canvasPeaks2 =
+                extractor.extractPeaksFromImageAndMask(ipm2.ip, ipm2.mask);
 
         LOG.debug( "#detections: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
@@ -113,8 +113,8 @@ public class GeometricDescriptorMatcherTest {
 
         LOG.debug( "#detections after thinning: " + canvasPeaks1.size() + " & " + canvasPeaks2.size() );
 
-        final ImagePlus ip1 = new ImagePlus("peak_" + tileId1, image1);
-        final ImagePlus ip2 = new ImagePlus("peak_" + tileId2, image2);
+        final ImagePlus ip1 = new ImagePlus("peak_" + tileId1, ipm1.ip);
+        final ImagePlus ip2 = new ImagePlus("peak_" + tileId2, ipm2.ip);
 
         ImageDebugUtil.setPeakPointRois(canvasPeaks1, ip1);
         ImageDebugUtil.setPeakPointRois(canvasPeaks2, ip2);
@@ -129,29 +129,29 @@ public class GeometricDescriptorMatcherTest {
 
         final List<PointMatch> inliers = result.getInlierPointMatchList();
 
-        final ImagePlus ipnew1 = new ImagePlus("match_" + tileId1, image1);
-        final ImagePlus ipnew2 = new ImagePlus("match_" + tileId2, image2);
+        final ImagePlus ipnew1 = new ImagePlus("match_" + tileId1, ipm1.ip.duplicate());
+        final ImagePlus ipnew2 = new ImagePlus("match_" + tileId2, ipm2.ip.duplicate());
 
         ImageDebugUtil.setPointMatchRois(inliers, ipnew1, ipnew2);
 
         if (inliers.size() > 3) {
-            final List< Point > convexHull1 = ConvexHull.deriveConvexHull( ImageDebugUtil.getSourcePoints( inliers ) );
-            final List< Point > convexHull2 = ConvexHull.deriveConvexHull( ImageDebugUtil.getTargetPoints( inliers ) );
+            final List< Point > convexHull1 = CoverageUtils.computeConvexHull(ImageDebugUtil.getSourcePoints(inliers ) );
+            final List< Point > convexHull2 = CoverageUtils.computeConvexHull(ImageDebugUtil.getTargetPoints(inliers ) );
 
-        	final PolygonRoi r1 = ConvexHull.createPolygon( convexHull1 );
-        	final PolygonRoi r2 = ConvexHull.createPolygon( convexHull2 );
+        	final PolygonRoi r1 = CoverageUtils.createPolygon(convexHull1 );
+        	final PolygonRoi r2 = CoverageUtils.createPolygon(convexHull2 );
 
         	final long sqArea1 = ipnew1.getWidth() * ipnew1.getHeight();
         	final long sqArea2 = ipnew2.getWidth() * ipnew2.getHeight();
 
-        	final double area1 = ConvexHull.calculatePolygonArea( convexHull1 ); //areaBruteForce( ipnew1.getProcessor(), r1 );
-        	final double area2 = ConvexHull.calculatePolygonArea( convexHull2 ); //areaBruteForce( ipnew2.getProcessor(), r2 );
+        	final double area1 = CoverageUtils.calculatePolygonArea(convexHull1 ); //areaBruteForce( ipnew1.getProcessor(), r1 );
+        	final double area2 = CoverageUtils.calculatePolygonArea(convexHull2 ); //areaBruteForce( ipnew2.getProcessor(), r2 );
 
         	final double relArea1 = area1/sqArea1;
         	final double relArea2 = area2/sqArea2;
 
-        	final double[] c1 = ConvexHull.calculateCenterOfMassBruteForce( r1 );
-        	final double[] c2 = ConvexHull.calculateCenterOfMassBruteForce( r2 );
+        	final double[] c1 = CoverageUtils.calculateCenterOfMassBruteForce(r1 );
+        	final double[] c2 = CoverageUtils.calculateCenterOfMassBruteForce(r2 );
 
         	LOG.debug( "Convex hull 1: " + convexHull1.size() + ", area=" + area1 + "/" + sqArea1 + " (" + Math.round( 100.0*relArea1 ) + "%)" );
         	LOG.debug( "center of mass 1: " + Util.printCoordinates( c1 ) );
@@ -267,32 +267,6 @@ public class GeometricDescriptorMatcherTest {
         }
 
         return renderParameters;
-    }
-
-    static BufferedImage renderImage(final RenderParameters renderParameters) {
-        // RGB (the alpha channel contains a mask for the left stripe to ignore)
-        final BufferedImage bufferedImage = renderParameters.openTargetImage();
-        ArgbRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
-
-        // 8 bit (almost identical to RGB when converted to gray)
-        //final BufferedImage bufferedImage = renderParameters.openTargetImage( BufferedImage.TYPE_BYTE_GRAY );
-        //ShortRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
-        // TODO: Write ByteRenderer? Somehow the ShortRendered also works for 8-bit when providing a BufferedImage.TYPE_BYTE_GRAY
-
-        // 16 bit
-        //final BufferedImage bufferedImage = renderParameters.openTargetImage( BufferedImage.TYPE_USHORT_GRAY );
-        //ShortRenderer.render(renderParameters, bufferedImage, ImageProcessorCache.DISABLED_CACHE);
-
-        //new ImageJ();
-        //new ImagePlus( "", bufferedImage ).show();
-        //SimpleMultiThreading.threadHaltUnClean();
-
-        return bufferedImage;
-    }
-
-    static ImageProcessorWithMasks renderProcessorWithMasks(final RenderParameters renderParameters) {
-        final Renderer renderer = new Renderer(renderParameters, ImageProcessorCache.DISABLED_CACHE);
-        return renderer.renderImageProcessorWithMasks();
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(GeometricDescriptorMatcherTest.class);

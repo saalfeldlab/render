@@ -24,10 +24,8 @@ public class MatchTrialStats
     private final Double aggregateDeltaYStandardDeviation;
     private final List<Double> consensusSetDeltaXStandardDeviations;
     private final List<Double> consensusSetDeltaYStandardDeviations;
-    private final Long pImageArea;
-    private final Long qImageArea;
-    private final Long pConvexHullArea;
-    private final Long qConvexHullArea;
+    private final Long overlappingImagePixels;
+    private final Long overlappingCoveragePixels;
 
     public MatchTrialStats() {
         this(null,
@@ -63,10 +61,8 @@ public class MatchTrialStats
                     pointMatchQualityStats.getConsensusSetDeltaXStandardDeviations();
             this.consensusSetDeltaYStandardDeviations =
                     pointMatchQualityStats.getConsensusSetDeltaYStandardDeviations();
-            this.pImageArea = pointMatchQualityStats.getpImageArea();
-            this.pConvexHullArea = pointMatchQualityStats.getpConvexHullArea().longValue();
-            this.qImageArea = pointMatchQualityStats.getqImageArea();
-            this.qConvexHullArea = pointMatchQualityStats.getqConvexHullArea().longValue();
+            this.overlappingImagePixels = pointMatchQualityStats.getOverlappingImagePixels();
+            this.overlappingCoveragePixels = pointMatchQualityStats.getOverlappingCoveragePixels();
 
         } else {
 
@@ -74,10 +70,8 @@ public class MatchTrialStats
             this.aggregateDeltaYStandardDeviation = null;
             this.consensusSetDeltaXStandardDeviations = null;
             this.consensusSetDeltaYStandardDeviations = null;
-            this.pImageArea = null;
-            this.pConvexHullArea = null;
-            this.qImageArea = null;
-            this.qConvexHullArea = null;
+            this.overlappingImagePixels = null;
+            this.overlappingCoveragePixels = null;
             
         }
 

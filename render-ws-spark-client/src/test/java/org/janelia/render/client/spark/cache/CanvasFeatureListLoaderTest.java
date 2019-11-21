@@ -42,7 +42,7 @@ public class CanvasFeatureListLoaderTest {
         final CanvasRenderParametersUrlTemplate template = new CanvasRenderParametersUrlTemplate(templateString);
 
         final CanvasFeatureExtractor extractor =
-                new CanvasFeatureExtractor(new FloatArray2DSIFT.Param(), 0.0, 0.0, true);
+                new CanvasFeatureExtractor(new FloatArray2DSIFT.Param(), 0.0, 0.0);
 
         final CanvasFeatureListLoader loader = new CanvasFeatureListLoader(template, extractor);
 

@@ -1,10 +1,13 @@
 package org.janelia.alignment.match;
 
+import ij.process.ImageProcessor;
+
 import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import mpicbg.models.AffineModel2D;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.Model;
 import mpicbg.models.NotEnoughDataPointsException;
@@ -15,9 +18,11 @@ import org.janelia.alignment.RenderParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.imglib2.util.Pair;
+
 /**
  * Container for calculating and storing point match quality stats.
- * Though rendered canvases are often scaled, stats are converted to and recorded in full resolution pixels.
+ * Stats are converted (as needed) and recorded in full scale pixels.
  *
  * @author Eric Trautman
  */
@@ -30,41 +35,19 @@ public class PointMatchQualityStats
     private List<Double> consensusSetDeltaYStandardDeviations;
     private double[] aggregateDeltaXAndYStandardDeviation;
 
-    private Long pImageWidth;
-    private Long pImageHeight;
-    private Double pConvexHullArea;
-    private Double pCoverageWidth;
-    private Double pCoverageHeight;
-
-    private Long qImageWidth;
-    private Long qImageHeight;
-    private Double qConvexHullArea;
-    private Double qCoverageWidth;
-    private Double qCoverageHeight;
+    private Long overlappingCoveragePixels;
+    private Long overlappingImagePixels;
 
     public PointMatchQualityStats() {
     }
 
-    public Long getpImageWidth() {
-        return pImageWidth;
-    }
-
-    public Long getpImageHeight() {
-        return pImageHeight;
-    }
-
-    public Long getqImageWidth() {
-        return qImageWidth;
-    }
-
-    public Long getqImageHeight() {
-        return qImageHeight;
-    }
-
     public void calculate(final RenderParameters pRenderParameters,
+                          final ImageProcessor pMask,
                           final RenderParameters qRenderParameters,
+                          final ImageProcessor qMask,
                           final List<List<PointMatch>> consensusSetInliers,
-                          final Model aggregateModel)
+                          final Model aggregateModel,
+                          final double overlapBlockRadius)
             throws NotEnoughDataPointsException, IllDefinedDataPointsException, IllegalArgumentException {
 
         final double renderScale = pRenderParameters.getScale();
@@ -77,33 +60,30 @@ public class PointMatchQualityStats
         calculate(renderScale,
                   pRenderParameters.getWidth(),
                   pRenderParameters.getHeight(),
+                  pMask,
                   qRenderParameters.getWidth(),
                   qRenderParameters.getHeight(),
+                  qMask,
                   consensusSetInliers,
-                  aggregateModel);
+                  aggregateModel,
+                  overlapBlockRadius);
     }
 
     public void calculate(final double renderScale,
                           final long pFullScaleWidth,
                           final long pFullScaleHeight,
+                          final ImageProcessor pMask,
                           final long qFullScaleWidth,
                           final long qFullScaleHeight,
+                          final ImageProcessor qMask,
                           final List<List<PointMatch>> consensusSetInliers,
-                          final Model aggregateModel)
+                          final Model aggregateModel,
+                          final double fullScaleOverlapBlockRadius)
             throws NotEnoughDataPointsException, IllDefinedDataPointsException {
 
         consensusSetDeltaXStandardDeviations = new ArrayList<>();
         consensusSetDeltaYStandardDeviations = new ArrayList<>();
         aggregateDeltaXAndYStandardDeviation = new double[] { 0.0, 0.0 };
-
-        pImageWidth = pFullScaleWidth;
-        pImageHeight = pFullScaleHeight;
-
-        qImageWidth = qFullScaleWidth;
-        qImageHeight = qFullScaleHeight;
-
-        pConvexHullArea = 0.0;
-        qConvexHullArea = 0.0;
 
         final List<PointMatch> aggregatedInliers = new ArrayList<>();
         for (final List<PointMatch> consensusSet : consensusSetInliers) {
@@ -131,19 +111,22 @@ public class PointMatchQualityStats
                 aggregateDeltaXAndYStandardDeviation = getWorldDeltaXAndYStandardDeviation(aggregatedInliers);
             }
 
-            final List<Point> pAggregatedPointList = new ArrayList<>(totalNumberOfInliers);
-            PointMatch.sourcePoints(aggregatedInliers, pAggregatedPointList);
-            pConvexHullArea = calculateConvexHullArea(pAggregatedPointList, renderScale);
+            // use mask height and width if it exists to avoid rounding issues in coverage logic
+            final int pWidth = (pMask == null) ? (int) Math.ceil(pFullScaleWidth * renderScale) : pMask.getWidth();
+            final int pHeight = (pMask == null) ? (int) Math.ceil(pFullScaleHeight * renderScale) : pMask.getHeight();
+            final int qWidth = (pMask == null) ? (int) Math.ceil(qFullScaleWidth * renderScale) : qMask.getWidth();
+            final int qHeight = (pMask == null) ? (int) Math.ceil(qFullScaleHeight * renderScale) : qMask.getHeight();
 
-            final List<Point> qAggregatedPointList = new ArrayList<>(totalNumberOfInliers);
-            PointMatch.targetPoints(aggregatedInliers, qAggregatedPointList);
-            qConvexHullArea = calculateConvexHullArea(qAggregatedPointList, renderScale);
+            final AffineModel2D overlapModel = new AffineModel2D();
+            final Pair<Long, Long> coverageStats =
+                    CoverageUtils.computeOverlappingCoverage(pWidth, pHeight, pMask,
+                                                             qWidth, qHeight, qMask,
+                                                             aggregatedInliers,
+                                                             overlapModel,
+                                                             fullScaleOverlapBlockRadius * renderScale);
 
-            pCoverageWidth = calculateCoverageDistance(pAggregatedPointList, renderScale, 0);
-            pCoverageHeight = calculateCoverageDistance(pAggregatedPointList, renderScale, 1);
-
-            qCoverageWidth = calculateCoverageDistance(qAggregatedPointList, renderScale, 0);
-            qCoverageHeight = calculateCoverageDistance(qAggregatedPointList, renderScale, 1);
+            overlappingCoveragePixels = (long) Math.ceil(coverageStats.getA() / renderScale);
+            overlappingImagePixels = (long) Math.ceil(coverageStats.getB() / renderScale);
         }
     }
 
@@ -159,86 +142,24 @@ public class PointMatchQualityStats
         return aggregateDeltaXAndYStandardDeviation;
     }
 
-    Long getpImageArea() {
-        return pImageWidth * pImageHeight;
+    Long getOverlappingImagePixels() {
+        return overlappingImagePixels;
     }
 
-    Long getqImageArea() {
-        return qImageWidth * qImageHeight;
-    }
-
-    Double getpConvexHullArea() {
-        return pConvexHullArea;
-    }
-
-    Double getqConvexHullArea() {
-        return qConvexHullArea;
+    Long getOverlappingCoveragePixels() {
+        return overlappingCoveragePixels;
     }
 
     public boolean hasSufficientQuantity(final Integer minNumberOfInliers) {
         return (minNumberOfInliers == null) || (totalNumberOfInliers >= minNumberOfInliers);
     }
 
-    public boolean hasSufficientCoverage(final Double minCoverageArea,
-                                         final Double minCoverageDistance,
-                                         final MontageRelativePosition pRelativePosition)
-            throws IllegalArgumentException {
-
-        boolean isSufficient = true;
-        if (minCoverageArea != null) {
-
-            isSufficient = hasSufficientAreaCoverage(minCoverageArea);
-
-        } else if (minCoverageDistance != null) {
-
-            if (pRelativePosition == null) {
-                throw new IllegalArgumentException(
-                        "relative canvas position information required to check coverage distance");
-            }
-
-            switch (pRelativePosition) {
-                case TOP:
-                case BOTTOM:
-                    isSufficient = hasSufficientWidthCoverage(minCoverageDistance);
-                    break;
-                case LEFT:
-                case RIGHT:
-                    isSufficient = hasSufficientHeightCoverage(minCoverageDistance);
-                    break;
-            }
-        }
-        return isSufficient;
-    }
-
-    private boolean hasSufficientAreaCoverage(final double minPercentage) {
-        final double pCoveragePercentage = (pConvexHullArea / getpImageArea()) * 100.0;
-        final double qCoveragePercentage = (qConvexHullArea / getqImageArea()) * 100.0;
-        return evaluateCoverage("area", pCoveragePercentage, qCoveragePercentage, minPercentage);
-    }
-
-    private boolean hasSufficientWidthCoverage(final double minPercentage) {
-        final double pCoveragePercentage = (pCoverageWidth / pImageWidth) * 100.0;
-        final double qCoveragePercentage = (qCoverageWidth / qImageWidth) * 100.0;
-        return evaluateCoverage("width", pCoveragePercentage, qCoveragePercentage, minPercentage);
-    }
-
-    private boolean hasSufficientHeightCoverage(final double minPercentage) {
-        final double pCoveragePercentage = (pCoverageHeight / pImageHeight) * 100.0;
-        final double qCoveragePercentage = (qCoverageHeight / qImageHeight) * 100.0;
-        return evaluateCoverage("height", pCoveragePercentage, qCoveragePercentage, minPercentage);
-    }
-
-    private static boolean evaluateCoverage(final String context,
-                                            final double pCoveragePercentage,
-                                            final double qCoveragePercentage,
-                                            final double minPercentage) {
-        // TODO: confirm max is what we want here
-        final double coveragePercentage = Math.max(pCoveragePercentage, qCoveragePercentage);
+    public boolean hasSufficientCoverage(final double minPercentage) {
+        final double coveragePercentage =
+                (overlappingCoveragePixels / (double) overlappingImagePixels) * 100.0;
         final boolean result = (coveragePercentage >= minPercentage);
-        LOG.debug("hasSufficientCoverage: returning {} for p {} coverage of {}% and q {} coverage of {}%",
-                  result,
-                  context, PERCENT_FORMATTER.format(pCoveragePercentage),
-                  context, PERCENT_FORMATTER.format(qCoveragePercentage));
+        LOG.debug("hasSufficientCoverage: returning {} for coverage of {}%",
+                  result, PERCENT_FORMATTER.format(coveragePercentage));
         return result;
     }
 
@@ -267,30 +188,6 @@ public class PointMatchQualityStats
         }
         final double variance = squaredDifferenceSum / values.length;
         return Math.sqrt(variance);
-    }
-
-    private static double calculateConvexHullArea(final List<Point> aggregatedPointList,
-                                                  final double renderScale) {
-        final List<Point> convexHull = ConvexHull.deriveConvexHull(aggregatedPointList);
-        final double pScaledConvexHullArea = ConvexHull.calculatePolygonArea(convexHull);
-        return pScaledConvexHullArea / renderScale / renderScale;
-    }
-
-    private static double calculateCoverageDistance(final List<Point> aggregatedPointList,
-                                                    final double renderScale,
-                                                    final int dimension) {
-        double distance = 0.0;
-        if (aggregatedPointList.size() > 0) {
-            double min = Double.MAX_VALUE;
-            double max = -Double.MAX_VALUE;
-            for (final Point p : aggregatedPointList) {
-                final double value = p.getL()[dimension];
-                min = Math.min(min, value);
-                max = Math.max(max, value);
-            }
-            distance = Math.abs(max - min) / renderScale;
-        }
-        return distance;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(PointMatchQualityStats.class);

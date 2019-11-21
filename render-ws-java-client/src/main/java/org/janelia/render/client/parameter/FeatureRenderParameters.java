@@ -14,48 +14,46 @@ public class FeatureRenderParameters
 
     @Parameter(
             names = "--renderScale",
-            description = "Render tiles at this scale",
-            required = false)
+            description = "Render tiles at this scale"
+    )
     public Double renderScale = 1.0;
 
     @Parameter(
             names = "--renderWithFilter",
             description = "Render tiles using default ad-hoc filter for intensity correction",
-            required = false,
             arity = 1)
     public boolean renderWithFilter = true;
 
     @Parameter(
             names = "--renderFilterListName",
-            description = "Apply this filter list to all rendering (overrides renderWithFilter option)",
-            required = false)
+            description = "Apply this filter list to all rendering (overrides renderWithFilter option)"
+    )
     public String renderFilterListName;
 
     @Parameter(
             names = "--renderWithoutMask",
             description = "Render tiles without a mask",
-            required = false,
             arity = 1)
     public boolean renderWithoutMask = true;
 
     @Parameter(
             names = "--renderFullScaleWidth",
-            description = "Full scale width for all rendered tiles",
-            required = false)
+            description = "Full scale width for all rendered tiles"
+    )
     public Integer renderFullScaleWidth;
 
     @Parameter(
             names = "--renderFullScaleHeight",
-            description = "Full scale height for all rendered tiles",
-            required = false)
+            description = "Full scale height for all rendered tiles"
+    )
     public Integer renderFullScaleHeight;
 
     @Parameter(
             names = "--fillWithNoise",
-            description = "Fill each canvas image with noise before rendering to improve point match derivation",
-            required = false,
+            description = "This deprecated option is left here to prevent legacy scripts from breaking, but it is ignored.  " +
+                          "Features in masked areas are now excluded, so it is no longer necessary to fill canvases with noise.",
             arity = 1)
-    public boolean fillWithNoise = true;
+    public Boolean deprecatedFillWithNoise;
 
 }
 

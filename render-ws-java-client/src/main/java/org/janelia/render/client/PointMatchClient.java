@@ -557,8 +557,7 @@ public class PointMatchClient {
 
             this.extractor = new CanvasFeatureExtractor(siftParameters,
                                                         clientParameters.featureExtraction.minScale,
-                                                        clientParameters.featureExtraction.maxScale,
-                                                        clientParameters.fillWithNoise);
+                                                        clientParameters.featureExtraction.maxScale);
         }
 
         @Override

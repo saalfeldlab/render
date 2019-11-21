@@ -230,8 +230,7 @@ public class PointMatchOptimizerClient {
 
         final CanvasFeatureExtractor extractor = new CanvasFeatureExtractor(siftParameters,
                                                                             renderScale - 0.02,
-                                                                            renderScale + 0.02,
-                                                                            true);
+                                                                            renderScale + 0.02);
 
         final RenderParameters pRenderParameters = loadRenderParameters(pRenderParametersUrl, renderScale);
 

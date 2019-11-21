@@ -59,18 +59,11 @@ public class GeometricDescriptorAndMatchFilterParameters
     public Integer minCombinedInliers;
 
     @Parameter(
-            names = { "--gdMinCombinedCoverageAreaPercentage" },
-            description = "Minimum combined inlier convex hull area percentage for storage.  " +
-                          "GD matching will only be performed if the SIFT inlier area is less than this number.  " +
+            names = { "--gdMinCombinedCoveragePercentage" },
+            description = "Minimum combined inlier covered pixel percentage for storage.  " +
+                          "GD matching will only be performed if the coverage percentage is less than this number.  " +
                           "Omit parameter to perform GD matching regardless of SIFT results.")
-    public Double minCombinedCoverageAreaPercentage;
-
-    @Parameter(
-            names = { "--gdMinCombinedCoverageDistancePercentage" },
-            description = "Minimum combined inlier convex hull area percentage for storage.  " +
-                          "GD matching will only be performed if the SIFT inlier area is less than this number.  " +
-                          "Omit parameter to perform GD matching regardless of SIFT results.")
-    public Double minCombinedCoverageDistancePercentage;
+    public Double minCombinedCoveragePercentage;
 
     @SuppressWarnings("unused")
     public GeometricDescriptorAndMatchFilterParameters() {
@@ -80,14 +73,9 @@ public class GeometricDescriptorAndMatchFilterParameters
         return geometricDescriptorParameters != null;
     }
 
-    public boolean hasMatchDerivationParameters() {
-        return matchDerivationParameters != null;
-    }
-
     public boolean hasSufficiencyConstraints() {
         return (minCombinedInliers != null) ||
-               (minCombinedCoverageAreaPercentage != null) ||
-               (minCombinedCoverageDistancePercentage != null);
+               (minCombinedCoveragePercentage != null);
     }
 
     public void validateAndSetDefaults() throws IllegalArgumentException {
@@ -98,12 +86,9 @@ public class GeometricDescriptorAndMatchFilterParameters
 
         geometricDescriptorParameters.setDefaults();
 
-        if (matchDerivationParameters != null) {
-            commandLineMatchDerivationParameters.applyToMatchDerivationParameters(matchDerivationParameters);
-            validateMatchParametersAndSetDefaults("geometric descriptor",
-                                                  matchDerivationParameters);
-        }
-
+        commandLineMatchDerivationParameters.applyToMatchDerivationParameters(matchDerivationParameters);
+        validateMatchParametersAndSetDefaults("geometric descriptor",
+                                              matchDerivationParameters);
     }
 
 }

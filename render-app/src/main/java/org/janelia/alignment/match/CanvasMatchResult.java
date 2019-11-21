@@ -1,5 +1,7 @@
 package org.janelia.alignment.match;
 
+import ij.process.ImageProcessor;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -156,16 +158,22 @@ public class CanvasMatchResult
     }
 
     public PointMatchQualityStats calculateQualityStats(final RenderParameters pRenderParameters,
-                                                        final RenderParameters qRenderParameters)
+                                                        final ImageProcessor pMask,
+                                                        final RenderParameters qRenderParameters,
+                                                        final ImageProcessor qMask,
+                                                        final double overlapBlockRadius)
             throws IllegalArgumentException {
 
         final PointMatchQualityStats qualityStats = new PointMatchQualityStats();
         final Model aggregateModel = getAggregateModelForQualityChecks();
 
         try {
-            qualityStats.calculate(pRenderParameters, qRenderParameters, consensusSetInliers, aggregateModel);
+            qualityStats.calculate(pRenderParameters, pMask,
+                                   qRenderParameters, qMask,
+                                   consensusSetInliers, aggregateModel,
+                                   overlapBlockRadius);
         } catch (final Exception e) {
-            throw new IllegalArgumentException("failed to fit aggregate model for point match quality calculation", e);
+            throw new IllegalArgumentException("failed to calculate point match quality", e);
         }
 
         return qualityStats;

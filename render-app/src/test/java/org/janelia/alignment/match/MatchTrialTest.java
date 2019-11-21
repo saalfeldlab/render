@@ -26,9 +26,6 @@ public class MatchTrialTest {
 
         final MatchTrialStats stats = new MatchTrialStats();
         Assert.assertNotNull(stats);
-
-        final GeometricDescriptorMatchStats gdStats = new GeometricDescriptorMatchStats();
-        Assert.assertNotNull(gdStats);
     }
 
     public static void main(final String[] args) {
