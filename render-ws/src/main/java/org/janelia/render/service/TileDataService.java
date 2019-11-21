@@ -368,14 +368,14 @@ public class TileDataService {
 
         final int tileRenderWidth;
         if (width == null) {
-            tileRenderWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX() + 1);
+            tileRenderWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX());
         } else {
             tileRenderWidth = width;
         }
 
         final int tileRenderHeight;
         if (height == null) {
-            tileRenderHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY() + 1);
+            tileRenderHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY());
         } else {
             tileRenderHeight = height;
         }

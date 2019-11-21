@@ -17,12 +17,13 @@ import org.junit.Test;
 public class TileDataServiceTest {
 
     @Test
-    public void testGetCoreTileRenderParameters() throws Exception {
+    public void testGetCoreTileRenderParameters() {
 
+        // from https://github.com/saalfeldlab/render/issues/24
         final String json =
                 "{\n" +
                 "  \"tileId\" : \"1,3484_aligned_0_1_flip\",\n" +
-                "  \"z\" : 3484.0, \"minX\" : 1896.0, \"minY\" : 876.0, \"maxX\" : 2919.0, \"maxY\" : 1899.0,\n" +
+                "  \"z\" : 3484.0,\n" +
                 "  \"width\" : 1024.0, \"height\" : 1024.0,\n" +
                 "  \"mipmapLevels\" : {\n" +
                 "    \"0\" : {\n" +
@@ -42,6 +43,10 @@ public class TileDataServiceTest {
                 "}";
 
         TileSpec tileSpec = TileSpec.fromJson(json);
+        
+        final boolean force = true;
+        final boolean sloppy = true; // TODO: fix 1-pixel clipped bounding box when sloppy = false
+        tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), force, sloppy);
 
         RenderParameters renderParameters =
                 TileDataService.getCoreTileRenderParameters(null, null, null,
