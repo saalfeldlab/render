@@ -207,6 +207,7 @@ JaneliaMatchTrial.prototype.initNewTrialForm = function(parameters) {
         $('#' + selectorPrefix + 'MinNumInliers').val(mParams.matchMinNumInliers);
         $('#' + selectorPrefix + 'MaxTrust').val(mParams.matchMaxTrust);
         $('#' + selectorPrefix + 'Filter').val(mParams.matchFilter);
+        $('#' + selectorPrefix + 'FullScaleCoverageRadius').val(mParams.matchFullScaleCoverageRadius);
     };
 
     initMatchDerivationParameters(fmParams.matchDerivationParameters, 'match');
@@ -258,7 +259,6 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
     const self = this;
 
     const getMatchDerivationParameters = function(selectorPrefix) {
-        // matchFullScaleCoverageRadius
         const p = {
             "matchModelType": self.util.getSelectedValue(selectorPrefix + 'ModelType'),
             "matchIterations": parseInt($('#' + selectorPrefix + 'Iterations').val()),
