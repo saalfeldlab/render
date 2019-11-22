@@ -236,6 +236,7 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
     const self = this;
 
     const getMatchDerivationParameters = function(selectorPrefix) {
+        // matchFullScaleCoverageRadius
         const p = {
             "matchModelType": self.util.getSelectedValue(selectorPrefix + 'ModelType'),
             "matchIterations": parseInt($('#' + selectorPrefix + 'Iterations').val()),
@@ -243,7 +244,8 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
             "matchMinInlierRatio": parseFloat($('#' + selectorPrefix + 'MinInlierRatio').val()),
             "matchMinNumInliers": parseInt($('#' + selectorPrefix + 'MinNumInliers').val()),
             "matchMaxTrust": parseFloat($('#' + selectorPrefix + 'MaxTrust').val()),
-            "matchFilter": self.util.getSelectedValue(selectorPrefix + 'Filter')
+            "matchFilter": self.util.getSelectedValue(selectorPrefix + 'Filter'),
+            "matchFullScaleCoverageRadius": parseFloat($('#' + selectorPrefix + 'FullScaleCoverageRadius').val())
         };
         if (selectorPrefix === 'match') {
             p["matchRod"] = parseFloat($('#' + selectorPrefix + 'Rod').val());
@@ -424,6 +426,7 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
         $('#' + selectPrefix + 'MatchMinNumInliers').html(mParams.matchMinNumInliers);
         $('#' + selectPrefix + 'MatchMaxTrust').html(mParams.matchMaxTrust);
         $('#' + selectPrefix + 'MatchFilter').html(mParams.matchFilter);
+        $('#' + selectPrefix + 'MatchFullScaleCoverageRadius').html(mParams.matchFullScaleCoverageRadius);
 
         let interpolatedModelFieldsHtml = "";
         if ((typeof mParams.matchRegularizerModelType !== "undefined") &&
@@ -450,10 +453,16 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 
     const stats = this.trialResults.stats;
 
-    $('#pFeatureStats').html(stats.pFeatureCount + ' features were derived in ' +
-                             stats.pFeatureDerivationMilliseconds + ' ms');
-    $('#qFeatureStats').html(stats.qFeatureCount + ' features were derived in ' +
-                             stats.qFeatureDerivationMilliseconds + ' ms');
+    const updateMatchStatCountsAndTimes = function(featureOrPeak, siftOrGdStats) {
+        $('#p' + featureOrPeak + 'Stats').html(
+                stats.pFeatureCount + ' ' + featureOrPeak.toLowerCase() +
+                's were derived in ' + siftOrGdStats.pFeatureDerivationMilliseconds + ' ms');
+        $('#q' + featureOrPeak + 'Stats').html(
+                stats.qFeatureCount + ' ' + featureOrPeak.toLowerCase() +
+                's were derived in ' + siftOrGdStats.qFeatureDerivationMilliseconds + ' ms');
+    };
+
+    updateMatchStatCountsAndTimes('Feature', stats);
 
     const getDeltaHtml = function(value) {
         let html = value.toFixed(1);
@@ -486,16 +495,15 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
         return html;
     };
 
-    const getConvexHullHtml = function(pOrQ,
-                                       convexHullArea,
-                                       imageArea) {
+    const getCoverageHtml = function(overlappingCoveragePixels,
+                                     overlappingImagePixels) {
         let html = '';
-        if ((typeof convexHullArea !== 'undefined') && (typeof imageArea !== 'undefined')) {
-            const formattedHullArea = self.util.numberWithCommas(Math.round(convexHullArea));
-            const formattedImageArea = self.util.numberWithCommas(imageArea);
-            const areaPercentage = Math.round(convexHullArea / imageArea * 100);
-            html = '<br/>' + pOrQ + ' canvas pixel areas, image: ' + formattedImageArea +
-                   ', convex hull: ' + formattedHullArea + ' (' + areaPercentage + '%)';
+        if ((typeof overlappingCoveragePixels !== 'undefined') && (typeof overlappingImagePixels !== 'undefined')) {
+            const formattedCoveragePixels = self.util.numberWithCommas(overlappingCoveragePixels);
+            const formattedImagePixels = self.util.numberWithCommas(overlappingImagePixels);
+            const coveragePercentage = Math.round(overlappingCoveragePixels / overlappingImagePixels * 100);
+            html = '<br/>Overlapping Area Coverage: ' + formattedCoveragePixels +
+                   ' out of ' + formattedImagePixels  + ' pixels (' + coveragePercentage + '%)';
         }
         return html;
     };
@@ -520,8 +528,7 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
                getStandardDeviationHtml('Y',
                                         matchStats.aggregateDeltaYStandardDeviation,
                                         matchStats.consensusSetDeltaYStandardDeviations) +
-               getConvexHullHtml('P', matchStats.pConvexHullArea, matchStats.pImageArea) +
-               getConvexHullHtml('Q', matchStats.qConvexHullArea, matchStats.qImageArea)
+               getCoverageHtml(matchStats.overlappingCoveragePixels, matchStats.overlappingImagePixels)
     };
 
     $('#matchStats').html(getMatchStatsHtml(stats));
@@ -559,11 +566,8 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
         setMatchData(gdamp.matchDerivationParameters, 'gdTrial');
 
         const gdStats = data.gdStats;
-        $('#pPeakStats').html(gdStats.pPeakCount + ' peaks were derived in ' +
-                              gdStats.pPeakDerivationMilliseconds + ' ms');
-        $('#qPeakStats').html(gdStats.qPeakCount + ' peaks were derived in ' +
-                              gdStats.qPeakDerivationMilliseconds + ' ms');
 
+        updateMatchStatCountsAndTimes('Peak', gdStats);
         $('#gdMatchStats').html(getMatchStatsHtml(gdStats));
 
         $('#gdHeaderDiv').show();

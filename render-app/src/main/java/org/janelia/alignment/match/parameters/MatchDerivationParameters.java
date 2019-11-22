@@ -135,7 +135,7 @@ public class MatchDerivationParameters implements Serializable {
             matchMaxTrust = 3.0;
         }
         if (matchFullScaleCoverageRadius == null) {
-            matchFullScaleCoverageRadius = 100.0;
+            matchFullScaleCoverageRadius = 300.0;
         }
     }
 

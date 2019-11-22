@@ -54,21 +54,22 @@ public class MatchTrialTest {
 
         final FeatureExtractionParameters siftFeatureParameters = new FeatureExtractionParameters();
         siftFeatureParameters.fdSize = 4;
+        siftFeatureParameters.steps = 3;
         siftFeatureParameters.minScale = 0.25;
         siftFeatureParameters.maxScale = 1.0;
-        siftFeatureParameters.steps = 3;
 
         final MatchDerivationParameters siftMatchParameters = new MatchDerivationParameters();
         siftMatchParameters.matchRod = 0.92f;
         siftMatchParameters.matchModelType = ModelType.AFFINE;
-        siftMatchParameters.matchRegularizerModelType = ModelType.RIGID;
-        siftMatchParameters.matchInterpolatedModelLambda = 0.25;
         siftMatchParameters.matchIterations = 1000;
         siftMatchParameters.matchMaxEpsilon = 50.0f;
         siftMatchParameters.matchMinInlierRatio = 0.0f;
         siftMatchParameters.matchMinNumInliers = 10;
         siftMatchParameters.matchMaxTrust = 4.0;
         siftMatchParameters.matchFilter = FilterType.SINGLE_SET;
+        siftMatchParameters.matchRegularizerModelType = ModelType.RIGID;
+        siftMatchParameters.matchInterpolatedModelLambda = 0.25;
+        siftMatchParameters.matchFullScaleCoverageRadius = 300.0;
 
         final FeatureAndMatchParameters featureAndMatchParameters =
                 new FeatureAndMatchParameters(siftFeatureParameters,
