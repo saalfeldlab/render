@@ -125,8 +125,9 @@ public class PointMatchQualityStats
                                                              overlapModel,
                                                              fullScaleOverlapBlockRadius * renderScale);
 
-            overlappingCoveragePixels = (long) Math.ceil(coverageStats.getA() / renderScale);
-            overlappingImagePixels = (long) Math.ceil(coverageStats.getB() / renderScale);
+            // because counts represent area coverage, need to apply render scale twice (once for each dimension)
+            overlappingCoveragePixels = (long) Math.ceil(coverageStats.getA() / renderScale / renderScale);
+            overlappingImagePixels = (long) Math.ceil(coverageStats.getB() / renderScale / renderScale);
         }
     }
 
