@@ -572,8 +572,8 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 
         $('#gdHeaderDiv').show();
 
-        gdTotalMs = (gdStats.pPeakDerivationMilliseconds +
-                     gdStats.qPeakDerivationMilliseconds +
+        gdTotalMs = (gdStats.pFeatureDerivationMilliseconds +
+                     gdStats.qFeatureDerivationMilliseconds +
                      gdStats.matchDerivationMilliseconds)
 
     }
