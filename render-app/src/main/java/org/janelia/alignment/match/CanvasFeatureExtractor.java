@@ -146,7 +146,7 @@ public class CanvasFeatureExtractor implements Serializable {
             final int totalFeatureCount = featureList.size();
             for (int i = totalFeatureCount - 1; i >= 0; --i) {
                 final double[] location = featureList.get(i).location;
-                if ( ImageProcessorUtil.isInMask((int) location[0], (int) location[1], maskProcessor) ) {
+                if ( ImageProcessorUtil.isMaskedOut((int) location[0], (int) location[1], maskProcessor) ) {
                     featureList.remove(i);
                 }
             }

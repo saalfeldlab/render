@@ -9,21 +9,21 @@ import ij.process.ImageProcessor;
  */
 public class ImageProcessorUtil {
 
-    /*** @return true if the specified pixel is found in the mask; otherwise false.
+    /*** @return true if the specified pixel is masked out; otherwise false.
      */
-    public static boolean isInMask(final int x,
-                                   final int y,
-                                   final ImageProcessor maskProcessor) {
+    public static boolean isMaskedOut(final int x,
+                                      final int y,
+                                      final ImageProcessor maskProcessor) {
         return maskProcessor.get(x, y) == 0;
     }
 
     /**
-     * @return true if the specified pixel or one near it is found in the mask; otherwise false.
+     * @return true if the specified pixel or one near it is masked out; otherwise false.
      */
-    public static boolean isNearMask(final int x,
-                                     final int y,
-                                     final int distance,
-                                     final ImageProcessor maskProcessor) {
+    public static boolean isNearMaskedOut(final int x,
+                                          final int y,
+                                          final int distance,
+                                          final ImageProcessor maskProcessor) {
         boolean isNearMask = false;
 
         final int minX = Math.max(0, x - distance);
@@ -33,7 +33,7 @@ public class ImageProcessorUtil {
 
         for (int nearbyX = minX; nearbyX < maxX; nearbyX++) {
             for (int nearbyY = minY; nearbyY < maxY; nearbyY++) {
-                if (isInMask(nearbyX, nearbyY, maskProcessor)) {
+                if (isMaskedOut(nearbyX, nearbyY, maskProcessor)) {
                     isNearMask = true;
                     break;
                 }

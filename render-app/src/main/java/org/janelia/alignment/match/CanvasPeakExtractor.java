@@ -146,10 +146,10 @@ public class CanvasPeakExtractor
 
             for (int i = peakList.size() - 1; i >= 0; --i) {
                 final DifferenceOfGaussianPeak<FloatType> peak = peakList.get(i);
-                if ( ImageProcessorUtil.isNearMask(peak.getPosition(0),
-                                                   peak.getPosition(1),
-                                                   1,
-                                                   mask) ) {
+                if ( ImageProcessorUtil.isNearMaskedOut(peak.getPosition(0),
+                                                        peak.getPosition(1),
+                                                        1,
+                                                        mask) ) {
                     peakList.remove(i);
                 }
             }
