@@ -8,7 +8,7 @@
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="../script/janelia-render.js?v=20180904_001"></script>
-    <script type="text/javascript" src="../script/janelia-match-trial.js?v=20191121_001"></script>
+    <script type="text/javascript" src="../script/janelia-match-trial.js?v=20191122_003"></script>
     <script type="text/javascript">
 
         // TODO: figure out why matchTrial needs to be a var for initNewTrialWindow to work
@@ -26,15 +26,14 @@
             // baseUrl = "http://renderer-dev:8080/render-ws/v1";
 
             const owner = 'flyTEM';
+            const matchTrialId = queryParameters.get('matchTrialId', 'TBD');
 
             // changed query parameter to 'scale' from 'viewScale' to better handle old URLs with viewScale=1.0
             const viewScale = queryParameters.get('scale', 0.2);
 
             const canvas = document.getElementById("theCanvas");
 
-            matchTrial = new JaneliaMatchTrial(baseUrl, owner, canvas, viewScale);
-
-            const matchTrialId = queryParameters.get('matchTrialId', 'TBD');
+            matchTrial = new JaneliaMatchTrial(baseUrl, owner, matchTrialId, canvas, viewScale);
 
             const newTrialButtonSelector = $('#newTrial');
             const trialRunningSelector = $('#trialRunning');
@@ -53,6 +52,14 @@
                     matchTrial.saveTrialResultsToCollection(saveToOwner, saveToCollection, errorMessageSelector);
                 });
             }
+
+            const deleteTrialButtonSelector = $('#deleteTrial');
+            deleteTrialButtonSelector.hide();
+            deleteTrialButtonSelector.on('click', function() {
+                if (confirm("Are you sure you want to delete this trial?")) {
+                    matchTrial.deleteTrial();
+                }
+            });
 
             if (matchTrialId === 'TBD') {
                 newTrialButtonSelector.hide();
@@ -114,6 +121,7 @@
     Match Trial <span id="trialId"></span>
     <input id="newTrial" type="button" style="margin-left:40px" value="Create New Trial">
     <input id="saveToCollection" type="button" style="margin-left:40px" value="Save To Collection">
+    <input id="deleteTrial" type="button" style="margin-left:40px" value="Delete Trial">
 </h3>
 
 <span id="message" class="error"></span>

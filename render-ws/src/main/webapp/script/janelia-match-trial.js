@@ -62,7 +62,7 @@ JaneliaMatchTrialImage.prototype.getCanvasHeight = function() {
     return (this.image.naturalHeight);
 };
 
-const JaneliaMatchTrial = function (baseUrl, owner, canvas, viewScale) {
+const JaneliaMatchTrial = function (baseUrl, owner, trialId, canvas, viewScale) {
 
     this.baseUrl = baseUrl;
     this.owner = owner;
@@ -71,6 +71,7 @@ const JaneliaMatchTrial = function (baseUrl, owner, canvas, viewScale) {
     this.cellMargin = 4;
 
     this.matchTrialUrl = this.baseUrl + "/owner/" + this.owner + "/matchTrial";
+    this.trialId = trialId;
 
     this.pImage = undefined;
     this.qImage = undefined;
@@ -120,6 +121,27 @@ JaneliaMatchTrial.prototype.openNewTrialWindow = function() {
     newTrialWindow.addEventListener('load', function() {
         self.initNewTrialWindow(newTrialWindow, 0);
     }, true);
+
+};
+
+JaneliaMatchTrial.prototype.deleteTrial = function() {
+
+    const self = this;
+
+    $.ajax({
+               url: self.matchTrialUrl + '/' + self.trialId,
+               type: 'DELETE',
+               success: function () {
+                   const trialIdSuffix = self.trialId.substring(self.trialId.length - 7);
+                   $('#trialId').html(trialIdSuffix + ' <font color="red">DELETED</font>');
+                   $('#deleteTrial').hide();
+               },
+               error: function (data,
+                                text,
+                                xhr) {
+                   console.log(xhr);
+               }
+           });
 
 };
 
@@ -332,8 +354,9 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
                    data: JSON.stringify(requestData),
                    cache: false,
                    success: function(data) {
+                       self.trialId = data.id;
                        const url = new URL(window.location.href);
-                       url.searchParams.set("matchTrialId", data.id);
+                       url.searchParams.set("matchTrialId", self.trialId);
                        window.location = url;
                    },
                    error: function(data, text, xhr) {
@@ -598,6 +621,8 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
         const matches = consensusSetMatches[consensusSetIndex];
         this.matchCount += matches.w.length;
     }
+
+    $('#deleteTrial').show();
 
     this.drawAllMatches();
 };

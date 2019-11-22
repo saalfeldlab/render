@@ -738,6 +738,29 @@ public class MatchService {
         return matchTrial;
     }
 
+    @Path("v1/owner/{owner}/matchTrial/{trialId}")
+    @DELETE
+    @ApiOperation(
+            value = "Delete match trial")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Trial removed (or was not found)")
+    })
+    public Response deleteMatchTrial(@PathParam("owner") final String owner,
+                                     @PathParam("trialId") final String trialId) {
+
+        LOG.info("deleteMatchTrial: entry, owner={}, trialId={}", owner, trialId);
+
+        Response response = null;
+        try {
+            matchDao.removeMatchTrial(trialId);
+            response = Response.ok().build();
+        } catch (final Throwable t) {
+            RenderServiceUtil.throwServiceException(t);
+        }
+
+        return response;
+    }
+
     static MatchCollectionId getCollectionId(final String owner,
                                              final String matchCollection) {
 

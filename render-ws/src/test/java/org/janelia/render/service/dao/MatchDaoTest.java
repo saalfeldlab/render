@@ -12,6 +12,7 @@ import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.match.MatchTrial;
 import org.janelia.alignment.match.Matches;
+import org.janelia.render.service.model.ObjectNotFoundException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -318,6 +319,17 @@ public class MatchDaoTest {
         Assert.assertEquals("invalid qRenderParametersUrl inserted",
                             matchTrial.getParameters().getqRenderParametersUrl(), retrievedTrial.getParameters().getqRenderParametersUrl());
 
+        dao.removeMatchTrial(trialId);
+        try {
+            final MatchTrial removedTrial = dao.getMatchTrial(trialId);
+            Assert.fail("trial that should have been removed was found: " + removedTrial);
+        } catch (final ObjectNotFoundException e) {
+            Assert.assertTrue("trial id missing from exception message: " + e.getMessage(),
+                              e.getMessage().contains(trialId));
+        }
+
+        dao.removeMatchTrial(trialId);
+        Assert.assertTrue("removal of non-existent trial is ok", true);
     }
 
     @Test

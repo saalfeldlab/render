@@ -559,6 +559,21 @@ public class MatchDao {
         return matchTrial.getCopyWithId(String.valueOf(id));
     }
 
+    public void removeMatchTrial(final String trialId)
+            throws IllegalArgumentException {
+
+        MongoUtil.validateRequiredParameter("trialId", trialId);
+
+        final MongoCollection<Document> collection = getMatchTrialCollection();
+        final Document query = new Document();
+        query.put("_id", new ObjectId(trialId));
+
+        final DeleteResult result = collection.deleteOne(query);
+
+        LOG.debug("removeMatchTrial: removed {} match trial(s) using {}.delete({})",
+                  result.getDeletedCount(), MongoUtil.fullName(collection), query.toJson());
+    }
+
     public void updateMatchCountsForPGroup(final MatchCollectionId collectionId,
                                            final String pGroupId) {
 
