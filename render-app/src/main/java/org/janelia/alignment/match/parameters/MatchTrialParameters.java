@@ -1,6 +1,10 @@
 package org.janelia.alignment.match.parameters;
 
+import java.io.Reader;
 import java.io.Serializable;
+import java.util.List;
+
+import org.janelia.alignment.json.JsonUtils;
 
 /**
  * Full set of input parameters for a match trial.
@@ -19,6 +23,7 @@ public class MatchTrialParameters implements Serializable {
         this(null, null, null, null);
     }
 
+    @SuppressWarnings("WeakerAccess")
     public MatchTrialParameters(final FeatureAndMatchParameters featureAndMatchParameters,
                                 final String pRenderParametersUrl,
                                 final String qRenderParametersUrl,
@@ -69,5 +74,16 @@ public class MatchTrialParameters implements Serializable {
             geometricDescriptorAndMatchFilterParameters.validateAndSetDefaults();
         }
     }
+
+    public static MatchTrialParameters fromJson(final Reader json) {
+        return JSON_HELPER.fromJson(json);
+    }
+
+    public static List<MatchTrialParameters> fromJsonArray(final Reader json) {
+        return JSON_HELPER.fromJsonArray(json);
+    }
+
+    private static final JsonUtils.Helper<MatchTrialParameters> JSON_HELPER =
+            new JsonUtils.Helper<>(MatchTrialParameters.class);
 
 }

@@ -1,16 +1,10 @@
 package org.janelia.alignment.match;
 
-import org.janelia.alignment.json.JsonUtils;
-import org.janelia.alignment.match.parameters.FeatureAndMatchParameters;
-import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
-import org.janelia.alignment.match.parameters.GeometricDescriptorAndMatchFilterParameters;
-import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
-import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import java.io.StringReader;
+
 import org.janelia.alignment.match.parameters.MatchTrialParameters;
 import org.junit.Assert;
 import org.junit.Test;
-
-import static org.janelia.alignment.match.MatchFilter.FilterType;
 
 /**
  * Tests the {@link MatchTrial} class.
@@ -30,96 +24,99 @@ public class MatchTrialTest {
 
     public static void main(final String[] args) {
 
-        // To replicate Preibisch GeometricDescriptorMatcherTest:
-        //   final double siftRenderScale = 0.01;
-        //   ...
-        //   gdParameters.localization = GeometricDescriptorParameters.LocalizationFitType.NONE;
-        //   gdParameters.fullScaleBlockRadius = 0.0;
-        //   gdParameters.fullScaleNonMaxSuppressionRadius = 120.0; // 30.0
+        final String parametersJson = args.length == 0 ? CROSS_GD_TRIAL_A_JSON : MONTAGE_TRIAL_A_JSON;
 
-        final double siftRenderScale = 0.15;
-        final boolean siftDoFilter = true;
-        final boolean siftExcludeMask = false;
-
-        final String baseTileUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/";
-        final String urlSuffix = "/render-parameters?scale=" + siftRenderScale +
-                                 "&excludeMask=" + siftExcludeMask +
-                                 "&filter=" + siftDoFilter;
-
-        final String pTileId = "19-02-21_105501_0-0-0.26101.0";
-        final String qTileId = "19-02-21_161150_0-0-0.26102.0"; // "19-02-21_105501_0-0-1.26101.0";
-
-        final String pTileUrl = baseTileUrl + pTileId + urlSuffix;
-        final String qTileUrl = baseTileUrl + qTileId + urlSuffix;
-
-        final FeatureExtractionParameters siftFeatureParameters = new FeatureExtractionParameters();
-        siftFeatureParameters.fdSize = 4;
-        siftFeatureParameters.steps = 3;
-        siftFeatureParameters.minScale = 0.25;
-        siftFeatureParameters.maxScale = 1.0;
-
-        final MatchDerivationParameters siftMatchParameters = new MatchDerivationParameters();
-        siftMatchParameters.matchRod = 0.92f;
-        siftMatchParameters.matchModelType = ModelType.AFFINE;
-        siftMatchParameters.matchIterations = 1000;
-        siftMatchParameters.matchMaxEpsilon = 50.0f;
-        siftMatchParameters.matchMinInlierRatio = 0.0f;
-        siftMatchParameters.matchMinNumInliers = 10;
-        siftMatchParameters.matchMaxTrust = 4.0;
-        siftMatchParameters.matchFilter = FilterType.SINGLE_SET;
-        siftMatchParameters.matchRegularizerModelType = ModelType.RIGID;
-        siftMatchParameters.matchInterpolatedModelLambda = 0.25;
-        siftMatchParameters.matchFullScaleCoverageRadius = 300.0;
-
-        final FeatureAndMatchParameters featureAndMatchParameters =
-                new FeatureAndMatchParameters(siftFeatureParameters,
-                                              siftMatchParameters,
-                                              null, // MontageRelativePosition.LEFT,
-                                              null); // 500);
-
-        final GeometricDescriptorParameters gdParameters = new GeometricDescriptorParameters();
-        gdParameters.numberOfNeighbors = 3;
-        gdParameters.redundancy = 1;
-        gdParameters.significance = 2.0;
-        gdParameters.sigma = 2.04;
-        gdParameters.threshold = 0.008;
-        gdParameters.localization = GeometricDescriptorParameters.LocalizationFitType.THREE_D_QUADRATIC;
-        gdParameters.lookForMinima = true;
-        gdParameters.lookForMaxima = false;
-        gdParameters.fullScaleBlockRadius = 300.0;
-        gdParameters.fullScaleNonMaxSuppressionRadius = 60.0; // 30.0
-        gdParameters.gdStoredMatchWeight = 0.4;
-
-        final MatchDerivationParameters gdMatchParameters = new MatchDerivationParameters();
-        gdMatchParameters.matchModelType = ModelType.RIGID;
-        gdMatchParameters.matchIterations = 1000;
-        gdMatchParameters.matchMaxEpsilon = 20.0f;
-        gdMatchParameters.matchMinInlierRatio = 0.0f;
-        gdMatchParameters.matchMinNumInliers = 4;
-        gdMatchParameters.matchMaxTrust = 3.0;
-        gdMatchParameters.matchFilter = FilterType.SINGLE_SET;
-
-        final double gdRenderScale = 0.25;  // 0.5
-
-        final GeometricDescriptorAndMatchFilterParameters gdAndMatchParameters =
-                new GeometricDescriptorAndMatchFilterParameters();
-        gdAndMatchParameters.renderScale = gdRenderScale;
-        gdAndMatchParameters.geometricDescriptorParameters = gdParameters;
-        gdAndMatchParameters.matchDerivationParameters = gdMatchParameters;
-
-        final MatchTrialParameters trialParameters = new MatchTrialParameters(featureAndMatchParameters,
-                                                                              pTileUrl,
-                                                                              qTileUrl,
-                                                                              gdAndMatchParameters);
-
-        final JsonUtils.Helper<MatchTrialParameters> JSON_HELPER =
-                new JsonUtils.Helper<>(MatchTrialParameters.class);
-
-        System.out.println(JSON_HELPER.toJson(trialParameters));
+        final MatchTrialParameters trialParameters = MatchTrialParameters.fromJson(new StringReader(parametersJson));
 
         final MatchTrial matchTrial = new MatchTrial(trialParameters);
         matchTrial.deriveResults();
 
         System.out.println(matchTrial.toJson());
     }
+
+    private static final  String CROSS_GD_TRIAL_A_JSON =
+            "{\n" +
+            "    \"featureAndMatchParameters\" : {\n" +
+            "      \"siftFeatureParameters\" : {\n" +
+            "        \"fdSize\" : 4,\n" +
+            "        \"minScale\" : 0.25,\n" +
+            "        \"maxScale\" : 1.0,\n" +
+            "        \"steps\" : 3\n" +
+            "      },\n" +
+            "      \"matchDerivationParameters\" : {\n" +
+            "        \"matchRod\" : 0.92,\n" +
+            "        \"matchModelType\" : \"AFFINE\",\n" +
+            "        \"matchRegularizerModelType\" : \"RIGID\",\n" +
+            "        \"matchInterpolatedModelLambda\" : 0.25,\n" +
+            "        \"matchIterations\" : 1000,\n" +
+            "        \"matchMaxEpsilon\" : 50.0,\n" +
+            "        \"matchMinInlierRatio\" : 0.0,\n" +
+            "        \"matchMinNumInliers\" : 10,\n" +
+            "        \"matchMaxTrust\" : 4.0,\n" +
+            "        \"matchFilter\" : \"SINGLE_SET\",\n" +
+            "        \"matchFullScaleCoverageRadius\" : 300.0\n" +
+            "      }\n" +
+            "    },\n" +
+            "    \"pRenderParametersUrl\" : \"http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/19-02-21_104336_0-0-0.26091.0/render-parameters?filter=true&scale=0.15\",\n" +
+            "    \"qRenderParametersUrl\" : \"http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/19-02-21_104444_0-0-0.26092.0/render-parameters?filter=true&scale=0.15\",\n" +
+            "    \"geometricDescriptorAndMatchFilterParameters\" : {\n" +
+            "      \"renderScale\" : 0.1,\n" +
+            "      \"renderWithFilter\" : false,\n" +
+            "      \"geometricDescriptorParameters\" : {\n" +
+            "        \"numberOfNeighbors\" : 3,\n" +
+            "        \"redundancy\" : 1,\n" +
+            "        \"significance\" : 2.0,\n" +
+            "        \"sigma\" : 2.04,\n" +
+            "        \"threshold\" : 0.008,\n" +
+            "        \"localization\" : \"NONE\",\n" +
+            "        \"lookForMinima\" : true,\n" +
+            "        \"lookForMaxima\" : false,\n" +
+            "        \"similarOrientation\" : true,\n" +
+            "        \"fullScaleBlockRadius\" : 300.0,\n" +
+            "        \"fullScaleNonMaxSuppressionRadius\" : 60.0,\n" +
+            "        \"gdStoredMatchWeight\" : 0.4\n" +
+            "      },\n" +
+            "      \"matchDerivationParameters\" : {\n" +
+            "        \"matchRod\" : 0.92,\n" +
+            "        \"matchModelType\" : \"RIGID\",\n" +
+            "        \"matchIterations\" : 1000,\n" +
+            "        \"matchMaxEpsilon\" : 20.0,\n" +
+            "        \"matchMinInlierRatio\" : 0.0,\n" +
+            "        \"matchMinNumInliers\" : 4,\n" +
+            "        \"matchMaxTrust\" : 3.0,\n" +
+            "        \"matchFilter\" : \"SINGLE_SET\",\n" +
+            "        \"matchFullScaleCoverageRadius\" : 300.0\n" +
+            "      }\n" +
+            "    }\n" +
+            "  }";
+
+    private static final String MONTAGE_TRIAL_A_JSON =
+            "{\n" +
+            "  \"featureAndMatchParameters\": {\n" +
+            "    \"siftFeatureParameters\": {\n" +
+            "      \"fdSize\": 4,\n" +
+            "      \"minScale\": 0.25,\n" +
+            "      \"maxScale\": 1,\n" +
+            "      \"steps\": 5\n" +
+            "      },\n" +
+            "    \"matchDerivationParameters\": {\n" +
+            "      \"matchRod\": 0.92,\n" +
+            "      \"matchModelType\": \"RIGID\",\n" +
+            "      \"matchRegularizerModelType\": \"TRANSLATION\",\n" +
+            "      \"matchInterpolatedModelLambda\": 0.25,\n" +
+            "      \"matchIterations\": 1000,\n" +
+            "      \"matchMaxEpsilon\": 30,\n" +
+            "      \"matchMinInlierRatio\": 0,\n" +
+            "      \"matchMinNumInliers\": 10,\n" +
+            "      \"matchMaxTrust\": 4,\n" +
+            "      \"matchFilter\": \"SINGLE_SET\",\n" +
+            "      \"matchFullScaleCoverageRadius\": 300\n" +
+            "    },\n" +
+            "    \"pClipPosition\": \"LEFT\",\n" +
+            "    \"clipPixels\": 500\n" +
+            "  },\n" +
+            "  \"pRenderParametersUrl\": \"http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/19-02-07_212459_0-0-1.10001.0/render-parameters?filter=true&scale=0.3\",\n" +
+            "  \"qRenderParametersUrl\": \"http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/19-02-07_212459_0-0-2.10001.0/render-parameters?filter=true&scale=0.3\"\n" +
+            "}";
+
 }

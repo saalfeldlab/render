@@ -141,12 +141,12 @@ public class CanvasFeatureExtractor implements Serializable {
             LOG.warn(sb.toString());
         }
 
-        // if a mask exists, remove any features on or next to a masked pixel
+        // if a mask exists, remove any features on a masked pixel
         if (maskProcessor != null) {
             final int totalFeatureCount = featureList.size();
             for (int i = totalFeatureCount - 1; i >= 0; --i) {
                 final double[] location = featureList.get(i).location;
-                if ( ImageProcessorUtil.isMasked(maskProcessor, (int) location[0], (int) location[1]) ) {
+                if ( ImageProcessorUtil.isInMask((int) location[0], (int) location[1], maskProcessor) ) {
                     featureList.remove(i);
                 }
             }

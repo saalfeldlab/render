@@ -9,15 +9,37 @@ import ij.process.ImageProcessor;
  */
 public class ImageProcessorUtil {
 
-    /**
-     * @return true if the specified pixel or any immediately adjacent pixel is found in the mask; otherwise false.
+    /*** @return true if the specified pixel is found in the mask; otherwise false.
      */
-    public static boolean isMasked(final ImageProcessor maskProcessor,
-                                   final int x,
-                                   final int y) {
-        return maskProcessor.get(x, y) == 0 ||
-               maskProcessor.get(x + 1, y) == 0 || maskProcessor.get(x - 1, y) == 0 ||
-               maskProcessor.get(x, y + 1) == 0 || maskProcessor.get(x, y - 1) == 0;
+    public static boolean isInMask(final int x,
+                                   final int y,
+                                   final ImageProcessor maskProcessor) {
+        return maskProcessor.get(x, y) == 0;
+    }
+
+    /**
+     * @return true if the specified pixel or one near it is found in the mask; otherwise false.
+     */
+    public static boolean isNearMask(final int x,
+                                     final int y,
+                                     final int distance,
+                                     final ImageProcessor maskProcessor) {
+        boolean isNearMask = false;
+
+        final int minX = Math.max(0, x - distance);
+        final int maxX = Math.min(maskProcessor.getWidth(), x + distance + 1);
+        final int minY = Math.max(0, y - distance);
+        final int maxY = Math.min(maskProcessor.getHeight(), y + distance + 1);
+
+        for (int nearbyX = minX; nearbyX < maxX; nearbyX++) {
+            for (int nearbyY = minY; nearbyY < maxY; nearbyY++) {
+                if (isInMask(nearbyX, nearbyY, maskProcessor)) {
+                    isNearMask = true;
+                    break;
+                }
+            }
+        }
+        return isNearMask;
     }
 
 }
