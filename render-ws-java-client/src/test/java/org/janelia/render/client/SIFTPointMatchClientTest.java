@@ -52,6 +52,9 @@ public class SIFTPointMatchClientTest {
                                                                                             pairList);
 
         final SIFTPointMatchClient.Parameters parameters = new SIFTPointMatchClient.Parameters();
+
+        // HACK: creating client before setting baseDataUrl prevents storage of results
+        //       (exception will be thrown when attempting store after core processing is done)
         final SIFTPointMatchClient client = new SIFTPointMatchClient(parameters);
 
         parameters.matchClient.baseDataUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";

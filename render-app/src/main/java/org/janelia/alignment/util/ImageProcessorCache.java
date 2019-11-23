@@ -282,7 +282,7 @@ public class ImageProcessorCache {
     /**
      * Key that combines an image's url with its down sample levels.
      */
-    private class CacheKey {
+    private static class CacheKey {
 
         private final String url;
         private final int downSampleLevels;
@@ -295,13 +295,7 @@ public class ImageProcessorCache {
                  final boolean convertTo16Bit) {
 
             this.url = url;
-
-            if (downSampleLevels < 0) {
-                this.downSampleLevels = 0;
-            } else {
-                this.downSampleLevels = downSampleLevels;
-            }
-
+            this.downSampleLevels = Math.max(downSampleLevels, 0);
             this.isMask = isMask;
             this.convertTo16Bit = convertTo16Bit;
         }

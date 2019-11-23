@@ -211,9 +211,11 @@ public class SIFTPointMatchClient
                             featureRenderParameters.renderWithoutMask);
 
             peakExtractor = new CanvasPeakExtractor(gdam.geometricDescriptorParameters);
-            final long peakCacheMaxKilobytes = gdam.maxPeakCacheGb * 1000000;
+            peakExtractor.setImageProcessorCache(sourceImageProcessorCache);
 
             final CanvasPeakListLoader peakLoader = new CanvasPeakListLoader(gdUrlTemplateForRun, peakExtractor);
+
+            final long peakCacheMaxKilobytes = gdam.maxPeakCacheGb * 1000000;
             peakDataCache = CanvasDataCache.getSharedCache(peakCacheMaxKilobytes, peakLoader);
 
         } else {
