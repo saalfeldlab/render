@@ -437,7 +437,7 @@ public class HierarchicalAlignmentClient
 
     private FeatureStorageParameters getFeatureStorageParameters() {
         final FeatureStorageParameters storageParameters = new FeatureStorageParameters();
-        storageParameters.maxCacheGb = parameters.maxCacheGb;
+        storageParameters.maxFeatureCacheGb = parameters.maxCacheGb;
         return storageParameters;
     }
 

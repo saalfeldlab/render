@@ -176,11 +176,11 @@ public class SIFTPointMatchClient
 
         urlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth, featureRenderClipParameters.clipHeight);
 
-        final long cacheMaxKilobytes = featureStorageParameters.maxCacheGb * 1000000;
+        final long cacheMaxKilobytes = featureStorageParameters.maxFeatureCacheGb * 1000000;
         final CanvasFeatureListLoader featureLoader =
                 new CanvasFeatureListLoader(
                         urlTemplateForRun,
-                        getCanvasFeatureExtractor(featureExtractionParameters, featureRenderParameters),
+                        getCanvasFeatureExtractor(featureExtractionParameters),
                         featureStorageParameters.getRootFeatureDirectory(),
                         featureStorageParameters.requireStoredFeatures);
 

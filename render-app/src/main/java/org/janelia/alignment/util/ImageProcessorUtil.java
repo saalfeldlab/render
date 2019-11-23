@@ -9,7 +9,8 @@ import ij.process.ImageProcessor;
  */
 public class ImageProcessorUtil {
 
-    /*** @return true if the specified pixel is masked out; otherwise false.
+    /**
+     * @return true if the specified pixel is masked out; otherwise false.
      */
     public static boolean isMaskedOut(final int x,
                                       final int y,
@@ -42,4 +43,11 @@ public class ImageProcessorUtil {
         return isNearMask;
     }
 
+    /**
+     * @return number of kilobytes consumed by the specified processor's pixels.
+     */
+    public static long getKilobytes(final ImageProcessor imageProcessor) {
+        final long bitCount = ((long) imageProcessor.getPixelCount()) * imageProcessor.getBitDepth();
+        return bitCount / 8000L;
+    }
 }

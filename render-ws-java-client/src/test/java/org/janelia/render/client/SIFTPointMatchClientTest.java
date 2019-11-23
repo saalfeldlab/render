@@ -109,7 +109,7 @@ public class SIFTPointMatchClientTest {
         parameters.geometricDescriptorAndMatch.matchDerivationParameters = gdMatchParameters;
 
         parameters.geometricDescriptorAndMatch.minCombinedInliers = 600;
-        parameters.geometricDescriptorAndMatch.minCombinedCoveragePercentage = 25.0;
+        parameters.geometricDescriptorAndMatch.minCombinedCoveragePercentage = 55.0;
 
         parameters.geometricDescriptorAndMatch.validateAndSetDefaults();
 

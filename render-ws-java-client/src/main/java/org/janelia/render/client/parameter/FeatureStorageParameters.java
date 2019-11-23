@@ -15,22 +15,28 @@ public class FeatureStorageParameters
 
     @Parameter(
             names = "--rootFeatureDirectory",
-            description = "Root directory for saved feature lists (omit if features should be extracted from dynamically rendered canvases)",
-            required = false)
+            description = "Root directory for saved feature lists (omit if features should be extracted from dynamically rendered canvases)"
+    )
     public String rootFeatureDirectory;
 
     @Parameter(
             names = "--requireStoredFeatures",
             description = "indicates that an exception should be thrown when stored features cannot be found (if omitted, missing features are extracted from dynamically rendered canvases)",
-            required = false,
             arity = 0)
     public boolean requireStoredFeatures;
 
     @Parameter(
             names = { "--maxFeatureCacheGb" },
-            description = "Maximum number of gigabytes of features to cache",
-            required = false)
-    public Integer maxCacheGb = 2;
+            description = "Maximum number of gigabytes of features to cache"
+    )
+    public Integer maxFeatureCacheGb = 2;
+
+    @Parameter(
+            names = { "--maxFeatureSourceCacheGb" },
+            description = "Maximum number of gigabytes of source image and mask data to cache " +
+                          "(note: 15000x15000 Fly EM mask is 500MB while 6250x4000 mask is 25MB)"
+    )
+    public Integer maxFeatureSourceCacheGb = 2;
 
     public File getRootFeatureDirectory() {
         File directory = null;

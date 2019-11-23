@@ -41,6 +41,8 @@ public class CanvasPeakExtractor
 
     private final GeometricDescriptorParameters gdParameters;
 
+    private transient ImageProcessorCache imageProcessorCache;
+
     /**
      * Sets up everything that is needed to extract the peak list for a canvas.
      *
@@ -49,6 +51,11 @@ public class CanvasPeakExtractor
     public CanvasPeakExtractor(final GeometricDescriptorParameters gdParameters) {
 
         this.gdParameters = gdParameters;
+        this.imageProcessorCache = ImageProcessorCache.DISABLED_CACHE;
+    }
+
+    public void setImageProcessorCache(final ImageProcessorCache imageProcessorCache) {
+        this.imageProcessorCache = imageProcessorCache;
     }
 
     /**
@@ -72,7 +79,7 @@ public class CanvasPeakExtractor
         renderParameters.validate();
 
         final ImageProcessorWithMasks imageProcessorWithMasks =
-                Renderer.renderImageProcessorWithMasks(renderParameters, ImageProcessorCache.DISABLED_CACHE, renderFile);
+                Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache, renderFile);
 
         return extractPeaksFromImageAndMask(imageProcessorWithMasks.ip,
                                             imageProcessorWithMasks.mask);

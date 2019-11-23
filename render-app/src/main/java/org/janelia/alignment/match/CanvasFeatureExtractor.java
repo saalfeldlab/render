@@ -32,6 +32,8 @@ public class CanvasFeatureExtractor implements Serializable {
     private final double minScale;
     private final double maxScale;
 
+    private transient ImageProcessorCache imageProcessorCache;
+
     /**
      * Sets up everything that is needed to extract the feature list for a canvas.
      *
@@ -48,6 +50,93 @@ public class CanvasFeatureExtractor implements Serializable {
 
         this.minScale = minScale;
         this.maxScale = maxScale;
+        this.imageProcessorCache = ImageProcessorCache.DISABLED_CACHE;
+    }
+
+    public void setImageProcessorCache(final ImageProcessorCache imageProcessorCache) {
+        this.imageProcessorCache = imageProcessorCache;
+    }
+
+    /**
+     * Extracted feature list with information about the sources used to produce it.
+     */
+    public static class FeaturesWithSourceData {
+
+        private final RenderParameters renderParameters;
+        private final ImageProcessorWithMasks renderedProcessorWithMasks;
+        private final List<Feature> featureList;
+
+        public FeaturesWithSourceData(final RenderParameters renderParameters,
+                                      final ImageProcessorWithMasks renderedProcessorWithMasks,
+                                      final List<Feature> featureList) {
+            this.renderParameters = renderParameters;
+            this.renderedProcessorWithMasks = renderedProcessorWithMasks;
+            this.featureList = featureList;
+        }
+
+        public RenderParameters getRenderParameters() {
+            return renderParameters;
+        }
+
+        public ImageProcessorWithMasks getRenderedProcessorWithMasks() {
+            return renderedProcessorWithMasks;
+        }
+
+        public List<Feature> getFeatureList() {
+            return featureList;
+        }
+
+        public long getKilobytes() {
+
+            final int featureCount = featureList == null ? 0 : featureList.size();
+
+            long kilobyteCount = (long) (featureCount * AVERAGE_KILOBYTES_PER_FEATURE) + 1;
+
+            if (renderedProcessorWithMasks != null) {
+                if (renderedProcessorWithMasks.ip != null) {
+                    kilobyteCount += ImageProcessorUtil.getKilobytes(renderedProcessorWithMasks.ip);
+                }
+                if (renderedProcessorWithMasks.mask != null) {
+                    kilobyteCount += ImageProcessorUtil.getKilobytes(renderedProcessorWithMasks.mask);
+                }
+            }
+
+            if (renderParameters != null) {
+                kilobyteCount += 1; // hopefully this is a good enough estimate for most cases
+            }
+
+            return kilobyteCount;
+        }
+
+    }
+
+    /**
+     * Extract SIFT features from canvas built from specified render parameters.
+     *
+     * @param  renderParameters     parameters for building canvas.
+     *
+     * @return result object that wraps list of extracted features along with source image information.
+     *
+     * @throws IllegalArgumentException
+     *   if the specified render parameters are invalid.
+     *
+     * @throws IllegalStateException
+     *   if the specified render parameters have not been initialized or no features are found.
+     */
+    public FeaturesWithSourceData extractFeaturesWithSourceData(final RenderParameters renderParameters)
+            throws IllegalArgumentException, IllegalStateException {
+
+        renderParameters.validate();
+
+        final ImageProcessorWithMasks imageProcessorWithMasks =
+                Renderer.renderImageProcessorWithMasks(renderParameters,
+                                                       imageProcessorCache,
+                                                       null);
+
+        final List<Feature> featureList = extractFeaturesFromImageAndMask(imageProcessorWithMasks.ip,
+                                                                          imageProcessorWithMasks.mask);
+
+        return new FeaturesWithSourceData(renderParameters, imageProcessorWithMasks, featureList);
     }
 
     /**
@@ -163,4 +252,11 @@ public class CanvasFeatureExtractor implements Serializable {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureExtractor.class);
+
+    /**
+     * Average size of a feature.
+     * This was derived from a 2K x 2K FAFB00 image and is hopefully good enough for most needs.
+     */
+    private static final double AVERAGE_KILOBYTES_PER_FEATURE = 0.6; // 600 bytes
+
 }

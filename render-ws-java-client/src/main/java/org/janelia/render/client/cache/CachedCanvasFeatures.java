@@ -1,8 +1,14 @@
 package org.janelia.render.client.cache;
 
+import ij.process.ImageProcessor;
+
 import java.util.List;
 
 import mpicbg.imagefeatures.Feature;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.match.CanvasFeatureExtractor.FeaturesWithSourceData;
 
 /**
  * Cache container for a canvas' list of features.
@@ -11,40 +17,73 @@ import mpicbg.imagefeatures.Feature;
  */
 public class CachedCanvasFeatures implements CachedCanvasData {
 
-    private final List<Feature> featureList;
+    private final FeaturesWithSourceData featuresWithSourceData;
     private final double[] clipOffsets;
 
-    CachedCanvasFeatures(final List<Feature> featureList,
+    CachedCanvasFeatures(final FeaturesWithSourceData featuresWithSourceData,
                          final double[] clipOffsets) {
-        this.featureList = featureList;
+        this.featuresWithSourceData = featuresWithSourceData;
         this.clipOffsets = clipOffsets;
     }
 
+    CachedCanvasFeatures(final List<Feature> featureList,
+                         final double[] clipOffsets) {
+        this(new FeaturesWithSourceData(null,
+                                        null,
+                                        featureList),
+             clipOffsets);
+    }
+
     public List<Feature> getFeatureList() {
-        return featureList;
+        return featuresWithSourceData.getFeatureList();
     }
 
     public double[] getClipOffsets() {
         return clipOffsets;
     }
 
+    public RenderParameters getRenderParameters() {
+        return featuresWithSourceData.getRenderParameters();
+    }
+
+    public int getImageProcessorWidth() {
+        int width = 0;
+        final ImageProcessorWithMasks renderedProcessors = featuresWithSourceData.getRenderedProcessorWithMasks();
+        if ((renderedProcessors != null) && (renderedProcessors.ip != null)) {
+            width = renderedProcessors.ip.getWidth();
+        }
+        return width;
+    }
+
+    public int getImageProcessorHeight() {
+        int height = 0;
+        final ImageProcessorWithMasks renderedProcessors = featuresWithSourceData.getRenderedProcessorWithMasks();
+        if ((renderedProcessors != null) && (renderedProcessors.ip != null)) {
+            height = renderedProcessors.ip.getHeight();
+        }
+        return height;
+    }
+
+    public ImageProcessor getMaskProcessor() {
+        ImageProcessor maskProcessor = null;
+        final ImageProcessorWithMasks renderedProcessors = featuresWithSourceData.getRenderedProcessorWithMasks();
+        if (renderedProcessors != null) {
+            maskProcessor = renderedProcessors.mask;
+        }
+        return maskProcessor;
+    }
+
     public long getKilobytes() {
-        return (long) (featureList.size() * AVERAGE_KILOBYTES_PER_FEATURE) + 1;
+        return featuresWithSourceData.getKilobytes();
     }
 
     @Override
     public String toString() {
-        return "featureList[" + featureList.size() + "]";
+        return "featureList[" + getFeatureList().size() + "]";
     }
 
     /** Since feature lists are only in-memory, this method is a no-op. */
     public void remove() {
     }
-
-    /**
-     * Average size of a feature.
-     * This was derived from a 2K x 2K FAFB00 image and is hopefully good enough for most needs.
-     */
-    private static final double AVERAGE_KILOBYTES_PER_FEATURE = 0.6; // 600 bytes
 
 }

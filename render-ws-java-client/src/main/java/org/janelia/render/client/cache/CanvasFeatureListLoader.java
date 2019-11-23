@@ -10,9 +10,11 @@ import mpicbg.imagefeatures.Feature;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
+import org.janelia.alignment.match.CanvasFeatureExtractor.FeaturesWithSourceData;
 import org.janelia.alignment.match.CanvasFeatureList;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +29,7 @@ public class CanvasFeatureListLoader
     private final CanvasFeatureExtractor featureExtractor;
     private final File rootFeatureStorageDirectory;
     private final boolean requireStoredFeatures;
+    private transient boolean isSourceDataCachingEnabled;
 
     /**
      * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
@@ -59,6 +62,12 @@ public class CanvasFeatureListLoader
         this.featureExtractor = featureExtractor;
         this.rootFeatureStorageDirectory =rootFeatureStorageDirectory;
         this.requireStoredFeatures = requireStoredFeatures;
+        this.isSourceDataCachingEnabled = false;
+    }
+
+    public void enableSourceDataCaching(final ImageProcessorCache imageProcessorCache) {
+        this.isSourceDataCachingEnabled = true;
+        featureExtractor.setImageProcessorCache(imageProcessorCache);
     }
 
     @Override
@@ -105,17 +114,30 @@ public class CanvasFeatureListLoader
 
         }
 
+        final CachedCanvasFeatures cachedCanvasFeatures;
         if (featureList == null) {
+
             final RenderParameters renderParameters = getRenderParameters(canvasId);
             offsets = canvasId.getClipOffsets(); // HACK WARNING: offsets get applied by getRenderParameters call
 
             LOG.info("load: extracting features for {} with offsets ({}, {})", canvasId, offsets[0], offsets[1]);
-            featureList = featureExtractor.extractFeatures(renderParameters, null);
+
+            if (isSourceDataCachingEnabled) {
+                final FeaturesWithSourceData featuresWithSourceData =
+                        featureExtractor.extractFeaturesWithSourceData(renderParameters);
+                cachedCanvasFeatures = new CachedCanvasFeatures(featuresWithSourceData, offsets);
+            } else {
+                featureList = featureExtractor.extractFeatures(renderParameters, null);
+                cachedCanvasFeatures = new CachedCanvasFeatures(featureList, offsets);
+            }
+
+        } else {
+            cachedCanvasFeatures = new CachedCanvasFeatures(featureList, offsets);
         }
 
         LOG.info("load: exit");
 
-        return new CachedCanvasFeatures(featureList, offsets);
+        return cachedCanvasFeatures;
     }
 
     private void checkCompatibility(final String context,

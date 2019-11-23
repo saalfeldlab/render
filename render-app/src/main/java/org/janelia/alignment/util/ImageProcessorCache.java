@@ -79,8 +79,7 @@ public class ImageProcessorCache {
 
         final Weigher<CacheKey, ImageProcessor> weigher =
                 (key, value) -> {
-                    final long bitCount = ((long) value.getPixelCount()) * value.getBitDepth();
-                    final long kilobyteCount = bitCount / 8000L;
+                    final long kilobyteCount = ImageProcessorUtil.getKilobytes(value);
                     final int weight;
                     if (kilobyteCount < 0 || kilobyteCount > Integer.MAX_VALUE) {
                         weight = Integer.MAX_VALUE;

@@ -19,7 +19,6 @@ import mpicbg.models.Model;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
-import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
@@ -37,6 +36,7 @@ import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.GeometricDescriptorAndMatchFilterParameters;
 import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.cache.CachedCanvasFeatures;
 import org.janelia.render.client.cache.CanvasDataCache;
 import org.janelia.render.client.cache.CanvasFeatureListLoader;
@@ -169,15 +169,24 @@ public class SIFTPointMatchClient
 
         siftUrlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth, featureRenderClipParameters.clipHeight);
 
-        final long cacheMaxKilobytes = featureStorageParameters.maxCacheGb * 1000000;
         final CanvasFeatureListLoader featureLoader =
                 new CanvasFeatureListLoader(
                         siftUrlTemplateForRun,
-                        getCanvasFeatureExtractor(featureExtractionParameters, featureRenderParameters),
+                        getCanvasFeatureExtractor(featureExtractionParameters),
                         featureStorageParameters.getRootFeatureDirectory(),
                         featureStorageParameters.requireStoredFeatures);
 
-        final CanvasDataCache dataCache = CanvasDataCache.getSharedCache(cacheMaxKilobytes, featureLoader);
+        final long featureCacheMaxKilobytes = featureStorageParameters.maxFeatureCacheGb * 1_000_000;
+        final CanvasDataCache dataCache = CanvasDataCache.getSharedCache(featureCacheMaxKilobytes, featureLoader);
+
+        final long maximumNumberOfCachedSourcePixels =
+                featureStorageParameters.maxFeatureSourceCacheGb * 1_000_000_000;
+        final ImageProcessorCache sourceImageProcessorCache =
+                new ImageProcessorCache(maximumNumberOfCachedSourcePixels,
+                                        true,
+                                        false);
+        featureLoader.enableSourceDataCaching(sourceImageProcessorCache);
+
         final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(matchDerivationParameters);
 
         final GeometricDescriptorAndMatchFilterParameters gdam = parameters.geometricDescriptorAndMatch;
@@ -249,8 +258,8 @@ public class SIFTPointMatchClient
             } else {
 
                 // GD parameters have been specified
-                appendGeometricMatchesIfNecessary(featureRenderParameters,
-                                                  siftUrlTemplateForRun,
+                appendGeometricMatchesIfNecessary(pFeatures,
+                                                  qFeatures,
                                                   matchDerivationParameters.matchFullScaleCoverageRadius,
                                                   gdam,
                                                   peakDataCache,
@@ -258,9 +267,7 @@ public class SIFTPointMatchClient
                                                   matchList,
                                                   p,
                                                   q,
-                                                  matchResult,
-                                                  pClipOffsets,
-                                                  qClipOffsets);
+                                                  matchResult);
             }
         }
 
@@ -273,8 +280,8 @@ public class SIFTPointMatchClient
         this.totalProcessed += pairCount;
     }
 
-    private void appendGeometricMatchesIfNecessary(final FeatureRenderParameters featureRenderParameters,
-                                                   final CanvasRenderParametersUrlTemplate siftUrlTemplateForRun,
+    private void appendGeometricMatchesIfNecessary(final CachedCanvasFeatures pCanvasFeatures,
+                                                   final CachedCanvasFeatures qCanvasFeatures,
                                                    final double siftFullScaleOverlapBlockRadius,
                                                    final GeometricDescriptorAndMatchFilterParameters gdam,
                                                    final CanvasDataCache peakDataCache,
@@ -282,20 +289,17 @@ public class SIFTPointMatchClient
                                                    final List<CanvasMatches> matchList,
                                                    final CanvasId p,
                                                    final CanvasId q,
-                                                   final CanvasMatchResult matchResult,
-                                                   final double[] pClipOffsets,
-                                                   final double[] qClipOffsets) {
-
-        // TODO: remove duplicate parameters load (done here and by cache feature loader)
-        final RenderParameters pRenderParameters = siftUrlTemplateForRun.getRenderParameters(p);
-        final RenderParameters qRenderParameters = siftUrlTemplateForRun.getRenderParameters(q);
+                                                   final CanvasMatchResult matchResult) {
 
         final PointMatchQualityStats siftQualityStats =
-                matchResult.calculateQualityStats(pRenderParameters,
-                                                  null, // TODO: cache and add mask processors
-                                                  qRenderParameters,
-                                                  null, // TODO: cache and add mask processors
+                matchResult.calculateQualityStats(pCanvasFeatures.getRenderParameters(),
+                                                  pCanvasFeatures.getMaskProcessor(),
+                                                  qCanvasFeatures.getRenderParameters(),
+                                                  qCanvasFeatures.getMaskProcessor(),
                                                   siftFullScaleOverlapBlockRadius);
+
+        final double[] pClipOffsets = pCanvasFeatures.getClipOffsets();
+        final double[] qClipOffsets = qCanvasFeatures.getClipOffsets();
 
         if (gdam.hasSufficiencyConstraints()) {
 
@@ -312,7 +316,7 @@ public class SIFTPointMatchClient
                                                        p.getId(),
                                                        q.getGroupId(),
                                                        q.getId(),
-                                                       featureRenderParameters.renderScale,
+                                                       pCanvasFeatures.getRenderParameters().getScale(),
                                                        pClipOffsets,
                                                        qClipOffsets,
                                                        matchList);
@@ -321,19 +325,16 @@ public class SIFTPointMatchClient
 
                     LOG.info("appendGeometricMatchesIfNecessary: running Geometric process");
 
-                    findGeometricDescriptorMatches(featureRenderParameters,
+                    findGeometricDescriptorMatches(gdam,
                                                    siftFullScaleOverlapBlockRadius,
-                                                   gdam,
                                                    peakDataCache,
                                                    peakExtractor,
                                                    matchList,
                                                    p,
-                                                   pRenderParameters,
+                                                   pCanvasFeatures,
                                                    q,
-                                                   qRenderParameters,
-                                                   matchResult,
-                                                   pClipOffsets,
-                                                   qClipOffsets);
+                                                   qCanvasFeatures,
+                                                   matchResult);
                 }
 
             } else {
@@ -346,36 +347,34 @@ public class SIFTPointMatchClient
 
             LOG.info("appendGeometricMatchesIfNecessary: running Geometric process since sufficiency constraints are not defined");
 
-            findGeometricDescriptorMatches(featureRenderParameters,
+            findGeometricDescriptorMatches(gdam,
                                            siftFullScaleOverlapBlockRadius,
-                                           gdam,
                                            peakDataCache,
                                            peakExtractor,
                                            matchList,
                                            p,
-                                           pRenderParameters,
+                                           pCanvasFeatures,
                                            q,
-                                           qRenderParameters,
-                                           matchResult,
-                                           pClipOffsets,
-                                           qClipOffsets);
+                                           qCanvasFeatures,
+                                           matchResult);
 
         }
     }
 
-    private void findGeometricDescriptorMatches(final FeatureRenderParameters featureRenderParameters,
+    private void findGeometricDescriptorMatches(final GeometricDescriptorAndMatchFilterParameters gdam,
                                                 final double siftFullScaleOverlapBlockRadius,
-                                                final GeometricDescriptorAndMatchFilterParameters gdam,
                                                 final CanvasDataCache peakDataCache,
                                                 final CanvasPeakExtractor peakExtractor,
                                                 final List<CanvasMatches> matchList,
                                                 final CanvasId p,
-                                                final RenderParameters pRenderParameters,
+                                                final CachedCanvasFeatures pCanvasFeatures,
                                                 final CanvasId q,
-                                                final RenderParameters qRenderParameters,
-                                                final CanvasMatchResult siftMatchResult,
-                                                final double[] pClipOffsets,
-                                                final double[] qClipOffsets) {
+                                                final CachedCanvasFeatures qCanvasFeatures,
+                                                final CanvasMatchResult siftMatchResult) {
+
+        final double siftRenderScale = pCanvasFeatures.getRenderParameters().getScale();
+        final double[] pClipOffsets = pCanvasFeatures.getClipOffsets();
+        final double[] qClipOffsets = qCanvasFeatures.getClipOffsets();
 
         final GeometricDescriptorParameters gdParameters = gdam.geometricDescriptorParameters;
         final double peakRenderScale = gdam.renderScale;
@@ -383,16 +382,16 @@ public class SIFTPointMatchClient
         final List<DifferenceOfGaussianPeak<FloatType>> pCanvasPeaks = peakDataCache.getCanvasPeaks(p).getPeakList();
         final List<DifferenceOfGaussianPeak<FloatType>> qCanvasPeaks = peakDataCache.getCanvasPeaks(q).getPeakList();
 
-        final List<PointMatch> siftInliers = siftMatchResult.getInlierPointMatchList();
+        final List<PointMatch> siftScaledInliers = siftMatchResult.getInlierPointMatchList();
 
-        List<PointMatch> combinedFullScaleInliers = null;
         CanvasMatches combinedCanvasMatches = null;
-        if (siftInliers.size() > 0) {
-            final double siftRenderScale = featureRenderParameters.renderScale;
+        if (siftScaledInliers.size() > 0) {
+
             final List<Point> pInlierPoints = new ArrayList<>();
             final List<Point> qInlierPoints = new ArrayList<>();
-            PointMatch.sourcePoints(siftInliers, pInlierPoints);
-            PointMatch.targetPoints(siftInliers, qInlierPoints);
+            PointMatch.sourcePoints(siftScaledInliers, pInlierPoints);
+            PointMatch.targetPoints(siftScaledInliers, qInlierPoints);
+
             peakExtractor.filterPeaksByInliers(pCanvasPeaks, peakRenderScale, pInlierPoints, siftRenderScale);
             peakExtractor.filterPeaksByInliers(qCanvasPeaks, peakRenderScale, qInlierPoints, siftRenderScale);
 
@@ -402,16 +401,20 @@ public class SIFTPointMatchClient
                                                                          p.getId(),
                                                                          q.getGroupId(),
                                                                          q.getId(),
-                                                                         featureRenderParameters.renderScale,
+                                                                         siftRenderScale,
                                                                          pClipOffsets,
                                                                          qClipOffsets).get(0);
-
-            combinedFullScaleInliers =
-                    CanvasMatchResult.convertMatchesToPointMatchList(combinedCanvasMatches.getMatches());
         }
 
         final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters, gdam.matchDerivationParameters);
         final CanvasMatchResult gdMatchResult = peakMatcher.deriveMatchResult(pCanvasPeaks, qCanvasPeaks);
+
+        final List<PointMatch> combinedSiftScaleInliers = new ArrayList<>(siftScaledInliers);
+        for (final PointMatch gdScalePointMatch : gdMatchResult.getInlierPointMatchList()) {
+            combinedSiftScaleInliers.add(
+                    new PointMatch(reScalePoint(peakRenderScale, gdScalePointMatch.getP1(), siftRenderScale),
+                                   reScalePoint(peakRenderScale, gdScalePointMatch.getP2(), siftRenderScale)));
+        }
 
         final List<CanvasMatches> gdResults = gdMatchResult.getInlierMatchesList(p.getGroupId(),
                                                                                  p.getId(),
@@ -432,20 +435,16 @@ public class SIFTPointMatchClient
                 }
             }
 
-            final List<PointMatch> gdMatchList = CanvasMatchResult.convertMatchesToPointMatchList(m);
-
             if (combinedCanvasMatches == null) {
                 combinedCanvasMatches = gdCanvasMatches;
-                combinedFullScaleInliers = gdMatchList;
             } else {
                 combinedCanvasMatches.append(gdCanvasMatches.getMatches());
-                combinedFullScaleInliers.addAll(gdMatchList);
             }
         }
 
         if (gdam.hasSufficiencyConstraints()) {
 
-            if ((combinedFullScaleInliers != null) && (combinedFullScaleInliers.size() > siftInliers.size())) {
+            if (combinedSiftScaleInliers.size() > siftScaledInliers.size()) {
 
                 // if we found GD matches, assess quality of combined SIFT and GD match set
 
@@ -453,14 +452,14 @@ public class SIFTPointMatchClient
                 final Model aggregateModel = siftMatchResult.getAggregateModelForQualityChecks();
 
                 try {
-                    combinedQualityStats.calculate(1.0,
-                                                   pRenderParameters.getWidth(),
-                                                   pRenderParameters.getHeight(),
-                                                   null, // TODO: cache and add mask processors
-                                                   qRenderParameters.getWidth(),
-                                                   qRenderParameters.getHeight(),
-                                                   null, // TODO: cache and add mask processors
-                                                   Collections.singletonList(combinedFullScaleInliers),
+                    combinedQualityStats.calculate(siftRenderScale,
+                                                   pCanvasFeatures.getImageProcessorWidth(),
+                                                   pCanvasFeatures.getImageProcessorHeight(),
+                                                   pCanvasFeatures.getMaskProcessor(),
+                                                   qCanvasFeatures.getImageProcessorWidth(),
+                                                   qCanvasFeatures.getImageProcessorHeight(),
+                                                   qCanvasFeatures.getMaskProcessor(),
+                                                   Collections.singletonList(combinedSiftScaleInliers),
                                                    aggregateModel,
                                                    siftFullScaleOverlapBlockRadius);
                 } catch (final Exception e) {
@@ -473,7 +472,7 @@ public class SIFTPointMatchClient
                     if (combinedQualityStats.hasSufficientCoverage(gdam.minCombinedCoveragePercentage)) {
 
                         LOG.info("findGeometricDescriptorMatches: saving {} combined matches",
-                                 combinedFullScaleInliers.size());
+                                 combinedSiftScaleInliers.size());
                         matchList.add(combinedCanvasMatches);
 
                     } else {
@@ -484,7 +483,7 @@ public class SIFTPointMatchClient
                 } else {
 
                     LOG.info("findGeometricDescriptorMatches: dropping all matches because only {} combined matches were found",
-                             combinedFullScaleInliers.size());
+                             combinedSiftScaleInliers.size());
 
                 }
 
@@ -496,7 +495,7 @@ public class SIFTPointMatchClient
         } else if (combinedCanvasMatches == null) {
             LOG.info("findGeometricDescriptorMatches: no SIFT or GD matches were found, nothing to do");
         } else {
-            LOG.info("findGeometricDescriptorMatches: saving {} combined matches", combinedFullScaleInliers.size());
+            LOG.info("findGeometricDescriptorMatches: saving {} combined matches", combinedCanvasMatches.size());
             matchList.add(combinedCanvasMatches);
         }
 
@@ -520,8 +519,7 @@ public class SIFTPointMatchClient
                  totalSaved, totalProcessed, percentSaved);
     }
 
-    public static CanvasFeatureExtractor getCanvasFeatureExtractor(final FeatureExtractionParameters featureExtraction,
-                                                                    final FeatureRenderParameters featureRender) {
+    public static CanvasFeatureExtractor getCanvasFeatureExtractor(final FeatureExtractionParameters featureExtraction) {
 
         final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
         siftParameters.fdSize = featureExtraction.fdSize;
@@ -533,4 +531,15 @@ public class SIFTPointMatchClient
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(SIFTPointMatchClient.class);
+
+    private static Point reScalePoint(final double fromScale,
+                                      final Point point,
+                                      final double toScale) {
+        final double[] reScaledLocal = {
+                (point.getL()[0] / fromScale) * toScale,
+                (point.getL()[1] / fromScale) * toScale
+        };
+        return new Point(reScaledLocal);
+    }
+
 }
