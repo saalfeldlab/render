@@ -79,6 +79,19 @@ public class GeometricCommandLineMatchDerivationParameters
     )
     public FilterType matchFilter;
 
+    @Parameter(
+            names = "--gdMatchFullScaleCoverageRadius",
+            description = "Full scale radius to use for coverage analysis"
+    )
+    public Double matchFullScaleCoverageRadius;
+
+    @Parameter(
+            names = "--gdMatchMinCoveragePercentage",
+            description = "Minimum covered pixel percentage for storage.  " +
+                          "Omit parameter to ignore coverage."
+    )
+    public Double matchMinCoveragePercentage;
+
     void applyToMatchDerivationParameters(final MatchDerivationParameters matchDerivationParameters) {
         if (matchModelType != null) {
             matchDerivationParameters.matchModelType = matchModelType;
@@ -109,6 +122,12 @@ public class GeometricCommandLineMatchDerivationParameters
         }
         if (matchFilter != null) {
             matchDerivationParameters.matchFilter = matchFilter;
+        }
+        if (matchFullScaleCoverageRadius != null) {
+            matchDerivationParameters.matchFullScaleCoverageRadius = matchFullScaleCoverageRadius;
+        }
+        if (matchMinCoveragePercentage != null) {
+            matchDerivationParameters.matchMinCoveragePercentage = matchMinCoveragePercentage;
         }
     }
 
