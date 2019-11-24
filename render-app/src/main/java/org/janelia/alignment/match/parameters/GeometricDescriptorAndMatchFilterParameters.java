@@ -15,6 +15,13 @@ public class GeometricDescriptorAndMatchFilterParameters
         implements Serializable {
 
     @Parameter(
+            names = "--gdEnabled",
+            description = "Indicates that Geometric Descriptor matching should be performed",
+            arity = 0
+    )
+    public boolean gdEnabled = false;
+
+    @Parameter(
             names = "--gdRenderScale",
             description = "Rendered canvas scale for Geometric Descriptor matching"
     )
@@ -69,8 +76,8 @@ public class GeometricDescriptorAndMatchFilterParameters
     public GeometricDescriptorAndMatchFilterParameters() {
     }
 
-    public boolean hasGeometricDescriptorParameters() {
-        return geometricDescriptorParameters != null;
+    public boolean isGeometricDescriptorMatchingEnabled() {
+        return gdEnabled;
     }
 
     public boolean hasSufficiencyConstraints() {

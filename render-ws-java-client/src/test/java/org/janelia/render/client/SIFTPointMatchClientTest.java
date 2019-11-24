@@ -107,6 +107,7 @@ public class SIFTPointMatchClientTest {
         gdMatchParameters.matchMaxTrust = 3.0;
         gdMatchParameters.matchFilter = MatchFilter.FilterType.SINGLE_SET;
 
+        parameters.geometricDescriptorAndMatch.gdEnabled = true;
         parameters.geometricDescriptorAndMatch.renderScale = 0.25; // 0.5
         parameters.geometricDescriptorAndMatch.geometricDescriptorParameters = gdParameters;
         parameters.geometricDescriptorAndMatch.matchDerivationParameters = gdMatchParameters;

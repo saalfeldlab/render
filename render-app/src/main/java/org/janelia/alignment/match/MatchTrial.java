@@ -162,6 +162,7 @@ public class MatchTrial implements Serializable {
 
             final GeometricDescriptorAndMatchFilterParameters gdmfParameters =
                     parameters.getGeometricDescriptorAndMatchFilterParameters();
+            gdmfParameters.gdEnabled = true;
 
             final List<PointMatch> inliersSIFT = siftMatchResult.getInlierPointMatchList();
             final List<Point> pInlierPoints = new ArrayList<>();

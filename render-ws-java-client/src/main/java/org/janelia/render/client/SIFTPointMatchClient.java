@@ -99,7 +99,7 @@ public class SIFTPointMatchClient
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
 
-                if (parameters.geometricDescriptorAndMatch.hasGeometricDescriptorParameters()) {
+                if (parameters.geometricDescriptorAndMatch.isGeometricDescriptorMatchingEnabled()) {
                     parameters.geometricDescriptorAndMatch.validateAndSetDefaults();
                 }
 
@@ -193,7 +193,7 @@ public class SIFTPointMatchClient
 
         final CanvasDataCache peakDataCache;
         final CanvasPeakExtractor peakExtractor;
-        if (gdam.hasGeometricDescriptorParameters()) {
+        if (gdam.isGeometricDescriptorMatchingEnabled()) {
 
             if (CONSENSUS_SETS.equals(matchDerivationParameters.matchFilter)) {
                 throw new IllegalArgumentException(
