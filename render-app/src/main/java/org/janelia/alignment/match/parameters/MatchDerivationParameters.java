@@ -112,6 +112,13 @@ public class MatchDerivationParameters implements Serializable {
     )
     public Double matchFullScaleCoverageRadius;
 
+    @Parameter(
+            names = "--matchMinCoveragePercentage",
+            description = "Minimum covered pixel percentage for storage.  " +
+                          "Omit parameter to ignore coverage."
+    )
+    public Double matchMinCoveragePercentage;
+
     void setDefaults() {
         if (matchRod == null) {
             matchRod = 0.92f;

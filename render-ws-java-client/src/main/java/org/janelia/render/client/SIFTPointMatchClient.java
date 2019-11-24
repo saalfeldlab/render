@@ -119,17 +119,14 @@ public class SIFTPointMatchClient
 
     private final Parameters parameters;
     private final RenderDataClient matchStorageClient;
-
-    private long totalProcessed;
-    private long totalSaved;
+    private final MatchPairCounts pairCounts;
 
     SIFTPointMatchClient(final Parameters parameters) throws IllegalArgumentException {
         this.parameters = parameters;
         this.matchStorageClient = new RenderDataClient(parameters.matchClient.baseDataUrl,
                                                        parameters.matchClient.owner,
                                                        parameters.matchClient.collection);
-        this.totalProcessed = 0;
-        this.totalSaved = 0;
+        this.pairCounts = new MatchPairCounts();
     }
 
     private void generateMatchesForPairFile(final String pairJsonFileName)
@@ -177,7 +174,7 @@ public class SIFTPointMatchClient
                         featureStorageParameters.requireStoredFeatures);
 
         final long featureCacheMaxKilobytes = featureStorageParameters.maxFeatureCacheGb * 1_000_000;
-        final CanvasDataCache dataCache = CanvasDataCache.getSharedCache(featureCacheMaxKilobytes, featureLoader);
+        final CanvasDataCache featureDataCache = CanvasDataCache.getSharedCache(featureCacheMaxKilobytes, featureLoader);
 
         final long maximumNumberOfCachedSourcePixels =
                 featureStorageParameters.maxFeatureSourceCacheGb * 1_000_000_000;
@@ -234,8 +231,8 @@ public class SIFTPointMatchClient
             p = pair.getP();
             q = pair.getQ();
 
-            pFeatures = dataCache.getCanvasFeatures(p);
-            qFeatures = dataCache.getCanvasFeatures(q);
+            pFeatures = featureDataCache.getCanvasFeatures(p);
+            qFeatures = featureDataCache.getCanvasFeatures(q);
 
             LOG.info("generateMatchesForPairs: derive matches between {} and {}", p, q);
 
@@ -247,15 +244,40 @@ public class SIFTPointMatchClient
 
             if (peakExtractor == null) {
 
-                // since no GD parameters were specified, simply save SIFT results
-                matchResult.addInlierMatchesToList(p.getGroupId(),
-                                                   p.getId(),
-                                                   q.getGroupId(),
-                                                   q.getId(),
-                                                   featureRenderParameters.renderScale,
-                                                   pClipOffsets,
-                                                   qClipOffsets,
-                                                   matchList);
+                if (matchResult.getTotalNumberOfInliers() > 0) {
+
+                    final Double siftMinCoveragePercentage = matchDerivationParameters.matchMinCoveragePercentage;
+                    boolean keepMatches = true;
+
+                    if (siftMinCoveragePercentage != null) {
+                        final PointMatchQualityStats siftQualityStats =
+                                matchResult.calculateQualityStats(pFeatures.getRenderParameters(),
+                                                                  pFeatures.getMaskProcessor(),
+                                                                  qFeatures.getRenderParameters(),
+                                                                  qFeatures.getMaskProcessor(),
+                                                                  matchDerivationParameters.matchFullScaleCoverageRadius);
+                        keepMatches = siftQualityStats.hasSufficientCoverage(siftMinCoveragePercentage);
+                    }
+
+                    if (keepMatches) {
+                        // since no GD parameters were specified, simply save SIFT results
+                        matchResult.addInlierMatchesToList(p.getGroupId(),
+                                                           p.getId(),
+                                                           q.getGroupId(),
+                                                           q.getId(),
+                                                           featureRenderParameters.renderScale,
+                                                           pClipOffsets,
+                                                           qClipOffsets,
+                                                           matchList);
+                        pairCounts.siftSaved++;
+                    } else {
+                        LOG.info("generateMatchesForPairs: dropping SIFT matches because coverage is insufficient");
+                        pairCounts.siftPoorCoverage++;
+                    }
+
+                } else {
+                    LOG.info("generateMatchesForPairs: no SIFT matches to save");
+                }
 
             } else {
 
@@ -275,11 +297,15 @@ public class SIFTPointMatchClient
 
         final int pairCount = renderableCanvasIdPairs.size();
 
-        LOG.info("generateMatchesForPairs: derived matches for {} out of {} pairs, cache stats are {}",
-                 matchList.size(), pairCount, dataCache.stats());
+        LOG.info("generateMatchesForPairs: derived matches for {} out of {} pairs", matchList.size(), pairCount);
+        LOG.info("generateMatchesForPairs: source cache stats are {}", sourceImageProcessorCache.getStats());
+        LOG.info("generateMatchesForPairs: feature cache stats are {}", featureDataCache.stats());
+        if (peakDataCache != null) {
+            LOG.info("generateMatchesForPairs: peak cache stats are {}", peakDataCache.stats());
+        }
 
-        this.totalSaved += storeMatches(matchList);
-        this.totalProcessed += pairCount;
+        this.pairCounts.totalSaved += storeMatches(matchList);
+        this.pairCounts.totalProcessed += pairCount;
     }
 
     private void appendGeometricMatchesIfNecessary(final CachedCanvasFeatures pCanvasFeatures,
@@ -313,6 +339,7 @@ public class SIFTPointMatchClient
 
                     LOG.info("appendGeometricMatchesIfNecessary: saving {} SIFT matches and skipping Geometric process",
                              matchResult.getTotalNumberOfInliers());
+                    pairCounts.siftSaved++;
 
                     matchResult.addInlierMatchesToList(p.getGroupId(),
                                                        p.getId(),
@@ -342,6 +369,7 @@ public class SIFTPointMatchClient
             } else {
                 LOG.info("appendGeometricMatchesIfNecessary: dropping SIFT matches and skipping Geometric process because only {} matches were found",
                          matchResult.getTotalNumberOfInliers());
+                pairCounts.siftPoorQuantity++;
             }
 
 
@@ -475,32 +503,35 @@ public class SIFTPointMatchClient
 
                         LOG.info("findGeometricDescriptorMatches: saving {} combined matches",
                                  combinedSiftScaleInliers.size());
+                        pairCounts.combinedSaved++;
                         matchList.add(combinedCanvasMatches);
 
                     } else {
                         LOG.info("findGeometricDescriptorMatches: dropping all matches because combined coverage is insufficient");
+                        pairCounts.combinedPoorCoverage++;
                     }
 
 
                 } else {
-
                     LOG.info("findGeometricDescriptorMatches: dropping all matches because only {} combined matches were found",
                              combinedSiftScaleInliers.size());
-
+                    pairCounts.combinedPoorQuantity++;
                 }
 
 
             } else {
                 LOG.info("findGeometricDescriptorMatches: dropping SIFT matches because no GD matches were found");
+                pairCounts.combinedPoorQuantity++;
             }
 
         } else if (combinedCanvasMatches == null) {
             LOG.info("findGeometricDescriptorMatches: no SIFT or GD matches were found, nothing to do");
+            pairCounts.combinedPoorQuantity++;
         } else {
             LOG.info("findGeometricDescriptorMatches: saving {} combined matches", combinedCanvasMatches.size());
+            pairCounts.combinedSaved++;
             matchList.add(combinedCanvasMatches);
         }
-
 
     }
 
@@ -516,9 +547,17 @@ public class SIFTPointMatchClient
     }
 
     private void logStats() {
-        final int percentSaved = (int) ((totalSaved / (double) totalProcessed) * 100);
-        LOG.info("logStats: saved matches for {} out of {} pairs ({}%)",
-                 totalSaved, totalProcessed, percentSaved);
+        final int percentSaved = (int) ((pairCounts.totalSaved / (double) pairCounts.totalProcessed) * 100);
+        LOG.info("logStats: saved matches for {} out of {} pairs ({}%), siftPoorCoverage: {}, siftPoorQuantity: {}, siftSaved: {}, combinedPoorCoverage: {}, combinedPoorQuantity: {}, combinedSaved: {}, ",
+                 pairCounts.totalSaved,
+                 pairCounts.totalProcessed,
+                 percentSaved,
+                 pairCounts.siftPoorCoverage,
+                 pairCounts.siftPoorQuantity,
+                 pairCounts.siftSaved,
+                 pairCounts.combinedPoorCoverage,
+                 pairCounts.combinedPoorQuantity,
+                 pairCounts.combinedSaved);
     }
 
     public static CanvasFeatureExtractor getCanvasFeatureExtractor(final FeatureExtractionParameters featureExtraction) {
@@ -544,4 +583,14 @@ public class SIFTPointMatchClient
         return new Point(reScaledLocal);
     }
 
+    private static class MatchPairCounts {
+        private long siftPoorCoverage = 0;
+        private long siftPoorQuantity = 0;
+        private long siftSaved = 0;
+        private long combinedPoorCoverage = 0;
+        private long combinedPoorQuantity = 0;
+        private long combinedSaved = 0;
+        private long totalProcessed = 0;
+        private long totalSaved = 0;
+    }
 }
