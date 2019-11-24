@@ -277,6 +277,7 @@ public class SIFTPointMatchClient
 
                 } else {
                     LOG.info("generateMatchesForPairs: no SIFT matches to save");
+                    pairCounts.siftPoorQuantity++;
                 }
 
             } else {
