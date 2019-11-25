@@ -156,8 +156,10 @@ public class PointMatchQualityStats
     }
 
     public boolean hasSufficientCoverage(final double minPercentage) {
-        final double coveragePercentage =
-                (overlappingCoveragePixels / (double) overlappingImagePixels) * 100.0;
+        double coveragePercentage = 0.0;
+        if ((overlappingCoveragePixels != null) && (overlappingImagePixels != null)) {
+            coveragePercentage = (overlappingCoveragePixels / (double) overlappingImagePixels) * 100.0;
+        }
         final boolean result = (coveragePercentage >= minPercentage);
         LOG.debug("hasSufficientCoverage: returning {} for coverage of {}%",
                   result, PERCENT_FORMATTER.format(coveragePercentage));
