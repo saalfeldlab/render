@@ -27,6 +27,7 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.CanvasPeakExtractor;
 import org.janelia.alignment.match.CanvasPeakMatcher;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
+import org.janelia.alignment.match.MatchFilter;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.PointMatchQualityStats;
@@ -483,6 +484,18 @@ public class SIFTPointMatchClient
 
                 // if we found GD matches, assess quality of combined SIFT and GD match set
 
+                // first, use SIFT filter to remove any inconsistent matches from the combined set
+                final MatchFilter siftMatchFilter = siftMatchResult.getMatchFilter();
+                final List<PointMatch> consistentCombinedSiftScaleInliers =
+                        siftMatchFilter.filterMatches(combinedSiftScaleInliers, siftMatchFilter.getModel());
+
+                final int badCombinedInlierCount = combinedSiftScaleInliers.size() -
+                                                   consistentCombinedSiftScaleInliers.size();
+                if (badCombinedInlierCount > 0) {
+                    LOG.info("findGeometricDescriptorMatches: post-filter removed {} inconsistent combined inliers",
+                             badCombinedInlierCount);
+                }
+
                 final PointMatchQualityStats combinedQualityStats = new PointMatchQualityStats();
                 final Model aggregateModel = siftMatchResult.getAggregateModelForQualityChecks();
 
@@ -494,7 +507,7 @@ public class SIFTPointMatchClient
                                                    qCanvasFeatures.getImageProcessorWidth(),
                                                    qCanvasFeatures.getImageProcessorHeight(),
                                                    qCanvasFeatures.getMaskProcessor(),
-                                                   Collections.singletonList(combinedSiftScaleInliers),
+                                                   Collections.singletonList(consistentCombinedSiftScaleInliers),
                                                    aggregateModel,
                                                    siftFullScaleOverlapBlockRadius);
                 } catch (final Exception e) {
@@ -506,8 +519,18 @@ public class SIFTPointMatchClient
 
                     if (combinedQualityStats.hasSufficientCoverage(gdam.minCombinedCoveragePercentage)) {
 
+                        // if inconsistent inliers were found, replace the original combined matches
+                        // with full scale versions of the consistent subset of matches
+                        if (badCombinedInlierCount > 0) {
+                            final Matches consistentCombinedFullScaleMatches =
+                                    CanvasMatchResult.convertPointMatchListToMatches(consistentCombinedSiftScaleInliers,
+                                                                                     siftRenderScale);
+                            //noinspection ConstantConditions
+                            combinedCanvasMatches.setMatches(consistentCombinedFullScaleMatches);
+                        }
+
                         LOG.info("findGeometricDescriptorMatches: saving {} combined matches",
-                                 combinedSiftScaleInliers.size());
+                                 consistentCombinedSiftScaleInliers.size());
                         pairCounts.combinedSaved++;
                         matchList.add(combinedCanvasMatches);
 

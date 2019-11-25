@@ -45,6 +45,10 @@ public class CanvasMatchResult
         }
     }
 
+    public MatchFilter getMatchFilter() {
+        return matchFilter;
+    }
+
     private boolean foundMatches() {
         return totalNumberOfInliers > 0;
     }

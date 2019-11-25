@@ -125,12 +125,13 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         }
 
         // ensure that matchCount accurately represents number of correspondences
-        if (matches != null) {
-            matchCount = matches.getWs().length;
-        } else {
-            matchCount = 0;
-        }
+        setMatchCount();
 
+    }
+
+    public void setMatches(final Matches matches) {
+        this.matches = matches;
+        setMatchCount();
     }
 
     /**
@@ -140,13 +141,13 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
      */
     public void append(final Matches additionalMatches) {
         if (matches == null) {
-            matches = new Matches(additionalMatches.getPs(),
-                                  additionalMatches.getQs(),
-                                  additionalMatches.getWs());
+            setMatches(new Matches(additionalMatches.getPs(),
+                                   additionalMatches.getQs(),
+                                   additionalMatches.getWs()));
         } else {
-            matches = new Matches(addAll(matches.getPs(), additionalMatches.getPs()),
-                                  addAll(matches.getQs(), additionalMatches.getQs()),
-                                  addAll(matches.getWs(), additionalMatches.getWs()));
+            setMatches(new Matches(addAll(matches.getPs(), additionalMatches.getPs()),
+                                   addAll(matches.getQs(), additionalMatches.getQs()),
+                                   addAll(matches.getWs(), additionalMatches.getWs())));
         }
     }
 
@@ -162,6 +163,7 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         return consensusSetData == null ? pId : consensusSetData.getOriginalPId();
     }
 
+    @SuppressWarnings("WeakerAccess")
     public String getOriginalQId() {
         return consensusSetData == null ? qId : consensusSetData.getOriginalQId();
     }
@@ -217,7 +219,7 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
     }
 
     @Override
-    public int compareTo(@SuppressWarnings("NullableProblems") final CanvasMatches that) {
+    public int compareTo(final CanvasMatches that) {
         int result = this.pGroupId.compareTo(that.pGroupId);
         if (result == 0) {
             result = this.qGroupId.compareTo(that.qGroupId);
@@ -283,6 +285,14 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
 
     public String toJson() {
         return JSON_HELPER.toJson(this);
+    }
+
+    private void setMatchCount() {
+        if (matches != null) {
+            matchCount = matches.getWs().length;
+        } else {
+            matchCount = 0;
+        }
     }
 
     public static CanvasMatches fromJson(final String json) {

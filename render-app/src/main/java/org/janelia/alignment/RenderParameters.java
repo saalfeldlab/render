@@ -126,7 +126,7 @@ public class RenderParameters implements Serializable {
     public String parametersUrl;
 
     @Parameter(names = "--do_filter", description = "ad hoc filters to support alignment")
-    private boolean doFilter;
+    public boolean doFilter;
 
     @Parameter(names = "--addWarpFieldDebugOverlay", description = "render warp field debug overlay")
     public boolean addWarpFieldDebugOverlay;
