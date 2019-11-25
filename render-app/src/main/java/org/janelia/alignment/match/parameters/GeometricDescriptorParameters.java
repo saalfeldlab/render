@@ -139,6 +139,7 @@ public class GeometricDescriptorParameters
         dp.dimensionality = 2;
         dp.channel1 = 0;
         dp.channel2 = 0;
+        dp.silent = true;
 
         // TODO: make sure roi parameters are not relevant ...
 

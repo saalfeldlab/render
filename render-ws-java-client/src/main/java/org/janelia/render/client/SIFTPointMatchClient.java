@@ -164,7 +164,8 @@ public class SIFTPointMatchClient
                         featureRenderParameters.renderFilterListName,
                         featureRenderParameters.renderWithoutMask);
 
-        siftUrlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth, featureRenderClipParameters.clipHeight);
+        siftUrlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth,
+                                          featureRenderClipParameters.clipHeight);
 
         final CanvasFeatureListLoader featureLoader =
                 new CanvasFeatureListLoader(
@@ -206,6 +207,9 @@ public class SIFTPointMatchClient
                             gdam.renderWithFilter,
                             gdam.renderFilterListName,
                             featureRenderParameters.renderWithoutMask);
+
+            gdUrlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth,
+                                            featureRenderClipParameters.clipHeight);
 
             peakExtractor = new CanvasPeakExtractor(gdam.geometricDescriptorParameters);
             peakExtractor.setImageProcessorCache(sourceImageProcessorCache);

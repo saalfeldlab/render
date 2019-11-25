@@ -126,4 +126,94 @@ public class SIFTPointMatchClientTest {
                                        parameters.matchDerivation);
     }
 
+//    private static final String PROBLEM_JSON =
+//            "{\n" +
+//            "  \"matchClient\" : {\n" +
+//            "    \"baseDataUrl\" : \"http://renderer-dev.int.janelia.org:8080/render-ws/v1\",\n" +
+//            "    \"owner\" : \"Z1217_19m\",\n" +
+//            "    \"collection\" : \"gd_test_Sec07_v1\"\n" +
+//            "  },\n" +
+//            "  \"featureRender\" : {\n" +
+//            "    \"renderScale\" : 0.5,\n" +
+//            "    \"renderWithFilter\" : true,\n" +
+//            "    \"renderWithoutMask\" : false\n" +
+//            "  },\n" +
+//            "  \"featureRenderClip\" : {\n" +
+//            "    \"clipWidth\" : 500,\n" +
+//            "    \"clipHeight\" : 500\n" +
+//            "  },\n" +
+//            "  \"featureExtraction\" : {\n" +
+//            "    \"fdSize\" : 4,\n" +
+//            "    \"minScale\" : 0.25,\n" +
+//            "    \"maxScale\" : 1.0,\n" +
+//            "    \"steps\" : 5\n" +
+//            "  },\n" +
+//            "  \"featureStorage\" : {\n" +
+//            "    \"requireStoredFeatures\" : false,\n" +
+//            "    \"maxFeatureCacheGb\" : 1,\n" +
+//            "    \"maxFeatureSourceCacheGb\" : 1\n" +
+//            "  },\n" +
+//            "  \"matchDerivation\" : {\n" +
+//            "    \"matchRod\" : 0.92,\n" +
+//            "    \"matchModelType\" : \"RIGID\",\n" +
+//            "    \"matchRegularizerModelType\" : \"TRANSLATION\",\n" +
+//            "    \"matchInterpolatedModelLambda\" : 0.25,\n" +
+//            "    \"matchIterations\" : 1000,\n" +
+//            "    \"matchMaxEpsilon\" : 50.0,\n" +
+//            "    \"matchMinInlierRatio\" : 0.0,\n" +
+//            "    \"matchMinNumInliers\" : 25,\n" +
+//            "    \"matchMaxTrust\" : 4.0,\n" +
+//            "    \"matchFilter\" : \"SINGLE_SET\",\n" +
+//            "    \"matchFullScaleCoverageRadius\" : 300.0,\n" +
+//            "    \"matchMinCoveragePercentage\" : 85.0\n" +
+//            "  },\n" +
+//            "  \"geometricDescriptorAndMatch\" : {\n" +
+//            "    \"gdEnabled\" : true,\n" +
+//            "    \"renderScale\" : 1.0,\n" +
+//            "    \"renderWithFilter\" : false,\n" +
+//            "    \"geometricDescriptorParameters\" : {\n" +
+//            "      \"numberOfNeighbors\" : 3,\n" +
+//            "      \"redundancy\" : 2,\n" +
+//            "      \"significance\" : 1.5,\n" +
+//            "      \"sigma\" : 6.04,\n" +
+//            "      \"threshold\" : 0.008,\n" +
+//            "      \"localization\" : \"THREE_D_QUADRATIC\",\n" +
+//            "      \"lookForMinima\" : true,\n" +
+//            "      \"lookForMaxima\" : false,\n" +
+//            "      \"similarOrientation\" : true,\n" +
+//            "      \"fullScaleBlockRadius\" : 100.0,\n" +
+//            "      \"fullScaleNonMaxSuppressionRadius\" : 20.0,\n" +
+//            "      \"gdStoredMatchWeight\" : 0.4\n" +
+//            "    },\n" +
+//            "    \"matchDerivationParameters\" : {\n" +
+//            "      \"matchRod\" : 0.92,\n" +
+//            "      \"matchModelType\" : \"RIGID\",\n" +
+//            "      \"matchRegularizerModelType\" : \"TRANSLATION\",\n" +
+//            "      \"matchInterpolatedModelLambda\" : 0.25,\n" +
+//            "      \"matchIterations\" : 1000,\n" +
+//            "      \"matchMaxEpsilon\" : 20.0,\n" +
+//            "      \"matchMinInlierRatio\" : 0.0,\n" +
+//            "      \"matchMinNumInliers\" : 10,\n" +
+//            "      \"matchMaxTrust\" : 3.0,\n" +
+//            "      \"matchFilter\" : \"SINGLE_SET\",\n" +
+//            "      \"matchFullScaleCoverageRadius\" : 300.0\n" +
+//            "    },\n" +
+//            "    \"minCombinedInliers\" : 25,\n" +
+//            "    \"minCombinedCoveragePercentage\" : 85.0\n" +
+//            "  },\n" +
+//            "  \"pairJson\" : [\n" +
+//            "    \"/Users/trautmane/Desktop/tile_pairs_v1_acquire_dist_0_p155.json\"\n" +
+//            "  ]\n" +
+//            "}";
+//
+//    private static SIFTPointMatchClient.Parameters getProblemParameters() {
+//        return JSON_HELPER.fromJson(PROBLEM_JSON);
+//    }
+//
+//    private static final JsonUtils.Helper<SIFTPointMatchClient.Parameters> JSON_HELPER =
+//            new JsonUtils.Helper<>(SIFTPointMatchClient.Parameters.class);
+
+//    parameters.geometricDescriptorAndMatch.maxPeakCacheGb = 1;
+//    client.generateMatchesForPairFile(parameters.pairJson.get(0));
+
 }
