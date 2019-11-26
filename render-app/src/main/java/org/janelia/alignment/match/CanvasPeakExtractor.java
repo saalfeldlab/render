@@ -151,6 +151,8 @@ public class CanvasPeakExtractor
         // if a mask exists, remove any peaks on or next to a masked pixel
         if (mask != null) {
 
+            final int totalPeakCount = peakList.size();
+
             for (int i = peakList.size() - 1; i >= 0; --i) {
                 final DifferenceOfGaussianPeak<FloatType> peak = peakList.get(i);
                 if ( ImageProcessorUtil.isNearMaskedOut(peak.getPosition(0),
@@ -159,6 +161,11 @@ public class CanvasPeakExtractor
                                                         mask) ) {
                     peakList.remove(i);
                 }
+            }
+
+            if (totalPeakCount > peakList.size()) {
+                LOG.info("extractPeaksFromImageAndMask: removed {} peaks found in the masked region",
+                         (totalPeakCount - peakList.size()));
             }
 
         }
