@@ -236,10 +236,10 @@ public class SIFTPointMatchClient
             p = pair.getP();
             q = pair.getQ();
 
+            LOG.info("generateMatchesForPairs: derive matches between {} and {}", p, q);
+
             pFeatures = featureDataCache.getCanvasFeatures(p);
             qFeatures = featureDataCache.getCanvasFeatures(q);
-
-            LOG.info("generateMatchesForPairs: derive matches between {} and {}", p, q);
 
             matchResult = featureMatcher.deriveMatchResult(pFeatures.getFeatureList(),
                                                            qFeatures.getFeatureList());
