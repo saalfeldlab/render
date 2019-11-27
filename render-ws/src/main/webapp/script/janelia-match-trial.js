@@ -478,10 +478,10 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 
     const updateMatchStatCountsAndTimes = function(featureOrPeak, siftOrGdStats) {
         $('#p' + featureOrPeak + 'Stats').html(
-                stats.pFeatureCount + ' ' + featureOrPeak.toLowerCase() +
+                siftOrGdStats.pFeatureCount + ' ' + featureOrPeak.toLowerCase() +
                 's were derived in ' + siftOrGdStats.pFeatureDerivationMilliseconds + ' ms');
         $('#q' + featureOrPeak + 'Stats').html(
-                stats.qFeatureCount + ' ' + featureOrPeak.toLowerCase() +
+                siftOrGdStats.qFeatureCount + ' ' + featureOrPeak.toLowerCase() +
                 's were derived in ' + siftOrGdStats.qFeatureDerivationMilliseconds + ' ms');
     };
 
