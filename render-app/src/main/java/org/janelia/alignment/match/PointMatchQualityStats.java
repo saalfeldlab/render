@@ -109,6 +109,8 @@ public class PointMatchQualityStats
             } else {
                 aggregateModel.fit(aggregatedInliers);
                 aggregateDeltaXAndYStandardDeviation = getWorldDeltaXAndYStandardDeviation(aggregatedInliers);
+                aggregateDeltaXAndYStandardDeviation[0] /= renderScale;
+                aggregateDeltaXAndYStandardDeviation[1] /= renderScale;
             }
 
             // use mask height and width if it exists to avoid rounding issues in coverage logic
