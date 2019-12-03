@@ -183,9 +183,6 @@ public class ExampleMatchVisualizationClient {
     void printConnections()
             throws IllegalArgumentException, IOException {
 
-        final String connectionExists =  "        ::      ";
-        final String connectionMissing = "        ??      ";
-
         final List<Double> zValues = zToSectionIdMap.keySet().stream().sorted().collect(Collectors.toList());
 
         if (zValues.size() == 0) {
@@ -201,6 +198,8 @@ public class ExampleMatchVisualizationClient {
         Set<OrderedCanvasIdPair> currentLayerMatchedPairs = getMatchedPairsForLayer(zValues.get(0));
 
         for (int zIndex = 1; zIndex <= zValues.size(); zIndex++) {
+
+            final int startingOutputLength = output.length();
 
             // use the R Tree to find pairs of adjacent tiles in the same layer that "should" have matches
             final List<OrderedCanvasIdPair> sameLayerNeighborPairs =
@@ -224,22 +223,11 @@ public class ExampleMatchVisualizationClient {
                             .collect(Collectors.toList());
 
 
-            String previousQId = null;
             for (final OrderedCanvasIdPair pair : sameLayerNeighborPairs) {
-                final CanvasId p = pair.getP();
-                final CanvasId q = pair.getQ();
-                final String connection =
-                        // note: this check only works if relative position data has been removed
-                        currentLayerMatchedPairs.contains(pair) ? connectionExists : connectionMissing;
-                if (! p.getId().equals(previousQId)) {
-                    output.append(String.format("%-30s", p.getId()));
-                    // TODO: handle "gap" case where tiles are missing
+                if (! currentLayerMatchedPairs.contains(pair)) {
+                    appendMissingPair(pair, true, output);
                 }
-                output.append(String.format("%s  %-30s", connection, q.getId()));
-                previousQId = q.getId();
             }
-
-            output.append("\n");
 
             // for all but the last layer ...
             if (zIndex < zValues.size()) {
@@ -260,12 +248,14 @@ public class ExampleMatchVisualizationClient {
                                 .stream().sorted().collect(Collectors.toList());
 
                 for (final OrderedCanvasIdPair pair : crossLayerNeighborPairs) {
-                    final String connection =
-                            currentLayerMatchedPairs.contains(pair) ? connectionExists : connectionMissing;
-                    output.append(String.format("%s  %30s", connection, " "));
+                    if (! currentLayerMatchedPairs.contains(pair)) {
+                        appendMissingPair(pair, false, output);
+                    }
                 }
 
-                output.append("\n");
+                if (output.length() > startingOutputLength) {
+                    output.append("\n");
+                }
 
                 currentLayerBoundsTree = nextLayerBoundsTree;
                 currentLayerMatchedPairs = getMatchedPairsForLayer(z);
@@ -342,6 +332,13 @@ public class ExampleMatchVisualizationClient {
             }
         }
         return pairs;
+    }
+
+    private void appendMissingPair(final OrderedCanvasIdPair pair,
+                                   final boolean isSameLayer,
+                                   final StringBuilder output) {
+        final String connection = isSameLayer ? " >> " : " vv ";
+        output.append(pair.getP().getId()).append(connection).append(pair.getQ().getId()).append(" || ");
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ExampleMatchVisualizationClient.class);

@@ -35,7 +35,7 @@ public class ExampleMatchVisualizationClientTest {
                 "--project", "Sec07",
                 "--stack", "v1_acquire",
                 "--minZ", "1",
-                "--maxZ", "20",
+                "--maxZ", "10", // 37011
                 "--sameLayerNeighborFactor", "0.6",
                 "--crossLayerNeighborFactor", "0.1",
                 "--matchCollection", "gd_test_2_Sec07_v1"
