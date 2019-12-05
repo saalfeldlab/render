@@ -537,7 +537,9 @@ public class SIFTPointMatchClient
                         if (badCombinedInlierCount > 0) {
                             final Matches consistentCombinedFullScaleMatches =
                                     CanvasMatchResult.convertPointMatchListToMatches(consistentCombinedSiftScaleInliers,
-                                                                                     siftRenderScale);
+                                                                                     siftRenderScale,
+                                                                                     pClipOffsets,
+                                                                                     qClipOffsets);
                             //noinspection ConstantConditions
                             combinedCanvasMatches.setMatches(consistentCombinedFullScaleMatches);
                         }
