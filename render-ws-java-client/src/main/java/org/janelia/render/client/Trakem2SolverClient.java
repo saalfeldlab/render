@@ -5,6 +5,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
@@ -51,6 +53,7 @@ import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApp
  * @author Stephan Saalfeld
  * @author Eric Trautman
  */
+@SuppressWarnings("rawtypes")
 public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
     public static class Parameters extends CommandLineParameters {
@@ -128,6 +131,13 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
         public Double startLambda = 1.0;
 
         @Parameter(
+                names = "--optimizerLambdas",
+                description = "Explicit optimizer lambda values.",
+                variableArity = true
+        )
+        public List<Double> optimizerLambdas;
+
+        @Parameter(
                 names = "--targetOwner",
                 description = "Owner name for aligned result stack (default is same as owner)"
         )
@@ -192,17 +202,18 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                 if (args.length == 0) {
                     final String[] testArgs = {
                             "--baseDataUrl", "http://renderer-dev:8080/render-ws/v1",
-                            "--owner", "flyTEM",
-                            "--project", "FAFB_montage",
-                            "--stack", "check_923_split_rough",
-                            "--targetStack", "check_923_merged_test",
-                            "--threads", "2",
+                            "--owner", "Z1217_19m",
+                            "--project", "Sec07",
+
+                            "--stack", "slim_24800_26200",
+                            "--targetStack", "slim_24800_26200_trans_200",
+                            "--regularizerModelType", "TRANSLATION",
+                            "--optimizerLambdas", "1.0",
+
+                            "--threads", "4",
+                            "--maxIterations", "200",
                             "--completeTargetStack",
-                            "--matchCollection", "FAFB_montage_fix_test",
-//                            "--minZ", "100270",
-//                            "--maxZ", "100272",
-                            "--regularizerModelType", "RIGID"
-                            ,"--mergedZ", "923"
+                            "--matchCollection", "gd_test_3_Sec07_v1"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -359,29 +370,36 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
         LOG.info("run: optimizing {} tiles", idToTileMap.size());
 
-        final double[] lambdaValues = new double[] { 1, 0.5, 0.1, 0.01 };
+        final List<Double> lambdaValues;
+        if (parameters.optimizerLambdas == null) {
+            lambdaValues = Stream.of(1.0, 0.5, 0.1, 0.01)
+                    .filter(lambda -> lambda <= parameters.startLambda)
+                    .collect(Collectors.toList());
+        } else {
+            lambdaValues = parameters.optimizerLambdas.stream()
+                    .sorted(Comparator.reverseOrder())
+                    .collect(Collectors.toList());
+        }
 
         for (final double lambda : lambdaValues) {
-            if (lambda <= parameters.startLambda) {
 
-                for (final Tile tile : idToTileMap.values()) {
-                    ((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
-                }
-
-                // tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
-
-                final ErrorStatistic observer = new ErrorStatistic(parameters.maxPlateauWidth + 1 );
-                final float damp = 1.0f;
-                TileUtil.optimizeConcurrently(observer,
-                                              parameters.maxAllowedError,
-                                              parameters.maxIterations,
-                                              parameters.maxPlateauWidth,
-                                              damp,
-                                              tileConfig,
-                                              tileConfig.getTiles(),
-                                              tileConfig.getFixedTiles(),
-                                              parameters.numberOfThreads);
+            for (final Tile tile : idToTileMap.values()) {
+                ((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
             }
+
+            // tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
+
+            final ErrorStatistic observer = new ErrorStatistic(parameters.maxPlateauWidth + 1 );
+            final float damp = 1.0f;
+            TileUtil.optimizeConcurrently(observer,
+                                          parameters.maxAllowedError,
+                                          parameters.maxIterations,
+                                          parameters.maxPlateauWidth,
+                                          damp,
+                                          tileConfig,
+                                          tileConfig.getTiles(),
+                                          tileConfig.getFixedTiles(),
+                                          parameters.numberOfThreads);
         }
 
         if (parameters.targetStack == null) {
@@ -489,37 +507,41 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
         TileSpec tileSpec = null;
 
-        for (final Double z : sectionIdToZMap.get(sectionId)) {
+        if (sectionIdToZMap.containsKey(sectionId)) {
 
-            if (! zToTileSpecsMap.containsKey(z)) {
+            for (final Double z : sectionIdToZMap.get(sectionId)) {
 
-                if (totalTileCount > 100000) {
-                    throw new IllegalArgumentException("More than 100000 tiles need to be loaded - please reduce z values");
+                if (! zToTileSpecsMap.containsKey(z)) {
+
+                    if (totalTileCount > 100000) {
+                        throw new IllegalArgumentException("More than 100000 tiles need to be loaded - please reduce z values");
+                    }
+
+                    final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
+
+                    // check for accidental use of rough aligned stack ...
+                    resolvedTiles.getTileSpecs().forEach(ts -> {
+                        if (ts.getLastTransform() instanceof ReferenceTransformSpec) {
+                            throw new IllegalStateException(
+                                    "last transform for tile " + ts.getTileId() +
+                                    " is a reference transform which will break this fragile client, " +
+                                    "make sure --stack is not a rough aligned stack ");
+                        }
+                    });
+
+                    resolvedTiles.resolveTileSpecs();
+                    zToTileSpecsMap.put(z, resolvedTiles);
+                    totalTileCount += resolvedTiles.getTileCount();
                 }
 
-                final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
+                final ResolvedTileSpecCollection resolvedTileSpecCollection = zToTileSpecsMap.get(z);
+                tileSpec = resolvedTileSpecCollection.getTileSpec(tileId);
 
-                // check for accidental use of rough aligned stack ...
-                resolvedTiles.getTileSpecs().forEach(ts -> {
-                    if (ts.getLastTransform() instanceof ReferenceTransformSpec) {
-                        throw new IllegalStateException(
-                                "last transform for tile " + ts.getTileId() +
-                                " is a reference transform which will break this fragile client, " +
-                                "make sure --stack is not a rough aligned stack ");
-                    }
-                });
-
-                resolvedTiles.resolveTileSpecs();
-                zToTileSpecsMap.put(z, resolvedTiles);
-                totalTileCount += resolvedTiles.getTileCount();
+                if (tileSpec != null) {
+                    break;
+                }
             }
-
-            final ResolvedTileSpecCollection resolvedTileSpecCollection = zToTileSpecsMap.get(z);
-            tileSpec = resolvedTileSpecCollection.getTileSpec(tileId);
-
-            if (tileSpec != null) {
-                break;
-            }
+            
         }
 
         return tileSpec;
