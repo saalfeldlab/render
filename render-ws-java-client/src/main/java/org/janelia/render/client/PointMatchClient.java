@@ -367,7 +367,8 @@ public class PointMatchClient {
         } else {
 
             for (final CanvasFeatureExtractorThread extractorThread : extractorList) {
-                extractorThread.start();
+                //noinspection CallToThreadRun
+                extractorThread.run();
             }
 
         }
@@ -411,7 +412,8 @@ public class PointMatchClient {
         } else {
 
             for (final CanvasFeatureMatcherThread matcherThread : matcherList) {
-                matcherThread.start();
+                //noinspection CallToThreadRun
+                matcherThread.run();
             }
 
         }
