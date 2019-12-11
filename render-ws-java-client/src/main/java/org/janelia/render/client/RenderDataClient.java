@@ -1273,6 +1273,29 @@ public class RenderDataClient {
     }
 
     /**
+     *
+     * @param  pGroupId             first tile's section id.
+     * @param  qGroupId             second tile's section id.
+     * @param  excludeMatchDetails  if true, only retrieve pair identifiers and exclude detailed match points.
+     *
+     * @return list of canvas matches between the specified groups.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<CanvasMatches> getMatchesBetweenGroups(final String pGroupId,
+                                                       final String qGroupId,
+                                                       final boolean excludeMatchDetails)
+            throws IOException {
+
+        final String urlString = String.format("%s/group/%s/matchesWith/%s",
+                                               urls.getMatchCollectionUrlString(), pGroupId, qGroupId);
+        return getMatches("getMatchesBetweenGroups",
+                          urlString,
+                          excludeMatchDetails);
+    }
+
+    /**
      * Deletes matches between the specified group id and all other canvases that have a different groupId.
      *
      * @param  groupId      groupId (usually the section id).
