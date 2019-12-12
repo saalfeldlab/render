@@ -61,12 +61,12 @@ public class Trakem2SolverPreAlignClient{
 
         @Parameter(
                 names = "--minZ",
-                description = "Minimum (split) Z value for layers to be processed")
+                description = "Minimum Z value for layers to be processed")
         public Double minZ;
 
         @Parameter(
                 names = "--maxZ",
-                description = "Maximum (split) Z value for layers to be processed")
+                description = "Maximum Z value for layers to be processed")
         public Double maxZ;
 
         @Parameter(
@@ -87,6 +87,11 @@ public class Trakem2SolverPreAlignClient{
                 description = "Samples per dimension"
         )
         public Integer samplesPerDimension = 2;
+
+        @Parameter(
+                names = "--maxDistanceZ",
+                description = "Exclude any match pairs with tiles that are further apart in z than this distance")
+        public Double maxDistanceZ;
 
         @Parameter(
                 names = "--maxLayersPerBatch",
@@ -305,6 +310,14 @@ public class Trakem2SolverPreAlignClient{
                 LOG.info("run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}",
                          pId, qId, parameters.stack);
                 continue;
+            }
+
+            if (parameters.maxDistanceZ != null) {
+                final double distanceZ = Math.abs(pTileSpec.getZ() - qTileSpec.getZ());
+                if (distanceZ > parameters.maxDistanceZ) {
+                    LOG.info("run: ignoring pair ({}, {}) with z distance {}", pId, qId, distanceZ);
+                    continue;
+                }
             }
 
             final Tile<TranslationModel2D> p =
