@@ -8,7 +8,11 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.http.client.methods.HttpDelete;
@@ -35,6 +39,7 @@ import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.transform.ConsensusWarpFieldBuilder;
 import org.janelia.alignment.util.RenderWebServiceUrls;
@@ -365,6 +370,40 @@ public class RenderDataClient {
         }
 
         return sectionDataList;
+    }
+
+    // TODO: look for clients that have this logic and replace with call to this method
+
+    /**
+     * @param  stack            name of stack.
+     * @param  minZ             (optional) only include layers with z values greater than or equal to this minimum.
+     * @param  maxZ             (optional) only include layers with z values less than or equal to this maximum.
+     * @param  explicitZValues  (optional) collection of z values to explicitly include.
+     *
+     * @return section data for set of layers in the specified stack mapped to z.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public Map<Double, Set<String>> getStackZToSectionIdsMap(final String stack,
+                                                             final Double minZ,
+                                                             final Double maxZ,
+                                                             final Collection<Double> explicitZValues)
+            throws IOException {
+
+        final List<SectionData> sectionDataList = getStackSectionData(stack, minZ, maxZ, explicitZValues);
+
+        final Map<Double, Set<String>> zToSectionIdsMap = new HashMap<>(sectionDataList.size());
+        sectionDataList.forEach(sd -> {
+            final Double z = sd.getZ();
+            if (z != null) {
+                final Set<String> sectionIdsForZ = zToSectionIdsMap.computeIfAbsent(z,
+                                                                                    sectionIdSet -> new HashSet<>());
+                sectionIdsForZ.add(sd.getSectionId());
+            }
+        });
+
+        return zToSectionIdsMap;
     }
 
     /**

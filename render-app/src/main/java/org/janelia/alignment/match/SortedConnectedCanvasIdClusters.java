@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,6 +45,32 @@ public class SortedConnectedCanvasIdClusters
             addConnectedCanvases(canvasId, connectionsMap, connectedTileSet);
             sortedConnectedCanvasIdSets.add(connectedTileSet);
         }
+
+        sortedConnectedCanvasIdSets.sort((s1, s2) -> Integer.compare(s2.size(), s1.size()));
+    }
+
+    public void mergeOverlappingClusters(final SortedConnectedCanvasIdClusters overlappingClusters) {
+
+        final List<Set<CanvasId>> unmergedClusters = overlappingClusters.sortedConnectedCanvasIdSets;
+
+        // try to merge as many of the overlapping clusters as possible
+        for (final Set<CanvasId> existingCluster : sortedConnectedCanvasIdSets) {
+
+            for (final Iterator<Set<CanvasId>> i = unmergedClusters.iterator(); i.hasNext();) {
+                final Set<CanvasId> unmergedCluster = i.next();
+                for (final CanvasId canvasId : unmergedCluster) {
+                    if (existingCluster.contains(canvasId)) {
+                        existingCluster.addAll(unmergedCluster);
+                        i.remove();
+                        break;
+                    }
+                }
+            }
+
+        }
+
+        // then add any remaining unmerged clusters
+        sortedConnectedCanvasIdSets.addAll(unmergedClusters);
 
         sortedConnectedCanvasIdSets.sort((s1, s2) -> Integer.compare(s2.size(), s1.size()));
     }
