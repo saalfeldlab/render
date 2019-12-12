@@ -142,15 +142,16 @@ public class ClusterCountClient {
         for (final Set<String> tileIdSet : allClusters.getSortedConnectedTileIdSets()) {
 
             final int tileCount = tileIdSet.size();
-            final String tileIdRange;
-            if ((tileCount > 1) && (tileCount < 2000)) {
+            final String tileIdInfo;
+            if ((tileCount > 1) && (tileCount < 1_000_000)) {
                 final List<String> sortedTileIds = tileIdSet.stream().sorted().collect(Collectors.toList());
-                tileIdRange = "tiles " + sortedTileIds.get(0) + " and " + sortedTileIds.get(tileCount - 1);
+                tileIdInfo = "with first tile " + sortedTileIds.get(0) +
+                             " and last tile " + sortedTileIds.get(tileCount - 1);
             } else {
-                tileIdRange = "tile " + tileIdSet.stream().findAny().orElse(null);
+                tileIdInfo = "including tile " + tileIdSet.stream().findAny().orElse(null);
             }
 
-            LOG.info("findConnectedClusters: {} tile set with {}", tileCount, tileIdRange);
+            LOG.info("findConnectedClusters: {} tile set {}", tileCount, tileIdInfo);
 
         }
 
