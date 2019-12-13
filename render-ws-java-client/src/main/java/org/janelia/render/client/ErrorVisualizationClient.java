@@ -173,7 +173,7 @@ public class ErrorVisualizationClient {
         final ArrayList< ArrayList< Double > > maxError = new ArrayList<>();
         final ArrayList< ArrayList< Pair< Integer, Integer > > > maxErrorLoc = new ArrayList<>(); // worst tile x location, worst tile z location
 
-        final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles( parameters.stack, zValues.get( 0 ), zValues.get( zValues.size() - 1 ) + 6, null, null, null, null, null );
+        //final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles( parameters.stack, zValues.get( 0 ), zValues.get( zValues.size() - 1 ) + 6, null, null, null, null, null );
         
         // TODO: Loop
         for ( int i = 0; i < zValues.size(); ++i )
@@ -192,7 +192,7 @@ public class ErrorVisualizationClient {
 	        final List<CanvasMatches> cmatches = getMatchedPairsForLayer(currentZ);
 
 	        // maps tileId to TileSpec and has transformations
-	        //final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles( parameters.stack, currentZ, currentZ+6, null, null, null, null, null );
+	        final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles( parameters.stack, currentZ, currentZ+6, null, null, null, null, null );
 	
 	        // map tileId to CanvasMatches
 	        final Map< String, List< CanvasMatches> > matchMap = new HashMap<>();
@@ -360,7 +360,7 @@ public class ErrorVisualizationClient {
 
         }
         
-        render( loc, realLoc, avgError, maxError, maxErrorLoc, 100.0 );
+        render( loc, realLoc, avgError, maxError, maxErrorLoc, 20.0 );
     }
 
     public static void render(
@@ -391,6 +391,9 @@ public class ErrorVisualizationClient {
     	{
         	final ArrayList< Pair< Double, Double > > lineRealLoc = realLoc.get( j );
         	final ArrayList< Pair< Integer, Integer > > lineLoc = loc.get( j );
+
+    		if ( lineRealLoc.size() == 0 )
+    			continue;
 
         	double rX0 = lineRealLoc.get( 0 ).getA();
         	double rX1 = lineRealLoc.get( 0 ).getB();
