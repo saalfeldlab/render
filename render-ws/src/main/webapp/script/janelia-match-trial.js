@@ -770,9 +770,14 @@ JaneliaMatchTrial.prototype.toggleLinesAndPoints = function() {
 
 JaneliaMatchTrial.prototype.saveTrialResultsToCollection = function(saveToOwner, saveToCollection, errorMessageSelector) {
 
-    const FAFB_renderRegEx = /(.*\/render-ws).*\/owner\/([^\/]+)\/project\/([^\/]+)\/stack\/([^\/]+)\/tile\/([0-9]+\.([0-9]+\.[0-9]+))\/render-parameters.*/;
-    const pUrlMatch = this.trialResults.parameters.pRenderParametersUrl.match(FAFB_renderRegEx);
-    const qUrlMatch = this.trialResults.parameters.qRenderParametersUrl.match(FAFB_renderRegEx);
+    // Typical tile render URL pattern is:
+    //   <base_url>/owner/<owner>/project/<project>/stack/<stack>/tile/<tile_id>/render-parameters?...
+    // where <tile_id> pattern is:
+    //   <acquisition_timestamp>.<section_id>
+    const typicalTileRenderRegEx = /(.*\/render-ws).*\/owner\/([^\/]+)\/project\/([^\/]+)\/stack\/([^\/]+)\/tile\/([^\\.]+\.([0-9]+\.[0-9]+))\/render-parameters.*/;
+
+    const pUrlMatch = this.trialResults.parameters.pRenderParametersUrl.match(typicalTileRenderRegEx);
+    const qUrlMatch = this.trialResults.parameters.qRenderParametersUrl.match(typicalTileRenderRegEx);
 
     if ((typeof saveToCollection === 'undefined') || (saveToCollection.length === 0)) {
 
@@ -803,7 +808,10 @@ JaneliaMatchTrial.prototype.saveTrialResultsToCollection = function(saveToOwner,
         };
         const matchPairDataArray = [ matchPairData ];
 
-        const matchesUrl = this.baseUrl + "/owner/" + saveToOwner + "/matchCollection/" + saveToCollection + "/matches";
+        // set match owner to render owner if match owner was not explicitly specified
+        const effectiveSaveToOwner = (typeof saveToOwner === 'undefined') ? renderStackOwner : saveToOwner;
+
+        const matchesUrl = this.baseUrl + "/owner/" + effectiveSaveToOwner + "/matchCollection/" + saveToCollection + "/matches";
         const tilePairUrl = baseViewUrl + "/tile-pair.html?renderScale=0.1&renderStackOwner=" + renderStackOwner +
                             "&renderStackProject=" + renderStackProject +
                             "&renderStack=" + renderStack +

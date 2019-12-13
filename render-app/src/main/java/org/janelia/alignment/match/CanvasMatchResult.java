@@ -207,10 +207,10 @@ public class CanvasMatchResult
      *
      * @return the specified point match list in {@link Matches} form.
      */
-    private static Matches convertPointMatchListToMatches(final List<PointMatch> pointMatchList,
-                                                          final double renderScale,
-                                                          final double[] pOffsets,
-                                                          final double[] qOffsets) {
+    public static Matches convertPointMatchListToMatches(final List<PointMatch> pointMatchList,
+                                                         final double renderScale,
+                                                         final double[] pOffsets,
+                                                         final double[] qOffsets) {
 
         final Matches matches;
 

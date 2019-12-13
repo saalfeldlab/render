@@ -58,6 +58,14 @@ public class GeometricDescriptorAndMatchFilterParameters
     private GeometricCommandLineMatchDerivationParameters commandLineMatchDerivationParameters =
             new GeometricCommandLineMatchDerivationParameters();
 
+    // TODO: rework these parameters so that they are less confusing
+    @Parameter(
+            names = "--gdRunGeoRegardlessOfSiftResults",
+            description = "Indicates that GD matching should be performed regardless of SIFT results.",
+            arity = 0
+    )
+    public boolean runGeoRegardlessOfSiftResults = false;
+
     @Parameter(
             names = { "--gdMinCombinedInliers" },
             description = "Minimum number of combined SIFT and GD inliers for storage.  " +
