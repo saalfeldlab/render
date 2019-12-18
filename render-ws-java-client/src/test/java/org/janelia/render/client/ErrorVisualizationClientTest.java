@@ -33,9 +33,9 @@ public class ErrorVisualizationClientTest {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "--owner", "Z1217_19m",
                 "--project", "Sec07",
-                "--stack", "slim_24800_25000_tweak_pre_align_200",
-                //"--minZ", "1",
-                //"--maxZ", "20",
+                "--stack", "affine_pm_test_matlab_2",//"slim_24800_25000_tweak_pre_align_200",
+                //"--minZ", "36800",
+                //"--maxZ", "37010",
                 "--matchCollection", "gd_test_3_Sec07_v1"
         };
 
