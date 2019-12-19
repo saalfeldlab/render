@@ -1,13 +1,13 @@
 package org.janelia.render.client;
 
-import org.janelia.render.client.ExampleMatchVisualizationClient.Parameters;
+import org.janelia.render.client.ErrorVisualizationClient.Parameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
 /**
  * Tests the {@link ExampleMatchVisualizationClient} class.
  */
-public class ExampleMatchVisualizationClientTest {
+public class ErrorVisualizationClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
@@ -33,18 +33,18 @@ public class ExampleMatchVisualizationClientTest {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "--owner", "Z1217_19m",
                 "--project", "Sec07",
-                "--stack", "v1_acquire",
-                "--minZ", "1",
-                "--maxZ", "10", // 37011
-                "--sameLayerNeighborFactor", "0.6",
-                "--crossLayerNeighborFactor", "0.1",
-                "--matchCollection", "gd_test_2_Sec07_v1"
+                "--stack", "affine_pm_test_matlab_2",//"slim_24800_25000_tweak_pre_align_200",
+                //"--minZ", "36800",
+                //"--maxZ", "37010",
+                "--matchCollection", "gd_test_3_Sec07_v1"
         };
 
+        // http://renderer-dev.int.janelia.org:8080/render-ws/view/index.html?dynamicRenderHost=renderer-dev%3A8080&catmaidHost=renderer-catmaid%3A8000&renderStackOwner=Z1217_19m&matchOwner=Z1217_19m&renderStackProject=Sec07&renderStack=v1_acquire_pre_align&matchCollection=gd_test_3_Sec07_v1
+        
         final Parameters parameters = new Parameters();
         parameters.parse(args);
 
-        final ExampleMatchVisualizationClient client = new ExampleMatchVisualizationClient(parameters);
+        final ErrorVisualizationClient client = new ErrorVisualizationClient(parameters);
 
         client.printConnections();
     }
