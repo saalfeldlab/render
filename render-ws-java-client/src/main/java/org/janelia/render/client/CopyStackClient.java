@@ -76,8 +76,7 @@ public class CopyStackClient {
 
         @Parameter(
                 names = "--z",
-                description = "Z value of section to be copied",
-                required = true)
+                description = "Z value of layer to be copied (omit to copy all layers)")
         public List<Double> zValues;
 
         @Parameter(
@@ -157,9 +156,7 @@ public class CopyStackClient {
 
                 client.setUpDerivedStack();
 
-                for (final Double z : parameters.zValues) {
-                    client.copyLayer(z);
-                }
+                client.copyLayers();
 
                 if (parameters.completeToStackAfterCopy) {
                     client.completeToStack();
@@ -174,6 +171,7 @@ public class CopyStackClient {
     private final RenderDataClient toDataClient;
     private final Map<String, Double> sectionIdToZMap;
     private final LeafTransformSpec moveStackTransform;
+    private final List<Double> zValues;
 
     private CopyStackClient(final Parameters parameters) throws Exception {
 
@@ -184,6 +182,12 @@ public class CopyStackClient {
         this.toDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                  parameters.getToOwner(),
                                                  parameters.getToProject());
+
+        if ((parameters.zValues == null) || (parameters.zValues.size() == 0)) {
+            this.zValues = fromDataClient.getStackZValues(parameters.fromStack);
+        } else {
+            this.zValues = parameters.zValues;
+        }
 
         if (parameters.splitMergedSections) {
             if ((parameters.maxSectionsPerOriginalZ == null) || (parameters.maxSectionsPerOriginalZ < 1)) {
@@ -248,6 +252,13 @@ public class CopyStackClient {
 
     private void completeToStack() throws Exception {
         toDataClient.setStackState(parameters.toStack, StackState.COMPLETE);
+    }
+
+    private void copyLayers()
+            throws Exception {
+        for (final Double z : zValues) {
+            copyLayer(z);
+        }
     }
 
     private void copyLayer(final Double z) throws Exception {
