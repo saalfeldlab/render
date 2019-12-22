@@ -205,13 +205,22 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                             "--owner", "Z1217_19m",
                             "--project", "Sec07",
 
-                            "--stack", "slim_24800_26200",
-                            "--targetStack", "slim_24800_26200_trans_200",
-                            "--regularizerModelType", "TRANSLATION",
-                            "--optimizerLambdas", "1.0",
+                            "--stack", "affine_pm_test_matlab_2",
+                            "--minZ", "26000",
+                            "--maxZ", "26300",
+
+                            "--targetStack", "bad_spot_trakem2_rigid_4_pass_1K",
+                            "--regularizerModelType", "RIGID",
+                            "--optimizerLambdas", "1.0,0.5,0.1,0.01",
+                            "--maxIterations", "1000",
+
+                            // only went 223 iterations ...
+//                            "--targetStack", "bad_spot_trakem2_rigid_025_10K",
+//                            "--regularizerModelType", "RIGID",
+//                            "--optimizerLambdas", "0.25",
+//                            "--maxIterations", "10000",
 
                             "--threads", "4",
-                            "--maxIterations", "200",
                             "--completeTargetStack",
                             "--matchCollection", "gd_test_3_Sec07_v1"
                     };
