@@ -76,7 +76,8 @@ public class CopyStackClient {
 
         @Parameter(
                 names = "--z",
-                description = "Z value of layer to be copied (omit to copy all layers)")
+                description = "Z value of layer to be copied (omit to copy all layers)",
+                variableArity = true)
         public List<Double> zValues;
 
         @Parameter(
@@ -91,6 +92,13 @@ public class CopyStackClient {
                 variableArity = true
         )
         public List<String> excludeTileIdsMissingFromStacks;
+
+        @Parameter(
+                names = "--excludedTileIds",
+                description = "Do not copy these tiles",
+                variableArity = true
+        )
+        public List<String> excludedTileIds;
 
         @ParametersDelegate
         LayerBoundsParameters layerBounds = new LayerBoundsParameters();
@@ -139,6 +147,13 @@ public class CopyStackClient {
             return toProject;
         }
 
+        Set<String> getExcludedTileIdsSet() {
+            final Set<String> excludedTileIdsSet = new HashSet<>();
+            if (excludedTileIds != null) {
+                excludedTileIdsSet.addAll(excludedTileIds);
+            }
+            return excludedTileIdsSet;
+        }
     }
 
     public static void main(final String[] args) {
@@ -315,6 +330,15 @@ public class CopyStackClient {
             sourceCollection.removeDifferentTileSpecs(tileIdsToKeep);
             final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();
             LOG.info("copyLayer: removed {} tiles not found in {}", numberOfTilesRemoved, filterStack);
+        }
+
+        if (parameters.excludedTileIds != null) {
+            final int numberOfTilesBeforeFilter = sourceCollection.getTileCount();
+            sourceCollection.removeTileSpecs(parameters.getExcludedTileIdsSet());
+            final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();
+            if (numberOfTilesRemoved > 0) {
+                LOG.info("copyLayer: removed {} explicitly excluded tiles", numberOfTilesRemoved);
+            }
         }
 
         if (moveStackTransform != null) {
