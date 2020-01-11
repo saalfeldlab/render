@@ -13,6 +13,7 @@ import java.util.Set;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -39,50 +40,56 @@ public class TileRemovalClient {
 
         @Parameter(
                 names = "--tileIdJson",
-                description = "JSON file containing array of tileIds to be removed (.json, .gz, or .zip)",
-                required = false)
+                description = "JSON file containing array of tileIds to be removed (.json, .gz, or .zip)"
+        )
         public String tileIdJson;
 
         @Parameter(
-                description = "tileIds_to_remove",
-                required = false)
+                description = "tileIds_to_remove"
+        )
         public List<String> tileIdList;
 
         @Parameter(
                 names = "--hiddenTilesWithZ",
-                description = "Z value for all hidden tiles to be removed",
-                required = false)
+                description = "Z value for all hidden tiles to be removed"
+        )
         public Double hiddenTilesWithZ;
 
         @Parameter(
                 names = "--keepZ",
-                description = "Z value for all tiles to be kept",
-                required = false)
+                description = "Z value for all tiles to be kept"
+        )
         public Double keepZ;
 
         @Parameter(
                 names = "--keepMinX",
-                description = "Minimum X value for all tiles to be kept",
-                required = false)
+                description = "Minimum X value for all tiles to be kept"
+        )
         public Double keepMinX;
 
         @Parameter(
                 names = "--keepMinY",
-                description = "Minimum Y value for all tiles to be kept",
-                required = false)
+                description = "Minimum Y value for all tiles to be kept"
+        )
         public Double keepMinY;
 
         @Parameter(
                 names = "--keepMaxX",
-                description = "Maximum X value for all tiles to be kept",
-                required = false)
+                description = "Maximum X value for all tiles to be kept"
+        )
         public Double keepMaxX;
 
         @Parameter(
                 names = "--keepMaxY",
-                description = "Maximum Y value for all tiles to be kept",
-                required = false)
+                description = "Maximum Y value for all tiles to be kept"
+        )
         public Double keepMaxY;
+
+        @Parameter(
+                names = "--completeStackAfterRemoval",
+                description = "Complete the stack after removing all tiles",
+                arity = 0)
+        public boolean completeStackAfterRemoval = false;
 
         private boolean isKeepBoxSpecified() {
             return ((keepZ != null) && (keepMinX != null) && (keepMaxX != null) &&
@@ -206,6 +213,10 @@ public class TileRemovalClient {
             throws Exception {
         for (final String tileId : parameters.tileIdList) {
             renderDataClient.deleteStackTile(parameters.stack, tileId);
+        }
+
+        if (parameters.completeStackAfterRemoval) {
+            renderDataClient.setStackState(parameters.stack, StackMetaData.StackState.COMPLETE);
         }
     }
 
