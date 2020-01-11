@@ -1,5 +1,6 @@
 package org.janelia.render.client;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -36,8 +37,10 @@ import org.slf4j.LoggerFactory;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
+import ij.io.FileSaver;
 import ij.measure.Calibration;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
@@ -143,7 +146,7 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		// visualize old result
 		try
 		{
-			render( idToPreviousModel, idToTileSpec, 0.05 );
+			render( idToPreviousModel, idToTileSpec, 0.15 );
 		} catch ( NoninvertibleModelException e )
 		{
 			// TODO Auto-generated catch block
@@ -274,6 +277,7 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		new ImageJ();
 
 		// render the images
+		int i = 0;
 		for ( final String tileId : models.keySet() )
 		{
 			final TileSpec tileSpec = idToTileSpec.get( tileId );
@@ -302,6 +306,8 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 				if ( x >= 0 && x < w && y >= 0 && y < h && imp.mask.getf( x, y ) >= 255 )
 					type.set( imp.ip.getf( x, y ) );
 			}
+
+			IJ.showProgress( ++i, models.keySet().size() - 1 );
 		}
 
 
@@ -407,15 +413,46 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 
 	private ImageProcessorWithMasks getImage( final TileSpec tileSpec, final double scale )
 	{
-		// Load the image, this is not efficient!
-		final RenderParameters params = getRenderParametersForTile(
-				parameters.renderWeb.owner,
-				parameters.renderWeb.project,
-				parameters.stack,
-				tileSpec.getTileId(),
-				scale );
+		final File imageFile = new File( "tmp", tileSpec.getTileId() + "_" + scale + ".image.tif" );
+		final File maskFile = new File( "tmp", tileSpec.getTileId() + "_" + scale + ".mask.tif" );
 
-		final ImageProcessorWithMasks imp = Renderer.renderImageProcessorWithMasks(params, ImageProcessorCache.DISABLED_CACHE);
+		final ImageProcessorWithMasks imp;
+
+		if ( imageFile.exists() && maskFile.exists() )
+		{
+			System.out.println( "Loading: " + imageFile );
+			System.out.println( "Loading: " + maskFile );
+
+			final ImagePlus image = new ImagePlus( imageFile.getAbsolutePath() );
+			final ImagePlus mask = new ImagePlus( maskFile.getAbsolutePath() );
+
+			imp = new ImageProcessorWithMasks( image.getProcessor(), mask.getProcessor(), null );
+		}
+		else
+		{
+			// Load the image, this is not efficient!
+			final RenderParameters params = getRenderParametersForTile(
+					parameters.renderWeb.owner,
+					parameters.renderWeb.project,
+					parameters.stack,
+					tileSpec.getTileId(),
+					scale );
+	
+			imp = Renderer.renderImageProcessorWithMasks(params, ImageProcessorCache.DISABLED_CACHE);
+	
+			// write temp if doesn't exist
+			if ( !imageFile.exists() || !maskFile.exists() )
+			{
+				System.out.println( "Saving: " + imageFile );
+				System.out.println( "Saving: " + maskFile );
+	
+				final ImagePlus image = new ImagePlus( "image", imp.ip );
+				final ImagePlus mask = new ImagePlus( "mask", imp.mask );
+	
+				new FileSaver( image ).saveAsTiff( imageFile.getAbsolutePath() );
+				new FileSaver( mask ).saveAsTiff( maskFile.getAbsolutePath() );
+			}
+		}
 
 		return imp;
 	}
@@ -540,7 +577,7 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
                             "--regularizerModelType", "TRANSLATION",
                             "--optimizerLambdas", "1.0",
                             "--minZ", "20500",
-                            "--maxZ", "20510",
+                            "--maxZ", "20600",
 
                             "--threads", "4",
                             "--maxIterations", "200",
