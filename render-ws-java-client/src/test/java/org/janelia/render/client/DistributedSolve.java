@@ -79,7 +79,7 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 	private final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap;
 	private int totalTileCount;
 
-	private void run() throws IOException, ExecutionException, InterruptedException
+	private void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
 		LOG.info("run: entry");
 
@@ -144,15 +144,7 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		}
 
 		// visualize old result
-		try
-		{
-			render( idToPreviousModel, idToTileSpec, 0.15 );
-		} catch ( NoninvertibleModelException e )
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		System.exit( 0 );
+		render( idToPreviousModel, idToTileSpec, 0.15 );
 
 		final TileConfiguration tileConfig = new TileConfiguration();
 		tileConfig.addTiles(idToTileMap.values());
