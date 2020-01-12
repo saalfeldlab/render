@@ -272,8 +272,8 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 
 		final List<Double> lambdaValues = new ArrayList<>();
 		lambdaValues.add( 0.0 );
-		//lambdaValues.add( 0.1 );
-		//lambdaValues.add( 0.5 );
+		lambdaValues.add( 0.1 );
+		lambdaValues.add( 0.5 );
 
 		/*
 		if (parameters.optimizerLambdas == null) {
@@ -315,6 +315,8 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		{
 			final HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
 
+			AffineModel2D propagationModel = null;
+
 			final ArrayList< String > tileIds = new ArrayList<>( idToTileMap.keySet() );
 			Collections.sort( tileIds );
 
@@ -326,6 +328,10 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 
 				if ( groupedTiles.contains( tileId ) )
 				{
+					// the relative propagation model of the last z plane
+					if ( propagationModel == null && idToTileSpec.get( tileId ).getZ() == maxZ && groupedTiles.contains( tileId ) )
+						propagationModel = affine.copy();
+
 					final AffineModel2D previous = idToPreviousModel.get( tileId ).copy();
 
 					LOG.info( "tile {} model is grouped and therefore a relative model {}", tileId, affine);
@@ -338,6 +344,8 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 				idToNewModel.put( tileId, affine );
 				LOG.info("tile {} model is {}", tileId, affine);
 			}
+
+			LOG.info("Relative propagation model for all layers > " + maxZ + " = " + propagationModel );
 
 			new ImageJ();
 
@@ -353,6 +361,7 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		{
 			//saveTargetStackTiles(idToTileMap);
 		}
+
 
 		LOG.info("run: exit");
 	}
@@ -494,7 +503,13 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 				final int y = (int)Math.round( tmp[ 1 ] );
 
 				if ( x >= 0 && x < w && y >= 0 && y < h && imp.mask.getf( x, y ) >= 255 )
-					type.set( imp.ip.getf( x, y ) );
+				{
+					final float currentValue = type.get();
+					if ( currentValue > 0 )
+						type.set( ( imp.ip.getf( x, y ) + currentValue ) / 2 );
+					else
+						type.set( imp.ip.getf( x, y ) );
+				}
 			}
 
 			IJ.showProgress( ++i, models.keySet().size() - 1 );
@@ -611,8 +626,8 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 
 		if ( imageFile.exists() && maskFile.exists() )
 		{
-			System.out.println( "Loading: " + imageFile );
-			System.out.println( "Loading: " + maskFile );
+			//System.out.println( "Loading: " + imageFile );
+			//System.out.println( "Loading: " + maskFile );
 
 			final ImagePlus image = new ImagePlus( imageFile.getAbsolutePath() );
 			final ImagePlus mask = new ImagePlus( maskFile.getAbsolutePath() );
