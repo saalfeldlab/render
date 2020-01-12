@@ -137,6 +137,11 @@ public class SIFTPointMatchClient
                                                        parameters.matchClient.owner,
                                                        parameters.matchClient.collection);
         this.pairCounts = new MatchPairCounts();
+
+        // make sure the failed pairs directory exists before we get started
+        if (parameters.failedPairsDir != null) {
+            FileUtil.ensureWritableDirectory(new File(parameters.failedPairsDir));
+        }
     }
 
     private void generateMatchesForPairFile(final String pairJsonFileName)

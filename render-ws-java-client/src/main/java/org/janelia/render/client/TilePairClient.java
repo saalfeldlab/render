@@ -217,6 +217,11 @@ public class TilePairClient {
                 parameters.parse(args);
                 parameters.bounds.validate();
 
+                if (parameters.maxPairsPerFile < 1) {
+                    LOG.warn("resetting maxPairsPerFile from {} to 1", parameters.maxPairsPerFile);
+                    parameters.maxPairsPerFile = 1;
+                }
+
                 File toFile = new File(parameters.toJson).getAbsoluteFile();
                 if (! toFile.exists()) {
                     toFile = toFile.getParentFile();
