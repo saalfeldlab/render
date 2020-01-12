@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -77,15 +78,34 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 	private final List<String> pGroupList;
 	private final Map<String, List<Double>> sectionIdToZMap;
 	private final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap;
+	private double minZ, maxZ; // min will be fixed, max will be grouped
 	private int totalTileCount;
 
 	private void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
 		LOG.info("run: entry");
 
+		LOG.info( "fixing tiles from layer " + minZ );
+		LOG.info( "grouping tiles from layer " + maxZ );
+
 		final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
 		final HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
 		final HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
+
+		final List< Tile<InterpolatedAffineModel2D<AffineModel2D, B>> > fixedTiles = new ArrayList<>();
+		final List< String > fixedTileNames = new ArrayList<>();
+
+		// we want group all tiles of the last layer to have a common transformation that we can propgate through the rest of the stack
+		// therefore, we also want a differential transform for the grouped tiles, which means that we have to apply the current 
+		// transformation to the local points
+		final HashSet< String > groupedTiles = new HashSet<>(); 
+		final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> groupedTile = new Tile<>(
+				new InterpolatedAffineModel2D<>(
+					new AffineModel2D(),
+					parameters.regularizerModelType.getInstance(),
+					parameters.startLambda)); // note: lambda gets reset during optimization loops
+
+		ArrayList< String > log = new ArrayList<>();
 
 		for (final String pGroupId : pGroupList)
 		{
@@ -108,50 +128,146 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 					continue;
 				}
 
+				boolean pGrouped = false;
+				boolean qGrouped = false;
+
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p, q;
 
 				if ( !idToTileMap.containsKey( pId ) )
 				{
-					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairP = buildTileFromSpec(pTileSpec);
-					p = pairP.getA();
-					idToTileMap.put( pId, p );
-					idToPreviousModel.put( pId, pairP.getB() );
-					idToTileSpec.put( pId, pTileSpec );
+					// isgrouped?
+					if ( Math.round( pTileSpec.getZ() ) == Math.round( maxZ ) )
+					{
+						pGrouped = true;
+						groupedTiles.add( pId );
+						log.add( "Adding " + pId + "(grouped=" + pGrouped + ") to grouped" );
+
+						p = groupedTile;
+						idToTileMap.put( pId, groupedTile );
+						idToPreviousModel.put( pId, loadLastTransformFromSpec( pTileSpec ).copy() );
+						idToTileSpec.put( pId, pTileSpec );
+					}
+					else
+					{
+						pGrouped = false;
+						final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairP = buildTileFromSpec(pTileSpec);
+						p = pairP.getA();
+						idToTileMap.put( pId, p );
+						idToPreviousModel.put( pId, pairP.getB() );
+						idToTileSpec.put( pId, pTileSpec );
+					}
+
+					// isfixed?
+					if ( Math.round( pTileSpec.getZ() ) == Math.round( minZ ) )
+					{
+						fixedTiles.add( p );
+						fixedTileNames.add( pId );
+					}
 				}
 				else
 				{
 					p = idToTileMap.get( pId );
+
+					if ( groupedTiles.contains( pId ))
+						pGrouped = true;
+					else
+						pGrouped = false;
 				}
 
 				if ( !idToTileMap.containsKey( qId ) )
 				{
-					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairQ = buildTileFromSpec(qTileSpec);
-					q = pairQ.getA();
-					idToTileMap.put( qId, q );
-					idToPreviousModel.put( qId, pairQ.getB() );
-					idToTileSpec.put( qId, qTileSpec );
+					// isgrouped?
+					if ( Math.round( qTileSpec.getZ() ) == Math.round( maxZ ) )
+					{
+						qGrouped = true;
+						groupedTiles.add( qId );
+						log.add( "Adding " + qId + "(grouped=" + qGrouped + ") to grouped" );
+
+						q = groupedTile;
+						idToTileMap.put( qId, groupedTile );
+						idToPreviousModel.put( qId, loadLastTransformFromSpec( qTileSpec ).copy() );
+						idToTileSpec.put( qId, qTileSpec );
+					}
+					else
+					{
+						qGrouped = false;
+						final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairQ = buildTileFromSpec(qTileSpec);
+						q = pairQ.getA();
+						idToTileMap.put( qId, q );
+						idToPreviousModel.put( qId, pairQ.getB() );
+						idToTileSpec.put( qId, qTileSpec );	
+					}
+
+					// isfixed?
+					if ( Math.round( qTileSpec.getZ() ) == Math.round( minZ ) )
+					{
+						fixedTiles.add( q );
+						fixedTileNames.add( qId );
+					}
 				}
 				else
 				{
 					q = idToTileMap.get( qId );
+
+					if ( groupedTiles.contains( qId ))
+						qGrouped = true;
+					else
+						qGrouped = false;
 				}
 
 				//final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p = idToTileMap.computeIfAbsent(pId, pTile -> buildTileFromSpec(pTileSpec));
 				//final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> q = idToTileMap.computeIfAbsent(qId, qTile -> buildTileFromSpec(qTileSpec));
 
-				p.connect(q, CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()));
+				// both images are not grouped, this is the "classical" case
+				if ( !pGrouped && !qGrouped )
+				{
+					p.connect(q, CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()));
+				}
+				else if ( pGrouped && qGrouped )
+				{
+					// both images are part of the same grouped tile, nothing to do
+					log.add( "Ignoring matches between " + pId + "(grouped=" + pGrouped + ") <> " + qId + "(grouped=" + qGrouped + ")" );
+				}
+				else // either p or q is grouped
+				{
+					// as we cannot build the grouped Tile yet, we need to remember all connections to it
+					log.add( "Putting grouped matches between " + pId + "(grouped=" + pGrouped + ") <> " + qId + "(grouped=" + qGrouped + ")" );
+				}
+
 			}
 		}
 
-		// visualize old result
-		render( idToPreviousModel, idToTileSpec, 0.15 );
+		LOG.info( "Fixed tiles:" );
+
+		for ( int i = 0; i < fixedTiles.size(); ++i )
+			LOG.info( fixedTileNames.get( i ) + " " + fixedTiles.get( i ) );
+
+		LOG.info( "Grouped tiles:" );
+
+		for ( final String tile : groupedTiles )
+			LOG.info( tile );
+
+		LOG.info( "Grouped matches:" );
+
+		for ( final String tile : log )
+			LOG.info( tile );
+
+		System.exit( 0 );
 
 		final TileConfiguration tileConfig = new TileConfiguration();
 		tileConfig.addTiles(idToTileMap.values());
+
+		for ( final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> t : fixedTiles )
+			tileConfig.fixTile( t );
 		
 		LOG.info("run: optimizing {} tiles", idToTileMap.size());
-		
-		final List<Double> lambdaValues;
+
+		final List<Double> lambdaValues = new ArrayList<>();
+		lambdaValues.add( 0.0 );
+		lambdaValues.add( 0.1 );
+		lambdaValues.add( 0.5 );
+
+		/*
 		if (parameters.optimizerLambdas == null) {
 			lambdaValues = Stream.of(1.0, 0.5, 0.1, 0.01)
 					.filter(lambda -> lambda <= parameters.startLambda)
@@ -161,13 +277,16 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 					.sorted(Comparator.reverseOrder())
 					.collect(Collectors.toList());
 		}
-		
+		*/
+
 		for (final double lambda : lambdaValues)
 		{
 			for (final Tile tile : idToTileMap.values()) {
 				((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
 			}
-		
+
+			final int numIterations = lambda > 0.25 ? 200 : parameters.maxIterations;
+
 			// tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
 		
 			final ErrorStatistic observer = new ErrorStatistic(parameters.maxPlateauWidth + 1 );
@@ -175,7 +294,7 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 			TileUtil.optimizeConcurrently(
 					observer,
 					parameters.maxAllowedError,
-					parameters.maxIterations,
+					numIterations,
 					parameters.maxPlateauWidth,
 					damp,
 					tileConfig,
@@ -186,20 +305,38 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 
 		if (parameters.targetStack == null)
 		{
+			final HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
+
 			for (final String tileId : idToTileMap.keySet())
 			{
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = idToTileMap.get(tileId);
 				final InterpolatedAffineModel2D model = tile.getModel();
-				LOG.info("tile {} model is {}", tileId, model.createAffineModel2D());
+				final AffineModel2D affine = model.createAffineModel2D();
+				idToNewModel.put( tileId, affine );
+				LOG.info("tile {} model is {}", tileId, affine);
 			}
+
+			new ImageJ();
+
+			// visualize new result
+			render( idToNewModel, idToTileSpec, 0.15 );
+
+			// visualize old result
+			//render( idToPreviousModel, idToTileSpec, 0.15 );
+
+			SimpleMultiThreading.threadHaltUnClean();
 		}
 		else
 		{
 			//saveTargetStackTiles(idToTileMap);
 		}
-		
-		LOG.info("run: exit");
 
+		LOG.info("run: exit");
+	}
+
+	public class GroupedMatches
+	{
+		
 	}
 
 	public void render( final HashMap<String, AffineModel2D> models, final HashMap<String, TileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
@@ -266,8 +403,6 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		final AffineModel2D invScaleModel = new AffineModel2D();
 		invScaleModel.set( 1.0/scale, 0, 0, 1.0/scale, 0, 0 );
 
-		new ImageJ();
-
 		// render the images
 		int i = 0;
 		for ( final String tileId : models.keySet() )
@@ -316,8 +451,6 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		imp.setDimensions( 1, (int)dimI[ 2 ], 1 );
 		imp.setDisplayRange( 0, 255 );
 		imp.show();
-
-		SimpleMultiThreading.threadHaltUnClean();
 	}
 
 	public DistributedSolve(final Parameters parameters) throws IOException
@@ -390,6 +523,9 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		final Double minZ = minZForRun;
 		final Double maxZ = maxZForRun;
 
+		this.minZ = minZForRun;
+		this.maxZ = maxZForRun;
+
 		allSectionDataList.forEach(sd ->
 		{
 			final Double z = sd.getZ();
@@ -449,13 +585,18 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		return imp;
 	}
 
-	private Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > buildTileFromSpec( final TileSpec tileSpec )
+	private AffineModel2D loadLastTransformFromSpec( final TileSpec tileSpec )
 	{
-
 		// TODO: make sure there is only one transform
         final CoordinateTransformList<CoordinateTransform> transformList = tileSpec.getTransformList();
         final AffineModel2D lastTransform = (AffineModel2D)
                 transformList.get(transformList.getList(null).size() - 1);
+        return lastTransform;
+	}
+
+	private Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > buildTileFromSpec( final TileSpec tileSpec )
+	{
+        final AffineModel2D lastTransform = loadLastTransformFromSpec( tileSpec );
         final AffineModel2D lastTransformCopy = lastTransform.copy();
 
         final double sampleWidth = (tileSpec.getWidth() - 1.0) / (parameters.samplesPerDimension - 1.0);
@@ -566,13 +707,13 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 
                             "--stack", "v2_patch_msolve_fine",
                             //"--targetStack", "null",
-                            "--regularizerModelType", "TRANSLATION",
+                            "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0",
                             "--minZ", "20500",
                             "--maxZ", "20600",
 
                             "--threads", "4",
-                            "--maxIterations", "200",
+                            "--maxIterations", "10000",
                             "--completeTargetStack",
                             "--matchCollection", "Sec10_patch"
                     };
@@ -657,7 +798,7 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
                 names = "--maxPlateauWidth",
                 description = "Max allowed error"
         )
-        public Integer maxPlateauWidth = 200;
+        public Integer maxPlateauWidth = 400;
 
         @Parameter(
                 names = "--startLambda",
