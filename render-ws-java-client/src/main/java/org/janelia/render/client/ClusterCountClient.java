@@ -135,8 +135,10 @@ public class ClusterCountClient {
             allClusters.mergeOverlappingClusters(clusters);
         }
 
-        LOG.info("findConnectedClusters: found {} connected tile sets with sizes {}",
+        LOG.info("findConnectedClusters: found {} connected tile set{} with size{} {}",
                  allClusters.size(),
+                 allClusters.size() == 1 ? "" : "s",
+                 allClusters.size() == 1 ? "" : "s",
                  allClusters.getClusterSizes());
 
         for (final Set<String> tileIdSet : allClusters.getSortedConnectedTileIdSets()) {
@@ -154,6 +156,11 @@ public class ClusterCountClient {
             LOG.info("findConnectedClusters: {} tile set {}", tileCount, tileIdInfo);
 
         }
+
+        LOG.info("findConnectedClusters: found {} completely unconnected tile{}: {}",
+                 allUnconnectedTileIds.size(),
+                 allUnconnectedTileIds.size() == 1 ? "" : "s",
+                 allUnconnectedTileIds.stream().sorted().collect(Collectors.toList()));
 
     }
 
