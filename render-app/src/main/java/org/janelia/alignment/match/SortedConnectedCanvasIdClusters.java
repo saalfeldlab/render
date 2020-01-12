@@ -54,21 +54,55 @@ public class SortedConnectedCanvasIdClusters
         final List<Set<CanvasId>> unmergedClusters = overlappingClusters.sortedConnectedCanvasIdSets;
 
         // try to merge as many of the overlapping clusters as possible
-        for (final Set<CanvasId> existingCluster : sortedConnectedCanvasIdSets) {
+        for (int clusterIndex = 0; clusterIndex < sortedConnectedCanvasIdSets.size(); clusterIndex++) {
 
-            for (final Iterator<Set<CanvasId>> i = unmergedClusters.iterator(); i.hasNext();) {
-                final Set<CanvasId> unmergedCluster = i.next();
-                for (final CanvasId canvasId : unmergedCluster) {
-                    if (existingCluster.contains(canvasId)) {
-                        existingCluster.addAll(unmergedCluster);
-                        i.remove();
-                        break;
+            final Set<CanvasId> existingCluster = sortedConnectedCanvasIdSets.get(clusterIndex);
+
+            if (existingCluster.size() > 0) {
+
+                for (final Iterator<Set<CanvasId>> unmergedClusterIterator = unmergedClusters.iterator();
+                     unmergedClusterIterator.hasNext(); ) {
+
+                    final Set<CanvasId> unmergedCluster = unmergedClusterIterator.next();
+                    boolean isMerged = false;
+
+                    for (final CanvasId canvasId : unmergedCluster) {
+                        if (existingCluster.contains(canvasId)) {
+                            existingCluster.addAll(unmergedCluster);
+                            unmergedClusterIterator.remove();
+                            isMerged = true;
+                            break;
+                        }
+                    }
+
+                    if (isMerged) {
+
+                        // check if merged cluster overlaps with any other existing clusters ...
+
+                        final List<Set<CanvasId>> uncheckedExistingClusters =
+                                sortedConnectedCanvasIdSets.subList((clusterIndex + 1),
+                                                                    sortedConnectedCanvasIdSets.size());
+
+                        for (final Set<CanvasId> uncheckedExistingCluster : uncheckedExistingClusters) {
+                            if (uncheckedExistingCluster.size() > 0) {
+                                for (final CanvasId canvasId : unmergedCluster) {
+                                    if (uncheckedExistingCluster.contains(canvasId)) {
+                                        existingCluster.addAll(uncheckedExistingCluster);
+                                        uncheckedExistingCluster.clear();
+                                    }
+                                }
+                            }
+                        }
+
                     }
                 }
+
             }
 
         }
 
+        sortedConnectedCanvasIdSets.removeIf(s -> s.size() == 0);
+        
         // then add any remaining unmerged clusters
         sortedConnectedCanvasIdSets.addAll(unmergedClusters);
 
