@@ -3,6 +3,7 @@ package org.janelia.render.client;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,6 +19,7 @@ import org.janelia.alignment.Renderer;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.spec.Bounds;
@@ -51,6 +53,8 @@ import mpicbg.models.ErrorStatistic;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
@@ -215,9 +219,6 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 						qGrouped = false;
 				}
 
-				//final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p = idToTileMap.computeIfAbsent(pId, pTile -> buildTileFromSpec(pTileSpec));
-				//final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> q = idToTileMap.computeIfAbsent(qId, qTile -> buildTileFromSpec(qTileSpec));
-
 				// both images are not grouped, this is the "classical" case
 				if ( !pGrouped && !qGrouped )
 				{
@@ -232,6 +233,13 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 				{
 					// as we cannot build the grouped Tile yet, we need to remember all connections to it
 					log.add( "Putting grouped matches between " + pId + "(grouped=" + pGrouped + ") <> " + qId + "(grouped=" + qGrouped + ")" );
+
+					final AffineModel2D pModel = pGrouped ? idToPreviousModel.get( pId ) : null;
+					final AffineModel2D qModel = qGrouped ? idToPreviousModel.get( qId ) : null;
+
+					log.add( "pModel: " + pModel + " qModel: " + qModel  );
+
+					p.connect(q, convertMatchesToPointMatchListRelative(match.getMatches(), pModel, qModel ));
 				}
 
 			}
@@ -240,7 +248,7 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		LOG.info( "Fixed tiles:" );
 
 		for ( int i = 0; i < fixedTiles.size(); ++i )
-			LOG.info( fixedTileNames.get( i ) + " " + fixedTiles.get( i ) );
+			LOG.info( fixedTileNames.get( i ) + " " + fixedTiles.get( i ) + " model: " + idToPreviousModel.get( fixedTileNames.get( i ) ) );
 
 		LOG.info( "Grouped tiles:" );
 
@@ -252,7 +260,7 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		for ( final String tile : log )
 			LOG.info( tile );
 
-		System.exit( 0 );
+		//System.exit( 0 );
 
 		final TileConfiguration tileConfig = new TileConfiguration();
 		tileConfig.addTiles(idToTileMap.values());
@@ -264,8 +272,8 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 
 		final List<Double> lambdaValues = new ArrayList<>();
 		lambdaValues.add( 0.0 );
-		lambdaValues.add( 0.1 );
-		lambdaValues.add( 0.5 );
+		//lambdaValues.add( 0.1 );
+		//lambdaValues.add( 0.5 );
 
 		/*
 		if (parameters.optimizerLambdas == null) {
@@ -307,11 +315,26 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		{
 			final HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
 
-			for (final String tileId : idToTileMap.keySet())
+			final ArrayList< String > tileIds = new ArrayList<>( idToTileMap.keySet() );
+			Collections.sort( tileIds );
+
+			for (final String tileId : tileIds )
 			{
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = idToTileMap.get(tileId);
 				final InterpolatedAffineModel2D model = tile.getModel();
-				final AffineModel2D affine = model.createAffineModel2D();
+				AffineModel2D affine = model.createAffineModel2D();
+
+				if ( groupedTiles.contains( tileId ) )
+				{
+					final AffineModel2D previous = idToPreviousModel.get( tileId ).copy();
+
+					LOG.info( "tile {} model is grouped and therefore a relative model {}", tileId, affine);
+					LOG.info( "concatenating with previous model {} ", previous );
+
+					previous.preConcatenate( affine );
+					affine = previous;
+				}
+
 				idToNewModel.put( tileId, affine );
 				LOG.info("tile {} model is {}", tileId, affine);
 			}
@@ -334,9 +357,49 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		LOG.info("run: exit");
 	}
 
-	public class GroupedMatches
+	/**
+	 * @param  matches  point match list in {@link Matches} form.
+     * @param  pModel  affine model that will transform the p points (can be used to extract relative models from the optimization) or will do nothing if pModel == null
+	 * @param  qModel  affine model that will transform the q points (can be used to extract relative models from the optimization) or will do nothing if qModel == null
+     *
+     * @return the corresponding list of {@link PointMatch} objects.
+	 */
+	public static List< PointMatch > convertMatchesToPointMatchListRelative( final Matches matches, final AffineModel2D pModel, final AffineModel2D qModel )
 	{
-		
+		final double[] w = matches.getWs();
+
+		final int pointMatchCount = w.length;
+		final List< PointMatch > pointMatchList = new ArrayList<>( pointMatchCount );
+
+		if ( pointMatchCount > 0 )
+		{
+			final double[][] p = matches.getPs();
+			final double[][] q = matches.getQs();
+
+			final int dimensionCount = p.length;
+
+			for (int matchIndex = 0; matchIndex < pointMatchCount; matchIndex++)
+			{
+				final double[] pLocal = new double[ dimensionCount ];
+				final double[] qLocal = new double[ dimensionCount ];
+
+				for (int dimensionIndex = 0; dimensionIndex < dimensionCount; dimensionIndex++)
+				{
+					pLocal[ dimensionIndex ] = p[ dimensionIndex ][ matchIndex ];
+					qLocal[ dimensionIndex ] = q[ dimensionIndex ][ matchIndex ];
+				}
+
+				if ( pModel != null )
+					pModel.applyInPlace( pLocal );
+
+				if ( qModel != null )
+					qModel.applyInPlace( qLocal );
+
+				pointMatchList.add( new PointMatch( new Point( pLocal ), new Point( qLocal ), w[ matchIndex ] ) );
+			}
+		}
+
+		return pointMatchList;
 	}
 
 	public void render( final HashMap<String, AffineModel2D> models, final HashMap<String, TileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
