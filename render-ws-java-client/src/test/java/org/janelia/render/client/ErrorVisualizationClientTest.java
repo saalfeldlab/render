@@ -33,9 +33,9 @@ public class ErrorVisualizationClientTest {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "--owner", "Z1217_19m",
 
-                "--project", "Sec09",
-                "--stack", "v1_py_solve_03_affine_e10_e10",
-                "--matchCollection", "gd_test_Sec09"
+                "--project", "Sec12",
+                "--stack", "v2_patch_msolve_fine_clipped",
+                "--matchCollection", "Sec12_patch",
 
                 //"--project", "Sec08",
                 //"--stack", "v2_py_solve_03_affine_e10_e10",
@@ -45,8 +45,8 @@ public class ErrorVisualizationClientTest {
                 //"--stack", "affine_pm_test_matlab_2",
                 //"--matchCollection", "gd_test_3_Sec07_v1"
 
-                //"--minZ", "36800",
-                //"--maxZ", "37010",
+                "--minZ", "25500",
+                "--maxZ", "30700",
         };
 
         // http://renderer-dev.int.janelia.org:8080/render-ws/view/index.html?dynamicRenderHost=renderer-dev%3A8080&catmaidHost=renderer-catmaid%3A8000&renderStackOwner=Z1217_19m&matchOwner=Z1217_19m&renderStackProject=Sec07&renderStack=v1_acquire_pre_align&matchCollection=gd_test_3_Sec07_v1
