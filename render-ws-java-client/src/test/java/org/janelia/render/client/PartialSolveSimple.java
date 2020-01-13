@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +33,6 @@ import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
-import net.imglib2.util.Util;
 
 public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
 {
@@ -305,10 +305,30 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
 			LOG.info("Relative propagation model for all layers > " + maxZ + " = " + propagationModel );
 			LOG.info("");
 
-			new ImageJ();
+			// save the re-aligned part
+			final HashSet< Double > zToSaveSet = new HashSet<>();
+
+			for ( final TileSpec ts : idToTileSpec.values() )
+				zToSaveSet.add( ts.getZ() );
+
+			List< Double > zToSave = new ArrayList<>( zToSaveSet );
+			Collections.sort( zToSave );
+
+			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
+
+			saveTargetStackTiles( idToNewModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
+
+			// save the bottom part
+			zToSave = renderDataClient.getStackZValues( parameters.stack, zToSave.get( zToSave.size() - 1 ) + 0.1, null );
+
+			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
+
+			saveTargetStackTiles( null, propagationModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
+
+			//new ImageJ();
 
 			// visualize new result
-			render( idToNewModel, idToTileSpec, 0.15 );
+			//render( idToNewModel, idToTileSpec, 0.15 );
 
 			// visualize old result
 			//render( idToPreviousModel, idToTileSpec, 0.15 );
@@ -393,8 +413,8 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
                             "--owner", "Z1217_19m",
                             "--project", "Sec10",
 
-                            "--stack", "v2_patch_msolve_fine",
-                            //"--targetStack", "null",
+                            "--stack", "v2_patch_trakem2",
+                            "--targetStack", "v2_patch_trakem2_sp",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1",
                             "--minZ", "20500",

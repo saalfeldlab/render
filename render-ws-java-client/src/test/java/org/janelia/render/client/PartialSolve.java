@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -14,10 +15,12 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -69,7 +72,68 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 
 	protected abstract void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException;
 
-	public void render( final HashMap<String, AffineModel2D> models, final HashMap<String, TileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
+	//
+	// overwrites the area that was re-aligned or it preconcatenates
+	//
+	protected void saveTargetStackTiles(
+			final Map< String, AffineModel2D > idToModel,
+			final AffineModel2D relativeModel,
+			final List< Double > zToSave,
+			final TransformApplicationMethod applyMethod ) throws IOException
+	{
+		LOG.info( "saveTargetStackTiles: entry, saving tile specs in {} layers", zToSave.size() );
+
+		for ( final Double z : zToSave )
+		{
+			final ResolvedTileSpecCollection resolvedTiles;
+
+			if ( !zToTileSpecsMap.containsKey( z ) )
+			{
+				resolvedTiles = renderDataClient.getResolvedTiles( parameters.stack, z );
+			}
+			else
+			{
+				resolvedTiles = zToTileSpecsMap.get( z );
+			}
+
+			for (final TileSpec tileSpec : resolvedTiles.getTileSpecs())
+			{
+				final String tileId = tileSpec.getTileId();
+				final AffineModel2D model;
+
+				if ( applyMethod.equals(  TransformApplicationMethod.REPLACE_LAST  ) )
+					model = idToModel.get( tileId );
+				else if ( applyMethod.equals( TransformApplicationMethod.PRE_CONCATENATE_LAST ))
+					model = relativeModel;
+				else
+					throw new RuntimeException( "not supported: " + applyMethod );
+
+				if ( model != null )
+				{
+					resolvedTiles.addTransformSpecToTile( tileId,
+							getTransformSpec( model ),
+							applyMethod );
+				}
+			}
+
+			if ( resolvedTiles.getTileCount() > 0 )
+				targetDataClient.saveResolvedTiles( resolvedTiles, parameters.targetStack, null );
+			else
+				LOG.info( "skipping tile spec save since no specs are left to save" );
+		}
+
+		LOG.info( "saveTargetStackTiles: exit" );
+	}
+
+	private LeafTransformSpec getTransformSpec( final AffineModel2D forModel )
+	{
+		final double[] m = new double[ 6 ];
+		forModel.toArray( m );
+		final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 1 ] + ' ' + m[ 2 ] + ' ' + m[ 3 ] + ' ' + m[ 4 ] + ' ' + m[ 5 ];
+		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
+	}
+
+	public ImagePlus render( final HashMap<String, AffineModel2D> models, final HashMap<String, TileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
 	{
 		final double[] min = new double[] { Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE };
 		final double[] max = new double[] { -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE };
@@ -187,6 +251,8 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 		imp.setDimensions( 1, (int)dimI[ 2 ], 1 );
 		imp.setDisplayRange( 0, 255 );
 		imp.show();
+
+		return imp;
 	}
 
 	public PartialSolve(final Parameters parameters) throws IOException
