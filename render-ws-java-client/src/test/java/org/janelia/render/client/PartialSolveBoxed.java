@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,8 @@ import mpicbg.models.ErrorStatistic;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
@@ -41,19 +44,79 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		super( parameters );
 	}
 
+	protected static class Stabilization
+	{
+		public Stabilization( final String tileId, final Matches matches, final boolean isP, final AffineModel2D modelOld )
+		{
+			this.tileId = tileId;
+			this.w = matches.getWs();
+			this.localPoints = extractMatches( matches, isP );
+			this.modelOld = modelOld;
+		}
+		
+		public static double[][] extractMatches( final Matches matches, final boolean isP )
+		{	/*
+			final int pointMatchCount = matches.getWs().length;
+
+			if ( pointMatchCount > 0 )
+			{
+				final double[][] localPoints;
+
+				if ( isP )
+					localPoints = matches.getPs();
+				else
+					localPoints = matches.getQs();
+
+				final int dimensionCount = localPoints.length;
+
+				for (int matchIndex = 0; matchIndex < pointMatchCount; matchIndex++)
+				{
+					final double[] pointLocal = new double[ dimensionCount ];
+
+					for (int dimensionIndex = 0; dimensionIndex < dimensionCount; dimensionIndex++)
+						pointLocal[ dimensionIndex ] = localPoints[ dimensionIndex ][ matchIndex ];
+
+					if ( pModel != null )
+						pModel.applyInPlace( pLocal );
+
+					if ( qModel != null )
+						qModel.applyInPlace( qLocal );
+
+					pointMatchList.add( new PointMatch( new Point( pLocal ), new Point( qLocal ), w[ matchIndex ] ) );
+				}
+			}
+
+			return pointMatchList;
+			*/
+			return null;
+		}
+
+		final String tileId;
+		final double[][] localPoints;
+		final double[] w;
+		final AffineModel2D modelOld;
+		AffineModel2D modelNew;
+	}
+
 	@Override
 	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
 		LOG.info("run: entry");
 
-		LOG.info( "using " + overlapTop + " layers on the top for blending (" + Math.round( minZ ) + "-" + (Math.round( minZ ) + overlapTop -1) + ")" );
-		LOG.info( "using " + overlapTop + " layers on the bottom for blending (" + Math.round( maxZ ) + "-" + (Math.round( maxZ ) - overlapTop +1) + ")" );
+		final int topBorder = ((int)Math.round( minZ ) + overlapTop -1);
+		final int bottomBorder = ((int)Math.round( maxZ ) - overlapBottom +1);
+
+		LOG.info( "using " + overlapTop + " layers on the top for blending (" + Math.round( minZ ) + "-" + topBorder + ")" );
+		LOG.info( "using " + overlapBottom + " layers on the bottom for blending (" + Math.round( maxZ ) + "-" + bottomBorder + ")" );
 
 		final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
 		final HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
 		final HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
 
-		ArrayList< String > log = new ArrayList<>();
+		// one object per Tile, we just later know the new affine model to create all matches
+		// just want to avoid to load the data twice
+		ArrayList< Stabilization > topPoints = new ArrayList<>();
+		ArrayList< Stabilization > bottomPoints = new ArrayList<>();
 
 		for (final String pGroupId : pGroupList)
 		{
@@ -105,6 +168,12 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				}
 
 				p.connect(q, CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()));
+
+				// already save the matches for the transition later
+				if ( pTileSpec.getZ() <= topBorder )// || pTileSpec.getZ() >= bottomBorder )
+				{
+					
+				}
 			}
 		}
 
@@ -160,6 +229,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		final Tile<RigidModel2D> reAlignedBlock = new Tile<>( new RigidModel2D());
 		final Tile<RigidModel2D> bottomBlock = new Tile<>( new RigidModel2D());
 
+		
 
 		if (parameters.targetStack == null)
 		{
