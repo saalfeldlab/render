@@ -43,8 +43,8 @@ import net.imglib2.util.Pair;
 public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
 {
 	// how many layers on the top and bottom we use as overlap to compute the rigid models that "blend" the re-solved stack back in 
-	protected int overlapTop = 100;
-	protected int overlapBottom = 100;
+	protected int overlapTop = 150;
+	protected int overlapBottom = 150;
 
 	public PartialSolveBoxed(final Parameters parameters) throws IOException
 	{
@@ -303,8 +303,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		TileUtil.optimizeConcurrently(
 				new ErrorStatistic(parameters.maxPlateauWidth + 1 ),
 				parameters.maxAllowedError,
-				2000,
-				parameters.maxPlateauWidth,
+				10000,
+				10000,
 				damp,
 				tileConfigBlocks,
 				tileConfigBlocks.getTiles(),
