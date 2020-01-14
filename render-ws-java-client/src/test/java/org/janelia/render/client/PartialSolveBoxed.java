@@ -43,8 +43,8 @@ import net.imglib2.util.Pair;
 public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
 {
 	// how many layers on the top and bottom we use as overlap to compute the rigid models that "blend" the re-solved stack back in 
-	protected int overlapTop = 25;
-	protected int overlapBottom = 25;
+	protected int overlapTop = 150;
+	protected int overlapBottom = 150;
 
 	public PartialSolveBoxed(final Parameters parameters) throws IOException
 	{
@@ -176,9 +176,13 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
 			}
 
-			int numIterations = lambda < 0.25 ? 200 : parameters.maxIterations;
+			int numIterations = parameters.maxIterations;
 			if ( lambda == 0.5 )
 				numIterations = 1000;
+			else if ( lambda == 0.1 )
+				numIterations = 200;
+			else if ( lambda == 0.01 )
+				numIterations = 100;
 
 			// tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
 		
@@ -299,8 +303,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		TileUtil.optimizeConcurrently(
 				new ErrorStatistic(parameters.maxPlateauWidth + 1 ),
 				parameters.maxAllowedError,
-				2000,
-				parameters.maxPlateauWidth,
+				10000,
+				10000,
 				damp,
 				tileConfigBlocks,
 				tileConfigBlocks.getTiles(),
@@ -458,11 +462,11 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                             "--project", "Sec10",
 
                             "--stack", "v2_patch_trakem2",
-                            "--targetStack", "v2_patch_trakem2_sp",
+                            "--targetStack", "v2_patch_trakem2_sp2",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "20500",
-                            "--maxZ", "20600",
+                            "--minZ", "20300",
+                            "--maxZ", "20800",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
