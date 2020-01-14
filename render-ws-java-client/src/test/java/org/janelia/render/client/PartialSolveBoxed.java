@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,15 +32,14 @@ import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
-import mpicbg.models.TranslationModel2D;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 
 public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
 {
 	// how many layers on the top and bottom we use as overlap to compute the rigid models that "blend" the re-solved stack back in 
-	protected int overlapTop = 25;
-	protected int overlapBottom = 25;
+	protected int overlapTop = 50;
+	protected int overlapBottom = 50;
 
 	public PartialSolveBoxed(final Parameters parameters) throws IOException
 	{
@@ -161,7 +161,9 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
 			}
 
-			final int numIterations = lambda < 0.75 ? 200 : parameters.maxIterations;
+			int numIterations = lambda < 0.25 ? 200 : parameters.maxIterations;
+			if ( lambda == 0.5 )
+				numIterations = 1000;
 
 			// tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
 		
@@ -188,17 +190,16 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		Collections.sort( tileIds );
 
 		// TODO: Remove, but we want to see an effect here
-		TranslationModel2D trans = new TranslationModel2D();
-		trans.set( -10000, -5000 );
+		//TranslationModel2D trans = new TranslationModel2D();
+		//trans.set( -10000, -5000 );
 
 		for (final String tileId : tileIds )
 		{
 			final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = idToTileMap.get(tileId);
-			final InterpolatedAffineModel2D model = tile.getModel();
-			AffineModel2D affine = model.createAffineModel2D();
+			AffineModel2D affine = tile.getModel().createAffineModel2D();
 
 			// TODO: Remove, but we want to see an effect here
-			affine.preConcatenate( trans );
+			//affine.preConcatenate( trans );
 
 			idToNewModel.put( tileId, affine );
 			LOG.info("tile {} model is {}", tileId, affine);
@@ -290,7 +291,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		TileUtil.optimizeConcurrently(
 				new ErrorStatistic(parameters.maxPlateauWidth + 1 ),
 				parameters.maxAllowedError,
-				200,
+				2000,
 				parameters.maxPlateauWidth,
 				damp,
 				tileConfigBlocks,
@@ -371,33 +372,45 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			idToFinalModel.put( tileId, tileModel );
 		}
 
-	//	if (parameters.targetStack == null)
+		if ( parameters.targetStack != null )
 		{
+			// save the re-aligned part
+			final HashSet< Double > zToSaveSet = new HashSet<>();
 
-			new ImageJ();
+			for ( final TileSpec ts : idToTileSpec.values() )
+				zToSaveSet.add( ts.getZ() );
 
-			// visualize new result
-			ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
-			imp1.setTitle( "final" );
+			List< Double > zToSave = new ArrayList<>( zToSaveSet );
+			Collections.sort( zToSave );
 
-			ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
-			imp2.setTitle( "realign" );
+			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
 
-			ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
-			imp3.setTitle( "previous" );
+			saveTargetStackTiles( idToNewModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
 
-			// visualize old result
-			//render( idToPreviousModel, idToTileSpec, 0.15 );
+			// save the bottom part
+			zToSave = renderDataClient.getStackZValues( parameters.stack, zToSave.get( zToSave.size() - 1 ) + 0.1, null );
 
-			SimpleMultiThreading.threadHaltUnClean();
-		}
-		//else
-		{
-			//saveTargetStackTiles(idToTileMap);
+			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
+
+			saveTargetStackTiles( null, bottomBlockModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
 		}
 
+		new ImageJ();
+
+		// visualize new result
+		ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
+		imp1.setTitle( "final" );
+
+		ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
+		imp2.setTitle( "realign" );
+
+		ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
+		imp3.setTitle( "previous" );
+
+		SimpleMultiThreading.threadHaltUnClean();
 
 		LOG.info("run: exit");
+
 	}
 
 	public static AffineModel2D createAffineModel( final RigidModel2D rigid )
@@ -427,9 +440,9 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                             "--stack", "v2_patch_trakem2",
                             "--targetStack", "v2_patch_trakem2_sp",
                             "--regularizerModelType", "RIGID",
-                            "--optimizerLambdas", "1.0, 0.5, 0.1",
-                            "--minZ", "20500",
-                            "--maxZ", "20600",
+                            "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
+                            "--minZ", "20450",
+                            "--maxZ", "20650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
