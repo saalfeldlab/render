@@ -378,8 +378,6 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 		if ( parameters.targetStack != null )
 		{
-			/*
-
 			//
 			// save the re-aligned part
 			//
@@ -412,7 +410,6 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
 			saveTargetStackTiles( null, null, zToSave, null );
-			*/
 
 			// complete the stack after everything has been saved
 			completeStack();
@@ -424,11 +421,11 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
 		imp1.setTitle( "final" );
 
-		//ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
-		//imp2.setTitle( "realign" );
+		ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
+		imp2.setTitle( "realign" );
 
-		//ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
-		//imp3.setTitle( "previous" );
+		ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
+		imp3.setTitle( "previous" );
 
 		SimpleMultiThreading.threadHaltUnClean();
 
