@@ -551,13 +551,13 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
                 names = "--maxIterations",
                 description = "Max iterations"
         )
-        public Integer maxIterations = 2000;
+        public Integer maxIterations = 10000;
 
         @Parameter(
                 names = "--maxPlateauWidth",
                 description = "Max allowed error"
         )
-        public Integer maxPlateauWidth = 400;
+        public Integer maxPlateauWidth = 500;
 
         @Parameter(
                 names = "--startLambda",
