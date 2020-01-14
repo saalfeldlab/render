@@ -23,6 +23,7 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
+import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.ScriptUtil;
 import org.janelia.alignment.util.ZFilter;
@@ -35,9 +36,12 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import ij.IJ;
+import ij.ImageJ;
 import ij.ImagePlus;
 import ij.io.FileSaver;
 import ij.measure.Calibration;
+import ij.process.FloatProcessor;
+import ij.process.ImageProcessor;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
@@ -48,14 +52,23 @@ import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.Tile;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.Cursor;
+import net.imglib2.FinalInterval;
 import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.img.imageplus.ImagePlusImgs;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
+import net.imglib2.realtransform.AffineTransform2D;
+import net.imglib2.realtransform.RealViews;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
+import scala.annotation.meta.param;
 
 public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 {
@@ -71,6 +84,13 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 	protected int totalTileCount;
 
 	protected abstract void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException;
+
+	// must be called after all Tilespecs are updated
+	protected void completeStack() throws IOException
+	{
+		if ( parameters.completeTargetStack )
+			targetDataClient.setStackState( parameters.targetStack, StackState.COMPLETE );
+	}
 
 	//
 	// overwrites the area that was re-aligned or it preconcatenates
@@ -96,23 +116,26 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 				resolvedTiles = zToTileSpecsMap.get( z );
 			}
 
-			for (final TileSpec tileSpec : resolvedTiles.getTileSpecs())
+			if ( idToModel != null || relativeModel != null )
 			{
-				final String tileId = tileSpec.getTileId();
-				final AffineModel2D model;
-
-				if ( applyMethod.equals(  TransformApplicationMethod.REPLACE_LAST  ) )
-					model = idToModel.get( tileId );
-				else if ( applyMethod.equals( TransformApplicationMethod.PRE_CONCATENATE_LAST ))
-					model = relativeModel;
-				else
-					throw new RuntimeException( "not supported: " + applyMethod );
-
-				if ( model != null )
+				for (final TileSpec tileSpec : resolvedTiles.getTileSpecs())
 				{
-					resolvedTiles.addTransformSpecToTile( tileId,
-							getTransformSpec( model ),
-							applyMethod );
+					final String tileId = tileSpec.getTileId();
+					final AffineModel2D model;
+	
+					if ( applyMethod.equals(  TransformApplicationMethod.REPLACE_LAST  ) )
+						model = idToModel.get( tileId );
+					else if ( applyMethod.equals( TransformApplicationMethod.PRE_CONCATENATE_LAST ))
+						model = relativeModel;
+					else
+						throw new RuntimeException( "not supported: " + applyMethod );
+	
+					if ( model != null )
+					{
+						resolvedTiles.addTransformSpecToTile( tileId,
+								getTransformSpec( model ),
+								applyMethod );
+					}
 				}
 			}
 
@@ -133,7 +156,7 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
 	}
 
-	public ImagePlus render( final HashMap<String, AffineModel2D> models, final HashMap<String, TileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
+	public ImagePlus render( final HashMap<String, AffineModel2D> idToModels, final HashMap<String, TileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
 	{
 		final double[] min = new double[] { Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE };
 		final double[] max = new double[] { -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE };
@@ -144,8 +167,10 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 		final AffineModel2D scaleModel = new AffineModel2D();
 		scaleModel.set( scale, 0, 0, scale, 0, 0 );
 
+		final HashMap<String, AffineModel2D> idToRenderModels = new HashMap<>();
+
 		// get bounding box
-		for ( final String tileId : models.keySet() )
+		for ( final String tileId : idToModels.keySet() )
 		{
 			final TileSpec tileSpec = idToTileSpec.get( tileId );
 			min[ 2 ] = Math.min( min[ 2 ], tileSpec.getZ() );
@@ -154,9 +179,12 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 			final int w = tileSpec.getWidth();
 			final int h = tileSpec.getHeight();
 
-			// concatenate the scaling
-			final AffineModel2D model = models.get( tileId );
+			final AffineModel2D model = idToModels.get( tileId ).copy();
+
+			// scale the actual transform down to the scale level we want to render in
 			model.preConcatenate( scaleModel );
+
+			idToRenderModels.put( tileId, model );
 
 			tmpMin[ 0 ] = 0;
 			tmpMin[ 1 ] = 0;
@@ -199,42 +227,50 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 
 		// render the images
 		int i = 0;
-		for ( final String tileId : models.keySet() )
+		for ( final String tileId : idToRenderModels.keySet() )
 		{
 			final TileSpec tileSpec = idToTileSpec.get( tileId );
 			final long z = Math.round( tileSpec.getZ() );
-			final AffineModel2D model = models.get( tileId ).copy();
+			final AffineModel2D model = idToRenderModels.get( tileId );
+
+			// scale the transform so it takes into account that the input images are scaled
 			model.concatenate( invScaleModel );
 
 			final ImageProcessorWithMasks imp = getImage( tileSpec, scale );
-			final int w = imp.getWidth();
-			final int h = imp.getHeight();
-
+			RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)ImagePlusImgs.from( new ImagePlus("", imp.ip) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
+			RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)ImagePlusImgs.from( new ImagePlus("", imp.mask) ) ), new NearestNeighborInterpolatorFactory() );
+			
 			// draw
 			final IterableInterval< FloatType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
-			final Cursor< FloatType > c = slice.localizingCursor();
-			final double[] tmp = new double[ 2 ];
-
+			final Cursor< FloatType > c = slice.cursor();
+			
+			AffineTransform2D affine = new AffineTransform2D();
+			double[] array = new double[6];
+			model.toArray( array );
+			affine.set( array[0], array[2], array[4], array[1], array[3], array[5] );
+			final Cursor< FloatType > cSrc = Views.interval( RealViews.affine( interpolant, affine ), img ).cursor();
+			final Cursor< UnsignedByteType > cMask = Views.interval( RealViews.affine( interpolantMask, affine ), img ).cursor();
+			
 			while ( c.hasNext() )
 			{
-				final FloatType type = c.next();
-				c.localize( tmp );
-				model.applyInverseInPlace( tmp );
-
-				final int x = (int)Math.round( tmp[ 0 ] );
-				final int y = (int)Math.round( tmp[ 1 ] );
-
-				if ( x >= 0 && x < w && y >= 0 && y < h && imp.mask.getf( x, y ) >= 255 )
-				{
-					final float currentValue = type.get();
-					if ( currentValue > 0 )
-						type.set( ( imp.ip.getf( x, y ) + currentValue ) / 2 );
-					else
-						type.set( imp.ip.getf( x, y ) );
+				c.fwd();
+				cMask.fwd();
+				cSrc.fwd();
+				if (cMask.get().get() == 255) {
+					FloatType srcType = cSrc.get();
+					float value = srcType.get();
+					if (value >= 0) {
+						FloatType type = c.get();
+						final float currentValue = type.get();
+						if ( currentValue > 0 )
+							type.set( ( value + currentValue ) / 2 );
+						else
+							type.set( value );
+					}
 				}
 			}
 
-			IJ.showProgress( ++i, models.keySet().size() - 1 );
+			IJ.showProgress( ++i, idToRenderModels.keySet().size() - 1 );
 		}
 
 
@@ -341,8 +377,30 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 		});
 	}
 
+	protected FloatProcessor getFullResImage( final TileSpec tileSpec )
+	{
+		final String fileName = tileSpec.getFirstMipmapEntry().getValue().getImageFilePath();
+
+		if ( new File( fileName ).exists() )
+			return new ImagePlus( fileName ).getProcessor().convertToFloatProcessor();
+		else
+			return null;
+
+	}
+
+	protected ImageProcessor getFullResMask( final TileSpec tileSpec )
+	{
+		final String fileNameMask = tileSpec.getFirstMipmapEntry().getValue().getMaskFilePath();
+
+		if ( new File( fileNameMask ).exists() )
+			return new ImagePlus( fileNameMask ).getProcessor();
+		else
+			return null;
+	}
+
 	protected ImageProcessorWithMasks getImage( final TileSpec tileSpec, final double scale )
 	{
+		// old code:
 		final File imageFile = new File( "tmp", tileSpec.getTileId() + "_" + scale + ".image.tif" );
 		final File maskFile = new File( "tmp", tileSpec.getTileId() + "_" + scale + ".mask.tif" );
 
@@ -360,6 +418,8 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 		}
 		else
 		{
+			// this gives a transformed image, but we need a raw image
+			/*
 			// Load the image, this is not efficient!
 			final RenderParameters params = getRenderParametersForTile(
 					parameters.renderWeb.owner,
@@ -369,7 +429,18 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 					scale );
 	
 			imp = Renderer.renderImageProcessorWithMasks(params, ImageProcessorCache.DISABLED_CACHE);
-	
+			*/
+			
+			// this gives a raw image
+			FloatProcessor imageFP = getFullResImage( tileSpec );
+			ImageProcessor maskIP = getFullResMask( tileSpec );
+
+			imageFP = (FloatProcessor)imageFP.resize( (int)Math.round( imageFP.getWidth() * scale ), (int)Math.round( imageFP.getHeight() * scale ), true );
+			maskIP = maskIP.resize( (int)Math.round( maskIP.getWidth() * scale ), (int)Math.round( maskIP.getHeight() * scale ), true );
+
+			// hack to get a not transformed image:
+			imp = new ImageProcessorWithMasks( imageFP, maskIP, null );
+
 			// write temp if doesn't exist
 			if ( !imageFile.exists() || !maskFile.exists() )
 			{
@@ -391,6 +462,9 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 	{
 		// TODO: make sure there is only one transform
         final CoordinateTransformList<CoordinateTransform> transformList = tileSpec.getTransformList();
+
+        if ( transformList.getList( null ).size() != 1 )
+        	throw new RuntimeException( "size " + transformList.getList( null ).size() );
         final AffineModel2D lastTransform = (AffineModel2D)
                 transformList.get(transformList.getList(null).size() - 1);
         return lastTransform;
@@ -557,7 +631,7 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
                 names = "--maxPlateauWidth",
                 description = "Max allowed error"
         )
-        public Integer maxPlateauWidth = 500;
+        public Integer maxPlateauWidth = 800;
 
         @Parameter(
                 names = "--startLambda",
