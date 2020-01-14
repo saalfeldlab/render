@@ -186,6 +186,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 			// tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
 		
+			LOG.info( "l=" + lambda + ", numIterations=" + numIterations );
+
 			final ErrorStatistic observer = new ErrorStatistic(parameters.maxPlateauWidth + 1 );
 			final float damp = 1.0f;
 			TileUtil.optimizeConcurrently(
@@ -425,11 +427,11 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
 		imp1.setTitle( "final" );
 
-		//ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
-		//imp2.setTitle( "realign" );
+		ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
+		imp2.setTitle( "realign" );
 
-		//ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
-		//imp3.setTitle( "previous" );
+		ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
+		imp3.setTitle( "previous" );
 
 		SimpleMultiThreading.threadHaltUnClean();
 
@@ -457,12 +459,12 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                 // TODO: remove testing hack ...
                 if (args.length == 0) {
                     final String[] testArgs = {
-                            "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+                            "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
                             "--project", "Sec10",
 
                             "--stack", "v2_patch_trakem2",
-                            "--targetStack", "v2_patch_trakem2_sp2",
+                            //"--targetStack", "v2_patch_trakem2_sp2",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
                             "--minZ", "20300",
