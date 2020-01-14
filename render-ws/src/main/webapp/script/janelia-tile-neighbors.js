@@ -37,6 +37,8 @@ var JaneliaTile2 = function(tileSpec, stackUrl, matchCollectionUrl, renderQueryP
     this.matches = [];
     this.matchIndex = -1;
     this.matchInfoSelector = undefined;
+    this.saveToCollectionName = undefined;
+    this.saveToCollectionUrl = undefined;
     this.drawMatchLines = true;
 
     const imageUrlParams = new URLSearchParams(new URL(this.imageUrl).search);
@@ -53,9 +55,13 @@ var JaneliaTile2 = function(tileSpec, stackUrl, matchCollectionUrl, renderQueryP
 };
 
 JaneliaTile2.prototype.getMatchesUrl = function(qTile) {
-    return this.matchCollectionUrl + "/group/" + this.tileSpec.layout.sectionId +
-                   "/id/" + this.tileSpec.tileId + "/matchesWith/" +
-                   qTile.tileSpec.layout.sectionId + "/id/" + qTile.tileSpec.tileId;
+    return this.getRelativeMatchesUrl(this.matchCollectionUrl, qTile);
+};
+
+JaneliaTile2.prototype.getRelativeMatchesUrl = function(matchCollectionUrl, qTile) {
+    return matchCollectionUrl + "/group/" + this.tileSpec.layout.sectionId +
+           "/id/" + this.tileSpec.tileId + "/matchesWith/" +
+           qTile.tileSpec.layout.sectionId + "/id/" + qTile.tileSpec.tileId;
 };
 
 JaneliaTile2.prototype.drawLoadedImage = function() {
@@ -164,10 +170,16 @@ JaneliaTile2.prototype.drawMatches = function(canvasMatches) {
         }
 
         if ((typeof pTile.matchInfoSelector !== 'undefined')) {
-            var matchesUrl = pTile.getMatchesUrl(qTile);
-            var matchInfoHtml = matchCount + ' total matches ' +
+            const matchesUrl = pTile.getMatchesUrl(qTile);
+            let matchInfoHtml = matchCount + ' total matches ' +
                                 "<input type='button' value='Delete Matches' onclick='tilePair.deleteMatches(\"" +
                                 matchesUrl + "\")' />";
+            if (typeof pTile.saveToCollectionName !== 'undefined') {
+                // hack to distance save button from delete button
+                matchInfoHtml += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" +
+                                 "<input type='button' value='Save to " + pTile.saveToCollectionName +
+                                 "' onclick='tilePair.savePairToCollection()' />";
+            }
             $(pTile.matchInfoSelector).html(matchInfoHtml);
         }
 
@@ -238,6 +250,7 @@ var JaneliaTileWithNeighbors = function(baseUrl, owner, project, stack, matchOwn
     this.janeliaTileMap = {};
 
     this.selectedTile = undefined;
+    this.saveToCollectionName = undefined;
 };
 
 JaneliaTileWithNeighbors.prototype.setNeighborSizeFactor = function(factor) {
@@ -487,6 +500,10 @@ JaneliaTileWithNeighbors.prototype.setTilePair = function(tileId, otherTileId) {
            });
 };
 
+JaneliaTileWithNeighbors.prototype.setSaveToCollectionName = function(saveToCollectionName) {
+    this.saveToCollectionName = saveToCollectionName;
+};
+
 JaneliaTileWithNeighbors.prototype.retrieveOtherTileSpec = function(firstTileSpec, otherTileId) {
     var self = this;
     $.ajax({
@@ -514,6 +531,11 @@ JaneliaTileWithNeighbors.prototype.buildTilePair = function(tileSpec, otherTileS
     var qTile = this.buildTileAtPosition(orderedPair.qTileSpec, 0, 1);
 
     pTile.matchInfoSelector = "#matchInfo";
+    if (typeof this.saveToCollectionName !== 'undefined') {
+        pTile.saveToCollectionName = this.saveToCollectionName;
+        pTile.saveToCollectionUrl =
+                this.baseUrl + "/owner/" + this.matchOwner + "/matchCollection/" + this.saveToCollectionName;
+    }
 
     var canvasMargin = 100;
 
@@ -807,6 +829,53 @@ JaneliaTileWithNeighbors.prototype.deleteMatches = function(pairMatchesUrl) {
                    }
                });
     }
+    return false;
+};
+
+JaneliaTileWithNeighbors.prototype.savePairToCollection = function() {
+
+    const pTile = this.janeliaTileMap[this.pTileId];
+
+    const messageSelector = $("#message");
+
+    if (pTile.matches.length === 1) {
+
+        if (confirm("This will save these matches to the " + this.saveToCollectionName +
+                    " collection.  Are you sure you want to do this?")) {
+
+            const qTile = this.janeliaTileMap[this.qTileId];
+            const saveMatchesUrl = pTile.saveToCollectionUrl + "/matches";
+            const collectionPairUrl = pTile.getRelativeMatchesUrl(pTile.saveToCollectionUrl, qTile);
+
+            const self = this;
+
+            // noinspection JSUnusedLocalSymbols
+            $.ajax({
+                       url: saveMatchesUrl,
+                       type: "PUT",
+                       headers: {
+                           'Accept': 'application/json',
+                           'Content-Type': 'application/json'
+                       },
+                       data: JSON.stringify(pTile.matches),
+                       cache: false,
+                       success: function(data) {
+                           const matchPairHtml = '<a target="_blank" href="' + collectionPairUrl + '">match pair</a>';
+                           messageSelector.html("saved " + matchPairHtml + " to " + self.saveToCollectionName);
+                       },
+                       error: function(data, text, xhr) {
+                           console.log(xhr);
+                           messageSelector.text(data.statusText + ': ' + data.responseText);
+                       }
+                   });
+        }
+
+    } else {
+
+        messageSelector.html("ERROR: expected 1 match pair to save but found " + pTile.matches.length + " pairs");
+
+    }
+
     return false;
 };
 

@@ -8,7 +8,7 @@
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="../script/janelia-render.js?v=20180611_001"></script>
-    <script type="text/javascript" src="../script/janelia-tile-neighbors.js?v=20190208_001"></script>
+    <script type="text/javascript" src="../script/janelia-tile-neighbors.js?v=20200114_001"></script>
     <script type="text/javascript">
 
         var tilePair;
@@ -68,6 +68,11 @@
             var tileId = queryParameters.get('pId');
             var otherTileId = queryParameters.get('qId');
             tilePair.setTilePair(tileId, otherTileId);
+
+            const saveToCollectionName = queryParameters.get("saveToCollection");
+            if (typeof saveToCollectionName !== 'undefined') {
+                tilePair.setSaveToCollectionName(saveToCollectionName);
+            }
 
             var sep = '&nbsp;&nbsp;&nbsp;&nbsp;';
 
