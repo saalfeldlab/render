@@ -39,7 +39,6 @@ import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.transform.ConsensusWarpFieldBuilder;
 import org.janelia.alignment.util.RenderWebServiceUrls;
@@ -1352,6 +1351,28 @@ public class RenderDataClient {
         final HttpDelete httpDelete = new HttpDelete(uri);
 
         LOG.info("deleteMatchesOutsideGroup: submitting {}", requestContext);
+
+        httpClient.execute(httpDelete, responseHandler);
+    }
+
+    /**
+     * Deletes matches with the specified pGroupId.
+     *
+     * @param  pGroupId             pGroupId (usually the section id).
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void deleteMatchesWithPGroupId(final String pGroupId)
+            throws IOException {
+
+        final URI uri = getUri(urls.getMatchesWithPGroupIdUrlString(pGroupId));
+        final String requestContext = "DELETE " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpDelete httpDelete = new HttpDelete(uri);
+
+        LOG.info("deleteMatchesWithPGroupId: submitting {}", requestContext);
 
         httpClient.execute(httpDelete, responseHandler);
     }
