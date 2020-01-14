@@ -461,19 +461,19 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec10",
+                            "--project", "Sec12",
 
-                            "--stack", "v2_patch_trakem2",
+                            "--stack", "v2_patch_msolve_fine_clipped",
                             //"--targetStack", "v2_patch_trakem2_sp2",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "20300",
-                            "--maxZ", "20800",
+                            "--minZ", "3316",
+                            "--maxZ", "3416",
 
-                            "--threads", "4",
+                            "--threads", "32",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "Sec10_patch"
+                            "--matchCollection", "Sec12_patch"
                     };
                     parameters.parse(testArgs);
                 } else {
