@@ -43,8 +43,8 @@ import net.imglib2.util.Pair;
 public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
 {
 	// how many layers on the top and bottom we use as overlap to compute the rigid models that "blend" the re-solved stack back in 
-	protected int overlapTop = 100;
-	protected int overlapBottom = 100;
+	protected int overlapTop = 50;
+	protected int overlapBottom = 50;
 
 	public PartialSolveBoxed(final Parameters parameters) throws IOException
 	{
@@ -424,8 +424,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
 		imp1.setTitle( "final" );
 
-		//ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
-		//imp2.setTitle( "realign" );
+		ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
+		imp2.setTitle( "realign" );
 
 		ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
 		imp3.setTitle( "previous" );
@@ -458,19 +458,19 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec07",
+                            "--project", "Sec15",
 
-                            "--stack", "v1_frozen_py_solve_03_affine_e10_e10",
-                            "--targetStack", "v1_frozen_py_solve_03_affine_e10_e10_sp",
+                            "--stack", "v2_patch_msolve_fine",
+                            "--targetStack", "v2_patch_msolve_fine_trakem",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "24700",//"24700",
-                            "--maxZ", "26650",//"26650",
+                            "--minZ", "27140",//"24700",
+                            "--maxZ", "27340",//"26650",
 
-                            "--threads", "32",
+                            "--threads", "4",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "gd_test_3_Sec07_v1"
+                            "--matchCollection", "Sec15_patch"
                     };
                     parameters.parse(testArgs);
                 } else {
