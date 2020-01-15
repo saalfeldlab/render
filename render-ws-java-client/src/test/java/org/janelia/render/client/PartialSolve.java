@@ -214,7 +214,7 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 		System.out.println( "BB z: " + minI[ 2 ] + " >>> " + maxI[ 2 ] + ", d=" + dimI[ 2 ]);
 
 		// init image
-		final RandomAccessibleInterval< FloatType > img = Views.translate( new ImagePlusImgFactory<FloatType>( new FloatType()).create( dimI ), minI );
+		final RandomAccessibleInterval< UnsignedByteType > img = Views.translate( new ImagePlusImgFactory<UnsignedByteType>( new UnsignedByteType()).create( dimI ), minI );
 
 		final AffineModel2D invScaleModel = new AffineModel2D();
 		invScaleModel.set( 1.0/scale, 0, 0, 1.0/scale, 0, 0 );
@@ -235,8 +235,8 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 			RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.mask) ) ), new NearestNeighborInterpolatorFactory() );
 			
 			// draw
-			final IterableInterval< FloatType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
-			final Cursor< FloatType > c = slice.cursor();
+			final IterableInterval< UnsignedByteType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
+			final Cursor< UnsignedByteType > c = slice.cursor();
 			
 			AffineTransform2D affine = new AffineTransform2D();
 			double[] array = new double[6];
@@ -254,12 +254,12 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 					FloatType srcType = cSrc.get();
 					float value = srcType.get();
 					if (value >= 0) {
-						FloatType type = c.get();
+						UnsignedByteType type = c.get();
 						final float currentValue = type.get();
 						if ( currentValue > 0 )
-							type.set( ( value + currentValue ) / 2 );
+							type.setReal( ( value + currentValue ) / 2 );
 						else
-							type.set( value );
+							type.setReal( value );
 					}
 				}
 			}
