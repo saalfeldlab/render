@@ -92,15 +92,11 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 					continue;
 				}
 
-				/*
-				if ( pTileSpec.getZ() != 20547 || qTileSpec.getZ() != 20547 || 
-						pId.contains( "_0-0-2" ) || qId.contains( "_0-0-2" ) ||
-						pId.contains( "_0-0-3" ) || qId.contains( "_0-0-3" ) )
+				if ( pId.contains(".3366.") || pId.contains(".3367.") || qId.contains(".3366.") || qId.contains(".3367.") )
 				{
-					LOG.info("run: ignoring pair ({}, {}) because they are on layer 20547 {}", pId, qId );
+					LOG.info("run: ignoring pair ({}, {}) due to manual filtering", pId, qId );
 					continue;
 				}
-				*/
 
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p, q;
 
