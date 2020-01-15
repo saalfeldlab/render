@@ -43,8 +43,8 @@ import net.imglib2.util.Pair;
 public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
 {
 	// how many layers on the top and bottom we use as overlap to compute the rigid models that "blend" the re-solved stack back in 
-	protected int overlapTop = 150;
-	protected int overlapBottom = 150;
+	protected int overlapTop = 100;
+	protected int overlapBottom = 100;
 
 	public PartialSolveBoxed(final Parameters parameters) throws IOException
 	{
@@ -92,12 +92,13 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 					continue;
 				}
 
-				if ( pId.contains(".3366.") || pId.contains(".3367.") || qId.contains(".3366.") || qId.contains(".3367.") )
+				/*
+				if ( pId.contains("_0-0-1") || pId.contains("_0-0-2")|| pId.contains("_0-0-3") || qId.contains("_0-0-1") || qId.contains("_0-0-2") || qId.contains("_0-0-3") )
 				{
 					LOG.info("run: ignoring pair ({}, {}) due to manual filtering", pId, qId );
 					continue;
 				}
-
+				*/
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p, q;
 
 				if ( !idToTileMap.containsKey( pId ) )
@@ -176,9 +177,9 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			if ( lambda == 0.5 )
 				numIterations = 1000;
 			else if ( lambda == 0.1 )
-				numIterations = 200;
+				numIterations = 400;
 			else if ( lambda == 0.01 )
-				numIterations = 100;
+				numIterations = 200;
 
 			// tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
 		
@@ -423,8 +424,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
 		imp1.setTitle( "final" );
 
-		ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
-		imp2.setTitle( "realign" );
+		//ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
+		//imp2.setTitle( "realign" );
 
 		ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
 		imp3.setTitle( "previous" );
@@ -457,19 +458,19 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec12",
+                            "--project", "Sec07",
 
-                            "--stack", "v2_patch_msolve_fine_clipped",
-                            //"--targetStack", "v2_patch_trakem2_sp2",
+                            "--stack", "v1_frozen_py_solve_03_affine_e10_e10",
+                            "--targetStack", "v1_frozen_py_solve_03_affine_e10_e10_sp",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "3316",
-                            "--maxZ", "3416",
+                            "--minZ", "24700",//"24700",
+                            "--maxZ", "26650",//"26650",
 
                             "--threads", "32",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "Sec12_patch"
+                            "--matchCollection", "gd_test_3_Sec07_v1"
                     };
                     parameters.parse(testArgs);
                 } else {
