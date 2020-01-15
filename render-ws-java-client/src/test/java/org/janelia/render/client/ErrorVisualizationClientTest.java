@@ -32,11 +32,21 @@ public class ErrorVisualizationClientTest {
         final String[] args = {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "--owner", "Z1217_19m",
-                "--project", "Sec07",
-                "--stack", "affine_pm_test_matlab_2",//"slim_24800_25000_tweak_pre_align_200",
-                //"--minZ", "36800",
-                //"--maxZ", "37010",
-                "--matchCollection", "gd_test_3_Sec07_v1"
+
+                "--project", "Sec16",
+                "--stack", "v3_patch_msolve_fine",
+                "--matchCollection", "Sec16_patch",
+
+                //"--project", "Sec08",
+                //"--stack", "v2_py_solve_03_affine_e10_e10",
+                //"--matchCollection", "gd_test_Sec08"
+                
+                //"--project", "Sec07",
+                //"--stack", "affine_pm_test_matlab_2",
+                //"--matchCollection", "gd_test_3_Sec07_v1"
+
+                "--minZ", "32120",
+                "--maxZ", "32220",
         };
 
         // http://renderer-dev.int.janelia.org:8080/render-ws/view/index.html?dynamicRenderHost=renderer-dev%3A8080&catmaidHost=renderer-catmaid%3A8000&renderStackOwner=Z1217_19m&matchOwner=Z1217_19m&renderStackProject=Sec07&renderStack=v1_acquire_pre_align&matchCollection=gd_test_3_Sec07_v1
