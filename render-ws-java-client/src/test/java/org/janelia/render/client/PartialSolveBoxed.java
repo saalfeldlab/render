@@ -79,12 +79,12 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		//	18-10-29_133348_0-0-0.22847.0
 
 		ArrayList< String > idsToIgnore = new ArrayList<>();
-		idsToIgnore.add( "_0-0-2.22833" );
+		/*idsToIgnore.add( "_0-0-2.22833" );
 		idsToIgnore.add( "_0-0-0.22837" );
 		idsToIgnore.add( "_0-0-1.22840" );
 		idsToIgnore.add( "_0-0-0.22843" );
 		idsToIgnore.add( "_0-0-0.22845" );
-		idsToIgnore.add( "_0-0-0.22847" );
+		idsToIgnore.add( "_0-0-0.22847" );*/
 
 
 		for (final String pGroupId : pGroupList)
@@ -450,14 +450,14 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		new ImageJ();
 
 		// visualize new result
-		ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
-		imp1.setTitle( "final" );
+		//ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
+		//imp1.setTitle( "final" );
 
 		//ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
 		//imp2.setTitle( "realign" );
 
-		ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
-		imp3.setTitle( "previous" );
+		//ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
+		//imp3.setTitle( "previous" );
 
 		SimpleMultiThreading.threadHaltUnClean();
 
@@ -490,13 +490,13 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                             "--project", "Sec09",
 
                             "--stack", "v1_py_solve_03_affine_e10_e10_sp2",
-                            //"--targetStack", "v1_py_solve_03_affine_e10_e10_sp3",
+                            "--targetStack", "v1_py_solve_03_affine_e10_e10_sp3",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "22400",//"24700",
-                            "--maxZ", "23200",//"26650",
+                            "--minZ", "28800",//"24700",
+                            "--maxZ", "29100",//"26650",
 
-                            "--threads", "32",
+                            "--threads", "4",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
                             "--matchCollection", "gd_test_Sec09"
