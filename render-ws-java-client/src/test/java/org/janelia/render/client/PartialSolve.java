@@ -52,6 +52,7 @@ import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
@@ -214,7 +215,8 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 		System.out.println( "BB z: " + minI[ 2 ] + " >>> " + maxI[ 2 ] + ", d=" + dimI[ 2 ]);
 
 		// init image
-		final RandomAccessibleInterval< UnsignedByteType > img = Views.translate( new ImagePlusImgFactory<UnsignedByteType>( new UnsignedByteType()).create( dimI ), minI );
+		final ImagePlusImg< UnsignedByteType, ? > stack = new ImagePlusImgFactory<UnsignedByteType>( new UnsignedByteType()).create( dimI );
+		final RandomAccessibleInterval< UnsignedByteType > img = Views.translate( stack, minI );
 
 		final AffineModel2D invScaleModel = new AffineModel2D();
 		invScaleModel.set( 1.0/scale, 0, 0, 1.0/scale, 0, 0 );
@@ -268,7 +270,8 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 		}
 
 
-		final ImagePlus imp = ImageJFunctions.wrap( img, "stack", null );
+		//final ImagePlus imp = ImageJFunctions.wrap( img, "stack", null );
+		final ImagePlus imp = stack.getImagePlus();
 
 		Calibration cal = new Calibration();
 		cal.xOrigin = -minI[ 0 ];
