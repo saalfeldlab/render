@@ -95,8 +95,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				//  18-10-10_041243_0-0-1.13381.0
 				// 18-10-09_235307_0-0-1.13172.0
 				
-				if ( pId.contains("_0-0-1.13172") || pId.contains("_0-0-1.13381") || qId.contains("_0-0-1.13172") || qId.contains("_0-0-1.13381") )
-					continue;
+				//if ( pId.contains("_0-0-1.13172") || pId.contains("_0-0-1.13381") || qId.contains("_0-0-1.13172") || qId.contains("_0-0-1.13381") )
+				//	continue;
 
 				/*
 				if ( pId.contains("_0-0-0") || pId.contains("_0-0-2")|| pId.contains("_0-0-3") || qId.contains("_0-0-0") || qId.contains("_0-0-2") || qId.contains("_0-0-3") )
@@ -467,14 +467,14 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                             "--owner", "Z1217_19m",
                             "--project", "Sec09",
 
-                            "--stack", "v1_py_solve_03_affine_e10_e10",
-                            "--targetStack", "v1_py_solve_03_affine_e10_e10_sp",
+                            "--stack", "v1_py_solve_03_affine_e10_e10_sp",
+                            "--targetStack", "v1_py_solve_03_affine_e10_e10_sp2",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "13000",//"24700",
-                            "--maxZ", "13450",//"26650",
+                            "--minZ", "14525",//"24700",
+                            "--maxZ", "15000",//"26650",
 
-                            "--threads", "4",
+                            "--threads", "32",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
                             "--matchCollection", "gd_test_Sec09"
