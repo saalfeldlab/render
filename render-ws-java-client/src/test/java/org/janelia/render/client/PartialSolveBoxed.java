@@ -71,6 +71,14 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		HashSet< String > topTileIds = new HashSet<>();
 		HashSet< String > bottomTileIds = new HashSet<>();
 
+		//	18-10-29_123951_0-0-2.22801.0
+		//	18-10-29_163336_0-0-0.22928.0
+		//	18-10-29_171036_0-0-0.22934.0
+		//	18-10-29_171628_0-0-0.22939.0
+		//	18-10-29_172440_0-0-0.22946.0
+		//	18-10-29_140751_0-0-0.22876.0
+		//	18-10-29_141122_0-0-0.22879.0
+		
 		//  18-10-29_131720_0-0-2.22833.0
 		//  18-10-29_132202_0-0-0.22837.0
 		//	18-10-29_132534_0-0-1.22840.0
@@ -79,6 +87,14 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		//	18-10-29_133348_0-0-0.22847.0
 
 		ArrayList< String > idsToIgnore = new ArrayList<>();
+		idsToIgnore.add( "_0-0-2.22801" );
+		idsToIgnore.add( "_0-0-0.22928" );
+		idsToIgnore.add( "_0-0-0.22934" );
+		idsToIgnore.add( "_0-0-0.22939" );
+		idsToIgnore.add( "_0-0-0.22946" );
+		idsToIgnore.add( "_0-0-0.22876" );
+		idsToIgnore.add( "_0-0-0.22879" );
+
 		idsToIgnore.add( "_0-0-2.22833" );
 		idsToIgnore.add( "_0-0-0.22837" );
 		idsToIgnore.add( "_0-0-1.22840" );
@@ -489,8 +505,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                             "--owner", "Z1217_19m",
                             "--project", "Sec09",
 
-                            "--stack", "v1_py_solve_03_affine_e10_e10_sp2",
-                            //"--targetStack", "v1_py_solve_03_affine_e10_e10_sp3",
+                            "--stack", "v1_py_solve_03_affine_e10_e10_sp3",
+                            "--targetStack", "v1_py_solve_03_affine_e10_e10_sp4",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
                             "--minZ", "22400",//"24700",
