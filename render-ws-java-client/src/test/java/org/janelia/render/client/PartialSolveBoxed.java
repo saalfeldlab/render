@@ -71,6 +71,22 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		HashSet< String > topTileIds = new HashSet<>();
 		HashSet< String > bottomTileIds = new HashSet<>();
 
+		//  18-10-29_131720_0-0-2.22833.0
+		//  18-10-29_132202_0-0-0.22837.0
+		//	18-10-29_132534_0-0-1.22840.0
+		//	18-10-29_132906_0-0-0.22843.0
+		//	18-10-29_133127_0-0-0.22845.0
+		//	18-10-29_133348_0-0-0.22847.0
+
+		ArrayList< String > idsToIgnore = new ArrayList<>();
+		idsToIgnore.add( "_0-0-2.22833" );
+		idsToIgnore.add( "_0-0-0.22837" );
+		idsToIgnore.add( "_0-0-1.22840" );
+		idsToIgnore.add( "_0-0-0.22843" );
+		idsToIgnore.add( "_0-0-0.22845" );
+		idsToIgnore.add( "_0-0-0.22847" );
+
+
 		for (final String pGroupId : pGroupList)
 		{
 			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
@@ -92,9 +108,15 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 					continue;
 				}
 
-				//  18-10-10_041243_0-0-1.13381.0
-				// 18-10-09_235307_0-0-1.13172.0
-				
+				boolean ignore = false;
+
+				for ( final String toIgnore : idsToIgnore )
+					if ( pId.contains( toIgnore ) || qId.contains( toIgnore ) )
+						ignore = true;
+
+				if ( ignore )
+					continue;
+
 				//if ( pId.contains("_0-0-1.13172") || pId.contains("_0-0-1.13381") || qId.contains("_0-0-1.13172") || qId.contains("_0-0-1.13381") )
 				//	continue;
 
@@ -467,12 +489,12 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                             "--owner", "Z1217_19m",
                             "--project", "Sec09",
 
-                            "--stack", "v1_py_solve_03_affine_e10_e10_sp",
-                            "--targetStack", "v1_py_solve_03_affine_e10_e10_sp2",
+                            "--stack", "v1_py_solve_03_affine_e10_e10_sp2",
+                            //"--targetStack", "v1_py_solve_03_affine_e10_e10_sp3",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "14525",//"24700",
-                            "--maxZ", "15000",//"26650",
+                            "--minZ", "22400",//"24700",
+                            "--maxZ", "23200",//"26650",
 
                             "--threads", "32",
                             "--maxIterations", "10000",
