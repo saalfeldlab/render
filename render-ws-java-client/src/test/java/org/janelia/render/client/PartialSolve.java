@@ -6,25 +6,22 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.Renderer;
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackMetaData.StackState;
-import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ScriptUtil;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -36,7 +33,6 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import ij.IJ;
-import ij.ImageJ;
 import ij.ImagePlus;
 import ij.io.FileSaver;
 import ij.measure.Calibration;
@@ -52,12 +48,11 @@ import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.Tile;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.Cursor;
-import net.imglib2.FinalInterval;
 import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
@@ -68,7 +63,6 @@ import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
-import scala.annotation.meta.param;
 
 public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 {
@@ -220,7 +214,7 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 		System.out.println( "BB z: " + minI[ 2 ] + " >>> " + maxI[ 2 ] + ", d=" + dimI[ 2 ]);
 
 		// init image
-		final RandomAccessibleInterval< FloatType > img = Views.translate( ArrayImgs.floats( dimI ), minI );
+		final RandomAccessibleInterval< UnsignedByteType > img = Views.translate( new ImagePlusImgFactory<UnsignedByteType>( new UnsignedByteType()).create( dimI ), minI );
 
 		final AffineModel2D invScaleModel = new AffineModel2D();
 		invScaleModel.set( 1.0/scale, 0, 0, 1.0/scale, 0, 0 );
@@ -241,8 +235,8 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 			RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.mask) ) ), new NearestNeighborInterpolatorFactory() );
 			
 			// draw
-			final IterableInterval< FloatType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
-			final Cursor< FloatType > c = slice.cursor();
+			final IterableInterval< UnsignedByteType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
+			final Cursor< UnsignedByteType > c = slice.cursor();
 			
 			AffineTransform2D affine = new AffineTransform2D();
 			double[] array = new double[6];
@@ -260,12 +254,12 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 					FloatType srcType = cSrc.get();
 					float value = srcType.get();
 					if (value >= 0) {
-						FloatType type = c.get();
+						UnsignedByteType type = c.get();
 						final float currentValue = type.get();
 						if ( currentValue > 0 )
-							type.set( ( value + currentValue ) / 2 );
+							type.setReal( ( value + currentValue ) / 2 );
 						else
-							type.set( value );
+							type.setReal( value );
 					}
 				}
 			}
