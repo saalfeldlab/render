@@ -92,13 +92,20 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 					continue;
 				}
 
+				//  18-10-10_041243_0-0-1.13381.0
+				// 18-10-09_235307_0-0-1.13172.0
+				
+				if ( pId.contains("_0-0-1.13172") || pId.contains("_0-0-1.13381") || qId.contains("_0-0-1.13172") || qId.contains("_0-0-1.13381") )
+					continue;
+
 				/*
-				if ( pId.contains("_0-0-1") || pId.contains("_0-0-2")|| pId.contains("_0-0-3") || qId.contains("_0-0-1") || qId.contains("_0-0-2") || qId.contains("_0-0-3") )
+				if ( pId.contains("_0-0-0") || pId.contains("_0-0-2")|| pId.contains("_0-0-3") || qId.contains("_0-0-0") || qId.contains("_0-0-2") || qId.contains("_0-0-3") )
 				{
 					LOG.info("run: ignoring pair ({}, {}) due to manual filtering", pId, qId );
 					continue;
 				}
 				*/
+				
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p, q;
 
 				if ( !idToTileMap.containsKey( pId ) )
@@ -424,8 +431,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
 		imp1.setTitle( "final" );
 
-		ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
-		imp2.setTitle( "realign" );
+		//ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
+		//imp2.setTitle( "realign" );
 
 		ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
 		imp3.setTitle( "previous" );
@@ -458,19 +465,19 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec15",
+                            "--project", "Sec09",
 
-                            "--stack", "v2_patch_msolve_fine",
-                            "--targetStack", "v2_patch_msolve_fine_trakem",
+                            "--stack", "v1_py_solve_03_affine_e10_e10",
+                            "--targetStack", "v1_py_solve_03_affine_e10_e10_sp",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "27140",//"24700",
-                            "--maxZ", "27340",//"26650",
+                            "--minZ", "13000",//"24700",
+                            "--maxZ", "13450",//"26650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "Sec15_patch"
+                            "--matchCollection", "gd_test_Sec09"
                     };
                     parameters.parse(testArgs);
                 } else {
