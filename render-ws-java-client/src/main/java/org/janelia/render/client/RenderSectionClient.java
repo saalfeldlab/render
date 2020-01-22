@@ -5,6 +5,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -13,8 +14,10 @@ import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.alignment.util.LabelImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
@@ -41,7 +44,7 @@ public class RenderSectionClient {
 
         @Parameter(
                 names = "--rootDirectory",
-                description = "Root directory for rendered layers (e.g. /tier2/flyTEM/nobackup/rendered_boxes)",
+                description = "Root directory for rendered layers (e.g. /nrs/flyem/render/scapes)",
                 required = true)
         public String rootDirectory;
 
@@ -121,6 +124,19 @@ public class RenderSectionClient {
                 description = "Min intensity to render image"
         )
         public Integer minIntensity;
+
+        @Parameter(
+                names = "--renderTileLabels",
+                description = "Render tiles as single color labels"
+        )
+        public boolean renderTileLabels;
+
+        @Parameter(
+                names = "--useStackBounds",
+                description = "Use stack bounds instead of layer bounds for rendered canvas"
+        )
+        public boolean useStackBounds;
+
     }
 
     /**
@@ -149,10 +165,13 @@ public class RenderSectionClient {
     private final Parameters clientParameters;
 
     private final File sectionDirectory;
+    private final int maxCachedPixels;
     private final ImageProcessorCache imageProcessorCache;
     private final RenderDataClient renderDataClient;
+    private final Bounds stackBounds;
 
-    private RenderSectionClient(final Parameters clientParameters) {
+    private RenderSectionClient(final Parameters clientParameters)
+            throws IOException {
 
         this.clientParameters = clientParameters;
 
@@ -179,10 +198,24 @@ public class RenderSectionClient {
         FileUtil.ensureWritableDirectory(this.sectionDirectory);
 
         // set cache size to 50MB so that masks get cached but most of RAM is left for target image
-        final int maxCachedPixels = 50 * 1000000;
-        this.imageProcessorCache = new ImageProcessorCache(maxCachedPixels, false, false);
+        this.maxCachedPixels = 50 * 1000000;
+
+        if (clientParameters.renderTileLabels) {
+            this.imageProcessorCache = null;
+        } else {
+            this.imageProcessorCache = new ImageProcessorCache(maxCachedPixels,
+                                                               false,
+                                                               false);
+        }
 
         this.renderDataClient = clientParameters.renderWeb.getDataClient();
+
+        if (clientParameters.useStackBounds) {
+            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(clientParameters.stack);
+            this.stackBounds = stackMetaData.getStats().getStackBounds();
+        } else {
+            this.stackBounds = null;
+        }
     }
 
     private void generateImageForZ(final Double z)
@@ -191,7 +224,8 @@ public class RenderSectionClient {
         LOG.info("generateImageForZ: {}, entry, sectionDirectory={}, dataClient={}",
                  z, sectionDirectory, renderDataClient);
 
-        final Bounds layerBounds = renderDataClient.getLayerBounds(clientParameters.stack, z);
+        final Bounds layerBounds =
+                stackBounds == null ? renderDataClient.getLayerBounds(clientParameters.stack, z) : stackBounds;
 
         String parametersUrl; 
         if(clientParameters.bounds != null && clientParameters.bounds.size() == 4) //Read bounds from supplied parameters
@@ -246,7 +280,17 @@ public class RenderSectionClient {
 
         final BufferedImage sectionImage = renderParameters.openTargetImage();
 
-        ArgbRenderer.render(renderParameters, sectionImage, imageProcessorCache);
+        final ImageProcessorCache cache;
+        if (clientParameters.renderTileLabels) {
+            cache = new LabelImageProcessorCache(maxCachedPixels,
+                                                 false,
+                                                 false,
+                                                 renderParameters.getTileSpecs());
+        } else {
+            cache = this.imageProcessorCache;
+        }
+
+        ArgbRenderer.render(renderParameters, sectionImage, cache);
 
         Utils.saveImage(sectionImage, sectionFile.getAbsolutePath(), clientParameters.format, true, 0.85f);
 
