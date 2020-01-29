@@ -282,6 +282,7 @@ public class RenderSectionClient {
 
         final ImageProcessorCache cache;
         if (clientParameters.renderTileLabels) {
+            renderParameters.setBinaryMask(true); // masked edges should not be interpolated for labels
             cache = new LabelImageProcessorCache(maxCachedPixels,
                                                  false,
                                                  false,
