@@ -71,6 +71,38 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		HashSet< String > topTileIds = new HashSet<>();
 		HashSet< String > bottomTileIds = new HashSet<>();
 
+		//	18-10-29_123951_0-0-2.22801.0
+		//	18-10-29_163336_0-0-0.22928.0
+		//	18-10-29_171036_0-0-0.22934.0
+		//	18-10-29_171628_0-0-0.22939.0
+		//	18-10-29_172440_0-0-0.22946.0
+		//	18-10-29_140751_0-0-0.22876.0
+		//	18-10-29_141122_0-0-0.22879.0
+		
+		//  18-10-29_131720_0-0-2.22833.0
+		//  18-10-29_132202_0-0-0.22837.0
+		//	18-10-29_132534_0-0-1.22840.0
+		//	18-10-29_132906_0-0-0.22843.0
+		//	18-10-29_133127_0-0-0.22845.0
+		//	18-10-29_133348_0-0-0.22847.0
+
+		ArrayList< String > idsToIgnore = new ArrayList<>();
+		/*idsToIgnore.add( "_0-0-2.22801" );
+		idsToIgnore.add( "_0-0-0.22928" );
+		idsToIgnore.add( "_0-0-0.22934" );
+		idsToIgnore.add( "_0-0-0.22939" );
+		idsToIgnore.add( "_0-0-0.22946" );
+		idsToIgnore.add( "_0-0-0.22876" );
+		idsToIgnore.add( "_0-0-0.22879" );
+
+		idsToIgnore.add( "_0-0-2.22833" );
+		idsToIgnore.add( "_0-0-0.22837" );
+		idsToIgnore.add( "_0-0-1.22840" );
+		idsToIgnore.add( "_0-0-0.22843" );
+		idsToIgnore.add( "_0-0-0.22845" );
+		idsToIgnore.add( "_0-0-0.22847" );*/
+
+
 		for (final String pGroupId : pGroupList)
 		{
 			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
@@ -92,13 +124,26 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 					continue;
 				}
 
+				boolean ignore = false;
+
+				for ( final String toIgnore : idsToIgnore )
+					if ( pId.contains( toIgnore ) || qId.contains( toIgnore ) )
+						ignore = true;
+
+				if ( ignore )
+					continue;
+
+				//if ( pId.contains("_0-0-1.13172") || pId.contains("_0-0-1.13381") || qId.contains("_0-0-1.13172") || qId.contains("_0-0-1.13381") )
+				//	continue;
+
 				/*
-				if ( pId.contains("_0-0-1") || pId.contains("_0-0-2")|| pId.contains("_0-0-3") || qId.contains("_0-0-1") || qId.contains("_0-0-2") || qId.contains("_0-0-3") )
+				if ( pId.contains("_0-0-0") || pId.contains("_0-0-2")|| pId.contains("_0-0-3") || qId.contains("_0-0-0") || qId.contains("_0-0-2") || qId.contains("_0-0-3") )
 				{
 					LOG.info("run: ignoring pair ({}, {}) due to manual filtering", pId, qId );
 					continue;
 				}
 				*/
+				
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p, q;
 
 				if ( !idToTileMap.containsKey( pId ) )
@@ -421,14 +466,14 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		new ImageJ();
 
 		// visualize new result
-		ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
-		imp1.setTitle( "final" );
+		//ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
+		//imp1.setTitle( "final" );
 
-		ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
-		imp2.setTitle( "realign" );
+		//ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
+		//imp2.setTitle( "realign" );
 
-		ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
-		imp3.setTitle( "previous" );
+		//ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
+		//imp3.setTitle( "previous" );
 
 		SimpleMultiThreading.threadHaltUnClean();
 
@@ -458,19 +503,18 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec15",
-
-                            "--stack", "v2_patch_msolve_fine",
-                            "--targetStack", "v2_patch_msolve_fine_trakem",
+                            "--project", "Sec09",
+                            "--stack", "v1_py_solve_03_affine_e10_e10_sp2",
+                            "--targetStack", "v1_py_solve_03_affine_e10_e10_sp3",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "27140",//"24700",
-                            "--maxZ", "27340",//"26650",
+                            "--minZ", "28800",//"24700",
+                            "--maxZ", "29100",//"26650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "Sec15_patch"
+                            "--matchCollection", "gd_test_Sec09"
                     };
                     parameters.parse(testArgs);
                 } else {

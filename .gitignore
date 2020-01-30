@@ -3,6 +3,7 @@ pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.next
 release.properties
+tmp/
 
 # Eclipse project settings
 .classpath
