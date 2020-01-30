@@ -59,7 +59,7 @@ public class ByteRenderer {
     }
 
     /**
-     * Converts the processor to a short (16-bit) image.
+     * Converts the processor to a byte (8-bit) image.
      *
      * @param  renderedImageProcessorWithMasks  processor to convert.
      *
