@@ -43,8 +43,8 @@ import net.imglib2.util.Pair;
 public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
 {
 	// how many layers on the top and bottom we use as overlap to compute the rigid models that "blend" the re-solved stack back in 
-	protected int overlapTop = 15;//50;
-	protected int overlapBottom = 15;//50;
+	protected int overlapTop = 25;//50;
+	protected int overlapBottom = 25;//50;
 
 	public PartialSolveBoxed(final Parameters parameters) throws IOException
 	{
@@ -102,6 +102,11 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		idsToIgnore.add( "_0-0-0.22845" );
 		idsToIgnore.add( "_0-0-0.22847" );*/
 
+		HashMap< Integer, Integer > zLimits = new HashMap<>();
+		zLimits.put( 32165, 1 );
+		zLimits.put( 32166, 1 );
+		zLimits.put( 32167, 1 );
+		zLimits.put( 32168, 1 );
 
 		for (final String pGroupId : pGroupList)
 		{
@@ -136,7 +141,35 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				//if ( pId.contains("_0-0-1.13172") || pId.contains("_0-0-1.13381") || qId.contains("_0-0-1.13172") || qId.contains("_0-0-1.13381") )
 				//	continue;
 
+				if ( zLimits.containsKey( (int)Math.round( pTileSpec.getZ() ) ) )
+				{
+					final int limit = zLimits.get( (int)Math.round( pTileSpec.getZ() ) );
 
+					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > limit )
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+
+				if ( ignore )
+					continue;
+
+				if ( zLimits.containsKey( (int)Math.round( qTileSpec.getZ() ) ) )
+				{
+					final int limit = zLimits.get( (int)Math.round( qTileSpec.getZ() ) );
+
+					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > limit )
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+
+				if ( ignore )
+					continue;
+
+				/*
 				if ( pTileSpec.getZ() == 15739 || pTileSpec.getZ() == 15740 || pTileSpec.getZ() == 15741 )
 				{
 					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 1 )
@@ -151,7 +184,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 				if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 3 )
 					continue;
-
+				*/
 				/*
 				if ( pId.contains("_0-0-0") || pId.contains("_0-0-2")|| pId.contains("_0-0-3") || qId.contains("_0-0-0") || qId.contains("_0-0-2") || qId.contains("_0-0-3") )
 				{
@@ -484,14 +517,14 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		new ImageJ();
 
 		// visualize new result
-		//ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
-		//imp1.setTitle( "final" );
+		ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
+		imp1.setTitle( "final" );
 
 		//ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
 		//imp2.setTitle( "realign" );
 
-		//ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
-		//imp3.setTitle( "previous" );
+		ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
+		imp3.setTitle( "previous" );
 
 		SimpleMultiThreading.threadHaltUnClean();
 
@@ -522,12 +555,12 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
                             "--project", "Sec16",
-                            "--stack", "v3_patch_msolve_fine_trakem2",
-                            "--targetStack", "v3_patch_msolve_fine_trakem2_15739",
+                            "--stack", "v3_patch_msolve_fine_trakem2_15739",
+                            "--targetStack", "v3_patch_msolve_fine_trakem2_15739_32166",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "15719",//"24700",
-                            "--maxZ", "15759",//"26650",
+                            "--minZ", "32136",//"24700",
+                            "--maxZ", "32196",//"26650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
