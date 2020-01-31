@@ -103,10 +103,10 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		idsToIgnore.add( "_0-0-0.22847" );*/
 
 		HashMap< Integer, Integer > zLimits = new HashMap<>();
-		zLimits.put( 18585, 1 );
-		zLimits.put( 18586, 1 );
-		zLimits.put( 18587, 1 );
-		zLimits.put( 18588, 1 );
+		zLimits.put( 22102, 1 );
+		zLimits.put( 22103, 1 );
+		zLimits.put( 22104, 1 );
+		zLimits.put( 22105, 1 );
 
 		for (final String pGroupId : pGroupList)
 		{
@@ -554,18 +554,18 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec12",
-                            "--stack", "v2_patch_msolve_fine_clipped_sp2_8777_3366_14384",
-                            "--targetStack", "v2_patch_msolve_fine_clipped_sp2_8777_3366_14384_18586",
+                            "--project", "Sec08",
+                            "--stack", "v2_py_solve_03_affine_e10_e10_trakem2",
+                            "--targetStack", "v2_py_solve_03_affine_e10_e10_trakem2_22103",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "18556",//"24700",
-                            "--maxZ", "18626",//"26650",
+                            "--minZ", "22073",//"24700",
+                            "--maxZ", "22133",//"26650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "Sec12_patch_matt"
+                            "--matchCollection", "Sec08_patch_matt"
                     };
                     parameters.parse(testArgs);
                 } else {
