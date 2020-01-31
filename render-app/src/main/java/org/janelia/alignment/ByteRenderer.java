@@ -1,6 +1,6 @@
 package org.janelia.alignment;
 
-import ij.process.ShortProcessor;
+import ij.process.ByteProcessor;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
@@ -12,11 +12,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Render a set of image tiles as a short (16-bit) image.
+ * Render a set of image tiles as a byte (8-bit) image.
  *
  * @author Eric Trautman
  */
-public class ShortRenderer {
+public class ByteRenderer {
 
     /**
      * Constructs a renderer instance and renders to the specified image.
@@ -59,32 +59,32 @@ public class ShortRenderer {
     }
 
     /**
-     * Converts the processor to a short (16-bit) image.
+     * Converts the processor to a byte (8-bit) image.
      *
      * @param  renderedImageProcessorWithMasks  processor to convert.
      *
      * @return the converted image.
      */
-    public static BufferedImage targetToShortImage(final ImageProcessorWithMasks renderedImageProcessorWithMasks) {
-        // convert to 16-bit gray-scale
-        final ShortProcessor sp = renderedImageProcessorWithMasks.ip.convertToShortProcessor();
+    public static BufferedImage targetToByteImage(final ImageProcessorWithMasks renderedImageProcessorWithMasks) {
+        // convert to 8-bit gray-scale
+        final ByteProcessor bp = renderedImageProcessorWithMasks.ip.convertToByteProcessor();
 
-        final BufferedImage image = new BufferedImage(sp.getWidth(), sp.getHeight(), BufferedImage.TYPE_USHORT_GRAY);
+        final BufferedImage image = new BufferedImage(bp.getWidth(), bp.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
         final WritableRaster raster = image.getRaster();
-        raster.setDataElements(0, 0, sp.getWidth(), sp.getHeight(), sp.getPixels());
+        raster.setDataElements(0, 0, bp.getWidth(), bp.getHeight(), bp.getPixels());
 
         return image;
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(ShortRenderer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ByteRenderer.class);
 
     private static final Renderer.ImageOpener OPENER = (renderParameters) -> {
         final double derivedScale = renderParameters.getScale();
         final int targetWidth = (int) (derivedScale * renderParameters.getWidth());
         final int targetHeight = (int) (derivedScale * renderParameters.getHeight());
-        return new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_USHORT_GRAY);
+        return new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_BYTE_GRAY);
     };
 
     private static final Renderer.ProcessorWithMasksConverter CONVERTER =
-            (renderParameters, renderedImageProcessorWithMasks) -> targetToShortImage(renderedImageProcessorWithMasks);
+            (renderParameters, renderedImageProcessorWithMasks) -> targetToByteImage(renderedImageProcessorWithMasks);
 }

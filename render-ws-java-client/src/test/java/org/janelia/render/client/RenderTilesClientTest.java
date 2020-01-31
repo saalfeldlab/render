@@ -4,15 +4,15 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
 /**
- * Tests the {@link RenderSectionClient} class.
+ * Tests the {@link RenderTilesClient} class.
  *
  * @author Eric Trautman
  */
-public class RenderSectionClientTest {
+public class RenderTilesClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
-        CommandLineParameters.parseHelp(new RenderSectionClient.Parameters());
+        CommandLineParameters.parseHelp(new RenderTilesClient.Parameters());
     }
 
     // --------------------------------------------------------------
@@ -26,21 +26,18 @@ public class RenderSectionClientTest {
                     "--owner", "Z1217_19m",
                     "--project", "Sec06",
                     "--stack", "v2_patch_msolve_fine",
-                    "--rootDirectory", "/Users/trautmane/Desktop/scapes",
-                    "--scale", "1.0",
-                    "--maxIntensity", "65535",
-                    "--doFilter", "false",
-                    "--fillWithNoise", "false",
-                    "--useStackBounds",
-                    "--renderTileLabels",
-                    "2309", "2310"
+                    "--rootDirectory", "/Users/trautmane/Desktop/tiles",
+                    "--z", "2309",
+                    "2310",
+                    "--renderMaskOnly"
             };
 
-            RenderSectionClient.main(testArgs);
-
+            RenderTilesClient.main(testArgs);
+            
         } catch (final Throwable t) {
             t.printStackTrace();
         }
     }
+
 
 }
