@@ -43,8 +43,8 @@ import net.imglib2.util.Pair;
 public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
 {
 	// how many layers on the top and bottom we use as overlap to compute the rigid models that "blend" the re-solved stack back in 
-	protected int overlapTop = 50;
-	protected int overlapBottom = 50;
+	protected int overlapTop = 15;//50;
+	protected int overlapBottom = 15;//50;
 
 	public PartialSolveBoxed(final Parameters parameters) throws IOException
 	{
@@ -135,6 +135,22 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 				//if ( pId.contains("_0-0-1.13172") || pId.contains("_0-0-1.13381") || qId.contains("_0-0-1.13172") || qId.contains("_0-0-1.13381") )
 				//	continue;
+
+
+				if ( pTileSpec.getZ() == 15739 || pTileSpec.getZ() == 15740 || pTileSpec.getZ() == 15741 )
+				{
+					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 1 )
+						continue;
+				}
+
+				if ( qTileSpec.getZ() == 15739 || qTileSpec.getZ() == 15740 || qTileSpec.getZ() == 15741 )
+				{
+					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 1 )
+						continue;
+				}
+
+				if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 3 )
+					continue;
 
 				/*
 				if ( pId.contains("_0-0-0") || pId.contains("_0-0-2")|| pId.contains("_0-0-3") || qId.contains("_0-0-0") || qId.contains("_0-0-2") || qId.contains("_0-0-3") )
@@ -343,6 +359,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 		LOG.info( "Optimizing ... " );
 
+		//tileConfigBlocks.preAlign();
+		
 		final float damp = 1.0f;
 		TileUtil.optimizeConcurrently(
 				new ErrorStatistic(parameters.maxPlateauWidth + 1 ),
@@ -503,18 +521,18 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec09",
-                            "--stack", "v1_py_solve_03_affine_e10_e10_sp2",
-                            "--targetStack", "v1_py_solve_03_affine_e10_e10_sp3",
+                            "--project", "Sec16",
+                            "--stack", "v3_patch_msolve_fine_trakem2",
+                            "--targetStack", "v3_patch_msolve_fine_trakem2_15739",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "28800",//"24700",
-                            "--maxZ", "29100",//"26650",
+                            "--minZ", "15719",//"24700",
+                            "--maxZ", "15759",//"26650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "gd_test_Sec09"
+                            "--matchCollection", "Sec16_patch"
                     };
                     parameters.parse(testArgs);
                 } else {
