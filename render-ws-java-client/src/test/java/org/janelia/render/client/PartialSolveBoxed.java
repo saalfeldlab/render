@@ -103,13 +103,11 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		idsToIgnore.add( "_0-0-0.22847" );*/
 
 		HashMap< Integer, Integer > zLimits = new HashMap<>();
-		zLimits.put( 15756, 1 );
-		zLimits.put( 15757, 1 );
-		zLimits.put( 15758, 2 );
-		zLimits.put( 15759, 1 );
-		zLimits.put( 15760, 2 );
-		zLimits.put( 15761, 1 );
-		zLimits.put( 15762, 1 );
+		//zLimits.put( 32168, 1 );
+		//zLimits.put( 32169, 1 );
+
+		int count32168 = 0;
+		int count32169 = 0;
 
 		for (final String pGroupId : pGroupList)
 		{
@@ -144,9 +142,12 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				//if ( pId.contains("_0-0-1.13172") || pId.contains("_0-0-1.13381") || qId.contains("_0-0-1.13172") || qId.contains("_0-0-1.13381") )
 				//	continue;
 
-				if ( zLimits.containsKey( (int)Math.round( pTileSpec.getZ() ) ) )
+				final int pZ = (int)Math.round( pTileSpec.getZ() );
+				final int qZ = (int)Math.round( qTileSpec.getZ() );
+
+				if ( zLimits.containsKey( pZ ) )
 				{
-					final int limit = zLimits.get( (int)Math.round( pTileSpec.getZ() ) );
+					final int limit = zLimits.get( pZ );
 
 					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > limit )
 					{
@@ -158,9 +159,9 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				if ( ignore )
 					continue;
 
-				if ( zLimits.containsKey( (int)Math.round( qTileSpec.getZ() ) ) )
+				if ( zLimits.containsKey( qZ ) )
 				{
-					final int limit = zLimits.get( (int)Math.round( qTileSpec.getZ() ) );
+					final int limit = zLimits.get( qZ );
 
 					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > limit )
 					{
@@ -171,6 +172,75 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 				if ( ignore )
 					continue;
+
+				if ( pZ != qZ && ( pZ == 32168 || qZ == 32168 ) )
+				{
+					// the only layer we connect to
+					if ( pZ == 32167 || qZ == 32167 )
+					{
+						if ( pZ == 32168 && pId.contains( "_0-0-0." ) ||  qZ == 32168 && qId.contains( "_0-0-0." ) )
+						{
+							if ( count32168 == 0 )
+							{
+								++count32168;
+								System.out.println( "KEEPING: " + pId + " <> " + qId );
+							}
+							else
+							{
+								System.out.println( "IGNORING: " + pId + " <> " + qId );
+								ignore = true;
+							}
+						}
+						else
+						{
+							System.out.println( "IGNORING: " + pId + " <> " + qId );
+							ignore = true;
+						}
+					}
+					else
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+
+				if ( ignore )
+					continue;
+
+				if ( pZ != qZ && ( pZ == 32169 || qZ == 32169 ) )
+				{
+					// the only layer we connect to on the top
+					if ( pZ == 32167 || qZ == 32167 )
+					{
+						if ( pZ == 32169 && pId.contains( "_0-0-0." ) ||  qZ == 32169 && qId.contains( "_0-0-0." ) )
+						{
+							if ( count32169 == 0 )
+							{
+								++count32169;
+								System.out.println( "KEEPING: " + pId + " <> " + qId );
+							}
+							else
+							{
+								System.out.println( "IGNORING: " + pId + " <> " + qId );
+								ignore = true;
+							}
+						}
+						else
+						{
+							System.out.println( "IGNORING: " + pId + " <> " + qId );
+							ignore = true;
+						}
+					}
+					else if ( pZ < 32169 || qZ < 32169 )
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+
+				if ( ignore )
+					continue;
+
 
 				/*
 				if ( pTileSpec.getZ() == 15739 || pTileSpec.getZ() == 15740 || pTileSpec.getZ() == 15741 )
@@ -240,6 +310,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			}
 		}
 
+		System.out.println( "count32168: " + count32168 );
+		System.out.println( "count32169: " + count32169 );
 		LOG.info("top block #tiles " + topTileIds.size());
 		LOG.info("bottom block #tiles " + bottomTileIds.size());
 
@@ -557,18 +629,18 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec08",
-                            "--stack", "v2_py_solve_03_affine_e10_e10_trakem2_22103",
-                            "--targetStack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758",
+                            "--project", "Sec16",
+                            "--stack", "v3_patch_msolve_fine_trakem2",
+                            "--targetStack", "v3_patch_msolve_fine_trakem2_32166new",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "15728",//"24700",
-                            "--maxZ", "15788",//"26650",
+                            "--minZ", "32128",//"24700",
+                            "--maxZ", "32208",//"26650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "Sec08_patch_matt"
+                            "--matchCollection", "Sec16_patch"
                     };
                     parameters.parse(testArgs);
                 } else {
