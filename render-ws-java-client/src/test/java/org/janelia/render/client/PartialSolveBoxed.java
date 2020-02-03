@@ -106,8 +106,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		//zLimits.put( 32168, 1 );
 		//zLimits.put( 32169, 1 );
 
-		int count32168 = 0;
-		int count32169 = 0;
+		int count15741 = 0;
+		int count15742 = 0;
 
 		for (final String pGroupId : pGroupList)
 		{
@@ -173,16 +173,16 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				if ( ignore )
 					continue;
 
-				if ( pZ != qZ && ( pZ == 32168 || qZ == 32168 ) )
+				if ( pZ != qZ && ( pZ == 15741 || qZ == 15741 ) )
 				{
 					// the only layer we connect to
-					if ( pZ == 32167 || qZ == 32167 )
+					if ( pZ == 15740 || qZ == 15740 )
 					{
-						if ( pZ == 32168 && pId.contains( "_0-0-0." ) ||  qZ == 32168 && qId.contains( "_0-0-0." ) )
+						if ( pZ == 15741 && pId.contains( "_0-0-2." ) ||  qZ == 15741 && qId.contains( "_0-0-2." ) )
 						{
-							if ( count32168 == 0 )
+							if ( count15741 == 0 )
 							{
-								++count32168;
+								++count15741;
 								System.out.println( "KEEPING: " + pId + " <> " + qId );
 							}
 							else
@@ -207,16 +207,16 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				if ( ignore )
 					continue;
 
-				if ( pZ != qZ && ( pZ == 32169 || qZ == 32169 ) )
+				if ( pZ != qZ && ( pZ == 15742 || qZ == 15742 ) )
 				{
 					// the only layer we connect to on the top
-					if ( pZ == 32167 || qZ == 32167 )
+					if ( pZ == 15740 || qZ == 15740 )
 					{
-						if ( pZ == 32169 && pId.contains( "_0-0-0." ) ||  qZ == 32169 && qId.contains( "_0-0-0." ) )
+						if ( pZ == 15742 && pId.contains( "_0-0-2." ) ||  qZ == 15742 && qId.contains( "_0-0-2." ) )
 						{
-							if ( count32169 == 0 )
+							if ( count15742 == 0 )
 							{
-								++count32169;
+								++count15742;
 								System.out.println( "KEEPING: " + pId + " <> " + qId );
 							}
 							else
@@ -231,7 +231,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 							ignore = true;
 						}
 					}
-					else if ( pZ < 32169 || qZ < 32169 )
+					else if ( pZ < 15742 || qZ < 15742 )
 					{
 						System.out.println( "IGNORING: " + pId + " <> " + qId );
 						ignore = true;
@@ -310,8 +310,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			}
 		}
 
-		System.out.println( "count32168: " + count32168 );
-		System.out.println( "count32169: " + count32169 );
+		System.out.println( "count15741: " + count15741 );
+		System.out.println( "count15742: " + count15742 );
 		LOG.info("top block #tiles " + topTileIds.size());
 		LOG.info("bottom block #tiles " + bottomTileIds.size());
 
@@ -630,12 +630,12 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
                             "--project", "Sec16",
-                            "--stack", "v3_patch_msolve_fine_trakem2",
-                            "--targetStack", "v3_patch_msolve_fine_trakem2_32166new",
+                            "--stack", "v3_patch_msolve_fine_trakem2_32166new",
+                            "--targetStack", "v3_patch_msolve_fine_trakem2_32166new_15740new",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "32128",//"24700",
-                            "--maxZ", "32208",//"26650",
+                            "--minZ", "15700",//"24700",
+                            "--maxZ", "15780",//"26650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
