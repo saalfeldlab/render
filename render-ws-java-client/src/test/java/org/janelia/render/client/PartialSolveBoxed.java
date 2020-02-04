@@ -106,8 +106,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		//zLimits.put( 32168, 1 );
 		//zLimits.put( 32169, 1 );
 
-		int count15741 = 0;
-		int count15742 = 0;
+		int count31250 = 0;
 
 		for (final String pGroupId : pGroupList)
 		{
@@ -173,16 +172,17 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				if ( ignore )
 					continue;
 
-				if ( pZ != qZ && ( pZ == 15741 || qZ == 15741 ) )
+				if ( pZ != qZ && ( pZ == 31250 || qZ == 31250 ) )
 				{
 					// the only layer we connect to
-					if ( pZ == 15740 || qZ == 15740 )
+					if ( pZ == 31249 || qZ == 31249 )
 					{
-						if ( pZ == 15741 && pId.contains( "_0-0-2." ) ||  qZ == 15741 && qId.contains( "_0-0-2." ) )
+						// want to connect to the first tile of 31249
+						if ( pZ == 31249 && pId.contains( "_0-0-0." ) ||  qZ == 31249 && qId.contains( "_0-0-0." ) )
 						{
-							if ( count15741 == 0 )
+							if ( count31250 == 0 )
 							{
-								++count15741;
+								++count31250;
 								System.out.println( "KEEPING: " + pId + " <> " + qId );
 							}
 							else
@@ -207,6 +207,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				if ( ignore )
 					continue;
 
+				/*
 				if ( pZ != qZ && ( pZ == 15742 || qZ == 15742 ) )
 				{
 					// the only layer we connect to on the top
@@ -240,7 +241,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 				if ( ignore )
 					continue;
-
+				*/
 
 				/*
 				if ( pTileSpec.getZ() == 15739 || pTileSpec.getZ() == 15740 || pTileSpec.getZ() == 15741 )
@@ -310,8 +311,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			}
 		}
 
-		System.out.println( "count15741: " + count15741 );
-		System.out.println( "count15742: " + count15742 );
+		System.out.println( "count15741: " + count31250 );
+		//System.out.println( "count15742: " + count15742 );
 		LOG.info("top block #tiles " + topTileIds.size());
 		LOG.info("bottom block #tiles " + bottomTileIds.size());
 
@@ -629,18 +630,18 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec16",
-                            "--stack", "v3_patch_msolve_fine_trakem2_32166new",
-                            "--targetStack", "v3_patch_msolve_fine_trakem2_32166new_15740new",
+                            "--project", "Sec17",
+                            "--stack", "v3_patch_msolve_fine_clipped",
+                            //"--targetStack", "v3_patch_msolve_fine_clipped_31250",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "15700",//"24700",
-                            "--maxZ", "15780",//"26650",
+                            "--minZ", "30900",//"24700",
+                            "--maxZ", "31429",//"26650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "Sec16_patch"
+                            "--matchCollection", "Sec17_patch"
                     };
                     parameters.parse(testArgs);
                 } else {
