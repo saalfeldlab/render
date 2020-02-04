@@ -106,7 +106,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		//zLimits.put( 32168, 1 );
 		//zLimits.put( 32169, 1 );
 
-		int count31250 = 0;
+		int count27238 = 0;
 
 		for (final String pGroupId : pGroupList)
 		{
@@ -172,17 +172,17 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				if ( ignore )
 					continue;
 
-				if ( pZ != qZ && ( pZ == 31250 || qZ == 31250 ) )
+				if ( pZ != qZ && ( pZ == 27238 || qZ == 27238 ) )
 				{
 					// the only layer we connect to
-					if ( pZ == 31249 || qZ == 31249 )
+					if ( pZ == 27237 || qZ == 27237 )
 					{
 						// want to connect to the first tile of 31249
-						if ( pZ == 31249 && pId.contains( "_0-0-0." ) ||  qZ == 31249 && qId.contains( "_0-0-0." ) )
+						if ( pZ == 27238 && pId.contains( "_0-0-3." ) ||  qZ == 27238 && qId.contains( "_0-0-3." ) )
 						{
-							if ( count31250 == 0 )
+							if ( count27238 == 0 )
 							{
-								++count31250;
+								++count27238;
 								System.out.println( "KEEPING: " + pId + " <> " + qId );
 							}
 							else
@@ -311,7 +311,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			}
 		}
 
-		System.out.println( "count15741: " + count31250 );
+		System.out.println( "count27238: " + count27238 );
 		//System.out.println( "count15742: " + count15742 );
 		LOG.info("top block #tiles " + topTileIds.size());
 		LOG.info("bottom block #tiles " + bottomTileIds.size());
@@ -630,18 +630,18 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec17",
-                            "--stack", "v3_patch_msolve_fine_clipped",
-                            "--targetStack", "v3_patch_msolve_fine_clipped_31250",
+                            "--project", "Sec15",
+                            "--stack", "v2_patch_msolve_fine_trakem",
+                            "--targetStack", "v2_patch_msolve_fine_trakem_27238",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "30900",//"24700",
-                            "--maxZ", "31429",//"26650",
+                            "--minZ", "27198",//"24700",
+                            "--maxZ", "27278",//"26650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "Sec17_patch"
+                            "--matchCollection", "Sec15_patch"
                     };
                     parameters.parse(testArgs);
                 } else {
