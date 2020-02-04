@@ -178,7 +178,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 					if ( pZ == 31249 || qZ == 31249 )
 					{
 						// want to connect to the first tile of 31249
-						if ( pZ == 31249 && pId.contains( "_0-0-0." ) ||  qZ == 31249 && qId.contains( "_0-0-0." ) )
+						if ( pZ == 31249 && pId.contains( "_0-0-1." ) ||  qZ == 31249 && qId.contains( "_0-0-1." ) )
 						{
 							if ( count31250 == 0 )
 							{
@@ -313,6 +313,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 		System.out.println( "count15741: " + count31250 );
 		//System.out.println( "count15742: " + count15742 );
+		//System.exit( 0 );
 		LOG.info("top block #tiles " + topTileIds.size());
 		LOG.info("bottom block #tiles " + bottomTileIds.size());
 
