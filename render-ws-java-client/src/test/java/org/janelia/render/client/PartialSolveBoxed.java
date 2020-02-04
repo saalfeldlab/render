@@ -632,7 +632,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                             "--owner", "Z1217_19m",
                             "--project", "Sec17",
                             "--stack", "v3_patch_msolve_fine_clipped",
-                            //"--targetStack", "v3_patch_msolve_fine_clipped_31250",
+                            "--targetStack", "v3_patch_msolve_fine_clipped_31250",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
                             "--minZ", "30900",//"24700",
