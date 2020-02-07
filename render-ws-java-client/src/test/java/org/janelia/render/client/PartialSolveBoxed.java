@@ -71,46 +71,36 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		HashSet< String > topTileIds = new HashSet<>();
 		HashSet< String > bottomTileIds = new HashSet<>();
 
-		//	18-10-29_123951_0-0-2.22801.0
-		//	18-10-29_163336_0-0-0.22928.0
-		//	18-10-29_171036_0-0-0.22934.0
-		//	18-10-29_171628_0-0-0.22939.0
-		//	18-10-29_172440_0-0-0.22946.0
-		//	18-10-29_140751_0-0-0.22876.0
-		//	18-10-29_141122_0-0-0.22879.0
-		
-		//  18-10-29_131720_0-0-2.22833.0
-		//  18-10-29_132202_0-0-0.22837.0
-		//	18-10-29_132534_0-0-1.22840.0
-		//	18-10-29_132906_0-0-0.22843.0
-		//	18-10-29_133127_0-0-0.22845.0
-		//	18-10-29_133348_0-0-0.22847.0
-
 		ArrayList< String > idsToIgnore = new ArrayList<>();
-		/*idsToIgnore.add( "_0-0-2.22801" );
-		idsToIgnore.add( "_0-0-0.22928" );
-		idsToIgnore.add( "_0-0-0.22934" );
-		idsToIgnore.add( "_0-0-0.22939" );
-		idsToIgnore.add( "_0-0-0.22946" );
-		idsToIgnore.add( "_0-0-0.22876" );
-		idsToIgnore.add( "_0-0-0.22879" );
+		//idsToIgnore.add( "_0-0-2.22801" );
 
-		idsToIgnore.add( "_0-0-2.22833" );
-		idsToIgnore.add( "_0-0-0.22837" );
-		idsToIgnore.add( "_0-0-1.22840" );
-		idsToIgnore.add( "_0-0-0.22843" );
-		idsToIgnore.add( "_0-0-0.22845" );
-		idsToIgnore.add( "_0-0-0.22847" );*/
+		final ArrayList< String > connectedTiles = new ArrayList<>();
+
+		/*
+		It's a little more complicated there
+		z-15759 is corrupted, which is fine, we just copy over
+		Then there's jumps at 15758-15760, 15762-15763, 15763-15764, 15764-15765, 15769-15770
+		Ideally, these clusters hang from each other. We replace 15764 since it's a single layer. And then warp each cluster to it's next. That's a few warps though
+		it's basically the same problem as in Sec09
+		except smaller
+
+		What could be best is:
+		--We leave out (or let hang): 15759, 15763,15764
+		Connect layers: 15758-15760, 15762-15765, 15769-15770
+		Keeping connections in the following sets {15760,15761,15762}, {15765,15766,15767,15768,15769}, {15770+}
+		Otherwise we're losing a fair bit of data
+		10 layers is a noticeable amount
+		*/
 
 		HashMap< Integer, Integer > zLimits = new HashMap<>();
-		zLimits.put( 4854, 3 );
-		zLimits.put( 4855, 4 );
-		zLimits.put( 4856, 5 );
-		//zLimits.put( 32169, 1 );
+		//zLimits.put( 15769, 1 );
 
-		int count4851 = 0;
-		int count4852 = 0;
-		int count4853 = 0;
+		int count15758 = 0;
+		int count15759 = 0;
+		int count15762 = 0;
+		int count15763 = 0;
+		int count15764 = 0;
+		int count15769 = 0;
 
 		for (final String pGroupId : pGroupList)
 		{
@@ -176,17 +166,18 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				if ( ignore )
 					continue;
 
-				if ( pZ != qZ && ( pZ == 4851 || qZ == 4851 ) )
+				// We leave out (or let hang): 15759
+				if ( pZ != qZ && ( pZ == 15759 || qZ == 15759 ) )
 				{
 					// the only layer we connect to
-					if ( pZ == 4850 || qZ == 4850 )
+					if ( pZ == 15758 || qZ == 15758 )
 					{
-						if ( pZ == 4851 && pId.contains( "_0-0-1." ) ||  qZ == 4851 && qId.contains( "_0-0-1." ) )
+						if ( pZ == 15759 && pId.contains( "_0-0-2." ) ||  qZ == 15759 && qId.contains( "_0-0-2." ) )
 						{
-							if ( count4851 == 0 )
+							if ( count15759 == 0 )
 							{
-								++count4851;
-								System.out.println( "KEEPING: " + pId + " <> " + qId );
+								++count15759;
+								System.out.println( "KEEPING : " + pId + " <> " + qId );
 							}
 							else
 							{
@@ -210,17 +201,18 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				if ( ignore )
 					continue;
 
-				if ( pZ != qZ && ( pZ == 4852 || qZ == 4852 ) )
+				// leave 15763 hanging
+				if ( pZ != qZ && ( pZ == 15763 || qZ == 15763 ) )
 				{
-					// the only layer we connect to on the top
-					if ( pZ == 4850 || qZ == 4850 )
+					// the only layer we connect to
+					if ( pZ == 15762 || qZ == 15762 )
 					{
-						if ( pZ == 4852 && pId.contains( "_0-0-1." ) ||  qZ == 4852 && qId.contains( "_0-0-1." ) )
+						if ( pZ == 15763 && pId.contains( "_0-0-2." ) ||  qZ == 15763 && qId.contains( "_0-0-2." ) )
 						{
-							if ( count4852 == 0 )
+							if ( count15763 == 0 )
 							{
-								++count4852;
-								System.out.println( "KEEPING: " + pId + " <> " + qId );
+								++count15763;
+								System.out.println( "KEEPING : " + pId + " <> " + qId );
 							}
 							else
 							{
@@ -234,7 +226,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 							ignore = true;
 						}
 					}
-					else //if ( pZ < 15742 || qZ < 15742 )
+					else
 					{
 						System.out.println( "IGNORING: " + pId + " <> " + qId );
 						ignore = true;
@@ -244,17 +236,18 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				if ( ignore )
 					continue;
 
-				if ( pZ != qZ && ( pZ == 4853 || qZ == 4853 ) )
+				// leave 15764 hanging
+				if ( pZ != qZ && ( pZ == 15764 || qZ == 15764 ) )
 				{
-					// the only layer we connect to on the top
-					if ( pZ == 4850 || qZ == 4850 )
+					// the only layer we connect to
+					if ( pZ == 15762 || qZ == 15762 )
 					{
-						if ( pZ == 4853 && pId.contains( "_0-0-1." ) ||  qZ == 4853 && qId.contains( "_0-0-1." ) )
+						if ( pZ == 15764 && pId.contains( "_0-0-2." ) ||  qZ == 15764 && qId.contains( "_0-0-2." ) )
 						{
-							if ( count4853 == 0 )
+							if ( count15764 == 0 )
 							{
-								++count4853;
-								System.out.println( "KEEPING: " + pId + " <> " + qId );
+								++count15764;
+								System.out.println( "KEEPING : " + pId + " <> " + qId );
 							}
 							else
 							{
@@ -268,7 +261,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 							ignore = true;
 						}
 					}
-					else if ( pZ < 4853 || qZ < 4853 )
+					else
 					{
 						System.out.println( "IGNORING: " + pId + " <> " + qId );
 						ignore = true;
@@ -278,31 +271,264 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				if ( ignore )
 					continue;
 
+				// We leave out (or let hang): 15759, 15763,15764
+				// Connect layers: 15758-15760, 15762-15765, 15769-15770
+				// Keeping connections in the following sets {15760,15761,15762}, {15765,15766,15767,15768,15769}, {15770+} and leave 15763,15764 hanging and copy over
 
-				/*
-				if ( pTileSpec.getZ() == 15739 || pTileSpec.getZ() == 15740 || pTileSpec.getZ() == 15741 )
+				// Connect layers: 15758-15760
+				if ( pZ != qZ && ( pZ == 15758 || qZ == 15758 ) )
 				{
-					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 1 )
-						continue;
+					// the only layer we connect to on the bottom
+					if ( pZ == 15760 || qZ == 15760 )
+					{
+						System.out.println( "KEEPING : " + pId + " <> " + qId );
+					}
+					else if ( pZ < 15758 || qZ < 15758 )
+					{
+						System.out.println( "KEEPING : " + pId + " <> " + qId );
+					}
+					else
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
 				}
-
-				if ( qTileSpec.getZ() == 15739 || qTileSpec.getZ() == 15740 || qTileSpec.getZ() == 15741 )
-				{
-					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 1 )
-						continue;
-				}
-
-				if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 3 )
+				if ( ignore )
 					continue;
-				*/
-				/*
-				if ( pId.contains("_0-0-0") || pId.contains("_0-0-2")|| pId.contains("_0-0-3") || qId.contains("_0-0-0") || qId.contains("_0-0-2") || qId.contains("_0-0-3") )
+
+				// Keeping connections in the following sets {15760,15761,15762}
+				if ( pZ != qZ && ( pZ == 15760 || qZ == 15760 ) )
 				{
-					LOG.info("run: ignoring pair ({}, {}) due to manual filtering", pId, qId );
-					continue;
+					// the only layer we connect to on the bottom
+					if ( pZ == 15758 || qZ == 15758 || pZ == 15761 || qZ == 15761 || pZ == 15762 || qZ == 15762 )
+					{
+						System.out.println( "KEEPING : " + pId + " <> " + qId );
+					}
+					else
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
 				}
-				*/
-				
+				if ( ignore )
+					continue;
+				if ( pZ != qZ && ( pZ == 15761 || qZ == 15761 ) )
+				{
+					// the only layer we connect to on the bottom
+					if ( pZ == 15760 || qZ == 15760 || pZ == 15762 || qZ == 15762 )
+					{
+						System.out.println( "KEEPING : " + pId + " <> " + qId );
+					}
+					else
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+				if ( ignore )
+					continue;
+
+				// Connect layers: 15762-15765
+				if ( pZ != qZ && ( pZ == 15762 || qZ == 15762 ) && pZ != 15763 && qZ != 15763 && pZ != 15764 && qZ != 15764 )
+				{
+					// the only layer we connect to on the bottom
+					if ( pZ == 15760 || qZ == 15760 || pZ == 15761 || qZ == 15761 || pZ == 15765 || qZ == 15765 )
+					{
+						System.out.println( "KEEPING : " + pId + " <> " + qId );
+					}
+					else
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+
+				if ( ignore )
+					continue;
+
+				// connect {15765,15766,15767,15768,15769}
+				if ( pZ != qZ && ( pZ == 15765 || qZ == 15765 ) )
+				{
+					// the only layer we connect to on the bottom
+					if ( pZ == 15762 || qZ == 15762 || (pZ > 15765 && pZ <= 15769) || (qZ > 15765 && qZ <= 15769 ) )
+					{
+						System.out.println( "KEEPING : " + pId + " <> " + qId );
+					}
+					else
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+				if ( ignore )
+					continue;
+				if ( pZ != qZ && ( pZ == 15766 || qZ == 15766 ) )
+				{
+					// the only layer we connect to on the bottom
+					if ( (pZ >= 15765 && pZ != 15766 && pZ <= 15769) || (qZ >= 15765 && qZ != 15766 && qZ <= 15769 ) )
+					{
+						System.out.println( "KEEPING : " + pId + " <> " + qId );
+					}
+					else
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+				if ( ignore )
+					continue;
+				if ( pZ != qZ && ( pZ == 15767 || qZ == 15767 ) )
+				{
+					// the only layer we connect to on the bottom
+					if ( (pZ >= 15765 && pZ != 15767 && pZ <= 15769) || (qZ >= 15765 && qZ != 15767 && qZ <= 15769 ) )
+					{
+						System.out.println( "KEEPING : " + pId + " <> " + qId );
+					}
+					else
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+				if ( ignore )
+					continue;
+				if ( pZ != qZ && ( pZ == 15768 || qZ == 15768 ) )
+				{
+					// the only layer we connect to on the bottom
+					if ( (pZ >= 15765 && pZ != 15768  && pZ <= 15769) || (qZ >= 15765&& qZ != 15768 && qZ <= 15769 ) )
+					{
+						System.out.println( "KEEPING : " + pId + " <> " + qId );
+					}
+					else
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+				if ( ignore )
+					continue;
+				if ( pZ != qZ && ( pZ == 15769 || qZ == 15769 ) )
+				{
+					// the only layer we connect to on the bottom
+					if ( (pZ >= 15765 && pZ != 15769  && pZ <= 15770) || (qZ >= 15765&& qZ != 15769 && qZ <= 15770 ) )
+					{
+						System.out.println( "KEEPING : " + pId + " <> " + qId );
+					}
+					else
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+				if ( ignore )
+					continue;
+
+				// connect 15758-15760 with a single connection
+				if ( pZ != qZ && ( pZ == 15758 || qZ == 15758 ) )
+				{
+					// the only layer we connect to
+					if ( pZ == 15760 || qZ == 15760 )
+					{
+						if ( pZ == 15760 && pId.contains( "_0-0-2." ) ||  qZ == 15760 && qId.contains( "_0-0-2." ) )
+						{
+							if ( count15758 == 0 )
+							{
+								++count15758;
+								System.out.println( "KEEPING : " + pId + " <> " + qId );
+							}
+							else
+							{
+								System.out.println( "IGNORING: " + pId + " <> " + qId );
+								ignore = true;
+							}
+						}
+						else
+						{
+							System.out.println( "IGNORING: " + pId + " <> " + qId );
+							ignore = true;
+						}
+					}
+				}
+
+				if ( ignore )
+					continue;
+
+				// connect {15760,15761,15762}, {15765,15766,15767,15768,15769} with a single connection
+				if ( pZ != qZ && ( pZ == 15765 || qZ == 15765 ) )
+				{
+					// the only layer we connect to
+					if ( pZ == 15762 || qZ == 15762 )
+					{
+						if ( pZ == 15762 && pId.contains( "_0-0-2." ) ||  qZ == 15762 && qId.contains( "_0-0-2." ) )
+						{
+							if ( count15762 == 0 )
+							{
+								++count15762;
+								System.out.println( "KEEPING : " + pId + " <> " + qId );
+							}
+							else
+							{
+								System.out.println( "IGNORING: " + pId + " <> " + qId );
+								ignore = true;
+							}
+						}
+						else
+						{
+							System.out.println( "IGNORING: " + pId + " <> " + qId );
+							ignore = true;
+						}
+					}
+				}
+
+				if ( ignore )
+					continue;
+
+				// connect {15765,15766,15767,15768,15769} to {15770+} with a single connection
+				if ( pZ != qZ && ( pZ == 15769 || qZ == 15769 ) )
+				{
+					// the only layer we connect to
+					if ( pZ == 15770 || qZ == 15770 )
+					{
+						if ( pZ == 15770 && pId.contains( "_0-0-2." ) ||  qZ == 15770 && qId.contains( "_0-0-2." ) )
+						{
+							if ( count15769 == 0 )
+							{
+								++count15769;
+								System.out.println( "KEEPING : " + pId + " <> " + qId );
+							}
+							else
+							{
+								System.out.println( "IGNORING: " + pId + " <> " + qId );
+								ignore = true;
+							}
+						}
+						else
+						{
+							System.out.println( "IGNORING: " + pId + " <> " + qId );
+							ignore = true;
+						}
+					}
+				}
+
+				if ( ignore )
+					continue;
+
+				if ( pZ != qZ && ( pZ == 15770 || qZ == 15770 ) )
+				{
+					// the only layer we connect to on the bottom
+					if ( pZ > 15770 || qZ > 15770 || pZ == 15769 || qZ == 15769 )
+					{
+						System.out.println( "KEEPING : " + pId + " <> " + qId );
+					}
+					else
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+				if ( ignore )
+					continue;
+
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p, q;
 
 				if ( !idToTileMap.containsKey( pId ) )
@@ -344,12 +570,20 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				}
 
 				p.connect(q, CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()));
+				connectedTiles.add( pId + " <> " + qId );
 			}
 		}
 
-		System.out.println( "count4851: " + count4851 );
-		System.out.println( "count4852: " + count4852 );
-		System.out.println( "count4853: " + count4853 );
+		
+		System.out.println( "count15758: " + count15758 );
+		System.out.println( "count15759: " + count15759 );
+		System.out.println( "count15762: " + count15762 );
+		System.out.println( "count15763: " + count15763 );
+		System.out.println( "count15764: " + count15764 );
+		System.out.println( "count15769: " + count15769 );
+
+		for ( final String s : connectedTiles )
+			System.out.println( s );
 		//System.exit( 0 );
 		LOG.info("top block #tiles " + topTileIds.size());
 		LOG.info("bottom block #tiles " + bottomTileIds.size());
@@ -668,18 +902,18 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec20",
-                            "--stack", "v3_patch_matt",
-                            "--targetStack", "v3_patch_matt_4851",
+                            "--project", "Sec08",
+                            "--stack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758",
+                            "--targetStack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758_new",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "4811",//"24700",
-                            "--maxZ", "4891",//"26650",
+                            "--minZ", "15718",//"24700",
+                            "--maxZ", "15810",//"26650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "Sec20_patch"
+                            "--matchCollection", "Sec08_patch_matt"
                     };
                     parameters.parse(testArgs);
                 } else {
