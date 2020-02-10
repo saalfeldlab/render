@@ -374,7 +374,7 @@ public class SplitClusterClient {
 
             if (updatedTileCount > 0) {
 
-                if (clusterIndex > parameters.maxClustersPerOriginalZ) {
+                if ((parameters.zValues.size() > 1) && (clusterIndex > parameters.maxClustersPerOriginalZ)) {
                     throw new IllegalArgumentException(
                             "z " + originalZ + " has more than --maxClustersPerOriginalZ " +
                             parameters.maxClustersPerOriginalZ + " clusters");
