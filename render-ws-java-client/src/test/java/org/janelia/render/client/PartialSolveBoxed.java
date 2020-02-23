@@ -43,8 +43,8 @@ import net.imglib2.util.Pair;
 public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
 {
 	// how many layers on the top and bottom we use as overlap to compute the rigid models that "blend" the re-solved stack back in 
-	protected int overlapTop = 50;
-	protected int overlapBottom = 50;
+	protected int overlapTop = 25;//50;
+	protected int overlapBottom = 25;//50;
 
 	public PartialSolveBoxed(final Parameters parameters) throws IOException
 	{
@@ -102,6 +102,11 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		idsToIgnore.add( "_0-0-0.22845" );
 		idsToIgnore.add( "_0-0-0.22847" );*/
 
+		HashMap< Integer, Integer > zLimits = new HashMap<>();
+		//zLimits.put( 32168, 1 );
+		//zLimits.put( 32169, 1 );
+
+		int count27238 = 0;
 
 		for (final String pGroupId : pGroupList)
 		{
@@ -136,6 +141,124 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				//if ( pId.contains("_0-0-1.13172") || pId.contains("_0-0-1.13381") || qId.contains("_0-0-1.13172") || qId.contains("_0-0-1.13381") )
 				//	continue;
 
+				final int pZ = (int)Math.round( pTileSpec.getZ() );
+				final int qZ = (int)Math.round( qTileSpec.getZ() );
+
+				if ( zLimits.containsKey( pZ ) )
+				{
+					final int limit = zLimits.get( pZ );
+
+					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > limit )
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+
+				if ( ignore )
+					continue;
+
+				if ( zLimits.containsKey( qZ ) )
+				{
+					final int limit = zLimits.get( qZ );
+
+					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > limit )
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+
+				if ( ignore )
+					continue;
+
+				if ( pZ != qZ && ( pZ == 27238 || qZ == 27238 ) )
+				{
+					// the only layer we connect to
+					if ( pZ == 27237 || qZ == 27237 )
+					{
+						// want to connect to the first tile of 31249
+						if ( pZ == 27238 && pId.contains( "_0-0-3." ) ||  qZ == 27238 && qId.contains( "_0-0-3." ) )
+						{
+							if ( count27238 == 0 )
+							{
+								++count27238;
+								System.out.println( "KEEPING: " + pId + " <> " + qId );
+							}
+							else
+							{
+								System.out.println( "IGNORING: " + pId + " <> " + qId );
+								ignore = true;
+							}
+						}
+						else
+						{
+							System.out.println( "IGNORING: " + pId + " <> " + qId );
+							ignore = true;
+						}
+					}
+					else
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+
+				if ( ignore )
+					continue;
+
+				/*
+				if ( pZ != qZ && ( pZ == 15742 || qZ == 15742 ) )
+				{
+					// the only layer we connect to on the top
+					if ( pZ == 15740 || qZ == 15740 )
+					{
+						if ( pZ == 15742 && pId.contains( "_0-0-2." ) ||  qZ == 15742 && qId.contains( "_0-0-2." ) )
+						{
+							if ( count15742 == 0 )
+							{
+								++count15742;
+								System.out.println( "KEEPING: " + pId + " <> " + qId );
+							}
+							else
+							{
+								System.out.println( "IGNORING: " + pId + " <> " + qId );
+								ignore = true;
+							}
+						}
+						else
+						{
+							System.out.println( "IGNORING: " + pId + " <> " + qId );
+							ignore = true;
+						}
+					}
+					else if ( pZ < 15742 || qZ < 15742 )
+					{
+						System.out.println( "IGNORING: " + pId + " <> " + qId );
+						ignore = true;
+					}
+				}
+
+				if ( ignore )
+					continue;
+				*/
+
+				/*
+				if ( pTileSpec.getZ() == 15739 || pTileSpec.getZ() == 15740 || pTileSpec.getZ() == 15741 )
+				{
+					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 1 )
+						continue;
+				}
+
+				if ( qTileSpec.getZ() == 15739 || qTileSpec.getZ() == 15740 || qTileSpec.getZ() == 15741 )
+				{
+					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 1 )
+						continue;
+				}
+
+				if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 3 )
+					continue;
+				*/
 				/*
 				if ( pId.contains("_0-0-0") || pId.contains("_0-0-2")|| pId.contains("_0-0-3") || qId.contains("_0-0-0") || qId.contains("_0-0-2") || qId.contains("_0-0-3") )
 				{
@@ -188,6 +311,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			}
 		}
 
+		System.out.println( "count27238: " + count27238 );
+		//System.out.println( "count15742: " + count15742 );
 		LOG.info("top block #tiles " + topTileIds.size());
 		LOG.info("bottom block #tiles " + bottomTileIds.size());
 
@@ -343,6 +468,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 		LOG.info( "Optimizing ... " );
 
+		//tileConfigBlocks.preAlign();
+		
 		final float damp = 1.0f;
 		TileUtil.optimizeConcurrently(
 				new ErrorStatistic(parameters.maxPlateauWidth + 1 ),
@@ -466,14 +593,14 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		new ImageJ();
 
 		// visualize new result
-		//ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
-		//imp1.setTitle( "final" );
+		ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
+		imp1.setTitle( "final" );
 
 		//ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
 		//imp2.setTitle( "realign" );
 
-		//ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
-		//imp3.setTitle( "previous" );
+		ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
+		imp3.setTitle( "previous" );
 
 		SimpleMultiThreading.threadHaltUnClean();
 
@@ -503,18 +630,18 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec09",
-                            "--stack", "v1_py_solve_03_affine_e10_e10_sp2",
-                            "--targetStack", "v1_py_solve_03_affine_e10_e10_sp3",
+                            "--project", "Sec15",
+                            "--stack", "v2_patch_msolve_fine_trakem",
+                            "--targetStack", "v2_patch_msolve_fine_trakem_27238",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "28800",//"24700",
-                            "--maxZ", "29100",//"26650",
+                            "--minZ", "27198",//"24700",
+                            "--maxZ", "27278",//"26650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "gd_test_Sec09"
+                            "--matchCollection", "Sec15_patch"
                     };
                     parameters.parse(testArgs);
                 } else {
