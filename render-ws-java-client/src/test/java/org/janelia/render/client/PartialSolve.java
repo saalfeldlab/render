@@ -381,7 +381,10 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 		if ( new File( fileName ).exists() )
 			return new ImagePlus( fileName ).getProcessor().convertToFloatProcessor();
 		else
+		{
+			System.out.println( "WARNING: File path '" + new File( fileName ).getAbsolutePath() + "' does not exist. Shares mounted?" );
 			return null;
+		}
 
 	}
 
@@ -392,7 +395,10 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 		if ( new File( fileNameMask ).exists() )
 			return new ImagePlus( fileNameMask ).getProcessor();
 		else
+		{
+			System.out.println( "WARNING: File path '" + new File( fileNameMask ).getAbsolutePath() + "' does not exist. Shares mounted?" );
 			return null;
+		}
 	}
 
 	protected ImageProcessorWithMasks getImage( final TileSpec tileSpec, final double scale )
