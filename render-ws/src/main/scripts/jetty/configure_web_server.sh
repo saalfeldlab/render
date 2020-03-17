@@ -15,16 +15,12 @@ LOGBACK_VERSION="1.1.5"
 SLF4J_VERSION="1.7.16"
 SWAGGER_UI_VERSION="2.1.4"
 
-SLF4J_URL="https://www.slf4j.org/dist/slf4j-${SLF4J_VERSION}.tar.gz"
-LOGBACK_URL="https://logback.qos.ch/dist/logback-${LOGBACK_VERSION}.tar.gz"
+LOGBACK_URL="http://central.maven.org/maven2/ch/qos/logback"
+SLF4J_URL="http://central.maven.org/maven2/org/slf4j"
 SWAGGER_UI_URL="https://github.com/swagger-api/swagger-ui/archive/v${SWAGGER_UI_VERSION}.tar.gz"
 
-curl "${SLF4J_URL}" | tar xz
-curl "${LOGBACK_URL}" | tar xz
 curl -L "${SWAGGER_UI_URL}" | tar xz
 
-SLF4J_SOURCE_DIR="slf4j-${SLF4J_VERSION}"
-LOGBACK_SOURCE_DIR="logback-${LOGBACK_VERSION}"
 SWAGGER_UI_SOURCE_DIR="swagger-ui-${SWAGGER_UI_VERSION}"
 
 # -------------------------------------------------------------------------------------------
@@ -33,14 +29,15 @@ SWAGGER_UI_SOURCE_DIR="swagger-ui-${SWAGGER_UI_VERSION}"
 JETTY_LIB_EXT="${JETTY_BASE_DIR}/lib/ext"
 mkdir -p "${JETTY_BASE_DIR}/logs" "${JETTY_LIB_EXT}"
 
-mv "${LOGBACK_SOURCE_DIR}/logback-access-${LOGBACK_VERSION}.jar" "${JETTY_LIB_EXT}"
-mv "${LOGBACK_SOURCE_DIR}/logback-classic-${LOGBACK_VERSION}.jar" "${JETTY_LIB_EXT}"
-mv "${LOGBACK_SOURCE_DIR}/logback-core-${LOGBACK_VERSION}.jar" "${JETTY_LIB_EXT}"
+for MODULE in access classic core; do
+  MODULE_JAR="logback-${MODULE}-${LOGBACK_VERSION}.jar"
+  curl -o "${JETTY_LIB_EXT}/${MODULE_JAR}" "${LOGBACK_URL}/logback-${MODULE}/${LOGBACK_VERSION}/${MODULE_JAR}"
+done
 
-mv "${SLF4J_SOURCE_DIR}/jcl-over-slf4j-${SLF4J_VERSION}.jar" "${JETTY_LIB_EXT}"
-mv "${SLF4J_SOURCE_DIR}/jul-to-slf4j-${SLF4J_VERSION}.jar" "${JETTY_LIB_EXT}"
-mv "${SLF4J_SOURCE_DIR}/log4j-over-slf4j-${SLF4J_VERSION}.jar" "${JETTY_LIB_EXT}"
-mv "${SLF4J_SOURCE_DIR}/slf4j-api-${SLF4J_VERSION}.jar" "${JETTY_LIB_EXT}"
+for MODULE in jcl-over-slf4j jul-to-slf4j log4j-over-slf4j slf4j-api; do
+  MODULE_JAR="${MODULE}-${SLF4J_VERSION}.jar"
+  curl -o "${JETTY_LIB_EXT}/${MODULE_JAR}" "${SLF4J_URL}/${MODULE}/${SLF4J_VERSION}/${MODULE_JAR}"
+done
 
 # -------------------------------------------------------------------------------------------
 # setup swagger components
@@ -64,6 +61,4 @@ sed -i '
 ' "${SWAGGER_UI_JS}"
 
 # clean-up unused downloaded stuff
-rm -rf "${SLF4J_SOURCE_DIR}"
-rm -rf "${LOGBACK_SOURCE_DIR}"
 rm -rf "${SWAGGER_UI_SOURCE_DIR}"
