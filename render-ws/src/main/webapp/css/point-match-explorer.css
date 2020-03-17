@@ -1,35 +1,119 @@
 body {
-  margin: 0px;
-  overflow: hidden;
-  font-family:Monospace;
-  font-size:20px;
-  font-weight: bold;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
 }
-.metaDataContainer {
-  position: absolute;
-  top: 0px; width: 50%;
-  height: 5em;
-  padding: 5px;
-  text-align:left;
-  z-index:99;
+
+#PMEDataArea {
+    float: right;
+    vertical-align: top;
+    text-align: left;
+    padding: 5px 5px 5px 5px;
+    width: 400px;
+    height: 100%;
 }
-.layerInput {
-  position: absolute;
-  top: 80px; width: 100%;
-  padding: 0 10px 0 0;
-  box-sizing: border-box;
-  text-align:right;
+
+#PMECanvasArea {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    border-right: solid 2px black;
+    height: 100%;
+    width: -webkit-calc(100% - 400px);
+    width:    -moz-calc(100% - 400px);
+    width:         calc(100% - 400px);
 }
-.layerButton {
-  margin: 10px 0 0 10px;
+
+button {
+    font-size: smaller;
+    color: blue;
 }
-.specsInput {
-  position: absolute;
-  top: 0; width: 100%;
-  padding: 10px 10px 0 0;
-  box-sizing: border-box;
-  text-align:right;
+
+button:disabled {
+    color: gray;
 }
+
+.dataGroupTitle {
+    text-decoration: underline;
+    font-weight: bold;
+}
+
+.topTen {
+    margin-top: 10px;
+}
+
+.indented {
+    padding-left: 5px;
+}
+
+.centered {
+    text-align: center;
+}
+
+/* see https://www.sitepoint.com/css-grid-web-form-layout/ */
+@supports (display: grid) {
+
+    .formGrid {
+        display: grid;
+        grid-template-columns: 0.5fr 1em 4em 1em 2.0fr; /* 5 columns (6 tracks) */
+        grid-gap: 0.3em 0.6em; /* row gap, column gap */
+        grid-auto-flow: dense;
+        align-items: center;
+    }
+
+    label    { grid-column: 1;     }
+    .col2    { grid-column: 2 / 3; }
+    .col2to4 { grid-column: 2 / 4; }
+    .col2to5 { grid-column: 2 / 5; }
+    .col2to6 { grid-column: 2 / 6; }
+    .col3    { grid-column: 3 / 4; }
+    .col4    { grid-column: 4 / 5; }
+    .col4to6 { grid-column: 4 / 6; }
+    .col5    { grid-column: 5 / 6; }
+    .col6    { grid-column: 6;     }
+
+    select {
+        grid-column: 2 / 6;
+        width: available;
+        margin: 0;
+    }
+
+    input, output, textarea, button, span.value {
+        grid-column: 2 / 6;
+        width: max-content;
+        margin: 0;
+    }
+
+    input[type="number"] {
+        text-align: right;
+        width: 6em;
+    }
+
+    input[type="checkbox"], input[type="radio"] {
+        grid-column: 1 / 3;
+        justify-self: end;
+        margin: 0;
+    }
+
+    label, input[type="checkbox"] + label, input[type="radio"] + label {
+        width: auto;
+        padding: 0;
+        margin: 0;
+    }
+
+    textarea + label {
+        align-self: start;
+    }
+
+    .stackInfo {
+        color: slategray;
+        font-size: 11pt;
+        vertical-align: bottom;
+    }
+}
+
 .gradient {
     width: 175px;
     white-space: nowrap;
@@ -39,20 +123,21 @@ body {
     right: 30px;
     padding-bottom: 15px;
     padding-top: 25px;
-    text-align:center;
+    text-align: center;
 }
-.gradient .label {
-    position: absolute;
-    left: 0;
-    font-size: 15px;
-    top: 3px;
+
+.gradient .title {
+    font-weight: bold;
+    text-align: center;
 }
+
 .gradient .domain-min {
     position: absolute;
     left: 0;
     font-size: 15px;
     bottom: 3px;
 }
+
 .gradient .domain-med {
     position: absolute;
     right: 25%;
@@ -61,14 +146,55 @@ body {
     font-size: 15px;
     bottom: 3px;
 }
+
 .gradient .domain-max {
     position: absolute;
     right: 0;
     font-size: 15px;
     bottom: 3px;
 }
+
 .grad-step {
     display: inline-block;
     height: 20px;
     width: 5%;
+}
+
+#view-submenu-button, #Prior-layer-matches-button, #Same-layer-matches-button, #Post-layer-matches-button {
+    width: 200px;
+    text-align: left;
+}
+
+#view-submenu-button::after, #Prior-layer-matches-button::after, #Same-layer-matches-button::after, #Post-layer-matches-button::after {
+    margin-top: .5em;
+    float: right;
+}
+
+.tilePairArrowContainer {
+    display: inline-flex;
+    width: 15px;
+}
+
+.tilePairArrow {
+    flex-grow: 1;
+    height: 1px;
+    background: blueviolet;
+    position: relative;
+}
+
+.tilePairArrow.tilePairOffset:after {
+    position: absolute;
+    content: '';
+    bottom: -4px;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 4px solid blueviolet;
+}
+
+.dropdown-menu {
+    margin: 0;
+    padding: 0;
 }

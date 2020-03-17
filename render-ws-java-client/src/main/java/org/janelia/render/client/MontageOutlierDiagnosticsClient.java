@@ -350,6 +350,7 @@ public class MontageOutlierDiagnosticsClient {
             });
 
             renderParameters = pairOnlyParameters;
+            renderParameters.initializeDerivedValues();
 
 
             final BufferedImage targetImage = renderParameters.openTargetImage();

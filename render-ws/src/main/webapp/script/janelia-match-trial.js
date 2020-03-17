@@ -779,15 +779,26 @@ JaneliaMatchTrial.prototype.saveTrialResultsToCollection = function(saveToOwner,
     const pUrlMatch = this.trialResults.parameters.pRenderParametersUrl.match(typicalTileRenderRegEx);
     const qUrlMatch = this.trialResults.parameters.qRenderParametersUrl.match(typicalTileRenderRegEx);
 
+
     if ((typeof saveToCollection === 'undefined') || (saveToCollection.length === 0)) {
 
         errorMessageSelector.text("alpha version of save feature requires saveToCollection query parameter to be defined");
 
-    } else if (this.trialResults.matches.length !== 1) {  // TODO: handle multiple match sets ...
+    } else if (this.trialResults.matches.length < 1) {
 
-        errorMessageSelector.text("trial must have one and only one set of matches to save");
+        errorMessageSelector.text("no matches to save");
 
     } else if (pUrlMatch && qUrlMatch) {
+
+        let matchesToSave = this.trialResults.matches[0];
+        for (let i = 1; i < this.trialResults.matches.length; i++) {
+            const secondaryMatches = this.trialResults.matches[i];
+            matchesToSave.p[0] = matchesToSave.p[0].concat(secondaryMatches.p[0]);
+            matchesToSave.p[1] = matchesToSave.p[1].concat(secondaryMatches.p[1]);
+            matchesToSave.q[0] = matchesToSave.q[0].concat(secondaryMatches.q[0]);
+            matchesToSave.q[1] = matchesToSave.q[1].concat(secondaryMatches.q[1]);
+            matchesToSave.w = matchesToSave.w.concat(secondaryMatches.w);
+        }
 
         const baseViewUrl = pUrlMatch[1] + "/view";
         const renderStackOwner = pUrlMatch[2];
@@ -804,7 +815,7 @@ JaneliaMatchTrial.prototype.saveTrialResultsToCollection = function(saveToOwner,
             "pId": pTileId,
             "qGroupId": qGroupId,
             "qId": qTileId,
-            "matches": this.trialResults.matches[0]
+            "matches": matchesToSave
         };
         const matchPairDataArray = [ matchPairData ];
 

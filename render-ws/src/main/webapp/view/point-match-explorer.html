@@ -1,13 +1,15 @@
 <!doctype html>
+<!-- copied/adapted from https://github.com/JaneliaSciComp/PointMatchExplorer/blob/master/index.html -->
 <html lang="en">
   <head>
     <meta charset="UTF-8">
     <title>Point Match Explorer</title>
-    <link href='../css/point-match-explorer.css?v=20190201_001' rel='stylesheet'>
-    <script type="text/javascript" src="../script/janelia-render.js?v=20180430_001"></script>
+    <!-- pme css needs to override bootstrap css, so link to bootstrap css first -->
+    <link href='../css/bootstrap.min.css' rel='stylesheet'>
+    <link href='../css/point-match-explorer.css?v=20200223_001' rel='stylesheet'>
   </head>
   <body>
     <div id='content'></div>
-    <script src='../script/point-match-explorer-bundle.js?v=20190201_002'></script>
+    <script src='../script/point-match-explorer-bundle.js?v=20200223_001'></script>
   </body>
 </html>
