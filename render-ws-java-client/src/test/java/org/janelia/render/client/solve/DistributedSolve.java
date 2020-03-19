@@ -46,7 +46,7 @@ public class DistributedSolve
                             "--owner", "Z1217_19m",
                             "--project", "Sec08",
                             "--stack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758",
-                            "--targetStack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758_new",
+                            //"--targetStack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758_new",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
                             "--minZ", "15718",//"24700",
