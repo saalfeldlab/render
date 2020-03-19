@@ -730,5 +730,5 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 
     }
 
-	private static final Logger LOG = LoggerFactory.getLogger(SolveTools.class);
+	private static final Logger LOG = LoggerFactory.getLogger(PartialSolve.class);
 }
