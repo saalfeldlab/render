@@ -71,22 +71,6 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 		final ArrayList< String > connectedTiles = new ArrayList<>();
 
-		/*
-		It's a little more complicated there
-		z-15759 is corrupted, which is fine, we just copy over
-		Then there's jumps at 15758-15760, 15762-15763, 15763-15764, 15764-15765, 15769-15770
-		Ideally, these clusters hang from each other. We replace 15764 since it's a single layer. And then warp each cluster to it's next. That's a few warps though
-		it's basically the same problem as in Sec09
-		except smaller
-
-		What could be best is:
-		--We leave out (or let hang): 15759, 15763,15764
-		Connect layers: 15758-15760, 15762-15765, 15769-15770
-		Keeping connections in the following sets {15760,15761,15762}, {15765,15766,15767,15768,15769}, {15770+}
-		Otherwise we're losing a fair bit of data
-		10 layers is a noticeable amount
-		*/
-
 		HashMap< Integer, Integer > zLimits = new HashMap<>();
 		//zLimits.put( 15769, 1 );
 
@@ -199,8 +183,11 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			}
 		}
 
+
 		for ( final String s : connectedTiles )
 			System.out.println( s );
+
+		//System.exit( 0 );
 
 		LOG.info("top block #tiles " + topTileIds.size());
 		LOG.info("bottom block #tiles " + bottomTileIds.size());
