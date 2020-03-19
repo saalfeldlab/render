@@ -1,6 +1,5 @@
 package org.janelia.render.client;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,16 +13,13 @@ import java.util.stream.Stream;
 
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
-import ij.measure.Calibration;
-import ij.process.FloatProcessor;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
@@ -36,7 +32,6 @@ import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 
@@ -94,13 +89,6 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 		HashMap< Integer, Integer > zLimits = new HashMap<>();
 		//zLimits.put( 15769, 1 );
-
-		int count15758 = 0;
-		int count15759 = 0;
-		int count15762 = 0;
-		int count15763 = 0;
-		int count15764 = 0;
-		int count15769 = 0;
 
 		for (final String pGroupId : pGroupList)
 		{
@@ -166,369 +154,6 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				if ( ignore )
 					continue;
 
-				// We leave out (or let hang): 15759
-				if ( pZ != qZ && ( pZ == 15759 || qZ == 15759 ) )
-				{
-					// the only layer we connect to
-					if ( pZ == 15758 || qZ == 15758 )
-					{
-						if ( pZ == 15759 && pId.contains( "_0-0-2." ) ||  qZ == 15759 && qId.contains( "_0-0-2." ) )
-						{
-							if ( count15759 == 0 )
-							{
-								++count15759;
-								System.out.println( "KEEPING : " + pId + " <> " + qId );
-							}
-							else
-							{
-								System.out.println( "IGNORING: " + pId + " <> " + qId );
-								ignore = true;
-							}
-						}
-						else
-						{
-							System.out.println( "IGNORING: " + pId + " <> " + qId );
-							ignore = true;
-						}
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-
-				if ( ignore )
-					continue;
-
-				// leave 15763 hanging
-				if ( pZ != qZ && ( pZ == 15763 || qZ == 15763 ) )
-				{
-					// the only layer we connect to
-					if ( pZ == 15762 || qZ == 15762 )
-					{
-						if ( pZ == 15763 && pId.contains( "_0-0-2." ) ||  qZ == 15763 && qId.contains( "_0-0-2." ) )
-						{
-							if ( count15763 == 0 )
-							{
-								++count15763;
-								System.out.println( "KEEPING : " + pId + " <> " + qId );
-							}
-							else
-							{
-								System.out.println( "IGNORING: " + pId + " <> " + qId );
-								ignore = true;
-							}
-						}
-						else
-						{
-							System.out.println( "IGNORING: " + pId + " <> " + qId );
-							ignore = true;
-						}
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-
-				if ( ignore )
-					continue;
-
-				// leave 15764 hanging
-				if ( pZ != qZ && ( pZ == 15764 || qZ == 15764 ) )
-				{
-					// the only layer we connect to
-					if ( pZ == 15762 || qZ == 15762 )
-					{
-						if ( pZ == 15764 && pId.contains( "_0-0-2." ) ||  qZ == 15764 && qId.contains( "_0-0-2." ) )
-						{
-							if ( count15764 == 0 )
-							{
-								++count15764;
-								System.out.println( "KEEPING : " + pId + " <> " + qId );
-							}
-							else
-							{
-								System.out.println( "IGNORING: " + pId + " <> " + qId );
-								ignore = true;
-							}
-						}
-						else
-						{
-							System.out.println( "IGNORING: " + pId + " <> " + qId );
-							ignore = true;
-						}
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-
-				if ( ignore )
-					continue;
-
-				// We leave out (or let hang): 15759, 15763,15764
-				// Connect layers: 15758-15760, 15762-15765, 15769-15770
-				// Keeping connections in the following sets {15760,15761,15762}, {15765,15766,15767,15768,15769}, {15770+} and leave 15763,15764 hanging and copy over
-
-				// Connect layers: 15758-15760
-				if ( pZ != qZ && ( pZ == 15758 || qZ == 15758 ) )
-				{
-					// the only layer we connect to on the bottom
-					if ( pZ == 15760 || qZ == 15760 )
-					{
-						System.out.println( "KEEPING : " + pId + " <> " + qId );
-					}
-					else if ( pZ < 15758 || qZ < 15758 )
-					{
-						System.out.println( "KEEPING : " + pId + " <> " + qId );
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-				if ( ignore )
-					continue;
-
-				// Keeping connections in the following sets {15760,15761,15762}
-				if ( pZ != qZ && ( pZ == 15760 || qZ == 15760 ) )
-				{
-					// the only layer we connect to on the bottom
-					if ( pZ == 15758 || qZ == 15758 || pZ == 15761 || qZ == 15761 || pZ == 15762 || qZ == 15762 )
-					{
-						System.out.println( "KEEPING : " + pId + " <> " + qId );
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-				if ( ignore )
-					continue;
-				if ( pZ != qZ && ( pZ == 15761 || qZ == 15761 ) )
-				{
-					// the only layer we connect to on the bottom
-					if ( pZ == 15760 || qZ == 15760 || pZ == 15762 || qZ == 15762 )
-					{
-						System.out.println( "KEEPING : " + pId + " <> " + qId );
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-				if ( ignore )
-					continue;
-
-				// Connect layers: 15762-15765
-				if ( pZ != qZ && ( pZ == 15762 || qZ == 15762 ) && pZ != 15763 && qZ != 15763 && pZ != 15764 && qZ != 15764 )
-				{
-					// the only layer we connect to on the bottom
-					if ( pZ == 15760 || qZ == 15760 || pZ == 15761 || qZ == 15761 || pZ == 15765 || qZ == 15765 )
-					{
-						System.out.println( "KEEPING : " + pId + " <> " + qId );
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-
-				if ( ignore )
-					continue;
-
-				// connect {15765,15766,15767,15768,15769}
-				if ( pZ != qZ && ( pZ == 15765 || qZ == 15765 ) )
-				{
-					// the only layer we connect to on the bottom
-					if ( pZ == 15762 || qZ == 15762 || (pZ > 15765 && pZ <= 15769) || (qZ > 15765 && qZ <= 15769 ) )
-					{
-						System.out.println( "KEEPING : " + pId + " <> " + qId );
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-				if ( ignore )
-					continue;
-				if ( pZ != qZ && ( pZ == 15766 || qZ == 15766 ) )
-				{
-					// the only layer we connect to on the bottom
-					if ( (pZ >= 15765 && pZ != 15766 && pZ <= 15769) || (qZ >= 15765 && qZ != 15766 && qZ <= 15769 ) )
-					{
-						System.out.println( "KEEPING : " + pId + " <> " + qId );
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-				if ( ignore )
-					continue;
-				if ( pZ != qZ && ( pZ == 15767 || qZ == 15767 ) )
-				{
-					// the only layer we connect to on the bottom
-					if ( (pZ >= 15765 && pZ != 15767 && pZ <= 15769) || (qZ >= 15765 && qZ != 15767 && qZ <= 15769 ) )
-					{
-						System.out.println( "KEEPING : " + pId + " <> " + qId );
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-				if ( ignore )
-					continue;
-				if ( pZ != qZ && ( pZ == 15768 || qZ == 15768 ) )
-				{
-					// the only layer we connect to on the bottom
-					if ( (pZ >= 15765 && pZ != 15768  && pZ <= 15769) || (qZ >= 15765&& qZ != 15768 && qZ <= 15769 ) )
-					{
-						System.out.println( "KEEPING : " + pId + " <> " + qId );
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-				if ( ignore )
-					continue;
-				if ( pZ != qZ && ( pZ == 15769 || qZ == 15769 ) )
-				{
-					// the only layer we connect to on the bottom
-					if ( (pZ >= 15765 && pZ != 15769  && pZ <= 15770) || (qZ >= 15765&& qZ != 15769 && qZ <= 15770 ) )
-					{
-						System.out.println( "KEEPING : " + pId + " <> " + qId );
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-				if ( ignore )
-					continue;
-
-				// connect 15758-15760 with a single connection
-				if ( pZ != qZ && ( pZ == 15758 || qZ == 15758 ) )
-				{
-					// the only layer we connect to
-					if ( pZ == 15760 || qZ == 15760 )
-					{
-						if ( pZ == 15760 && pId.contains( "_0-0-2." ) ||  qZ == 15760 && qId.contains( "_0-0-2." ) )
-						{
-							if ( count15758 == 0 )
-							{
-								++count15758;
-								System.out.println( "KEEPING : " + pId + " <> " + qId );
-							}
-							else
-							{
-								System.out.println( "IGNORING: " + pId + " <> " + qId );
-								ignore = true;
-							}
-						}
-						else
-						{
-							System.out.println( "IGNORING: " + pId + " <> " + qId );
-							ignore = true;
-						}
-					}
-				}
-
-				if ( ignore )
-					continue;
-
-				// connect {15760,15761,15762}, {15765,15766,15767,15768,15769} with a single connection
-				if ( pZ != qZ && ( pZ == 15765 || qZ == 15765 ) )
-				{
-					// the only layer we connect to
-					if ( pZ == 15762 || qZ == 15762 )
-					{
-						if ( pZ == 15762 && pId.contains( "_0-0-2." ) ||  qZ == 15762 && qId.contains( "_0-0-2." ) )
-						{
-							if ( count15762 == 0 )
-							{
-								++count15762;
-								System.out.println( "KEEPING : " + pId + " <> " + qId );
-							}
-							else
-							{
-								System.out.println( "IGNORING: " + pId + " <> " + qId );
-								ignore = true;
-							}
-						}
-						else
-						{
-							System.out.println( "IGNORING: " + pId + " <> " + qId );
-							ignore = true;
-						}
-					}
-				}
-
-				if ( ignore )
-					continue;
-
-				// connect {15765,15766,15767,15768,15769} to {15770+} with a single connection
-				if ( pZ != qZ && ( pZ == 15769 || qZ == 15769 ) )
-				{
-					// the only layer we connect to
-					if ( pZ == 15770 || qZ == 15770 )
-					{
-						if ( pZ == 15770 && pId.contains( "_0-0-2." ) ||  qZ == 15770 && qId.contains( "_0-0-2." ) )
-						{
-							if ( count15769 == 0 )
-							{
-								++count15769;
-								System.out.println( "KEEPING : " + pId + " <> " + qId );
-							}
-							else
-							{
-								System.out.println( "IGNORING: " + pId + " <> " + qId );
-								ignore = true;
-							}
-						}
-						else
-						{
-							System.out.println( "IGNORING: " + pId + " <> " + qId );
-							ignore = true;
-						}
-					}
-				}
-
-				if ( ignore )
-					continue;
-
-				if ( pZ != qZ && ( pZ == 15770 || qZ == 15770 ) )
-				{
-					// the only layer we connect to on the bottom
-					if ( pZ > 15770 || qZ > 15770 || pZ == 15769 || qZ == 15769 )
-					{
-						System.out.println( "KEEPING : " + pId + " <> " + qId );
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-				if ( ignore )
-					continue;
-
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p, q;
 
 				if ( !idToTileMap.containsKey( pId ) )
@@ -574,17 +199,9 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			}
 		}
 
-		
-		System.out.println( "count15758: " + count15758 );
-		System.out.println( "count15759: " + count15759 );
-		System.out.println( "count15762: " + count15762 );
-		System.out.println( "count15763: " + count15763 );
-		System.out.println( "count15764: " + count15764 );
-		System.out.println( "count15769: " + count15769 );
-
 		for ( final String s : connectedTiles )
 			System.out.println( s );
-		//System.exit( 0 );
+
 		LOG.info("top block #tiles " + topTileIds.size());
 		LOG.info("bottom block #tiles " + bottomTileIds.size());
 
