@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 
-public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
+public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends SolveTools< B >
 {
 	public PartialSolveBoxed(final Parameters parameters) throws IOException
 	{

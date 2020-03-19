@@ -36,27 +36,30 @@ import mpicbg.models.TileUtil;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 
-public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
+public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 {
+	final Parameters parameters;
+	final RunParameters runParams;
+
 	// how many layers on the top and bottom we use as overlap to compute the rigid models that "blend" the re-solved stack back in 
 	protected int overlapTop = 25;//50;
 	protected int overlapBottom = 25;//50;
 
 	public PartialSolveBoxed(final Parameters parameters) throws IOException
 	{
-		super( parameters );
+		this.parameters = parameters;
+		this.runParams = SolveTools.setupSolve( parameters );
 	}
 
-	@Override
 	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
 		LOG.info("run: entry");
 
-		final int topBorder = ((int)Math.round( minZ ) + overlapTop -1);
-		final int bottomBorder = ((int)Math.round( maxZ ) - overlapBottom +1);
+		final int topBorder = ((int)Math.round( runParams.minZ ) + overlapTop -1);
+		final int bottomBorder = ((int)Math.round( runParams.maxZ ) - overlapBottom +1);
 
-		LOG.info( "using " + overlapTop + " layers on the top for blending (" + Math.round( minZ ) + "-" + topBorder + ")" );
-		LOG.info( "using " + overlapBottom + " layers on the bottom for blending (" + Math.round( maxZ ) + "-" + bottomBorder + ")" );
+		LOG.info( "using " + overlapTop + " layers on the top for blending (" + Math.round( runParams.minZ ) + "-" + topBorder + ")" );
+		LOG.info( "using " + overlapBottom + " layers on the bottom for blending (" + Math.round( runParams.maxZ ) + "-" + bottomBorder + ")" );
 
 		final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
 		final HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
@@ -75,20 +78,20 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		HashMap< Integer, Integer > zLimits = new HashMap<>();
 		//zLimits.put( 15769, 1 );
 
-		for (final String pGroupId : pGroupList)
+		for (final String pGroupId : runParams.pGroupList)
 		{
 			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
 
-			final List<CanvasMatches> matches = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
+			final List<CanvasMatches> matches = runParams.matchDataClient.getMatchesWithPGroupId(pGroupId, false);
 
 			for (final CanvasMatches match : matches)
 			{
 				final String pId = match.getpId();
-				final TileSpec pTileSpec = getTileSpec(pGroupId, pId);
+				final TileSpec pTileSpec = SolveTools.getTileSpec(parameters, runParams, pGroupId, pId);
 
 				final String qGroupId = match.getqGroupId();
 				final String qId = match.getqId();
-				final TileSpec qTileSpec = getTileSpec(qGroupId, qId);
+				final TileSpec qTileSpec = SolveTools.getTileSpec(parameters, runParams, qGroupId, qId);
 
 				if ((pTileSpec == null) || (qTileSpec == null))
 				{
@@ -143,7 +146,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 				if ( !idToTileMap.containsKey( pId ) )
 				{
-					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairP = buildTileFromSpec(pTileSpec);
+					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairP = SolveTools.buildTileFromSpec(parameters, pTileSpec);
 					p = pairP.getA();
 					idToTileMap.put( pId, p );
 					idToPreviousModel.put( pId, pairP.getB() );
@@ -162,7 +165,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 				if ( !idToTileMap.containsKey( qId ) )
 				{
-					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairQ = buildTileFromSpec(qTileSpec);
+					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairQ = SolveTools.buildTileFromSpec(parameters, qTileSpec);
 					q = pairQ.getA();
 					idToTileMap.put( qId, q );
 					idToPreviousModel.put( qId, pairQ.getB() );
@@ -443,40 +446,40 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
 
-			saveTargetStackTiles( idToFinalModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
+			SolveTools.saveTargetStackTiles( parameters, runParams, idToFinalModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
 
 			//
 			// save the bottom part
 			//
-			zToSave = renderDataClient.getStackZValues( parameters.stack, zToSave.get( zToSave.size() - 1 ) + 0.1, null );
+			zToSave = runParams.renderDataClient.getStackZValues( parameters.stack, zToSave.get( zToSave.size() - 1 ) + 0.1, null );
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
 
-			saveTargetStackTiles( null, bottomBlockModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
+			SolveTools.saveTargetStackTiles( parameters, runParams, null, bottomBlockModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
 
 			// TODO: save the top too when necessary
 			//
 			// save the top part
 			//
-			zToSave = renderDataClient.getStackZValues( parameters.stack, null, minZ - 0.1 );
+			zToSave = runParams.renderDataClient.getStackZValues( parameters.stack, null, runParams.minZ - 0.1 );
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
-			saveTargetStackTiles( null, null, zToSave, null );
+			SolveTools.saveTargetStackTiles( parameters, runParams, null, null, zToSave, null );
 
 			// complete the stack after everything has been saved
-			completeStack();
+			SolveTools.completeStack(parameters, runParams);
 		}
 
 		new ImageJ();
 
 		// visualize new result
-		ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
+		ImagePlus imp1 = SolveTools.render( idToFinalModel, idToTileSpec, 0.15 );
 		imp1.setTitle( "final" );
 
 		//ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
 		//imp2.setTitle( "realign" );
 
-		ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
+		ImagePlus imp3 = SolveTools.render( idToPreviousModel, idToTileSpec, 0.15 );
 		imp3.setTitle( "previous" );
 
 		SimpleMultiThreading.threadHaltUnClean();
