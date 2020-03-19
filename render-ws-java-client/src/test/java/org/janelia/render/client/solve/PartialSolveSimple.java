@@ -1,4 +1,4 @@
-package org.janelia.render.client;
+package org.janelia.render.client.solve;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,6 +15,7 @@ import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.janelia.render.client.ClientRunner;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,4 +1,4 @@
-package org.janelia.render.client;
+package org.janelia.render.client.solve;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,6 +24,7 @@ import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ScriptUtil;
 import org.janelia.alignment.util.ZFilter;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
