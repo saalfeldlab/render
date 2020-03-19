@@ -1,4 +1,4 @@
-package org.janelia.render.client.solve;
+package org.janelia.render.client.solver;
 
 import java.io.File;
 import java.io.IOException;
@@ -560,5 +560,5 @@ public class SolveTools
         return lastTransform;
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(PartialSolve.class);
+	private static final Logger LOG = LoggerFactory.getLogger(SolveTools.class);
 }

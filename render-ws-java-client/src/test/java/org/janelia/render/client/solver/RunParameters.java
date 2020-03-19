@@ -1,4 +1,4 @@
-package org.janelia.render.client.solve;
+package org.janelia.render.client.solver;
 
 import java.util.List;
 import java.util.Map;
