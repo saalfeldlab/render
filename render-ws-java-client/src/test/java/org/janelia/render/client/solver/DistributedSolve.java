@@ -1,34 +1,81 @@
 package org.janelia.render.client.solver;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
-import org.janelia.alignment.match.ModelType;
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
+import mpicbg.models.Affine2D;
+import mpicbg.models.Model;
+import net.imglib2.util.Pair;
+import net.imglib2.util.ValuePair;
 
-import mpicbg.models.NoninvertibleModelException;
-
-public class DistributedSolve
+public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 {
+	final Parameters parameters;
+	final RunParameters runParams;
+
+
 	public DistributedSolve( final Parameters parameters ) throws IOException
 	{
-		//super( parameters );
+		this.parameters = parameters;
+		this.runParams = SolveTools.setupSolve( parameters );
+
+		// TODO: load matches only once, not for each thread
+		// assembleMatchData( parameters, runParams );
 	}
 
-
-	protected void run() throws IOException, ExecutionException,
-			InterruptedException, NoninvertibleModelException
+	public void run( final int setSize )
 	{
-		// TODO Auto-generated method stub
+		final int minZ = (int)Math.round( this.runParams.minZ );
+		final int maxZ = (int)Math.round( this.runParams.maxZ );
+
+		final Pair< List< Pair< Integer, Integer > >, List< Pair< Integer, Integer > > > sets = defineSets( minZ, maxZ, setSize );
 		
+		printSets( sets );
+	}
+
+	protected static Pair< List< Pair< Integer, Integer > >, List< Pair< Integer, Integer > > > defineSets( final int minZ, final int maxZ, final int setSize )
+	{
+		final int modulo = ( maxZ - minZ + 1 ) % setSize;
+
+		final int numSetsLeft = ( maxZ - minZ + 1 ) / setSize + Math.min( 1, modulo );
+
+		final ArrayList< Pair< Integer, Integer > > leftSets = new ArrayList<>();
+		final ArrayList< Pair< Integer, Integer > > rightSets = new ArrayList<>();
+
+		for ( int i = 0; i < numSetsLeft; ++i )
+		{
+			leftSets.add( new ValuePair<>( minZ + i * setSize, Math.min( minZ + (i + 1) * setSize - 1, maxZ ) ) );
+		}
+
+		for ( int i = 0; i < numSetsLeft - 1; ++i )
+		{
+			final Pair< Integer, Integer > set0 = leftSets.get( i );
+			final Pair< Integer, Integer > set1 = leftSets.get( i + 1 );
+
+			rightSets.add( new ValuePair<>( ( set0.getA() + set0.getB() ) / 2, ( set1.getA() + set1.getB() ) / 2 ) );
+		}
+
+		return new ValuePair<>( leftSets, rightSets );
+	}
+
+	protected static void printSets( final Pair< List< Pair< Integer, Integer > >, List< Pair< Integer, Integer > > > sets )
+	{
+		final int numSetsLeft = sets.getA().size();
+
+		LOG.info( "Defined sets for global solve" );
+
+		for ( int i = 0; i < numSetsLeft; ++i )
+		{
+			LOG.info( sets.getA().get( i ).getA() + " >> " + sets.getA().get( i ).getB() );
+
+			if ( i < numSetsLeft - 1 )
+				LOG.info( "\t" + sets.getB().get( i ).getA() + " >> " + sets.getB().get( i ).getB() );
+		}
 	}
 
 	public static void main( String[] args )
@@ -49,8 +96,8 @@ public class DistributedSolve
                             //"--targetStack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758_new",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "15718",//"24700",
-                            "--maxZ", "15810",//"26650",
+                            "--minZ", "10000",
+                            "--maxZ", "11111",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
@@ -64,14 +111,12 @@ public class DistributedSolve
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                //final PartialSolveBoxed client = new PartialSolveBoxed(parameters);
-
-                //client.run();
+                final DistributedSolve solve = new DistributedSolve( parameters );
+                solve.run( 100 );
             }
         };
         clientRunner.run();
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(SolveTools.class);
-
+	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolve.class);
 }

@@ -17,4 +17,10 @@ public class RunParameters
 	protected Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap;
 	protected double minZ, maxZ; // min will be fixed, max will be grouped
 	protected int totalTileCount;
+
+	@Override
+	public RunParameters clone()
+	{
+		return null;
+	}
 }

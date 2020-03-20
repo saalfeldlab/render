@@ -417,7 +417,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
                             "--project", "Sec10",
 
                             "--stack", "v2_patch_trakem2",
-                            "--targetStack", "v2_patch_trakem2_sp",
+                            //"--targetStack", "v2_patch_trakem2_sp",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1",
                             "--minZ", "20500",
