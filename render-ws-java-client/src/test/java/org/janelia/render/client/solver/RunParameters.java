@@ -1,5 +1,6 @@
 package org.janelia.render.client.solver;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -13,8 +14,8 @@ public class RunParameters
 	protected RenderDataClient targetDataClient;
 	
 	protected List<String> pGroupList;
-	protected Map<String, List<Double>> sectionIdToZMap;
-	protected Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap;
+	protected Map<String, List<Double>> sectionIdToZMap; // TODO: unused
+	protected Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
 	protected double minZ, maxZ;
 	protected int totalTileCount;
 
@@ -29,10 +30,10 @@ public class RunParameters
 
 		runParams.pGroupList = this.pGroupList;
 		runParams.sectionIdToZMap = this.sectionIdToZMap;
-		runParams.zToTileSpecsMap = this.zToTileSpecsMap;
+		runParams.zToTileSpecsMap = new HashMap<>(); // otherwise we get synchronization issues, TODO: Reuse
 		runParams.minZ = this.minZ;
 		runParams.maxZ = this.maxZ;
-		runParams.totalTileCount = totalTileCount;
+		runParams.totalTileCount = 0;
 
 		return runParams;
 	}

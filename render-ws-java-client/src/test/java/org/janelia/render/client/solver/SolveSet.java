@@ -1,5 +1,6 @@
 package org.janelia.render.client.solver;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class SolveSet
@@ -11,6 +12,15 @@ public class SolveSet
 	{
 		this.leftItems = leftItems;
 		this.rightItems = rightItems;
+	}
+
+	public List< SolveItem > allItems()
+	{
+		final ArrayList< SolveItem > all = new ArrayList<>();
+		all.addAll( leftItems );
+		all.addAll( rightItems );
+
+		return all;
 	}
 
 	@Override

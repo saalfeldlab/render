@@ -2,6 +2,12 @@ package org.janelia.render.client.solver;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Vector;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.janelia.render.client.ClientRunner;
 import org.slf4j.Logger;
@@ -10,6 +16,11 @@ import org.slf4j.LoggerFactory;
 import ij.ImageJ;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
+import mpicbg.spim.io.IOFunctions;
+import net.imglib2.Cursor;
+import net.imglib2.IterableInterval;
+import net.imglib2.multithreading.SimpleMultiThreading;
+import net.imglib2.view.Views;
 
 public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 {
@@ -35,20 +46,44 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		LOG.info( "Defined sets for global solve" );
 		LOG.info( "\n" + solveSet );
 
-		final DistributedSolveWorker< B > l = new DistributedSolveWorker< B >( parameters, solveSet.leftItems.get( 0 ) );
+		// Multithreaded for now
+
+		// set up executor service
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool( 3 );
+		final ArrayList< Callable< Void > > tasks = new ArrayList<>();
+
+		for ( final SolveItem s : solveSet.allItems() )
+		{
+			tasks.add( new Callable< Void >() 
+			{
+				@Override
+				public Void call() throws Exception
+				{
+					new DistributedSolveWorker< B >( parameters, s ).run();
+	
+					return null;
+				}
+			});
+		}
 
 		try
 		{
-			l.run();
-	
-			new ImageJ();
-			l.getSolveItem().visualizeInput();
-			l.getSolveItem().visualizeAligned();
+			// invokeAll() returns when all tasks are complete
+			taskExecutor.invokeAll( tasks );
 		}
-		catch ( Exception e )
+		catch ( final Exception e )
 		{
+			IOFunctions.println( "Failed to compute alignments: " + e );
 			e.printStackTrace();
 		}
+
+		taskExecutor.shutdown();
+
+		new ImageJ();
+		solveSet.leftItems.get( 0 ).visualizeInput();
+		solveSet.leftItems.get( 0 ).visualizeAligned();
+
+		SimpleMultiThreading.threadHaltUnClean();
 	}
 
 	protected static void createSets()
@@ -100,7 +135,7 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
                             "--minZ", "10000",
-                            "--maxZ", "10311",
+                            "--maxZ", "10199",
 
                             "--threads", "4",
                             "--maxIterations", "10000",

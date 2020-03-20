@@ -124,6 +124,7 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 	{
 		LOG.info( "Loading transforms and matches from " + runParams.minZ + " to layer " + runParams.maxZ );
 
+		// TODO: only fetch the ones we actually need here
 		for (final String pGroupId : runParams.pGroupList)
 		{
 			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
