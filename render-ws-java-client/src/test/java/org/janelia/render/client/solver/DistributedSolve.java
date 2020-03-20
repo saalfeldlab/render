@@ -2,22 +2,19 @@ package org.janelia.render.client.solver;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ij.ImageJ;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
-import net.imglib2.util.Pair;
-import net.imglib2.util.ValuePair;
 
 public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 {
 	final Parameters parameters;
 	final RunParameters runParams;
-
 
 	public DistributedSolve( final Parameters parameters ) throws IOException
 	{
@@ -33,49 +30,55 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		final int minZ = (int)Math.round( this.runParams.minZ );
 		final int maxZ = (int)Math.round( this.runParams.maxZ );
 
-		final Pair< List< Pair< Integer, Integer > >, List< Pair< Integer, Integer > > > sets = defineSets( minZ, maxZ, setSize );
-		
-		printSets( sets );
+		final SolveSet solveSet = defineSolveSet( minZ, maxZ, setSize, runParams );
+
+		LOG.info( "Defined sets for global solve" );
+		LOG.info( "\n" + solveSet );
+
+		final DistributedSolveWorker< B > l = new DistributedSolveWorker< B >( parameters, solveSet.leftItems.get( 0 ) );
+
+		try
+		{
+			l.run();
+	
+			new ImageJ();
+			l.getSolveItem().visualizeInput();
+			l.getSolveItem().visualizeAligned();
+		}
+		catch ( Exception e )
+		{
+			e.printStackTrace();
+		}
 	}
 
-	protected static Pair< List< Pair< Integer, Integer > >, List< Pair< Integer, Integer > > > defineSets( final int minZ, final int maxZ, final int setSize )
+	protected static void createSets()
+	{
+		
+	}
+
+	protected static SolveSet defineSolveSet( final int minZ, final int maxZ, final int setSize, final RunParameters runParams )
 	{
 		final int modulo = ( maxZ - minZ + 1 ) % setSize;
 
 		final int numSetsLeft = ( maxZ - minZ + 1 ) / setSize + Math.min( 1, modulo );
 
-		final ArrayList< Pair< Integer, Integer > > leftSets = new ArrayList<>();
-		final ArrayList< Pair< Integer, Integer > > rightSets = new ArrayList<>();
+		final ArrayList< SolveItem > leftSets = new ArrayList<>();
+		final ArrayList< SolveItem > rightSets = new ArrayList<>();
 
 		for ( int i = 0; i < numSetsLeft; ++i )
 		{
-			leftSets.add( new ValuePair<>( minZ + i * setSize, Math.min( minZ + (i + 1) * setSize - 1, maxZ ) ) );
+			leftSets.add( new SolveItem( minZ + i * setSize, Math.min( minZ + (i + 1) * setSize - 1, maxZ ), runParams ) );
 		}
 
 		for ( int i = 0; i < numSetsLeft - 1; ++i )
 		{
-			final Pair< Integer, Integer > set0 = leftSets.get( i );
-			final Pair< Integer, Integer > set1 = leftSets.get( i + 1 );
+			final SolveItem set0 = leftSets.get( i );
+			final SolveItem set1 = leftSets.get( i + 1 );
 
-			rightSets.add( new ValuePair<>( ( set0.getA() + set0.getB() ) / 2, ( set1.getA() + set1.getB() ) / 2 ) );
+			rightSets.add( new SolveItem( ( set0.minZ() + set0.maxZ() ) / 2, ( set1.minZ() + set1.maxZ() ) / 2, runParams ) );
 		}
 
-		return new ValuePair<>( leftSets, rightSets );
-	}
-
-	protected static void printSets( final Pair< List< Pair< Integer, Integer > >, List< Pair< Integer, Integer > > > sets )
-	{
-		final int numSetsLeft = sets.getA().size();
-
-		LOG.info( "Defined sets for global solve" );
-
-		for ( int i = 0; i < numSetsLeft; ++i )
-		{
-			LOG.info( sets.getA().get( i ).getA() + " >> " + sets.getA().get( i ).getB() );
-
-			if ( i < numSetsLeft - 1 )
-				LOG.info( "\t" + sets.getB().get( i ).getA() + " >> " + sets.getB().get( i ).getB() );
-		}
+		return new SolveSet( leftSets, rightSets );
 	}
 
 	public static void main( String[] args )
@@ -97,7 +100,7 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
                             "--minZ", "10000",
-                            "--maxZ", "11111",
+                            "--maxZ", "10311",
 
                             "--threads", "4",
                             "--maxIterations", "10000",

@@ -15,12 +15,25 @@ public class RunParameters
 	protected List<String> pGroupList;
 	protected Map<String, List<Double>> sectionIdToZMap;
 	protected Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap;
-	protected double minZ, maxZ; // min will be fixed, max will be grouped
+	protected double minZ, maxZ;
 	protected int totalTileCount;
 
 	@Override
 	public RunParameters clone()
 	{
-		return null;
+		final RunParameters runParams = new RunParameters();
+
+		runParams.renderDataClient = this.renderDataClient;
+		runParams.matchDataClient = this.matchDataClient;
+		runParams.targetDataClient = this.targetDataClient;
+
+		runParams.pGroupList = this.pGroupList;
+		runParams.sectionIdToZMap = this.sectionIdToZMap;
+		runParams.zToTileSpecsMap = this.zToTileSpecsMap;
+		runParams.minZ = this.minZ;
+		runParams.maxZ = this.maxZ;
+		runParams.totalTileCount = totalTileCount;
+
+		return runParams;
 	}
 }

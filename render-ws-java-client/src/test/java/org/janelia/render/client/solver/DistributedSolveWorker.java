@@ -2,9 +2,12 @@ package org.janelia.render.client.solver;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
@@ -14,30 +17,107 @@ import org.slf4j.LoggerFactory;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.ErrorStatistic;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.Tile;
+import mpicbg.models.TileConfiguration;
+import mpicbg.models.TileUtil;
 import net.imglib2.util.Pair;
 
 public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 {
 	final Parameters parameters;
 	final RunParameters runParams;
+	final SolveItem< B > solveItem;
 
-	final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
-	final HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
-	final HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
-
-	public DistributedSolveWorker( final Parameters parameters, final RunParameters runParams )
+	public DistributedSolveWorker( final Parameters parameters, final SolveItem< B > solveItem )
 	{
 		this.parameters = parameters;
-		this.runParams = runParams;
+		this.solveItem = solveItem;
+		this.runParams = solveItem.runParams();
 	}
+
+	public SolveItem< B > getSolveItem() { return solveItem; }
 
 	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
 		assembleMatchData();
+		solve();
+	}
+
+	protected void solve() throws InterruptedException, ExecutionException
+	{
+		final TileConfiguration tileConfig = new TileConfiguration();
+		tileConfig.addTiles(solveItem.idToTileMap().values());
+
+		LOG.info("run: optimizing {} tiles", solveItem.idToTileMap().size());
+
+		final List<Double> lambdaValues;
+
+		if (parameters.optimizerLambdas == null)
+			lambdaValues = Stream.of(1.0, 0.5, 0.1, 0.01)
+					.filter(lambda -> lambda <= parameters.startLambda)
+					.collect(Collectors.toList());
+		else
+			lambdaValues = parameters.optimizerLambdas.stream()
+					.sorted(Comparator.reverseOrder())
+					.collect(Collectors.toList());
+
+		LOG.info( "lambda's used:" );
+
+		for ( final double lambda : lambdaValues )
+			LOG.info( "l=" + lambda );
+
+		for (final double lambda : lambdaValues)
+		{
+			for (final Tile tile : solveItem.idToTileMap().values())
+				((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
+
+			int numIterations = parameters.maxIterations;
+			if ( lambda == 1.0 || lambda == 0.5 )
+				numIterations = 1000;
+			else if ( lambda == 0.1 )
+				numIterations = 400;
+			else if ( lambda == 0.01 )
+				numIterations = 200;
+
+			// tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
+		
+			LOG.info( "l=" + lambda + ", numIterations=" + numIterations );
+
+			final ErrorStatistic observer = new ErrorStatistic(parameters.maxPlateauWidth + 1 );
+			final float damp = 1.0f;
+			TileUtil.optimizeConcurrently(
+					observer,
+					parameters.maxAllowedError,
+					numIterations,
+					parameters.maxPlateauWidth,
+					damp,
+					tileConfig,
+					tileConfig.getTiles(),
+					tileConfig.getFixedTiles(),
+					parameters.numberOfThreads);
+		}
+
+		//
+		// create lookup for the new models
+		//
+		solveItem.idToNewModel().clear();
+
+		final ArrayList< String > tileIds = new ArrayList<>( solveItem.idToTileMap().keySet() );
+		Collections.sort( tileIds );
+
+		for (final String tileId : tileIds )
+		{
+			final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = solveItem.idToTileMap().get(tileId);
+			AffineModel2D affine = tile.getModel().createAffineModel2D();
+
+			solveItem.idToNewModel().put( tileId, affine );
+			LOG.info("tile {} model is {}", tileId, affine);
+		}
+		
 	}
 
 	protected void assembleMatchData() throws IOException
@@ -65,32 +145,39 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 					continue;
 				}
 
+				// if any of the matches is outside the range we ignore them
+				if ( pTileSpec.getZ() < solveItem.minZ() || pTileSpec.getZ() > solveItem.maxZ() || qTileSpec.getZ() < solveItem.minZ() || qTileSpec.getZ() > solveItem.maxZ() )
+				{
+					LOG.info("run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, parameters.stack);
+					continue;
+				}
+
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p, q;
 
-				if ( !idToTileMap.containsKey( pId ) )
+				if ( !solveItem.idToTileMap().containsKey( pId ) )
 				{
 					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairP = SolveTools.buildTileFromSpec(parameters, pTileSpec);
 					p = pairP.getA();
-					idToTileMap.put( pId, p );
-					idToPreviousModel.put( pId, pairP.getB() );
-					idToTileSpec.put( pId, pTileSpec );
+					solveItem.idToTileMap().put( pId, p );
+					solveItem.idToPreviousModel().put( pId, pairP.getB() );
+					solveItem.idToTileSpec().put( pId, pTileSpec );
 				}
 				else
 				{
-					p = idToTileMap.get( pId );
+					p = solveItem.idToTileMap().get( pId );
 				}
 
-				if ( !idToTileMap.containsKey( qId ) )
+				if ( !solveItem.idToTileMap().containsKey( qId ) )
 				{
 					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairQ = SolveTools.buildTileFromSpec(parameters, qTileSpec);
 					q = pairQ.getA();
-					idToTileMap.put( qId, q );
-					idToPreviousModel.put( qId, pairQ.getB() );
-					idToTileSpec.put( qId, qTileSpec );	
+					solveItem.idToTileMap().put( qId, q );
+					solveItem.idToPreviousModel().put( qId, pairQ.getB() );
+					solveItem.idToTileSpec().put( qId, qTileSpec );	
 				}
 				else
 				{
-					q = idToTileMap.get( qId );
+					q = solveItem.idToTileMap().get( qId );
 				}
 
 				p.connect(q, CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()));
