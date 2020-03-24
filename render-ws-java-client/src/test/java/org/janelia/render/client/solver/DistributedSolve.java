@@ -46,13 +46,13 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 		LOG.info( "Defined sets for global solve" );
 		LOG.info( "\n" + solveSet );
 
-		// Multithreaded for now
+		// Multithreaded for now (should be Spark for cluster-)
 
 		// set up executor service
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool( 3 );
 		final ArrayList< Callable< Void > > tasks = new ArrayList<>();
 
-		for ( final SolveItem s : solveSet.allItems() )
+		for ( final SolveItem< B > s : solveSet.allItems() )
 		{
 			tasks.add( new Callable< Void >() 
 			{
@@ -79,14 +79,16 @@ public class DistributedSolve< B extends Model< B > & Affine2D< B > >
 
 		taskExecutor.shutdown();
 
+		
 		new ImageJ();
-		solveSet.leftItems.get( 0 ).visualizeInput();
-		solveSet.leftItems.get( 0 ).visualizeAligned();
+
+		for ( final SolveItem leftItem : solveSet.allItems() )
+			leftItem.visualizeAligned().setTitle( "aligend " + leftItem.minZ() + " >> " + leftItem.maxZ() );
 
 		SimpleMultiThreading.threadHaltUnClean();
 	}
 
-	protected static void createSets()
+	protected void globalSolve()
 	{
 		
 	}

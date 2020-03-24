@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -77,11 +78,11 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 
 			int numIterations = parameters.maxIterations;
 			if ( lambda == 1.0 || lambda == 0.5 )
-				numIterations = 1000;
+				numIterations = 100;
 			else if ( lambda == 0.1 )
-				numIterations = 400;
+				numIterations = 40;
 			else if ( lambda == 0.01 )
-				numIterations = 200;
+				numIterations = 20;
 
 			// tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
 		
@@ -182,6 +183,15 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 				}
 
 				p.connect(q, CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()));
+
+				final int pZ = (int)Math.round( pTileSpec.getZ() );
+				final int qZ = (int)Math.round( qTileSpec.getZ() );
+
+				solveItem.zToTileId().putIfAbsent( pZ, new HashSet<>() );
+				solveItem.zToTileId().putIfAbsent( qZ, new HashSet<>() );
+
+				solveItem.zToTileId().get( pZ ).add( pId );
+				solveItem.zToTileId().get( qZ ).add( qId );
 			}
 		}
 	}

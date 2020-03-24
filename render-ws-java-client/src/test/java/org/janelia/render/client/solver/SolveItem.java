@@ -1,6 +1,7 @@
 package org.janelia.render.client.solver;
 
 import java.util.HashMap;
+import java.util.HashSet;
 
 import org.janelia.alignment.spec.TileSpec;
 
@@ -20,6 +21,7 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	final private HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
 	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
 	final private HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
+	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
 	final private HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
 
 	public SolveItem( final int minZ, final int maxZ, final RunParameters runParams )
@@ -39,6 +41,7 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	public HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap() { return idToTileMap; }
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return idToPreviousModel; }
 	public HashMap<String, TileSpec> idToTileSpec() { return idToTileSpec; }
+	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
 	public HashMap<String, AffineModel2D> idToNewModel() { return idToNewModel; }
 
 	public ImagePlus visualizeInput() { return visualizeInput( 0.15 ); }
