@@ -11,10 +11,13 @@ import mpicbg.models.AffineModel2D;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 
 public class SolveItem< B extends Model< B > & Affine2D< B > >
 {
+	final public static int samplesPerDimension = 5;
+
 	final private int minZ, maxZ;
 	final private RunParameters runParams;
 
@@ -24,6 +27,9 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
 	final private HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
 
+	Tile<RigidModel2D> globalAlignBlock = null;
+	AffineModel2D globalAlignAffineModel = null;
+
 	public SolveItem( final int minZ, final int maxZ, final RunParameters runParams )
 	{
 		this.minZ = minZ;
@@ -32,6 +38,9 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 		this.runParams = runParams.clone();
 		this.runParams.minZ = minZ;
 		this.runParams.maxZ = maxZ;
+
+		this.globalAlignBlock = new Tile< RigidModel2D >( new RigidModel2D() );
+		this.globalAlignAffineModel = new AffineModel2D();
 	}
 
 	public int minZ() { return minZ; }
@@ -43,6 +52,17 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	public HashMap<String, TileSpec> idToTileSpec() { return idToTileSpec; }
 	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
 	public HashMap<String, AffineModel2D> idToNewModel() { return idToNewModel; }
+
+	public double getWeight( final int z )
+	{
+		// goes from 0.0 to 1.0 as z increases to the middle, then back to 0 to the end
+		return Math.max( Math.min( Math.min( (z - minZ) / ((maxZ-minZ)/2.0), (maxZ - z) / ((maxZ-minZ)/2.0) ), 1 ), 0 );
+	}
+
+	public double getCosWeight( final int z )
+	{
+		return 1.0 - Math.cos( getWeight( z ) * Math.PI/2 );
+	}
 
 	public ImagePlus visualizeInput() { return visualizeInput( 0.15 ); }
 
@@ -77,6 +97,16 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return null;
+		}
+	}
+
+	public static void main( String[] args )
+	{
+		SolveItem s = new SolveItem<>( 100, 102, new RunParameters() );
+
+		for ( int z = s.minZ(); z <= s.maxZ(); ++z )
+		{
+			System.out.println( z + " " + s.getWeight( z ) + " " + s.getCosWeight( z ) );
 		}
 	}
 }

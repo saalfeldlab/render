@@ -39,6 +39,7 @@ import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.Cursor;
@@ -61,6 +62,15 @@ import net.imglib2.view.Views;
 public class SolveTools
 {
 	private SolveTools() {}
+
+	public static AffineModel2D createAffineModel( final RigidModel2D rigid )
+	{
+		final double[] array = new double[ 6 ];
+		rigid.toArray( array );
+		final AffineModel2D affine = new AffineModel2D();
+		affine.set( array[ 0 ], array[ 1 ], array[ 2 ], array[ 3 ], array[ 4 ], array[ 5 ] );
+		return affine;
+	}
 
 	public static RunParameters setupSolve( final Parameters parameters ) throws IOException
 	{

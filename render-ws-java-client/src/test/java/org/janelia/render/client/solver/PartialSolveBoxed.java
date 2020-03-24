@@ -366,9 +366,9 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 		LOG.info( "REALIGN block: " + reAlignedBlock.getModel() );
 		LOG.info( "BOTTOM block: " + bottomBlock.getModel() );
 
-		final AffineModel2D topBlockModel = createAffineModel( topBlock.getModel() );
-		final AffineModel2D reAlignBlockModel = createAffineModel( reAlignedBlock.getModel() );
-		final AffineModel2D bottomBlockModel = createAffineModel( bottomBlock.getModel() );
+		final AffineModel2D topBlockModel = SolveTools.createAffineModel( topBlock.getModel() );
+		final AffineModel2D reAlignBlockModel = SolveTools.createAffineModel( reAlignedBlock.getModel() );
+		final AffineModel2D bottomBlockModel = SolveTools.createAffineModel( bottomBlock.getModel() );
 
 		// assemble the final transformation models
 		//
@@ -486,15 +486,6 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
 		LOG.info("run: exit");
 
-	}
-
-	public static AffineModel2D createAffineModel( final RigidModel2D rigid )
-	{
-		final double[] array = new double[ 6 ];
-		rigid.toArray( array );
-		final AffineModel2D affine = new AffineModel2D();
-		affine.set( array[ 0 ], array[ 1 ], array[ 2 ], array[ 3 ], array[ 4 ], array[ 5 ] );
-		return affine;
 	}
 
 	public static void main( String[] args )
