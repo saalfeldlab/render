@@ -4,16 +4,19 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import mpicbg.trakem2.transform.AffineModel2D;
+import mpicbg.trakem2.transform.TranslationModel2D;
 
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -89,6 +92,19 @@ public class TransformSectionClient {
         public Integer layerMinimumXAndYBound;
 
         @Parameter(
+                names = "--fromTileId",
+                description = "If specified, transformClass and transformData parameters are ignored " +
+                              "and all tiles in this tile's layer are simply translated so that this tile's " +
+                              "minimum X and Y bounds are the same as the target 'to' tile's minimum X and Y.  " +
+                              "Z value(s) are also ignored and the only layer moved will be the from tile's layer.")
+        public String fromTileId;
+
+        @Parameter(
+                names = "--toTileId",
+                description = "See fromTileId parameter description")
+        public String toTileId;
+
+        @Parameter(
                 names = "--completeTargetStack",
                 description = "Complete the target stack after transforming all layers",
                 arity = 0)
@@ -121,7 +137,7 @@ public class TransformSectionClient {
 
                 client.setupDerivedStack();
 
-                for (final Double z : parameters.zValues) {
+                for (final Double z : client.applicableZValues) {
                     client.transformTilesForZ(z);
                 }
 
@@ -140,20 +156,47 @@ public class TransformSectionClient {
     private final RenderDataClient sourceRenderDataClient;
     private final RenderDataClient targetRenderDataClient;
     private final Map<Double, Bounds> zToBoundsMap;
+    private final List<Double> applicableZValues;
 
     private TransformSectionClient(final Parameters parameters)
             throws IOException {
 
         this.parameters = parameters;
 
-        this.stackTransform = new LeafTransformSpec(parameters.transformId,
-                                                    null,
-                                                    parameters.transformClass,
-                                                    parameters.transformData.replace(',', ' '));
+        this.sourceRenderDataClient = parameters.renderWeb.getDataClient();
+
+        if ((parameters.fromTileId != null) && (parameters.toTileId != null)) {
+
+            final TileSpec fromTileSpec = sourceRenderDataClient.getTile(parameters.stack, parameters.fromTileId);
+            final Double fromTileZ = fromTileSpec.getZ();
+            final TileSpec toTileSpec = sourceRenderDataClient.getTile(parameters.stack, parameters.toTileId);
+            final Double toTileZ = toTileSpec.getZ();
+
+            if (fromTileZ.equals(toTileZ)) {
+                throw new IllegalArgumentException(
+                        "Both source and target tiles cannot be in the same layer (" + toTileZ + ").");
+            }
+
+            final TranslationModel2D model = new TranslationModel2D();
+            model.set(toTileSpec.getMinX() - fromTileSpec.getMinX(),
+                      toTileSpec.getMinY() - fromTileSpec.getMinY());
+
+            this.stackTransform = new LeafTransformSpec("MOVE_" + fromTileZ + "_TO_" + toTileZ,
+                                                        null,
+                                                        model.getClass().getName(),
+                                                        model.toDataString());
+            this.applicableZValues = Collections.singletonList(fromTileZ);
+
+        } else {
+
+            this.stackTransform = new LeafTransformSpec(parameters.transformId,
+                                                        null,
+                                                        parameters.transformClass,
+                                                        parameters.transformData.replace(',', ' '));
+            this.applicableZValues = parameters.zValues;
+        }
 
         this.tileSpecValidator = parameters.tileSpecValidator.getValidatorInstance();
-
-        this.sourceRenderDataClient = parameters.renderWeb.getDataClient();
 
         if ((parameters.targetProject == null) ||
             (parameters.targetProject.trim().length() == 0) ||
