@@ -1,4 +1,4 @@
-package org.janelia.render.client;
+package org.janelia.render.client.solver;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,10 +16,10 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.render.client.ClientRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ij.ImageJ;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
@@ -34,20 +34,23 @@ import mpicbg.models.TileUtil;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 
-public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
+public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 {
+	final Parameters parameters;
+	final RunParameters runParams;
+
 	public PartialSolveSimple(final Parameters parameters) throws IOException
 	{
-		super( parameters );
+		this.parameters = parameters;
+		this.runParams = SolveTools.setupSolve( parameters );
 	}
 
-	@Override
 	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
 		LOG.info("run: entry");
 
-		LOG.info( "fixing tiles from layer " + minZ );
-		LOG.info( "grouping tiles from layer " + maxZ );
+		LOG.info( "fixing tiles from layer " + runParams.minZ );
+		LOG.info( "grouping tiles from layer " + runParams.maxZ );
 
 		final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
 		final HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
@@ -68,20 +71,20 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
 
 		ArrayList< String > log = new ArrayList<>();
 
-		for (final String pGroupId : pGroupList)
+		for (final String pGroupId : runParams.pGroupList)
 		{
 			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
 
-			final List<CanvasMatches> matches = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
+			final List<CanvasMatches> matches = runParams.matchDataClient.getMatchesWithPGroupId(pGroupId, false);
 
 			for (final CanvasMatches match : matches)
 			{
 				final String pId = match.getpId();
-				final TileSpec pTileSpec = getTileSpec(pGroupId, pId);
+				final TileSpec pTileSpec = SolveTools.getTileSpec(parameters, runParams, pGroupId, pId);
 
 				final String qGroupId = match.getqGroupId();
 				final String qId = match.getqId();
-				final TileSpec qTileSpec = getTileSpec(qGroupId, qId);
+				final TileSpec qTileSpec = SolveTools.getTileSpec(parameters, runParams, qGroupId, qId);
 
 				if ((pTileSpec == null) || (qTileSpec == null))
 				{
@@ -97,7 +100,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
 				if ( !idToTileMap.containsKey( pId ) )
 				{
 					// isgrouped?
-					if ( Math.round( pTileSpec.getZ() ) == Math.round( maxZ ) )
+					if ( Math.round( pTileSpec.getZ() ) == Math.round( runParams.maxZ ) )
 					{
 						pGrouped = true;
 						groupedTiles.add( pId );
@@ -105,13 +108,13 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
 
 						p = groupedTile;
 						idToTileMap.put( pId, groupedTile );
-						idToPreviousModel.put( pId, loadLastTransformFromSpec( pTileSpec ).copy() );
+						idToPreviousModel.put( pId, SolveTools.loadLastTransformFromSpec( pTileSpec ).copy() );
 						idToTileSpec.put( pId, pTileSpec );
 					}
 					else
 					{
 						pGrouped = false;
-						final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairP = buildTileFromSpec(pTileSpec);
+						final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairP = SolveTools.buildTileFromSpec(parameters, pTileSpec);
 						p = pairP.getA();
 						idToTileMap.put( pId, p );
 						idToPreviousModel.put( pId, pairP.getB() );
@@ -119,7 +122,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
 					}
 
 					// isfixed?
-					if ( Math.round( pTileSpec.getZ() ) == Math.round( minZ ) )
+					if ( Math.round( pTileSpec.getZ() ) == Math.round( runParams.minZ ) )
 					{
 						fixedTiles.add( p );
 						fixedTileNames.add( pId );
@@ -138,7 +141,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
 				if ( !idToTileMap.containsKey( qId ) )
 				{
 					// isgrouped?
-					if ( Math.round( qTileSpec.getZ() ) == Math.round( maxZ ) )
+					if ( Math.round( qTileSpec.getZ() ) == Math.round( runParams.maxZ ) )
 					{
 						qGrouped = true;
 						groupedTiles.add( qId );
@@ -146,13 +149,13 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
 
 						q = groupedTile;
 						idToTileMap.put( qId, groupedTile );
-						idToPreviousModel.put( qId, loadLastTransformFromSpec( qTileSpec ).copy() );
+						idToPreviousModel.put( qId, SolveTools.loadLastTransformFromSpec( qTileSpec ).copy() );
 						idToTileSpec.put( qId, qTileSpec );
 					}
 					else
 					{
 						qGrouped = false;
-						final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairQ = buildTileFromSpec(qTileSpec);
+						final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairQ = SolveTools.buildTileFromSpec(parameters, qTileSpec);
 						q = pairQ.getA();
 						idToTileMap.put( qId, q );
 						idToPreviousModel.put( qId, pairQ.getB() );
@@ -160,7 +163,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
 					}
 
 					// isfixed?
-					if ( Math.round( qTileSpec.getZ() ) == Math.round( minZ ) )
+					if ( Math.round( qTileSpec.getZ() ) == Math.round( runParams.minZ ) )
 					{
 						fixedTiles.add( q );
 						fixedTileNames.add( qId );
@@ -285,7 +288,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
 				if ( groupedTiles.contains( tileId ) )
 				{
 					// the relative propagation model of the last z plane
-					if ( propagationModel == null && idToTileSpec.get( tileId ).getZ() == maxZ && groupedTiles.contains( tileId ) )
+					if ( propagationModel == null && idToTileSpec.get( tileId ).getZ() == runParams.maxZ && groupedTiles.contains( tileId ) )
 						propagationModel = affine.copy();
 
 					final AffineModel2D previous = idToPreviousModel.get( tileId ).copy();
@@ -302,7 +305,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
 			}
 
 			LOG.info("");
-			LOG.info("Relative propagation model for all layers > " + maxZ + " = " + propagationModel );
+			LOG.info("Relative propagation model for all layers > " + runParams.maxZ + " = " + propagationModel );
 			LOG.info("");
 
 			// save the re-aligned part
@@ -316,14 +319,14 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
 
-			saveTargetStackTiles( idToNewModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
+			SolveTools.saveTargetStackTiles( parameters, runParams, idToNewModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
 
 			// save the bottom part
-			zToSave = renderDataClient.getStackZValues( parameters.stack, zToSave.get( zToSave.size() - 1 ) + 0.1, null );
+			zToSave = runParams.renderDataClient.getStackZValues( parameters.stack, zToSave.get( zToSave.size() - 1 ) + 0.1, null );
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
 
-			saveTargetStackTiles( null, propagationModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
+			SolveTools.saveTargetStackTiles( parameters, runParams, null, propagationModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
 
 			//new ImageJ();
 
@@ -414,7 +417,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > > extends 
                             "--project", "Sec10",
 
                             "--stack", "v2_patch_trakem2",
-                            "--targetStack", "v2_patch_trakem2_sp",
+                            //"--targetStack", "v2_patch_trakem2_sp",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1",
                             "--minZ", "20500",

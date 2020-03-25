@@ -42,7 +42,10 @@ public class CommandLineParameters implements Serializable {
                       final boolean exitOnHelpOrFailure) throws IllegalArgumentException {
 
         jCommander = new JCommander(this);
-        jCommander.setProgramName("java -cp <render-module>-standalone.jar " + programClass.getName());
+        if ( programClass == null )
+        	jCommander.setProgramName("java -cp <render-module>-standalone.jar");
+        else
+        	jCommander.setProgramName("java -cp <render-module>-standalone.jar " + programClass.getName());
 
         boolean parseFailed = true;
         try {

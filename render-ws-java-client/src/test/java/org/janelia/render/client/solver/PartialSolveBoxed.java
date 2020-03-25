@@ -1,6 +1,5 @@
-package org.janelia.render.client;
+package org.janelia.render.client.solver;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,16 +13,14 @@ import java.util.stream.Stream;
 
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.janelia.render.client.ClientRunner;
+import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
-import ij.measure.Calibration;
-import ij.process.FloatProcessor;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
@@ -36,31 +33,33 @@ import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 
-public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends PartialSolve< B >
+public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 {
+	final Parameters parameters;
+	final RunParameters runParams;
+
 	// how many layers on the top and bottom we use as overlap to compute the rigid models that "blend" the re-solved stack back in 
 	protected int overlapTop = 25;//50;
 	protected int overlapBottom = 25;//50;
 
 	public PartialSolveBoxed(final Parameters parameters) throws IOException
 	{
-		super( parameters );
+		this.parameters = parameters;
+		this.runParams = SolveTools.setupSolve( parameters );
 	}
 
-	@Override
 	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
 		LOG.info("run: entry");
 
-		final int topBorder = ((int)Math.round( minZ ) + overlapTop -1);
-		final int bottomBorder = ((int)Math.round( maxZ ) - overlapBottom +1);
+		final int topBorder = ((int)Math.round( runParams.minZ ) + overlapTop -1);
+		final int bottomBorder = ((int)Math.round( runParams.maxZ ) - overlapBottom +1);
 
-		LOG.info( "using " + overlapTop + " layers on the top for blending (" + Math.round( minZ ) + "-" + topBorder + ")" );
-		LOG.info( "using " + overlapBottom + " layers on the bottom for blending (" + Math.round( maxZ ) + "-" + bottomBorder + ")" );
+		LOG.info( "using " + overlapTop + " layers on the top for blending (" + Math.round( runParams.minZ ) + "-" + topBorder + ")" );
+		LOG.info( "using " + overlapBottom + " layers on the bottom for blending (" + Math.round( runParams.maxZ ) + "-" + bottomBorder + ")" );
 
 		final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
 		final HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
@@ -71,57 +70,28 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		HashSet< String > topTileIds = new HashSet<>();
 		HashSet< String > bottomTileIds = new HashSet<>();
 
-		//	18-10-29_123951_0-0-2.22801.0
-		//	18-10-29_163336_0-0-0.22928.0
-		//	18-10-29_171036_0-0-0.22934.0
-		//	18-10-29_171628_0-0-0.22939.0
-		//	18-10-29_172440_0-0-0.22946.0
-		//	18-10-29_140751_0-0-0.22876.0
-		//	18-10-29_141122_0-0-0.22879.0
-		
-		//  18-10-29_131720_0-0-2.22833.0
-		//  18-10-29_132202_0-0-0.22837.0
-		//	18-10-29_132534_0-0-1.22840.0
-		//	18-10-29_132906_0-0-0.22843.0
-		//	18-10-29_133127_0-0-0.22845.0
-		//	18-10-29_133348_0-0-0.22847.0
-
 		ArrayList< String > idsToIgnore = new ArrayList<>();
-		/*idsToIgnore.add( "_0-0-2.22801" );
-		idsToIgnore.add( "_0-0-0.22928" );
-		idsToIgnore.add( "_0-0-0.22934" );
-		idsToIgnore.add( "_0-0-0.22939" );
-		idsToIgnore.add( "_0-0-0.22946" );
-		idsToIgnore.add( "_0-0-0.22876" );
-		idsToIgnore.add( "_0-0-0.22879" );
+		//idsToIgnore.add( "_0-0-2.22801" );
 
-		idsToIgnore.add( "_0-0-2.22833" );
-		idsToIgnore.add( "_0-0-0.22837" );
-		idsToIgnore.add( "_0-0-1.22840" );
-		idsToIgnore.add( "_0-0-0.22843" );
-		idsToIgnore.add( "_0-0-0.22845" );
-		idsToIgnore.add( "_0-0-0.22847" );*/
+		final ArrayList< String > connectedTiles = new ArrayList<>();
 
 		HashMap< Integer, Integer > zLimits = new HashMap<>();
-		//zLimits.put( 32168, 1 );
-		//zLimits.put( 32169, 1 );
+		//zLimits.put( 15769, 1 );
 
-		int count27238 = 0;
-
-		for (final String pGroupId : pGroupList)
+		for (final String pGroupId : runParams.pGroupList)
 		{
 			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
 
-			final List<CanvasMatches> matches = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
+			final List<CanvasMatches> matches = runParams.matchDataClient.getMatchesWithPGroupId(pGroupId, false);
 
 			for (final CanvasMatches match : matches)
 			{
 				final String pId = match.getpId();
-				final TileSpec pTileSpec = getTileSpec(pGroupId, pId);
+				final TileSpec pTileSpec = SolveTools.getTileSpec(parameters, runParams, pGroupId, pId);
 
 				final String qGroupId = match.getqGroupId();
 				final String qId = match.getqId();
-				final TileSpec qTileSpec = getTileSpec(qGroupId, qId);
+				final TileSpec qTileSpec = SolveTools.getTileSpec(parameters, runParams, qGroupId, qId);
 
 				if ((pTileSpec == null) || (qTileSpec == null))
 				{
@@ -172,106 +142,11 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				if ( ignore )
 					continue;
 
-				if ( pZ != qZ && ( pZ == 27238 || qZ == 27238 ) )
-				{
-					// the only layer we connect to
-					if ( pZ == 27237 || qZ == 27237 )
-					{
-						// want to connect to the first tile of 31249
-						if ( pZ == 27238 && pId.contains( "_0-0-3." ) ||  qZ == 27238 && qId.contains( "_0-0-3." ) )
-						{
-							if ( count27238 == 0 )
-							{
-								++count27238;
-								System.out.println( "KEEPING: " + pId + " <> " + qId );
-							}
-							else
-							{
-								System.out.println( "IGNORING: " + pId + " <> " + qId );
-								ignore = true;
-							}
-						}
-						else
-						{
-							System.out.println( "IGNORING: " + pId + " <> " + qId );
-							ignore = true;
-						}
-					}
-					else
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-
-				if ( ignore )
-					continue;
-
-				/*
-				if ( pZ != qZ && ( pZ == 15742 || qZ == 15742 ) )
-				{
-					// the only layer we connect to on the top
-					if ( pZ == 15740 || qZ == 15740 )
-					{
-						if ( pZ == 15742 && pId.contains( "_0-0-2." ) ||  qZ == 15742 && qId.contains( "_0-0-2." ) )
-						{
-							if ( count15742 == 0 )
-							{
-								++count15742;
-								System.out.println( "KEEPING: " + pId + " <> " + qId );
-							}
-							else
-							{
-								System.out.println( "IGNORING: " + pId + " <> " + qId );
-								ignore = true;
-							}
-						}
-						else
-						{
-							System.out.println( "IGNORING: " + pId + " <> " + qId );
-							ignore = true;
-						}
-					}
-					else if ( pZ < 15742 || qZ < 15742 )
-					{
-						System.out.println( "IGNORING: " + pId + " <> " + qId );
-						ignore = true;
-					}
-				}
-
-				if ( ignore )
-					continue;
-				*/
-
-				/*
-				if ( pTileSpec.getZ() == 15739 || pTileSpec.getZ() == 15740 || pTileSpec.getZ() == 15741 )
-				{
-					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 1 )
-						continue;
-				}
-
-				if ( qTileSpec.getZ() == 15739 || qTileSpec.getZ() == 15740 || qTileSpec.getZ() == 15741 )
-				{
-					if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 1 )
-						continue;
-				}
-
-				if ( Math.abs( qTileSpec.getZ() - pTileSpec.getZ() ) > 3 )
-					continue;
-				*/
-				/*
-				if ( pId.contains("_0-0-0") || pId.contains("_0-0-2")|| pId.contains("_0-0-3") || qId.contains("_0-0-0") || qId.contains("_0-0-2") || qId.contains("_0-0-3") )
-				{
-					LOG.info("run: ignoring pair ({}, {}) due to manual filtering", pId, qId );
-					continue;
-				}
-				*/
-				
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p, q;
 
 				if ( !idToTileMap.containsKey( pId ) )
 				{
-					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairP = buildTileFromSpec(pTileSpec);
+					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairP = SolveTools.buildTileFromSpec(parameters, pTileSpec);
 					p = pairP.getA();
 					idToTileMap.put( pId, p );
 					idToPreviousModel.put( pId, pairP.getB() );
@@ -290,7 +165,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 				if ( !idToTileMap.containsKey( qId ) )
 				{
-					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairQ = buildTileFromSpec(qTileSpec);
+					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairQ = SolveTools.buildTileFromSpec(parameters, qTileSpec);
 					q = pairQ.getA();
 					idToTileMap.put( qId, q );
 					idToPreviousModel.put( qId, pairQ.getB() );
@@ -308,11 +183,16 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				}
 
 				p.connect(q, CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()));
+				connectedTiles.add( pId + " <> " + qId );
 			}
 		}
 
-		System.out.println( "count27238: " + count27238 );
-		//System.out.println( "count15742: " + count15742 );
+
+		for ( final String s : connectedTiles )
+			System.out.println( s );
+
+		//System.exit( 0 );
+
 		LOG.info("top block #tiles " + topTileIds.size());
 		LOG.info("bottom block #tiles " + bottomTileIds.size());
 
@@ -486,9 +366,9 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		LOG.info( "REALIGN block: " + reAlignedBlock.getModel() );
 		LOG.info( "BOTTOM block: " + bottomBlock.getModel() );
 
-		final AffineModel2D topBlockModel = createAffineModel( topBlock.getModel() );
-		final AffineModel2D reAlignBlockModel = createAffineModel( reAlignedBlock.getModel() );
-		final AffineModel2D bottomBlockModel = createAffineModel( bottomBlock.getModel() );
+		final AffineModel2D topBlockModel = SolveTools.createAffineModel( topBlock.getModel() );
+		final AffineModel2D reAlignBlockModel = SolveTools.createAffineModel( reAlignedBlock.getModel() );
+		final AffineModel2D bottomBlockModel = SolveTools.createAffineModel( bottomBlock.getModel() );
 
 		// assemble the final transformation models
 		//
@@ -566,55 +446,46 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
 
-			saveTargetStackTiles( idToFinalModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
+			SolveTools.saveTargetStackTiles( parameters, runParams, idToFinalModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
 
 			//
 			// save the bottom part
 			//
-			zToSave = renderDataClient.getStackZValues( parameters.stack, zToSave.get( zToSave.size() - 1 ) + 0.1, null );
+			zToSave = runParams.renderDataClient.getStackZValues( parameters.stack, zToSave.get( zToSave.size() - 1 ) + 0.1, null );
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
 
-			saveTargetStackTiles( null, bottomBlockModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
+			SolveTools.saveTargetStackTiles( parameters, runParams, null, bottomBlockModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
 
 			// TODO: save the top too when necessary
 			//
 			// save the top part
 			//
-			zToSave = renderDataClient.getStackZValues( parameters.stack, null, minZ - 0.1 );
+			zToSave = runParams.renderDataClient.getStackZValues( parameters.stack, null, runParams.minZ - 0.1 );
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
-			saveTargetStackTiles( null, null, zToSave, null );
+			SolveTools.saveTargetStackTiles( parameters, runParams, null, null, zToSave, null );
 
 			// complete the stack after everything has been saved
-			completeStack();
+			SolveTools.completeStack(parameters, runParams);
 		}
 
 		new ImageJ();
 
 		// visualize new result
-		ImagePlus imp1 = render( idToFinalModel, idToTileSpec, 0.15 );
+		ImagePlus imp1 = SolveTools.render( idToFinalModel, idToTileSpec, 0.15 );
 		imp1.setTitle( "final" );
 
 		//ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
 		//imp2.setTitle( "realign" );
 
-		ImagePlus imp3 = render( idToPreviousModel, idToTileSpec, 0.15 );
+		ImagePlus imp3 = SolveTools.render( idToPreviousModel, idToTileSpec, 0.15 );
 		imp3.setTitle( "previous" );
 
 		SimpleMultiThreading.threadHaltUnClean();
 
 		LOG.info("run: exit");
 
-	}
-
-	public static AffineModel2D createAffineModel( final RigidModel2D rigid )
-	{
-		final double[] array = new double[ 6 ];
-		rigid.toArray( array );
-		final AffineModel2D affine = new AffineModel2D();
-		affine.set( array[ 0 ], array[ 1 ], array[ 2 ], array[ 3 ], array[ 4 ], array[ 5 ] );
-		return affine;
 	}
 
 	public static void main( String[] args )
@@ -630,18 +501,18 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
-                            "--project", "Sec15",
-                            "--stack", "v2_patch_msolve_fine_trakem",
-                            "--targetStack", "v2_patch_msolve_fine_trakem_27238",
+                            "--project", "Sec08",
+                            "--stack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758",
+                            //"--targetStack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758_new",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
-                            "--minZ", "27198",//"24700",
-                            "--maxZ", "27278",//"26650",
+                            "--minZ", "15718",//"24700",
+                            "--maxZ", "15810",//"26650",
 
                             "--threads", "4",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
-                            "--matchCollection", "Sec15_patch"
+                            "--matchCollection", "Sec08_patch_matt"
                     };
                     parameters.parse(testArgs);
                 } else {
