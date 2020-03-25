@@ -246,7 +246,7 @@ public class DistributedSolve
 
 		LOG.info( "Pre-Align ... " );
 
-		tileConfigBlocks.preAlign();
+		//tileConfigBlocks.preAlign();
 
 		LOG.info( "Optimizing ... " );
 		
@@ -290,21 +290,31 @@ public class DistributedSolve
 			{
 				final Pair< SolveItem< ? >, SolveItem< ? > > solveItemPair = zToLeftRightItem.get( z );
 
-				final AffineModel2D modelA = solveItemPair.getA().globalAlignAffineModel;
-				final AffineModel2D modelB = solveItemPair.getB().globalAlignAffineModel;
+				// Models must be preconcatenated with actual models!!!!
+				final AffineModel2D globalModelA = solveItemPair.getA().globalAlignAffineModel;
+				final AffineModel2D globalModelB = solveItemPair.getB().globalAlignAffineModel;
+
+				final AffineModel2D modelA = solveItemPair.getA().idToNewModel().get( tileId );
+				final AffineModel2D modelB = solveItemPair.getB().idToNewModel().get( tileId );
+
+				modelA.preConcatenate( globalModelA );
+				modelB.preConcatenate( globalModelB );
 
 				LOG.info( "z=" + z + ": " + solveItemPair.getA().getCosWeight( z ) + " " + solveItemPair.getB().getCosWeight( z ) );
 
-				final AffineModel2D tileModel = new InterpolatedAffineModel2D<>( modelA, modelB, solveItemPair.getB().getCosWeight( z ) ).createAffineModel2D();
+				final AffineModel2D tileModel = new InterpolatedAffineModel2D<>( modelA, modelB, 0.5 ).createAffineModel2D();
 				
 				idToFinalModelGlobal.put( tileId, tileModel );
 			}
 		}
 
+		new ImageJ();
+
 		// visualize new result
 		ImagePlus imp1 = SolveTools.render( idToFinalModelGlobal, idToTileSpecGlobal, 0.15 );
 		imp1.setTitle( "final" );
 
+		SimpleMultiThreading.threadHaltUnClean();
 	}
 
 	protected static SolveSet defineSolveSet( final int minZ, final int maxZ, final int setSize, final RunParameters runParams )

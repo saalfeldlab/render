@@ -116,10 +116,12 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 			final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = solveItem.idToTileMap().get(tileId);
 			AffineModel2D affine = tile.getModel().createAffineModel2D();
 
+			/*
 			// TODO: REMOVE
 			final TranslationModel2D t = new TranslationModel2D();
-			t.set( solveItem.minZ() / 1000, 0 );
+			t.set( solveItem.minZ() - 10000, 0 );
 			affine.concatenate( t );
+			*/
 
 			solveItem.idToNewModel().put( tileId, affine );
 			LOG.info("tile {} model is {}", tileId, affine);
