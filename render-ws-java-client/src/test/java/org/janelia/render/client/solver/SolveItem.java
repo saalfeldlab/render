@@ -67,12 +67,12 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	public double getWeight( final int z )
 	{
 		// goes from 0.0 to 1.0 as z increases to the middle, then back to 0 to the end
-		return Math.max( Math.min( Math.min( (z - minZ) / ((maxZ-minZ)/2.0), (maxZ - z) / ((maxZ-minZ)/2.0) ), 1 ), 0 );
+		return Math.max( Math.min( Math.min( (z - minZ) / ((maxZ-minZ)/2.0), (maxZ - z) / ((maxZ-minZ)/2.0) ), 1 ), 0.0000001 );
 	}
 
 	public double getCosWeight( final int z )
 	{
-		return 1.0 - Math.cos( getWeight( z ) * Math.PI/2 );
+		return Math.max( Math.min( 1.0 - Math.cos( getWeight( z ) * Math.PI/2 ), 1 ), 0.0000001 );
 	}
 
 	public ImagePlus visualizeInput() { return visualizeInput( 0.15 ); }

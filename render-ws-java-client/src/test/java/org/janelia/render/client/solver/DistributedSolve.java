@@ -155,23 +155,29 @@ public class DistributedSolve
 		final HashMap<Integer, HashSet<String> > zToTileIdGlobal = new HashMap<>();
 		final HashMap<Integer, ArrayList< Pair< Pair< SolveItem< ? >, SolveItem< ? > >, HashSet< String > > > > zToSolveItemPairs = new HashMap<>();
 
-		// TODO: Remove
-		//final HashMap<Integer, Pair< SolveItem< ? >, SolveItem< ? > > > zToLeftRightItem = new HashMap<>();
-
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
 		// important: all images within one solveitem must be connected to each other!
 
 		// solve by solveitem, not by z layer
-		for ( final SolveItem< ? > solveItemA : solveSet.allItems() )
+		final List< SolveItem< ? > > allSolveItems = solveSet.allItems();
+
+		for ( int a = 0; a < allSolveItems.size() - 1; ++a )
 		{
+			final SolveItem< ? > solveItemA = allSolveItems.get( a );
+
 			for ( int z = solveItemA.minZ(); z <= solveItemA.maxZ(); ++z )
 			{
 				// is this zPlane overlapping with anything?
 				boolean hasOverlap = false;
 
-				for ( final SolveItem< ? > solveItemB : solveItemA.getOverlappingSolveItems() )
+				for ( int b = a + 1; b < allSolveItems.size(); ++b )
 				{
+					final SolveItem< ? > solveItemB = allSolveItems.get( b );
+
+					if ( solveItemA.equals( solveItemB ) )
+						continue;
+
 					// is overlapping
 					if ( z >= solveItemB.minZ() && z <= solveItemB.maxZ() )
 					{
@@ -271,119 +277,7 @@ public class DistributedSolve
 				}
 			}
 		}
-/*
-		for ( int i = 0; i < solveSet.leftItems.size() - 1; ++i )
-		{
-			// we connect the left block to the right block and back to left block below
-			final SolveItem< ? > left = solveSet.leftItems.get( i );
-			final SolveItem< ? > right = solveSet.rightItems.get( i );
-			final SolveItem< ? > leftPlus1 = solveSet.leftItems.get( i + 1 );
 
-			// first the left block to the right one
-			for ( int z = right.minZ(); z <= left.maxZ(); ++z )
-			{
-				// get tileIds for each z section (they are identical for left and right)
-				final HashSet< String > tileIds = left.zToTileId().get( z );
-
-				// if a section is not present
-				if ( tileIds == null )
-					continue;
-
-				zToTileIdGlobal.put( z, tileIds );
-				zToLeftRightItem.put( z, new ValuePair<>( left, right ) );
-
-				final List< PointMatch > matchesLeftToRight = new ArrayList<>();
-
-				for ( final String tileId : tileIds )
-				{
-					// tilespec is identical, too
-					final TileSpec tileSpec = right.idToTileSpec().get( tileId );
-
-					idToTileSpecGlobal.put( tileId, tileSpec );
-
-					final AffineModel2D modelA = left.idToNewModel().get( tileId );
-					final AffineModel2D modelB = right.idToNewModel().get( tileId );
-
-					// make a regular grid
-					final double sampleWidth = (tileSpec.getWidth() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-					final double sampleHeight = (tileSpec.getHeight() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-
-					for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
-					{
-						final double sampleY = y * sampleHeight;
-						for (int x = 0; x < SolveItem.samplesPerDimension; ++x)
-						{
-							final double[] p = new double[] { x * sampleWidth, sampleY };
-							final double[] q = new double[] { x * sampleWidth, sampleY };
-
-							modelA.applyInPlace( p );
-							modelB.applyInPlace( q );
-
-							matchesLeftToRight.add(new PointMatch( new Point(p), new Point(q) ));
-						}
-					}
-				}
-
-				left.globalAlignBlock.connect( right.globalAlignBlock, matchesLeftToRight );
-			}
-
-			// now the right block to the second left one
-			for ( int z = leftPlus1.minZ(); z <= right.maxZ(); ++z )
-			{
-				// get tileIds for each z section (they are identical for left and right)
-				final HashSet< String > tileIds = right.zToTileId().get( z );
-
-				// if a section is not present
-				if ( tileIds == null )
-					continue;
-
-				zToTileIdGlobal.put( z, tileIds );
-				zToLeftRightItem.put( z, new ValuePair<>( leftPlus1, right ) );
-
-				final List< PointMatch > matchesRightToLeft = new ArrayList<>();
-
-				for ( final String tileId : tileIds )
-				{
-					// tilespec is identical, too
-					final TileSpec tileSpec = right.idToTileSpec().get( tileId );
-
-					idToTileSpecGlobal.put( tileId, tileSpec );
-
-					final AffineModel2D modelA = right.idToNewModel().get( tileId );
-					final AffineModel2D modelB = leftPlus1.idToNewModel().get( tileId );
-
-					// make a regular grid
-					final double sampleWidth = (tileSpec.getWidth() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-					final double sampleHeight = (tileSpec.getHeight() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-
-					for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
-					{
-						final double sampleY = y * sampleHeight;
-						for (int x = 0; x < SolveItem.samplesPerDimension; ++x)
-						{
-							final double[] p = new double[] { x * sampleWidth, sampleY };
-							final double[] q = new double[] { x * sampleWidth, sampleY };
-
-							modelA.applyInPlace( p );
-							modelB.applyInPlace( q );
-
-							matchesRightToLeft.add(new PointMatch( new Point(p), new Point(q) ));
-						}
-					}
-				}
-
-				right.globalAlignBlock.connect( leftPlus1.globalAlignBlock, matchesRightToLeft );
-			}
-
-			// solve the simple system
-
-			if ( i == 0 )
-				tileConfigBlocks.addTile( left.globalAlignBlock );
-
-			tileConfigBlocks.addTile( right.globalAlignBlock );
-			tileConfigBlocks.addTile( leftPlus1.globalAlignBlock );
-		}
-*/
 		// do not fix anything
 		// tileConfigBlocks.fixTile( left.globalAlignBlock );
 
@@ -434,16 +328,13 @@ public class DistributedSolve
 
 		for ( final int z : zSections )
 		{
-			// get tileIds for each z section
-			// final HashSet< String > tileIds = zToTileIdGlobal.get( z );
-
+			// for every z section, tileIds might be provided from different overlapping blocks if they were not connected and have been split
 			final ArrayList< Pair< Pair< SolveItem< ? >, SolveItem< ? > >, HashSet< String > > > entries = zToSolveItemPairs.get( z );
 
 			for ( final  Pair< Pair< SolveItem< ? >, SolveItem< ? > >, HashSet< String > > entry : entries )
 			{
 				for ( final String tileId : entry.getB() )
 				{
-					
 					final Pair< SolveItem< ? >, SolveItem< ? > > solveItemPair = entry.getA();
 	
 					// Models must be preconcatenated with actual models!!!!
@@ -456,7 +347,7 @@ public class DistributedSolve
 					modelA.preConcatenate( globalModelA );
 					modelB.preConcatenate( globalModelB );
 	
-					LOG.info( "z=" + z + ": " + solveItemPair.getA().getCosWeight( z ) + " " + solveItemPair.getB().getCosWeight( z ) );
+					LOG.info( "z=" + z + ": " + solveItemPair.getA().getId() + "-" + solveItemPair.getA().getCosWeight( z ) + " ----- " + solveItemPair.getB().getId() + "-" + solveItemPair.getB().getCosWeight( z ) );
 	
 					final AffineModel2D tileModel = new InterpolatedAffineModel2D<>( modelA, modelB, solveItemPair.getB().getCosWeight( z ) ).createAffineModel2D();
 					
