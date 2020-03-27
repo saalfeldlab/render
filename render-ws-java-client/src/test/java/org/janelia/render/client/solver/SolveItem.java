@@ -32,6 +32,9 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
 	final private HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
 
+	final private HashMap<Tile<?>, String > tileToIdMap = new HashMap<>();
+
+	// TODO: update overlapping items after split
 	final private HashSet< SolveItem< B > > overlappingItems = new HashSet<>();
 
 	Tile<RigidModel2D> globalAlignBlock = null;
@@ -62,6 +65,8 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	public HashMap<String, TileSpec> idToTileSpec() { return idToTileSpec; }
 	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
 	public HashMap<String, AffineModel2D> idToNewModel() { return idToNewModel; }
+
+	public HashMap<Tile<?>, String > tileToIdMap() { return tileToIdMap; }
 
 	public void addOverlappingSolveItem( final SolveItem< B > solveItem ) { overlappingItems.add( solveItem ); }
 	public HashSet< SolveItem< B > > getOverlappingSolveItems() { return overlappingItems; }

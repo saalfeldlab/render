@@ -67,10 +67,49 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 			solveItems.add( inputSolveItem );
 		else
 		{
+			int graphCount = 0;
+
 			for ( final Set< Tile< ? > > subgraph : graphs )
 			{
-				
+				LOG.info( "new graph " + graphCount++ );
+
+				int newMin = inputSolveItem.maxZ();
+				int newMax = inputSolveItem.minZ();
+
+				// first figure out new minZ and maxZ
+				for ( final Tile< ? > t : subgraph )
+				{
+					final TileSpec tileSpec = inputSolveItem.idToTileSpec().get( inputSolveItem.tileToIdMap().get( t ) );
+
+					newMin = Math.min( newMin, (int)Math.round( tileSpec.getZ().doubleValue() ) );
+					newMax = Math.max( newMax, (int)Math.round( tileSpec.getZ().doubleValue() ) );
+				}
+
+				LOG.info( newMin + " > " + newMax );
+
+				final SolveItem solveItem = new SolveItem<>( newMin, newMax, runParams );
+
+				LOG.info( "old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
+
+				// update all the maps
+				for ( final Tile< ? > t : subgraph )
+				{
+					final String tileId = inputSolveItem.tileToIdMap().get( t );
+
+					solveItem.idToTileMap().put( tileId, t );
+					solveItem.tileToIdMap().put( t, tileId );
+					solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
+					solveItem.idToTileSpec().put( tileId, inputSolveItem.idToTileSpec().get( tileId ) );
+					solveItem.idToNewModel().put( tileId, inputSolveItem.idToNewModel().get( tileId ) );
+
+					// TODO:
+					//solveItem.zToTileId().put( tileId, inputSolveItem.zToTileId().get( tileId ) );
+
+				}
 			}
+
+			// TODO: update overlapping items after split
+			// solveItems.overlappingItems =
 
 			LOG.info("Stack is not connected, splitting not implemented yet." );
 			System.exit( 0 );
@@ -219,6 +258,8 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 					inputSolveItem.idToTileMap().put( pId, p );
 					inputSolveItem.idToPreviousModel().put( pId, pairP.getB() );
 					inputSolveItem.idToTileSpec().put( pId, pTileSpec );
+
+					inputSolveItem.tileToIdMap().put( p, pId );
 				}
 				else
 				{
@@ -232,6 +273,8 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 					inputSolveItem.idToTileMap().put( qId, q );
 					inputSolveItem.idToPreviousModel().put( qId, pairQ.getB() );
 					inputSolveItem.idToTileSpec().put( qId, qTileSpec );	
+
+					inputSolveItem.tileToIdMap().put( q, qId );
 				}
 				else
 				{
