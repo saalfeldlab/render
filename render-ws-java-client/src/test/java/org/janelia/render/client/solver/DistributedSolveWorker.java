@@ -66,10 +66,18 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 		if ( graphs.size() == 1 )
 			solveItems.add( inputSolveItem );
 		else
-			throw new RuntimeException( "Stack is not connected, splitting not implemented yet." );
+		{
+			for ( final Set< Tile< ? > > subgraph : graphs )
+			{
+				
+			}
+
+			LOG.info("Stack is not connected, splitting not implemented yet." );
+			System.exit( 0 );
+		}
 	}
 
-	protected void solve(
+	protected static < B extends Model< B > & Affine2D< B > > void solve(
 			final SolveItem< B > solveItem,
 			final Parameters parameters
 			) throws InterruptedException, ExecutionException
@@ -187,6 +195,19 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 				{
 					LOG.info("run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, parameters.stack);
 					continue;
+				}
+
+				// TODO: REMOVE Artificial split of the data
+				if ( pTileSpec.getZ().doubleValue() == qTileSpec.getZ().doubleValue() )
+				{
+					if ( pTileSpec.getZ().doubleValue() >= 10049 && pTileSpec.getZ().doubleValue() <= 10149 )
+					{
+						if ( ( pId.contains( "_0-0-1." ) && qId.contains( "_0-0-2." ) ) || ( qId.contains( "_0-0-1." ) && pId.contains( "_0-0-2." ) ) )
+						{
+							LOG.info("run: ignoring pair ({}, {}) to artificially split the data", pId, qId );
+							continue;
+						}
+					}
 				}
 
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p, q;

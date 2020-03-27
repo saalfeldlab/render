@@ -61,6 +61,18 @@ public class DistributedSolve
 		LOG.info( "Defined sets for global solve" );
 		LOG.info( "\n" + solveSet );
 
+		final DistributedSolveWorker w = new DistributedSolveWorker( parameters, solveSet.rightItems.get( 0 ) );
+		try
+		{
+			w.run();
+		} catch ( IOException | ExecutionException | InterruptedException
+				| NoninvertibleModelException e1 )
+		{
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+
+		System.exit( 0 );
 		// Multithreaded for now (should be Spark for cluster-)
 
 		// set up executor service
@@ -307,7 +319,7 @@ public class DistributedSolve
 
 		for ( final SolveItem< ? > solveItem : allSolveItems )
 		{
-			solveItem.globalAlignAffineModel = /*new AffineModel2D();*/ SolveTools.createAffineModel( solveItem.globalAlignBlock.getModel() );
+			solveItem.globalAlignAffineModel = /*new AffineModel2D();// */SolveTools.createAffineModel( solveItem.globalAlignBlock.getModel() );
 
 			LOG.info( "Block " + solveItem.getId() + ": " + solveItem.globalAlignBlock.getModel() );
 		}

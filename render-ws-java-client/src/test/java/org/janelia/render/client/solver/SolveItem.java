@@ -20,7 +20,7 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	final public static int samplesPerDimension = 5;
 	final public static AtomicInteger idGenerator = new AtomicInteger( 0 );
 
-	final public static boolean useCosineWeight = false;
+	final public static boolean useCosineWeight = true;
 
 	final private int id;
 	final private int minZ, maxZ;
