@@ -10,6 +10,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.ClientRunner;
@@ -64,38 +65,45 @@ public class DistributedSolve
 
 		// set up executor service
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool( 8 );
-		final ArrayList< Callable< Void > > tasks = new ArrayList<>();
+		final ArrayList< Callable< ArrayList< SolveItem > > > tasks = new ArrayList<>();
 
 		for ( final SolveItem< ? > s : solveSet.allItems() )
 		{
-			tasks.add( new Callable< Void >() 
+			tasks.add( new Callable< ArrayList< SolveItem > >()
 			{
 				@Override
-				public Void call() throws Exception
+				public ArrayList< SolveItem > call() throws Exception
 				{
-					new DistributedSolveWorker( parameters, s ).run();
+					final DistributedSolveWorker w = new DistributedSolveWorker( parameters, s );
+					w.run();
 	
-					return null;
+					return w.getSolveItems();
 				}
 			});
 		}
 
+		final ArrayList< SolveItem > allItems = new ArrayList<>();
+
 		try
 		{
 			// invokeAll() returns when all tasks are complete
-			taskExecutor.invokeAll( tasks );
+			final List< Future< ArrayList< SolveItem > > > futures = taskExecutor.invokeAll( tasks );
+
+			for ( final Future< ArrayList< SolveItem > > future : futures )
+				allItems.addAll( future.get() );
 		}
 		catch ( final Exception e )
 		{
 			IOFunctions.println( "Failed to compute alignments: " + e );
 			e.printStackTrace();
+			return;
 		}
 
 		taskExecutor.shutdown();
 
 		try
 		{
-			globalSolve( solveSet );
+			globalSolve( allItems );
 		}
 		catch ( NotEnoughDataPointsException | IllDefinedDataPointsException | InterruptedException | ExecutionException | NoninvertibleModelException e )
 		{
@@ -147,7 +155,7 @@ public class DistributedSolve
 		}
 	}
 
-	protected void globalSolve( final SolveSet solveSet ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException, NoninvertibleModelException
+	protected void globalSolve( final List< SolveItem > allSolveItems ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException, NoninvertibleModelException
 	{
 		final HashMap<String, AffineModel2D> idToFinalModelGlobal = new HashMap<>();
 
@@ -160,8 +168,6 @@ public class DistributedSolve
 		// important: all images within one solveitem must be connected to each other!
 
 		// solve by solveitem, not by z layer
-		final List< SolveItem< ? > > allSolveItems = solveSet.allItems();
-
 		for ( int a = 0; a < allSolveItems.size() - 1; ++a )
 		{
 			final SolveItem< ? > solveItemA = allSolveItems.get( a );
@@ -299,9 +305,9 @@ public class DistributedSolve
 				tileConfigBlocks.getFixedTiles(),
 				1);
 
-		for ( final SolveItem< ? > solveItem : solveSet.allItems() )
+		for ( final SolveItem< ? > solveItem : allSolveItems )
 		{
-			solveItem.globalAlignAffineModel = SolveTools.createAffineModel( solveItem.globalAlignBlock.getModel() );
+			solveItem.globalAlignAffineModel = /*new AffineModel2D();*/ SolveTools.createAffineModel( solveItem.globalAlignBlock.getModel() );
 
 			LOG.info( "Block " + solveItem.getId() + ": " + solveItem.globalAlignBlock.getModel() );
 		}
