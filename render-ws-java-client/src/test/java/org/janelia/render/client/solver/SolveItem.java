@@ -20,6 +20,8 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	final public static int samplesPerDimension = 5;
 	final public static AtomicInteger idGenerator = new AtomicInteger( 0 );
 
+	final public static boolean useCosineWeight = false;
+
 	final private int id;
 	final private int minZ, maxZ;
 	final private RunParameters runParams;
@@ -66,13 +68,21 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 
 	public double getWeight( final int z )
 	{
+		if ( useCosineWeight )
+			return getCosineWeight( z );
+		else
+			return getLinearWeight( z );
+	}
+
+	public double getLinearWeight( final int z )
+	{
 		// goes from 0.0 to 1.0 as z increases to the middle, then back to 0 to the end
 		return Math.max( Math.min( Math.min( (z - minZ) / ((maxZ-minZ)/2.0), (maxZ - z) / ((maxZ-minZ)/2.0) ), 1 ), 0.0000001 );
 	}
 
-	public double getCosWeight( final int z )
+	public double getCosineWeight( final int z )
 	{
-		return Math.max( Math.min( 1.0 - Math.cos( getWeight( z ) * Math.PI/2 ), 1 ), 0.0000001 );
+		return Math.max( Math.min( 1.0 - Math.cos( getLinearWeight( z ) * Math.PI/2 ), 1 ), 0.0000001 );
 	}
 
 	public ImagePlus visualizeInput() { return visualizeInput( 0.15 ); }
@@ -136,11 +146,11 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 
 	public static void main( String[] args )
 	{
-		SolveItem s = new SolveItem<>( 100, 102, new RunParameters() );
+		SolveItem s = new SolveItem( 100, 102, new RunParameters() );
 
 		for ( int z = s.minZ(); z <= s.maxZ(); ++z )
 		{
-			System.out.println( z + " " + s.getWeight( z ) + " " + s.getCosWeight( z ) );
+			System.out.println( z + " " + s.getWeight( z ) );
 		}
 	}
 }

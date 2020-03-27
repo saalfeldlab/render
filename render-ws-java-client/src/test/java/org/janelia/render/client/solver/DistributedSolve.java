@@ -336,21 +336,48 @@ public class DistributedSolve
 				for ( final String tileId : entry.getB() )
 				{
 					final Pair< SolveItem< ? >, SolveItem< ? > > solveItemPair = entry.getA();
-	
+
+					final SolveItem< ? > solveItemA = solveItemPair.getA();
+					final SolveItem< ? > solveItemB = solveItemPair.getB();
+
 					// Models must be preconcatenated with actual models!!!!
-					final AffineModel2D globalModelA = solveItemPair.getA().globalAlignAffineModel;
-					final AffineModel2D globalModelB = solveItemPair.getB().globalAlignAffineModel;
+					final AffineModel2D globalModelA = solveItemA.globalAlignAffineModel;
+					final AffineModel2D globalModelB = solveItemB.globalAlignAffineModel;
 	
-					final AffineModel2D modelA = solveItemPair.getA().idToNewModel().get( tileId );
-					final AffineModel2D modelB = solveItemPair.getB().idToNewModel().get( tileId );
+					final AffineModel2D modelA = solveItemA.idToNewModel().get( tileId );
+					final AffineModel2D modelB = solveItemB.idToNewModel().get( tileId );
 	
 					modelA.preConcatenate( globalModelA );
 					modelB.preConcatenate( globalModelB );
-	
-					LOG.info( "z=" + z + ": " + solveItemPair.getA().getId() + "-" + solveItemPair.getA().getCosWeight( z ) + " ----- " + solveItemPair.getB().getId() + "-" + solveItemPair.getB().getCosWeight( z ) );
-	
-					final AffineModel2D tileModel = new InterpolatedAffineModel2D<>( modelA, modelB, solveItemPair.getB().getCosWeight( z ) ).createAffineModel2D();
-					
+
+					final double wA = solveItemA.getWeight( z );
+					final double wB = solveItemB.getWeight( z );
+
+					// if one of them is zero the model stays at it is
+					final double regularizeB;
+					final AffineModel2D tileModel;
+
+					if ( wA == 0 && wB == 0 )
+						throw new RuntimeException( "Two block with weight 0, this must not happen: " + solveItemA.getId() + ", " + solveItemB.getId() );
+					else if ( wA == 0 )
+					{
+						tileModel = modelB.copy();
+						regularizeB = 1;
+					}
+					else if ( wB == 0 )
+					{
+						tileModel = modelA.copy();
+						regularizeB = 0;
+					}
+					else
+					{
+						regularizeB = wB / (wA + wB);
+						tileModel = new InterpolatedAffineModel2D<>( modelA, modelB, regularizeB ).createAffineModel2D();
+					}
+
+					LOG.info( "z=" + z + ": " + solveItemA.getId() + "-" + wA + " ----- " + solveItemB.getId() + "-" + wB + " ----regB=" + regularizeB );
+
+
 					idToFinalModelGlobal.put( tileId, tileModel );
 				}
 			}
