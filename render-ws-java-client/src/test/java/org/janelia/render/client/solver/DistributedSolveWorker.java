@@ -101,18 +101,37 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 					solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
 					solveItem.idToTileSpec().put( tileId, inputSolveItem.idToTileSpec().get( tileId ) );
 					solveItem.idToNewModel().put( tileId, inputSolveItem.idToNewModel().get( tileId ) );
-
-					// TODO:
-					//solveItem.zToTileId().put( tileId, inputSolveItem.zToTileId().get( tileId ) );
-
 				}
+
+				for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
+				{
+					final HashSet< String > allTilesPerZ = inputSolveItem.zToTileId().get( z );
+
+					if ( allTilesPerZ == null )
+						continue;
+
+					final HashSet< String > myTilesPerZ = new HashSet<>();
+
+					for ( final String tileId : allTilesPerZ )
+					{
+						if ( solveItem.idToTileMap().containsKey( tileId ) )
+							myTilesPerZ.add( tileId );
+					}
+					
+					if ( myTilesPerZ.size() == 0 )
+					{
+						LOG.info( "ERROR: z=" + z + " of new graph has 0 tileIds, the must not happen, this is a bug." );
+						System.exit( 0 );
+					}
+
+					solveItem.zToTileId().put( z, myTilesPerZ );
+				}
+
+				solveItems.add( solveItem );
+				// cannot update overlapping items here due to multithreading and the fact that the other solveitems are also being split up
 			}
-
-			// TODO: update overlapping items after split
-			// solveItems.overlappingItems =
-
-			LOG.info("Stack is not connected, splitting not implemented yet." );
-			System.exit( 0 );
+			//LOG.info("Stack is not connected, splitting not implemented yet." );
+			//System.exit( 0 );
 		}
 	}
 
@@ -125,7 +144,7 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 
 		tileConfig.addTiles(solveItem.idToTileMap().values());
 
-		LOG.info("run: optimizing {} tiles", solveItem.idToTileMap().size());
+		LOG.info("run: optimizing {} tiles for solveItem {}", solveItem.idToTileMap().size(), solveItem.getId() );
 
 		final List<Double> lambdaValues;
 

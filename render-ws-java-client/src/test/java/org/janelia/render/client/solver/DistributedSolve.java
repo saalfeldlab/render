@@ -61,6 +61,7 @@ public class DistributedSolve
 		LOG.info( "Defined sets for global solve" );
 		LOG.info( "\n" + solveSet );
 
+		/*
 		final DistributedSolveWorker w = new DistributedSolveWorker( parameters, solveSet.rightItems.get( 0 ) );
 		try
 		{
@@ -73,6 +74,8 @@ public class DistributedSolve
 		}
 
 		System.exit( 0 );
+		*/
+
 		// Multithreaded for now (should be Spark for cluster-)
 
 		// set up executor service
@@ -102,7 +105,9 @@ public class DistributedSolve
 			final List< Future< ArrayList< SolveItem > > > futures = taskExecutor.invokeAll( tasks );
 
 			for ( final Future< ArrayList< SolveItem > > future : futures )
+			{
 				allItems.addAll( future.get() );
+			}
 		}
 		catch ( final Exception e )
 		{
@@ -112,6 +117,11 @@ public class DistributedSolve
 		}
 
 		taskExecutor.shutdown();
+
+		// find overlaps between SolveItems
+		defineOverlaps( allItems );
+
+		//System.exit( 0 );
 
 		try
 		{
@@ -133,6 +143,50 @@ public class DistributedSolve
 		*/
 	}
 
+	protected void defineOverlaps( final List< SolveItem > allSolveItems ) 
+	{
+		for ( final SolveItem< ? > solveItem : allSolveItems )
+			solveItem.getOverlappingSolveItems().clear();
+
+		for ( int a = 0; a < allSolveItems.size() - 1; ++a )
+		{
+			final SolveItem< ? > solveItemA = allSolveItems.get( a );
+
+				for ( int b = a + 1; b < allSolveItems.size(); ++b )
+				{
+					final SolveItem< ? > solveItemB = allSolveItems.get( b );
+
+					// first check if z-range overlaps at all
+					// x1 <= y2 && y1 <= x2 (https://stackoverflow.com/questions/3269434/whats-the-most-efficient-way-to-test-two-integer-ranges-for-overlap)
+					if ( solveItemA.minZ() <= solveItemB.maxZ() && solveItemB.minZ() <= solveItemA.maxZ() )
+					{
+						boolean isConnected = false;
+
+						// now we have to go through the z range to see if the tileIds are equal
+						for ( int z = Math.max( solveItemA.minZ(), solveItemB.minZ() ); z <= Math.min( solveItemA.maxZ(), solveItemA.maxZ() ) && !isConnected; ++z )
+						{
+							final HashSet< String > tileIdsA = solveItemA.zToTileId().get( z );
+							final HashSet< String > tileIdsB = solveItemB.zToTileId().get( z );
+
+							for ( final String tileIdA : tileIdsA )
+							{
+								if ( tileIdsB.contains( tileIdA ) )
+								{
+									LOG.info( "Connecting SolveItem " + solveItemA.getId() + " with " + solveItemB.getId() );
+
+									solveItemA.addOverlappingSolveItem( (SolveItem)solveItemB );
+									solveItemB.addOverlappingSolveItem( (SolveItem)solveItemA );
+
+									isConnected = true;
+									break;
+								}
+							}
+						}
+					}
+				}
+		}
+	}
+	
 	protected static HashSet< String > commonStrings( final HashSet< String > tileIdsA, final HashSet< String > tileIdsB )
 	{
 		final HashSet< String > commonStrings = new HashSet<>();
