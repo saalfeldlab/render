@@ -226,9 +226,13 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 	{
 		LOG.info( "Loading transforms and matches from " + runParams.minZ + " to layer " + runParams.maxZ );
 
-		// TODO: only fetch the ones we actually need here
-		for (final String pGroupId : runParams.pGroupList)
+		for ( final Pair< String, Double > pGroupPair : runParams.pGroupList )
 		{
+			if ( pGroupPair.getB().doubleValue() < inputSolveItem.minZ() || pGroupPair.getB().doubleValue() > inputSolveItem.maxZ() )
+				continue;
+
+			final String pGroupId = pGroupPair.getA();
+
 			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
 
 			final List<CanvasMatches> matches = runParams.matchDataClient.getMatchesWithPGroupId(pGroupId, false);

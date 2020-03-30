@@ -3,7 +3,10 @@ package org.janelia.render.client.solver;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -104,6 +107,8 @@ public class SolveTools
 		final List<SectionData> allSectionDataList = runParams.renderDataClient.getStackSectionData(parameters.stack, null, null );
 
 		runParams.pGroupList = new ArrayList<>(allSectionDataList.size());
+
+		/*
 		runParams.pGroupList.addAll(
 				allSectionDataList.stream()
 						.filter(sectionData -> zFilter.accept(sectionData.getZ()))
@@ -111,7 +116,33 @@ public class SolveTools
 						.distinct()
 						.sorted()
 						.collect(Collectors.toList()));
-		
+		*/
+
+		final HashMap< String, Double > sectionIds = new HashMap<>();
+		for ( final SectionData data : allSectionDataList )
+		{
+			if ( zFilter.accept( data.getZ() ) )
+			{
+				final String sectionId = data.getSectionId();
+				final double z = data.getZ().doubleValue();
+
+				if ( !sectionIds.containsKey( sectionId ) )
+					sectionIds.put( sectionId, z );
+			}
+		}
+
+		for ( final String entry : sectionIds.keySet() )
+			runParams.pGroupList.add( new ValuePair< String, Double >( entry, sectionIds.get( entry ) ) );
+
+		Collections.sort( runParams.pGroupList, new Comparator< Pair< String, Double > >()
+		{
+			@Override
+			public int compare( final Pair< String, Double > o1, final Pair< String, Double > o2 )
+			{
+				return o1.getA().compareTo( o2.getA() );
+			}
+		} );
+
 		if (runParams.pGroupList.size() == 0)
 			throw new IllegalArgumentException("stack " + parameters.stack + " does not contain any sections with the specified z values");
 

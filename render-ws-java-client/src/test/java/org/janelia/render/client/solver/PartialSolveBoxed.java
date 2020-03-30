@@ -78,7 +78,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 		HashMap< Integer, Integer > zLimits = new HashMap<>();
 		//zLimits.put( 15769, 1 );
 
-		for (final String pGroupId : runParams.pGroupList)
+		for (final String pGroupId : runParams.pGroupList.stream().map(Pair::getA).collect( Collectors.toList() ) )
 		{
 			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
 

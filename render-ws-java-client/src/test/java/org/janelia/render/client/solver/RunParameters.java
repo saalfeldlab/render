@@ -7,13 +7,15 @@ import java.util.Map;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.render.client.RenderDataClient;
 
+import net.imglib2.util.Pair;
+
 public class RunParameters
 {
 	protected RenderDataClient renderDataClient;
 	protected RenderDataClient matchDataClient;
 	protected RenderDataClient targetDataClient;
 	
-	protected List<String> pGroupList;
+	protected List< Pair< String, Double > > pGroupList;
 	protected Map<String, List<Double>> sectionIdToZMap; // TODO: unused
 	protected Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
 	protected double minZ, maxZ;

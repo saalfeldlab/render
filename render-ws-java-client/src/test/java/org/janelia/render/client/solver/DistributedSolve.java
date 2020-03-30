@@ -61,8 +61,8 @@ public class DistributedSolve
 		LOG.info( "Defined sets for global solve" );
 		LOG.info( "\n" + solveSet );
 
-		/*
-		final DistributedSolveWorker w = new DistributedSolveWorker( parameters, solveSet.rightItems.get( 0 ) );
+
+		final DistributedSolveWorker w = new DistributedSolveWorker( parameters, solveSet.leftItems.get( 0 ) );
 		try
 		{
 			w.run();
@@ -74,7 +74,6 @@ public class DistributedSolve
 		}
 
 		System.exit( 0 );
-		*/
 
 		// Multithreaded for now (should be Spark for cluster-)
 
