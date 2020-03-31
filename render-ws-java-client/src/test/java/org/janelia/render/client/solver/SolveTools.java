@@ -228,6 +228,29 @@ public class SolveTools
         		lastTransform.copy() );
 	}
 
+	protected static < M extends Model< M > & Affine2D< M > > Tile< M > buildTile(
+			final AffineModel2D lastTransform,
+			final M model,
+			final int width,
+			final int height,
+			final int samplesPerDimension
+			)
+	{
+        final double sampleWidth = (width - 1.0) / (samplesPerDimension - 1.0);
+        final double sampleHeight = (height - 1.0) / (samplesPerDimension - 1.0);
+
+        try
+        {
+            ScriptUtil.fit(model, lastTransform, sampleWidth, sampleHeight, samplesPerDimension);
+        }
+        catch (final Throwable t)
+        {
+            throw new IllegalArgumentException(model.getClass() + " model derivation failed, cause: " + t.getMessage(), t);
+        }
+
+        return new Tile<>(model);
+	}
+
 	protected static TileSpec getTileSpec(
 			final Parameters parameters,
 			final RunParameters runParams,
