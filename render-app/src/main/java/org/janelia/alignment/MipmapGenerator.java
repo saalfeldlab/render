@@ -407,7 +407,7 @@ public class MipmapGenerator {
                                               final double meshCellSize,
                                               final boolean force) {
 
-        if (! tileSpec.hasWidthAndHeightDefined()) {
+        if (tileSpec.isMissingWidthOrHeight()) {
             final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
             final ImageAndMask imageAndMask = mipmapEntry.getValue();
             final ImageProcessor imageProcessor = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(),

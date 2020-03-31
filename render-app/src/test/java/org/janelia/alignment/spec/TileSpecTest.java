@@ -1,19 +1,3 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.alignment.spec;
 
 import java.nio.file.Files;
@@ -35,13 +19,16 @@ import org.slf4j.LoggerFactory;
 public class TileSpecTest {
 
     @Test
-    public void testJsonProcessing() throws Exception {
+    public void testJsonProcessing() {
 
         final TileSpec tileSpec = TileSpec.fromJson(JSON_WITH_UNSORTED_MIPMAP_LEVELS);
 
         Assert.assertNotNull("json parse returned null spec", tileSpec);
         Assert.assertEquals("invalid tileId parsed", EXPECTED_TILE_ID, tileSpec.getTileId());
         Assert.assertEquals("invalid width parsed", EXPECTED_WIDTH, tileSpec.getWidth());
+
+        Assert.assertTrue("missing label " + EXPECTED_LABEL_A, tileSpec.hasLabel(EXPECTED_LABEL_A));
+        Assert.assertTrue("missing label " + EXPECTED_LABEL_B, tileSpec.hasLabel(EXPECTED_LABEL_B));
 
         final Map.Entry<Integer, ImageAndMask> firstMipMap = tileSpec.getFirstMipmapEntry();
         Assert.assertNotNull("first mipmap entry is null", firstMipMap);
@@ -118,7 +105,7 @@ public class TileSpecTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValidateWithMissingMipmaps() throws Exception {
+    public void testValidateWithMissingMipmaps() {
 
         final TileSpec tileSpec = TileSpec.fromJson(JSON_WITH_MISSING_MIPMAP_LEVELS);
 
@@ -129,7 +116,7 @@ public class TileSpecTest {
     }
 
     @Test
-    public void testGetFirstChannel() throws Exception {
+    public void testGetFirstChannel() {
 
         final TileSpec tileSpec = TileSpec.fromJson(JSON_WITH_UNSORTED_MIPMAP_LEVELS);
         Assert.assertNull("incorrect first channel name with no channels", tileSpec.getFirstChannelName());
@@ -180,6 +167,7 @@ public class TileSpecTest {
                  iterations, sloppyTime, meshTime);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private long getDerivationTime(final TileSpec tileSpec,
                                    final boolean sloppy,
                                    final int iterations) {
@@ -193,12 +181,15 @@ public class TileSpecTest {
     private static final Logger LOG = LoggerFactory.getLogger(TileSpecTest.class);
 
     private static final String EXPECTED_TILE_ID = "test-tile-id";
+    private static final String EXPECTED_LABEL_A = "restart";
+    private static final String EXPECTED_LABEL_B = "warped";
     private static final int EXPECTED_WIDTH = 99;
     private static final double MAX_DOUBLE_DELTA = 0.1;
 
     private static final String JSON_WITH_UNSORTED_MIPMAP_LEVELS =
             "{\n" +
             "  \"tileId\": \"" + EXPECTED_TILE_ID + "\",\n" +
+            "  \"labels\": [\"" + EXPECTED_LABEL_A + "\",\"" + EXPECTED_LABEL_B + "\"],\n" +
             "  \"width\": " + EXPECTED_WIDTH + ",\n" +
             "  \"height\": -1,\n" +
             "  \"minIntensity\": 0.0,\n" +
