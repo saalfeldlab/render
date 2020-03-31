@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -32,29 +33,118 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 {
 	final Parameters parameters;
 	final RunParameters runParams;
-	final SolveItem< B > solveItem;
+	final SolveItem< B > inputSolveItem;
+	final ArrayList< SolveItem< B > > solveItems;
 
 	public DistributedSolveWorker( final Parameters parameters, final SolveItem< B > solveItem )
 	{
 		this.parameters = parameters;
-		this.solveItem = solveItem;
+		this.inputSolveItem = solveItem;
 		this.runParams = solveItem.runParams();
+
+		this.solveItems = new ArrayList<>();
 	}
 
-	public SolveItem< B > getSolveItem() { return solveItem; }
+	public SolveItem< B > getInputSolveItems() { return inputSolveItem; }
+	public ArrayList< SolveItem< B > > getSolveItems() { return solveItems; }
 
 	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
 		assembleMatchData();
-		solve();
+		split(); // splits
+
+		for ( final SolveItem< B > solveItem : solveItems )
+			solve( solveItem, parameters );
 	}
 
-	protected void solve() throws InterruptedException, ExecutionException
+	protected void split()
+	{
+		final ArrayList< Set< Tile< ? > > > graphs = Tile.identifyConnectedGraphs( inputSolveItem.idToTileMap().values() );
+
+		LOG.info( "Graph of SolveItem " + inputSolveItem.getId() + " consists of " + graphs.size() + " subgraphs." );
+
+		if ( graphs.size() == 1 )
+			solveItems.add( inputSolveItem );
+		else
+		{
+			int graphCount = 0;
+
+			for ( final Set< Tile< ? > > subgraph : graphs )
+			{
+				LOG.info( "new graph " + graphCount++ );
+
+				int newMin = inputSolveItem.maxZ();
+				int newMax = inputSolveItem.minZ();
+
+				// first figure out new minZ and maxZ
+				for ( final Tile< ? > t : subgraph )
+				{
+					final TileSpec tileSpec = inputSolveItem.idToTileSpec().get( inputSolveItem.tileToIdMap().get( t ) );
+
+					newMin = Math.min( newMin, (int)Math.round( tileSpec.getZ().doubleValue() ) );
+					newMax = Math.max( newMax, (int)Math.round( tileSpec.getZ().doubleValue() ) );
+				}
+
+				LOG.info( newMin + " > " + newMax );
+
+				final SolveItem solveItem = new SolveItem<>( newMin, newMax, runParams );
+
+				LOG.info( "old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
+
+				// update all the maps
+				for ( final Tile< ? > t : subgraph )
+				{
+					final String tileId = inputSolveItem.tileToIdMap().get( t );
+
+					solveItem.idToTileMap().put( tileId, t );
+					solveItem.tileToIdMap().put( t, tileId );
+					solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
+					solveItem.idToTileSpec().put( tileId, inputSolveItem.idToTileSpec().get( tileId ) );
+					solveItem.idToNewModel().put( tileId, inputSolveItem.idToNewModel().get( tileId ) );
+				}
+
+				for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
+				{
+					final HashSet< String > allTilesPerZ = inputSolveItem.zToTileId().get( z );
+
+					if ( allTilesPerZ == null )
+						continue;
+
+					final HashSet< String > myTilesPerZ = new HashSet<>();
+
+					for ( final String tileId : allTilesPerZ )
+					{
+						if ( solveItem.idToTileMap().containsKey( tileId ) )
+							myTilesPerZ.add( tileId );
+					}
+					
+					if ( myTilesPerZ.size() == 0 )
+					{
+						LOG.info( "ERROR: z=" + z + " of new graph has 0 tileIds, the must not happen, this is a bug." );
+						System.exit( 0 );
+					}
+
+					solveItem.zToTileId().put( z, myTilesPerZ );
+				}
+
+				solveItems.add( solveItem );
+				// cannot update overlapping items here due to multithreading and the fact that the other solveitems are also being split up
+			}
+			//LOG.info("Stack is not connected, splitting not implemented yet." );
+			//System.exit( 0 );
+		}
+	}
+
+	protected static < B extends Model< B > & Affine2D< B > > void solve(
+			final SolveItem< B > solveItem,
+			final Parameters parameters
+			) throws InterruptedException, ExecutionException
 	{
 		final TileConfiguration tileConfig = new TileConfiguration();
+
 		tileConfig.addTiles(solveItem.idToTileMap().values());
 
-		LOG.info("run: optimizing {} tiles", solveItem.idToTileMap().size());
+		LOG.info("run: optimizing {} tiles for solveItem {}", solveItem.idToTileMap().size(), solveItem.getId() );
 
 		final List<Double> lambdaValues;
 
@@ -114,13 +204,16 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 		for (final String tileId : tileIds )
 		{
 			final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = solveItem.idToTileMap().get(tileId);
-			AffineModel2D affine = tile.getModel().createAffineModel2D();
+			final AffineModel2D affine = tile.getModel().createAffineModel2D();
 
 			/*
 			// TODO: REMOVE
+			if ( inputSolveItem.getId() == 2 )
+			{
 			final TranslationModel2D t = new TranslationModel2D();
-			t.set( solveItem.minZ() - 10000, 0 );
-			affine.concatenate( t );
+			t.set( 1000, 0 );
+			affine.preConcatenate( t );
+			}
 			*/
 
 			solveItem.idToNewModel().put( tileId, affine );
@@ -133,9 +226,13 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 	{
 		LOG.info( "Loading transforms and matches from " + runParams.minZ + " to layer " + runParams.maxZ );
 
-		// TODO: only fetch the ones we actually need here
-		for (final String pGroupId : runParams.pGroupList)
+		for ( final Pair< String, Double > pGroupPair : runParams.pGroupList )
 		{
+			if ( pGroupPair.getB().doubleValue() < inputSolveItem.minZ() || pGroupPair.getB().doubleValue() > inputSolveItem.maxZ() )
+				continue;
+
+			final String pGroupId = pGroupPair.getA();
+
 			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
 
 			final List<CanvasMatches> matches = runParams.matchDataClient.getMatchesWithPGroupId(pGroupId, false);
@@ -156,38 +253,55 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 				}
 
 				// if any of the matches is outside the range we ignore them
-				if ( pTileSpec.getZ() < solveItem.minZ() || pTileSpec.getZ() > solveItem.maxZ() || qTileSpec.getZ() < solveItem.minZ() || qTileSpec.getZ() > solveItem.maxZ() )
+				if ( pTileSpec.getZ() < inputSolveItem.minZ() || pTileSpec.getZ() > inputSolveItem.maxZ() || qTileSpec.getZ() < inputSolveItem.minZ() || qTileSpec.getZ() > inputSolveItem.maxZ() )
 				{
 					LOG.info("run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, parameters.stack);
 					continue;
 				}
 
+				// TODO: REMOVE Artificial split of the data
+				if ( pTileSpec.getZ().doubleValue() == qTileSpec.getZ().doubleValue() )
+				{
+					if ( pTileSpec.getZ().doubleValue() >= 10049 && pTileSpec.getZ().doubleValue() <= 10149 )
+					{
+						if ( ( pId.contains( "_0-0-1." ) && qId.contains( "_0-0-2." ) ) || ( qId.contains( "_0-0-1." ) && pId.contains( "_0-0-2." ) ) )
+						{
+							LOG.info("run: ignoring pair ({}, {}) to artificially split the data", pId, qId );
+							continue;
+						}
+					}
+				}
+
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p, q;
 
-				if ( !solveItem.idToTileMap().containsKey( pId ) )
+				if ( !inputSolveItem.idToTileMap().containsKey( pId ) )
 				{
 					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairP = SolveTools.buildTileFromSpec(parameters, pTileSpec);
 					p = pairP.getA();
-					solveItem.idToTileMap().put( pId, p );
-					solveItem.idToPreviousModel().put( pId, pairP.getB() );
-					solveItem.idToTileSpec().put( pId, pTileSpec );
+					inputSolveItem.idToTileMap().put( pId, p );
+					inputSolveItem.idToPreviousModel().put( pId, pairP.getB() );
+					inputSolveItem.idToTileSpec().put( pId, pTileSpec );
+
+					inputSolveItem.tileToIdMap().put( p, pId );
 				}
 				else
 				{
-					p = solveItem.idToTileMap().get( pId );
+					p = inputSolveItem.idToTileMap().get( pId );
 				}
 
-				if ( !solveItem.idToTileMap().containsKey( qId ) )
+				if ( !inputSolveItem.idToTileMap().containsKey( qId ) )
 				{
 					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairQ = SolveTools.buildTileFromSpec(parameters, qTileSpec);
 					q = pairQ.getA();
-					solveItem.idToTileMap().put( qId, q );
-					solveItem.idToPreviousModel().put( qId, pairQ.getB() );
-					solveItem.idToTileSpec().put( qId, qTileSpec );	
+					inputSolveItem.idToTileMap().put( qId, q );
+					inputSolveItem.idToPreviousModel().put( qId, pairQ.getB() );
+					inputSolveItem.idToTileSpec().put( qId, qTileSpec );	
+
+					inputSolveItem.tileToIdMap().put( q, qId );
 				}
 				else
 				{
-					q = solveItem.idToTileMap().get( qId );
+					q = inputSolveItem.idToTileMap().get( qId );
 				}
 
 				p.connect(q, CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()));
@@ -195,11 +309,11 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 				final int pZ = (int)Math.round( pTileSpec.getZ() );
 				final int qZ = (int)Math.round( qTileSpec.getZ() );
 
-				solveItem.zToTileId().putIfAbsent( pZ, new HashSet<>() );
-				solveItem.zToTileId().putIfAbsent( qZ, new HashSet<>() );
+				inputSolveItem.zToTileId().putIfAbsent( pZ, new HashSet<>() );
+				inputSolveItem.zToTileId().putIfAbsent( qZ, new HashSet<>() );
 
-				solveItem.zToTileId().get( pZ ).add( pId );
-				solveItem.zToTileId().get( qZ ).add( qId );
+				inputSolveItem.zToTileId().get( pZ ).add( pId );
+				inputSolveItem.zToTileId().get( qZ ).add( qId );
 			}
 		}
 	}

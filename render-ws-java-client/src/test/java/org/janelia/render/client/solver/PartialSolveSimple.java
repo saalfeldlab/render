@@ -71,7 +71,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 
 		ArrayList< String > log = new ArrayList<>();
 
-		for (final String pGroupId : runParams.pGroupList)
+		for (final String pGroupId : runParams.pGroupList.stream().map(Pair::getA).collect( Collectors.toList() ) )
 		{
 			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
 
