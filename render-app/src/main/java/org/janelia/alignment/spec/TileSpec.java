@@ -16,6 +16,8 @@
  */
 package org.janelia.alignment.spec;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
 import java.io.IOException;
@@ -29,18 +31,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-import org.janelia.alignment.ImageAndMask;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.json.JsonUtils;
-import org.janelia.alignment.spec.stack.MipmapPathBuilder;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.CoordinateTransformMesh;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.trakem2.transform.TransformMesh;
+
+import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 
 /**
  * Specifies a set of mipmap level images and masks along with
@@ -70,9 +70,12 @@ public class TileSpec implements Serializable {
     private ListTransformSpec transforms;
     private double meshCellSize = RenderParameters.DEFAULT_MESH_CELL_SIZE;
 
+    private final Set<String> labels;
+
     public TileSpec() {
         this.mipmapLevels = new TreeMap<>();
         this.transforms = new ListTransformSpec();
+        this.labels = null;
     }
 
     public String getTileId() {
@@ -133,13 +136,13 @@ public class TileSpec implements Serializable {
         return meshCellSize;
     }
 
-    public boolean isBoundingBoxDefined(final double meshCellSize) {
-        return
-                (this.meshCellSize == meshCellSize) &&
-                (minX != null) &&
-                (minY != null) &&
-                (maxX != null) &&
-                (maxY != null);
+    public boolean hasLabel(final String label) {
+        return (labels != null) && labels.contains(label);
+    }
+
+    public boolean isBoundingBoxDerivationNeeded(final double meshCellSize) {
+        return (this.meshCellSize != meshCellSize) ||
+               (minX == null) || (minY == null) || (maxX == null) || (maxY == null);
     }
 
     /**
@@ -173,7 +176,7 @@ public class TileSpec implements Serializable {
     public TransformMesh getTransformMesh(final double meshCellSize)
             throws IllegalStateException {
 
-        if (! hasWidthAndHeightDefined()) {
+        if (isMissingWidthOrHeight()) {
             throw new IllegalStateException("width and height must be set to create transform mesh");
         }
 
@@ -193,7 +196,7 @@ public class TileSpec implements Serializable {
     public CoordinateTransformMesh getCoordinateTransformMesh(final double meshCellSize)
             throws IllegalStateException {
 
-        if (! hasWidthAndHeightDefined()) {
+        if (isMissingWidthOrHeight()) {
             throw new IllegalStateException("width and height must be set to create transform mesh");
         }
 
@@ -217,9 +220,9 @@ public class TileSpec implements Serializable {
     public void deriveBoundingBox(final double meshCellSize, final boolean force, final boolean sloppy)
             throws IllegalStateException {
 
-        if (force || (!isBoundingBoxDefined(meshCellSize))) {
+        if (force || isBoundingBoxDerivationNeeded(meshCellSize)) {
             if (sloppy) {
-                if (! hasWidthAndHeightDefined()) {
+                if (isMissingWidthOrHeight()) {
                     throw new IllegalStateException("width and height must be set to create a bounding box");
                 }
 
@@ -389,8 +392,8 @@ public class TileSpec implements Serializable {
         return localCoordinates;
     }
 
-    public boolean hasWidthAndHeightDefined() {
-        return ((width != null) && (height != null));
+    public boolean isMissingWidthOrHeight() {
+        return ((width == null) || (height == null));
     }
 
     public int getWidth() {
@@ -701,7 +704,7 @@ public class TileSpec implements Serializable {
     }
 
     public static List<TileSpec> fromJsonArray(final Reader json)
-            throws IOException {
+            throws IllegalArgumentException {
         // TODO: verify using Arrays.asList optimization is actually faster
         // return JSON_HELPER.fromJsonArray(json);
         try {

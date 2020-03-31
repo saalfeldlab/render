@@ -356,7 +356,7 @@ public class ResolvedTileSpecCollection implements Serializable {
 
         for (final TileSpec tileSpec : tileIdToSpecMap.values()) {
 
-            if (! tileSpec.isBoundingBoxDefined(tileSpec.getMeshCellSize())) {
+            if (tileSpec.isBoundingBoxDerivationNeeded(tileSpec.getMeshCellSize())) {
                 throw new IllegalArgumentException("tile with id '" + tileSpec.getTileId() + "' is missing bounding " +
                                                    "box attributes (minX, minY, maxX, and/or maxY)");
             }
