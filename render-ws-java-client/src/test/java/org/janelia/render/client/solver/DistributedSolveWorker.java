@@ -19,6 +19,9 @@ import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ij.ImageJ;
+import ij.ImagePlus;
+import mpicbg.models.AbstractAffineModel2D;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
@@ -28,6 +31,7 @@ import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.PointMatch;
+import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
@@ -43,6 +47,12 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 	// the advantage is that potential deformations do not propagate into the individual
 	// sections, but can be solved easily later using non-rigid alignment.
 	final public static boolean stitchFirst = true;
+
+	final public static double maxAllowedError = 10;
+	final public static int numIterations = 500;
+	final public static int maxPlateauWidth = 50;
+
+	final protected static int visualizeZSection = 0;//10000;
 
 	final Parameters parameters;
 	final RunParameters runParams;
@@ -185,120 +195,181 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 		}
 
 		if ( stitchFirst )
+			stitchSections( pairs, zToPairs, new InterpolatedAffineModel2D<>( new RigidModel2D(), new TranslationModel2D(), 0.25 ) );
+		//else
+		//	we are done
+	}
+
+	protected < M extends Model< M > & Affine2D< M > > void stitchSections(
+			final ArrayList< Pair< Pair< Tile< InterpolatedAffineModel2D<AffineModel2D, B> >, Tile< InterpolatedAffineModel2D<AffineModel2D, B> > >, List< PointMatch > > > pairs,
+			final HashMap< Integer, List< Integer > > zToPairs,
+			final M model )
+	{
+		// combine tiles per layer that are be stitched first
+		final ArrayList< Integer > zList = new ArrayList<>( zToPairs.keySet() );
+		Collections.sort( zList );
+
+		for ( final int z : zList )
 		{
-			// combine tiles per layer that are be stitched first
-			final ArrayList< Integer > zList = new ArrayList<>( zToPairs.keySet() );
-			Collections.sort( zList );
+			LOG.info( "" );
+			LOG.info( "stitching z=" + z );
 
-			for ( final int z : zList )
+			// TODO: Only works with pure Translation2D oder Rigid2D
+			final HashMap< String, Tile< M > > idTotile = new HashMap<>();
+			final HashMap< Tile< M >, String > tileToId = new HashMap<>();
+
+			// all connections within this z section
+			for ( final int index : zToPairs.get( z ) )
 			{
-				LOG.info( "" );
-				LOG.info( "stitching z=" + z );
+				final Pair< Pair< Tile< InterpolatedAffineModel2D<AffineModel2D, B> >, Tile< InterpolatedAffineModel2D<AffineModel2D, B> > >, List< PointMatch > > pair = pairs.get( index );
+				
+				final String pId = inputSolveItem.tileToIdMap().get( pair.getA().getA() );
+				final String qId = inputSolveItem.tileToIdMap().get( pair.getA().getB() );
 
-				final HashMap< String, Tile< TranslationModel2D > > idTotile = new HashMap<>();
-				final HashMap< Tile< TranslationModel2D >, String > tileToId = new HashMap<>();
+				//LOG.info( "pId=" + pId  + " (" + idTotile.containsKey( pId ) + ") " + " qId=" + qId + " (" + idTotile.containsKey( qId ) + ") " + idTotile.keySet().size() );
 
-				// all connections within this z section
-				for ( final int index : zToPairs.get( z ) )
+				final Tile< M > p, q;
+
+				if ( !idTotile.containsKey( pId ) )
 				{
-					final Pair< Pair< Tile< InterpolatedAffineModel2D<AffineModel2D, B> >, Tile< InterpolatedAffineModel2D<AffineModel2D, B> > >, List< PointMatch > > pair = pairs.get( index );
-					
-					final String pId = inputSolveItem.tileToIdMap().get( pair.getA().getA() );
-					final String qId = inputSolveItem.tileToIdMap().get( pair.getA().getB() );
-
-					//LOG.info( "pId=" + pId  + " (" + idTotile.containsKey( pId ) + ") " + " qId=" + qId + " (" + idTotile.containsKey( qId ) + ") " + idTotile.keySet().size() );
-
-					final Tile< TranslationModel2D > p, q;
-
-					if ( !idTotile.containsKey( pId ) )
-					{
-						//p = new Tile< TranslationModel2D >( new TranslationModel2D() );
-						p = SolveTools.buildTile( inputSolveItem.idToPreviousModel().get( pId ), new TranslationModel2D(), 100, 100, 3 );
-						idTotile.put( pId, p );
-						tileToId.put( p, pId );
-					}
-					else
-					{
-						p = idTotile.get( pId );
-					}
-
-					if ( !idTotile.containsKey( qId ) )
-					{
-						//q = new Tile< TranslationModel2D >( new TranslationModel2D() );
-						q = SolveTools.buildTile( inputSolveItem.idToPreviousModel().get( qId ), new TranslationModel2D(), 100, 100, 3 );
-						idTotile.put( qId, q );
-						tileToId.put( q, qId );
-					}
-					else
-					{
-						q = idTotile.get( qId );
-					}
-
-					// TODO: do we really need to duplicate the PointMatches?
-					p.connect( q, duplicate( pair.getB() ) );
+					//p = new Tile<>( model.copy() );
+					p = SolveTools.buildTile( inputSolveItem.idToPreviousModel().get( pId ), model.copy(), 100, 100, 3 );
+					idTotile.put( pId, p );
+					tileToId.put( p, pId );
+				}
+				else
+				{
+					p = idTotile.get( pId );
 				}
 
-				// add all missing TileIds as unconnected Tiles
-				for ( final String tileId : inputSolveItem.zToTileId().get( z ) )
-					if ( !idTotile.containsKey( tileId ) )
-					{
-						LOG.info( "unconnected tileId " + tileId );
-
-						final Tile< TranslationModel2D > tile = new Tile< TranslationModel2D >( new TranslationModel2D() );
-						idTotile.put( tileId, tile );
-						tileToId.put( tile, tileId );
-					}
-
-				// Now identify connected graphs within all tiles
-				final ArrayList< Set< Tile< ? > > > sets = Tile.identifyConnectedGraphs( idTotile.values() );
-
-				LOG.info( "stitching z=" + z + " #sets=" + sets.size() );
-
-				// solve each set (if size > 1)
-				int setCount = 0;
-				for ( final Set< Tile< ? > > set : sets )
+				if ( !idTotile.containsKey( qId ) )
 				{
-					LOG.info( "Set=" + setCount++ );
-
-					if ( set.size() > 1 )
-					{
-						// test if the graph has cycles, if yes we would need to do a solve
-						if ( new Graph( new ArrayList<>( set ) ).isCyclic() )
-						{
-							LOG.info( "Set has cycles for z=" + z + ", full solve would be required for stitching, not implemented yet. STOPPING." );
-							System.exit( 0 );
-						}
-						else
-						{
-							// otherwise a simple preAlign suffices
-							try
-							{
-								final TileConfiguration tileConfig = new TileConfiguration();
-								tileConfig.addTiles( set );
-
-								tileConfig.preAlign();
-
-								for ( final Tile< ? > t : set )
-									LOG.info( "TileId " + tileToId.get( t ) + " Model=" + t.getModel() );
-							}
-							catch ( NotEnoughDataPointsException | IllDefinedDataPointsException e )
-							{
-								LOG.info( "Could not solve stitiching for z=" + z + ", cause: " + e );
-								e.printStackTrace();
-							}
-						}
-					}
-					else
-					{
-						LOG.info( "Single TileId " + tileToId.get( set.iterator().next() ) );
-					}
-
-					// TODO: next, group the stitched tiles together
+					//q = new Tile<>( model.copy() );
+					q = SolveTools.buildTile( inputSolveItem.idToPreviousModel().get( qId ), model.copy(), 100, 100, 3 );
+					idTotile.put( qId, q );
+					tileToId.put( q, qId );
 				}
+				else
+				{
+					q = idTotile.get( qId );
+				}
+
+				// TODO: do we really need to duplicate the PointMatches?
+				p.connect( q, duplicate( pair.getB() ) );
 			}
 
-			System.exit( 0 );
+			// add all missing TileIds as unconnected Tiles
+			for ( final String tileId : inputSolveItem.zToTileId().get( z ) )
+				if ( !idTotile.containsKey( tileId ) )
+				{
+					LOG.info( "unconnected tileId " + tileId );
+
+					final Tile< M > tile = new Tile< M >( model.copy() );
+					idTotile.put( tileId, tile );
+					tileToId.put( tile, tileId );
+				}
+
+			// Now identify connected graphs within all tiles
+			final ArrayList< Set< Tile< ? > > > sets = Tile.identifyConnectedGraphs( idTotile.values() );
+
+			LOG.info( "stitching z=" + z + " #sets=" + sets.size() );
+
+			// solve each set (if size > 1)
+			int setCount = 0;
+			for ( final Set< Tile< ? > > set : sets )
+			{
+				LOG.info( "Set=" + setCount++ );
+
+				if ( set.size() > 1 )
+				{
+					final TileConfiguration tileConfig = new TileConfiguration();
+					tileConfig.addTiles( set );
+
+					// we always prealign (not sure how far off the current alignment in renderer is)
+					// a simple preAlign suffices for Translation and Rigid as it doesn't matter which Tile is fixed during alignment
+					try
+					{
+						tileConfig.preAlign();
+					}
+					catch ( NotEnoughDataPointsException | IllDefinedDataPointsException e )
+					{
+						LOG.info( "Could not solve stitiching for z=" + z + ", cause: " + e );
+						e.printStackTrace();
+					}
+
+					// test if the graph has cycles, if yes we would need to do a solve
+					if ( !( ( TranslationModel2D.class.isInstance( model ) || RigidModel2D.class.isInstance( model ) ) && !new Graph( new ArrayList<>( set ) ).isCyclic() ) )
+					{
+						LOG.info( "Full solve required for stitching z=" + z  );
+
+						try
+						{
+							TileUtil.optimizeConcurrently(
+								new ErrorStatistic( maxPlateauWidth + 1 ),
+								maxAllowedError,
+								numIterations,
+								maxPlateauWidth,
+								1.0,
+								tileConfig,
+								tileConfig.getTiles(),
+								tileConfig.getFixedTiles(),
+								parameters.numberOfThreads);
+
+							LOG.info( "Solve z=" + z + " avg=" + tileConfig.getError() + ", min=" + tileConfig.getMinError() + ", max=" + tileConfig.getMaxError() );
+						}
+						catch ( Exception e )
+						{
+							LOG.info( "Could not solve stitiching for z=" + z + ", cause: " + e );
+							e.printStackTrace();
+						}
+					}
+
+					// update Tile transformations accordingly
+					for ( final Tile< ? > t : set )
+					{
+						final String tileId = tileToId.get( t );
+						final AffineModel2D affine = createAffine( ((M)t.getModel()) );
+
+						inputSolveItem.idToNewModel().put( tileId, affine );
+
+						LOG.info( "TileId " + tileId + " Model=" + affine );
+					}
+
+					if ( visualizeZSection == z )
+					{
+						try
+						{
+							new ImageJ();
+							ImagePlus imp1 = SolveTools.render( inputSolveItem.idToNewModel(), inputSolveItem.idToTileSpec(), 0.15 );
+							imp1.setTitle( "z=" + z );
+						}
+						catch ( NoninvertibleModelException e )
+						{
+							e.printStackTrace();
+						}
+						SimpleMultiThreading.threadHaltUnClean();
+					}
+
+					//System.exit( 0 );
+				}
+				else
+				{
+					LOG.info( "Single TileId " + tileToId.get( set.iterator().next() ) );
+				}
+
+				// TODO: next, group the stitched tiles together
+			}
 		}
+
+		System.exit( 0 );
+	}
+
+	protected static < M extends Model< M > & Affine2D< M > > AffineModel2D createAffine( final M model )
+	{
+		final AffineModel2D m = new AffineModel2D();
+		m.set( model.createAffine() );
+
+		return m;
 	}
 
 	protected static List< PointMatch > duplicate( List< PointMatch > pms )
