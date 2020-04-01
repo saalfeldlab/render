@@ -38,7 +38,7 @@ public class MipmapGeneratorTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         FileUtil.deleteRecursive(baseMipmapDirectory);
     }
 
@@ -49,8 +49,8 @@ public class MipmapGeneratorTest {
                                                                     0.85f,
                                                                     false);
 
-        final String sourcePath = "/groups/saalfeld/raw-data/stack-1/file1.tif";
-        final String sourceUrl = "file:/groups/saalfeld/raw-data/stack-1/file1.tif";
+        final String sourcePath = "/render_test/saalfeld/raw-data/stack-1/file1.tif";
+        final String sourceUrl = "file:/render_test/saalfeld/raw-data/stack-1/file1.tif";
         final File baseMipmapFile = mipmapGenerator.getMipmapBaseFile(sourceUrl, false);
 
         final String expectedFilePath = baseMipmapDirectory.getAbsolutePath() + sourcePath;
