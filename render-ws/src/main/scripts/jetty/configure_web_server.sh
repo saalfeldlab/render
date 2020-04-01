@@ -15,8 +15,9 @@ LOGBACK_VERSION="1.1.5"
 SLF4J_VERSION="1.7.16"
 SWAGGER_UI_VERSION="2.1.4"
 
-LOGBACK_URL="http://central.maven.org/maven2/ch/qos/logback"
-SLF4J_URL="http://central.maven.org/maven2/org/slf4j"
+MAVEN_CENTRAL_URL="https://repo1.maven.org/"
+LOGBACK_URL="${MAVEN_CENTRAL_URL}/maven2/ch/qos/logback"
+SLF4J_URL="${MAVEN_CENTRAL_URL}/maven2/org/slf4j"
 SWAGGER_UI_URL="https://github.com/swagger-api/swagger-ui/archive/v${SWAGGER_UI_VERSION}.tar.gz"
 
 curl -L "${SWAGGER_UI_URL}" | tar xz
