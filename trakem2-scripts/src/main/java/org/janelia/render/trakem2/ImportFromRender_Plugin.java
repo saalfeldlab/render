@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -167,7 +168,8 @@ public class ImportFromRender_Plugin
             }
 
             try {
-                final List<ChannelSpec> allChannelSpecs = tileSpec.getAllChannels();
+                final List<ChannelSpec> allChannelSpecs = importData.channels.isEmpty() ? tileSpec.getAllChannels() :
+                    tileSpec.getChannels(importData.channels);
                 final ChannelSpec firstChannelSpec = allChannelSpecs.get(0);
                 final ImageAndMask imageAndMask = firstChannelSpec.getFirstMipmapEntry().getValue();
                 final String imageFilePath = imageAndMask.getImageFilePath();
@@ -300,6 +302,7 @@ public class ImportFromRender_Plugin
         private String renderOwner;
         private String renderProject;
         private String renderStack;
+        private Set<String> channels;
         private double minZ;
         private double maxZ;
         private boolean splitSections;
@@ -322,6 +325,7 @@ public class ImportFromRender_Plugin
             renderOwner = "flyTEM";
             renderProject = "FAFB00";
             renderStack = "v12_acquire_merged";
+            channels = new HashSet<String>();
             minZ = 1.0;
             maxZ = minZ;
             imagePlusType = ImagePlus.GRAY8;
@@ -352,6 +356,7 @@ public class ImportFromRender_Plugin
             dialog.addStringField("Render Stack Owner", renderOwner, defaultTextColumns);
             dialog.addStringField("Render Stack Project", renderProject, defaultTextColumns);
             dialog.addStringField("Render Stack Name", renderStack, defaultTextColumns);
+            dialog.addStringField("Channel (empty for default)", "", defaultTextColumns);
             dialog.addNumericField("Min Z", minZ, 1);
             dialog.addNumericField("Max Z", maxZ, 1);
             dialog.addNumericField("Image Plus Type (use '-1' to slowly derive dynamically)", imagePlusType, 0);
@@ -371,6 +376,10 @@ public class ImportFromRender_Plugin
                 renderOwner = dialog.getNextString();
                 renderProject = dialog.getNextString();
                 renderStack =  dialog.getNextString();
+                String channelString = dialog.getNextString();
+                if (channelString != null && channelString.length() > 0) {
+                    channels.add(channelString);
+                }
                 minZ = dialog.getNextNumber();
                 maxZ = dialog.getNextNumber();
                 imagePlusType = new Double(dialog.getNextNumber()).intValue();
