@@ -14,12 +14,20 @@ public class DummySolveItem< B extends Model< B > & Affine2D< B > > extends Solv
 		this.globalAlignAffineModel = new AffineModel2D();
 	}
 
+	@Override
 	public double getWeight( final int z )
 	{
 		return 0;
 	}
 
-	public double getCosWeight( final int z )
+	@Override
+	public double getCosineWeight( final int z )
+	{
+		return 0;
+	}
+
+	@Override
+	public double getLinearWeight( final int z )
 	{
 		return 0;
 	}

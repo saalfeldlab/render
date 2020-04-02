@@ -2,6 +2,7 @@ package org.janelia.render.client.solver;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.janelia.alignment.spec.TileSpec;
@@ -26,13 +27,30 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	final private int minZ, maxZ;
 	final private RunParameters runParams;
 
+	// all tiles, used for solving when not grouped
 	final private HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
-	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
-	final private HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
+
+	// used for global solve outside
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
+
+	// contains the model as determined by the local solve
 	final private HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
 
+	// contains the model as loaded from renderer
+	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
+	final private HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
 	final private HashMap<Tile<?>, String > tileToIdMap = new HashMap<>();
+
+	//
+	// stitching-related (local)
+	//
+	// contains the model as after local stitching (tmp)
+	final private HashMap<String, AffineModel2D> idToStitchingModel = new HashMap<>();
+
+	// all grouped tiles, used for solving when stitching first
+	final HashMap< Tile< ? >, Tile< ? > > tileToGroupedTile = new HashMap<>();
+	final HashMap< Tile< ? >, List< Tile< ? > > > groupedTileToTiles = new HashMap<>();
+
 
 	// TODO: update overlapping items after split
 	final private HashSet< SolveItem< B > > overlappingItems = new HashSet<>();
@@ -67,6 +85,10 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	public HashMap<String, AffineModel2D> idToNewModel() { return idToNewModel; }
 
 	public HashMap<Tile<?>, String > tileToIdMap() { return tileToIdMap; }
+
+	public HashMap<String, AffineModel2D> idToStitchingModel() { return idToStitchingModel; }
+	public HashMap< Tile< ? >, Tile< ? > > tileToGroupedTile() { return tileToGroupedTile; }
+	public HashMap< Tile< ? >, List< Tile< ? > > > groupedTileToTiles() { return groupedTileToTiles; }
 
 	public void addOverlappingSolveItem( final SolveItem< B > solveItem ) { overlappingItems.add( solveItem ); }
 	public HashSet< SolveItem< B > > getOverlappingSolveItems() { return overlappingItems; }

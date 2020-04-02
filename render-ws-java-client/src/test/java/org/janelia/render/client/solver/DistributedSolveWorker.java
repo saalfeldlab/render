@@ -15,6 +15,7 @@ import java.util.stream.Stream;
 
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,7 @@ import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
@@ -195,12 +197,34 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 		}
 
 		if ( stitchFirst )
-			stitchSections( pairs, zToPairs, new InterpolatedAffineModel2D<>( new RigidModel2D(), new TranslationModel2D(), 0.25 ) );
+		{
+			stitchSections(
+					inputSolveItem,
+					pairs,
+					zToPairs,
+					new InterpolatedAffineModel2D<>( new RigidModel2D(), new TranslationModel2D(), 0.25 ) );
+
+			// next, group the stitched tiles together
+			for ( final Pair< Pair< Tile< InterpolatedAffineModel2D<AffineModel2D, B> >, Tile< InterpolatedAffineModel2D<AffineModel2D, B> > >, List< PointMatch > > pair : pairs )
+			{
+				final Tile< ? > p = inputSolveItem.tileToGroupedTile().get( pair.getA().getA() );
+				final Tile< ? > q = inputSolveItem.tileToGroupedTile().get( pair.getA().getB() );
+
+				final String pTileId = inputSolveItem.tileToIdMap().get( pair.getA().getA() );
+				final String qTileId = inputSolveItem.tileToIdMap().get( pair.getA().getB() );
+
+				final AffineModel2D pModel = inputSolveItem.idToStitchingModel().get( pTileId );
+				final AffineModel2D qModel = inputSolveItem.idToStitchingModel().get( qTileId );
+
+				p.connect(q, createRelativePointMatches( pair.getB(), pModel, qModel ) );
+			}
+		}
 		//else
 		//	we are done
 	}
 
 	protected < M extends Model< M > & Affine2D< M > > void stitchSections(
+			final SolveItem< B > solveItem,
 			final ArrayList< Pair< Pair< Tile< InterpolatedAffineModel2D<AffineModel2D, B> >, Tile< InterpolatedAffineModel2D<AffineModel2D, B> > >, List< PointMatch > > > pairs,
 			final HashMap< Integer, List< Integer > > zToPairs,
 			final M model )
@@ -214,7 +238,6 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 			LOG.info( "" );
 			LOG.info( "stitching z=" + z );
 
-			// TODO: Only works with pure Translation2D oder Rigid2D
 			final HashMap< String, Tile< M > > idTotile = new HashMap<>();
 			final HashMap< Tile< M >, String > tileToId = new HashMap<>();
 
@@ -223,8 +246,8 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 			{
 				final Pair< Pair< Tile< InterpolatedAffineModel2D<AffineModel2D, B> >, Tile< InterpolatedAffineModel2D<AffineModel2D, B> > >, List< PointMatch > > pair = pairs.get( index );
 				
-				final String pId = inputSolveItem.tileToIdMap().get( pair.getA().getA() );
-				final String qId = inputSolveItem.tileToIdMap().get( pair.getA().getB() );
+				final String pId = solveItem.tileToIdMap().get( pair.getA().getA() );
+				final String qId = solveItem.tileToIdMap().get( pair.getA().getB() );
 
 				//LOG.info( "pId=" + pId  + " (" + idTotile.containsKey( pId ) + ") " + " qId=" + qId + " (" + idTotile.containsKey( qId ) + ") " + idTotile.keySet().size() );
 
@@ -233,7 +256,8 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 				if ( !idTotile.containsKey( pId ) )
 				{
 					//p = new Tile<>( model.copy() );
-					p = SolveTools.buildTile( inputSolveItem.idToPreviousModel().get( pId ), model.copy(), 100, 100, 3 );
+					// since we do preAlign later this seems redundant. However, it makes sure the tiles are more or less at the right global coordinates
+					p = SolveTools.buildTile( solveItem.idToPreviousModel().get( pId ), model.copy(), 100, 100, 3 );
 					idTotile.put( pId, p );
 					tileToId.put( p, pId );
 				}
@@ -245,7 +269,7 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 				if ( !idTotile.containsKey( qId ) )
 				{
 					//q = new Tile<>( model.copy() );
-					q = SolveTools.buildTile( inputSolveItem.idToPreviousModel().get( qId ), model.copy(), 100, 100, 3 );
+					q = SolveTools.buildTile( solveItem.idToPreviousModel().get( qId ), model.copy(), 100, 100, 3 );
 					idTotile.put( qId, q );
 					tileToId.put( q, qId );
 				}
@@ -259,7 +283,7 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 			}
 
 			// add all missing TileIds as unconnected Tiles
-			for ( final String tileId : inputSolveItem.zToTileId().get( z ) )
+			for ( final String tileId : solveItem.zToTileId().get( z ) )
 				if ( !idTotile.containsKey( tileId ) )
 				{
 					LOG.info( "unconnected tileId " + tileId );
@@ -279,6 +303,13 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 			for ( final Set< Tile< ? > > set : sets )
 			{
 				LOG.info( "Set=" + setCount++ );
+
+				// the grouped tile for this set
+				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> groupedTile = new Tile<>(
+						new InterpolatedAffineModel2D<>(
+							new AffineModel2D(),
+							parameters.regularizerModelType.getInstance(),
+							parameters.startLambda)); // note: lambda gets reset during optimization loops
 
 				if ( set.size() > 1 )
 				{
@@ -324,44 +355,55 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 						}
 					}
 
-					// update Tile transformations accordingly
+					// save Tile transformations accordingly
 					for ( final Tile< ? > t : set )
 					{
 						final String tileId = tileToId.get( t );
 						final AffineModel2D affine = createAffine( ((M)t.getModel()) );
 
-						inputSolveItem.idToNewModel().put( tileId, affine );
+						solveItem.idToStitchingModel().put( tileId, affine );
+
+						// assign the original tile (we made a new one for stitching with a different model) to its grouped tile
+						solveItem.tileToGroupedTile().put( solveItem.idToTileMap().get( tileId ), groupedTile );
+						
+						solveItem.groupedTileToTiles().putIfAbsent( groupedTile, new ArrayList<>() );
+						solveItem.groupedTileToTiles().get( groupedTile ).add( solveItem.idToTileMap().get( tileId ) );
 
 						LOG.info( "TileId " + tileId + " Model=" + affine );
 					}
 
+					// Hack: show a section after alignment
 					if ( visualizeZSection == z )
 					{
 						try
 						{
 							new ImageJ();
-							ImagePlus imp1 = SolveTools.render( inputSolveItem.idToNewModel(), inputSolveItem.idToTileSpec(), 0.15 );
+							ImagePlus imp1 = SolveTools.render( solveItem.idToNewModel(), solveItem.idToTileSpec(), 0.15 );
 							imp1.setTitle( "z=" + z );
 						}
 						catch ( NoninvertibleModelException e )
 						{
 							e.printStackTrace();
 						}
-						SimpleMultiThreading.threadHaltUnClean();
 					}
 
 					//System.exit( 0 );
 				}
 				else
 				{
-					LOG.info( "Single TileId " + tileToId.get( set.iterator().next() ) );
-				}
+					final String tileId = tileToId.get( set.iterator().next() );
+					solveItem.idToStitchingModel().put( tileId, solveItem.idToPreviousModel().get( tileId ).copy() );
 
-				// TODO: next, group the stitched tiles together
+					// assign the original tile (we made a new one for stitching with a different model) to its grouped tile
+					solveItem.tileToGroupedTile().put( solveItem.idToTileMap().get( tileId ), groupedTile );
+
+					solveItem.groupedTileToTiles().putIfAbsent( groupedTile, new ArrayList<>() );
+					solveItem.groupedTileToTiles().get( groupedTile ).add( solveItem.idToTileMap().get( tileId ) );
+
+					LOG.info( "Single TileId " + tileId );
+				}
 			}
 		}
-
-		System.exit( 0 );
 	}
 
 	protected static < M extends Model< M > & Affine2D< M > > AffineModel2D createAffine( final M model )
@@ -382,8 +424,45 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 		return copy;
 	}
 
+	public static List< PointMatch > createRelativePointMatches(
+			final List< PointMatch > absolutePMs,
+			final Model< ? > pModel,
+			final Model< ? > qModel )
+	{
+		final List< PointMatch > relativePMs = new ArrayList<>( absolutePMs.size() );
+
+		if ( absolutePMs.size() == 0 )
+			return relativePMs;
+
+		final int n = absolutePMs.get( 0 ).getP1().getL().length;
+
+		for ( final PointMatch absPM : absolutePMs )
+		{
+			final double[] pLocal = new double[ n ];
+			final double[] qLocal = new double[ n ];
+
+			for (int d = 0; d < n; ++d )
+			{
+				pLocal[ d ] = absPM.getP1().getL()[ d ];
+				qLocal[ d ] = absPM.getP2().getL()[ d ];
+			}
+
+			if ( pModel != null )
+				pModel.applyInPlace( pLocal );
+
+			if ( qModel != null )
+				qModel.applyInPlace( qLocal );
+
+			relativePMs.add( new PointMatch( new Point( pLocal ), new Point( qLocal ), absPM.getWeight() ) );
+		}
+
+		return relativePMs;
+	}
+
 	protected void split()
 	{
+		// the connectivity of idToTileMap().values() will be the same as tileToGroupedTile().values(), no matter 
+		// if we stitched first or not as we can only stitch tiles that are connected to each other
 		final ArrayList< Set< Tile< ? > > > graphs = Tile.identifyConnectedGraphs( inputSolveItem.idToTileMap().values() );
 
 		LOG.info( "Graph of SolveItem " + inputSolveItem.getId() + " consists of " + graphs.size() + " subgraphs." );
@@ -412,7 +491,7 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 
 				LOG.info( newMin + " > " + newMax );
 
-				final SolveItem solveItem = new SolveItem<>( newMin, newMax, runParams );
+				final SolveItem< B > solveItem = new SolveItem<>( newMin, newMax, runParams );
 
 				LOG.info( "old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
 
@@ -420,14 +499,25 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 				for ( final Tile< ? > t : subgraph )
 				{
 					final String tileId = inputSolveItem.tileToIdMap().get( t );
-
-					solveItem.idToTileMap().put( tileId, t );
+	
+					solveItem.idToTileMap().put( tileId, (Tile)t );
 					solveItem.tileToIdMap().put( t, tileId );
 					solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
 					solveItem.idToTileSpec().put( tileId, inputSolveItem.idToTileSpec().get( tileId ) );
 					solveItem.idToNewModel().put( tileId, inputSolveItem.idToNewModel().get( tileId ) );
+	
+					if ( DistributedSolveWorker.stitchFirst )
+					{
+						solveItem.idToStitchingModel().put( tileId, inputSolveItem.idToStitchingModel().get( tileId ) );
+
+						final Tile< ? > groupedTile = inputSolveItem.tileToGroupedTile().get( t );
+
+						solveItem.tileToGroupedTile().put( t, groupedTile );
+						solveItem.groupedTileToTiles().putIfAbsent( groupedTile, inputSolveItem.groupedTileToTiles().get( groupedTile ) );
+					}
 				}
 
+				// used for global solve outside
 				for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
 				{
 					final HashSet< String > allTilesPerZ = inputSolveItem.zToTileId().get( z );
@@ -467,9 +557,16 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 	{
 		final TileConfiguration tileConfig = new TileConfiguration();
 
-		tileConfig.addTiles(solveItem.idToTileMap().values());
-
-		LOG.info("run: optimizing {} tiles for solveItem {}", solveItem.idToTileMap().size(), solveItem.getId() );
+		if ( stitchFirst )
+		{
+			tileConfig.addTiles(solveItem.tileToGroupedTile().values());
+			LOG.info("run: optimizing {} tiles for solveItem {}", solveItem.tileToGroupedTile().size(), solveItem.getId() );
+		}
+		else
+		{
+			tileConfig.addTiles(solveItem.idToTileMap().values());
+			LOG.info("run: optimizing {} tiles for solveItem {}", solveItem.idToTileMap().size(), solveItem.getId() );
+		}
 
 		final List<Double> lambdaValues;
 
@@ -523,28 +620,68 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 		//
 		solveItem.idToNewModel().clear();
 
-		final ArrayList< String > tileIds = new ArrayList<>( solveItem.idToTileMap().keySet() );
-		Collections.sort( tileIds );
-
-		for (final String tileId : tileIds )
+		if ( stitchFirst )
 		{
-			final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = solveItem.idToTileMap().get(tileId);
-			final AffineModel2D affine = tile.getModel().createAffineModel2D();
+			// TODO:
 
-			/*
-			// TODO: REMOVE
-			if ( inputSolveItem.getId() == 2 )
+			final ArrayList< String > tileIds = new ArrayList<>();
+			final HashMap< String, AffineModel2D > tileIdToGroupModel = new HashMap<>();
+
+			for ( final Tile< ? > tile : solveItem.tileToGroupedTile().keySet() )
 			{
-			final TranslationModel2D t = new TranslationModel2D();
-			t.set( 1000, 0 );
-			affine.preConcatenate( t );
-			}
-			*/
+				final String tileId = solveItem.tileToIdMap().get( tile );
 
-			solveItem.idToNewModel().put( tileId, affine );
-			LOG.info("tile {} model is {}", tileId, affine);
+				tileIds.add( tileId );
+				tileIdToGroupModel.put( tileId, ((InterpolatedAffineModel2D)solveItem.tileToGroupedTile().get( tileId ).getModel()).createAffineModel2D() );
+			}
+
+			Collections.sort( tileIds );
+
+			for (final String tileId : tileIds )
+			{
+				final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
+
+				affine.preConcatenate( tileIdToGroupModel.get( tileId ) );
+
+				/*
+				// TODO: REMOVE
+				if ( inputSolveItem.getId() == 2 )
+				{
+				final TranslationModel2D t = new TranslationModel2D();
+				t.set( 1000, 0 );
+				affine.preConcatenate( t );
+				}
+				*/
+	
+				solveItem.idToNewModel().put( tileId, affine );
+				LOG.info("tile {} model is {}", tileId, affine);
+			}
+
 		}
-		
+		else
+		{
+			final ArrayList< String > tileIds = new ArrayList<>( solveItem.idToTileMap().keySet() );
+			Collections.sort( tileIds );
+	
+			for (final String tileId : tileIds )
+			{
+				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = solveItem.idToTileMap().get(tileId);
+				final AffineModel2D affine = tile.getModel().createAffineModel2D();
+	
+				/*
+				// TODO: REMOVE
+				if ( inputSolveItem.getId() == 2 )
+				{
+				final TranslationModel2D t = new TranslationModel2D();
+				t.set( 1000, 0 );
+				affine.preConcatenate( t );
+				}
+				*/
+	
+				solveItem.idToNewModel().put( tileId, affine );
+				LOG.info("tile {} model is {}", tileId, affine);
+			}
+		}
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolveWorker.class);
