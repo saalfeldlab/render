@@ -66,6 +66,9 @@ public class DistributedSolve
 		try
 		{
 			w.run();
+			for ( final SolveItem s : (ArrayList< SolveItem >)w.getSolveItems() )
+				s.visualizeAligned();
+
 		} catch ( IOException | ExecutionException | InterruptedException
 				| NoninvertibleModelException e1 )
 		{
