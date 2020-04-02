@@ -54,7 +54,7 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 	final public static int numIterations = 500;
 	final public static int maxPlateauWidth = 50;
 
-	final protected static int visualizeZSection = 10000;
+	final protected static int visualizeZSection = 0;//10000;
 
 	final Parameters parameters;
 	final RunParameters runParams;
@@ -377,8 +377,15 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 					{
 						try
 						{
+							final HashMap< String, AffineModel2D > models = new HashMap<>();
+							for ( final Tile< ? > t : set )
+							{
+								final String tileId = tileToId.get( t );
+								models.put( tileId, solveItem.idToStitchingModel().get( tileId ) );
+							}
+
 							new ImageJ();
-							ImagePlus imp1 = SolveTools.render( solveItem.idToStitchingModel(), solveItem.idToTileSpec(), 0.15 );
+							ImagePlus imp1 = SolveTools.render( models, solveItem.idToTileSpec(), 0.15 );
 							imp1.setTitle( "z=" + z );
 						}
 						catch ( NoninvertibleModelException e )
