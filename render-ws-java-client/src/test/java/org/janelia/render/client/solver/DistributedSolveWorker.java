@@ -461,21 +461,29 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 
 	protected void split()
 	{
-		// the connectivity of idToTileMap().values() will be the same as tileToGroupedTile().values(), no matter 
-		// if we stitched first or not as we can only stitch tiles that are connected to each other
-		final ArrayList< Set< Tile< ? > > > graphs = Tile.identifyConnectedGraphs( inputSolveItem.idToTileMap().values() );
+		// the connectivity is defined by either idToTileMap().values() or tileToGroupedTile().values()
+		final ArrayList< Set< Tile< ? > > > graphs;
+
+		if ( stitchFirst )
+			graphs = Tile.identifyConnectedGraphs( inputSolveItem.tileToGroupedTile().values() );
+		else
+			graphs = Tile.identifyConnectedGraphs( inputSolveItem.idToTileMap().values() );
 
 		LOG.info( "Graph of SolveItem " + inputSolveItem.getId() + " consists of " + graphs.size() + " subgraphs." );
 
 		if ( graphs.size() == 1 )
+		{
 			solveItems.add( inputSolveItem );
+
+			LOG.info( "Graph 0 has " + graphs.get( 0 ).size() + " tiles." );
+		}
 		else
 		{
 			int graphCount = 0;
 
 			for ( final Set< Tile< ? > > subgraph : graphs )
 			{
-				LOG.info( "new graph " + graphCount++ );
+				LOG.info( "new graph " + graphCount++ + "has " + subgraph.size() + " tiles." );
 
 				int newMin = inputSolveItem.maxZ();
 				int newMax = inputSolveItem.minZ();
@@ -496,24 +504,34 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 				LOG.info( "old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
 
 				// update all the maps
-				for ( final Tile< ? > t : subgraph )
+				for ( final Tile< ? > potentiallyGroupedTile : subgraph )
 				{
-					final String tileId = inputSolveItem.tileToIdMap().get( t );
-	
-					solveItem.idToTileMap().put( tileId, (Tile)t );
-					solveItem.tileToIdMap().put( t, tileId );
-					solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
-					solveItem.idToTileSpec().put( tileId, inputSolveItem.idToTileSpec().get( tileId ) );
-					solveItem.idToNewModel().put( tileId, inputSolveItem.idToNewModel().get( tileId ) );
-	
-					if ( DistributedSolveWorker.stitchFirst )
+					final ArrayList< Tile< ? > > tiles = new ArrayList<>();
+
+					if ( stitchFirst )
+						tiles.addAll( inputSolveItem.groupedTileToTiles().get( potentiallyGroupedTile ) );
+					else
+						tiles.add( potentiallyGroupedTile );
+					
+					for ( final Tile< ? > t : tiles )
 					{
-						solveItem.idToStitchingModel().put( tileId, inputSolveItem.idToStitchingModel().get( tileId ) );
-
-						final Tile< ? > groupedTile = inputSolveItem.tileToGroupedTile().get( t );
-
-						solveItem.tileToGroupedTile().put( t, groupedTile );
-						solveItem.groupedTileToTiles().putIfAbsent( groupedTile, inputSolveItem.groupedTileToTiles().get( groupedTile ) );
+						final String tileId = inputSolveItem.tileToIdMap().get( t );
+		
+						solveItem.idToTileMap().put( tileId, (Tile)t );
+						solveItem.tileToIdMap().put( t, tileId );
+						solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
+						solveItem.idToTileSpec().put( tileId, inputSolveItem.idToTileSpec().get( tileId ) );
+						solveItem.idToNewModel().put( tileId, inputSolveItem.idToNewModel().get( tileId ) );
+		
+						if ( DistributedSolveWorker.stitchFirst )
+						{
+							solveItem.idToStitchingModel().put( tileId, inputSolveItem.idToStitchingModel().get( tileId ) );
+	
+							final Tile< ? > groupedTile = inputSolveItem.tileToGroupedTile().get( t );
+	
+							solveItem.tileToGroupedTile().put( t, groupedTile );
+							solveItem.groupedTileToTiles().putIfAbsent( groupedTile, inputSolveItem.groupedTileToTiles().get( groupedTile ) );
+						}
 					}
 				}
 
@@ -545,9 +563,8 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 				solveItems.add( solveItem );
 				// cannot update overlapping items here due to multithreading and the fact that the other solveitems are also being split up
 			}
-			//LOG.info("Stack is not connected, splitting not implemented yet." );
-			//System.exit( 0 );
 		}
+		//System.exit( 0 );
 	}
 
 	protected static < B extends Model< B > & Affine2D< B > > void solve(
@@ -560,7 +577,7 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 		if ( stitchFirst )
 		{
 			tileConfig.addTiles(solveItem.tileToGroupedTile().values());
-			LOG.info("run: optimizing {} tiles for solveItem {}", solveItem.tileToGroupedTile().size(), solveItem.getId() );
+			LOG.info("run: optimizing {} tiles for solveItem {}", solveItem.groupedTileToTiles().keySet().size(), solveItem.getId() );
 		}
 		else
 		{
@@ -654,7 +671,7 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 				*/
 	
 				solveItem.idToNewModel().put( tileId, affine );
-				LOG.info("tile {} model is {}", tileId, affine);
+				LOG.info("tile {} model from grouped tile is {}", tileId, affine);
 			}
 
 		}
