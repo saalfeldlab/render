@@ -11,7 +11,8 @@ JETTY_DIST="jetty-distribution-${JETTY_VERSION}"
 JDK_URL="http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz"
 
 # URLs for Jetty 9, SLF4J 1.7, Logback 1.1, and Swagger 2.1
-JETTY_URL="http://central.maven.org/maven2/org/eclipse/jetty/jetty-distribution/${JETTY_VERSION}/${JETTY_DIST}.tar.gz"
+MAVEN_CENTRAL_URL="https://repo1.maven.org"
+JETTY_URL="${MAVEN_CENTRAL_URL}/maven2/org/eclipse/jetty/jetty-distribution/${JETTY_VERSION}/${JETTY_DIST}.tar.gz"
 
 ABSOLUTE_SCRIPT=`readlink -m $0`
 SCRIPTS_DIR=`dirname ${ABSOLUTE_SCRIPT}`
