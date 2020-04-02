@@ -76,6 +76,7 @@ public class DistributedSolve
 			e1.printStackTrace();
 		}
 
+		SimpleMultiThreading.threadHaltUnClean();
 		System.exit( 0 );
 
 		// Multithreaded for now (should be Spark for cluster-)

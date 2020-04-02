@@ -489,12 +489,22 @@ public class DistributedSolveWorker< B extends Model< B > & Affine2D< B > >
 				int newMax = inputSolveItem.minZ();
 
 				// first figure out new minZ and maxZ
-				for ( final Tile< ? > t : subgraph )
+				for ( final Tile< ? > potentiallyGroupedTile : subgraph )
 				{
-					final TileSpec tileSpec = inputSolveItem.idToTileSpec().get( inputSolveItem.tileToIdMap().get( t ) );
+					final ArrayList< Tile< ? > > tiles = new ArrayList<>();
 
-					newMin = Math.min( newMin, (int)Math.round( tileSpec.getZ().doubleValue() ) );
-					newMax = Math.max( newMax, (int)Math.round( tileSpec.getZ().doubleValue() ) );
+					if ( stitchFirst )
+						tiles.addAll( inputSolveItem.groupedTileToTiles().get( potentiallyGroupedTile ) );
+					else
+						tiles.add( potentiallyGroupedTile );
+					
+					for ( final Tile< ? > t : tiles )
+					{
+						final TileSpec tileSpec = inputSolveItem.idToTileSpec().get( inputSolveItem.tileToIdMap().get( t ) );
+	
+						newMin = Math.min( newMin, (int)Math.round( tileSpec.getZ().doubleValue() ) );
+						newMax = Math.max( newMax, (int)Math.round( tileSpec.getZ().doubleValue() ) );
+					}
 				}
 
 				LOG.info( newMin + " > " + newMax );
