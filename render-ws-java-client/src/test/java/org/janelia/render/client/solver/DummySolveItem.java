@@ -5,9 +5,9 @@ import mpicbg.models.Model;
 
 public class DummySolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends SolveItem< G, B, S >
 {
-	public DummySolveItem( final G g, final int z )
+	public DummySolveItem( final G g, final B b, final S s, final int z )
 	{
-		super( g, null, null, z, z, new RunParameters() );
+		super( g, b, s, z, z, new RunParameters() );
 	}
 
 	@Override

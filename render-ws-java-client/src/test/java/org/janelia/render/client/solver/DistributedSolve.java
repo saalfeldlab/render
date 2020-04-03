@@ -313,7 +313,7 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 
 					// remember which solveItems defined which tileIds of this z section
 					
-					final SolveItem< G, B, S > solveItemB = new DummySolveItem< G, B, S >( solveItemA.globalSolveModelInstance(), z );
+					final SolveItem< G, B, S > solveItemB = new DummySolveItem< G, B, S >( solveItemA.globalSolveModelInstance(), solveItemA.blockSolveModelInstance(), solveItemA.stitchingSolveModelInstance(), z );
 					zToSolveItemPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
 
 					for ( final String tileId : tileIds )
