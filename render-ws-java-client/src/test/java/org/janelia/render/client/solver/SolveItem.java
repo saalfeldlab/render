@@ -33,30 +33,34 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	// used for global solve outside
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
 
+	// used for saving and display
+	final private HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
+
 	// contains the model as determined by the local solve
 	final private HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
 
-	// contains the model as loaded from renderer
+	// contains the model as loaded from renderer (can go right now except for debugging)
 	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
-	final private HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
-	final private HashMap<Tile<?>, String > tileToIdMap = new HashMap<>();
+
+	// used during the global solve only
+	Tile<RigidModel2D> globalAlignBlock = null;
+	AffineModel2D globalAlignAffineModel = null;
 
 	//
-	// stitching-related (local)
+	// local obly below
 	//
+
+	// used locally to map Tile back to TileId
+	final private HashMap<Tile<?>, String > tileToIdMap = new HashMap<>();
+
+	// stitching-related (local)
+
 	// contains the model as after local stitching (tmp)
 	final private HashMap<String, AffineModel2D> idToStitchingModel = new HashMap<>();
 
 	// all grouped tiles, used for solving when stitching first
-	final HashMap< Tile< ? >, Tile< ? > > tileToGroupedTile = new HashMap<>();
-	final HashMap< Tile< ? >, List< Tile< ? > > > groupedTileToTiles = new HashMap<>();
-
-
-	// TODO: update overlapping items after split
-	final private HashSet< SolveItem< B > > overlappingItems = new HashSet<>();
-
-	Tile<RigidModel2D> globalAlignBlock = null;
-	AffineModel2D globalAlignAffineModel = null;
+	final private HashMap< Tile< ? >, Tile< ? > > tileToGroupedTile = new HashMap<>();
+	final private HashMap< Tile< ? >, List< Tile< ? > > > groupedTileToTiles = new HashMap<>();
 
 	public SolveItem( final int minZ, final int maxZ, final RunParameters runParams )
 	{
@@ -89,9 +93,6 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	public HashMap<String, AffineModel2D> idToStitchingModel() { return idToStitchingModel; }
 	public HashMap< Tile< ? >, Tile< ? > > tileToGroupedTile() { return tileToGroupedTile; }
 	public HashMap< Tile< ? >, List< Tile< ? > > > groupedTileToTiles() { return groupedTileToTiles; }
-
-	public void addOverlappingSolveItem( final SolveItem< B > solveItem ) { overlappingItems.add( solveItem ); }
-	public HashSet< SolveItem< B > > getOverlappingSolveItems() { return overlappingItems; }
 
 	public double getWeight( final int z )
 	{

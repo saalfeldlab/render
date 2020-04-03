@@ -39,6 +39,17 @@ public class DistributedSolve
 	final Parameters parameters;
 	final RunParameters runParams;
 
+	final public static double maxAllowedError = 10;
+	final public static int numIterations = 1000;
+	final public static int maxPlateauWidth = 500;
+
+	public static class GlobalSolve
+	{
+		final HashMap<String, AffineModel2D> idToFinalModelGlobal = new HashMap<>();
+		final HashMap<String, TileSpec> idToTileSpecGlobal = new HashMap<>();
+		final HashMap<Integer, HashSet<String> > zToTileIdGlobal = new HashMap<>();
+	}
+
 	public DistributedSolve( final Parameters parameters ) throws IOException
 	{
 		this.parameters = parameters;
@@ -122,75 +133,24 @@ public class DistributedSolve
 
 		taskExecutor.shutdown();
 
-		// find overlaps between SolveItems
-		defineOverlaps( allItems );
-
-		//System.exit( 0 );
-
 		try
 		{
-			globalSolve( allItems );
+			final GlobalSolve gs = globalSolve( allItems );
+
+			// visualize new result
+			new ImageJ();
+			ImagePlus imp1 = SolveTools.render( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, 0.15 );
+			imp1.setTitle( "final" );
+			SimpleMultiThreading.threadHaltUnClean();
+
 		}
 		catch ( NotEnoughDataPointsException | IllDefinedDataPointsException | InterruptedException | ExecutionException | NoninvertibleModelException e )
 		{
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
-
-		/*
-		new ImageJ();
-
-		for ( final SolveItem leftItem : solveSet.allItems() )
-			leftItem.visualizeAligned().setTitle( "aligend " + leftItem.minZ() + " >> " + leftItem.maxZ() );
-
-		SimpleMultiThreading.threadHaltUnClean();
-		*/
-	}
-
-	protected void defineOverlaps( final List< SolveItem > allSolveItems ) 
-	{
-		for ( final SolveItem< ? > solveItem : allSolveItems )
-			solveItem.getOverlappingSolveItems().clear();
-
-		for ( int a = 0; a < allSolveItems.size() - 1; ++a )
-		{
-			final SolveItem< ? > solveItemA = allSolveItems.get( a );
-
-				for ( int b = a + 1; b < allSolveItems.size(); ++b )
-				{
-					final SolveItem< ? > solveItemB = allSolveItems.get( b );
-
-					// first check if z-range overlaps at all
-					// x1 <= y2 && y1 <= x2 (https://stackoverflow.com/questions/3269434/whats-the-most-efficient-way-to-test-two-integer-ranges-for-overlap)
-					if ( solveItemA.minZ() <= solveItemB.maxZ() && solveItemB.minZ() <= solveItemA.maxZ() )
-					{
-						boolean isConnected = false;
-
-						// now we have to go through the z range to see if the tileIds are equal
-						for ( int z = Math.max( solveItemA.minZ(), solveItemB.minZ() ); z <= Math.min( solveItemA.maxZ(), solveItemA.maxZ() ) && !isConnected; ++z )
-						{
-							final HashSet< String > tileIdsA = solveItemA.zToTileId().get( z );
-							final HashSet< String > tileIdsB = solveItemB.zToTileId().get( z );
-
-							for ( final String tileIdA : tileIdsA )
-							{
-								if ( tileIdsB.contains( tileIdA ) )
-								{
-									LOG.info( "Connecting SolveItem " + solveItemA.getId() + " with " + solveItemB.getId() );
-
-									solveItemA.addOverlappingSolveItem( (SolveItem)solveItemB );
-									solveItemB.addOverlappingSolveItem( (SolveItem)solveItemA );
-
-									isConnected = true;
-									break;
-								}
-							}
-						}
-					}
-				}
+			return;
 		}
 	}
-	
+
 	protected static HashSet< String > commonStrings( final HashSet< String > tileIdsA, final HashSet< String > tileIdsB )
 	{
 		final HashSet< String > commonStrings = new HashSet<>();
@@ -225,14 +185,12 @@ public class DistributedSolve
 		}
 	}
 
-	protected void globalSolve( final List< SolveItem > allSolveItems ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException, NoninvertibleModelException
+	protected GlobalSolve globalSolve( final List< SolveItem > allSolveItems ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException, NoninvertibleModelException
 	{
-		final HashMap<String, AffineModel2D> idToFinalModelGlobal = new HashMap<>();
+		final GlobalSolve gs = new GlobalSolve();
 
-		final HashMap<String, TileSpec> idToTileSpecGlobal = new HashMap<>();
-		final HashMap<Integer, HashSet<String> > zToTileIdGlobal = new HashMap<>();
+		// local structures required for solvig
 		final HashMap<Integer, ArrayList< Pair< Pair< SolveItem< ? >, SolveItem< ? > >, HashSet< String > > > > zToSolveItemPairs = new HashMap<>();
-
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
 		// important: all images within one solveitem must be connected to each other!
@@ -276,7 +234,7 @@ public class DistributedSolve
 						if ( tileIds.size() == 0 )
 							continue;
 
-						zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
+						gs.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
 						zToSolveItemPairs.putIfAbsent( z, new ArrayList<>() );
 
 						// remember which solveItems defined which tileIds of this z section
@@ -290,8 +248,8 @@ public class DistributedSolve
 							final TileSpec tileSpec = solveItemA.idToTileSpec().get( tileId );
 
 							// remember the tileids and tileSpecs
-							zToTileIdGlobal.get( z ).add( tileId );
-							idToTileSpecGlobal.put( tileId, tileSpec );
+							gs.zToTileIdGlobal.get( z ).add( tileId );
+							gs.idToTileSpecGlobal.put( tileId, tileSpec );
 
 							final AffineModel2D modelA = solveItemA.idToNewModel().get( tileId );
 							final AffineModel2D modelB = solveItemB.idToNewModel().get( tileId );
@@ -334,7 +292,7 @@ public class DistributedSolve
 					if ( tileIds.size() == 0 )
 						continue;
 
-					zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
+					gs.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
 					zToSolveItemPairs.putIfAbsent( z, new ArrayList<>() );
 
 					// remember which solveItems defined which tileIds of this z section
@@ -347,28 +305,24 @@ public class DistributedSolve
 						solveItemB.idToNewModel().put( tileId, new AffineModel2D() );
 
 						// remember the tileids and tileSpecs
-						zToTileIdGlobal.get( z ).add( tileId );
-						idToTileSpecGlobal.put( tileId, solveItemA.idToTileSpec().get( tileId ) );
+						gs.zToTileIdGlobal.get( z ).add( tileId );
+						gs.idToTileSpecGlobal.put( tileId, solveItemA.idToTileSpec().get( tileId ) );
 					}
 				}
 			}
 		}
 
-		// do not fix anything
-		// tileConfigBlocks.fixTile( left.globalAlignBlock );
-
 		LOG.info( "Pre-Align ... " );
 
-		//tileConfigBlocks.preAlign();
+		tileConfigBlocks.preAlign();
 
 		LOG.info( "Optimizing ... " );
-		
 		final float damp = 1.0f;
 		TileUtil.optimizeConcurrently(
 				new ErrorStatistic(parameters.maxPlateauWidth + 1 ),
-				parameters.maxAllowedError,
-				1000,
-				1000,
+				maxAllowedError,
+				numIterations,
+				maxPlateauWidth,
 				damp,
 				tileConfigBlocks,
 				tileConfigBlocks.getTiles(),
@@ -399,7 +353,7 @@ public class DistributedSolve
 		}
 		*/
 
-		final ArrayList< Integer > zSections = new ArrayList<>( zToTileIdGlobal.keySet() );
+		final ArrayList< Integer > zSections = new ArrayList<>( gs.zToTileIdGlobal.keySet() );
 		Collections.sort( zSections );
 
 		for ( final int z : zSections )
@@ -454,18 +408,12 @@ public class DistributedSolve
 					LOG.info( "z=" + z + ": " + solveItemA.getId() + "-" + wA + " ----- " + solveItemB.getId() + "-" + wB + " ----regB=" + regularizeB );
 
 
-					idToFinalModelGlobal.put( tileId, tileModel );
+					gs.idToFinalModelGlobal.put( tileId, tileModel );
 				}
 			}
 		}
 
-		new ImageJ();
-
-		// visualize new result
-		ImagePlus imp1 = SolveTools.render( idToFinalModelGlobal, idToTileSpecGlobal, 0.15 );
-		imp1.setTitle( "final" );
-
-		SimpleMultiThreading.threadHaltUnClean();
+		return gs;
 	}
 
 	protected static SolveSet defineSolveSet( final int minZ, final int maxZ, final int setSize, final RunParameters runParams )
@@ -489,12 +437,6 @@ public class DistributedSolve
 
 			final SolveItem right = new SolveItem( ( set0.minZ() + set0.maxZ() ) / 2, ( set1.minZ() + set1.maxZ() ) / 2, runParams );
 			rightSets.add( right );
-
-			set0.addOverlappingSolveItem( right );
-			set1.addOverlappingSolveItem( right );
-
-			right.addOverlappingSolveItem( set0 );
-			right.addOverlappingSolveItem( set1 );
 		}
 
 		return new SolveSet( (ArrayList)leftSets, (ArrayList)rightSets );
