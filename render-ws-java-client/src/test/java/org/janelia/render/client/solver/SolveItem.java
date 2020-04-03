@@ -26,7 +26,7 @@ public class SolveItem
 	final private RunParameters runParams;
 
 	// all tiles, used for solving when not grouped
-	final private HashMap<String, Tile< ? extends Affine2D< ? > > > idToTileMap = new HashMap<>();
+	final private HashMap<String, Tile< ? > > idToTileMap = new HashMap<>();
 
 	// used for global solve outside
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
