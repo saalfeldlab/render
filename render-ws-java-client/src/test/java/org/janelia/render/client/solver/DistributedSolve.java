@@ -388,14 +388,20 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 					final SolveItem< G, B, S > solveItemA = solveItemPair.getA();
 					final SolveItem< G, B, S > solveItemB = solveItemPair.getB();
 
-					final AffineModel2D globalModelA = blockToAffine2d.get( solveItemA );
-					final AffineModel2D globalModelB = blockToAffine2d.get( solveItemB );
-	
 					final AffineModel2D modelA = solveItemA.idToNewModel().get( tileId );
 					final AffineModel2D modelB = solveItemB.idToNewModel().get( tileId );
-	
-					modelA.preConcatenate( globalModelA );
-					modelB.preConcatenate( globalModelB );
+
+					if ( !DummySolveItem.class.isInstance( solveItemA ) )
+					{
+						final AffineModel2D globalModelA = blockToAffine2d.get( solveItemA );
+						modelA.preConcatenate( globalModelA );
+					}
+
+					if ( !DummySolveItem.class.isInstance( solveItemB ) )
+					{
+						final AffineModel2D globalModelB = blockToAffine2d.get( solveItemB );
+						modelB.preConcatenate( globalModelB );
+					}
 
 					final double wA = solveItemA.getWeight( z );
 					final double wB = solveItemB.getWeight( z );
