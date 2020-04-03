@@ -83,7 +83,7 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 		final int minZ = (int)Math.round( this.runParams.minZ );
 		final int maxZ = (int)Math.round( this.runParams.maxZ );
 
-		final SolveSet< G, B, S > solveSet = defineSolveSet( minZ, maxZ, setSize, runParams );
+		final SolveSet< G, B, S > solveSet = defineSolveSet( minZ, maxZ, setSize );
 
 		LOG.info( "Defined sets for global solve" );
 		LOG.info( "\n" + solveSet );
@@ -113,14 +113,22 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool( 8 );
 		final ArrayList< Callable< ArrayList< SolveItem< G, B, S > > > > tasks = new ArrayList<>();
 
-		for ( final SolveItem< G, B, S > s : solveSet.allItems() )
+		for ( final SolveItem< G, B, S > solveItem : solveSet.allItems() )
 		{
 			tasks.add( new Callable< ArrayList< SolveItem< G, B, S > > >()
 			{
 				@Override
 				public ArrayList< SolveItem< G, B, S > > call() throws Exception
 				{
-					final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>( parameters, s );
+					final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
+							solveItem,
+							runParams.pGroupList,
+							parameters.renderWeb.baseDataUrl,
+							parameters.renderWeb.owner,
+							parameters.renderWeb.project,
+							parameters.matchOwner,
+							parameters.matchCollection,
+							parameters.stack );
 					w.run();
 	
 					return w.getSolveItems();
@@ -439,7 +447,7 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 		return gs;
 	}
 
-	protected SolveSet< G, B, S > defineSolveSet( final int minZ, final int maxZ, final int setSize, final RunParameters runParams )
+	protected SolveSet< G, B, S > defineSolveSet( final int minZ, final int maxZ, final int setSize )
 	{
 		final int modulo = ( maxZ - minZ + 1 ) % setSize;
 
@@ -450,7 +458,7 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 
 		for ( int i = 0; i < numSetsLeft; ++i )
 		{
-			leftSets.add( new SolveItem< G, B, S >( this.globalSolveModel, this.blockSolveModel, this.stitchingModel, minZ + i * setSize, Math.min( minZ + (i + 1) * setSize - 1, maxZ ), runParams ) );
+			leftSets.add( new SolveItem< G, B, S >( this.globalSolveModel, this.blockSolveModel, this.stitchingModel, minZ + i * setSize, Math.min( minZ + (i + 1) * setSize - 1, maxZ ) ) );
 		}
 
 		for ( int i = 0; i < numSetsLeft - 1; ++i )
@@ -458,7 +466,7 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 			final SolveItem< G, B, S > set0 = leftSets.get( i );
 			final SolveItem< G, B, S > set1 = leftSets.get( i + 1 );
 
-			rightSets.add( new SolveItem< G, B, S >( this.globalSolveModel, this.blockSolveModel, this.stitchingModel,( set0.minZ() + set0.maxZ() ) / 2, ( set1.minZ() + set1.maxZ() ) / 2, runParams ) );
+			rightSets.add( new SolveItem< G, B, S >( this.globalSolveModel, this.blockSolveModel, this.stitchingModel,( set0.minZ() + set0.maxZ() ) / 2, ( set1.minZ() + set1.maxZ() ) / 2 ) );
 		}
 
 		return new SolveSet< G, B, S >( leftSets, rightSets );

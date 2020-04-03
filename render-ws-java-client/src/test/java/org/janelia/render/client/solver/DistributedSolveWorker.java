@@ -3,10 +3,10 @@ package org.janelia.render.client.solver;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -14,7 +14,9 @@ import java.util.stream.Stream;
 
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,22 +48,37 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	// sections, but can be solved easily later using non-rigid alignment.
 	final public static boolean stitchFirst = true;
 
+	final public static int numThreads = 1;
+
 	final public static double maxAllowedError = 10;
 	final public static int numIterations = 500;
 	final public static int maxPlateauWidth = 50;
 
 	final protected static int visualizeZSection = 0;//10000;
 
-	final Parameters parameters;
-	final RunParameters runParams;
+	final RenderDataClient renderDataClient;
+	final RenderDataClient matchDataClient;
+	final String stack;
+
+	final List< Pair< String, Double > > pGroupList;
 	final SolveItem< G, B, S > inputSolveItem;
 	final ArrayList< SolveItem< G, B, S > > solveItems;
 
-	public DistributedSolveWorker( final Parameters parameters, final SolveItem< G, B, S > solveItem )
+	public DistributedSolveWorker(
+			final SolveItem< G, B, S > solveItem,
+			final List< Pair< String, Double > > pGroupList,
+			final String baseDataUrl,
+			final String owner,
+			final String project,
+			final String matchOwner,
+			final String matchCollection,
+			final String stack )
 	{
-		this.parameters = parameters;
+		this.renderDataClient = new RenderDataClient( baseDataUrl, owner, project );
+		this.matchDataClient = new RenderDataClient( baseDataUrl, matchOwner, matchCollection );
+		this.stack = stack;
 		this.inputSolveItem = solveItem;
-		this.runParams = solveItem.runParams();
+		this.pGroupList = pGroupList;
 
 		this.solveItems = new ArrayList<>();
 	}
@@ -75,12 +92,15 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		split(); // splits
 
 		for ( final SolveItem< G, B, S > solveItem : solveItems )
-			solve( solveItem, parameters );
+			solve( solveItem, numThreads );
 	}
 
 	protected void assembleMatchData() throws IOException
 	{
-		LOG.info( "Loading transforms and matches from " + runParams.minZ + " to layer " + runParams.maxZ );
+		final Map<String, List<Double>> sectionIdToZMap = new HashMap<>();
+		final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap = new HashMap<>();
+
+		LOG.info( "Loading transforms and matches from " + inputSolveItem.minZ() + " to layer " + inputSolveItem.maxZ() );
 
 		// we store tile pairs and pointmatches here first, as we need to do stitching per section first if possible (if connected)
 		final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs = new ArrayList<>();
@@ -88,7 +108,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		// maps from the z section to an entry in the above pairs list
 		final HashMap< Integer, List< Integer > > zToPairs = new HashMap<>();
 
-		for ( final Pair< String, Double > pGroupPair : runParams.pGroupList )
+		for ( final Pair< String, Double > pGroupPair : pGroupList )
 		{
 			if ( pGroupPair.getB().doubleValue() < inputSolveItem.minZ() || pGroupPair.getB().doubleValue() > inputSolveItem.maxZ() )
 				continue;
@@ -97,27 +117,27 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
 
-			final List<CanvasMatches> matches = runParams.matchDataClient.getMatchesWithPGroupId(pGroupId, false);
+			final List<CanvasMatches> matches = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
 
 			for (final CanvasMatches match : matches)
 			{
 				final String pId = match.getpId();
-				final TileSpec pTileSpec = SolveTools.getTileSpec(parameters, runParams, pGroupId, pId);
+				final TileSpec pTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, stack, pGroupId, pId);
 
 				final String qGroupId = match.getqGroupId();
 				final String qId = match.getqId();
-				final TileSpec qTileSpec = SolveTools.getTileSpec(parameters, runParams, qGroupId, qId);
+				final TileSpec qTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, stack, qGroupId, qId);
 
 				if ((pTileSpec == null) || (qTileSpec == null))
 				{
-					LOG.info("run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}", pId, qId, parameters.stack);
+					LOG.info("run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}", pId, qId, stack);
 					continue;
 				}
 
 				// if any of the matches is outside the range we ignore them
 				if ( pTileSpec.getZ() < inputSolveItem.minZ() || pTileSpec.getZ() > inputSolveItem.maxZ() || qTileSpec.getZ() < inputSolveItem.minZ() || qTileSpec.getZ() > inputSolveItem.maxZ() )
 				{
-					LOG.info("run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, parameters.stack);
+					LOG.info("run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, stack);
 					continue;
 				}
 
@@ -140,7 +160,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 				if ( !inputSolveItem.idToTileMap().containsKey( pId ) )
 				{
-					final Pair< Tile< B >, AffineModel2D > pairP = SolveTools.buildTileFromSpec( inputSolveItem.blockSolveModelInstance(), parameters, pTileSpec);
+					final Pair< Tile< B >, AffineModel2D > pairP = SolveTools.buildTileFromSpec( inputSolveItem.blockSolveModelInstance(), SolveItem.samplesPerDimension, pTileSpec);
 					p = pairP.getA();
 					inputSolveItem.idToTileMap().put( pId, p );
 					inputSolveItem.idToPreviousModel().put( pId, pairP.getB() );
@@ -155,7 +175,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 				if ( !inputSolveItem.idToTileMap().containsKey( qId ) )
 				{
-					final Pair< Tile< B >, AffineModel2D > pairQ = SolveTools.buildTileFromSpec( inputSolveItem.blockSolveModelInstance(), parameters, qTileSpec);
+					final Pair< Tile< B >, AffineModel2D > pairQ = SolveTools.buildTileFromSpec( inputSolveItem.blockSolveModelInstance(), SolveItem.samplesPerDimension, qTileSpec);
 					q = pairQ.getA();
 					inputSolveItem.idToTileMap().put( qId, q );
 					inputSolveItem.idToPreviousModel().put( qId, pairQ.getB() );
@@ -197,7 +217,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			stitchSections(
 					inputSolveItem,
 					pairs,
-					zToPairs );
+					zToPairs,
+					numThreads );
 
 			// next, group the stitched tiles together
 			for ( final Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > pair : pairs )
@@ -221,7 +242,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	protected void stitchSections(
 			final SolveItem< G,B,S > solveItem,
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
-			final HashMap< Integer, List< Integer > > zToPairs )
+			final HashMap< Integer, List< Integer > > zToPairs,
+			final int numThreads )
 	{
 		final S model = solveItem.stitchingSolveModelInstance();
 
@@ -336,7 +358,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 								tileConfig,
 								tileConfig.getTiles(),
 								tileConfig.getFixedTiles(),
-								parameters.numberOfThreads);
+								numThreads );
 
 							LOG.info( "Solve z=" + z + " avg=" + tileConfig.getError() + ", min=" + tileConfig.getMinError() + ", max=" + tileConfig.getMaxError() );
 						}
@@ -508,7 +530,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 				LOG.info( newMin + " > " + newMax );
 
-				final SolveItem< G,B,S > solveItem = new SolveItem<>( inputSolveItem.globalSolveModelInstance(), inputSolveItem.blockSolveModelInstance(), inputSolveItem.stitchingSolveModelInstance(), newMin, newMax, runParams );
+				final SolveItem< G,B,S > solveItem = new SolveItem<>( inputSolveItem.globalSolveModelInstance(), inputSolveItem.blockSolveModelInstance(), inputSolveItem.stitchingSolveModelInstance(), newMin, newMax );
 
 				LOG.info( "old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
 
@@ -578,7 +600,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 	protected void solve(
 			final SolveItem< G,B,S > solveItem,
-			final Parameters parameters
+			final int numThreads
 			) throws InterruptedException, ExecutionException
 	{
 		final TileConfiguration tileConfig = new TileConfiguration();
@@ -594,15 +616,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			LOG.info("run: optimizing {} tiles for solveItem {}", solveItem.idToTileMap().size(), solveItem.getId() );
 		}
 
-		final List<Double> lambdaValues;
-
-		if (parameters.optimizerLambdas == null)
-			lambdaValues = Stream.of(1.0, 0.5, 0.1, 0.01)
-					.filter(lambda -> lambda <= parameters.startLambda)
-					.collect(Collectors.toList());
-		else
-			lambdaValues = parameters.optimizerLambdas.stream()
-					.sorted(Comparator.reverseOrder())
+		final double startLambda = 1.0;
+		final List<Double> lambdaValues = Stream.of(1.0, 0.5, 0.1, 0.01)
+					.filter(lambda -> lambda <= startLambda)
 					.collect(Collectors.toList());
 
 		LOG.info( "lambda's used:" );
@@ -616,7 +632,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				if ( InterpolatedAffineModel2D.class.isInstance( tile.getModel() ))
 					((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
 
-			int numIterations = parameters.maxIterations;
+			int numIterations = 1000;
 			if ( lambda == 1.0 || lambda == 0.5 )
 				numIterations = 100;
 			else if ( lambda == 0.1 )
@@ -628,18 +644,18 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		
 			LOG.info( "l=" + lambda + ", numIterations=" + numIterations );
 
-			final ErrorStatistic observer = new ErrorStatistic(parameters.maxPlateauWidth + 1 );
+			final ErrorStatistic observer = new ErrorStatistic( maxPlateauWidth + 1 );
 			final float damp = 1.0f;
 			TileUtil.optimizeConcurrently(
 					observer,
-					parameters.maxAllowedError,
+					maxAllowedError,
 					numIterations,
-					parameters.maxPlateauWidth,
+					maxPlateauWidth,
 					damp,
 					tileConfig,
 					tileConfig.getTiles(),
 					tileConfig.getFixedTiles(),
-					parameters.numberOfThreads);
+					numThreads );
 		}
 
 		//

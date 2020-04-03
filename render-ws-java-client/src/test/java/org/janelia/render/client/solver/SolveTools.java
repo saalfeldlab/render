@@ -200,17 +200,17 @@ public class SolveTools
 
 	protected static < B extends Model< B > & Affine2D< B > > Pair< Tile< B >, AffineModel2D > buildTileFromSpec(
 			final B instance,
-			final Parameters parameters,
+			final int samplesPerDimension,
 			final TileSpec tileSpec )
 	{
         final AffineModel2D lastTransform = loadLastTransformFromSpec( tileSpec );
         final AffineModel2D lastTransformCopy = lastTransform.copy();
 
-        final double sampleWidth = (tileSpec.getWidth() - 1.0) / (parameters.samplesPerDimension - 1.0);
-        final double sampleHeight = (tileSpec.getHeight() - 1.0) / (parameters.samplesPerDimension - 1.0);
+        final double sampleWidth = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
+        final double sampleHeight = (tileSpec.getHeight() - 1.0) / (samplesPerDimension - 1.0);
 
         try {
-            ScriptUtil.fit(instance, lastTransformCopy, sampleWidth, sampleHeight, parameters.samplesPerDimension);
+            ScriptUtil.fit(instance, lastTransformCopy, sampleWidth, sampleHeight, samplesPerDimension);
         } catch (final Throwable t) {
             throw new IllegalArgumentException(instance.getClass() + " model derivation failed for tile '" +
                                                tileSpec.getTileId() + "', cause: " + t.getMessage(),
@@ -279,20 +279,31 @@ public class SolveTools
 			final RunParameters runParams,
 			final String sectionId,
 			final String tileId ) throws IOException {
+		
+		return getTileSpec( runParams.sectionIdToZMap, runParams.zToTileSpecsMap, runParams.renderDataClient, parameters.stack, sectionId, tileId );
+	}
+
+	protected static TileSpec getTileSpec(
+			final Map<String, List<Double>> sectionIdToZMap,
+			final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap,
+			final RenderDataClient renderDataClient,
+			final String stack,
+			final String sectionId,
+			final String tileId ) throws IOException {
 
         TileSpec tileSpec = null;
 
-        if (runParams.sectionIdToZMap.containsKey(sectionId)) {
+        if (sectionIdToZMap.containsKey(sectionId)) {
 
-            for (final Double z : runParams.sectionIdToZMap.get(sectionId)) {
+            for (final Double z : sectionIdToZMap.get(sectionId)) {
 
-                if ( !runParams.zToTileSpecsMap.containsKey(z)) {
+                if ( !zToTileSpecsMap.containsKey(z)) {
 
-                    if (runParams.totalTileCount > 100000) {
-                        throw new IllegalArgumentException("More than 100000 tiles need to be loaded - please reduce z values");
-                    }
+//                    if (runParams.totalTileCount > 100000) {
+//                        throw new IllegalArgumentException("More than 100000 tiles need to be loaded - please reduce z values");
+//                    }
 
-                    final ResolvedTileSpecCollection resolvedTiles = runParams.renderDataClient.getResolvedTiles(parameters.stack, z);
+                    final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
 
                     // check for accidental use of rough aligned stack ...
                     resolvedTiles.getTileSpecs().forEach(ts -> {
@@ -305,11 +316,11 @@ public class SolveTools
                     });
 
                     resolvedTiles.resolveTileSpecs();
-                    runParams.zToTileSpecsMap.put(z, resolvedTiles);
-                    runParams.totalTileCount += resolvedTiles.getTileCount();
+                    zToTileSpecsMap.put(z, resolvedTiles);
+                    //runParams.totalTileCount += resolvedTiles.getTileCount();
                 }
 
-                final ResolvedTileSpecCollection resolvedTileSpecCollection = runParams.zToTileSpecsMap.get(z);
+                final ResolvedTileSpecCollection resolvedTileSpecCollection = zToTileSpecsMap.get(z);
                 tileSpec = resolvedTileSpecCollection.getTileSpec(tileId);
 
                 if (tileSpec != null) {

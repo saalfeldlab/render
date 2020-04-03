@@ -7,7 +7,7 @@ public class DummySolveItem< G extends Model< G > & Affine2D< G >, B extends Mod
 {
 	public DummySolveItem( final G g, final B b, final S s, final int z )
 	{
-		super( g, b, s, z, z, new RunParameters() );
+		super( g, b, s, z, z );
 	}
 
 	@Override

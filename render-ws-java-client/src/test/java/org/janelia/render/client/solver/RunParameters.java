@@ -16,7 +16,7 @@ public class RunParameters
 	protected RenderDataClient targetDataClient;
 	
 	protected List< Pair< String, Double > > pGroupList;
-	protected Map<String, List<Double>> sectionIdToZMap; // TODO: unused
+	protected Map<String, List<Double>> sectionIdToZMap; // this is a cache
 	protected Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
 	protected double minZ, maxZ;
 	protected int totalTileCount;

@@ -24,7 +24,6 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 
 	final private int id;
 	final private int minZ, maxZ;
-	final private RunParameters runParams;
 
 	// all tiles, used for solving when not grouped
 	final private HashMap<String, Tile< B > > idToTileMap = new HashMap<>();
@@ -68,16 +67,17 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 			final G globalSolveModel,
 			final B blockSolveModel,
 			final S stitchingModel,
-			final int minZ, final int maxZ, final RunParameters runParams )
+			final int minZ,
+			final int maxZ )
 	{
 		this.id = idGenerator.getAndIncrement();
 
 		this.minZ = minZ;
 		this.maxZ = maxZ;
 
-		this.runParams = runParams.clone();
-		this.runParams.minZ = minZ;
-		this.runParams.maxZ = maxZ;
+//		this.runParams = runParams.clone();
+//		this.runParams.minZ = minZ;
+//		this.runParams.maxZ = maxZ;
 
 		this.globalSolveModel = globalSolveModel.copy();
 		this.blockSolveModel = blockSolveModel.copy();
@@ -89,7 +89,7 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	public int getId() { return id; }
 	public int minZ() { return minZ; }
 	public int maxZ() { return maxZ; }
-	public RunParameters runParams() { return runParams; }
+	//public RunParameters runParams() { return runParams; }
 	public Tile< G > globalAlignBlockTile() { return globalAlignBlockTile; }
 
 	public G globalSolveModelInstance() { return globalSolveModel.copy(); }
@@ -188,7 +188,7 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 
 	public static void main( String[] args )
 	{
-		SolveItem< TranslationModel2D, TranslationModel2D, TranslationModel2D > s = new SolveItem<>( null, null, null, 100, 102, new RunParameters() );
+		SolveItem< TranslationModel2D, TranslationModel2D, TranslationModel2D > s = new SolveItem<>( null, null, null, 100, 102 );
 
 		for ( int z = s.minZ(); z <= s.maxZ(); ++z )
 		{
