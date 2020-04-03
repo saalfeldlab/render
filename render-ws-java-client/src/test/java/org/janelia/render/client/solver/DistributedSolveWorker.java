@@ -61,12 +61,15 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final String stack;
 
 	final List< Pair< String, Double > > pGroupList;
+	final Map<String, List<Double>> sectionIdToZMap;
+
 	final SolveItem< G, B, S > inputSolveItem;
 	final ArrayList< SolveItem< G, B, S > > solveItems;
 
 	public DistributedSolveWorker(
 			final SolveItem< G, B, S > solveItem,
 			final List< Pair< String, Double > > pGroupList,
+			final Map<String, List<Double>> sectionIdToZMap,
 			final String baseDataUrl,
 			final String owner,
 			final String project,
@@ -79,6 +82,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		this.stack = stack;
 		this.inputSolveItem = solveItem;
 		this.pGroupList = pGroupList;
+		this.sectionIdToZMap = sectionIdToZMap;
 
 		this.solveItems = new ArrayList<>();
 	}
@@ -97,7 +101,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 	protected void assembleMatchData() throws IOException
 	{
-		final Map<String, List<Double>> sectionIdToZMap = new HashMap<>();
 		final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap = new HashMap<>();
 
 		LOG.info( "Loading transforms and matches from " + inputSolveItem.minZ() + " to layer " + inputSolveItem.maxZ() );

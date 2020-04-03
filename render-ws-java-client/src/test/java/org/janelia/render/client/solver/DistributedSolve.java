@@ -123,6 +123,7 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 					final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 							solveItem,
 							runParams.pGroupList,
+							runParams.sectionIdToZMap,
 							parameters.renderWeb.baseDataUrl,
 							parameters.renderWeb.owner,
 							parameters.renderWeb.project,
