@@ -10,13 +10,11 @@ import org.janelia.alignment.spec.TileSpec;
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.InterpolatedAffineModel2D;
-import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 
-public class SolveItem< B extends Model< B > & Affine2D< B > >
+public class SolveItem
 {
 	final public static int samplesPerDimension = 5;
 	final public static AtomicInteger idGenerator = new AtomicInteger( 0 );
@@ -28,7 +26,7 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	final private RunParameters runParams;
 
 	// all tiles, used for solving when not grouped
-	final private HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
+	final private HashMap<String, Tile< ? extends Affine2D< ? > > > idToTileMap = new HashMap<>();
 
 	// used for global solve outside
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
@@ -82,7 +80,7 @@ public class SolveItem< B extends Model< B > & Affine2D< B > >
 	public int maxZ() { return maxZ; }
 	public RunParameters runParams() { return runParams; }
 
-	public HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap() { return idToTileMap; }
+	public HashMap<String, Tile< ? > > idToTileMap() { return idToTileMap; }
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return idToPreviousModel; }
 	public HashMap<String, TileSpec> idToTileSpec() { return idToTileSpec; }
 	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }

@@ -5,18 +5,18 @@ import java.util.List;
 
 public class SolveSet
 {
-	final List< SolveItem< ? > > leftItems;
-	final List< SolveItem< ? > > rightItems;
+	final List< SolveItem > leftItems;
+	final List< SolveItem > rightItems;
 
-	public SolveSet( final List< SolveItem< ? > > leftItems, final List< SolveItem< ? > > rightItems )
+	public SolveSet( final List< SolveItem > leftItems, final List< SolveItem > rightItems )
 	{
 		this.leftItems = leftItems;
 		this.rightItems = rightItems;
 	}
 
-	public List< SolveItem< ? > > allItems()
+	public List< SolveItem > allItems()
 	{
-		final ArrayList< SolveItem< ? > > all = new ArrayList<>();
+		final ArrayList< SolveItem > all = new ArrayList<>();
 		all.addAll( leftItems );
 		all.addAll( rightItems );
 

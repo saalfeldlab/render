@@ -200,6 +200,13 @@ public class SolveTools
 			runParams.targetDataClient.setStackState( parameters.targetStack, StackState.COMPLETE );
 	}
 
+	protected static Pair< Tile<?>, AffineModel2D > buildUntypedTileFromSpec(
+			final Parameters parameters,
+			final TileSpec tileSpec )
+	{
+		return (Pair< Tile< ? >, AffineModel2D >)(Object)buildTileFromSpec( parameters, tileSpec );
+	}
+
 	protected static < B extends Model< B > & Affine2D< B > > Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > buildTileFromSpec(
 			final Parameters parameters,
 			final TileSpec tileSpec )

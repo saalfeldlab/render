@@ -1,10 +1,8 @@
 package org.janelia.render.client.solver;
 
-import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.Model;
 
-public class DummySolveItem< B extends Model< B > & Affine2D< B > > extends SolveItem< B >
+public class DummySolveItem extends SolveItem
 {
 
 	public DummySolveItem( final int z )

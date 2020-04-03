@@ -97,7 +97,7 @@ public class DistributedSolve
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool( 8 );
 		final ArrayList< Callable< ArrayList< SolveItem > > > tasks = new ArrayList<>();
 
-		for ( final SolveItem< ? > s : solveSet.allItems() )
+		for ( final SolveItem s : solveSet.allItems() )
 		{
 			tasks.add( new Callable< ArrayList< SolveItem > >()
 			{
@@ -164,15 +164,15 @@ public class DistributedSolve
 
 	protected static boolean pairExists(
 			final int z,
-			final SolveItem< ? > solveItemA,
-			final SolveItem< ? > solveItemB,
-			final HashMap<Integer, ArrayList< Pair< Pair< SolveItem< ? >, SolveItem< ? > >, HashSet< String > > > > zToSolveItemPairs )
+			final SolveItem solveItemA,
+			final SolveItem solveItemB,
+			final HashMap<Integer, ArrayList< Pair< Pair< SolveItem, SolveItem >, HashSet< String > > > > zToSolveItemPairs )
 	{
 		if ( zToSolveItemPairs.containsKey( z ) )
 		{
-			final ArrayList< Pair< Pair< SolveItem< ? >, SolveItem< ? > >, HashSet< String > > > entries = zToSolveItemPairs.get( z );
+			final ArrayList< Pair< Pair< SolveItem, SolveItem >, HashSet< String > > > entries = zToSolveItemPairs.get( z );
 
-			for ( final Pair< Pair< SolveItem< ? >, SolveItem< ? > >, HashSet< String > > entry : entries )
+			for ( final Pair< Pair< SolveItem, SolveItem >, HashSet< String > > entry : entries )
 				if (entry.getA().getA().equals( solveItemA ) && entry.getA().getB().equals( solveItemB ) ||
 					entry.getA().getA().equals( solveItemB ) && entry.getA().getB().equals( solveItemA ) )
 						return true;
@@ -190,7 +190,7 @@ public class DistributedSolve
 		final GlobalSolve gs = new GlobalSolve();
 
 		// local structures required for solvig
-		final HashMap<Integer, ArrayList< Pair< Pair< SolveItem< ? >, SolveItem< ? > >, HashSet< String > > > > zToSolveItemPairs = new HashMap<>();
+		final HashMap<Integer, ArrayList< Pair< Pair< SolveItem, SolveItem >, HashSet< String > > > > zToSolveItemPairs = new HashMap<>();
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
 		// important: all images within one solveitem must be connected to each other!
@@ -198,7 +198,7 @@ public class DistributedSolve
 		// solve by solveitem, not by z layer
 		for ( int a = 0; a < allSolveItems.size() - 1; ++a )
 		{
-			final SolveItem< ? > solveItemA = allSolveItems.get( a );
+			final SolveItem solveItemA = allSolveItems.get( a );
 
 			for ( int z = solveItemA.minZ(); z <= solveItemA.maxZ(); ++z )
 			{
@@ -207,7 +207,7 @@ public class DistributedSolve
 
 				for ( int b = a + 1; b < allSolveItems.size(); ++b )
 				{
-					final SolveItem< ? > solveItemB = allSolveItems.get( b );
+					final SolveItem solveItemB = allSolveItems.get( b );
 
 					if ( solveItemA.equals( solveItemB ) )
 						continue;
@@ -329,7 +329,7 @@ public class DistributedSolve
 				tileConfigBlocks.getFixedTiles(),
 				1);
 
-		for ( final SolveItem< ? > solveItem : allSolveItems )
+		for ( final SolveItem solveItem : allSolveItems )
 		{
 			solveItem.globalAlignAffineModel = /*new AffineModel2D();// */SolveTools.createAffineModel( solveItem.globalAlignBlock.getModel() );
 
@@ -359,16 +359,16 @@ public class DistributedSolve
 		for ( final int z : zSections )
 		{
 			// for every z section, tileIds might be provided from different overlapping blocks if they were not connected and have been split
-			final ArrayList< Pair< Pair< SolveItem< ? >, SolveItem< ? > >, HashSet< String > > > entries = zToSolveItemPairs.get( z );
+			final ArrayList< Pair< Pair< SolveItem, SolveItem >, HashSet< String > > > entries = zToSolveItemPairs.get( z );
 
-			for ( final  Pair< Pair< SolveItem< ? >, SolveItem< ? > >, HashSet< String > > entry : entries )
+			for ( final  Pair< Pair< SolveItem, SolveItem >, HashSet< String > > entry : entries )
 			{
 				for ( final String tileId : entry.getB() )
 				{
-					final Pair< SolveItem< ? >, SolveItem< ? > > solveItemPair = entry.getA();
+					final Pair< SolveItem, SolveItem > solveItemPair = entry.getA();
 
-					final SolveItem< ? > solveItemA = solveItemPair.getA();
-					final SolveItem< ? > solveItemB = solveItemPair.getB();
+					final SolveItem solveItemA = solveItemPair.getA();
+					final SolveItem solveItemB = solveItemPair.getB();
 
 					// Models must be preconcatenated with actual models!!!!
 					final AffineModel2D globalModelA = solveItemA.globalAlignAffineModel;
@@ -439,7 +439,7 @@ public class DistributedSolve
 			rightSets.add( right );
 		}
 
-		return new SolveSet( (ArrayList)leftSets, (ArrayList)rightSets );
+		return new SolveSet( leftSets, rightSets );
 	}
 
 	public static void main( String[] args )
