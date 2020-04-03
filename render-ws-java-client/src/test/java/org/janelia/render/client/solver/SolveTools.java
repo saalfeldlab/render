@@ -6,11 +6,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.Bounds;
@@ -200,12 +198,30 @@ public class SolveTools
 			runParams.targetDataClient.setStackState( parameters.targetStack, StackState.COMPLETE );
 	}
 
-	protected static Pair< Tile<?>, AffineModel2D > buildUntypedTileFromSpec(
+	protected static < B extends Model< B > & Affine2D< B > > Pair< Tile< B >, AffineModel2D > buildTileFromSpec(
+			final B instance,
 			final Parameters parameters,
 			final TileSpec tileSpec )
 	{
-		return (Pair< Tile< ? >, AffineModel2D >)(Object)buildTileFromSpec( parameters, tileSpec );
+        final AffineModel2D lastTransform = loadLastTransformFromSpec( tileSpec );
+        final AffineModel2D lastTransformCopy = lastTransform.copy();
+
+        final double sampleWidth = (tileSpec.getWidth() - 1.0) / (parameters.samplesPerDimension - 1.0);
+        final double sampleHeight = (tileSpec.getHeight() - 1.0) / (parameters.samplesPerDimension - 1.0);
+
+        try {
+            ScriptUtil.fit(instance, lastTransformCopy, sampleWidth, sampleHeight, parameters.samplesPerDimension);
+        } catch (final Throwable t) {
+            throw new IllegalArgumentException(instance.getClass() + " model derivation failed for tile '" +
+                                               tileSpec.getTileId() + "', cause: " + t.getMessage(),
+                                               t);
+        }
+
+        return new ValuePair<>(
+        		new Tile< B >( instance ), 
+        		lastTransform.copy() );
 	}
+
 
 	protected static < B extends Model< B > & Affine2D< B > > Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > buildTileFromSpec(
 			final Parameters parameters,

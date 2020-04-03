@@ -10,11 +10,12 @@ import org.janelia.alignment.spec.TileSpec;
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
-import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
+import mpicbg.models.TranslationModel2D;
 
-public class SolveItem
+public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
 	final public static int samplesPerDimension = 5;
 	final public static AtomicInteger idGenerator = new AtomicInteger( 0 );
@@ -26,7 +27,7 @@ public class SolveItem
 	final private RunParameters runParams;
 
 	// all tiles, used for solving when not grouped
-	final private HashMap<String, Tile< ? extends Affine2D< ? > > > idToTileMap = new HashMap<>();
+	final private HashMap<String, Tile< B > > idToTileMap = new HashMap<>();
 
 	// used for global solve outside
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
@@ -41,15 +42,14 @@ public class SolveItem
 	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
 
 	// used during the global solve only
-	Tile<RigidModel2D> globalAlignBlock = null;
-	AffineModel2D globalAlignAffineModel = null;
+	private Tile< G > globalAlignBlockTile = null;
 
 	//
 	// local obly below
 	//
 
 	// used locally to map Tile back to TileId
-	final private HashMap<Tile<?>, String > tileToIdMap = new HashMap<>();
+	final private HashMap<Tile<B>, String > tileToIdMap = new HashMap<>();
 
 	// stitching-related (local)
 
@@ -57,10 +57,18 @@ public class SolveItem
 	final private HashMap<String, AffineModel2D> idToStitchingModel = new HashMap<>();
 
 	// all grouped tiles, used for solving when stitching first
-	final private HashMap< Tile< ? >, Tile< ? > > tileToGroupedTile = new HashMap<>();
-	final private HashMap< Tile< ? >, List< Tile< ? > > > groupedTileToTiles = new HashMap<>();
+	final private HashMap< Tile< B >, Tile< B > > tileToGroupedTile = new HashMap<>();
+	final private HashMap< Tile< B >, List< Tile< B > > > groupedTileToTiles = new HashMap<>();
 
-	public SolveItem( final int minZ, final int maxZ, final RunParameters runParams )
+	final private G globalSolveModel;
+	final private B blockSolveModel;
+	final private S stitchingModel;
+
+	public SolveItem(
+			final G globalSolveModel,
+			final B blockSolveModel,
+			final S stitchingModel,
+			final int minZ, final int maxZ, final RunParameters runParams )
 	{
 		this.id = idGenerator.getAndIncrement();
 
@@ -71,26 +79,34 @@ public class SolveItem
 		this.runParams.minZ = minZ;
 		this.runParams.maxZ = maxZ;
 
-		this.globalAlignBlock = new Tile< RigidModel2D >( new RigidModel2D() );
-		this.globalAlignAffineModel = new AffineModel2D();
+		this.globalSolveModel = globalSolveModel.copy();
+		this.blockSolveModel = blockSolveModel.copy();
+		this.stitchingModel = stitchingModel.copy();
+
+		this.globalAlignBlockTile = new Tile< G >( globalSolveModel.copy() );
 	}
 
 	public int getId() { return id; }
 	public int minZ() { return minZ; }
 	public int maxZ() { return maxZ; }
 	public RunParameters runParams() { return runParams; }
+	public Tile< G > globalAlignBlockTile() { return globalAlignBlockTile; }
 
-	public HashMap<String, Tile< ? > > idToTileMap() { return idToTileMap; }
+	public G globalSolveModelInstance() { return globalSolveModel.copy(); }
+	public B blockSolveModelInstance() { return blockSolveModel.copy(); }
+	public S stitchingSolveModelInstance() { return stitchingModel.copy(); }
+
+	public HashMap<String, Tile< B > > idToTileMap() { return idToTileMap; }
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return idToPreviousModel; }
 	public HashMap<String, TileSpec> idToTileSpec() { return idToTileSpec; }
 	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
 	public HashMap<String, AffineModel2D> idToNewModel() { return idToNewModel; }
 
-	public HashMap<Tile<?>, String > tileToIdMap() { return tileToIdMap; }
+	public HashMap<Tile<B>, String > tileToIdMap() { return tileToIdMap; }
 
 	public HashMap<String, AffineModel2D> idToStitchingModel() { return idToStitchingModel; }
-	public HashMap< Tile< ? >, Tile< ? > > tileToGroupedTile() { return tileToGroupedTile; }
-	public HashMap< Tile< ? >, List< Tile< ? > > > groupedTileToTiles() { return groupedTileToTiles; }
+	public HashMap< Tile< B >, Tile< B > > tileToGroupedTile() { return tileToGroupedTile; }
+	public HashMap< Tile< B >, List< Tile< B > > > groupedTileToTiles() { return groupedTileToTiles; }
 
 	public double getWeight( final int z )
 	{
@@ -156,7 +172,7 @@ public class SolveItem
 		}
 		else if ( o instanceof SolveItem )
 		{
-			return (( SolveItem )o).getId() == getId();
+			return (( SolveItem<?,?,?> )o).getId() == getId();
 		}
 		else
 		{
@@ -172,7 +188,7 @@ public class SolveItem
 
 	public static void main( String[] args )
 	{
-		SolveItem s = new SolveItem( 100, 102, new RunParameters() );
+		SolveItem< TranslationModel2D, TranslationModel2D, TranslationModel2D > s = new SolveItem<>( null, null, null, 100, 102, new RunParameters() );
 
 		for ( int z = s.minZ(); z <= s.maxZ(); ++z )
 		{

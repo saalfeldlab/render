@@ -1,15 +1,13 @@
 package org.janelia.render.client.solver;
 
-import mpicbg.models.AffineModel2D;
+import mpicbg.models.Affine2D;
+import mpicbg.models.Model;
 
-public class DummySolveItem extends SolveItem
+public class DummySolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends SolveItem< G, B, S >
 {
-
-	public DummySolveItem( final int z )
+	public DummySolveItem( final G g, final int z )
 	{
-		super( z, z, new RunParameters() );
-
-		this.globalAlignAffineModel = new AffineModel2D();
+		super( g, null, null, z, z, new RunParameters() );
 	}
 
 	@Override

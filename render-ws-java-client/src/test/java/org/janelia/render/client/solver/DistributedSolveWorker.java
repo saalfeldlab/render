@@ -38,7 +38,7 @@ import mpicbg.models.TranslationModel2D;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
-public class DistributedSolveWorker
+public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
 	// attempts to stitch each section first (if the tiles are connected) and
 	// then treat them as one big, "grouped" tile in the global optimization
@@ -54,10 +54,10 @@ public class DistributedSolveWorker
 
 	final Parameters parameters;
 	final RunParameters runParams;
-	final SolveItem inputSolveItem;
-	final ArrayList< SolveItem > solveItems;
+	final SolveItem< G, B, S > inputSolveItem;
+	final ArrayList< SolveItem< G, B, S > > solveItems;
 
-	public DistributedSolveWorker( final Parameters parameters, final SolveItem solveItem )
+	public DistributedSolveWorker( final Parameters parameters, final SolveItem< G, B, S > solveItem )
 	{
 		this.parameters = parameters;
 		this.inputSolveItem = solveItem;
@@ -66,15 +66,15 @@ public class DistributedSolveWorker
 		this.solveItems = new ArrayList<>();
 	}
 
-	public SolveItem getInputSolveItems() { return inputSolveItem; }
-	public ArrayList< SolveItem > getSolveItems() { return solveItems; }
+	public SolveItem< G, B, S > getInputSolveItems() { return inputSolveItem; }
+	public ArrayList< SolveItem< G, B, S > > getSolveItems() { return solveItems; }
 
 	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
 		assembleMatchData();
 		split(); // splits
 
-		for ( final SolveItem solveItem : solveItems )
+		for ( final SolveItem< G, B, S > solveItem : solveItems )
 			solve( solveItem, parameters );
 	}
 
@@ -136,11 +136,11 @@ public class DistributedSolveWorker
 				}
 				*/
 
-				final Tile< ? > p, q;
+				final Tile< B > p, q;
 
 				if ( !inputSolveItem.idToTileMap().containsKey( pId ) )
 				{
-					final Pair< Tile< ? >, AffineModel2D > pairP = SolveTools.buildUntypedTileFromSpec(parameters, pTileSpec);
+					final Pair< Tile< B >, AffineModel2D > pairP = SolveTools.buildTileFromSpec( inputSolveItem.blockSolveModelInstance(), parameters, pTileSpec);
 					p = pairP.getA();
 					inputSolveItem.idToTileMap().put( pId, p );
 					inputSolveItem.idToPreviousModel().put( pId, pairP.getB() );
@@ -155,7 +155,7 @@ public class DistributedSolveWorker
 
 				if ( !inputSolveItem.idToTileMap().containsKey( qId ) )
 				{
-					final Pair< Tile< ? >, AffineModel2D > pairQ = SolveTools.buildUntypedTileFromSpec(parameters, qTileSpec);
+					final Pair< Tile< B >, AffineModel2D > pairQ = SolveTools.buildTileFromSpec( inputSolveItem.blockSolveModelInstance(), parameters, qTileSpec);
 					q = pairQ.getA();
 					inputSolveItem.idToTileMap().put( qId, q );
 					inputSolveItem.idToPreviousModel().put( qId, pairQ.getB() );
@@ -197,8 +197,7 @@ public class DistributedSolveWorker
 			stitchSections(
 					inputSolveItem,
 					pairs,
-					zToPairs,
-					new InterpolatedAffineModel2D< RigidModel2D, TranslationModel2D >( new RigidModel2D(), new TranslationModel2D(), 0.25 ) );
+					zToPairs );
 
 			// next, group the stitched tiles together
 			for ( final Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > pair : pairs )
@@ -219,12 +218,13 @@ public class DistributedSolveWorker
 		//	we are done
 	}
 
-	protected < M extends Model< M > & Affine2D< M > > void stitchSections(
-			final SolveItem solveItem,
+	protected void stitchSections(
+			final SolveItem< G,B,S > solveItem,
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
-			final HashMap< Integer, List< Integer > > zToPairs,
-			final M model )
+			final HashMap< Integer, List< Integer > > zToPairs )
 	{
+		final S model = solveItem.stitchingSolveModelInstance();
+
 		// combine tiles per layer that are be stitched first
 		final ArrayList< Integer > zList = new ArrayList<>( zToPairs.keySet() );
 		Collections.sort( zList );
@@ -234,8 +234,8 @@ public class DistributedSolveWorker
 			LOG.info( "" );
 			LOG.info( "stitching z=" + z );
 
-			final HashMap< String, Tile< M > > idTotile = new HashMap<>();
-			final HashMap< Tile< M >, String > tileToId = new HashMap<>();
+			final HashMap< String, Tile< S > > idTotile = new HashMap<>();
+			final HashMap< Tile< S >, String > tileToId = new HashMap<>();
 
 			// all connections within this z section
 			for ( final int index : zToPairs.get( z ) )
@@ -247,7 +247,7 @@ public class DistributedSolveWorker
 
 				//LOG.info( "pId=" + pId  + " (" + idTotile.containsKey( pId ) + ") " + " qId=" + qId + " (" + idTotile.containsKey( qId ) + ") " + idTotile.keySet().size() );
 
-				final Tile< M > p, q;
+				final Tile< S > p, q;
 
 				if ( !idTotile.containsKey( pId ) )
 				{
@@ -284,7 +284,7 @@ public class DistributedSolveWorker
 				{
 					LOG.info( "unconnected tileId " + tileId );
 
-					final Tile< M > tile = new Tile< M >( model.copy() );
+					final Tile< S > tile = new Tile< S >( model.copy() );
 					idTotile.put( tileId, tile );
 					tileToId.put( tile, tileId );
 				}
@@ -296,16 +296,12 @@ public class DistributedSolveWorker
 
 			// solve each set (if size > 1)
 			int setCount = 0;
-			for ( final Set< Tile< ? > > set : sets )
+			for ( final Set< Tile< ? > > set : sets ) // TODO: type sets correctly
 			{
 				LOG.info( "Set=" + setCount++ );
 
 				// the grouped tile for this set
-				final Tile< ? > groupedTile = new Tile<>(
-						new InterpolatedAffineModel2D<>(
-							new AffineModel2D(),
-							parameters.regularizerModelType.getInstance(),
-							parameters.startLambda)); // note: lambda gets reset during optimization loops
+				final Tile< B > groupedTile = new Tile<>( inputSolveItem.blockSolveModelInstance() );
 
 				if ( set.size() > 1 )
 				{
@@ -484,7 +480,7 @@ public class DistributedSolveWorker
 		{
 			int graphCount = 0;
 
-			for ( final Set< Tile< ? > > subgraph : graphs )
+			for ( final Set< Tile< ? > > subgraph : graphs ) // TODO: type sets properly
 			{
 				LOG.info( "new graph " + graphCount++ + "has " + subgraph.size() + " tiles." );
 
@@ -512,21 +508,21 @@ public class DistributedSolveWorker
 
 				LOG.info( newMin + " > " + newMax );
 
-				final SolveItem solveItem = new SolveItem( newMin, newMax, runParams );
+				final SolveItem< G,B,S > solveItem = new SolveItem<>( inputSolveItem.globalSolveModelInstance(), inputSolveItem.blockSolveModelInstance(), inputSolveItem.stitchingSolveModelInstance(), newMin, newMax, runParams );
 
 				LOG.info( "old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
 
 				// update all the maps
 				for ( final Tile< ? > potentiallyGroupedTile : subgraph )
 				{
-					final ArrayList< Tile< ? > > tiles = new ArrayList<>();
+					final ArrayList< Tile< B > > tiles = new ArrayList<>();
 
 					if ( stitchFirst )
 						tiles.addAll( inputSolveItem.groupedTileToTiles().get( potentiallyGroupedTile ) );
 					else
-						tiles.add( potentiallyGroupedTile );
+						tiles.add( (Tile<B>)potentiallyGroupedTile );
 					
-					for ( final Tile< ? > t : tiles )
+					for ( final Tile< B > t : tiles )
 					{
 						final String tileId = inputSolveItem.tileToIdMap().get( t );
 		
@@ -540,7 +536,7 @@ public class DistributedSolveWorker
 						{
 							solveItem.idToStitchingModel().put( tileId, inputSolveItem.idToStitchingModel().get( tileId ) );
 	
-							final Tile< ? > groupedTile = inputSolveItem.tileToGroupedTile().get( t );
+							final Tile< B > groupedTile = inputSolveItem.tileToGroupedTile().get( t );
 	
 							solveItem.tileToGroupedTile().put( t, groupedTile );
 							solveItem.groupedTileToTiles().putIfAbsent( groupedTile, inputSolveItem.groupedTileToTiles().get( groupedTile ) );
@@ -580,8 +576,8 @@ public class DistributedSolveWorker
 		//System.exit( 0 );
 	}
 
-	protected static void solve(
-			final SolveItem solveItem,
+	protected void solve(
+			final SolveItem< G,B,S > solveItem,
 			final Parameters parameters
 			) throws InterruptedException, ExecutionException
 	{
@@ -616,8 +612,9 @@ public class DistributedSolveWorker
 
 		for (final double lambda : lambdaValues)
 		{
-			for (final Tile tile : solveItem.idToTileMap().values())
-				((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
+			for (final Tile< B > tile : solveItem.idToTileMap().values())
+				if ( InterpolatedAffineModel2D.class.isInstance( tile.getModel() ))
+					((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
 
 			int numIterations = parameters.maxIterations;
 			if ( lambda == 1.0 || lambda == 0.5 )
