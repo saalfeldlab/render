@@ -18,24 +18,24 @@ import mpicbg.models.TranslationModel2D;
 public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
 	final public static int samplesPerDimension = 5;
-	final public static AtomicInteger idGenerator = new AtomicInteger( 0 );
-
 	final public static boolean useCosineWeight = true;
 
-	final private int id;
-	final private int minZ, maxZ;
+	final SolveItemData< G, B, S > solveItemData;
+
+	//final private int id;
+	//final private int minZ, maxZ;
 
 	// used for global solve outside
-	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
+	// final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
 
 	// used for saving and display
-	final private HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
+	// final private HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
 
 	// contains the model as determined by the local solve
-	final private HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
+	// final private HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
 
 	// contains the model as loaded from renderer (can go right now except for debugging)
-	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
+	// final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
 
 	//
 	// local obly below
@@ -56,40 +56,25 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	final private HashMap< Tile< B >, Tile< B > > tileToGroupedTile = new HashMap<>();
 	final private HashMap< Tile< B >, List< Tile< B > > > groupedTileToTiles = new HashMap<>();
 
-	final private G globalSolveModel;
-	final private B blockSolveModel;
-	final private S stitchingModel;
-
-	public SolveItem(
-			final G globalSolveModel,
-			final B blockSolveModel,
-			final S stitchingModel,
-			final int minZ,
-			final int maxZ )
+	public SolveItem( final SolveItemData< G, B, S > solveItemData )
 	{
-		this.id = idGenerator.getAndIncrement();
-
-		this.minZ = minZ;
-		this.maxZ = maxZ;
-
-		this.globalSolveModel = globalSolveModel.copy();
-		this.blockSolveModel = blockSolveModel.copy();
-		this.stitchingModel = stitchingModel.copy();
+		this.solveItemData = solveItemData;
 	}
 
-	public int getId() { return id; }
-	public int minZ() { return minZ; }
-	public int maxZ() { return maxZ; }
+	public SolveItemData< G, B, S > getSolveItemData() { return solveItemData; }
+	public int getId() { return solveItemData.getId(); }
+	public int minZ() { return solveItemData.minZ(); }
+	public int maxZ() { return solveItemData.maxZ(); }
 
-	public G globalSolveModelInstance() { return globalSolveModel.copy(); }
-	public B blockSolveModelInstance() { return blockSolveModel.copy(); }
-	public S stitchingSolveModelInstance() { return stitchingModel.copy(); }
+	public G globalSolveModelInstance() { return solveItemData.globalSolveModelInstance(); }
+	public B blockSolveModelInstance() { return solveItemData.blockSolveModelInstance(); }
+	public S stitchingSolveModelInstance() { return solveItemData.stitchingSolveModelInstance(); }
 
 	public HashMap<String, Tile< B > > idToTileMap() { return idToTileMap; }
-	public HashMap<String, AffineModel2D> idToPreviousModel() { return idToPreviousModel; }
-	public HashMap<String, TileSpec> idToTileSpec() { return idToTileSpec; }
-	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
-	public HashMap<String, AffineModel2D> idToNewModel() { return idToNewModel; }
+	public HashMap<String, AffineModel2D> idToPreviousModel() { return solveItemData.idToPreviousModel(); }
+	public HashMap<String, TileSpec> idToTileSpec() { return solveItemData.idToTileSpec(); }
+	public HashMap<Integer, HashSet<String>> zToTileId() { return solveItemData.zToTileId(); }
+	public HashMap<String, AffineModel2D> idToNewModel() { return solveItemData.idToNewModel(); }
 
 	public HashMap<Tile<B>, String > tileToIdMap() { return tileToIdMap; }
 
@@ -99,57 +84,31 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 
 	public double getWeight( final int z )
 	{
-		if ( useCosineWeight )
-			return getCosineWeight( z );
-		else
-			return getLinearWeight( z );
+		return solveItemData.getWeight( z );
 	}
 
 	public double getLinearWeight( final int z )
 	{
-		// goes from 0.0 to 1.0 as z increases to the middle, then back to 0 to the end
-		return Math.max( Math.min( Math.min( (z - minZ) / ((maxZ-minZ)/2.0), (maxZ - z) / ((maxZ-minZ)/2.0) ), 1 ), 0.0000001 );
+		return solveItemData.getLinearWeight( z );
 	}
 
 	public double getCosineWeight( final int z )
 	{
-		return Math.max( Math.min( 1.0 - Math.cos( getLinearWeight( z ) * Math.PI/2 ), 1 ), 0.0000001 );
+		return solveItemData.getCosineWeight( z );
 	}
 
-	public ImagePlus visualizeInput() { return visualizeInput( 0.15 ); }
+	public ImagePlus visualizeInput() { return solveItemData.visualizeInput( 0.15 ); }
 
 	public ImagePlus visualizeInput( final double scale )
 	{
-		try
-		{
-			ImagePlus imp = SolveTools.render( idToPreviousModel, idToTileSpec, 0.15 );
-			imp.setTitle( "input" );
-			return imp;
-		}
-		catch ( NoninvertibleModelException e )
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
-		}
+		return solveItemData.visualizeInput( scale);
 	}
 
-	public ImagePlus visualizeAligned() { return visualizeAligned( 0.15 ); }
+	public ImagePlus visualizeAligned() { return solveItemData.visualizeAligned( 0.15 ); }
 
 	public ImagePlus visualizeAligned( final double scale )
 	{
-		try
-		{
-			ImagePlus imp = SolveTools.render( idToNewModel, idToTileSpec, 0.15 );
-			imp.setTitle( "aligned" );
-			return imp;
-		}
-		catch ( NoninvertibleModelException e )
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
-		}
+		return solveItemData.visualizeAligned( scale);
 	}
 
 	@Override
@@ -177,7 +136,8 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 
 	public static void main( String[] args )
 	{
-		SolveItem< TranslationModel2D, TranslationModel2D, TranslationModel2D > s = new SolveItem<>( null, null, null, 100, 102 );
+		SolveItem< TranslationModel2D, TranslationModel2D, TranslationModel2D > s = new SolveItem<>(
+				new SolveItemData< TranslationModel2D, TranslationModel2D, TranslationModel2D >( null, null, null, 100, 102 ) );
 
 		for ( int z = s.minZ(); z <= s.maxZ(); ++z )
 		{

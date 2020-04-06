@@ -3,9 +3,11 @@ package org.janelia.render.client.solver;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 
-public class DummySolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends SolveItem< G, B, S >
+public class DummySolveItemData< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends SolveItemData< G, B, S >
 {
-	public DummySolveItem( final G g, final B b, final S s, final int z )
+	private static final long serialVersionUID = 343262523978772499L;
+
+	public DummySolveItemData( final G g, final B b, final S s, final int z )
 	{
 		super( g, b, s, z, z );
 	}

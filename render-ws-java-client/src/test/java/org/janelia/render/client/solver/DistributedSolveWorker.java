@@ -20,6 +20,8 @@ import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sun.tools.javac.code.Attribute.Array;
+
 import ij.ImageJ;
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
@@ -67,7 +69,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final ArrayList< SolveItem< G, B, S > > solveItems;
 
 	public DistributedSolveWorker(
-			final SolveItem< G, B, S > solveItem,
+			final SolveItemData< G, B, S > solveItemData,
 			final List< Pair< String, Double > > pGroupList,
 			final Map<String, List<Double>> sectionIdToZMap,
 			final String baseDataUrl,
@@ -80,15 +82,17 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		this.renderDataClient = new RenderDataClient( baseDataUrl, owner, project );
 		this.matchDataClient = new RenderDataClient( baseDataUrl, matchOwner, matchCollection );
 		this.stack = stack;
-		this.inputSolveItem = solveItem;
+		this.inputSolveItem = new SolveItem<>( solveItemData );
 		this.pGroupList = pGroupList;
 		this.sectionIdToZMap = sectionIdToZMap;
 
 		this.solveItems = new ArrayList<>();
 	}
 
-	public SolveItem< G, B, S > getInputSolveItems() { return inputSolveItem; }
-	public ArrayList< SolveItem< G, B, S > > getSolveItems() { return solveItems; }
+	public List< SolveItemData< G, B, S > > getSolveItemDataList()
+	{
+		return solveItems.stream().map( SolveItem::getSolveItemData ).collect( Collectors.toList() );
+	}
 
 	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
@@ -533,7 +537,13 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 				LOG.info( newMin + " > " + newMax );
 
-				final SolveItem< G,B,S > solveItem = new SolveItem<>( inputSolveItem.globalSolveModelInstance(), inputSolveItem.blockSolveModelInstance(), inputSolveItem.stitchingSolveModelInstance(), newMin, newMax );
+				final SolveItem< G,B,S > solveItem = new SolveItem<>(
+						new SolveItemData< G, B, S >(
+							inputSolveItem.globalSolveModelInstance(),
+							inputSolveItem.blockSolveModelInstance(),
+							inputSolveItem.stitchingSolveModelInstance(),
+							newMin,
+							newMax ) );
 
 				LOG.info( "old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
 
