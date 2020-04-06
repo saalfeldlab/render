@@ -25,9 +25,6 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	final private int id;
 	final private int minZ, maxZ;
 
-	// all tiles, used for solving when not grouped
-	final private HashMap<String, Tile< B > > idToTileMap = new HashMap<>();
-
 	// used for global solve outside
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
 
@@ -40,12 +37,12 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	// contains the model as loaded from renderer (can go right now except for debugging)
 	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
 
-	// used during the global solve only
-	private Tile< G > globalAlignBlockTile = null;
-
 	//
 	// local obly below
 	//
+
+	// all tiles, used for solving when not grouped
+	final private HashMap<String, Tile< B > > idToTileMap = new HashMap<>();
 
 	// used locally to map Tile back to TileId
 	final private HashMap<Tile<B>, String > tileToIdMap = new HashMap<>();
@@ -75,22 +72,14 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 		this.minZ = minZ;
 		this.maxZ = maxZ;
 
-//		this.runParams = runParams.clone();
-//		this.runParams.minZ = minZ;
-//		this.runParams.maxZ = maxZ;
-
 		this.globalSolveModel = globalSolveModel.copy();
 		this.blockSolveModel = blockSolveModel.copy();
 		this.stitchingModel = stitchingModel.copy();
-
-		this.globalAlignBlockTile = new Tile< G >( globalSolveModel.copy() );
 	}
 
 	public int getId() { return id; }
 	public int minZ() { return minZ; }
 	public int maxZ() { return maxZ; }
-	//public RunParameters runParams() { return runParams; }
-	public Tile< G > globalAlignBlockTile() { return globalAlignBlockTile; }
 
 	public G globalSolveModelInstance() { return globalSolveModel.copy(); }
 	public B blockSolveModelInstance() { return blockSolveModel.copy(); }

@@ -30,6 +30,7 @@ import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
+import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel2D;
@@ -218,12 +219,15 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 		final HashMap<Integer, ArrayList< Pair< Pair< SolveItem< G, B, S >, SolveItem< G, B, S > >, HashSet< String > > > > zToSolveItemPairs = new HashMap<>();
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
+		final HashMap< SolveItem< G, B, S >, Tile< G > > solveItemToTile = new HashMap<>();
+
 		// important: all images within one solveitem must be connected to each other!
 
 		// solve by solveitem, not by z layer
 		for ( int a = 0; a < allSolveItems.size() - 1; ++a )
 		{
 			final SolveItem< G, B, S > solveItemA = allSolveItems.get( a );
+			solveItemToTile.putIfAbsent( solveItemA, new Tile<>( solveItemA.globalSolveModelInstance() ) );
 
 			for ( int z = solveItemA.minZ(); z <= solveItemA.maxZ(); ++z )
 			{
@@ -233,6 +237,7 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 				for ( int b = a + 1; b < allSolveItems.size(); ++b )
 				{
 					final SolveItem< G, B, S > solveItemB = allSolveItems.get( b );
+					solveItemToTile.putIfAbsent( solveItemB, new Tile<>( solveItemB.globalSolveModelInstance() ) );
 
 					if ( solveItemA.equals( solveItemB ) )
 						continue;
@@ -299,10 +304,13 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 							}
 						}
 
-						solveItemA.globalAlignBlockTile().connect( solveItemB.globalAlignBlockTile(), matchesAtoB );
+						final Tile< G > tileA = solveItemToTile.get( solveItemA );
+						final Tile< G > tileB = solveItemToTile.get( solveItemB );
 
-						tileConfigBlocks.addTile( solveItemA.globalAlignBlockTile() );
-						tileConfigBlocks.addTile( solveItemB.globalAlignBlockTile() );
+						tileA.connect( tileB, matchesAtoB );
+
+						tileConfigBlocks.addTile( tileA );
+						tileConfigBlocks.addTile( tileB );
 
 						hasOverlap = true;
 					}
@@ -324,6 +332,7 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 					
 					final SolveItem< G, B, S > solveItemB = new DummySolveItem< G, B, S >( solveItemA.globalSolveModelInstance(), solveItemA.blockSolveModelInstance(), solveItemA.stitchingSolveModelInstance(), z );
 					zToSolveItemPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
+					solveItemToTile.putIfAbsent( solveItemB, new Tile<>( solveItemB.globalSolveModelInstance() ) );
 
 					for ( final String tileId : tileIds )
 					{
@@ -356,29 +365,13 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 
 		final HashMap< SolveItem< G, B, S >, AffineModel2D > blockToAffine2d = new HashMap<>();
 	
-		for ( final SolveItem< G, B, S > solveItem : allSolveItems )
+		for ( final SolveItem< G, B, S > solveItem : solveItemToTile.keySet() )
 		{
-			blockToAffine2d.put( solveItem, DistributedSolveWorker.createAffine( solveItem.globalAlignBlockTile().getModel() ) );
+			blockToAffine2d.put( solveItem, DistributedSolveWorker.createAffine( solveItemToTile.get( solveItem ).getModel() ) );
 
-			LOG.info( "Block " + solveItem.getId() + ": " + solveItem.globalAlignBlockTile().getModel() );
+			if ( !DummySolveItem.class.isInstance( solveItem ) )
+				LOG.info( "Block " + solveItem.getId() + ": " + blockToAffine2d.get( solveItem ) );
 		}
-		/*
-		for ( int i = 0; i < solveSet.leftItems.size(); ++i )
-		{
-			final SolveItem< ? > solveItemLeft = solveSet.leftItems.get( i );
-			solveItemLeft.globalAlignAffineModel = SolveTools.createAffineModel( solveItemLeft.globalAlignBlock.getModel() );
-
-			LOG.info( "Left block " + i + ": " + solveItemLeft.globalAlignBlock.getModel() );
-
-			if ( i < solveSet.rightItems.size() )
-			{
-				final SolveItem< ? > solveItemRight = solveSet.rightItems.get( i );
-				solveItemLeft.globalAlignAffineModel = SolveTools.createAffineModel( solveItemRight.globalAlignBlock.getModel() );
-
-				LOG.info( "Right block " + i + ": " + solveItemRight.globalAlignBlock.getModel() );
-			}
-		}
-		*/
 
 		final ArrayList< Integer > zSections = new ArrayList<>( gs.zToTileIdGlobal.keySet() );
 		Collections.sort( zSections );
@@ -400,17 +393,11 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 					final AffineModel2D modelA = solveItemA.idToNewModel().get( tileId );
 					final AffineModel2D modelB = solveItemB.idToNewModel().get( tileId );
 
-					if ( !DummySolveItem.class.isInstance( solveItemA ) )
-					{
-						final AffineModel2D globalModelA = blockToAffine2d.get( solveItemA );
-						modelA.preConcatenate( globalModelA );
-					}
+					final AffineModel2D globalModelA = blockToAffine2d.get( solveItemA );
+					modelA.preConcatenate( globalModelA );
 
-					if ( !DummySolveItem.class.isInstance( solveItemB ) )
-					{
-						final AffineModel2D globalModelB = blockToAffine2d.get( solveItemB );
-						modelB.preConcatenate( globalModelB );
-					}
+					final AffineModel2D globalModelB = blockToAffine2d.get( solveItemB );
+					modelB.preConcatenate( globalModelB );
 
 					final double wA = solveItemA.getWeight( z );
 					final double wB = solveItemB.getWeight( z );
