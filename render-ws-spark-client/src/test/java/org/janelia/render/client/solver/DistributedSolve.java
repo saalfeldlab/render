@@ -345,34 +345,32 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 		final int numSetsLeft = ( maxZ - minZ + 1 ) / setSize + Math.min( 1, modulo );
 
-		final ArrayList< SolveItem< G, B, S > > leftSets = new ArrayList<>();
-		final ArrayList< SolveItem< G, B, S > > rightSets = new ArrayList<>();
+		final ArrayList< SolveItemData< G, B, S > > leftSets = new ArrayList<>();
+		final ArrayList< SolveItemData< G, B, S > > rightSets = new ArrayList<>();
 
 		for ( int i = 0; i < numSetsLeft; ++i )
 		{
 			leftSets.add(
-					new SolveItem< G, B, S >(
-							new SolveItemData< G, B, S >(
-									this.globalSolveModel,
-									this.blockSolveModel,
-									this.stitchingModel,
-									minZ + i * setSize,
-									Math.min( minZ + (i + 1) * setSize - 1, maxZ ) ) ) );
+					new SolveItemData< G, B, S >(
+							this.globalSolveModel,
+							this.blockSolveModel,
+							this.stitchingModel,
+							minZ + i * setSize,
+							Math.min( minZ + (i + 1) * setSize - 1, maxZ ) ) );
 		}
 
 		for ( int i = 0; i < numSetsLeft - 1; ++i )
 		{
-			final SolveItem< G, B, S > set0 = leftSets.get( i );
-			final SolveItem< G, B, S > set1 = leftSets.get( i + 1 );
+			final SolveItemData< G, B, S > set0 = leftSets.get( i );
+			final SolveItemData< G, B, S > set1 = leftSets.get( i + 1 );
 
 			rightSets.add(
-					new SolveItem< G, B, S >(
-							new SolveItemData< G, B, S >(
-									this.globalSolveModel,
-									this.blockSolveModel,
-									this.stitchingModel,
-									( set0.minZ() + set0.maxZ() ) / 2,
-									( set1.minZ() + set1.maxZ() ) / 2 ) ) );
+					new SolveItemData< G, B, S >(
+							this.globalSolveModel,
+							this.blockSolveModel,
+							this.stitchingModel,
+							( set0.minZ() + set0.maxZ() ) / 2,
+							( set1.minZ() + set1.maxZ() ) / 2 ) );
 		}
 
 		return new SolveSet< G, B, S >( leftSets, rightSets );

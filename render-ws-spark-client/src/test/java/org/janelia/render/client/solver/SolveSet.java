@@ -8,18 +8,18 @@ import mpicbg.models.Model;
 
 public class SolveSet< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
-	final List< SolveItem< G, B, S > > leftItems;
-	final List< SolveItem< G, B, S > > rightItems;
+	final List< SolveItemData< G, B, S > > leftItems;
+	final List< SolveItemData< G, B, S > > rightItems;
 
-	public SolveSet( final List< SolveItem< G, B, S > > leftItems, final List< SolveItem< G, B, S > > rightItems )
+	public SolveSet( final List< SolveItemData< G, B, S > > leftItems, final List< SolveItemData< G, B, S > > rightItems )
 	{
 		this.leftItems = leftItems;
 		this.rightItems = rightItems;
 	}
 
-	public List< SolveItem< G, B, S > > allItems()
+	public List< SolveItemData< G, B, S > > allItems()
 	{
-		final ArrayList< SolveItem< G, B, S > > all = new ArrayList<>();
+		final ArrayList< SolveItemData< G, B, S > > all = new ArrayList<>();
 		all.addAll( leftItems );
 		all.addAll( rightItems );
 

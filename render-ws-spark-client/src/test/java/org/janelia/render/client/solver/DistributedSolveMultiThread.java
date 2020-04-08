@@ -76,7 +76,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool( 8 );
 		final ArrayList< Callable< List< SolveItemData< G, B, S > > > > tasks = new ArrayList<>();
 
-		for ( final SolveItem< G, B, S > solveItem : solveSet.allItems() )
+		for ( final SolveItemData< G, B, S > solveItemData : solveSet.allItems() )
 		{
 			tasks.add( new Callable< List< SolveItemData< G, B, S > > >()
 			{
@@ -84,7 +84,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 				public List< SolveItemData< G, B, S > > call() throws Exception
 				{
 					final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-							solveItem.getSolveItemData(),
+							solveItemData,
 							runParams.pGroupList,
 							runParams.sectionIdToZMap,
 							parameters.renderWeb.baseDataUrl,
