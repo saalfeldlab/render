@@ -72,7 +72,7 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 
 	public HashMap<String, Tile< B > > idToTileMap() { return idToTileMap; }
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return solveItemData.idToPreviousModel(); }
-	public HashMap<String, TileSpec> idToTileSpec() { return solveItemData.idToTileSpec(); }
+	public HashMap<String, MinimalTileSpec> idToTileSpec() { return solveItemData.idToTileSpec(); }
 	public HashMap<Integer, HashSet<String>> zToTileId() { return solveItemData.zToTileId(); }
 	public HashMap<String, AffineModel2D> idToNewModel() { return solveItemData.idToNewModel(); }
 

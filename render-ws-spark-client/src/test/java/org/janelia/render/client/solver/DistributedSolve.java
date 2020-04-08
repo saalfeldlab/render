@@ -51,7 +51,7 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 	public static class GlobalSolve
 	{
 		final HashMap<String, AffineModel2D> idToFinalModelGlobal = new HashMap<>();
-		final HashMap<String, TileSpec> idToTileSpecGlobal = new HashMap<>();
+		final HashMap<String, MinimalTileSpec> idToTileSpecGlobal = new HashMap<>();
 		final HashMap<Integer, HashSet<String> > zToTileIdGlobal = new HashMap<>();
 	}
 
@@ -273,7 +273,7 @@ public class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends M
 						for ( final String tileId : tileIds )
 						{
 							// tilespec is identical
-							final TileSpec tileSpec = solveItemA.idToTileSpec().get( tileId );
+							final MinimalTileSpec tileSpec = solveItemA.idToTileSpec().get( tileId );
 
 							// remember the tileids and tileSpecs
 							gs.zToTileIdGlobal.get( z ).add( tileId );

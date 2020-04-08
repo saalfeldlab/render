@@ -171,7 +171,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					p = pairP.getA();
 					inputSolveItem.idToTileMap().put( pId, p );
 					inputSolveItem.idToPreviousModel().put( pId, pairP.getB() );
-					inputSolveItem.idToTileSpec().put( pId, pTileSpec );
+					inputSolveItem.idToTileSpec().put( pId, new MinimalTileSpec( pTileSpec ) );
 
 					inputSolveItem.tileToIdMap().put( p, pId );
 				}
@@ -186,7 +186,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					q = pairQ.getA();
 					inputSolveItem.idToTileMap().put( qId, q );
 					inputSolveItem.idToPreviousModel().put( qId, pairQ.getB() );
-					inputSolveItem.idToTileSpec().put( qId, qTileSpec );	
+					inputSolveItem.idToTileSpec().put( qId, new MinimalTileSpec( qTileSpec ) );
 
 					inputSolveItem.tileToIdMap().put( q, qId );
 				}
@@ -528,10 +528,10 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					
 					for ( final Tile< ? > t : tiles )
 					{
-						final TileSpec tileSpec = inputSolveItem.idToTileSpec().get( inputSolveItem.tileToIdMap().get( t ) );
+						final MinimalTileSpec tileSpec = inputSolveItem.idToTileSpec().get( inputSolveItem.tileToIdMap().get( t ) );
 	
-						newMin = Math.min( newMin, (int)Math.round( tileSpec.getZ().doubleValue() ) );
-						newMax = Math.max( newMax, (int)Math.round( tileSpec.getZ().doubleValue() ) );
+						newMin = Math.min( newMin, (int)Math.round( tileSpec.getZ() ) );
+						newMax = Math.max( newMax, (int)Math.round( tileSpec.getZ() ) );
 					}
 				}
 

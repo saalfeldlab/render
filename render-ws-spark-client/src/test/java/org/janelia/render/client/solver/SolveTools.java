@@ -33,6 +33,7 @@ import ij.io.FileSaver;
 import ij.measure.Calibration;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
+import imglib.ops.operator.binary.Min;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
@@ -422,7 +423,7 @@ public class SolveTools
 		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
 	}
 
-	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModels, final HashMap<String, TileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
+	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModels, final HashMap<String, MinimalTileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
 	{
 		final double[] min = new double[] { Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE };
 		final double[] max = new double[] { -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE };
@@ -438,7 +439,7 @@ public class SolveTools
 		// get bounding box
 		for ( final String tileId : idToModels.keySet() )
 		{
-			final TileSpec tileSpec = idToTileSpec.get( tileId );
+			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
 			min[ 2 ] = Math.min( min[ 2 ], tileSpec.getZ() );
 			max[ 2 ] = Math.max( max[ 2 ], tileSpec.getZ() );
 
@@ -496,7 +497,7 @@ public class SolveTools
 		int i = 0;
 		for ( final String tileId : idToRenderModels.keySet() )
 		{
-			final TileSpec tileSpec = idToTileSpec.get( tileId );
+			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
 			final long z = Math.round( tileSpec.getZ() );
 			final AffineModel2D model = idToRenderModels.get( tileId );
 
@@ -559,9 +560,9 @@ public class SolveTools
 		return imp;
 	}
 
-	protected static FloatProcessor getFullResImage( final TileSpec tileSpec )
+	protected static FloatProcessor getFullResImage( final MinimalTileSpec tileSpec )
 	{
-		final String fileName = tileSpec.getFirstMipmapEntry().getValue().getImageFilePath();
+		final String fileName = tileSpec.getFileName();
 
 		if ( new File( fileName ).exists() )
 			return new ImagePlus( fileName ).getProcessor().convertToFloatProcessor();
@@ -573,9 +574,9 @@ public class SolveTools
 
 	}
 
-	protected static ImageProcessor getFullResMask( final TileSpec tileSpec )
+	protected static ImageProcessor getFullResMask( final MinimalTileSpec tileSpec )
 	{
-		final String fileNameMask = tileSpec.getFirstMipmapEntry().getValue().getMaskFilePath();
+		final String fileNameMask = tileSpec.getMaskFileName();
 
 		if ( new File( fileNameMask ).exists() )
 			return new ImagePlus( fileNameMask ).getProcessor();
@@ -586,7 +587,7 @@ public class SolveTools
 		}
 	}
 
-	protected static ImageProcessorWithMasks getImage( final TileSpec tileSpec, final double scale )
+	protected static ImageProcessorWithMasks getImage( final MinimalTileSpec tileSpec, final double scale )
 	{
 		// old code:
 		final File imageFile = new File( "tmp", tileSpec.getTileId() + "_" + scale + ".image.tif" );
