@@ -131,7 +131,7 @@ public class SolveTools
 		}
 
 		for ( final String entry : sectionIds.keySet() )
-			runParams.pGroupList.add( new ValuePair< String, Double >( entry, sectionIds.get( entry ) ) );
+			runParams.pGroupList.add( new SerializableValuePair< String, Double >( entry, sectionIds.get( entry ) ) );
 
 		Collections.sort( runParams.pGroupList, new Comparator< Pair< String, Double > >()
 		{
@@ -285,7 +285,7 @@ public class SolveTools
 	}
 
 	protected static TileSpec getTileSpec(
-			final Map<String, List<Double>> sectionIdToZMap,
+			final Map<String, ? extends List<Double>> sectionIdToZMap,
 			final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap,
 			final RenderDataClient renderDataClient,
 			final String stack,

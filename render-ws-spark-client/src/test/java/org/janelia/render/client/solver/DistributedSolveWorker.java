@@ -63,7 +63,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final String stack;
 
 	final List< Pair< String, Double > > pGroupList;
-	final Map<String, List<Double>> sectionIdToZMap;
+	final Map<String, ArrayList<Double>> sectionIdToZMap;
 
 	final SolveItem< G, B, S > inputSolveItem;
 	final ArrayList< SolveItem< G, B, S > > solveItems;
@@ -71,7 +71,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	public DistributedSolveWorker(
 			final SolveItemData< G, B, S > solveItemData,
 			final List< Pair< String, Double > > pGroupList,
-			final Map<String, List<Double>> sectionIdToZMap,
+			final Map<String, ArrayList<Double>> sectionIdToZMap,
 			final String baseDataUrl,
 			final String owner,
 			final String project,

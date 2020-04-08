@@ -1,5 +1,6 @@
 package org.janelia.render.client.solver;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +17,7 @@ public class RunParameters
 	protected RenderDataClient targetDataClient;
 	
 	protected List< Pair< String, Double > > pGroupList;
-	protected Map<String, List<Double>> sectionIdToZMap; // this is a cache
+	protected Map<String, ArrayList<Double>> sectionIdToZMap; // this is a cache
 	protected Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
 	protected double minZ, maxZ;
 	protected int totalTileCount;

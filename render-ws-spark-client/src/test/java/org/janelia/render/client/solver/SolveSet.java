@@ -17,7 +17,7 @@ public class SolveSet< G extends Model< G > & Affine2D< G >, B extends Model< B 
 		this.rightItems = rightItems;
 	}
 
-	public List< SolveItemData< G, B, S > > allItems()
+	public ArrayList< SolveItemData< G, B, S > > allItems()
 	{
 		final ArrayList< SolveItemData< G, B, S > > all = new ArrayList<>();
 		all.addAll( leftItems );
