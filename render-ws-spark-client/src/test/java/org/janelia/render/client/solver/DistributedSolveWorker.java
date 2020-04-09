@@ -2,6 +2,7 @@ package org.janelia.render.client.solver;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,6 +21,7 @@ import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.beust.jcommander.Parameter;
 import com.sun.tools.javac.code.Attribute.Array;
 
 import ij.ImageJ;
@@ -48,13 +50,13 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	// then treat them as one big, "grouped" tile in the global optimization
 	// the advantage is that potential deformations do not propagate into the individual
 	// sections, but can be solved easily later using non-rigid alignment.
-	final public static boolean stitchFirst = true;
+	final boolean stitchFirst;
 
-	final public static int numThreads = 1;
-
-	final public static double maxAllowedError = 10;
-	final public static int numIterations = 500;
-	final public static int maxPlateauWidth = 50;
+//	final public static int numThreads = 1;
+//
+//	final public static double maxAllowedError = 10;
+//	final public static int numIterations = 500;
+//	final public static int maxPlateauWidth = 50;
 
 	final protected static int visualizeZSection = 0;//10000;
 
@@ -64,6 +66,15 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 	final List< Pair< String, Double > > pGroupList;
 	final Map<String, ArrayList<Double>> sectionIdToZMap;
+
+	final int numThreads;
+
+	final double maxAllowedErrorStitching;
+	final int maxIterationsStitching, maxPlateauWidthStitching;
+
+	final List<Double> blockOptimizerLambdas;
+	final List<Integer> blockOptimizerIterations, blockMaxPlateauWidth;
+	final double blockMaxAllowedError;
 
 	final SolveItem< G, B, S > inputSolveItem;
 	final ArrayList< SolveItem< G, B, S > > solveItems;
@@ -77,7 +88,15 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final String project,
 			final String matchOwner,
 			final String matchCollection,
-			final String stack )
+			final String stack,
+			final double maxAllowedErrorStitching,
+			final int maxIterationsStitching,
+			final int maxPlateauWidthStitching,
+			final List<Double> blockOptimizerLambdas,
+			final List<Integer> blockOptimizerIterations,
+			final List<Integer> blockMaxPlateauWidth,
+			final double blockMaxAllowedError,
+			final int numThreads )
 	{
 		this.renderDataClient = new RenderDataClient( baseDataUrl, owner, project );
 		this.matchDataClient = new RenderDataClient( baseDataUrl, matchOwner, matchCollection );
@@ -85,6 +104,18 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		this.inputSolveItem = new SolveItem<>( solveItemData );
 		this.pGroupList = pGroupList;
 		this.sectionIdToZMap = sectionIdToZMap;
+
+		this.blockOptimizerLambdas = blockOptimizerLambdas;
+		this.blockOptimizerIterations = blockOptimizerIterations;
+		this.blockMaxPlateauWidth = blockMaxPlateauWidth;
+
+		this.maxAllowedErrorStitching = maxAllowedErrorStitching;
+		this.maxIterationsStitching = maxIterationsStitching;
+		this.maxPlateauWidthStitching = maxPlateauWidthStitching;
+		this.blockMaxAllowedError = blockMaxAllowedError;
+
+		this.stitchFirst = solveItemData.hasStitchingModel();
+		this.numThreads = numThreads;
 
 		this.solveItems = new ArrayList<>();
 	}
@@ -357,10 +388,10 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 						try
 						{
 							TileUtil.optimizeConcurrently(
-								new ErrorStatistic( maxPlateauWidth + 1 ),
-								maxAllowedError,
-								numIterations,
-								maxPlateauWidth,
+								new ErrorStatistic( maxPlateauWidthStitching + 1 ),
+								maxAllowedErrorStitching,
+								maxIterationsStitching,
+								maxPlateauWidthStitching,
 								1.0,
 								tileConfig,
 								tileConfig.getTiles(),
@@ -567,7 +598,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 						solveItem.idToTileSpec().put( tileId, inputSolveItem.idToTileSpec().get( tileId ) );
 						solveItem.idToNewModel().put( tileId, inputSolveItem.idToNewModel().get( tileId ) );
 		
-						if ( DistributedSolveWorker.stitchFirst )
+						if ( stitchFirst )
 						{
 							solveItem.idToStitchingModel().put( tileId, inputSolveItem.idToStitchingModel().get( tileId ) );
 	
@@ -629,39 +660,39 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			LOG.info("run: optimizing {} tiles for solveItem {}", solveItem.idToTileMap().size(), solveItem.getId() );
 		}
 
-		final double startLambda = 1.0;
-		final List<Double> lambdaValues = Stream.of(1.0, 0.5, 0.1, 0.01)
-					.filter(lambda -> lambda <= startLambda)
-					.collect(Collectors.toList());
-
 		LOG.info( "lambda's used:" );
 
-		for ( final double lambda : lambdaValues )
+		for ( final double lambda : blockOptimizerLambdas )
 			LOG.info( "l=" + lambda );
 
-		for (final double lambda : lambdaValues)
+		for ( int s = 0; s < blockOptimizerLambdas.size(); ++s )
 		{
+			final double lambda = blockOptimizerLambdas.get( s );
+
 			for (final Tile< B > tile : solveItem.idToTileMap().values())
 				if ( InterpolatedAffineModel2D.class.isInstance( tile.getModel() ))
 					((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
 
-			int numIterations = 1000;
+			
+			int numIterations = blockOptimizerIterations.get( s );
+			/*
 			if ( lambda == 1.0 || lambda == 0.5 )
 				numIterations = 100;
 			else if ( lambda == 0.1 )
 				numIterations = 40;
 			else if ( lambda == 0.01 )
 				numIterations = 20;
+			*/
 
-			// tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
-		
-			LOG.info( "l=" + lambda + ", numIterations=" + numIterations );
+			final int maxPlateauWidth = blockMaxPlateauWidth.get( s );
+
+			LOG.info( "l=" + lambda + ", numIterations=" + numIterations + ", maxPlateauWidth=" + maxPlateauWidth );
 
 			final ErrorStatistic observer = new ErrorStatistic( maxPlateauWidth + 1 );
 			final float damp = 1.0f;
 			TileUtil.optimizeConcurrently(
 					observer,
-					maxAllowedError,
+					blockMaxAllowedError,
 					numIterations,
 					maxPlateauWidth,
 					damp,

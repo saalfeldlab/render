@@ -44,9 +44,9 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 	final ParametersDistributedSolve parameters;
 	final RunParameters runParams;
 
-	final public static double maxAllowedError = 10;
-	final public static int numIterations = 1000;
-	final public static int maxPlateauWidth = 500;
+//	final public static double maxAllowedError = 10;
+//	final public static int numIterations = 1000;
+//	final public static int maxPlateauWidth = 500;
 
 	public static class GlobalSolve
 	{
@@ -67,9 +67,6 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 	{
 		this.parameters = parameters;
 		this.runParams = ParametersDistributedSolve.setupSolve( parameters );
-
-		// each job uses just one thread
-		this.parameters.numberOfThreads = 1;
 
 		this.globalSolveModel = globalSolveModel;
 		this.blockSolveModel = blockSolveModel;
@@ -257,15 +254,15 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		LOG.info( "Optimizing ... " );
 		final float damp = 1.0f;
 		TileUtil.optimizeConcurrently(
-				new ErrorStatistic(parameters.maxPlateauWidth + 1 ),
-				maxAllowedError,
-				numIterations,
-				maxPlateauWidth,
+				new ErrorStatistic(parameters.maxPlateauWidthGlobal + 1 ),
+				parameters.maxAllowedErrorGlobal,
+				parameters.maxIterationsGlobal,
+				parameters.maxPlateauWidthGlobal,
 				damp,
 				tileConfigBlocks,
 				tileConfigBlocks.getTiles(),
 				tileConfigBlocks.getFixedTiles(),
-				1);
+				parameters.threadsGlobal );
 
 		final HashMap< SolveItemData< G, B, S >, AffineModel2D > blockToAffine2d = new HashMap<>();
 	

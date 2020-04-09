@@ -16,14 +16,10 @@ import org.slf4j.LoggerFactory;
 import ij.ImageJ;
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
-import mpicbg.models.AffineModel2D;
 import mpicbg.models.IllDefinedDataPointsException;
-import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.RigidModel2D;
-import mpicbg.models.TranslationModel2D;
 import mpicbg.spim.io.IOFunctions;
 import net.imglib2.multithreading.SimpleMultiThreading;
 
@@ -52,12 +48,28 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		LOG.info( "Defined sets for global solve" );
 		LOG.info( "\n" + solveSet );
 
-		/*
-		final DistributedSolveWorker w = new DistributedSolveWorker( parameters, solveSet.leftItems.get( 0 ) );
+		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
+				solveSet.leftItems.get( 0 ),
+				runParams.pGroupList,
+				runParams.sectionIdToZMap,
+				parameters.renderWeb.baseDataUrl,
+				parameters.renderWeb.owner,
+				parameters.renderWeb.project,
+				parameters.matchOwner,
+				parameters.matchCollection,
+				parameters.stack,
+				parameters.maxAllowedErrorStitching,
+				parameters.maxIterationsStitching,
+				parameters.maxPlateauWidthStitching,
+				parameters.blockOptimizerLambdas,
+				parameters.blockOptimizerIterations,
+				parameters.blockMaxPlateauWidth,
+				parameters.blockMaxAllowedError,
+				parameters.threadsWorker );
 		try
 		{
 			w.run();
-			for ( final SolveItem s : (ArrayList< SolveItem >)w.getSolveItems() )
+			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
 				s.visualizeAligned();
 
 		} catch ( IOException | ExecutionException | InterruptedException
@@ -69,7 +81,6 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 
 		SimpleMultiThreading.threadHaltUnClean();
 		System.exit( 0 );
-		*/
 
 		// Multithreaded for now (should be Spark for cluster-)
 
@@ -93,7 +104,15 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 							parameters.renderWeb.project,
 							parameters.matchOwner,
 							parameters.matchCollection,
-							parameters.stack );
+							parameters.stack,
+							parameters.maxAllowedErrorStitching,
+							parameters.maxIterationsStitching,
+							parameters.maxPlateauWidthStitching,
+							parameters.blockOptimizerLambdas,
+							parameters.blockOptimizerIterations,
+							parameters.blockMaxPlateauWidth,
+							parameters.blockMaxAllowedError,
+							parameters.threadsWorker );
 					w.run();
 	
 					return w.getSolveItemDataList();
@@ -154,17 +173,19 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
                             "--project", "Sec08",
+                            "--matchCollection", "Sec08_patch_matt",
                             "--stack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758",
                             //"--targetStack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758_new",
-                            "--regularizerModelType", "RIGID",
-                            "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
+                            "--completeTargetStack",
+                            
+                            "--blockOptimizerLambdas", "1.0,0.5,0.1,0.01",
+                            "--blockOptimizerIterations", "100,100,40,20",
+                            "--blockMaxPlateauWidth", "50,50,50,50",
+
+                            //"--noStitching", // do not stitch first
+                            
                             "--minZ", "10000",
                             "--maxZ", "10199",
-
-                            "--threads", "1",
-                            "--maxIterations", "10000",
-                            "--completeTargetStack",
-                            "--matchCollection", "Sec08_patch_matt"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -173,13 +194,21 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
+                /*
                 final DistributedSolve< RigidModel2D, InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >, InterpolatedAffineModel2D< RigidModel2D, TranslationModel2D > > solve =
                 		new DistributedSolveMultiThread<>(
                 				new RigidModel2D(),
                 				new InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >( new AffineModel2D(), new RigidModel2D(), parameters.startLambda ),
                 				new InterpolatedAffineModel2D< RigidModel2D, TranslationModel2D >( new RigidModel2D(), new TranslationModel2D(), 0.25 ),
                 				parameters );
-                
+                */
+                final DistributedSolve solve =
+                		new DistributedSolveMultiThread(
+                				parameters.globalModel(),
+                				parameters.blockModel(),
+                				parameters.stitchingModel(),
+                				parameters );
+               
                 solve.run( 100 );
             }
         };

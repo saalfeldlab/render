@@ -73,6 +73,15 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 		final String project = parameters.renderWeb.project;
 		final String matchOwner = parameters.matchOwner;
 		final String matchCollection = parameters.matchCollection;
+
+		final double maxAllowedErrorStitching = parameters.maxAllowedErrorStitching;
+		final int maxIterationsStitching = parameters.maxIterationsStitching;
+		final int maxPlateauWidthStitching = parameters.maxPlateauWidthStitching;
+		final List<Double> blockOptimizerLambdas = parameters.blockOptimizerLambdas;
+		final List<Integer> blockOptimizerIterations = parameters.blockOptimizerIterations;
+		final List<Integer> blockMaxPlateauWidth = parameters.blockMaxPlateauWidth;
+		final double blockMaxAllowedError = parameters.blockMaxAllowedError;
+		final int numThreads = parameters.threadsWorker;
 		final String stack = parameters.stack;
 
 		final JavaRDD< List< SolveItemData< G, B, S > > > solvedItems = rddJobs.map(
@@ -86,8 +95,15 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 							project,
 							matchOwner,
 							matchCollection,
-							stack
-							);
+							stack,
+							maxAllowedErrorStitching,
+							maxIterationsStitching,
+							maxPlateauWidthStitching,
+							blockOptimizerLambdas,
+							blockOptimizerIterations,
+							blockMaxPlateauWidth,
+							blockMaxAllowedError,
+							numThreads );
 					w.run();
 	
 					return w.getSolveItemDataList();
@@ -155,6 +171,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
+                /*
                 final DistributedSolve< RigidModel2D, InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >, InterpolatedAffineModel2D< RigidModel2D, TranslationModel2D > > solve =
                 		new DistributedSolveSpark<>(
                 				new RigidModel2D(),
@@ -163,6 +180,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
                 				parameters );
                 
                 solve.run( 100 );
+                */
             }
         };
         clientRunner.run();
