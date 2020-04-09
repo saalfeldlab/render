@@ -77,6 +77,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		*/
 
 		// set up executor service
+		LOG.info( "Multithreading with thread num="+ Runtime.getRuntime().availableProcessors() / 2 );
+
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool( Runtime.getRuntime().availableProcessors() / 2 );
 		final ArrayList< Callable< List< SolveItemData< G, B, S > > > > tasks = new ArrayList<>();
 

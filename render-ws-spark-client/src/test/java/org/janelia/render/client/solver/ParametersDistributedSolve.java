@@ -186,10 +186,10 @@ public class ParametersDistributedSolve extends CommandLineParameters
     @Parameter(
             names = "--blockMaxPlateauWidth",
             description = "Explicit max plateau width block alignment for each lambda value (blockOptimizerLambdas), " +
-            			  "by default optimizer uses (800,200,100,50), MUST MATCH SIZE of blockOptimizerLambdas",
+            			  "by default optimizer uses (500,250,100,50), MUST MATCH SIZE of blockOptimizerLambdas",
             variableArity = true
     )
-    public List<Integer> blockMaxPlateauWidth = new ArrayList<>( Arrays.asList( 800, 200, 100, 50 ) );
+    public List<Integer> blockMaxPlateauWidth = new ArrayList<>( Arrays.asList( 500, 250, 100, 50 ) );
 
     @Parameter(
             names = "--blockMaxAllowedError",
@@ -252,6 +252,9 @@ public class ParametersDistributedSolve extends CommandLineParameters
 
 	public < B extends Model< B > & Affine2D< B > > B blockModel()
 	{
+		if ( this.blockOptimizerIterations.size() != this.blockMaxPlateauWidth.size() || this.blockOptimizerIterations.size() != this.blockOptimizerLambdas.size() )
+			throw new RuntimeException( "Number of entries for blockOptimizerIterations, blockMaxPlateauWidth and blockOptimizerLambdas not identical." );
+
 		if ( this.modelTypeBlocksRegularizer == null )
 			return this.modelTypeBlocks.getInstance();
 		else
