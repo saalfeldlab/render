@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +37,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	}
 
 	@Override
-	public void run()
+	public GlobalSolve solve()
 	{
 		final long time = System.currentTimeMillis();
 
@@ -75,10 +76,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		SimpleMultiThreading.threadHaltUnClean();
 		*/
 
-		// Multithreaded for now (should be Spark for cluster-)
-
 		// set up executor service
-		final ExecutorService taskExecutor = Executors.newFixedThreadPool( 8 );
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool( Runtime.getRuntime().availableProcessors() / 2 );
 		final ArrayList< Callable< List< SolveItemData< G, B, S > > > > tasks = new ArrayList<>();
 
 		for ( final SolveItemData< G, B, S > solveItemData : this.solveSet.allItems() )
@@ -127,7 +126,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		{
 			IOFunctions.println( "Failed to compute alignments: " + e );
 			e.printStackTrace();
-			return;
+			return null;
 		}
 
 		taskExecutor.shutdown();
@@ -138,17 +137,12 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 
 			LOG.info( "Took: " + ( System.currentTimeMillis() - time )/100 + " sec.");
 
-			// visualize new result
-			new ImageJ();
-			ImagePlus imp1 = SolveTools.render( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, 0.15 );
-			imp1.setTitle( "final" );
-			SimpleMultiThreading.threadHaltUnClean();
-
+			return gs;
 		}
 		catch ( NotEnoughDataPointsException | IllDefinedDataPointsException | InterruptedException | ExecutionException | NoninvertibleModelException e )
 		{
 			e.printStackTrace();
-			return;
+			return null;
 		}
 	}
 
@@ -196,6 +190,9 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                 				new InterpolatedAffineModel2D< RigidModel2D, TranslationModel2D >( new RigidModel2D(), new TranslationModel2D(), 0.25 ),
                 				parameters );
                 */
+               
+                DistributedSolve.visualizeOutput = true;
+                
                 final DistributedSolve solve =
                 		new DistributedSolveMultiThread(
                 				parameters.globalModel(),

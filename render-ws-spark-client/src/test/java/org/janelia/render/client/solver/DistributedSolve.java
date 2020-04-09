@@ -13,6 +13,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.render.client.ClientRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,12 +42,10 @@ import net.imglib2.util.ValuePair;
 
 public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
+	public static boolean visualizeOutput = false;
+
 	final ParametersDistributedSolve parameters;
 	final RunParameters runParams;
-
-//	final public static double maxAllowedError = 10;
-//	final public static int numIterations = 1000;
-//	final public static int maxPlateauWidth = 500;
 
 	public static class GlobalSolve
 	{
@@ -86,7 +85,47 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		LOG.info( "\n" + solveSet );
 	}
 
-	public abstract void run();
+	protected abstract GlobalSolve solve();
+
+	public void run() throws IOException, NoninvertibleModelException 
+	{
+		final GlobalSolve solve = solve();
+
+		if ( parameters.targetStack != null )
+		{
+			LOG.info( "Saving targetstack=" + parameters.targetStack );
+
+			//
+			// save the re-aligned part
+			//
+			final HashSet< Double > zToSaveSet = new HashSet<>();
+
+			for ( final MinimalTileSpec ts : solve.idToTileSpecGlobal.values() )
+				zToSaveSet.add( ts.getZ() );
+
+			List< Double > zToSave = new ArrayList<>( zToSaveSet );
+			Collections.sort( zToSave );
+
+			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
+
+			SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, solve.idToFinalModelGlobal, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
+
+			if ( parameters.completeTargetStack )
+			{
+				LOG.info( "Completing targetstack=" + parameters.targetStack );
+
+				SolveTools.completeStack( parameters.targetStack, runParams );
+			}
+		}
+
+		if ( visualizeOutput )
+		{
+			// visualize new result
+			new ImageJ();
+			ImagePlus imp1 = SolveTools.render( solve.idToFinalModelGlobal, solve.idToTileSpecGlobal, 0.15 );
+			imp1.setTitle( "final" );
+		}
+	}
 
 	protected static HashSet< String > commonStrings( final HashSet< String > tileIdsA, final HashSet< String > tileIdsB )
 	{

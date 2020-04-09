@@ -15,6 +15,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +48,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 	}
 
 	@Override
-	public void run()
+	public GlobalSolve solve()
 	{
 		final long time = System.currentTimeMillis();
 
@@ -116,17 +117,12 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 
 			LOG.info( "Took: " + ( System.currentTimeMillis() - time )/100 + " sec.");
 
-			// visualize new result
-			new ImageJ();
-			ImagePlus imp1 = SolveTools.render( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, 0.15 );
-			imp1.setTitle( "final" );
-			SimpleMultiThreading.threadHaltUnClean();
-
+			return gs;
 		}
 		catch ( NotEnoughDataPointsException | IllDefinedDataPointsException | InterruptedException | ExecutionException | NoninvertibleModelException e )
 		{
 			e.printStackTrace();
-			return;
+			return null;
 		}
 	}
 
@@ -176,6 +172,8 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
                 
                 solve.run();
                 */
+
+                DistributedSolve.visualizeOutput = true;
                 
                 final DistributedSolve solve =
                 		new DistributedSolveSpark(
