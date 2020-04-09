@@ -138,7 +138,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	{
 		final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap = new HashMap<>();
 
-		LOG.info( "Loading transforms and matches from " + inputSolveItem.minZ() + " to layer " + inputSolveItem.maxZ() );
+		LOG.info( "block " + inputSolveItem.getId() + ": Loading transforms and matches from " + inputSolveItem.minZ() + " to layer " + inputSolveItem.maxZ() );
 
 		// we store tile pairs and pointmatches here first, as we need to do stitching per section first if possible (if connected)
 		final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs = new ArrayList<>();
@@ -153,7 +153,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			final String pGroupId = pGroupPair.getA();
 
-			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
+			LOG.info("block " + inputSolveItem.getId() + ": run: connecting tiles with pGroupId {}", pGroupId);
 
 			final List<CanvasMatches> matches = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
 
@@ -168,14 +168,14 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 				if ((pTileSpec == null) || (qTileSpec == null))
 				{
-					LOG.info("run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}", pId, qId, stack);
+					LOG.info("block " + inputSolveItem.getId() + ": run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}", pId, qId, stack);
 					continue;
 				}
 
 				// if any of the matches is outside the range we ignore them
 				if ( pTileSpec.getZ() < inputSolveItem.minZ() || pTileSpec.getZ() > inputSolveItem.maxZ() || qTileSpec.getZ() < inputSolveItem.minZ() || qTileSpec.getZ() > inputSolveItem.maxZ() )
 				{
-					LOG.info("run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, stack);
+					LOG.info("block " + inputSolveItem.getId() + ": run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, stack);
 					continue;
 				}
 
@@ -291,8 +291,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		for ( final int z : zList )
 		{
-			LOG.info( "" );
-			LOG.info( "stitching z=" + z );
+			LOG.info( "block " + inputSolveItem.getId() + ": stitching z=" + z );
 
 			final HashMap< String, Tile< S > > idTotile = new HashMap<>();
 			final HashMap< Tile< S >, String > tileToId = new HashMap<>();
@@ -342,7 +341,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			for ( final String tileId : solveItem.zToTileId().get( z ) )
 				if ( !idTotile.containsKey( tileId ) )
 				{
-					LOG.info( "unconnected tileId " + tileId );
+					LOG.info( "block " + inputSolveItem.getId() + ": unconnected tileId " + tileId );
 
 					final Tile< S > tile = new Tile< S >( model.copy() );
 					idTotile.put( tileId, tile );
@@ -352,13 +351,13 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			// Now identify connected graphs within all tiles
 			final ArrayList< Set< Tile< ? > > > sets = Tile.identifyConnectedGraphs( idTotile.values() );
 
-			LOG.info( "stitching z=" + z + " #sets=" + sets.size() );
+			LOG.info( "block " + inputSolveItem.getId() + ": stitching z=" + z + " #sets=" + sets.size() );
 
 			// solve each set (if size > 1)
 			int setCount = 0;
 			for ( final Set< Tile< ? > > set : sets ) // TODO: type sets correctly
 			{
-				LOG.info( "Set=" + setCount++ );
+				LOG.info( "block " + inputSolveItem.getId() + ": Set=" + setCount++ );
 
 				// the grouped tile for this set
 				final Tile< B > groupedTile = new Tile<>( inputSolveItem.blockSolveModelInstance() );
@@ -376,14 +375,14 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					}
 					catch ( NotEnoughDataPointsException | IllDefinedDataPointsException e )
 					{
-						LOG.info( "Could not solve stitiching for z=" + z + ", cause: " + e );
+						LOG.info( "block " + inputSolveItem.getId() + ": Could not solve prealign for z=" + z + ", cause: " + e );
 						e.printStackTrace();
 					}
 
 					// test if the graph has cycles, if yes we would need to do a solve
 					if ( !( ( TranslationModel2D.class.isInstance( model ) || RigidModel2D.class.isInstance( model ) ) && !new Graph( new ArrayList<>( set ) ).isCyclic() ) )
 					{
-						LOG.info( "Full solve required for stitching z=" + z  );
+						LOG.info( "block " + inputSolveItem.getId() + ": Full solve required for stitching z=" + z  );
 
 						try
 						{
@@ -398,11 +397,11 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 								tileConfig.getFixedTiles(),
 								numThreads );
 
-							LOG.info( "Solve z=" + z + " avg=" + tileConfig.getError() + ", min=" + tileConfig.getMinError() + ", max=" + tileConfig.getMaxError() );
+							LOG.info( "block " + inputSolveItem.getId() + ": Solve z=" + z + " avg=" + tileConfig.getError() + ", min=" + tileConfig.getMinError() + ", max=" + tileConfig.getMaxError() );
 						}
 						catch ( Exception e )
 						{
-							LOG.info( "Could not solve stitiching for z=" + z + ", cause: " + e );
+							LOG.info( "block " + inputSolveItem.getId() + ": Could not solve stitiching for z=" + z + ", cause: " + e );
 							e.printStackTrace();
 						}
 					}
@@ -421,7 +420,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 						solveItem.groupedTileToTiles().putIfAbsent( groupedTile, new ArrayList<>() );
 						solveItem.groupedTileToTiles().get( groupedTile ).add( solveItem.idToTileMap().get( tileId ) );
 
-						LOG.info( "TileId " + tileId + " Model=" + affine );
+						LOG.info( "block " + inputSolveItem.getId() + ": TileId " + tileId + " Model=" + affine );
 					}
 
 					// Hack: show a section after alignment
@@ -459,7 +458,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					solveItem.groupedTileToTiles().putIfAbsent( groupedTile, new ArrayList<>() );
 					solveItem.groupedTileToTiles().get( groupedTile ).add( solveItem.idToTileMap().get( tileId ) );
 
-					LOG.info( "Single TileId " + tileId );
+					LOG.info( "block " + inputSolveItem.getId() + ": Single TileId " + tileId );
 				}
 			}
 		}
@@ -528,13 +527,13 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		else
 			graphs = Tile.identifyConnectedGraphs( inputSolveItem.idToTileMap().values() );
 
-		LOG.info( "Graph of SolveItem " + inputSolveItem.getId() + " consists of " + graphs.size() + " subgraphs." );
+		LOG.info( "block " + inputSolveItem.getId() + ": Graph of SolveItem " + inputSolveItem.getId() + " consists of " + graphs.size() + " subgraphs." );
 
 		if ( graphs.size() == 1 )
 		{
 			solveItems.add( inputSolveItem );
 
-			LOG.info( "Graph 0 has " + graphs.get( 0 ).size() + " tiles." );
+			LOG.info( "block " + inputSolveItem.getId() + ": Graph 0 has " + graphs.get( 0 ).size() + " tiles." );
 		}
 		else
 		{
@@ -542,7 +541,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			for ( final Set< Tile< ? > > subgraph : graphs ) // TODO: type sets properly
 			{
-				LOG.info( "new graph " + graphCount++ + "has " + subgraph.size() + " tiles." );
+				LOG.info( "block " + inputSolveItem.getId() + ": new graph " + graphCount++ + "has " + subgraph.size() + " tiles." );
 
 				int newMin = inputSolveItem.maxZ();
 				int newMax = inputSolveItem.minZ();
@@ -576,7 +575,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 							newMin,
 							newMax ) );
 
-				LOG.info( "old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
+				LOG.info( "block " + solveItem.getId() + ": block " + solveItem.getId() + ": old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
 
 				// update all the maps
 				for ( final Tile< ? > potentiallyGroupedTile : subgraph )
@@ -628,7 +627,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					
 					if ( myTilesPerZ.size() == 0 )
 					{
-						LOG.info( "ERROR: z=" + z + " of new graph has 0 tileIds, the must not happen, this is a bug." );
+						LOG.info( "block " + solveItem.getId() + ": ERROR: z=" + z + " of new graph has 0 tileIds, the must not happen, this is a bug." );
 						System.exit( 0 );
 					}
 
@@ -652,18 +651,18 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		if ( stitchFirst )
 		{
 			tileConfig.addTiles(solveItem.tileToGroupedTile().values());
-			LOG.info("run: optimizing {} tiles for solveItem {}", solveItem.groupedTileToTiles().keySet().size(), solveItem.getId() );
+			LOG.info("block " + solveItem.getId() + ": run: optimizing {} tiles", solveItem.groupedTileToTiles().keySet().size() );
 		}
 		else
 		{
 			tileConfig.addTiles(solveItem.idToTileMap().values());
-			LOG.info("run: optimizing {} tiles for solveItem {}", solveItem.idToTileMap().size(), solveItem.getId() );
+			LOG.info("block " + solveItem.getId() + ": run: optimizing {} tiles", solveItem.idToTileMap().size() );
 		}
 
-		LOG.info( "lambda's used:" );
+		LOG.info( "block " + solveItem.getId() + ": lambda's used:" );
 
 		for ( final double lambda : blockOptimizerLambdas )
-			LOG.info( "l=" + lambda );
+			LOG.info( "block " + solveItem.getId() + ": l=" + lambda );
 
 		for ( int s = 0; s < blockOptimizerLambdas.size(); ++s )
 		{
@@ -686,7 +685,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			final int maxPlateauWidth = blockMaxPlateauWidth.get( s );
 
-			LOG.info( "l=" + lambda + ", numIterations=" + numIterations + ", maxPlateauWidth=" + maxPlateauWidth );
+			LOG.info( "block " + solveItem.getId() + ": l=" + lambda + ", numIterations=" + numIterations + ", maxPlateauWidth=" + maxPlateauWidth );
 
 			final ErrorStatistic observer = new ErrorStatistic( maxPlateauWidth + 1 );
 			final float damp = 1.0f;
@@ -741,7 +740,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				*/
 	
 				solveItem.idToNewModel().put( tileId, affine );
-				LOG.info("tile {} model from grouped tile is {}", tileId, affine);
+				LOG.info("block " + solveItem.getId() + ": tile {} model from grouped tile is {}", tileId, affine);
 			}
 
 		}
@@ -766,7 +765,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				*/
 	
 				solveItem.idToNewModel().put( tileId, affine );
-				LOG.info("tile {} model is {}", tileId, affine);
+				LOG.info("block " + solveItem.getId() + ": tile {} model is {}", tileId, affine);
 			}
 		}
 	}
