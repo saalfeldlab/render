@@ -50,6 +50,8 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 	@Override
 	public void run( final int setSize )
 	{
+		final long time = System.currentTimeMillis();
+
 		final int minZ = (int)Math.round( this.runParams.minZ );
 		final int maxZ = (int)Math.round( this.runParams.maxZ );
 
@@ -104,6 +106,8 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 		try
 		{
 			final GlobalSolve gs = globalSolve( allItems );
+
+			LOG.info( "Took: " + ( System.currentTimeMillis() - time )/100 + " sec.");
 
 			// visualize new result
 			new ImageJ();

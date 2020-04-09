@@ -43,6 +43,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	@Override
 	public void run( final int setSize )
 	{
+		final long time = System.currentTimeMillis();
+
 		final int minZ = (int)Math.round( this.runParams.minZ );
 		final int maxZ = (int)Math.round( this.runParams.maxZ );
 
@@ -123,6 +125,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		{
 			final GlobalSolve gs = globalSolve( allItems );
 
+			LOG.info( "Took: " + ( System.currentTimeMillis() - time )/100 + " sec.");
+
 			// visualize new result
 			new ImageJ();
 			ImagePlus imp1 = SolveTools.render( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, 0.15 );
@@ -158,7 +162,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--minZ", "10000",
                             "--maxZ", "10199",
 
-                            "--threads", "4",
+                            "--threads", "1",
                             "--maxIterations", "10000",
                             "--completeTargetStack",
                             "--matchCollection", "Sec08_patch_matt"
