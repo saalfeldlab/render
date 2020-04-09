@@ -10,19 +10,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ij.ImageJ;
-import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.spim.io.IOFunctions;
-import net.imglib2.multithreading.SimpleMultiThreading;
 
 public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
 {
@@ -168,8 +164,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--completeTargetStack",
                             
                             "--blockOptimizerLambdas", "1.0,0.5,0.1,0.01",
-                            "--blockOptimizerIterations", "100,100,40,20",
-                            "--blockMaxPlateauWidth", "50,50,50,50",
+                            //"--blockOptimizerIterations", "100,100,40,20",
+                            //"--blockMaxPlateauWidth", "50,50,50,50",
 
                             "--blockSize", "100",
                             //"--noStitching", // do not stitch first
