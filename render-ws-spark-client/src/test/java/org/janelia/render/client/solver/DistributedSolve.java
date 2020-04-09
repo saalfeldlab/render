@@ -41,7 +41,7 @@ import net.imglib2.util.ValuePair;
 
 public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
-	final Parameters parameters;
+	final ParametersDistributedSolve parameters;
 	final RunParameters runParams;
 
 	final public static double maxAllowedError = 10;
@@ -63,10 +63,10 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 			final G globalSolveModel,
 			final B blockSolveModel,
 			final S stitchingModel,
-			final Parameters parameters ) throws IOException
+			final ParametersDistributedSolve parameters ) throws IOException
 	{
 		this.parameters = parameters;
-		this.runParams = SolveTools.setupSolve( parameters );
+		this.runParams = ParametersDistributedSolve.setupSolve( parameters );
 
 		// each job uses just one thread
 		this.parameters.numberOfThreads = 1;

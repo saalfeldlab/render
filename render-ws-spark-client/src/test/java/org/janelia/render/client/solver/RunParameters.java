@@ -12,15 +12,15 @@ import net.imglib2.util.Pair;
 
 public class RunParameters
 {
-	protected RenderDataClient renderDataClient;
-	protected RenderDataClient matchDataClient;
-	protected RenderDataClient targetDataClient;
+	public RenderDataClient renderDataClient;
+	public RenderDataClient matchDataClient;
+	public RenderDataClient targetDataClient;
 	
-	protected List< Pair< String, Double > > pGroupList;
-	protected Map<String, ArrayList<Double>> sectionIdToZMap; // this is a cache
-	protected Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
-	protected double minZ, maxZ;
-	protected int totalTileCount;
+	public List< Pair< String, Double > > pGroupList;
+	public Map<String, ArrayList<Double>> sectionIdToZMap; // this is a cache
+	public Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
+	public double minZ, maxZ;
+	public int totalTileCount;
 
 	@Override
 	public RunParameters clone()

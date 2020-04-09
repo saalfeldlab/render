@@ -36,12 +36,11 @@ import scala.Tuple2;
 
 public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
 {
-
 	public DistributedSolveSpark(
 			final G globalSolveModel,
 			final B blockSolveModel,
 			final S stitchingModel,
-			final Parameters parameters ) throws IOException
+			final ParametersDistributedSolve parameters ) throws IOException
 
 	{
 		super( globalSolveModel, blockSolveModel, stitchingModel, parameters );
@@ -129,7 +128,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
             @Override
             public void runClient(final String[] args) throws Exception {
 
-                final Parameters parameters = new Parameters();
+                final ParametersDistributedSolve parameters = new ParametersDistributedSolve();
 
                 // TODO: remove testing hack ...
                 if (args.length == 0) {

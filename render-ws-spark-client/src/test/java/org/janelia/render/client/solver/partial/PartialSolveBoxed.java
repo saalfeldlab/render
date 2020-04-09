@@ -1,4 +1,4 @@
-package org.janelia.render.client.solver;
+package org.janelia.render.client.solver.partial;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -14,8 +14,11 @@ import java.util.stream.Stream;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
-import org.janelia.render.client.ClientRunner;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.MinimalTileSpec;
+import org.janelia.render.client.solver.RunParameters;
+import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,17 +41,17 @@ import net.imglib2.util.Pair;
 
 public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 {
-	final Parameters parameters;
+	final ParametersPartial parameters;
 	final RunParameters runParams;
 
 	// how many layers on the top and bottom we use as overlap to compute the rigid models that "blend" the re-solved stack back in 
 	protected int overlapTop = 25;//50;
 	protected int overlapBottom = 25;//50;
 
-	public PartialSolveBoxed(final Parameters parameters) throws IOException
+	public PartialSolveBoxed(final ParametersPartial parameters) throws IOException
 	{
 		this.parameters = parameters;
-		this.runParams = SolveTools.setupSolve( parameters );
+		this.runParams = ParametersPartial.setupSolve( parameters );
 	}
 
 	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
@@ -87,11 +90,11 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 			for (final CanvasMatches match : matches)
 			{
 				final String pId = match.getpId();
-				final TileSpec pTileSpec = SolveTools.getTileSpec(parameters, runParams, pGroupId, pId);
+				final TileSpec pTileSpec = SolveTools.getTileSpec(parameters.stack, runParams, pGroupId, pId);
 
 				final String qGroupId = match.getqGroupId();
 				final String qId = match.getqId();
-				final TileSpec qTileSpec = SolveTools.getTileSpec(parameters, runParams, qGroupId, qId);
+				final TileSpec qTileSpec = SolveTools.getTileSpec(parameters.stack, runParams, qGroupId, qId);
 
 				if ((pTileSpec == null) || (qTileSpec == null))
 				{
@@ -146,7 +149,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
 				if ( !idToTileMap.containsKey( pId ) )
 				{
-					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairP = SolveTools.buildTileFromSpec(parameters, pTileSpec);
+					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairP = SolveTools.buildTileFromSpec(parameters.samplesPerDimension, parameters.regularizerModelType, parameters.startLambda, pTileSpec);
 					p = pairP.getA();
 					idToTileMap.put( pId, p );
 					idToPreviousModel.put( pId, pairP.getB() );
@@ -165,7 +168,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
 				if ( !idToTileMap.containsKey( qId ) )
 				{
-					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairQ = SolveTools.buildTileFromSpec(parameters, qTileSpec);
+					final Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > pairQ = SolveTools.buildTileFromSpec(parameters.samplesPerDimension, parameters.regularizerModelType, parameters.startLambda, qTileSpec);
 					q = pairQ.getA();
 					idToTileMap.put( qId, q );
 					idToPreviousModel.put( qId, pairQ.getB() );
@@ -446,7 +449,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
 
-			SolveTools.saveTargetStackTiles( parameters, runParams, idToFinalModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
+			SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, idToFinalModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
 
 			//
 			// save the bottom part
@@ -455,7 +458,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
 
-			SolveTools.saveTargetStackTiles( parameters, runParams, null, bottomBlockModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
+			SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, null, bottomBlockModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
 
 			// TODO: save the top too when necessary
 			//
@@ -464,10 +467,11 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 			zToSave = runParams.renderDataClient.getStackZValues( parameters.stack, null, runParams.minZ - 0.1 );
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
-			SolveTools.saveTargetStackTiles( parameters, runParams, null, null, zToSave, null );
+			SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, null, null, zToSave, null );
 
 			// complete the stack after everything has been saved
-			SolveTools.completeStack(parameters, runParams);
+			if ( parameters.completeTargetStack )
+				SolveTools.completeStack(parameters.targetStack, runParams);
 		}
 
 		new ImageJ();
@@ -494,7 +498,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
             @Override
             public void runClient(final String[] args) throws Exception {
 
-                final Parameters parameters = new Parameters();
+                final ParametersPartial parameters = new ParametersPartial();
 
                 // TODO: remove testing hack ...
                 if (args.length == 0) {
