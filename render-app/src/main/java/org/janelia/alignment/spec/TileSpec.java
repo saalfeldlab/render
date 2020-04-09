@@ -26,6 +26,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -70,7 +71,7 @@ public class TileSpec implements Serializable {
     private ListTransformSpec transforms;
     private double meshCellSize = RenderParameters.DEFAULT_MESH_CELL_SIZE;
 
-    private final Set<String> labels;
+    private Set<String> labels;
 
     public TileSpec() {
         this.mipmapLevels = new TreeMap<>();
@@ -138,6 +139,13 @@ public class TileSpec implements Serializable {
 
     public boolean hasLabel(final String label) {
         return (labels != null) && labels.contains(label);
+    }
+
+    public void addLabel(final String label) {
+        if (labels == null) {
+            labels = new HashSet<>();
+        }
+        labels.add(label);
     }
 
     public boolean isBoundingBoxDerivationNeeded(final double meshCellSize) {
