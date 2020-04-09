@@ -59,6 +59,8 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 	final B blockSolveModel;
 	final S stitchingModel;
 
+	final SolveSet< G, B, S > solveSet;
+
 	public DistributedSolve(
 			final G globalSolveModel,
 			final B blockSolveModel,
@@ -74,9 +76,17 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 		// TODO: load matches only once, not for each thread
 		// assembleMatchData( parameters, runParams );
+
+		final int minZ = (int)Math.round( this.runParams.minZ );
+		final int maxZ = (int)Math.round( this.runParams.maxZ );
+
+		this.solveSet = defineSolveSet( minZ, maxZ, parameters.blockSize );
+
+		LOG.info( "Defined sets for global solve" );
+		LOG.info( "\n" + solveSet );
 	}
 
-	public abstract void run( final int setSize );
+	public abstract void run();
 
 	protected static HashSet< String > commonStrings( final HashSet< String > tileIdsA, final HashSet< String > tileIdsB )
 	{

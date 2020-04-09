@@ -47,17 +47,9 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 	}
 
 	@Override
-	public void run( final int setSize )
+	public void run()
 	{
 		final long time = System.currentTimeMillis();
-
-		final int minZ = (int)Math.round( this.runParams.minZ );
-		final int maxZ = (int)Math.round( this.runParams.maxZ );
-
-		final SolveSet< G, B, S > solveSet = defineSolveSet( minZ, maxZ, setSize );
-
-		LOG.info( "Defined sets for global solve" );
-		LOG.info( "\n" + solveSet );
 
 		final SparkConf conf = new SparkConf().setAppName( getClass().getCanonicalName() );
 		final JavaSparkContext sc = new JavaSparkContext(conf);
@@ -152,17 +144,20 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z1217_19m",
                             "--project", "Sec08",
+                            "--matchCollection", "Sec08_patch_matt",
                             "--stack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758",
                             //"--targetStack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758_new",
-                            "--regularizerModelType", "RIGID",
-                            "--optimizerLambdas", "1.0, 0.5, 0.1, 0.01",
+                            "--completeTargetStack",
+                            
+                            "--blockOptimizerLambdas", "1.0,0.5,0.1,0.01",
+                            "--blockOptimizerIterations", "100,100,40,20",
+                            "--blockMaxPlateauWidth", "50,50,50,50",
+
+                            "--blockSize", "100",
+                            //"--noStitching", // do not stitch first
+                            
                             "--minZ", "10000",
                             "--maxZ", "10199",
-
-                            "--threads", "4",
-                            "--maxIterations", "10000",
-                            "--completeTargetStack",
-                            "--matchCollection", "Sec08_patch_matt"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -172,15 +167,24 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 /*
-                final DistributedSolve< RigidModel2D, InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >, InterpolatedAffineModel2D< RigidModel2D, TranslationModel2D > > solve =
-                		new DistributedSolveSpark<>(
+                final DistributedSolve solve =
+                		new DistributedSolveSpark(
                 				new RigidModel2D(),
                 				new InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >( new AffineModel2D(), new RigidModel2D(), parameters.startLambda ),
                 				new InterpolatedAffineModel2D< RigidModel2D, TranslationModel2D >( new RigidModel2D(), new TranslationModel2D(), 0.25 ),
                 				parameters );
                 
-                solve.run( 100 );
+                solve.run();
                 */
+                
+                final DistributedSolve solve =
+                		new DistributedSolveSpark(
+                				parameters.globalModel(),
+                				parameters.blockModel(),
+                				parameters.stitchingModel(),
+                				parameters );
+               
+                	solve.run();
             }
         };
         clientRunner.run();

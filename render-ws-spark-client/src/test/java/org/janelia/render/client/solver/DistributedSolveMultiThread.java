@@ -36,20 +36,13 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	}
 
 	@Override
-	public void run( final int setSize )
+	public void run()
 	{
 		final long time = System.currentTimeMillis();
 
-		final int minZ = (int)Math.round( this.runParams.minZ );
-		final int maxZ = (int)Math.round( this.runParams.maxZ );
-
-		final SolveSet< G, B, S > solveSet = defineSolveSet( minZ, maxZ, setSize );
-
-		LOG.info( "Defined sets for global solve" );
-		LOG.info( "\n" + solveSet );
-
+		/*
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				solveSet.leftItems.get( 0 ),
+				this.solveSet.leftItems.get( 0 ),
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
 				parameters.renderWeb.baseDataUrl,
@@ -80,7 +73,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		}
 
 		SimpleMultiThreading.threadHaltUnClean();
-		System.exit( 0 );
+		*/
 
 		// Multithreaded for now (should be Spark for cluster-)
 
@@ -88,7 +81,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool( 8 );
 		final ArrayList< Callable< List< SolveItemData< G, B, S > > > > tasks = new ArrayList<>();
 
-		for ( final SolveItemData< G, B, S > solveItemData : solveSet.allItems() )
+		for ( final SolveItemData< G, B, S > solveItemData : this.solveSet.allItems() )
 		{
 			tasks.add( new Callable< List< SolveItemData< G, B, S > > >()
 			{
@@ -182,6 +175,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--blockOptimizerIterations", "100,100,40,20",
                             "--blockMaxPlateauWidth", "50,50,50,50",
 
+                            "--blockSize", "100",
                             //"--noStitching", // do not stitch first
                             
                             "--minZ", "10000",
@@ -209,7 +203,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                 				parameters.stitchingModel(),
                 				parameters );
                
-                solve.run( 100 );
+                solve.run();
             }
         };
         clientRunner.run();

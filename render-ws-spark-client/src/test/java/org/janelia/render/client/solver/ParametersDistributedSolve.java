@@ -64,6 +64,12 @@ public class ParametersDistributedSolve extends CommandLineParameters
     )
     public String matchCollection;
 
+    @Parameter(
+            names = "--blockSize",
+            description = "The size of the blocks in z, which will be computed in paralell (default:500) "
+    )
+    public Integer blockSize = 500;
+
     //
     // not required parameters
     //
