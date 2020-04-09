@@ -3,22 +3,18 @@ package org.janelia.render.client.solver;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.janelia.alignment.spec.TileSpec;
 
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
-import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.Tile;
 import mpicbg.models.TranslationModel2D;
 
 public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
 	final public static int samplesPerDimension = 5;
-	final public static boolean useCosineWeight = true;
+	final public static boolean useCosineWeight = false;
 
 	final SolveItemData< G, B, S > solveItemData;
 
