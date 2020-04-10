@@ -547,7 +547,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			for ( final Set< Tile< ? > > subgraph : graphs ) // TODO: type sets properly
 			{
-				LOG.info( "block " + inputSolveItem.getId() + ": new graph " + graphCount++ + "has " + subgraph.size() + " tiles." );
+				LOG.info( "block " + inputSolveItem.getId() + ": new graph " + graphCount++ + " has " + subgraph.size() + " tiles." );
 
 				int newMin = inputSolveItem.maxZ();
 				int newMax = inputSolveItem.minZ();
@@ -571,8 +571,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					}
 				}
 
-				LOG.info( newMin + " > " + newMax );
-
 				final SolveItem< G,B,S > solveItem = new SolveItem<>(
 						new SolveItemData< G, B, S >(
 							inputSolveItem.globalSolveModelInstance(),
@@ -581,7 +579,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 							newMin,
 							newMax ) );
 
-				LOG.info( "block " + solveItem.getId() + ": block " + solveItem.getId() + ": old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
+				LOG.info( "block " + solveItem.getId() + ": old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
+				LOG.info( "block " + solveItem.getId() + ": min: " + newMin + " > max: " + newMax );
 
 				// update all the maps
 				for ( final Tile< ? > potentiallyGroupedTile : subgraph )
