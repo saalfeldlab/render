@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import com.beust.jcommander.Parameter;
 import com.sun.tools.javac.code.Attribute.Array;
 
+import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
@@ -41,6 +42,7 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel2D;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -285,8 +287,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	{
 		final S model = solveItem.stitchingSolveModelInstance();
 
-		// combine tiles per layer that are be stitched first
-		final ArrayList< Integer > zList = new ArrayList<>( zToPairs.keySet() );
+		// combine tiles per layer that are be stitched first, but iterate over all z's 
+		// (also those only consisting of single tiles, they are connected in z though)
+		final ArrayList< Integer > zList = new ArrayList<>( solveItem.zToTileId().keySet() );
 		Collections.sort( zList );
 
 		for ( final int z : zList )
@@ -297,44 +300,47 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final HashMap< Tile< S >, String > tileToId = new HashMap<>();
 
 			// all connections within this z section
-			for ( final int index : zToPairs.get( z ) )
+			if ( zToPairs.containsKey( z ) )
 			{
-				final Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > pair = pairs.get( index );
-				
-				final String pId = solveItem.tileToIdMap().get( pair.getA().getA() );
-				final String qId = solveItem.tileToIdMap().get( pair.getA().getB() );
-
-				//LOG.info( "pId=" + pId  + " (" + idTotile.containsKey( pId ) + ") " + " qId=" + qId + " (" + idTotile.containsKey( qId ) + ") " + idTotile.keySet().size() );
-
-				final Tile< S > p, q;
-
-				if ( !idTotile.containsKey( pId ) )
+				for ( final int index : zToPairs.get( z ) )
 				{
-					//p = new Tile<>( model.copy() );
-					// since we do preAlign later this seems redundant. However, it makes sure the tiles are more or less at the right global coordinates
-					p = SolveTools.buildTile( solveItem.idToPreviousModel().get( pId ), model.copy(), 100, 100, 3 );
-					idTotile.put( pId, p );
-					tileToId.put( p, pId );
+					final Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > pair = pairs.get( index );
+					
+					final String pId = solveItem.tileToIdMap().get( pair.getA().getA() );
+					final String qId = solveItem.tileToIdMap().get( pair.getA().getB() );
+	
+					//LOG.info( "pId=" + pId  + " (" + idTotile.containsKey( pId ) + ") " + " qId=" + qId + " (" + idTotile.containsKey( qId ) + ") " + idTotile.keySet().size() );
+	
+					final Tile< S > p, q;
+	
+					if ( !idTotile.containsKey( pId ) )
+					{
+						//p = new Tile<>( model.copy() );
+						// since we do preAlign later this seems redundant. However, it makes sure the tiles are more or less at the right global coordinates
+						p = SolveTools.buildTile( solveItem.idToPreviousModel().get( pId ), model.copy(), 100, 100, 3 );
+						idTotile.put( pId, p );
+						tileToId.put( p, pId );
+					}
+					else
+					{
+						p = idTotile.get( pId );
+					}
+	
+					if ( !idTotile.containsKey( qId ) )
+					{
+						//q = new Tile<>( model.copy() );
+						q = SolveTools.buildTile( solveItem.idToPreviousModel().get( qId ), model.copy(), 100, 100, 3 );
+						idTotile.put( qId, q );
+						tileToId.put( q, qId );
+					}
+					else
+					{
+						q = idTotile.get( qId );
+					}
+	
+					// TODO: do we really need to duplicate the PointMatches?
+					p.connect( q, duplicate( pair.getB() ) );
 				}
-				else
-				{
-					p = idTotile.get( pId );
-				}
-
-				if ( !idTotile.containsKey( qId ) )
-				{
-					//q = new Tile<>( model.copy() );
-					q = SolveTools.buildTile( solveItem.idToPreviousModel().get( qId ), model.copy(), 100, 100, 3 );
-					idTotile.put( qId, q );
-					tileToId.put( q, qId );
-				}
-				else
-				{
-					q = idTotile.get( qId );
-				}
-
-				// TODO: do we really need to duplicate the PointMatches?
-				p.connect( q, duplicate( pair.getB() ) );
 			}
 
 			// add all missing TileIds as unconnected Tiles
