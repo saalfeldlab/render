@@ -13,7 +13,7 @@ import mpicbg.models.TranslationModel2D;
 
 public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
-	final public static int samplesPerDimension = 5;
+	final public static int samplesPerDimension = 2;
 	final public static boolean useCosineWeight = false;
 
 	final SolveItemData< G, B, S > solveItemData;
