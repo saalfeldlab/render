@@ -312,6 +312,41 @@ public class SolveTools
 
 	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModels, final HashMap<String, MinimalTileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
 	{
+		return render(idToModels, idToTileSpec, scale, Integer.MIN_VALUE, Integer.MAX_VALUE );
+	}
+
+	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModelsIn, final HashMap<String, MinimalTileSpec> idToTileSpecIn, final double scale, final int minZ, final int maxZ ) throws NoninvertibleModelException
+	{
+		final HashMap<String, AffineModel2D> idToModels = new HashMap<String, AffineModel2D>();
+		final HashMap<String, MinimalTileSpec> idToTileSpec = new HashMap<String, MinimalTileSpec>();
+
+		int count = 0;
+
+		LOG.info( "MinZ=" + minZ + " maxZ=" + maxZ );
+
+		for ( final String tileId : idToModelsIn.keySet() )
+		{
+			final MinimalTileSpec tileSpec = idToTileSpecIn.get( tileId );
+			final AffineModel2D model = idToModelsIn.get( tileId );
+			
+			if ( tileSpec.getZ() >= minZ && tileSpec.getZ() <= maxZ )
+			{
+				idToModels.put( tileId, model );
+				idToTileSpec.put( tileId, tileSpec );
+				++count;
+			}
+		}
+
+		if ( count == 0 )
+		{
+			LOG.info( "No tiles for the range available." );
+			return null;
+		}
+		else
+		{
+			LOG.info( "Rendering " + count + " tiles." );			
+		}
+
 		final double[] min = new double[] { Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE };
 		final double[] max = new double[] { -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE };
 
