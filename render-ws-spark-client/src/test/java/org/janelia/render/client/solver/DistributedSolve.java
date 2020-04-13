@@ -184,8 +184,8 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 			for ( int z = solveItemA.minZ(); z <= solveItemA.maxZ(); ++z )
 			{
-				// is this zPlane overlapping with anything?
-				boolean hasOverlap = false;
+				// is this zPlane of SolveItemA overlapping with anything?
+				boolean wasAssigned = false;
 
 				for ( int b = a + 1; b < allSolveItems.size(); ++b )
 				{
@@ -198,6 +198,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 					// is overlapping
 					if ( z >= solveItemB.minZ() && z <= solveItemB.maxZ() )
 					{
+						// TODO: this might be unnecessary now
 						// every pair exists twice
 						if ( pairExists( z, solveItemA, solveItemB, zToSolveItemPairs ) )
 							continue;
@@ -265,35 +266,54 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 						tileConfigBlocks.addTile( tileA );
 						tileConfigBlocks.addTile( tileB );
 
-						hasOverlap = true;
+						wasAssigned = true;
 					}
 				}
 
-				if ( !hasOverlap )
+				// was this zPlane of solveItemA assigned with anything in this run?
+				if ( !wasAssigned )
 				{
-					// there is no overlap with any other solveItem (should be beginning or end of the entire stack)
-					final HashSet< String > tileIds = solveItemA.zToTileId().get( z );
-					
-					// if there are none, we continue with the next
-					if ( tileIds.size() == 0 )
-						continue;
+					// if not, the reverse pair might have been assigned before (e.g. 0 and 69, now checking 69 that overlaps only with 0 and 1).
+					boolean previouslyAssigned = false;
 
-					gs.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
-					zToSolveItemPairs.putIfAbsent( z, new ArrayList<>() );
-
-					// remember which solveItems defined which tileIds of this z section
-					
-					final SolveItemData< G, B, S > solveItemB = new DummySolveItemData< G, B, S >( solveItemA.globalSolveModelInstance(), solveItemA.blockSolveModelInstance(), solveItemA.stitchingSolveModelInstance(), z );
-					zToSolveItemPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
-					solveItemDataToTile.putIfAbsent( solveItemB, new Tile<>( solveItemB.globalSolveModelInstance() ) );
-
-					for ( final String tileId : tileIds )
+					if ( zToSolveItemPairs.containsKey( z ) )
 					{
-						solveItemB.idToNewModel().put( tileId, new AffineModel2D() );
+						for ( final Pair< Pair< SolveItemData< G, B, S >, SolveItemData< G, B, S > >, HashSet< String > > entry : zToSolveItemPairs.get( z ) )
+						{
+							if ( entry.getA().getA().equals( solveItemA ) || entry.getA().getB().equals( solveItemA ) )
+							{
+								previouslyAssigned = true;
+								break;
+							}
+						}
+					}
 
-						// remember the tileids and tileSpecs
-						gs.zToTileIdGlobal.get( z ).add( tileId );
-						gs.idToTileSpecGlobal.put( tileId, solveItemA.idToTileSpec().get( tileId ) );
+					if ( !previouslyAssigned )
+					{
+						// there is no overlap with any other solveItem (should be beginning or end of the entire stack)
+						final HashSet< String > tileIds = solveItemA.zToTileId().get( z );
+
+						// if there are none, we continue with the next
+						if ( tileIds.size() == 0 )
+							continue;
+	
+						gs.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
+						zToSolveItemPairs.putIfAbsent( z, new ArrayList<>() );
+	
+						// remember which solveItems defined which tileIds of this z section
+						
+						final SolveItemData< G, B, S > solveItemB = new DummySolveItemData< G, B, S >( solveItemA.globalSolveModelInstance(), solveItemA.blockSolveModelInstance(), solveItemA.stitchingSolveModelInstance(), z );
+						zToSolveItemPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
+						solveItemDataToTile.putIfAbsent( solveItemB, new Tile<>( solveItemB.globalSolveModelInstance() ) );
+	
+						for ( final String tileId : tileIds )
+						{
+							solveItemB.idToNewModel().put( tileId, new AffineModel2D() );
+	
+							// remember the tileids and tileSpecs
+							gs.zToTileIdGlobal.get( z ).add( tileId );
+							gs.idToTileSpecGlobal.put( tileId, solveItemA.idToTileSpec().get( tileId ) );
+						}
 					}
 				}
 			}
