@@ -103,7 +103,7 @@ public class ParametersDistributedSolve extends CommandLineParameters
             names = "--maxIterationsGlobal",
             description = "Max iterations global"
     )
-    public Integer maxIterationsGlobal = 1000;
+    public Integer maxIterationsGlobal = 10000;
 
     @Parameter(
             names = "--maxPlateauWidthGlobal",
