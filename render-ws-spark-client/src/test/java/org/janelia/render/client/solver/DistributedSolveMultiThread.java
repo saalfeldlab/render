@@ -1,10 +1,12 @@
 package org.janelia.render.client.solver;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -13,12 +15,11 @@ import org.janelia.render.client.ClientRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ij.ImageJ;
 import mpicbg.models.Affine2D;
-import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.Model;
-import mpicbg.models.NoninvertibleModelException;
-import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.spim.io.IOFunctions;
+import net.imglib2.multithreading.SimpleMultiThreading;
 
 public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
 {
@@ -33,13 +34,13 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	}
 
 	@Override
-	public GlobalSolve solve()
+	public List< SolveItemData< G, B, S > > distributedSolve()
 	{
 		final long time = System.currentTimeMillis();
 
 		/*
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 0 ),
+				this.solveSet.leftItems.get( 65 ),
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
 				parameters.renderWeb.baseDataUrl,
@@ -59,11 +60,11 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		try
 		{
 			w.run();
+			new ImageJ();
 			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
 				s.visualizeAligned();
 
-		} catch ( IOException | ExecutionException | InterruptedException
-				| NoninvertibleModelException e1 )
+		} catch ( Exception e1 )
 		{
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -72,10 +73,12 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		SimpleMultiThreading.threadHaltUnClean();
 		*/
 
-		// set up executor service
-		LOG.info( "Multithreading with thread num="+ Runtime.getRuntime().availableProcessors() / 2 );
+		final ArrayList< SolveItemData< G, B, S > > allItems;
 
-		final ExecutorService taskExecutor = Executors.newFixedThreadPool( Runtime.getRuntime().availableProcessors() / 2 );
+		// set up executor service
+		LOG.info( "Multithreading with thread num=" + parameters.threadsGlobal );
+
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool( parameters.threadsGlobal );
 		final ArrayList< Callable< List< SolveItemData< G, B, S > > > > tasks = new ArrayList<>();
 
 		for ( final SolveItemData< G, B, S > solveItemData : this.solveSet.allItems() )
@@ -110,13 +113,14 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 			});
 		}
 
-		final ArrayList< SolveItemData< G, B, S > > allItems = new ArrayList<>();
+		allItems = new ArrayList<>();			
 
 		try
 		{
 			// invokeAll() returns when all tasks are complete
 			final List< Future< List< SolveItemData< G, B, S > > > > futures = taskExecutor.invokeAll( tasks );
 
+			
 			for ( final Future< List< SolveItemData< G, B, S > > > future : futures )
 				allItems.addAll( future.get() );
 		}
@@ -129,19 +133,9 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 
 		taskExecutor.shutdown();
 
-		try
-		{
-			final GlobalSolve gs = globalSolve( allItems );
+		LOG.info( "Took: " + ( System.currentTimeMillis() - time )/100 + " sec.");
 
-			LOG.info( "Took: " + ( System.currentTimeMillis() - time )/100 + " sec.");
-
-			return gs;
-		}
-		catch ( NotEnoughDataPointsException | IllDefinedDataPointsException | InterruptedException | ExecutionException | NoninvertibleModelException e )
-		{
-			e.printStackTrace();
-			return null;
-		}
+		return allItems;
 	}
 
 	public static void main( String[] args )
@@ -156,22 +150,27 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                 if (args.length == 0) {
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                            "--owner", "Z1217_19m",
-                            "--project", "Sec08",
-                            "--matchCollection", "Sec08_patch_matt",
-                            "--stack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758",
-                            //"--targetStack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758_new",
-                            "--completeTargetStack",
+                            "--owner", "Z1217_33m_BR",
+                            "--project", "Sec10",
+                            "--matchCollection", "Sec10_multi",
+                            "--stack", "v2_acquire_merged",
+                            //"--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_fix_prealign",
+                            //"--completeTargetStack",
                             
                             "--blockOptimizerLambdas", "1.0,0.5,0.1,0.01",
-                            //"--blockOptimizerIterations", "100,100,40,20",
-                            //"--blockMaxPlateauWidth", "50,50,50,50",
+                            "--blockOptimizerIterations", "200,100,40,20",
+                            "--blockMaxPlateauWidth", "50,50,40,20",
 
-                            "--blockSize", "100",
+                            //"--blockSize", "100",
                             //"--noStitching", // do not stitch first
                             
-                            "--minZ", "10000",
-                            "--maxZ", "10199",
+                            "--minZ", "1",
+                            "--maxZ", "34022",
+
+                            //"--threadsLocal", "1", 
+                            "--threadsGlobal", "65",
+                            "--maxPlateauWidthGlobal", "500",
+                            "--maxIterationsGlobal", "10000"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -190,14 +189,20 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                 */
                
                 DistributedSolve.visualizeOutput = true;
+                //DistributedSolve.visMinZ = 240;
+                //DistributedSolve.visMaxZ = 260;
                 
+                @SuppressWarnings({ "rawtypes", "unchecked" })
                 final DistributedSolve solve =
                 		new DistributedSolveMultiThread(
                 				parameters.globalModel(),
                 				parameters.blockModel(),
                 				parameters.stitchingModel(),
                 				parameters );
-               
+
+                // serialize the result
+                solve.setSerializer( new DistributedSolveSerializer( new File(".") ) );
+
                 solve.run();
             }
         };

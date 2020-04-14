@@ -15,6 +15,7 @@ import java.util.concurrent.Future;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +62,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 	final S stitchingModel;
 
 	final SolveSet< G, B, S > solveSet;
+	DistributedSolveSerializer serializer = null;
 
 	public DistributedSolve(
 			final G globalSolveModel,
@@ -87,11 +89,33 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		LOG.info( "\n" + solveSet );
 	}
 
-	protected abstract GlobalSolve solve();
+	protected abstract List< SolveItemData< G, B, S > > distributedSolve();
+
+	public void setSerializer( final DistributedSolveSerializer serializer )
+	{
+		this.serializer = serializer;
+	}
 
 	public void run() throws IOException, NoninvertibleModelException 
 	{
-		final GlobalSolve solve = solve();
+		final List< SolveItemData< G, B, S > > allItems;
+		final GlobalSolve solve;
+
+		try
+		{
+			allItems = distributedSolve();
+
+			if ( serializer != null )
+				serializer.serialize( allItems );
+
+			solve = globalSolve( allItems );
+		}
+		catch ( Exception e )
+		{
+			LOG.info("FAILED to compute solve: " + e );
+			e.printStackTrace();
+			return;
+		}
 
 		if ( parameters.targetStack != null )
 		{

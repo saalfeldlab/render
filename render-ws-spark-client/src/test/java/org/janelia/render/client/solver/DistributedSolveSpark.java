@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -14,10 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import mpicbg.models.Affine2D;
-import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.Model;
-import mpicbg.models.NoninvertibleModelException;
-import mpicbg.models.NotEnoughDataPointsException;
 import net.imglib2.util.Pair;
 
 public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
@@ -33,7 +29,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 	}
 
 	@Override
-	public GlobalSolve solve()
+	public List< SolveItemData< G, B, S > > distributedSolve()
 	{
 		final long time = System.currentTimeMillis();
 
@@ -96,19 +92,9 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 
 		sc.close();
 
-		try
-		{
-			final GlobalSolve gs = globalSolve( allItems );
+		LOG.info( "Took: " + ( System.currentTimeMillis() - time )/100 + " sec.");
 
-			LOG.info( "Took: " + ( System.currentTimeMillis() - time )/100 + " sec.");
-
-			return gs;
-		}
-		catch ( NotEnoughDataPointsException | IllDefinedDataPointsException | InterruptedException | ExecutionException | NoninvertibleModelException e )
-		{
-			e.printStackTrace();
-			return null;
-		}
+		return allItems;
 	}
 
 	public static void main( String[] args )
@@ -158,9 +144,10 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
                 solve.run();
                 */
 
-                DistributedSolve.visualizeOutput = true;
+                DistributedSolve.visualizeOutput = false;
                 
-                final DistributedSolve solve =
+                @SuppressWarnings({ "rawtypes", "unchecked" })
+				final DistributedSolve solve =
                 		new DistributedSolveSpark(
                 				parameters.globalModel(),
                 				parameters.blockModel(),

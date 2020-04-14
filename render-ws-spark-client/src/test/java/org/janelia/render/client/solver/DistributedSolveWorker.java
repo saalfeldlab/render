@@ -664,6 +664,19 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			LOG.info("block " + solveItem.getId() + ": run: optimizing {} tiles", solveItem.idToTileMap().size() );
 		}
 
+		LOG.info( "block " + solveItem.getId() + ": prealigning" );
+
+		for (final Tile< B > tile : solveItem.idToTileMap().values())
+			if ( InterpolatedAffineModel2D.class.isInstance( tile.getModel() ))
+				((InterpolatedAffineModel2D) tile.getModel()).setLambda( 1.0 ); // all rigid
+		
+		try {
+			tileConfig.preAlign();
+		} catch (NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 		LOG.info( "block " + solveItem.getId() + ": lambda's used:" );
 
 		for ( final double lambda : blockOptimizerLambdas )
@@ -673,7 +686,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		{
 			final double lambda = blockOptimizerLambdas.get( s );
 
-			for (final Tile< B > tile : solveItem.idToTileMap().values())
+			for (final Tile< ? > tile : tileConfig.getTiles() )
 				if ( InterpolatedAffineModel2D.class.isInstance( tile.getModel() ))
 					((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
 
