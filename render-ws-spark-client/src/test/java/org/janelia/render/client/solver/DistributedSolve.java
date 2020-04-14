@@ -439,7 +439,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 							this.blockSolveModel,
 							this.stitchingModel,
 							( set0.minZ() + set0.maxZ() ) / 2,
-							( set1.minZ() + set1.maxZ() ) / 2 ) );
+							( set1.minZ() + set1.maxZ() ) / 2 - 1 ) );
 		}
 
 		return new SolveSet< G, B, S >( leftSets, rightSets );
