@@ -66,7 +66,7 @@ public class ParametersDistributedSolve extends CommandLineParameters
 
     @Parameter(
             names = "--blockSize",
-            description = "The size of the blocks in z, which will be computed in paralell (default:500) "
+            description = "The size of the blocks in z, which will be computed in paralell (default:500, min:3) "
     )
     public Integer blockSize = 500;
 
@@ -276,6 +276,9 @@ public class ParametersDistributedSolve extends CommandLineParameters
 		final RunParameters runParams = new RunParameters();
 
 		parameters.initDefaultValues();
+
+		if ( parameters.blockSize < 3 )
+			throw new RuntimeException( "Blocksize has to be >= 3." );
 
 		runParams.renderDataClient = parameters.renderWeb.getDataClient();
 		runParams.matchDataClient = new RenderDataClient(
