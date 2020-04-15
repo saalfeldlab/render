@@ -104,15 +104,32 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		try
 		{
 			allItems = distributedSolve();
+		}
+		catch ( Exception e )
+		{
+			LOG.info("FAILED to compute distributed blocks (STOPPING): " + e );
+			e.printStackTrace();
+			return;
+		}
 
+		try
+		{
 			if ( serializer != null )
 				serializer.serialize( allItems );
+		}
+		catch ( Exception e )
+		{
+			LOG.info("FAILED to serialize (continuing): " + e );
+			e.printStackTrace();
+		}
 
+		try
+		{
 			solve = globalSolve( allItems );
 		}
 		catch ( Exception e )
 		{
-			LOG.info("FAILED to compute solve: " + e );
+			LOG.info("FAILED to compute global solve (STOPPING): " + e );
 			e.printStackTrace();
 			return;
 		}
