@@ -64,6 +64,9 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 	final SolveSet< G, B, S > solveSet;
 	DistributedSolveSerializer serializer = null;
 
+	List< SolveItemData< G, B, S > > allItems = null;
+	GlobalSolve solve = null;
+
 	public DistributedSolve(
 			final G globalSolveModel,
 			final B blockSolveModel,
@@ -98,21 +101,35 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 	public void run() throws IOException, NoninvertibleModelException 
 	{
-		final List< SolveItemData< G, B, S > > allItems;
-		final GlobalSolve solve;
-
 		try
 		{
-			allItems = distributedSolve();
-
-			if ( serializer != null )
-				serializer.serialize( allItems );
-
-			solve = globalSolve( allItems );
+			this.allItems = distributedSolve();
 		}
 		catch ( Exception e )
 		{
-			LOG.info("FAILED to compute solve: " + e );
+			LOG.info("FAILED to compute distributed blocks (STOPPING): " + e );
+			e.printStackTrace();
+			return;
+		}
+
+		try
+		{
+			if ( serializer != null )
+				serializer.serialize( this.allItems );
+		}
+		catch ( Exception e )
+		{
+			LOG.info("FAILED to serialize (continuing): " + e );
+			e.printStackTrace();
+		}
+
+		try
+		{
+			this.solve = globalSolve( this.allItems );
+		}
+		catch ( Exception e )
+		{
+			LOG.info("FAILED to compute global solve (STOPPING): " + e );
 			e.printStackTrace();
 			return;
 		}
@@ -153,6 +170,9 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 			SimpleMultiThreading.threadHaltUnClean();
 		}
 	}
+
+	public List< SolveItemData< G, B, S > > allItems() { return allItems; }
+	public GlobalSolve globalSolve() { return solve; }
 
 	protected static HashSet< String > commonStrings( final HashSet< String > tileIdsA, final HashSet< String > tileIdsB )
 	{
@@ -364,7 +384,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 	
 		for ( final SolveItemData< G, B, S > solveItem : solveItemDataToTile.keySet() )
 		{
-			blockToAffine2d.put( solveItem, DistributedSolveWorker.createAffine( solveItemDataToTile.get( solveItem ).getModel() ) );
+			blockToAffine2d.put( solveItem, SolveTools.createAffine( solveItemDataToTile.get( solveItem ).getModel() ) );
 
 			if ( !DummySolveItemData.class.isInstance( solveItem ) )
 				LOG.info( "Block " + solveItem.getId() + ": " + blockToAffine2d.get( solveItem ) );

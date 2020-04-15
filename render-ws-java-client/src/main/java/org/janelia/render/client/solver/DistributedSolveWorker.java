@@ -267,7 +267,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				final AffineModel2D pModel = inputSolveItem.idToStitchingModel().get( pTileId );
 				final AffineModel2D qModel = inputSolveItem.idToStitchingModel().get( qTileId );
 
-				p.connect(q, createRelativePointMatches( pair.getB(), pModel, qModel ) );
+				p.connect(q, SolveTools.createRelativePointMatches( pair.getB(), pModel, qModel ) );
 			}
 		}
 		//else
@@ -334,7 +334,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					}
 	
 					// TODO: do we really need to duplicate the PointMatches?
-					p.connect( q, duplicate( pair.getB() ) );
+					p.connect( q, SolveTools.duplicate( pair.getB() ) );
 				}
 			}
 
@@ -411,7 +411,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					for ( final Tile< ? > t : set )
 					{
 						final String tileId = tileToId.get( t );
-						final AffineModel2D affine = createAffine( ((Affine2D<?>)t.getModel()) );
+						final AffineModel2D affine = SolveTools.createAffine( ((Affine2D<?>)t.getModel()) );
 
 						solveItem.idToStitchingModel().put( tileId, affine );
 
@@ -463,59 +463,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				}
 			}
 		}
-	}
-
-	protected static AffineModel2D createAffine( final Affine2D< ? > model )
-	{
-		final AffineModel2D m = new AffineModel2D();
-		m.set( model.createAffine() );
-
-		return m;
-	}
-
-	protected static List< PointMatch > duplicate( List< PointMatch > pms )
-	{
-		final List< PointMatch > copy = new ArrayList<>();
-
-		for ( final PointMatch pm : pms )
-			copy.add( new PointMatch( pm.getP1().clone(), pm.getP2().clone(), pm.getWeight() ) );
-
-		return copy;
-	}
-
-	public static List< PointMatch > createRelativePointMatches(
-			final List< PointMatch > absolutePMs,
-			final Model< ? > pModel,
-			final Model< ? > qModel )
-	{
-		final List< PointMatch > relativePMs = new ArrayList<>( absolutePMs.size() );
-
-		if ( absolutePMs.size() == 0 )
-			return relativePMs;
-
-		final int n = absolutePMs.get( 0 ).getP1().getL().length;
-
-		for ( final PointMatch absPM : absolutePMs )
-		{
-			final double[] pLocal = new double[ n ];
-			final double[] qLocal = new double[ n ];
-
-			for (int d = 0; d < n; ++d )
-			{
-				pLocal[ d ] = absPM.getP1().getL()[ d ];
-				qLocal[ d ] = absPM.getP2().getL()[ d ];
-			}
-
-			if ( pModel != null )
-				pModel.applyInPlace( pLocal );
-
-			if ( qModel != null )
-				qModel.applyInPlace( qLocal );
-
-			relativePMs.add( new PointMatch( new Point( pLocal ), new Point( qLocal ), absPM.getWeight() ) );
-		}
-
-		return relativePMs;
 	}
 
 	protected void split()
@@ -742,7 +689,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				final String tileId = solveItem.tileToIdMap().get( tile );
 
 				tileIds.add( tileId );
-				tileIdToGroupModel.put( tileId, createAffine( (Affine2D<?>)solveItem.tileToGroupedTile().get( tile ).getModel() ) );
+				tileIdToGroupModel.put( tileId, SolveTools.createAffine( (Affine2D<?>)solveItem.tileToGroupedTile().get( tile ).getModel() ) );
 			}
 
 			Collections.sort( tileIds );
@@ -776,7 +723,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			for (final String tileId : tileIds )
 			{
 				final Tile< ? > tile = solveItem.idToTileMap().get(tileId);
-				final AffineModel2D affine = createAffine( (Affine2D<?>)tile.getModel() );
+				final AffineModel2D affine = SolveTools.createAffine( (Affine2D<?>)tile.getModel() );
 	
 				/*
 				// TODO: REMOVE

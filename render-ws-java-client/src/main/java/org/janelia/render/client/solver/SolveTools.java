@@ -42,6 +42,8 @@ import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
@@ -65,6 +67,60 @@ import net.imglib2.view.Views;
 public class SolveTools
 {
 	private SolveTools() {}
+
+	protected static AffineModel2D createAffine( final Affine2D< ? > model )
+	{
+		final AffineModel2D m = new AffineModel2D();
+		m.set( model.createAffine() );
+
+		return m;
+	}
+
+	protected static List< PointMatch > duplicate( List< PointMatch > pms )
+	{
+		final List< PointMatch > copy = new ArrayList<>();
+
+		for ( final PointMatch pm : pms )
+			copy.add( new PointMatch( pm.getP1().clone(), pm.getP2().clone(), pm.getWeight() ) );
+
+		return copy;
+	}
+
+	public static List< PointMatch > createRelativePointMatches(
+			final List< PointMatch > absolutePMs,
+			final Model< ? > pModel,
+			final Model< ? > qModel )
+	{
+		final List< PointMatch > relativePMs = new ArrayList<>( absolutePMs.size() );
+
+		if ( absolutePMs.size() == 0 )
+			return relativePMs;
+
+		final int n = absolutePMs.get( 0 ).getP1().getL().length;
+
+		for ( final PointMatch absPM : absolutePMs )
+		{
+			final double[] pLocal = new double[ n ];
+			final double[] qLocal = new double[ n ];
+
+			for (int d = 0; d < n; ++d )
+			{
+				pLocal[ d ] = absPM.getP1().getL()[ d ];
+				qLocal[ d ] = absPM.getP2().getL()[ d ];
+			}
+
+			if ( pModel != null )
+				pModel.applyInPlace( pLocal );
+
+			if ( qModel != null )
+				qModel.applyInPlace( qLocal );
+
+			relativePMs.add( new PointMatch( new Point( pLocal ), new Point( qLocal ), absPM.getWeight() ) );
+		}
+
+		return relativePMs;
+	}
+
 
 	public static AffineModel2D createAffineModel( final RigidModel2D rigid )
 	{
@@ -309,7 +365,160 @@ public class SolveTools
 		final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 1 ] + ' ' + m[ 2 ] + ' ' + m[ 3 ] + ' ' + m[ 4 ] + ' ' + m[ 5 ];
 		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
 	}
+/*
+	public static ImagePlus visualize(
+			final HashMap<String, AffineModel2D> idToModels,
+			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final double[] scale )
+	{
+		final double[] min = new double[] { Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE };
+		final double[] max = new double[] { -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE };
 
+		final double[] tmpMin = new double[ 2 ];
+		final double[] tmpMax = new double[ 2 ];
+
+		final AffineModel2D scaleModel = new AffineModel2D();
+		scaleModel.set( scale[ 0 ], 0, 0, scale[ 1 ], 0, 0 );
+
+		final HashMap<String, AffineModel2D> idToInvertedRenderModels = new HashMap<>();
+
+		// get bounding box
+		for ( final String tileId : idToModels.keySet() )
+		{
+			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
+			min[ 2 ] = Math.min( min[ 2 ], tileSpec.getZ() * scale[ 2 ] );
+			max[ 2 ] = Math.max( max[ 2 ], tileSpec.getZ() * scale[ 2 ] );
+
+			final int w = tileSpec.getWidth();
+			final int h = tileSpec.getHeight();
+
+			final AffineModel2D model = idToModels.get( tileId ).copy();
+
+			// scale the actual transform down to the scale level we want to render in
+			model.preConcatenate( scaleModel );
+
+			tmpMin[ 0 ] = 0;
+			tmpMin[ 1 ] = 0;
+			tmpMax[ 0 ] = w - 1;
+			tmpMax[ 1 ] = h - 1;
+
+			model.estimateBounds( tmpMin, tmpMax );
+
+			min[ 0 ] = Math.min( min[ 0 ], Math.min( tmpMin[ 0 ], tmpMax[ 0 ] ) );
+			max[ 0 ] = Math.max( max[ 0 ], Math.max( tmpMin[ 0 ], tmpMax[ 0 ] ) );
+
+			min[ 1 ] = Math.min( min[ 1 ], Math.min( tmpMin[ 1 ], tmpMax[ 1 ] ) );
+			max[ 1 ] = Math.max( max[ 1 ], Math.max( tmpMin[ 1 ], tmpMax[ 1 ] ) );
+
+			idToInvertedRenderModels.put( tileId, model.createInverse() );
+		}
+
+		System.out.println( "x: " + min[ 0 ] + " >>> " + max[ 0 ] );
+		System.out.println( "y: " + min[ 1 ] + " >>> " + max[ 1 ] );
+		System.out.println( "z: " + min[ 2 ] + " >>> " + max[ 2 ] );
+
+		final long[] minI = new long[ 3 ];
+		final long[] maxI = new long[ 3 ];
+		final long[] dimI = new long[ 3 ];
+
+		for ( int d = 0; d < minI.length; ++d )
+		{
+			minI[ d ] = Math.round( Math.floor( min[ d ] ) );
+			maxI[ d ] = Math.round( Math.ceil( max[ d ] ) );
+			dimI[ d ] = maxI[ d ] - minI[ d ] + 1;
+		}
+
+		System.out.println( "BB x: " + minI[ 0 ] + " >>> " + maxI[ 0 ] + ", d=" + dimI[ 0 ] );
+		System.out.println( "BB y: " + minI[ 1 ] + " >>> " + maxI[ 1 ] + ", d=" + dimI[ 1 ]);
+		System.out.println( "BB z: " + minI[ 2 ] + " >>> " + maxI[ 2 ] + ", d=" + dimI[ 2 ]);
+
+		// init image
+		final ImagePlusImg< UnsignedByteType, ? > stack = new ImagePlusImgFactory<UnsignedByteType>( new UnsignedByteType()).create( dimI );
+		final RandomAccessibleInterval< UnsignedByteType > img = Views.translate( stack, minI );
+
+		final AffineModel2D invScaleModel = new AffineModel2D();
+		invScaleModel.set( 1.0/scale[ 0 ], 0, 0, 1.0/scale[ 1 ], 0, 0 );
+
+		// build the lookup z to tilespec
+		final HashMap<Integer, ArrayList< Pair<String,MinimalTileSpec> > > zToTileSpec = new HashMap<>(); 
+
+		for ( final String tileId : idToInvertedRenderModels.keySet() )
+		{
+			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
+			final int z = (int)Math.round( tileSpec.getZ() );
+			zToTileSpec.putIfAbsent(z, new ArrayList<>());
+			zToTileSpec.get( z ).add( new ValuePair<>( tileId, tileSpec ) );
+			
+		}
+
+		
+		// render the images
+		int i = 0;
+		for ( final String tileId : idToRenderModels.keySet() )
+		{
+			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
+			final long z = Math.round( tileSpec.getZ() );
+			final AffineModel2D model = idToRenderModels.get( tileId );
+
+			// scale the transform so it takes into account that the input images are scaled
+			model.concatenate( invScaleModel );
+
+			final ImageProcessorWithMasks imp = null;//getImage( tileSpec, scale );
+			RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.ip) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
+			RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.mask) ) ), new NearestNeighborInterpolatorFactory() );
+			
+			// draw
+			final IterableInterval< UnsignedByteType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
+			final Cursor< UnsignedByteType > c = slice.cursor();
+			
+			AffineTransform2D affine = new AffineTransform2D();
+			double[] array = new double[6];
+			model.toArray( array );
+			affine.set( array[0], array[2], array[4], array[1], array[3], array[5] );
+			final Cursor< FloatType > cSrc = Views.interval( RealViews.affine( interpolant, affine ), img ).cursor();
+			final Cursor< UnsignedByteType > cMask = Views.interval( RealViews.affine( interpolantMask, affine ), img ).cursor();
+			
+			while ( c.hasNext() )
+			{
+				c.fwd();
+				cMask.fwd();
+				cSrc.fwd();
+				if (cMask.get().get() == 255) {
+					FloatType srcType = cSrc.get();
+					float value = srcType.get();
+					if (value >= 0) {
+						UnsignedByteType type = c.get();
+						final float currentValue = type.get();
+						if ( currentValue > 0 )
+							type.setReal( ( value + currentValue ) / 2 );
+						else
+							type.setReal( value );
+					}
+				}
+			}
+
+			IJ.showProgress( ++i, idToRenderModels.keySet().size() - 1 );
+		}
+
+
+		//final ImagePlus imp = ImageJFunctions.wrap( img, "stack", null );
+		final ImagePlus imp = stack.getImagePlus();
+
+		Calibration cal = new Calibration();
+		cal.xOrigin = -minI[ 0 ];
+		cal.yOrigin = -minI[ 1 ];
+		cal.zOrigin = -minI[ 2 ];
+		cal.pixelWidth = 1.0/scale[ 0];
+		cal.pixelHeight = 1.0/scale[ 1 ];
+		cal.pixelDepth = 1.0;
+		imp.setCalibration( cal );
+		imp.setDimensions( 1, (int)dimI[ 2 ], 1 );
+		imp.setDisplayRange( 0, 255 );
+		imp.show();
+
+		return imp;
+	}
+	*/
 	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModels, final HashMap<String, MinimalTileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
 	{
 		return render(idToModels, idToTileSpec, scale, Integer.MIN_VALUE, Integer.MAX_VALUE );

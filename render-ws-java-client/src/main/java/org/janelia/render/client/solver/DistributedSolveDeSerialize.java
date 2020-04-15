@@ -13,8 +13,28 @@ import org.janelia.render.client.ClientRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import bdv.util.Bdv;
+import bdv.util.BdvFunctions;
+import bdv.util.BdvOptions;
+import bdv.util.BdvStackSource;
+import bdv.util.volatiles.VolatileViews;
+import ij.ImageJ;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
+import net.imglib2.Cursor;
+import net.imglib2.Interval;
+import net.imglib2.RandomAccess;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.cache.img.CellLoader;
+import net.imglib2.cache.img.ReadOnlyCachedCellImgFactory;
+import net.imglib2.cache.img.ReadOnlyCachedCellImgOptions;
+import net.imglib2.cache.img.SingleCellArrayImg;
+import net.imglib2.multithreading.SimpleMultiThreading;
+import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.type.volatiles.VolatileFloatType;
+import net.imglib2.view.Views;
+
 
 public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
 {
@@ -56,13 +76,19 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 		Arrays.sort( files );
 
 		LOG.info("Found " + files.length + " serialized objects" );
-		
+
+		if ( files.length < 3 )
+		{
+			LOG.info("Not sufficient, stopping." );
+			System.exit( 0 );
+		}
+
 		for ( final String filename : files )
 		{
 			try
 	        {
 				 // Reading the object from a file 
-	            FileInputStream file = new FileInputStream( new File( filename ) ); 
+	            FileInputStream file = new FileInputStream( new File( path, filename ) ); 
 	            ObjectInputStream in = new ObjectInputStream(file); 
 	              
 	            // Method for deserialization of object 
@@ -106,7 +132,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             //"--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_fix_prealign",
                             //"--completeTargetStack",
                             
-                            "--blockOptimizerLambdas", "1.0,0.5,0.1,0.01",
+                            //"--blockOptimizerLambdasRigid", "1.0,0.5,0.1,0.01",
                             "--blockOptimizerIterations", "200,100,40,20",
                             "--blockMaxPlateauWidth", "50,50,40,20",
 
@@ -118,7 +144,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 
                             //"--threadsLocal", "1", 
                             "--threadsGlobal", "65",
-                            "--maxPlateauWidthGlobal", "500",
+                            "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000"
                     };
                     parameters.parse(testArgs);
@@ -137,9 +163,9 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                 				parameters );
                 */
                
-                DistributedSolve.visualizeOutput = false;
-                DistributedSolve.visMinZ = 240;
-                DistributedSolve.visMaxZ = 260;
+                DistributedSolve.visualizeOutput = true;
+                DistributedSolve.visMinZ = 1223;
+                DistributedSolve.visMaxZ = 1285	;
                 
                 @SuppressWarnings({ "rawtypes", "unchecked" })
                 final DistributedSolve solve =
@@ -148,12 +174,104 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                 				parameters.blockModel(),
                 				parameters.stitchingModel(),
                 				parameters,
-                				new File(".") );
+                				new File("..") );
                 
                 solve.run();
+
+                final GlobalSolve gs = solve.globalSolve();
+                
+                // 	visualize new result
+    			new ImageJ();
+
+    			final RandomAccessibleInterval< FloatType > vis =
+    					new VisualizingRandomAccessibleInterval( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, new double[] { 0.15, 0.15, 1 } );
+
+    			long[] min = new long[ vis.numDimensions() ];
+    			long[] max = new long[ vis.numDimensions() ];
+    			
+    			vis.min(min);
+    			vis.max(max);
+    			
+    			min[ 2 ] = 20000;
+    			max[ 2 ] = 25000;
+    			
+    			final RandomAccessibleInterval< FloatType > visCrop = Views.interval(vis, min, max);
+    			
+    			//ImageJFunctions.show( Views.hyperSlice(vis, 2, 24700 ) );
+
+    			final RandomAccessibleInterval< FloatType > cachedImg = cacheRandomAccessibleInterval(
+    					vis,
+    					Integer.MAX_VALUE,
+    					new FloatType(),
+    					cellDim );
+
+    			final RandomAccessibleInterval< VolatileFloatType > volatileImg = VolatileViews.wrapAsVolatile( cachedImg );
+    		
+    			BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( "Preview" ).numRenderingThreads( parameters.threadsGlobal );
+    			BdvStackSource< ? > preview = BdvFunctions.show( volatileImg, "weights", options );
+    			preview.setDisplayRange( 0, 3 );
+			
+    			SimpleMultiThreading.threadHaltUnClean();
             }
         };
         clientRunner.run();
+	}
+
+	public static int[] cellDim = new int[]{ 10, 10, 10 };
+	public static int maxCacheSize = 1000000;
+	
+	public static < T extends NativeType< T > > RandomAccessibleInterval< T > cacheRandomAccessibleInterval(
+			final RandomAccessibleInterval< T > input,
+			final long maxCacheSize,
+			final T type,
+			final int... cellDim )
+	{
+		final RandomAccessibleInterval< T > in;
+
+		if ( Views.isZeroMin( input ) )
+			in = input;
+		else
+			in = Views.zeroMin( input );
+		
+		final ReadOnlyCachedCellImgOptions options = new ReadOnlyCachedCellImgOptions().cellDimensions( cellDim ).maxCacheSize( maxCacheSize );
+		final ReadOnlyCachedCellImgFactory factory = new ReadOnlyCachedCellImgFactory( options );
+
+		final CellLoader< T > loader = new CellLoader< T >()
+		{
+			@Override
+			public void load( final SingleCellArrayImg< T, ? > cell ) throws Exception
+			{
+				final Cursor< T > cursor = cell.localizingCursor();
+				final RandomAccess< T > ra = in.randomAccess();
+				
+				while( cursor.hasNext() )
+				{
+					cursor.fwd();
+					ra.setPosition( cursor );
+					cursor.get().set( ra.get() );
+				}
+			}
+		};
+
+		final long[] dim = new long[ in.numDimensions() ];
+		in.dimensions( dim );
+
+		return translateIfNecessary( input, factory.create( dim, type, loader ) );
+	}
+
+	public static < T > RandomAccessibleInterval< T > translateIfNecessary( final Interval original, final RandomAccessibleInterval< T > copy )
+	{
+		if ( Views.isZeroMin( original ) )
+		{
+			return copy;
+		}
+		else
+		{
+			final long[] min = new long[ original.numDimensions() ];
+			original.min( min );
+
+			return Views.translate( copy, min );
+		}
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolveDeSerialize.class);
