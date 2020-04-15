@@ -25,7 +25,11 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
+import mpicbg.models.TranslationModel2D;
+import mpicbg.trakem2.transform.RigidModel2D;
 import net.imglib2.util.Pair;
 
 public class ParametersDistributedSolve extends CommandLineParameters
@@ -154,42 +158,37 @@ public class ParametersDistributedSolve extends CommandLineParameters
     )
     public Integer maxPlateauWidthStitching = 50;
 
-    // alignment of the actual blocks that is performed in paralell
-    // by default AFFINE, regularized with RIGID and a set of decreasing lambdas (see below)
+    // alignment of the actual blocks that is performed in parallel
+    // models are hardcoded: AFFINE, regularized with RIGID, regularized with Translation and a set of decreasing lambdas (see below)
     @Parameter(
-            names = "--modelTypeBlocks",
-            description = "Type of transformation model for alignment of individual blocks"
-    )
-    public ModelType modelTypeBlocks = ModelType.AFFINE;
-
-    @Parameter(
-            names = "--modelTypeBlocksRegularizer",
-            description = "Type of transformation model for regularization of individual block alignment"
-    )
-    public ModelType modelTypeBlocksRegularizer = ModelType.RIGID;
-
-    @Parameter(
-            names = "--blockOptimizerLambdas",
-            description = "Explicit optimizer lambda values, by default optimizer loops through lambdas (1.0,0.5,0.1,0.01)",
+            names = "--blockOptimizerLambdasRigid",
+            description = "Explicit optimizer lambda values for the rigid regularizer, by default optimizer loops through lambdas (1.0,0.5,0.1,0.01)",
             variableArity = true
     )
-    public List<Double> blockOptimizerLambdas = new ArrayList<>( Arrays.asList( 1.0, 0.5, 0.1, 0.01 ) );
+    public List<Double> blockOptimizerLambdasRigid = new ArrayList<>( Arrays.asList( 1.0, 0.5, 0.1, 0.01 ) );
+
+    @Parameter(
+            names = "--blockOptimizerLambdasTranslation",
+            description = "Explicit optimizer lambda values for the translation regularizer, by default optimizer loops through lambdas (1.0,0.5,0.1,0.01)",
+            variableArity = true
+    )
+    public List<Double> blockOptimizerLambdasTranslation = new ArrayList<>( Arrays.asList( 0.5, 0.0, 0.0, 0.0 ) );
 
     @Parameter(
             names = "--blockOptimizerIterations",
             description = "Explicit num iterations for each lambda value (blockOptimizerLambdas), " +
-            			  "by default optimizer uses (10000,1000,400,200), MUST MATCH SIZE of blockOptimizerLambdas",
+            			  "by default optimizer uses (1000,1000,400,200), MUST MATCH SIZE of blockOptimizerLambdas",
             variableArity = true
     )
-    public List<Integer> blockOptimizerIterations = new ArrayList<>( Arrays.asList( 10000, 1000, 400, 200 ) );
+    public List<Integer> blockOptimizerIterations = new ArrayList<>( Arrays.asList( 1000, 1000, 400, 200 ) );
 
     @Parameter(
             names = "--blockMaxPlateauWidth",
             description = "Explicit max plateau width block alignment for each lambda value (blockOptimizerLambdas), " +
-            			  "by default optimizer uses (500,250,100,50), MUST MATCH SIZE of blockOptimizerLambdas",
+            			  "by default optimizer uses (2500,250,100,50), MUST MATCH SIZE of blockOptimizerLambdas",
             variableArity = true
     )
-    public List<Integer> blockMaxPlateauWidth = new ArrayList<>( Arrays.asList( 500, 250, 100, 50 ) );
+    public List<Integer> blockMaxPlateauWidth = new ArrayList<>( Arrays.asList( 250, 250, 100, 50 ) );
 
     @Parameter(
             names = "--blockMaxAllowedError",
@@ -252,13 +251,14 @@ public class ParametersDistributedSolve extends CommandLineParameters
 
 	public < B extends Model< B > & Affine2D< B > > B blockModel()
 	{
-		if ( this.blockOptimizerIterations.size() != this.blockMaxPlateauWidth.size() || this.blockOptimizerIterations.size() != this.blockOptimizerLambdas.size() )
-			throw new RuntimeException( "Number of entries for blockOptimizerIterations, blockMaxPlateauWidth and blockOptimizerLambdas not identical." );
+		if ( this.blockOptimizerIterations.size() != this.blockMaxPlateauWidth.size() || 
+				this.blockOptimizerIterations.size() != this.blockOptimizerLambdasRigid.size() ||
+				this.blockOptimizerLambdasTranslation.size() != this.blockOptimizerLambdasRigid.size())
+			throw new RuntimeException( "Number of entries for blockOptimizerIterations, blockMaxPlateauWidth, blockOptimizerLambdasTranslation and blockOptimizerLambdasRigid not identical." );
 
-		if ( this.modelTypeBlocksRegularizer == null )
-			return this.modelTypeBlocks.getInstance();
-		else
-			return (B)(Object)this.modelTypeBlocks.getInterpolatedInstance( modelTypeBlocksRegularizer, blockOptimizerLambdas.get( 0 ) ); // lambda set later
+		return (B)(Object)new InterpolatedAffineModel2D(
+				new InterpolatedAffineModel2D( new AffineModel2D(), new RigidModel2D(), blockOptimizerLambdasRigid.get( 0 ) ),
+				new TranslationModel2D(), blockOptimizerLambdasTranslation.get( 0 ) );
 	}
 
 	public < S extends Model< S > & Affine2D< S > > S stitchingModel()

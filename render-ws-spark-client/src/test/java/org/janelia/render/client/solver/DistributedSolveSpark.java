@@ -51,7 +51,8 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 		final double maxAllowedErrorStitching = parameters.maxAllowedErrorStitching;
 		final int maxIterationsStitching = parameters.maxIterationsStitching;
 		final int maxPlateauWidthStitching = parameters.maxPlateauWidthStitching;
-		final List<Double> blockOptimizerLambdas = parameters.blockOptimizerLambdas;
+		final List<Double> blockOptimizerLambdasRigid = parameters.blockOptimizerLambdasRigid;
+		final List<Double> blockOptimizerLambdasTranslation = parameters.blockOptimizerLambdasTranslation;
 		final List<Integer> blockOptimizerIterations = parameters.blockOptimizerIterations;
 		final List<Integer> blockMaxPlateauWidth = parameters.blockMaxPlateauWidth;
 		final double blockMaxAllowedError = parameters.blockMaxAllowedError;
@@ -73,7 +74,8 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 							maxAllowedErrorStitching,
 							maxIterationsStitching,
 							maxPlateauWidthStitching,
-							blockOptimizerLambdas,
+							blockOptimizerLambdasRigid,
+							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,
 							blockMaxPlateauWidth,
 							blockMaxAllowedError,

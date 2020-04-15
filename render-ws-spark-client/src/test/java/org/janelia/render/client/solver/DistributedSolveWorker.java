@@ -2,7 +2,6 @@ package org.janelia.render.client.solver;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,7 +10,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
@@ -21,10 +19,6 @@ import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.Parameter;
-import com.sun.tools.javac.code.Attribute.Array;
-
-import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
@@ -42,7 +36,6 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel2D;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -74,7 +67,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final double maxAllowedErrorStitching;
 	final int maxIterationsStitching, maxPlateauWidthStitching;
 
-	final List<Double> blockOptimizerLambdas;
+	final List<Double> blockOptimizerLambdasRigid, blockOptimizerLambdasTranslation;
 	final List<Integer> blockOptimizerIterations, blockMaxPlateauWidth;
 	final double blockMaxAllowedError;
 
@@ -94,7 +87,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final double maxAllowedErrorStitching,
 			final int maxIterationsStitching,
 			final int maxPlateauWidthStitching,
-			final List<Double> blockOptimizerLambdas,
+			final List<Double> blockOptimizerLambdasRigid,
+			final List<Double> blockOptimizerLambdasTranslation,
 			final List<Integer> blockOptimizerIterations,
 			final List<Integer> blockMaxPlateauWidth,
 			final double blockMaxAllowedError,
@@ -107,7 +101,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		this.pGroupList = pGroupList;
 		this.sectionIdToZMap = sectionIdToZMap;
 
-		this.blockOptimizerLambdas = blockOptimizerLambdas;
+		this.blockOptimizerLambdasRigid = blockOptimizerLambdasRigid;
+		this.blockOptimizerLambdasTranslation = blockOptimizerLambdasTranslation;
 		this.blockOptimizerIterations = blockOptimizerIterations;
 		this.blockMaxPlateauWidth = blockMaxPlateauWidth;
 
@@ -664,31 +659,42 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			LOG.info("block " + solveItem.getId() + ": run: optimizing {} tiles", solveItem.idToTileMap().size() );
 		}
 
-		LOG.info( "block " + solveItem.getId() + ": prealigning" );
+		LOG.info( "block " + solveItem.getId() + ": prealigning with translation only" );
 
 		for (final Tile< B > tile : solveItem.idToTileMap().values())
-			if ( InterpolatedAffineModel2D.class.isInstance( tile.getModel() ))
-				((InterpolatedAffineModel2D) tile.getModel()).setLambda( 1.0 ); // all rigid
+			((InterpolatedAffineModel2D) tile.getModel()).setLambda( 1.0 ); // all translation
 		
-		try {
+		try
+		{
 			tileConfig.preAlign();
-		} catch (NotEnoughDataPointsException | IllDefinedDataPointsException e) {
-			// TODO Auto-generated catch block
+		}
+		catch (NotEnoughDataPointsException | IllDefinedDataPointsException e)
+		{
+			LOG.info( "block " + solveItem.getId() + ": prealign failed: " + e );
 			e.printStackTrace();
 		}
 
-		LOG.info( "block " + solveItem.getId() + ": lambda's used:" );
+		for (final Tile< B > tile : solveItem.idToTileMap().values())
+			if ( InterpolatedAffineModel2D.class.isInstance( tile.getModel() ))
+				((InterpolatedAffineModel2D) tile.getModel()).setLambda( 0.0 ); // all affine/rigid
 
-		for ( final double lambda : blockOptimizerLambdas )
-			LOG.info( "block " + solveItem.getId() + ": l=" + lambda );
+		LOG.info( "block " + solveItem.getId() + ": lambda's used (rigid, translation):" );
 
-		for ( int s = 0; s < blockOptimizerLambdas.size(); ++s )
+		for ( int l = 0; l < blockOptimizerLambdasRigid.size(); ++l )
 		{
-			final double lambda = blockOptimizerLambdas.get( s );
+			LOG.info( "block " + solveItem.getId() + ": l=" + blockOptimizerLambdasRigid.get( l ) + ", " + blockOptimizerLambdasTranslation.get( l ) );
+		}
+
+		for ( int s = 0; s < blockOptimizerLambdasRigid.size(); ++s )
+		{
+			final double lambdaRigid = blockOptimizerLambdasRigid.get( s );
+			final double lambdaTranslation = blockOptimizerLambdasTranslation.get( s );
 
 			for (final Tile< ? > tile : tileConfig.getTiles() )
-				if ( InterpolatedAffineModel2D.class.isInstance( tile.getModel() ))
-					((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
+			{
+				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda(lambdaRigid);
+				((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambdaTranslation);
+			}
 
 			
 			int numIterations = blockOptimizerIterations.get( s );
@@ -703,7 +709,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			final int maxPlateauWidth = blockMaxPlateauWidth.get( s );
 
-			LOG.info( "block " + solveItem.getId() + ": l=" + lambda + ", numIterations=" + numIterations + ", maxPlateauWidth=" + maxPlateauWidth );
+			LOG.info( "block " + solveItem.getId() + ": l(rigid)=" + lambdaRigid + ", l(translation)=" + lambdaTranslation + ", numIterations=" + numIterations + ", maxPlateauWidth=" + maxPlateauWidth );
 
 			final ErrorStatistic observer = new ErrorStatistic( maxPlateauWidth + 1 );
 			final float damp = 1.0f;

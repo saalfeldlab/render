@@ -40,7 +40,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 
 		/*
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 65 ),
+				this.solveSet.leftItems.get( 0 ),
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
 				parameters.renderWeb.baseDataUrl,
@@ -101,7 +101,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 							parameters.maxAllowedErrorStitching,
 							parameters.maxIterationsStitching,
 							parameters.maxPlateauWidthStitching,
-							parameters.blockOptimizerLambdas,
+							parameters.blockOptimizerLambdasRigid,
+							parameters.blockOptimizerLambdasTranslation,
 							parameters.blockOptimizerIterations,
 							parameters.blockMaxPlateauWidth,
 							parameters.blockMaxAllowedError,
@@ -154,8 +155,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--project", "Sec10",
                             "--matchCollection", "Sec10_multi",
                             "--stack", "v2_acquire_merged",
-                            //"--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_fix_prealign",
-                            //"--completeTargetStack",
+                            "--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_v3",
+                            "--completeTargetStack",
                             
                             "--blockOptimizerLambdas", "1.0,0.5,0.1,0.01",
                             "--blockOptimizerIterations", "200,100,40,20",
@@ -189,8 +190,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                 */
                
                 DistributedSolve.visualizeOutput = true;
-                //DistributedSolve.visMinZ = 240;
-                //DistributedSolve.visMaxZ = 260;
+                DistributedSolve.visMinZ = 24600;
+                DistributedSolve.visMaxZ = 24800;
                 
                 @SuppressWarnings({ "rawtypes", "unchecked" })
                 final DistributedSolve solve =
