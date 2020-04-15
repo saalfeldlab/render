@@ -158,7 +158,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_v3",
                             "--completeTargetStack",
                             
-                            "--blockOptimizerLambdas", "1.0,0.5,0.1,0.01",
+                            "--blockOptimizerLambdasRigid", "1.0,0.5,0.1,0.01",
+                            "--blockOptimizerLambdasTranslation", "0.0,0.0,0.0,0.0",
                             "--blockOptimizerIterations", "200,100,40,20",
                             "--blockMaxPlateauWidth", "50,50,40,20",
 
