@@ -56,13 +56,19 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 		Arrays.sort( files );
 
 		LOG.info("Found " + files.length + " serialized objects" );
-		
+
+		if ( files.length < 3 )
+		{
+			LOG.info("Not sufficient, stopping." );
+			System.exit( 0 );
+		}
+
 		for ( final String filename : files )
 		{
 			try
 	        {
 				 // Reading the object from a file 
-	            FileInputStream file = new FileInputStream( new File( filename ) ); 
+	            FileInputStream file = new FileInputStream( new File( path, filename ) ); 
 	            ObjectInputStream in = new ObjectInputStream(file); 
 	              
 	            // Method for deserialization of object 
@@ -106,7 +112,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             //"--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_fix_prealign",
                             //"--completeTargetStack",
                             
-                            "--blockOptimizerLambdas", "1.0,0.5,0.1,0.01",
+                            //"--blockOptimizerLambdasRigid", "1.0,0.5,0.1,0.01",
                             "--blockOptimizerIterations", "200,100,40,20",
                             "--blockMaxPlateauWidth", "50,50,40,20",
 
@@ -118,7 +124,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 
                             //"--threadsLocal", "1", 
                             "--threadsGlobal", "65",
-                            "--maxPlateauWidthGlobal", "500",
+                            "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000"
                     };
                     parameters.parse(testArgs);
@@ -137,9 +143,9 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                 				parameters );
                 */
                
-                DistributedSolve.visualizeOutput = false;
-                DistributedSolve.visMinZ = 240;
-                DistributedSolve.visMaxZ = 260;
+                DistributedSolve.visualizeOutput = true;
+                DistributedSolve.visMinZ = 24600;
+                DistributedSolve.visMaxZ = 24800;
                 
                 @SuppressWarnings({ "rawtypes", "unchecked" })
                 final DistributedSolve solve =
@@ -148,7 +154,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                 				parameters.blockModel(),
                 				parameters.stitchingModel(),
                 				parameters,
-                				new File(".") );
+                				new File("..") );
                 
                 solve.run();
             }
