@@ -381,7 +381,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 	
 		for ( final SolveItemData< G, B, S > solveItem : solveItemDataToTile.keySet() )
 		{
-			blockToAffine2d.put( solveItem, DistributedSolveWorker.createAffine( solveItemDataToTile.get( solveItem ).getModel() ) );
+			blockToAffine2d.put( solveItem, SolveTools.createAffine( solveItemDataToTile.get( solveItem ).getModel() ) );
 
 			if ( !DummySolveItemData.class.isInstance( solveItem ) )
 				LOG.info( "Block " + solveItem.getId() + ": " + blockToAffine2d.get( solveItem ) );

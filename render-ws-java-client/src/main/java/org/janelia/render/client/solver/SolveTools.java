@@ -42,6 +42,8 @@ import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
@@ -65,6 +67,60 @@ import net.imglib2.view.Views;
 public class SolveTools
 {
 	private SolveTools() {}
+
+	protected static AffineModel2D createAffine( final Affine2D< ? > model )
+	{
+		final AffineModel2D m = new AffineModel2D();
+		m.set( model.createAffine() );
+
+		return m;
+	}
+
+	protected static List< PointMatch > duplicate( List< PointMatch > pms )
+	{
+		final List< PointMatch > copy = new ArrayList<>();
+
+		for ( final PointMatch pm : pms )
+			copy.add( new PointMatch( pm.getP1().clone(), pm.getP2().clone(), pm.getWeight() ) );
+
+		return copy;
+	}
+
+	public static List< PointMatch > createRelativePointMatches(
+			final List< PointMatch > absolutePMs,
+			final Model< ? > pModel,
+			final Model< ? > qModel )
+	{
+		final List< PointMatch > relativePMs = new ArrayList<>( absolutePMs.size() );
+
+		if ( absolutePMs.size() == 0 )
+			return relativePMs;
+
+		final int n = absolutePMs.get( 0 ).getP1().getL().length;
+
+		for ( final PointMatch absPM : absolutePMs )
+		{
+			final double[] pLocal = new double[ n ];
+			final double[] qLocal = new double[ n ];
+
+			for (int d = 0; d < n; ++d )
+			{
+				pLocal[ d ] = absPM.getP1().getL()[ d ];
+				qLocal[ d ] = absPM.getP2().getL()[ d ];
+			}
+
+			if ( pModel != null )
+				pModel.applyInPlace( pLocal );
+
+			if ( qModel != null )
+				qModel.applyInPlace( qLocal );
+
+			relativePMs.add( new PointMatch( new Point( pLocal ), new Point( qLocal ), absPM.getWeight() ) );
+		}
+
+		return relativePMs;
+	}
+
 
 	public static AffineModel2D createAffineModel( final RigidModel2D rigid )
 	{
