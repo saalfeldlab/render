@@ -172,7 +172,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 
                             //"--threadsLocal", "1", 
                             "--threadsGlobal", "65",
-                            "--maxPlateauWidthGlobal", "500",
+                            "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000"
                     };
                     parameters.parse(testArgs);
@@ -192,8 +192,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                 */
                
                 DistributedSolve.visualizeOutput = true;
-                DistributedSolve.visMinZ = 24600;
-                DistributedSolve.visMaxZ = 24800;
+                DistributedSolve.visMinZ = 1223;
+                DistributedSolve.visMaxZ = 1285;
                 
                 @SuppressWarnings({ "rawtypes", "unchecked" })
                 final DistributedSolve solve =

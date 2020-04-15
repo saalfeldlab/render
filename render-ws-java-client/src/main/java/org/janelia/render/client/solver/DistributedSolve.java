@@ -64,6 +64,9 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 	final SolveSet< G, B, S > solveSet;
 	DistributedSolveSerializer serializer = null;
 
+	List< SolveItemData< G, B, S > > allItems = null;
+	GlobalSolve solve = null;
+
 	public DistributedSolve(
 			final G globalSolveModel,
 			final B blockSolveModel,
@@ -98,12 +101,9 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 	public void run() throws IOException, NoninvertibleModelException 
 	{
-		final List< SolveItemData< G, B, S > > allItems;
-		final GlobalSolve solve;
-
 		try
 		{
-			allItems = distributedSolve();
+			this.allItems = distributedSolve();
 		}
 		catch ( Exception e )
 		{
@@ -115,7 +115,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		try
 		{
 			if ( serializer != null )
-				serializer.serialize( allItems );
+				serializer.serialize( this.allItems );
 		}
 		catch ( Exception e )
 		{
@@ -125,7 +125,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 		try
 		{
-			solve = globalSolve( allItems );
+			this.solve = globalSolve( this.allItems );
 		}
 		catch ( Exception e )
 		{
@@ -170,6 +170,9 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 			SimpleMultiThreading.threadHaltUnClean();
 		}
 	}
+
+	public List< SolveItemData< G, B, S > > allItems() { return allItems; }
+	public GlobalSolve globalSolve() { return solve; }
 
 	protected static HashSet< String > commonStrings( final HashSet< String > tileIdsA, final HashSet< String > tileIdsB )
 	{

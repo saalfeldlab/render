@@ -365,12 +365,11 @@ public class SolveTools
 		final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 1 ] + ' ' + m[ 2 ] + ' ' + m[ 3 ] + ' ' + m[ 4 ] + ' ' + m[ 5 ];
 		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
 	}
-
-	/*
+/*
 	public static ImagePlus visualize(
 			final HashMap<String, AffineModel2D> idToModels,
 			final HashMap<String, MinimalTileSpec> idToTileSpec,
-			final double[] scale ) throws NoninvertibleModelException
+			final double[] scale )
 	{
 		final double[] min = new double[] { Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE };
 		final double[] max = new double[] { -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE };
@@ -381,14 +380,14 @@ public class SolveTools
 		final AffineModel2D scaleModel = new AffineModel2D();
 		scaleModel.set( scale[ 0 ], 0, 0, scale[ 1 ], 0, 0 );
 
-		final HashMap<String, AffineModel2D> idToRenderModels = new HashMap<>();
+		final HashMap<String, AffineModel2D> idToInvertedRenderModels = new HashMap<>();
 
 		// get bounding box
 		for ( final String tileId : idToModels.keySet() )
 		{
 			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
-			min[ 2 ] = Math.min( min[ 2 ], tileSpec.getZ() / scale[ 2 ] );
-			max[ 2 ] = Math.max( max[ 2 ], tileSpec.getZ() / scale[ 2 ] );
+			min[ 2 ] = Math.min( min[ 2 ], tileSpec.getZ() * scale[ 2 ] );
+			max[ 2 ] = Math.max( max[ 2 ], tileSpec.getZ() * scale[ 2 ] );
 
 			final int w = tileSpec.getWidth();
 			final int h = tileSpec.getHeight();
@@ -397,8 +396,6 @@ public class SolveTools
 
 			// scale the actual transform down to the scale level we want to render in
 			model.preConcatenate( scaleModel );
-
-			idToRenderModels.put( tileId, model );
 
 			tmpMin[ 0 ] = 0;
 			tmpMin[ 1 ] = 0;
@@ -412,6 +409,8 @@ public class SolveTools
 
 			min[ 1 ] = Math.min( min[ 1 ], Math.min( tmpMin[ 1 ], tmpMax[ 1 ] ) );
 			max[ 1 ] = Math.max( max[ 1 ], Math.max( tmpMin[ 1 ], tmpMax[ 1 ] ) );
+
+			idToInvertedRenderModels.put( tileId, model.createInverse() );
 		}
 
 		System.out.println( "x: " + min[ 0 ] + " >>> " + max[ 0 ] );
@@ -443,12 +442,13 @@ public class SolveTools
 		// build the lookup z to tilespec
 		final HashMap<Integer, ArrayList< Pair<String,MinimalTileSpec> > > zToTileSpec = new HashMap<>(); 
 
-		for ( final String tileId : idToRenderModels.keySet() )
+		for ( final String tileId : idToInvertedRenderModels.keySet() )
 		{
 			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
 			final int z = (int)Math.round( tileSpec.getZ() );
 			zToTileSpec.putIfAbsent(z, new ArrayList<>());
 			zToTileSpec.get( z ).add( new ValuePair<>( tileId, tileSpec ) );
+			
 		}
 
 		
@@ -463,7 +463,7 @@ public class SolveTools
 			// scale the transform so it takes into account that the input images are scaled
 			model.concatenate( invScaleModel );
 
-			final ImageProcessorWithMasks imp = getImage( tileSpec, scale );
+			final ImageProcessorWithMasks imp = null;//getImage( tileSpec, scale );
 			RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.ip) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
 			RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.mask) ) ), new NearestNeighborInterpolatorFactory() );
 			
@@ -508,8 +508,8 @@ public class SolveTools
 		cal.xOrigin = -minI[ 0 ];
 		cal.yOrigin = -minI[ 1 ];
 		cal.zOrigin = -minI[ 2 ];
-		cal.pixelWidth = 1.0/scale;
-		cal.pixelHeight = 1.0/scale;
+		cal.pixelWidth = 1.0/scale[ 0];
+		cal.pixelHeight = 1.0/scale[ 1 ];
 		cal.pixelDepth = 1.0;
 		imp.setCalibration( cal );
 		imp.setDimensions( 1, (int)dimI[ 2 ], 1 );
