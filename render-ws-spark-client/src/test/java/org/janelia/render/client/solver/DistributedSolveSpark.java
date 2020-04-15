@@ -1,5 +1,6 @@
 package org.janelia.render.client.solver;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -155,7 +156,10 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
                 				parameters.blockModel(),
                 				parameters.stitchingModel(),
                 				parameters );
-               
+
+                // serialize the result
+                solve.setSerializer( new DistributedSolveSerializer( new File(".") ) );
+
                 	solve.run();
             }
         };
