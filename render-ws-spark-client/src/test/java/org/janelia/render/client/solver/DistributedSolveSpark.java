@@ -119,7 +119,8 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
                             //"--targetStack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758_new",
                             "--completeTargetStack",
                             
-                            "--blockOptimizerLambdas", "1.0,0.5,0.1,0.01",
+                            "--blockOptimizerLambdasRigid", "1.0,0.5,0.1,0.01",
+                            "--blockOptimizerLambdasTranslation", "0.0,0.0,0.0,0.0",
                             "--blockOptimizerIterations", "100,100,40,20",
                             "--blockMaxPlateauWidth", "50,50,50,50",
 
@@ -147,7 +148,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
                 solve.run();
                 */
 
-                DistributedSolve.visualizeOutput = false;
+                DistributedSolve.visualizeOutput = true;
                 
                 @SuppressWarnings({ "rawtypes", "unchecked" })
 				final DistributedSolve solve =
