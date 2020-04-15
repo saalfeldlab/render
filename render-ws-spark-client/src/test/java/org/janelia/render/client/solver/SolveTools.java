@@ -6,13 +6,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
@@ -35,6 +34,7 @@ import ij.io.FileSaver;
 import ij.measure.Calibration;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
+import imglib.ops.operator.binary.Min;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
@@ -75,145 +75,55 @@ public class SolveTools
 		return affine;
 	}
 
-	public static RunParameters setupSolve( final Parameters parameters ) throws IOException
-	{
-		final RunParameters runParams = new RunParameters();
-
-		parameters.initDefaultValues();
-
-		runParams.renderDataClient = parameters.renderWeb.getDataClient();
-		runParams.matchDataClient = new RenderDataClient(
-				parameters.renderWeb.baseDataUrl,
-				parameters.matchOwner,
-				parameters.matchCollection);
-
-		runParams.sectionIdToZMap = new TreeMap<>();
-		runParams.zToTileSpecsMap = new HashMap<>();
-		runParams.totalTileCount = 0;
-
-		if (parameters.targetStack == null)
-		{
-			runParams.targetDataClient = null;
-		}
-		else
-		{
-			runParams.targetDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl, parameters.targetOwner, parameters.targetProject);
-
-			final StackMetaData sourceStackMetaData = runParams.renderDataClient.getStackMetaData(parameters.stack);
-			runParams.targetDataClient.setupDerivedStack(sourceStackMetaData, parameters.targetStack);
-		}
-
-		final ZFilter zFilter = new ZFilter(parameters.minZ,parameters.maxZ,null);
-		final List<SectionData> allSectionDataList = runParams.renderDataClient.getStackSectionData(parameters.stack, null, null );
-
-		runParams.pGroupList = new ArrayList<>(allSectionDataList.size());
-
-		/*
-		runParams.pGroupList.addAll(
-				allSectionDataList.stream()
-						.filter(sectionData -> zFilter.accept(sectionData.getZ()))
-						.map(SectionData::getSectionId)
-						.distinct()
-						.sorted()
-						.collect(Collectors.toList()));
-		*/
-
-		final HashMap< String, Double > sectionIds = new HashMap<>();
-		for ( final SectionData data : allSectionDataList )
-		{
-			if ( zFilter.accept( data.getZ() ) )
-			{
-				final String sectionId = data.getSectionId();
-				final double z = data.getZ().doubleValue();
-
-				if ( !sectionIds.containsKey( sectionId ) )
-					sectionIds.put( sectionId, z );
-			}
-		}
-
-		for ( final String entry : sectionIds.keySet() )
-			runParams.pGroupList.add( new ValuePair< String, Double >( entry, sectionIds.get( entry ) ) );
-
-		Collections.sort( runParams.pGroupList, new Comparator< Pair< String, Double > >()
-		{
-			@Override
-			public int compare( final Pair< String, Double > o1, final Pair< String, Double > o2 )
-			{
-				return o1.getA().compareTo( o2.getA() );
-			}
-		} );
-
-		if (runParams.pGroupList.size() == 0)
-			throw new IllegalArgumentException("stack " + parameters.stack + " does not contain any sections with the specified z values");
-
-		Double minZForRun = parameters.minZ;
-		Double maxZForRun = parameters.maxZ;
-
-		if ((minZForRun == null) || (maxZForRun == null))
-		{
-			final StackMetaData stackMetaData = runParams.renderDataClient.getStackMetaData(parameters.stack);
-			final StackStats stackStats = stackMetaData.getStats();
-			if (stackStats != null)
-			{
-				final Bounds stackBounds = stackStats.getStackBounds();
-				if (stackBounds != null)
-				{
-					if (minZForRun == null)
-						minZForRun = stackBounds.getMinZ();
-
-					if (maxZForRun == null)
-						maxZForRun = stackBounds.getMaxZ();
-				}
-			}
-
-			if ( (minZForRun == null) || (maxZForRun == null) )
-				throw new IllegalArgumentException( "Failed to derive min and/or max z values for stack " + parameters.stack + ".  Stack may need to be completed.");
-		}
-
-		final Double minZ = minZForRun;
-		final Double maxZ = maxZForRun;
-
-		runParams.minZ = minZForRun;
-		runParams.maxZ = maxZForRun;
-
-		allSectionDataList.forEach(sd ->
-		{
-			final Double z = sd.getZ();
-			if ((z != null) && (z.compareTo(minZ) >= 0) && (z.compareTo(maxZ) <= 0))
-			{
-				final List<Double> zListForSection = runParams.sectionIdToZMap.computeIfAbsent(
-						sd.getSectionId(), zList -> new ArrayList<>());
-
-				zListForSection.add(sd.getZ());
-			}
-		});
-
-		return runParams;
-	}
-
 	//protected abstract void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException;
 
 	// must be called after all Tilespecs are updated
-	protected static void completeStack( final Parameters parameters, final RunParameters runParams ) throws IOException
+	public static void completeStack( final String targetStack, final RunParameters runParams ) throws IOException
 	{
-		if ( parameters.completeTargetStack )
-			runParams.targetDataClient.setStackState( parameters.targetStack, StackState.COMPLETE );
+		runParams.targetDataClient.setStackState( targetStack, StackState.COMPLETE );
 	}
 
-	protected static < B extends Model< B > & Affine2D< B > > Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > buildTileFromSpec(
-			final Parameters parameters,
+	public static < B extends Model< B > & Affine2D< B > > Pair< Tile< B >, AffineModel2D > buildTileFromSpec(
+			final B instance,
+			final int samplesPerDimension,
 			final TileSpec tileSpec )
 	{
         final AffineModel2D lastTransform = loadLastTransformFromSpec( tileSpec );
         final AffineModel2D lastTransformCopy = lastTransform.copy();
 
-        final double sampleWidth = (tileSpec.getWidth() - 1.0) / (parameters.samplesPerDimension - 1.0);
-        final double sampleHeight = (tileSpec.getHeight() - 1.0) / (parameters.samplesPerDimension - 1.0);
-
-        final B regularizer = parameters.regularizerModelType.getInstance();
+        final double sampleWidth = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
+        final double sampleHeight = (tileSpec.getHeight() - 1.0) / (samplesPerDimension - 1.0);
 
         try {
-            ScriptUtil.fit(regularizer, lastTransformCopy, sampleWidth, sampleHeight, parameters.samplesPerDimension);
+            ScriptUtil.fit(instance, lastTransformCopy, sampleWidth, sampleHeight, samplesPerDimension);
+        } catch (final Throwable t) {
+            throw new IllegalArgumentException(instance.getClass() + " model derivation failed for tile '" +
+                                               tileSpec.getTileId() + "', cause: " + t.getMessage(),
+                                               t);
+        }
+
+        return new ValuePair<>(
+        		new Tile< B >( instance ), 
+        		lastTransform.copy() );
+	}
+
+
+	public static < B extends Model< B > & Affine2D< B > > Pair< Tile<InterpolatedAffineModel2D<AffineModel2D, B>>, AffineModel2D > buildTileFromSpec(
+			final int samplesPerDimension,
+			final ModelType regularizerModelType,
+			final double startLambda,
+			final TileSpec tileSpec )
+	{
+        final AffineModel2D lastTransform = loadLastTransformFromSpec( tileSpec );
+        final AffineModel2D lastTransformCopy = lastTransform.copy();
+
+        final double sampleWidth = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
+        final double sampleHeight = (tileSpec.getHeight() - 1.0) / (samplesPerDimension - 1.0);
+
+        final B regularizer = regularizerModelType.getInstance();
+
+        try {
+            ScriptUtil.fit(regularizer, lastTransformCopy, sampleWidth, sampleHeight, samplesPerDimension);
         } catch (final Throwable t) {
             throw new IllegalArgumentException(regularizer.getClass() + " model derivation failed for tile '" +
                                                tileSpec.getTileId() + "', cause: " + t.getMessage(),
@@ -224,11 +134,11 @@ public class SolveTools
         		new Tile<>(new InterpolatedAffineModel2D<>(
         				lastTransformCopy,
         				regularizer,
-        				parameters.startLambda)), // note: lambda gets reset during optimization loops
+        				startLambda)), // note: lambda gets reset during optimization loops
         		lastTransform.copy() );
 	}
 
-	protected static < M extends Model< M > & Affine2D< M > > Tile< M > buildTile(
+	public static < M extends Model< M > & Affine2D< M > > Tile< M > buildTile(
 			final AffineModel2D lastTransform,
 			final M model,
 			final int width,
@@ -251,25 +161,36 @@ public class SolveTools
         return new Tile<>(model);
 	}
 
-	protected static TileSpec getTileSpec(
-			final Parameters parameters,
+	public static TileSpec getTileSpec(
+			final String stack,
 			final RunParameters runParams,
+			final String sectionId,
+			final String tileId ) throws IOException {
+		
+		return getTileSpec( runParams.sectionIdToZMap, runParams.zToTileSpecsMap, runParams.renderDataClient, stack, sectionId, tileId );
+	}
+
+	public static TileSpec getTileSpec(
+			final Map<String, ? extends List<Double>> sectionIdToZMap,
+			final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap,
+			final RenderDataClient renderDataClient,
+			final String stack,
 			final String sectionId,
 			final String tileId ) throws IOException {
 
         TileSpec tileSpec = null;
 
-        if (runParams.sectionIdToZMap.containsKey(sectionId)) {
+        if (sectionIdToZMap.containsKey(sectionId)) {
 
-            for (final Double z : runParams.sectionIdToZMap.get(sectionId)) {
+            for (final Double z : sectionIdToZMap.get(sectionId)) {
 
-                if ( !runParams.zToTileSpecsMap.containsKey(z)) {
+                if ( !zToTileSpecsMap.containsKey(z)) {
 
-                    if (runParams.totalTileCount > 100000) {
-                        throw new IllegalArgumentException("More than 100000 tiles need to be loaded - please reduce z values");
-                    }
+//                    if (runParams.totalTileCount > 100000) {
+//                        throw new IllegalArgumentException("More than 100000 tiles need to be loaded - please reduce z values");
+//                    }
 
-                    final ResolvedTileSpecCollection resolvedTiles = runParams.renderDataClient.getResolvedTiles(parameters.stack, z);
+                    final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
 
                     // check for accidental use of rough aligned stack ...
                     resolvedTiles.getTileSpecs().forEach(ts -> {
@@ -282,11 +203,11 @@ public class SolveTools
                     });
 
                     resolvedTiles.resolveTileSpecs();
-                    runParams.zToTileSpecsMap.put(z, resolvedTiles);
-                    runParams.totalTileCount += resolvedTiles.getTileCount();
+                    zToTileSpecsMap.put(z, resolvedTiles);
+                    //runParams.totalTileCount += resolvedTiles.getTileCount();
                 }
 
-                final ResolvedTileSpecCollection resolvedTileSpecCollection = runParams.zToTileSpecsMap.get(z);
+                final ResolvedTileSpecCollection resolvedTileSpecCollection = zToTileSpecsMap.get(z);
                 tileSpec = resolvedTileSpecCollection.getTileSpec(tileId);
 
                 if (tileSpec != null) {
@@ -299,7 +220,7 @@ public class SolveTools
         return tileSpec;
     }
 
-	protected static RenderParameters getRenderParametersForTile( final String owner,
+	public static RenderParameters getRenderParametersForTile( final String owner,
 			final String project, final String stack, final String tileId,
 			final double renderScale )
 	{
@@ -325,8 +246,9 @@ public class SolveTools
 	//
 	// overwrites the area that was re-aligned or it preconcatenates
 	//
-	protected static void saveTargetStackTiles(
-			final Parameters parameters,
+	public static void saveTargetStackTiles(
+			final String stack, // parameters.stack
+			final String targetStack, // parameters.targetStack
 			final RunParameters runParams,
 			final Map< String, AffineModel2D > idToModel,
 			final AffineModel2D relativeModel,
@@ -341,7 +263,7 @@ public class SolveTools
 
 			if ( !runParams.zToTileSpecsMap.containsKey( z ) )
 			{
-				resolvedTiles = runParams.renderDataClient.getResolvedTiles( parameters.stack, z );
+				resolvedTiles = runParams.renderDataClient.getResolvedTiles( stack, z );
 			}
 			else
 			{
@@ -372,7 +294,7 @@ public class SolveTools
 			}
 
 			if ( resolvedTiles.getTileCount() > 0 )
-				runParams.targetDataClient.saveResolvedTiles( resolvedTiles, parameters.targetStack, null );
+				runParams.targetDataClient.saveResolvedTiles( resolvedTiles, targetStack, null );
 			else
 				LOG.info( "skipping tile spec save since no specs are left to save" );
 		}
@@ -388,8 +310,43 @@ public class SolveTools
 		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
 	}
 
-	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModels, final HashMap<String, TileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
+	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModels, final HashMap<String, MinimalTileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
 	{
+		return render(idToModels, idToTileSpec, scale, Integer.MIN_VALUE, Integer.MAX_VALUE );
+	}
+
+	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModelsIn, final HashMap<String, MinimalTileSpec> idToTileSpecIn, final double scale, final int minZ, final int maxZ ) throws NoninvertibleModelException
+	{
+		final HashMap<String, AffineModel2D> idToModels = new HashMap<String, AffineModel2D>();
+		final HashMap<String, MinimalTileSpec> idToTileSpec = new HashMap<String, MinimalTileSpec>();
+
+		int count = 0;
+
+		LOG.info( "MinZ=" + minZ + " maxZ=" + maxZ );
+
+		for ( final String tileId : idToModelsIn.keySet() )
+		{
+			final MinimalTileSpec tileSpec = idToTileSpecIn.get( tileId );
+			final AffineModel2D model = idToModelsIn.get( tileId );
+			
+			if ( tileSpec.getZ() >= minZ && tileSpec.getZ() <= maxZ )
+			{
+				idToModels.put( tileId, model );
+				idToTileSpec.put( tileId, tileSpec );
+				++count;
+			}
+		}
+
+		if ( count == 0 )
+		{
+			LOG.info( "No tiles for the range available." );
+			return null;
+		}
+		else
+		{
+			LOG.info( "Rendering " + count + " tiles." );			
+		}
+
 		final double[] min = new double[] { Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE };
 		final double[] max = new double[] { -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE };
 
@@ -404,7 +361,7 @@ public class SolveTools
 		// get bounding box
 		for ( final String tileId : idToModels.keySet() )
 		{
-			final TileSpec tileSpec = idToTileSpec.get( tileId );
+			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
 			min[ 2 ] = Math.min( min[ 2 ], tileSpec.getZ() );
 			max[ 2 ] = Math.max( max[ 2 ], tileSpec.getZ() );
 
@@ -462,7 +419,7 @@ public class SolveTools
 		int i = 0;
 		for ( final String tileId : idToRenderModels.keySet() )
 		{
-			final TileSpec tileSpec = idToTileSpec.get( tileId );
+			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
 			final long z = Math.round( tileSpec.getZ() );
 			final AffineModel2D model = idToRenderModels.get( tileId );
 
@@ -525,9 +482,9 @@ public class SolveTools
 		return imp;
 	}
 
-	protected static FloatProcessor getFullResImage( final TileSpec tileSpec )
+	protected static FloatProcessor getFullResImage( final MinimalTileSpec tileSpec )
 	{
-		final String fileName = tileSpec.getFirstMipmapEntry().getValue().getImageFilePath();
+		final String fileName = tileSpec.getFileName();
 
 		if ( new File( fileName ).exists() )
 			return new ImagePlus( fileName ).getProcessor().convertToFloatProcessor();
@@ -539,9 +496,9 @@ public class SolveTools
 
 	}
 
-	protected static ImageProcessor getFullResMask( final TileSpec tileSpec )
+	protected static ImageProcessor getFullResMask( final MinimalTileSpec tileSpec )
 	{
-		final String fileNameMask = tileSpec.getFirstMipmapEntry().getValue().getMaskFilePath();
+		final String fileNameMask = tileSpec.getMaskFileName();
 
 		if ( new File( fileNameMask ).exists() )
 			return new ImagePlus( fileNameMask ).getProcessor();
@@ -552,7 +509,7 @@ public class SolveTools
 		}
 	}
 
-	protected static ImageProcessorWithMasks getImage( final TileSpec tileSpec, final double scale )
+	protected static ImageProcessorWithMasks getImage( final MinimalTileSpec tileSpec, final double scale )
 	{
 		// old code:
 		final File imageFile = new File( "tmp", tileSpec.getTileId() + "_" + scale + ".image.tif" );
@@ -612,7 +569,7 @@ public class SolveTools
 		return imp;
 	}
 
-	protected static AffineModel2D loadLastTransformFromSpec( final TileSpec tileSpec )
+	public static AffineModel2D loadLastTransformFromSpec( final TileSpec tileSpec )
 	{
 		// TODO: make sure there is only one transform
         final CoordinateTransformList<CoordinateTransform> transformList = tileSpec.getTransformList();

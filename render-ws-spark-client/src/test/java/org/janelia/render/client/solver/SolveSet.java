@@ -3,20 +3,23 @@ package org.janelia.render.client.solver;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SolveSet
-{
-	final List< SolveItem< ? > > leftItems;
-	final List< SolveItem< ? > > rightItems;
+import mpicbg.models.Affine2D;
+import mpicbg.models.Model;
 
-	public SolveSet( final List< SolveItem< ? > > leftItems, final List< SolveItem< ? > > rightItems )
+public class SolveSet< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
+{
+	final List< SolveItemData< G, B, S > > leftItems;
+	final List< SolveItemData< G, B, S > > rightItems;
+
+	public SolveSet( final List< SolveItemData< G, B, S > > leftItems, final List< SolveItemData< G, B, S > > rightItems )
 	{
 		this.leftItems = leftItems;
 		this.rightItems = rightItems;
 	}
 
-	public List< SolveItem< ? > > allItems()
+	public ArrayList< SolveItemData< G, B, S > > allItems()
 	{
-		final ArrayList< SolveItem< ? > > all = new ArrayList<>();
+		final ArrayList< SolveItemData< G, B, S > > all = new ArrayList<>();
 		all.addAll( leftItems );
 		all.addAll( rightItems );
 

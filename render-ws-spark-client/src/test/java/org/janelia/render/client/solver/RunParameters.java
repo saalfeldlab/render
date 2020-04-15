@@ -1,5 +1,6 @@
 package org.janelia.render.client.solver;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,15 +12,15 @@ import net.imglib2.util.Pair;
 
 public class RunParameters
 {
-	protected RenderDataClient renderDataClient;
-	protected RenderDataClient matchDataClient;
-	protected RenderDataClient targetDataClient;
+	public RenderDataClient renderDataClient;
+	public RenderDataClient matchDataClient;
+	public RenderDataClient targetDataClient;
 	
-	protected List< Pair< String, Double > > pGroupList;
-	protected Map<String, List<Double>> sectionIdToZMap; // TODO: unused
-	protected Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
-	protected double minZ, maxZ;
-	protected int totalTileCount;
+	public List< Pair< String, Double > > pGroupList;
+	public Map<String, ArrayList<Double>> sectionIdToZMap; // this is a cache
+	public Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
+	public double minZ, maxZ;
+	public int totalTileCount;
 
 	@Override
 	public RunParameters clone()
