@@ -29,7 +29,6 @@ import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
@@ -608,7 +607,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		LOG.info( "block " + solveItem.getId() + ": prealigning with translation only" );
 
-		for (final Tile< B > tile : solveItem.idToTileMap().values())
+		for (final Tile< ? > tile : tileConfig.getTiles() )
 			((InterpolatedAffineModel2D) tile.getModel()).setLambda( 1.0 ); // all translation
 		
 		try
@@ -621,9 +620,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			e.printStackTrace();
 		}
 
-		for (final Tile< B > tile : solveItem.idToTileMap().values())
-			if ( InterpolatedAffineModel2D.class.isInstance( tile.getModel() ))
-				((InterpolatedAffineModel2D) tile.getModel()).setLambda( 0.0 ); // all affine/rigid
+		for (final Tile< ? > tile : tileConfig.getTiles() )
+			((InterpolatedAffineModel2D) tile.getModel()).setLambda( 0.0 ); // all affine/rigid
 
 		LOG.info( "block " + solveItem.getId() + ": lambda's used (rigid, translation):" );
 
@@ -645,14 +643,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			
 			int numIterations = blockOptimizerIterations.get( s );
-			/*
-			if ( lambda == 1.0 || lambda == 0.5 )
-				numIterations = 100;
-			else if ( lambda == 0.1 )
-				numIterations = 40;
-			else if ( lambda == 0.01 )
-				numIterations = 20;
-			*/
 
 			final int maxPlateauWidth = blockMaxPlateauWidth.get( s );
 
@@ -699,6 +689,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
 
 				affine.preConcatenate( tileIdToGroupModel.get( tileId ) );
+
+				LOG.info("block " + solveItem.getId() + ": grouped model for tile {} is {}", tileId, tileIdToGroupModel.get( tileId ));
 
 				/*
 				// TODO: REMOVE
