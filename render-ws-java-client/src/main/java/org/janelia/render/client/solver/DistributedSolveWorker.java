@@ -2,6 +2,7 @@ package org.janelia.render.client.solver;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -587,6 +588,24 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		//System.exit( 0 );
 	}
 
+	protected static double[] computeErrors( final Collection< ? extends Tile< ? > > tiles )
+	{
+		double cd = 0.0;
+		double minError = Double.MAX_VALUE;
+		double maxError = 0.0;
+		for ( final Tile< ? > t : tiles )
+		{
+			t.update();
+			final double d = t.getDistance();
+			if ( d < minError ) minError = d;
+			if ( d > maxError ) maxError = d;
+			cd += d;
+		}
+		cd /= tiles.size();
+		
+		return new double[] { minError, cd, maxError };
+	}
+
 	protected void solve(
 			final SolveItem< G,B,S > solveItem,
 			final int numThreads
@@ -612,7 +631,13 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		
 		try
 		{
+			double[] errors = computeErrors( tileConfig.getTiles() );
+			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
+			
 			tileConfig.preAlign();
+			
+			errors = computeErrors( tileConfig.getTiles() );
+			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
 		}
 		catch (NotEnoughDataPointsException | IllDefinedDataPointsException e)
 		{
