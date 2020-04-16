@@ -156,7 +156,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--project", "Sec10",
                             "--matchCollection", "Sec10_multi",
                             "--stack", "v2_acquire_merged",
-                            "--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_v3",
+                            //"--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_v3",
                             "--completeTargetStack",
                             
                             "--blockOptimizerLambdasRigid", "1.0,0.5,0.1,0.01",

@@ -103,7 +103,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	{
 		try
 		{
-			ImagePlus imp = SolveTools.render( idToPreviousModel(), idToTileSpec(), 0.15 );
+			ImagePlus imp = VisualizeTools.render( idToPreviousModel(), idToTileSpec(), 0.15 );
 			imp.setTitle( "input" );
 			return imp;
 		}
@@ -121,7 +121,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	{
 		try
 		{
-			ImagePlus imp = SolveTools.render( idToNewModel(), idToTileSpec(), 0.15 );
+			ImagePlus imp = VisualizeTools.render( idToNewModel(), idToTileSpec(), 0.15 );
 			imp.setTitle( "aligned" );
 			return imp;
 		}

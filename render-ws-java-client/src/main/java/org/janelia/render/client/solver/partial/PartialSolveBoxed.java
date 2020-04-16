@@ -19,6 +19,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.RunParameters;
 import org.janelia.render.client.solver.SolveTools;
+import org.janelia.render.client.solver.VisualizeTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -477,13 +478,13 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 		new ImageJ();
 
 		// visualize new result
-		ImagePlus imp1 = SolveTools.render( idToFinalModel, idToTileSpec, 0.15 );
+		ImagePlus imp1 = VisualizeTools.render( idToFinalModel, idToTileSpec, 0.15 );
 		imp1.setTitle( "final" );
 
-		//ImagePlus imp2 = render( idToNewModel, idToTileSpec, 0.15 );
+		//ImagePlus imp2 = VisualizeTools.render( idToNewModel, idToTileSpec, 0.15 );
 		//imp2.setTitle( "realign" );
 
-		ImagePlus imp3 = SolveTools.render( idToPreviousModel, idToTileSpec, 0.15 );
+		ImagePlus imp3 = VisualizeTools.render( idToPreviousModel, idToTileSpec, 0.15 );
 		imp3.setTitle( "previous" );
 
 		SimpleMultiThreading.threadHaltUnClean();

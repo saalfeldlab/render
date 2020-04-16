@@ -165,7 +165,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		{
 			// visualize new result
 			new ImageJ();
-			ImagePlus imp1 = SolveTools.render( solve.idToFinalModelGlobal, solve.idToTileSpecGlobal, 0.15, visMinZ, visMaxZ );
+			ImagePlus imp1 = VisualizeTools.render( solve.idToFinalModelGlobal, solve.idToTileSpecGlobal, 0.15, visMinZ, visMaxZ );
 			imp1.setTitle( "final" );
 			SimpleMultiThreading.threadHaltUnClean();
 		}

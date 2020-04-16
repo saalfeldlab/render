@@ -437,7 +437,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 							}
 
 							new ImageJ();
-							ImagePlus imp1 = SolveTools.render( models, solveItem.idToTileSpec(), 0.15 );
+							ImagePlus imp1 = VisualizeTools.render( models, solveItem.idToTileSpec(), 0.15 );
 							imp1.setTitle( "z=" + z );
 						}
 						catch ( NoninvertibleModelException e )
