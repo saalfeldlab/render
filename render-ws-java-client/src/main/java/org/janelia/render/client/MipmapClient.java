@@ -271,7 +271,7 @@ public class MipmapClient {
                 }
 
             } else {
-                LOG.info("generateMissingMipmapFiles: all mipmap files exist for ", context);
+                LOG.info("generateMissingMipmapFiles: all mipmap files exist for {}", context);
             }
         }
     }
