@@ -2,6 +2,7 @@ package org.janelia.render.client.solver;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
@@ -32,6 +33,7 @@ import net.imglib2.cache.img.CellLoader;
 import net.imglib2.cache.img.ReadOnlyCachedCellImgFactory;
 import net.imglib2.cache.img.ReadOnlyCachedCellImgOptions;
 import net.imglib2.cache.img.SingleCellArrayImg;
+import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.img.imageplus.ImagePlusImgs;
@@ -44,6 +46,7 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.type.volatiles.VolatileFloatType;
+import net.imglib2.type.volatiles.VolatileUnsignedByteType;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
@@ -52,6 +55,43 @@ public class VisualizeTools
 {
 	public static int[] cellDim = new int[]{ 10, 10, 10 };
 	public static int maxCacheSize = Integer.MAX_VALUE;
+
+	public static Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > visualizeInfo(
+			final Collection< ? extends SolveItemData< ?, ?, ? > > solveItems )
+	{
+		final HashMap<String, AffineModel2D> idToModels = new HashMap<>();
+		final HashMap<String, MinimalTileSpec> idToTileSpec = new HashMap<>();
+
+		for ( final SolveItemData< ?, ?, ? > solveItem : solveItems )
+		{
+			idToTileSpec.putAll( solveItem.idToTileSpec() );
+			idToModels.putAll( solveItem.idToNewModel() );
+		}
+
+		return new ValuePair<>( idToModels, idToTileSpec );
+	}
+
+	public static Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > visualizeInfo(
+			final SolveItemData< ?, ?, ? > solveItem )
+	{
+		final HashMap<String, AffineModel2D> idToModels = new HashMap<>();
+		final HashMap<String, MinimalTileSpec> idToTileSpec = new HashMap<>();
+
+		idToTileSpec.putAll( solveItem.idToTileSpec() );
+		idToModels.putAll( solveItem.idToNewModel() );
+
+		return new ValuePair<>( idToModels, idToTileSpec );
+	}
+
+	public static BdvStackSource< ? > visualize( final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > data )
+	{
+		return visualize( data.getA(), data.getB() );
+	}
+
+	public static BdvStackSource< ? > visualizeMultiRes( final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > data )
+	{
+		return visualizeMultiRes( data.getA(), data.getB() );
+	}
 
 	public static BdvStackSource< ? > visualize(
 			final HashMap<String, AffineModel2D> idToModels,
@@ -89,6 +129,30 @@ public class VisualizeTools
 			final HashMap<String, MinimalTileSpec> idToTileSpec )
 	{
 		return visualizeMultiRes( idToModels, idToTileSpec, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
+	}
+
+	public static BdvStackSource< ? > renderBDV( final ImagePlus imp, final double scale )
+	{
+		final AffineTransform3D t = new AffineTransform3D();
+		t.set( 1 / scale, 0, 0 );
+		t.set( 1 / scale, 1, 1 );
+		t.set( 1.0, 2, 2 );
+
+		BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( "Preview" ).numRenderingThreads( Runtime.getRuntime().availableProcessors() );
+		options.sourceTransform( t );
+
+		final RandomAccessibleInterval< UnsignedByteType > cachedImg = cacheRandomAccessibleInterval(
+				(RandomAccessibleInterval< UnsignedByteType >)ImageJFunctions.wrap( imp ),
+				Integer.MAX_VALUE,
+				new UnsignedByteType(),
+				cellDim );
+
+		final RandomAccessibleInterval< VolatileUnsignedByteType > volatileImg = VolatileViews.wrapAsVolatile( cachedImg );
+		
+		BdvStackSource< ? > preview = BdvFunctions.show( volatileImg, "weights", options );
+		preview.setDisplayRange( 0, 3 );
+
+		return preview;
 	}
 
 	public static BdvStackSource< ? > visualizeMultiRes(
