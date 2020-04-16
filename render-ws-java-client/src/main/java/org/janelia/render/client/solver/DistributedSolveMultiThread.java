@@ -1,9 +1,7 @@
 package org.janelia.render.client.solver;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -16,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ij.ImageJ;
+import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 import mpicbg.spim.io.IOFunctions;
@@ -40,7 +39,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 
 		/*
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 0 ),
+				this.solveSet.leftItems.get( 9 ),
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
 				parameters.renderWeb.baseDataUrl,
@@ -57,13 +56,19 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 				parameters.blockOptimizerIterations,
 				parameters.blockMaxPlateauWidth,
 				parameters.blockMaxAllowedError,
-				parameters.threadsWorker );
+				parameters.threadsGlobal );
 		try
 		{
 			w.run();
+
+			VisualizeTools.visualizeMultiRes( VisualizeTools.visualizeInfo( w.getSolveItemDataList() ) );
+
 			new ImageJ();
 			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
-				s.visualizeAligned();
+			{
+				final ImagePlus imp = s.visualizeAligned();
+				VisualizeTools.renderBDV( imp, 0.15 );
+			}
 
 		} catch ( Exception e1 )
 		{
@@ -156,13 +161,13 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--project", "Sec10",
                             "--matchCollection", "Sec10_multi",
                             "--stack", "v2_acquire_merged",
-                            //"--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_v3",
+                            "--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_v4",
                             "--completeTargetStack",
                             
-                            "--blockOptimizerLambdasRigid", "1.0,0.5,0.1,0.01",
-                            "--blockOptimizerLambdasTranslation", "0.0,0.0,0.0,0.0",
-                            "--blockOptimizerIterations", "200,100,40,20",
-                            "--blockMaxPlateauWidth", "50,50,40,20",
+                            "--blockOptimizerLambdasRigid",       "1.0,1.0,0.5,0.1,0.01",
+                            "--blockOptimizerLambdasTranslation", "1.0,0.5,0.0,0.0,0.0",
+                            "--blockOptimizerIterations", "1000,200,100,40,20",
+                            "--blockMaxPlateauWidth", "200,50,50,40,20",
 
                             //"--blockSize", "100",
                             //"--noStitching", // do not stitch first
@@ -191,7 +196,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                 				parameters );
                 */
                
-                DistributedSolve.visualizeOutput = true;
+                DistributedSolve.visualizeOutput = false;
                 DistributedSolve.visMinZ = 1223;
                 DistributedSolve.visMaxZ = 1285;
                 
