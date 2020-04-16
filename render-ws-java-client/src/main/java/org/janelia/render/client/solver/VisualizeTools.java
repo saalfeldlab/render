@@ -5,6 +5,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,9 +48,11 @@ import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.RealViews;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.type.volatiles.VolatileFloatType;
 import net.imglib2.type.volatiles.VolatileUnsignedByteType;
+import net.imglib2.type.volatiles.VolatileUnsignedShortType;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
@@ -141,16 +147,41 @@ public class VisualizeTools
 		BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( "Preview" ).numRenderingThreads( Runtime.getRuntime().availableProcessors() );
 		options.sourceTransform( t );
 
-		final RandomAccessibleInterval< UnsignedByteType > cachedImg = cacheRandomAccessibleInterval(
-				(RandomAccessibleInterval< UnsignedByteType >)ImageJFunctions.wrap( imp ),
-				Integer.MAX_VALUE,
-				new UnsignedByteType(),
-				cellDim );
+		final RandomAccessibleInterval cachedImg;
+		BdvStackSource< ? > preview;
 
-		final RandomAccessibleInterval< VolatileUnsignedByteType > volatileImg = VolatileViews.wrapAsVolatile( cachedImg );
-		
-		BdvStackSource< ? > preview = BdvFunctions.show( volatileImg, "weights", options );
-		preview.setDisplayRange( 0, 3 );
+		if ( imp.getBitDepth() == 8  )
+		{
+			cachedImg = cacheRandomAccessibleInterval(
+					(RandomAccessibleInterval< UnsignedByteType >)ImageJFunctions.wrap( imp ),
+					Integer.MAX_VALUE,
+					new UnsignedByteType(),
+					cellDim );
+		}
+		else if ( imp.getBitDepth() == 16 )
+		{
+			cachedImg = cacheRandomAccessibleInterval(
+					(RandomAccessibleInterval< UnsignedShortType >)ImageJFunctions.wrap( imp ),
+					Integer.MAX_VALUE,
+					new UnsignedShortType(),
+					cellDim );	
+		}
+		else if ( imp.getBitDepth() == 32 )
+		{
+			cachedImg = cacheRandomAccessibleInterval(
+					(RandomAccessibleInterval< FloatType >)ImageJFunctions.wrap( imp ),
+					Integer.MAX_VALUE,
+					new FloatType(),
+					cellDim );
+		}
+		else
+		{
+			LOG.info( "Cannot display ImagePlus in BDV, unknown format: " + imp.getBitDepth() );
+			return null;
+		}
+
+		preview = BdvFunctions.show( VolatileViews.wrapAsVolatile( cachedImg ), "weights", options );
+		preview.setDisplayRange( 0, 255 );
 
 		return preview;
 	}
@@ -374,7 +405,94 @@ public class VisualizeTools
 		final AffineModel2D invScaleModel = new AffineModel2D();
 		invScaleModel.set( 1.0/scale, 0, 0, 1.0/scale, 0, 0 );
 
-		// render the images
+		// build the lookup z to tilespec for parallel rendering
+		final HashMap<Integer, ArrayList< Pair<String,MinimalTileSpec> > > zToTileSpec = new HashMap<>(); 
+
+		for ( final String tileId : idToRenderModels.keySet() )
+		{
+			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
+			final int z = (int)Math.round( tileSpec.getZ() );
+			zToTileSpec.putIfAbsent(z, new ArrayList<>());
+			zToTileSpec.get( z ).add( new ValuePair<>( tileId, tileSpec ) );
+		}
+
+		final AtomicInteger ai = new AtomicInteger();
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool( Runtime.getRuntime().availableProcessors() );
+		final ArrayList< Callable< Void > > tasks = new ArrayList<>();
+
+		for ( final int z : zToTileSpec.keySet() )
+		{
+			final ArrayList< Pair<String,MinimalTileSpec> > data = zToTileSpec.get( z );
+
+			tasks.add( new Callable< Void >()
+			{
+				@Override
+				public Void call() throws Exception
+				{
+					for ( final Pair<String,MinimalTileSpec> pair : data )
+					{
+						final MinimalTileSpec tileSpec = pair.getB();
+						final AffineModel2D model = idToRenderModels.get( pair.getA() );
+
+						// scale the transform so it takes into account that the input images are scaled
+						model.concatenate( invScaleModel );
+
+						final ImageProcessorWithMasks imp = getImage( tileSpec, scale );
+						RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.ip) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
+						RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.mask) ) ), new NearestNeighborInterpolatorFactory() );
+						
+						// draw
+						final IterableInterval< UnsignedByteType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
+						final Cursor< UnsignedByteType > c = slice.cursor();
+						
+						AffineTransform2D affine = new AffineTransform2D();
+						double[] array = new double[6];
+						model.toArray( array );
+						affine.set( array[0], array[2], array[4], array[1], array[3], array[5] );
+						final Cursor< FloatType > cSrc = Views.interval( RealViews.affine( interpolant, affine ), img ).cursor();
+						final Cursor< UnsignedByteType > cMask = Views.interval( RealViews.affine( interpolantMask, affine ), img ).cursor();
+						
+						while ( c.hasNext() )
+						{
+							c.fwd();
+							cMask.fwd();
+							cSrc.fwd();
+							if (cMask.get().get() == 255) {
+								FloatType srcType = cSrc.get();
+								float value = srcType.get();
+								if (value >= 0) {
+									UnsignedByteType type = c.get();
+									final float currentValue = type.get();
+									if ( currentValue > 0 )
+										type.setReal( ( value + currentValue ) / 2 );
+									else
+										type.setReal( value );
+								}
+							}
+						}
+
+						IJ.showProgress( ai.getAndIncrement(), idToRenderModels.keySet().size() - 1 );
+					}
+					return null;
+				}
+			});
+		}
+
+		try
+		{
+			taskExecutor.invokeAll( tasks );
+		}
+		catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
+
+		taskExecutor.shutdown();
+		
+		IJ.showProgress( 0.0 );
+		
+		/*
+		// render the images single-threaded
 		int i = 0;
 		for ( final String tileId : idToRenderModels.keySet() )
 		{
@@ -421,7 +539,7 @@ public class VisualizeTools
 
 			IJ.showProgress( ++i, idToRenderModels.keySet().size() - 1 );
 		}
-
+		*/
 
 		//final ImagePlus imp = ImageJFunctions.wrap( img, "stack", null );
 		final ImagePlus imp = stack.getImagePlus();
