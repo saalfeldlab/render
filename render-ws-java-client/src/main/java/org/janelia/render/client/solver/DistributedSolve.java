@@ -1,26 +1,17 @@
 package org.janelia.render.client.solver;
 
+import ij.ImageJ;
+import ij.ImagePlus;
+
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
-import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import ij.ImageJ;
-import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
@@ -31,12 +22,14 @@ import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
-import mpicbg.models.TranslationModel2D;
-import mpicbg.spim.io.IOFunctions;
+
+import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
@@ -90,16 +83,15 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 		LOG.info( "Defined sets for global solve" );
 		LOG.info( "\n" + solveSet );
+
+		if (parameters.serializerDirectory != null) {
+			this.serializer= new DistributedSolveSerializer( new File(parameters.serializerDirectory) );
+		}
 	}
 
 	protected abstract List< SolveItemData< G, B, S > > distributedSolve();
 
-	public void setSerializer( final DistributedSolveSerializer serializer )
-	{
-		this.serializer = serializer;
-	}
-
-	public void run() throws IOException, NoninvertibleModelException 
+	public void run() throws IOException, NoninvertibleModelException
 	{
 		try
 		{

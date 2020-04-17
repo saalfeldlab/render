@@ -227,6 +227,11 @@ public class ParametersDistributedSolve extends CommandLineParameters
     @Parameter(names = "--threadsGlobal", description = "Number of threads to be used for aligning all blocks (default: numProcessors/2)")
     public int threadsGlobal = Math.max( 1, Runtime.getRuntime().availableProcessors() / 2 );
 
+	@Parameter(
+			names = "--serializerDirectory",
+			description = "Directory for storing serialized data (omit to skip serialization)")
+	public String serializerDirectory;
+
 	public ParametersDistributedSolve() {}
 
 	public void initDefaultValues()

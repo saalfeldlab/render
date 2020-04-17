@@ -1,10 +1,12 @@
 package org.janelia.render.client.solver;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import mpicbg.models.Affine2D;
+import mpicbg.models.Model;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -14,8 +16,6 @@ import org.janelia.render.client.spark.LogUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import mpicbg.models.Affine2D;
-import mpicbg.models.Model;
 import net.imglib2.util.Pair;
 
 public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
@@ -115,11 +115,6 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 
                 @SuppressWarnings({ "rawtypes" })
 				final DistributedSolve client = new DistributedSolveSpark(parameters, sparkConf);
-
-                // TODO: make serializer path a parameter
-                // serialize the result
-				client.setSerializer( new DistributedSolveSerializer( new File(".") ) );
-
 				client.run();
             }
         };

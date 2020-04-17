@@ -1,6 +1,5 @@
 package org.janelia.render.client.solver;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,16 +8,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.janelia.render.client.ClientRunner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import ij.ImageJ;
-import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 import mpicbg.spim.io.IOFunctions;
-import net.imglib2.multithreading.SimpleMultiThreading;
+
+import org.janelia.render.client.ClientRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
 {
@@ -178,7 +174,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             //"--threadsLocal", "1", 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
-                            "--maxIterationsGlobal", "10000"
+                            "--maxIterationsGlobal", "10000",
+							"--serializerPath", "."
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -207,9 +204,6 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                 				parameters.blockModel(),
                 				parameters.stitchingModel(),
                 				parameters );
-
-                // serialize the result
-                solve.setSerializer( new DistributedSolveSerializer( new File(".") ) );
 
                 solve.run();
             }
