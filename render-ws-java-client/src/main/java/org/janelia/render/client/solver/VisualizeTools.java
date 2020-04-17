@@ -1,5 +1,12 @@
 package org.janelia.render.client.solver;
 
+import ij.IJ;
+import ij.ImagePlus;
+import ij.io.FileSaver;
+import ij.measure.Calibration;
+import ij.process.FloatProcessor;
+import ij.process.ImageProcessor;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,6 +17,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.NoninvertibleModelException;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,15 +29,6 @@ import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvStackSource;
 import bdv.util.volatiles.VolatileViews;
-import ij.IJ;
-import ij.ImagePlus;
-import ij.io.FileSaver;
-import ij.measure.Calibration;
-import ij.process.FloatProcessor;
-import ij.process.ImageProcessor;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.NoninvertibleModelException;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
 import net.imglib2.IterableInterval;
@@ -51,8 +53,6 @@ import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.type.volatiles.VolatileFloatType;
-import net.imglib2.type.volatiles.VolatileUnsignedByteType;
-import net.imglib2.type.volatiles.VolatileUnsignedShortType;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
@@ -153,7 +153,7 @@ public class VisualizeTools
 		if ( imp.getBitDepth() == 8  )
 		{
 			cachedImg = cacheRandomAccessibleInterval(
-					(RandomAccessibleInterval< UnsignedByteType >)ImageJFunctions.wrap( imp ),
+					ImageJFunctions.wrap( imp ),
 					Integer.MAX_VALUE,
 					new UnsignedByteType(),
 					cellDim );
@@ -161,7 +161,7 @@ public class VisualizeTools
 		else if ( imp.getBitDepth() == 16 )
 		{
 			cachedImg = cacheRandomAccessibleInterval(
-					(RandomAccessibleInterval< UnsignedShortType >)ImageJFunctions.wrap( imp ),
+					ImageJFunctions.wrap( imp ),
 					Integer.MAX_VALUE,
 					new UnsignedShortType(),
 					cellDim );	
@@ -169,7 +169,7 @@ public class VisualizeTools
 		else if ( imp.getBitDepth() == 32 )
 		{
 			cachedImg = cacheRandomAccessibleInterval(
-					(RandomAccessibleInterval< FloatType >)ImageJFunctions.wrap( imp ),
+					ImageJFunctions.wrap( imp ),
 					Integer.MAX_VALUE,
 					new FloatType(),
 					cellDim );
