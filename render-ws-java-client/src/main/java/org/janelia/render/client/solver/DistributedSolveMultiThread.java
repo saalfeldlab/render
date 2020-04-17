@@ -11,10 +11,14 @@ import java.util.concurrent.Future;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 import mpicbg.spim.io.IOFunctions;
+import net.imglib2.multithreading.SimpleMultiThreading;
 
 import org.janelia.render.client.ClientRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import ij.ImageJ;
+import ij.ImagePlus;
 
 public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
 {
@@ -33,7 +37,6 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	{
 		final long time = System.currentTimeMillis();
 
-		/*
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 				this.solveSet.leftItems.get( 9 ),
 				runParams.pGroupList,
@@ -73,7 +76,6 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		}
 
 		SimpleMultiThreading.threadHaltUnClean();
-		*/
 
 		final ArrayList< SolveItemData< G, B, S > > allItems;
 
@@ -162,8 +164,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             
                             "--blockOptimizerLambdasRigid",       "1.0,1.0,0.5,0.1,0.01",
                             "--blockOptimizerLambdasTranslation", "1.0,0.5,0.0,0.0,0.0",
-                            "--blockOptimizerIterations", "1000,200,100,40,20",
-                            "--blockMaxPlateauWidth", "200,50,50,40,20",
+                            "--blockOptimizerIterations",         "1000,200,100,40,20",
+                            "--blockMaxPlateauWidth",             "200,50,50,40,20",
 
                             //"--blockSize", "100",
                             //"--noStitching", // do not stitch first
@@ -175,7 +177,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-							"--serializerPath", "."
+							"--serializerDirectory", "."
                     };
                     parameters.parse(testArgs);
                 } else {

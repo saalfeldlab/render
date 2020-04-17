@@ -655,6 +655,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			LOG.info( "block " + solveItem.getId() + ": l=" + blockOptimizerLambdasRigid.get( l ) + ", " + blockOptimizerLambdasTranslation.get( l ) );
 		}
 
+		/*
 		for ( int s = 0; s < blockOptimizerLambdasRigid.size(); ++s )
 		{
 			final double lambdaRigid = blockOptimizerLambdasRigid.get( s );
@@ -686,6 +687,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					tileConfig.getFixedTiles(),
 					numThreads );
 		}
+		*/
 
 		//
 		// create lookup for the new models
@@ -694,8 +696,63 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		if ( stitchFirst )
 		{
-			// TODO:
+			// test
+			final HashMap< Integer, Tile< ? > > zToGroupedTile = new HashMap<>();
 
+			for ( final Tile< ? > groupedTile : solveItem.groupedTileToTiles().keySet() )
+			{
+				final Tile< ? > aTile = solveItem.groupedTileToTiles().get( groupedTile ).get( 0 ); 
+				final String tileId = solveItem.tileToIdMap().get( aTile );
+				final int z = (int)Math.round( solveItem.idToTileSpec().get( tileId ).getZ() );
+				zToGroupedTile.put( z, groupedTile );
+			}
+
+			final ArrayList< Integer > allZ = new ArrayList<Integer>( zToGroupedTile.keySet() );
+			Collections.sort( allZ );
+
+			for ( final int z : allZ )
+			{
+				final Tile< ? > groupedTile = zToGroupedTile.get( z );
+			
+				final AffineModel2D groupedModel = SolveTools.createAffine( (Affine2D<?>)groupedTile.getModel() );
+				
+				double minX = Double.MAX_VALUE;
+				double minY = Double.MAX_VALUE;
+				double maxX = -Double.MAX_VALUE;
+				double maxY = -Double.MAX_VALUE;
+
+				for ( final Tile< ? > tile : solveItem.groupedTileToTiles().get( groupedTile ) )
+				{
+					final String tileId = solveItem.tileToIdMap().get( tile );
+					final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
+
+					final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
+					affine.preConcatenate( groupedModel );
+
+					double[] tmp = new double[] { tileSpec.getWidth() - 1, tileSpec.getHeight() - 1 };
+					affine.applyInPlace( tmp );
+					
+					minX = Math.min( minX, tmp[ 0 ] );
+					minY = Math.min( minY, tmp[ 1 ] );
+					maxX = Math.max( maxX, tmp[ 0 ] );
+					maxY = Math.max( maxY, tmp[ 1 ] );
+					
+					tmp[ 0 ] = tmp[ 1 ] = 0;
+
+					affine.applyInPlace( tmp );
+					
+					minX = Math.min( minX, tmp[ 0 ] );
+					minY = Math.min( minY, tmp[ 1 ] );
+					maxX = Math.max( maxX, tmp[ 0 ] );
+					maxY = Math.max( maxY, tmp[ 1 ] );
+				}
+
+				LOG.info( "Z: " + z + " - " + ((maxX+minX)/2) + ", " + ((maxY+minY)/2) + " >>> " + minX + ", " + minY + " >>> " + maxX + ", " + maxY );
+			}
+			// test end
+			
+			System.exit( 0 );
+			
 			final ArrayList< String > tileIds = new ArrayList<>();
 			final HashMap< String, AffineModel2D > tileIdToGroupModel = new HashMap<>();
 
@@ -714,8 +771,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
 
 				affine.preConcatenate( tileIdToGroupModel.get( tileId ) );
-
-				LOG.info("block " + solveItem.getId() + ": grouped model for tile {} is {}", tileId, tileIdToGroupModel.get( tileId ));
 
 				/*
 				// TODO: REMOVE
