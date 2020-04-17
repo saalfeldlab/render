@@ -81,8 +81,8 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 							blockMaxPlateauWidth,
 							blockMaxAllowedError,
 							numThreads );
-					w.run();
 					LogUtilities.setupExecutorLog4j("z " + solveItemData.minZ() + " to " + solveItemData.maxZ());
+					w.run();
 					return w.getSolveItemDataList();
 				});
 
