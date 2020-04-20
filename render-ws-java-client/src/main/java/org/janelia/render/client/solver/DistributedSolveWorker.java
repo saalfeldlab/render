@@ -36,8 +36,19 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel2D;
+import net.imglib2.RandomAccess;
+import net.imglib2.algorithm.gauss3.Gauss3;
+import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImg;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.multithreading.SimpleMultiThreading;
+import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.util.Pair;
+import net.imglib2.util.Util;
 import net.imglib2.util.ValuePair;
+import net.imglib2.view.Views;
+import script.imglib.algorithm.MedianFilter;
 
 public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
@@ -696,61 +707,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		if ( stitchFirst )
 		{
-			// test
-			final HashMap< Integer, Tile< ? > > zToGroupedTile = new HashMap<>();
-
-			for ( final Tile< ? > groupedTile : solveItem.groupedTileToTiles().keySet() )
-			{
-				final Tile< ? > aTile = solveItem.groupedTileToTiles().get( groupedTile ).get( 0 ); 
-				final String tileId = solveItem.tileToIdMap().get( aTile );
-				final int z = (int)Math.round( solveItem.idToTileSpec().get( tileId ).getZ() );
-				zToGroupedTile.put( z, groupedTile );
-			}
-
-			final ArrayList< Integer > allZ = new ArrayList<Integer>( zToGroupedTile.keySet() );
-			Collections.sort( allZ );
-
-			for ( final int z : allZ )
-			{
-				final Tile< ? > groupedTile = zToGroupedTile.get( z );
-			
-				final AffineModel2D groupedModel = SolveTools.createAffine( (Affine2D<?>)groupedTile.getModel() );
-				
-				double minX = Double.MAX_VALUE;
-				double minY = Double.MAX_VALUE;
-				double maxX = -Double.MAX_VALUE;
-				double maxY = -Double.MAX_VALUE;
-
-				for ( final Tile< ? > tile : solveItem.groupedTileToTiles().get( groupedTile ) )
-				{
-					final String tileId = solveItem.tileToIdMap().get( tile );
-					final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
-
-					final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
-					affine.preConcatenate( groupedModel );
-
-					double[] tmp = new double[] { tileSpec.getWidth() - 1, tileSpec.getHeight() - 1 };
-					affine.applyInPlace( tmp );
-					
-					minX = Math.min( minX, tmp[ 0 ] );
-					minY = Math.min( minY, tmp[ 1 ] );
-					maxX = Math.max( maxX, tmp[ 0 ] );
-					maxY = Math.max( maxY, tmp[ 1 ] );
-					
-					tmp[ 0 ] = tmp[ 1 ] = 0;
-
-					affine.applyInPlace( tmp );
-					
-					minX = Math.min( minX, tmp[ 0 ] );
-					minY = Math.min( minY, tmp[ 1 ] );
-					maxX = Math.max( maxX, tmp[ 0 ] );
-					maxY = Math.max( maxY, tmp[ 1 ] );
-				}
-
-				LOG.info( "Z: " + z + " - " + ((maxX+minX)/2) + ", " + ((maxY+minY)/2) + " >>> " + minX + ", " + minY + " >>> " + maxX + ", " + maxY );
-			}
-			// test end
-			
+			double[] lambda = computeMetaDataLambda( solveItem );
 			System.exit( 0 );
 			
 			final ArrayList< String > tileIds = new ArrayList<>();
@@ -811,6 +768,141 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				LOG.info("block " + solveItem.getId() + ": tile {} model is {}", tileId, affine);
 			}
 		}
+	}
+
+	protected double[] computeMetaDataLambda( final SolveItem< G,B,S > solveItem )
+	{
+		// test
+		final HashMap< Integer, Tile< ? > > zToGroupedTile = new HashMap<>();
+
+		for ( final Tile< ? > groupedTile : solveItem.groupedTileToTiles().keySet() )
+		{
+			final Tile< ? > aTile = solveItem.groupedTileToTiles().get( groupedTile ).get( 0 ); 
+			final String tileId = solveItem.tileToIdMap().get( aTile );
+			final int z = (int)Math.round( solveItem.idToTileSpec().get( tileId ).getZ() );
+			zToGroupedTile.put( z, groupedTile );
+		}
+
+		final ArrayList< Integer > allZ = new ArrayList<Integer>( zToGroupedTile.keySet() );
+		Collections.sort( allZ );
+
+		final Img< DoubleType > valueX = ArrayImgs.doubles( allZ.size() );
+		final Img< DoubleType > valueY = ArrayImgs.doubles( allZ.size() );
+
+		RandomAccess< DoubleType > rX = valueX.randomAccess();
+		RandomAccess< DoubleType > rY = valueY.randomAccess();
+		
+		for ( int deltaZ = 0; deltaZ < allZ.size(); ++ deltaZ )
+		{
+			double[] offset = testLayer( allZ.get( deltaZ ), zToGroupedTile, solveItem);
+			
+			rX.setPosition( new int[] { deltaZ } );
+			rY.setPosition( new int[] { deltaZ } );
+
+			rX.get().set( offset[ 0 ] );
+			rY.get().set( offset[ 1 ] );
+		}
+
+		RandomAccess< DoubleType > rxIn = Views.extendMirrorSingle( valueX ).randomAccess();
+		RandomAccess< DoubleType > ryIn = Views.extendMirrorSingle( valueY ).randomAccess();
+
+		final Img< DoubleType > derX = ArrayImgs.doubles( allZ.size() );
+		final Img< DoubleType > derY = ArrayImgs.doubles( allZ.size() );
+
+		RandomAccess< DoubleType > rxOut = derX.randomAccess();
+		RandomAccess< DoubleType > ryOut = derY.randomAccess();
+
+		for ( int deltaZ = 0; deltaZ < allZ.size(); ++ deltaZ )
+		{
+			rxIn.setPosition( new int[] { deltaZ - 1 } );
+			ryIn.setPosition( new int[] { deltaZ - 1 } );
+
+			double x = rxIn.get().get();
+			double y = ryIn.get().get();
+			
+			rxIn.fwd( 0 );
+			ryIn.fwd( 0 );
+			
+			rxOut.setPosition( rxIn );
+			ryOut.setPosition( ryIn );
+
+			rxOut.get().set( Math.pow( x - rxIn.get().get(), 2 ) );
+			ryOut.get().set( Math.pow( y - ryIn.get().get(), 2 ) );
+
+			LOG.info( "Z: " + allZ.get( deltaZ ) + " - " + rxOut.get().get() + " " + ryOut.get().get() );
+		}
+
+		final Img< DoubleType > filterX = ArrayImgs.doubles( allZ.size() );
+		final Img< DoubleType > filterY = ArrayImgs.doubles( allZ.size() );
+
+		Gauss3.gauss( 20, Views.extendMirrorSingle( derX ), filterX );
+		Gauss3.gauss( 20, Views.extendMirrorSingle( derY ), filterY );
+
+		final double[] lambda = new double[ (int)filterX.dimension( 0 ) ];
+
+		rX = filterX.randomAccess();
+		rY = filterY.randomAccess();
+
+		
+		for ( int i = 0; i < lambda.length; ++i )
+		{
+			rX.setPosition(new int[] { i } );
+			rY.setPosition(new int[] { i } );
+		
+			lambda[ i ] = (rX.get().get() + rY.get().get() );
+			lambda[ i ] = lambda[ i ] < 115 ? ( 0.000023333*lambda[ i ]*lambda[ i ] - 0.005233333*lambda[ i ] + 0.3 ) : 0.00674563;
+		}
+
+		new ImageJ();
+
+		ImageJFunctions.show( ArrayImgs.doubles( lambda, allZ.size() ) );
+		ImageJFunctions.show( filterX );
+		ImageJFunctions.show( filterY );
+		SimpleMultiThreading.threadHaltUnClean();
+	
+		return lambda;
+		// test end
+	}
+
+
+	protected double[] testLayer( final int z, final HashMap< Integer, Tile< ? > > zToGroupedTile, final SolveItem< G,B,S > solveItem )
+	{
+		final Tile< ? > groupedTile = zToGroupedTile.get( z );
+		
+		final AffineModel2D groupedModel = SolveTools.createAffine( (Affine2D<?>)groupedTile.getModel() );
+		
+		double minX = Double.MAX_VALUE;
+		double minY = Double.MAX_VALUE;
+		double maxX = -Double.MAX_VALUE;
+		double maxY = -Double.MAX_VALUE;
+
+		for ( final Tile< ? > tile : solveItem.groupedTileToTiles().get( groupedTile ) )
+		{
+			final String tileId = solveItem.tileToIdMap().get( tile );
+			final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
+
+			final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
+			affine.preConcatenate( groupedModel );
+
+			double[] tmp = new double[] { tileSpec.getWidth() - 1, tileSpec.getHeight() - 1 };
+			affine.applyInPlace( tmp );
+			
+			minX = Math.min( minX, tmp[ 0 ] );
+			minY = Math.min( minY, tmp[ 1 ] );
+			maxX = Math.max( maxX, tmp[ 0 ] );
+			maxY = Math.max( maxY, tmp[ 1 ] );
+			
+			tmp[ 0 ] = tmp[ 1 ] = 0;
+
+			affine.applyInPlace( tmp );
+			
+			minX = Math.min( minX, tmp[ 0 ] );
+			minY = Math.min( minY, tmp[ 1 ] );
+			maxX = Math.max( maxX, tmp[ 0 ] );
+			maxY = Math.max( maxY, tmp[ 1 ] );
+		}
+		
+		return new double[] { minX, minY };
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolveWorker.class);
