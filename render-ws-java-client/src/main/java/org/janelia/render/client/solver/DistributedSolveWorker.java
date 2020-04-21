@@ -272,8 +272,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					pairs,
 					zToPairs,
 					numThreads );
-
-			int count = 0;
 			
 			// next, group the stitched tiles together
 			for ( final Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > pair : pairs )
@@ -281,17 +279,17 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				final Tile< ? > p = inputSolveItem.tileToGroupedTile().get( pair.getA().getA() );
 				final Tile< ? > q = inputSolveItem.tileToGroupedTile().get( pair.getA().getB() );
 
+				if ( p == q ) // part of the same grouped tile
+					continue;
+
 				final String pTileId = inputSolveItem.tileToIdMap().get( pair.getA().getA() );
 				final String qTileId = inputSolveItem.tileToIdMap().get( pair.getA().getB() );
 
 				final AffineModel2D pModel = inputSolveItem.idToStitchingModel().get( pTileId );
 				final AffineModel2D qModel = inputSolveItem.idToStitchingModel().get( qTileId );
 
-				if ( p == q )
-					System.out.println( "p==q" + (++count)  + " " + pTileId + " " + qTileId ); //
 				p.connect(q, SolveTools.createRelativePointMatches( pair.getB(), pModel, qModel ) );
 			}
-			System.exit( 0 );
 		}
 		//else
 		//	we are done
@@ -815,13 +813,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			for ( final PointMatch pm : tile.getMatches() )
 			{
-				// this also returns the mirrored pointmatches
-				final Tile< ? > connectedTile = tile.findConnectedTile( pm ); //p1ToTile.get( pm.getP2() );
-		
-				if ( connectedTile == tile )
-					LOG.info( "identical for: " + tile + ", " + connectedTile );
+				final Tile< ? > connectedTile = p1ToTile.get( pm.getP2() );
 				
-				if ( connectedTile == tile || alreadyVisited.contains( connectedTile ) )
+				if ( alreadyVisited.contains( connectedTile ) )
 					continue;
 
 				final Tile< TranslationModel2D > connectedFakeTile = tilesToFaketiles.get( connectedTile );
@@ -837,29 +831,14 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		
 			final Tile< TranslationModel2D > fakeTile = tilesToFaketiles.get( tile );
 
-			Set< PointMatch > test = new HashSet< PointMatch >();
-			
-			int sum = 0;
 			for ( final Tile< TranslationModel2D > connectedFakeTile : matches.keySet() )
 			{
 				final ArrayList< PointMatch > newMatches = matches.get( connectedFakeTile ); 
-				
-				LOG.info( "" );
-				LOG.info( "size = " + fakeTile.getMatches().size() );
-				LOG.info( "adding " + newMatches.size() + " from " + connectedFakeTile );
-				
-				sum += newMatches.size();
 				fakeTile.connect( connectedFakeTile, newMatches );
-				//fakeTile.addMatches( newMatches );
-				test.addAll( newMatches );
-				
-				LOG.info( "size = " + fakeTile.getMatches().size() + " " + test.size() );
-				LOG.info( "sum = " + sum );
 			}
 			
 			alreadyVisited.add( tile );
 			LOG.info( "fakeTile " + fakeTile + " (" + fakeTile.getMatches().size() + " matches)." );
-			System.exit( 0 );
 		}
 
 		final TileConfiguration tileConfig = new TileConfiguration();
@@ -880,8 +859,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			LOG.info( "prealign failed: " + e );
 			e.printStackTrace();
 		}
-
-		
 	}
 
 	protected static void computeMetaDataLambdas( final SolveItem< ?,?,? > solveItem )
