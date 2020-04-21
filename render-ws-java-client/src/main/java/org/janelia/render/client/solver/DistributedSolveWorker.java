@@ -30,6 +30,7 @@ import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
@@ -52,6 +53,8 @@ import script.imglib.algorithm.MedianFilter;
 
 public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
+	public static double defaultLambda = 0.1;
+
 	// attempts to stitch each section first (if the tiles are connected) and
 	// then treat them as one big, "grouped" tile in the global optimization
 	// the advantage is that potential deformations do not propagate into the individual
@@ -249,6 +252,10 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				inputSolveItem.zToTileId().get( pZ ).add( pId );
 				inputSolveItem.zToTileId().get( qZ ).add( qId );
 
+				// use the following lambdas by default (potentially overwritten later)
+				inputSolveItem.zToPreviousLambda().putIfAbsent( pZ, defaultLambda );
+				inputSolveItem.zToPreviousLambda().putIfAbsent( qZ, defaultLambda );
+
 				// if the pair is from the same layer we remember the current index in the pairs list
 				if ( stitchFirst && pZ == qZ )
 				{
@@ -266,6 +273,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					zToPairs,
 					numThreads );
 
+			int count = 0;
+			
 			// next, group the stitched tiles together
 			for ( final Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > pair : pairs )
 			{
@@ -278,8 +287,11 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				final AffineModel2D pModel = inputSolveItem.idToStitchingModel().get( pTileId );
 				final AffineModel2D qModel = inputSolveItem.idToStitchingModel().get( qTileId );
 
+				if ( p == q )
+					System.out.println( "p==q" + (++count)  + " " + pTileId + " " + qTileId ); //
 				p.connect(q, SolveTools.createRelativePointMatches( pair.getB(), pModel, qModel ) );
 			}
+			System.exit( 0 );
 		}
 		//else
 		//	we are done
@@ -590,6 +602,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					}
 
 					solveItem.zToTileId().put( z, myTilesPerZ );
+					solveItem.zToPreviousLambda().putIfAbsent( z, inputSolveItem.zToPreviousLambda().get( z ) );
 				}
 
 				solveItems.add( solveItem );
@@ -634,6 +647,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			tileConfig.addTiles(solveItem.idToTileMap().values());
 			LOG.info("block " + solveItem.getId() + ": run: optimizing {} tiles", solveItem.idToTileMap().size() );
 		}
+
+		fakePreAlign( new ArrayList<>( tileConfig.getTiles() ), solveItem );
 
 		LOG.info( "block " + solveItem.getId() + ": prealigning with translation only" );
 
@@ -707,8 +722,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		if ( stitchFirst )
 		{
-			double[] lambda = computeMetaDataLambda( solveItem );
-			System.exit( 0 );
+			computeMetaDataLambdas( solveItem );
 			
 			final ArrayList< String > tileIds = new ArrayList<>();
 			final HashMap< String, AffineModel2D > tileIdToGroupModel = new HashMap<>();
@@ -770,7 +784,107 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		}
 	}
 
-	protected double[] computeMetaDataLambda( final SolveItem< G,B,S > solveItem )
+	protected static void fakePreAlign( final List< Tile< ? > > tiles, final SolveItem<?, ?, ?> solveItem )
+	{
+		LOG.info( "FakeAlign" );
+		
+		final HashMap< Tile< ? >, Tile< TranslationModel2D > > tilesToFaketiles = new HashMap<>();
+		final HashMap< Point, Tile< ? > > p1ToTile = new HashMap<>(); // to efficiently find a tile associated with a pointmatch
+
+		for ( final Tile< ? > tile : tiles )
+		{
+			final Tile< TranslationModel2D > fakeTile = new Tile<>( new TranslationModel2D() );
+			tilesToFaketiles.put( tile, fakeTile );
+
+			for ( final PointMatch pm : tile.getMatches() )
+			{
+				if ( p1ToTile.containsKey( pm.getP1() ) )
+					System.out.println( "Collision! " + p1ToTile.get( pm.getP1() ) );
+
+				p1ToTile.put( pm.getP1(), tile );
+			}
+		}
+
+		final HashSet< Tile<?> > alreadyVisited = new HashSet<>();
+
+		for ( final Tile< ? > tile : tiles )
+		{
+			LOG.info( "tile " + tile + " (" + tile.getMatches().size() + " matches). " + solveItem.idToTileSpec().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).get( 0 ) ) ).getZ() );
+			
+			final HashMap< Tile< TranslationModel2D >, ArrayList< PointMatch > > matches = new HashMap<>();
+
+			for ( final PointMatch pm : tile.getMatches() )
+			{
+				// this also returns the mirrored pointmatches
+				final Tile< ? > connectedTile = tile.findConnectedTile( pm ); //p1ToTile.get( pm.getP2() );
+		
+				if ( connectedTile == tile )
+					LOG.info( "identical for: " + tile + ", " + connectedTile );
+				
+				if ( connectedTile == tile || alreadyVisited.contains( connectedTile ) )
+					continue;
+
+				final Tile< TranslationModel2D > connectedFakeTile = tilesToFaketiles.get( connectedTile );
+
+				final PointMatch newPM = new PointMatch(
+						new Point( pm.getP1().getL().clone(), pm.getP1().getW().clone() ),
+						new Point( pm.getP2().getL().clone(), pm.getP2().getW().clone() ),
+						pm.getWeight() );
+				
+				matches.putIfAbsent( connectedFakeTile, new ArrayList<PointMatch>() );
+				matches.get( connectedFakeTile ).add( newPM );
+			}
+		
+			final Tile< TranslationModel2D > fakeTile = tilesToFaketiles.get( tile );
+
+			Set< PointMatch > test = new HashSet< PointMatch >();
+			
+			int sum = 0;
+			for ( final Tile< TranslationModel2D > connectedFakeTile : matches.keySet() )
+			{
+				final ArrayList< PointMatch > newMatches = matches.get( connectedFakeTile ); 
+				
+				LOG.info( "" );
+				LOG.info( "size = " + fakeTile.getMatches().size() );
+				LOG.info( "adding " + newMatches.size() + " from " + connectedFakeTile );
+				
+				sum += newMatches.size();
+				fakeTile.connect( connectedFakeTile, newMatches );
+				//fakeTile.addMatches( newMatches );
+				test.addAll( newMatches );
+				
+				LOG.info( "size = " + fakeTile.getMatches().size() + " " + test.size() );
+				LOG.info( "sum = " + sum );
+			}
+			
+			alreadyVisited.add( tile );
+			LOG.info( "fakeTile " + fakeTile + " (" + fakeTile.getMatches().size() + " matches)." );
+			System.exit( 0 );
+		}
+
+		final TileConfiguration tileConfig = new TileConfiguration();
+		tileConfig.addTiles( tilesToFaketiles.values() );
+
+		try
+		{
+			double[] errors = computeErrors( tileConfig.getTiles() );
+			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
+			
+			tileConfig.preAlign();
+			
+			errors = computeErrors( tileConfig.getTiles() );
+			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
+		}
+		catch (NotEnoughDataPointsException | IllDefinedDataPointsException e)
+		{
+			LOG.info( "prealign failed: " + e );
+			e.printStackTrace();
+		}
+
+		
+	}
+
+	protected static void computeMetaDataLambdas( final SolveItem< ?,?,? > solveItem )
 	{
 		// test
 		final HashMap< Integer, Tile< ? > > zToGroupedTile = new HashMap<>();
@@ -794,7 +908,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		
 		for ( int deltaZ = 0; deltaZ < allZ.size(); ++ deltaZ )
 		{
-			double[] offset = testLayer( allZ.get( deltaZ ), zToGroupedTile, solveItem);
+			double[] offset = layerMinBounds( allZ.get( deltaZ ), zToGroupedTile, solveItem);
 			
 			rX.setPosition( new int[] { deltaZ } );
 			rY.setPosition( new int[] { deltaZ } );
@@ -838,34 +952,43 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		Gauss3.gauss( 20, Views.extendMirrorSingle( derX ), filterX );
 		Gauss3.gauss( 20, Views.extendMirrorSingle( derY ), filterY );
 
-		final double[] lambda = new double[ (int)filterX.dimension( 0 ) ];
-
 		rX = filterX.randomAccess();
 		rY = filterY.randomAccess();
-
 		
-		for ( int i = 0; i < lambda.length; ++i )
+		for ( int i = 0; i < allZ.size(); ++i )
 		{
 			rX.setPosition(new int[] { i } );
 			rY.setPosition(new int[] { i } );
 		
-			lambda[ i ] = (rX.get().get() + rY.get().get() );
-			lambda[ i ] = lambda[ i ] < 115 ? ( 0.000023333*lambda[ i ]*lambda[ i ] - 0.005233333*lambda[ i ] + 0.3 ) : 0.00674563;
+			double lambda = (rX.get().get() + rY.get().get() );
+
+			rY.get().set( lambda );
+
+			lambda = Math.max( 0, lambda < 115 ? ( 0.000023333*lambda*lambda - 0.005233333*lambda + 0.3 ) / 2.0 : 0.00674563 / 2.0 );
+
+			rX.get().set( lambda );
+		}
+
+		Gauss3.gauss( 5, Views.extendMirrorSingle( filterX ), filterX );
+
+		for ( int i = 0; i < allZ.size(); ++i )
+		{
+			rX.setPosition(new int[] { i } );
+
+			solveItem.zToPreviousLambda().put( allZ.get( i ), rX.get().get() );
 		}
 
 		new ImageJ();
 
-		ImageJFunctions.show( ArrayImgs.doubles( lambda, allZ.size() ) );
 		ImageJFunctions.show( filterX );
 		ImageJFunctions.show( filterY );
 		SimpleMultiThreading.threadHaltUnClean();
-	
-		return lambda;
+
 		// test end
 	}
 
 
-	protected double[] testLayer( final int z, final HashMap< Integer, Tile< ? > > zToGroupedTile, final SolveItem< G,B,S > solveItem )
+	protected static double[] layerMinBounds( final int z, final HashMap< Integer, Tile< ? > > zToGroupedTile, final SolveItem< ?,?,? > solveItem )
 	{
 		final Tile< ? > groupedTile = zToGroupedTile.get( z );
 		
@@ -873,8 +996,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		
 		double minX = Double.MAX_VALUE;
 		double minY = Double.MAX_VALUE;
-		double maxX = -Double.MAX_VALUE;
-		double maxY = -Double.MAX_VALUE;
 
 		for ( final Tile< ? > tile : solveItem.groupedTileToTiles().get( groupedTile ) )
 		{
@@ -884,22 +1005,25 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
 			affine.preConcatenate( groupedModel );
 
-			double[] tmp = new double[] { tileSpec.getWidth() - 1, tileSpec.getHeight() - 1 };
-			affine.applyInPlace( tmp );
+			double[] tmp = new double[ 2 ];
 			
-			minX = Math.min( minX, tmp[ 0 ] );
-			minY = Math.min( minY, tmp[ 1 ] );
-			maxX = Math.max( maxX, tmp[ 0 ] );
-			maxY = Math.max( maxY, tmp[ 1 ] );
-			
-			tmp[ 0 ] = tmp[ 1 ] = 0;
+			tmp[ 0 ] = 0;
+			tmp[ 1 ] = tileSpec.getHeight() / 2.0;
 
 			affine.applyInPlace( tmp );
 			
 			minX = Math.min( minX, tmp[ 0 ] );
 			minY = Math.min( minY, tmp[ 1 ] );
-			maxX = Math.max( maxX, tmp[ 0 ] );
-			maxY = Math.max( maxY, tmp[ 1 ] );
+			
+
+			tmp[ 0 ] = tileSpec.getWidth() / 2;
+			tmp[ 1 ] = 0;
+
+			affine.applyInPlace( tmp );
+			
+			minX = Math.min( minX, tmp[ 0 ] );
+			minY = Math.min( minY, tmp[ 1 ] );
+
 		}
 		
 		return new double[] { minX, minY };
