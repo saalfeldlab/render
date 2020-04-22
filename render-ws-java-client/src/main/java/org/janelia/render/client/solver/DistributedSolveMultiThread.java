@@ -11,10 +11,14 @@ import java.util.concurrent.Future;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 import mpicbg.spim.io.IOFunctions;
+import net.imglib2.multithreading.SimpleMultiThreading;
 
 import org.janelia.render.client.ClientRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import ij.ImageJ;
+import ij.ImagePlus;
 
 public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
 {
@@ -32,10 +36,9 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	public List< SolveItemData< G, B, S > > distributedSolve()
 	{
 		final long time = System.currentTimeMillis();
-
 		/*
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 9 ),
+				this.solveSet.leftItems.get( 9 ), //43 49 ),
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
 				parameters.renderWeb.baseDataUrl,
@@ -74,7 +77,6 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 
 		SimpleMultiThreading.threadHaltUnClean();
 		*/
-
 		final ArrayList< SolveItemData< G, B, S > > allItems;
 
 		// set up executor service
@@ -157,7 +159,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--project", "Sec10",
                             "--matchCollection", "Sec10_multi",
                             "--stack", "v2_acquire_merged",
-                            "--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_v4",
+                            //"--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_v4",
                             "--completeTargetStack",
                             
                             "--blockOptimizerLambdasRigid",       "1.0,1.0,0.5,0.1,0.01",
@@ -175,7 +177,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-							"--serializerPath", "."
+							"--serializerDirectory", "."
                     };
                     parameters.parse(testArgs);
                 } else {
