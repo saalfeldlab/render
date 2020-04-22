@@ -117,12 +117,6 @@ public class ParametersDistributedSolve extends CommandLineParameters
 
     // stitching align model, by default RIGID, regularized with Translation (0.25)
     @Parameter(
-            names = "--noStitching",
-            description = "Do not stitch sections first",
-            arity = 0)
-    public boolean noStitching = false;
-   
-    @Parameter(
             names = "--modelTypeStitching",
             description = "Type of transformation model for section stitching, if null no stitching first"
     )
@@ -268,9 +262,7 @@ public class ParametersDistributedSolve extends CommandLineParameters
 
 	public < S extends Model< S > & Affine2D< S > > S stitchingModel()
 	{
-		if ( this.noStitching )
-			return null;
-		else if ( this.modelTypeStitchingRegularizer == null )
+		if ( this.modelTypeStitchingRegularizer == null )
 			return this.modelTypeStitching.getInstance();
 		else
 			return (S)(Object)this.modelTypeStitching.getInterpolatedInstance( modelTypeStitchingRegularizer, lambdaStitching );
