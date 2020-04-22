@@ -26,4 +26,5 @@ tmp/
 .idea/uiDesigner.xml
 
 .DS_Store
+*.obj
 
