@@ -251,6 +251,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			if ( p == q )
 				continue;
+			
+			// for regularization we use the average inverse of the stitching transforms
 
 			final String pTileId = inputSolveItem.tileToIdMap().get( pair.getA().getA() );
 			final String qTileId = inputSolveItem.tileToIdMap().get( pair.getA().getB() );
@@ -569,9 +571,12 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		for (final Tile< ? > tile : tileConfig.getTiles() )
 		{
-			((InterpolatedAffineModel2D)((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).getA()).setLambda( blockOptimizerLambdasRigid.get( 0 )); // irrelevant
-			((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( blockOptimizerLambdasTranslation.get( 0 )); // 1.0
-			((InterpolatedAffineModel2D) tile.getModel()).setLambda( tileToDynamicLambda.get( tile ) ); // dynamic
+			//((InterpolatedAffineModel2D)((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).getA()).setLambda( blockOptimizerLambdasRigid.get( 0 )); // irrelevant
+			//((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( blockOptimizerLambdasTranslation.get( 0 )); // 1.0
+			//((InterpolatedAffineModel2D) tile.getModel()).setLambda( tileToDynamicLambda.get( tile ) ); // dynamic
+
+			((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( blockOptimizerLambdasRigid.get( 0 )); // 1.0
+			((InterpolatedAffineModel2D) tile.getModel()).setLambda( blockOptimizerLambdasTranslation.get( 0 ) ); // dynamic
 		}
 		
 		try
@@ -610,9 +615,12 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			for (final Tile< ? > tile : tileConfig.getTiles() )
 			{
-				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).getA()).setLambda( lambdaRigid);
-				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( lambdaTranslation);
-				((InterpolatedAffineModel2D) tile.getModel()).setLambda( tileToDynamicLambda.get( tile ) ); // dynamic
+				//((InterpolatedAffineModel2D)((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).getA()).setLambda( lambdaRigid);
+				//((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( lambdaTranslation);
+				//((InterpolatedAffineModel2D) tile.getModel()).setLambda( tileToDynamicLambda.get( tile ) ); // dynamic
+
+				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( lambdaRigid ); // 1.0
+				((InterpolatedAffineModel2D) tile.getModel()).setLambda( lambdaTranslation ); // dynamic
 			}
 			
 			int numIterations = blockOptimizerIterations.get( s );

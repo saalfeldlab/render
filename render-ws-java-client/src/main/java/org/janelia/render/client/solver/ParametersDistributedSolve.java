@@ -257,13 +257,13 @@ public class ParametersDistributedSolve extends CommandLineParameters
 			throw new RuntimeException( "Number of entries for blockOptimizerIterations, blockMaxPlateauWidth, blockOptimizerLambdasTranslation and blockOptimizerLambdasRigid not identical." );
 
 		return (B)(Object)
-				new InterpolatedAffineModel2D(
+				//new InterpolatedAffineModel2D(
 						new InterpolatedAffineModel2D(
 								new InterpolatedAffineModel2D(
 										new AffineModel2D(),
 										new RigidModel2D(), blockOptimizerLambdasRigid.get( 0 ) ),
-								new TranslationModel2D(), blockOptimizerLambdasTranslation.get( 0 ) ),
-						new IdentityModel(), 0.0 );
+								new TranslationModel2D(), blockOptimizerLambdasTranslation.get( 0 ) )/*,
+						new IdentityModel(), 0.0 )*/;
 	}
 
 	public < S extends Model< S > & Affine2D< S > > S stitchingModel()
