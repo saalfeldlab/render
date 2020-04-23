@@ -252,13 +252,26 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			if ( p == q )
 				continue;
 			
-			// for regularization we use the average inverse of the stitching transforms
+			// for regularization we use the average inverse of the stitching transforms ( solveItem.idToPreviousModel())
+			
+			// ST (Stitching Transform)
+			// PT (Previous Transform - from Render) -- that is what we want to regularize against
+			
+			// we have to decide for one of tiles, ideally the first that is present
+			// what happens if only the second or third one is?
+			
+//			TileId 19-07-31_120407_0-0-1.24501.0 Model=     [3,3](AffineTransform[[0.99999999990711, 1.180403435E-5, 8232.974854394946], [-1.180403435E-5, 0.99999999990711, 400.03365816280945]]) 1.7976931348623157E308
+//			TileId 19-07-31_120407_0-0-1.24501.0 prev Model=[3,3](AffineTransform[[1.0, 0.0, 8233.0], [0.0, 1.0, 400.0]]) 1.7976931348623157E308
+//			TileId 19-07-31_120407_0-0-2.24501.0 Model=     [3,3](AffineTransform[[0.999999260486421, 0.001053218791066, 16099.665150771456], [-0.001053218791066, 0.999999260486421, 401.52729791016964]]) 1.7976931348623157E308
+//			TileId 19-07-31_120407_0-0-2.24501.0 prev Model=[3,3](AffineTransform[[1.0, 0.0, 16066.0], [0.0, 1.0, 400.0]]) 1.7976931348623157E308
+//			TileId 19-07-31_120407_0-0-0.24501.0 Model=     [3,3](AffineTransform[[0.999999730969417, -6.35252550002E-4, 369.469292002579], [6.35252550002E-4, 0.999999730969417, 403.522028590144]]) 1.7976931348623157E308
+//			TileId 19-07-31_120407_0-0-0.24501.0 prev Model=[3,3](AffineTransform[[1.0, 0.0, 400.0], [0.0, 1.0, 400.0]]) 1.7976931348623157E308
 
 			final String pTileId = inputSolveItem.tileToIdMap().get( pair.getA().getA() );
 			final String qTileId = inputSolveItem.tileToIdMap().get( pair.getA().getB() );
 
-			final AffineModel2D pModel = inputSolveItem.idToStitchingModel().get( pTileId );
-			final AffineModel2D qModel = inputSolveItem.idToStitchingModel().get( qTileId );
+			final AffineModel2D pModel = inputSolveItem.idToStitchingModel().get( pTileId ); // ST for p
+			final AffineModel2D qModel = inputSolveItem.idToStitchingModel().get( qTileId ); // ST for q
 
 			p.connect(q, SolveTools.createRelativePointMatches( pair.getB(), pModel, qModel ) );
 		}
@@ -411,7 +424,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 						solveItem.groupedTileToTiles().putIfAbsent( groupedTile, new ArrayList<>() );
 						solveItem.groupedTileToTiles().get( groupedTile ).add( solveItem.idToTileMap().get( tileId ) );
 
-						LOG.info( "block " + solveItem.getId() + ": TileId " + tileId + " Model=" + affine );
+						LOG.info( "block " + solveItem.getId() + ": TileId " + tileId + " Model=     " + affine );
+						LOG.info( "block " + solveItem.getId() + ": TileId " + tileId + " prev Model=" + solveItem.idToPreviousModel().get( tileId ) );
 					}
 
 					// Hack: show a section after alignment
