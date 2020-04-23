@@ -67,9 +67,7 @@ public class SolveTools
 
 	public static List< Tile< ? > > preAlignByLayerDistance(
 			final TileConfiguration tileConfig,
-			final Map<String, MinimalTileSpec> idToTileSpec,
-			final Map<? extends Tile<?>, String > tileToIdMap,
-			final Map<? extends Tile< ? >, ? extends List< ? extends Tile< ? > > > groupedTileToTiles )
+			final Map< Tile< ? >, Integer > tileToZ )
 					throws NotEnoughDataPointsException, IllDefinedDataPointsException
 	{
 		// first get order all tiles by
@@ -126,21 +124,9 @@ public class SolveTools
 
 				public int deltaZ( final Tile<?> tile1, final Tile<?> tile2 )
 				{
-					if ( groupedTileToTiles == null )
-					{
-						return Math.abs(
-								(int)Math.round( idToTileSpec.get( tileToIdMap.get( tile1 ) ).getZ() ) -
-								(int)Math.round( idToTileSpec.get( tileToIdMap.get( tile2 ) ).getZ() ) );
-					}
-					else
-					{
-						return Math.abs(
-								(int)Math.round( idToTileSpec.get( tileToIdMap.get( groupedTileToTiles.get( tile1 ).get( 0 ) ) ).getZ() ) -
-								(int)Math.round( idToTileSpec.get( tileToIdMap.get( groupedTileToTiles.get( tile2 ).get( 0 ) ) ).getZ() ) );
-					}
+					return Math.abs( tileToZ.get( tile1 ) - tileToZ.get( tile2 ) );
 				}
 			});
-			//sort( referenceTile, unAlignedTiles );
 			
 			// now we go through the unaligned tiles to see if we can align it to the current reference tile one
 			for ( final ListIterator< Tile< ?> > targetIterator = unAlignedTiles.listIterator(); targetIterator.hasNext(); )

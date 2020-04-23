@@ -621,8 +621,13 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		{
 			double[] errors = SolveTools.computeErrors( tileConfig.getTiles() );
 			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
-			
-			SolveTools.preAlignByLayerDistance( tileConfig, solveItem.idToTileSpec(), solveItem.tileToIdMap(), solveItem.groupedTileToTiles() );
+
+			final Map< Tile< ? >, Integer > tileToZ = new HashMap<>();
+
+			for ( final Tile< ? > tile : tileConfig.getTiles() )
+				tileToZ.put( tile, (int)Math.round( solveItem.idToTileSpec().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).get( 0 ) ) ).getZ() ) );
+
+			SolveTools.preAlignByLayerDistance( tileConfig, tileToZ );
 			//tileConfig.preAlign();
 			
 			errors = SolveTools.computeErrors( tileConfig.getTiles() );
