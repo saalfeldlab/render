@@ -2,6 +2,7 @@ package org.janelia.render.client.solver;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -9,9 +10,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.spim.io.IOFunctions;
 import net.imglib2.multithreading.SimpleMultiThreading;
+import net.imglib2.util.Pair;
 
 import org.janelia.render.client.ClientRunner;
 import org.slf4j.Logger;
@@ -38,7 +41,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		final long time = System.currentTimeMillis();
 
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 9 ), //9, 43 49 ),
+				this.solveSet.leftItems.get( 49 ), //9, 43 49 ),
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
 				parameters.renderWeb.baseDataUrl,
@@ -60,7 +63,19 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		{
 			w.run();
 
-			VisualizeTools.visualizeMultiRes( VisualizeTools.visualizeInfo( w.getSolveItemDataList() ) );
+			final HashMap<String, Float> idToValue = new HashMap<>();
+
+			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
+			{
+				for ( final String tileId : s.idToTileSpec().keySet() )
+				{
+					final int z = (int)Math.round( s.idToTileSpec().get( tileId ).getZ() );
+					idToValue.put( tileId, s.zToDynamicLambda().get( z ).floatValue() + 1 ); // between 1 and 1.2
+				}
+			}
+
+			final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > visualizeInfo = VisualizeTools.visualizeInfo( w.getSolveItemDataList() );
+			VisualizeTools.visualizeMultiRes( visualizeInfo.getA(), visualizeInfo.getB(), idToValue );
 
 			new ImageJ();
 			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )

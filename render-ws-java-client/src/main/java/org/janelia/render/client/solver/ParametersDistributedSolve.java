@@ -26,6 +26,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.IdentityModel;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.TranslationModel2D;
@@ -255,9 +256,14 @@ public class ParametersDistributedSolve extends CommandLineParameters
 				this.blockOptimizerLambdasTranslation.size() != this.blockOptimizerLambdasRigid.size())
 			throw new RuntimeException( "Number of entries for blockOptimizerIterations, blockMaxPlateauWidth, blockOptimizerLambdasTranslation and blockOptimizerLambdasRigid not identical." );
 
-		return (B)(Object)new InterpolatedAffineModel2D(
-				new InterpolatedAffineModel2D( new AffineModel2D(), new RigidModel2D(), blockOptimizerLambdasRigid.get( 0 ) ),
-				new TranslationModel2D(), blockOptimizerLambdasTranslation.get( 0 ) );
+		return (B)(Object)
+				new InterpolatedAffineModel2D(
+						new InterpolatedAffineModel2D(
+								new InterpolatedAffineModel2D(
+										new AffineModel2D(),
+										new RigidModel2D(), blockOptimizerLambdasRigid.get( 0 ) ),
+								new TranslationModel2D(), blockOptimizerLambdasTranslation.get( 0 ) ),
+						new IdentityModel(), 0.0 );
 	}
 
 	public < S extends Model< S > & Affine2D< S > > S stitchingModel()

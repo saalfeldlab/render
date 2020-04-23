@@ -91,29 +91,31 @@ public class VisualizeTools
 
 	public static BdvStackSource< ? > visualize( final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > data )
 	{
-		return visualize( data.getA(), data.getB() );
+		return visualize( data.getA(), data.getB(), constantIdToValue( data.getA().keySet() ) );
 	}
 
 	public static BdvStackSource< ? > visualizeMultiRes( final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > data )
 	{
-		return visualizeMultiRes( data.getA(), data.getB() );
-	}
-
-	public static BdvStackSource< ? > visualize(
-			final HashMap<String, AffineModel2D> idToModels,
-			final HashMap<String, MinimalTileSpec> idToTileSpec )
-	{
-		return visualize(idToModels, idToTileSpec, new double[] { 1, 1, 1 }, Runtime.getRuntime().availableProcessors() );
+		return visualizeMultiRes( data.getA(), data.getB(), constantIdToValue( data.getA().keySet() ) );
 	}
 
 	public static BdvStackSource< ? > visualize(
 			final HashMap<String, AffineModel2D> idToModels,
 			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, Float> idToValue )
+	{
+		return visualize(idToModels, idToTileSpec, idToValue, new double[] { 1, 1, 1 }, Runtime.getRuntime().availableProcessors() );
+	}
+
+	public static BdvStackSource< ? > visualize(
+			final HashMap<String, AffineModel2D> idToModels,
+			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, Float> idToValue,
 			final double[] scale,
 			final int numThreads )
 	{
 		final RandomAccessibleInterval< FloatType > vis =
-				new VisualizingRandomAccessibleInterval( idToModels, idToTileSpec, scale );
+				new VisualizingRandomAccessibleInterval( idToModels, idToTileSpec, idToValue, scale );
 
 		final RandomAccessibleInterval< FloatType > cachedImg = cacheRandomAccessibleInterval(
 				vis,
@@ -130,11 +132,22 @@ public class VisualizeTools
 		return preview;
 	}
 
+	public static final HashMap<String, Float> constantIdToValue( final Collection< String > tileIds )
+	{
+		final HashMap<String, Float> idToValue = new HashMap<>();
+
+		for ( final String tileId : tileIds )
+			idToValue.put( tileId, 1.0f );
+
+		return idToValue;
+	}
+
 	public static BdvStackSource< ? > visualizeMultiRes(
 			final HashMap<String, AffineModel2D> idToModels,
-			final HashMap<String, MinimalTileSpec> idToTileSpec )
+			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, Float> idToValue )
 	{
-		return visualizeMultiRes( idToModels, idToTileSpec, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
+		return visualizeMultiRes( idToModels, idToTileSpec, idToValue, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
 	}
 
 	public static BdvStackSource< ? > renderBDV( final ImagePlus imp, final double scale )
@@ -192,6 +205,16 @@ public class VisualizeTools
 			final int minDS, final int maxDS, final int dsInc,
 			final int numThreads )
 	{
+		return visualizeMultiRes(idToModels, idToTileSpec, constantIdToValue( idToModels.keySet() ), minDS, maxDS, dsInc, numThreads);
+	}
+
+	public static BdvStackSource< ? > visualizeMultiRes(
+			final HashMap<String, AffineModel2D> idToModels,
+			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, Float> idToValue,
+			final int minDS, final int maxDS, final int dsInc,
+			final int numThreads )
+	{
 		final ArrayList< Pair< RandomAccessibleInterval< FloatType >, AffineTransform3D > > multiRes = new ArrayList<>();
 
 		for ( int downsampling = minDS; downsampling <= maxDS; downsampling *= dsInc )
@@ -203,7 +226,7 @@ public class VisualizeTools
 			t.scale( downsampling );
 
 			final RandomAccessibleInterval< FloatType > ra = 
-					new VisualizingRandomAccessibleInterval( idToModels, idToTileSpec, new double[] { 1.0/downsampling, 1.0/downsampling, 1.0/downsampling } );
+					new VisualizingRandomAccessibleInterval( idToModels, idToTileSpec, idToValue, new double[] { 1.0/downsampling, 1.0/downsampling, 1.0/downsampling } );
 			
 			multiRes.add( new ValuePair<>( ra, t )  );
 		}

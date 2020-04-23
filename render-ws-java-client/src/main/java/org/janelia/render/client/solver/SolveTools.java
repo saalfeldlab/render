@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -36,12 +38,247 @@ import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
+import mpicbg.models.TranslationModel2D;
+import net.imglib2.RandomAccess;
+import net.imglib2.algorithm.gauss3.Gauss3;
+import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
+import net.imglib2.view.Views;
 
 public class SolveTools
 {
 	private SolveTools() {}
+
+	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas( final Collection< Tile< ? > > tiles, final SolveItem< ?,?,? > solveItem )
+	{
+		final HashMap< Integer, Pair< Tile< ? >, Tile< TranslationModel2D > > > zToTiles = fakePreAlign( tiles, solveItem );
+
+		final ArrayList< Integer > allZ = new ArrayList<Integer>( zToTiles.keySet() );
+		Collections.sort( allZ );
+
+		final Img< DoubleType > valueX = ArrayImgs.doubles( allZ.size() );
+		final Img< DoubleType > valueY = ArrayImgs.doubles( allZ.size() );
+
+		RandomAccess< DoubleType > rX = valueX.randomAccess();
+		RandomAccess< DoubleType > rY = valueY.randomAccess();
+		
+		for ( int z = 0; z < allZ.size(); ++ z )
+		{
+			final double[] offset = layerMinBounds( zToTiles.get( allZ.get( z ) ), solveItem);
+			
+			rX.setPosition( new int[] { z } );
+			rY.setPosition( new int[] { z } );
+
+			rX.get().set( offset[ 0 ] );
+			rY.get().set( offset[ 1 ] );
+		}
+
+		RandomAccess< DoubleType > rxIn = Views.extendMirrorSingle( valueX ).randomAccess();
+		RandomAccess< DoubleType > ryIn = Views.extendMirrorSingle( valueY ).randomAccess();
+
+		final Img< DoubleType > derX = ArrayImgs.doubles( allZ.size() );
+		final Img< DoubleType > derY = ArrayImgs.doubles( allZ.size() );
+
+		RandomAccess< DoubleType > rxOut = derX.randomAccess();
+		RandomAccess< DoubleType > ryOut = derY.randomAccess();
+
+		for ( int z = 0; z < allZ.size(); ++z )
+		{
+			rxIn.setPosition( new int[] { z - 1 } );
+			ryIn.setPosition( new int[] { z - 1 } );
+
+			double x = rxIn.get().get();
+			double y = ryIn.get().get();
+			
+			rxIn.fwd( 0 );
+			ryIn.fwd( 0 );
+			
+			rxOut.setPosition( rxIn );
+			ryOut.setPosition( ryIn );
+
+			rxOut.get().set( Math.pow( x - rxIn.get().get(), 2 ) );
+			ryOut.get().set( Math.pow( y - ryIn.get().get(), 2 ) );
+		}
+
+		final Img< DoubleType > filterX = ArrayImgs.doubles( allZ.size() );
+		final Img< DoubleType > filterY = ArrayImgs.doubles( allZ.size() );
+
+		Gauss3.gauss( 20, Views.extendMirrorSingle( derX ), filterX );
+		Gauss3.gauss( 20, Views.extendMirrorSingle( derY ), filterY );
+
+		rX = filterX.randomAccess();
+		rY = filterY.randomAccess();
+		
+		for ( int i = 0; i < allZ.size(); ++i )
+		{
+			rX.setPosition(new int[] { i } );
+			rY.setPosition(new int[] { i } );
+		
+			double lambda = (rX.get().get() + rY.get().get() );
+
+			rY.get().set( lambda );
+
+			lambda = Math.max( 0, lambda < 115 ? ( 0.000023333*lambda*lambda - 0.005233333*lambda + 0.3 ) / 2.0 : 0.00674563 / 2.0 );
+
+			rX.get().set( lambda );
+		}
+
+		Gauss3.gauss( 5, Views.extendMirrorSingle( filterX ), filterX );
+
+		final HashMap< Tile< ? >, Double > tileToDynamicLambda = new HashMap<>();
+
+		for ( int i = 0; i < allZ.size(); ++i )
+		{
+			final int z = allZ.get( i );
+
+			rX.setPosition(new int[] { i } );
+			final double lambda = rX.get().get();
+					
+			solveItem.zToDynamicLambda().put( z, lambda );
+			tileToDynamicLambda.put( zToTiles.get( z ).getA(), lambda );
+		}
+
+//		new ImageJ();
+//		ImageJFunctions.show( filterX );
+//		ImageJFunctions.show( filterY );
+		return tileToDynamicLambda;
+	}
+
+	protected static HashMap< Integer, Pair< Tile< ? >, Tile< TranslationModel2D > > > fakePreAlign( final Collection< Tile< ? > > tiles, final SolveItem<?, ?, ?> solveItem )
+	{
+		LOG.info( "Pre-aligning with Translation to compute dynamic lambdas..." );
+		
+		final HashMap< Integer, Pair< Tile< ? >, Tile< TranslationModel2D > > > zToTiles = new HashMap<>();
+
+		final HashMap< Tile< ? >, Tile< TranslationModel2D > > tilesToFaketiles = new HashMap<>();
+		final HashMap< Point, Tile< ? > > p1ToTile = new HashMap<>(); // to efficiently find a tile associated with a pointmatch
+
+		for ( final Tile< ? > tile : tiles )
+		{
+			final Tile< TranslationModel2D > fakeTile = new Tile<>( new TranslationModel2D() );
+			tilesToFaketiles.put( tile, fakeTile );
+
+			for ( final PointMatch pm : tile.getMatches() )
+				p1ToTile.put( pm.getP1(), tile );
+
+			final Tile< ? > aTile = solveItem.groupedTileToTiles().get( tile ).get( 0 ); 
+			final String tileId = solveItem.tileToIdMap().get( aTile );
+			final int z = (int)Math.round( solveItem.idToTileSpec().get( tileId ).getZ() );
+			zToTiles.put( z, new ValuePair<>( tile, fakeTile ) );
+		}
+
+		final HashSet< Tile<?> > alreadyVisited = new HashSet<>();
+
+		for ( final Tile< ? > tile : tiles )
+		{
+			LOG.info( "tile z " + Math.round( solveItem.idToTileSpec().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).get( 0 ) ) ).getZ() ) + " (" + tile.getMatches().size() + " matches). " );
+			
+			final HashMap< Tile< TranslationModel2D >, ArrayList< PointMatch > > matches = new HashMap<>();
+
+			for ( final PointMatch pm : tile.getMatches() )
+			{
+				final Tile< ? > connectedTile = p1ToTile.get( pm.getP2() );
+				
+				if ( alreadyVisited.contains( connectedTile ) )
+					continue;
+
+				final Tile< TranslationModel2D > connectedFakeTile = tilesToFaketiles.get( connectedTile );
+
+				final PointMatch newPM = new PointMatch(
+						new Point( pm.getP1().getL().clone(), pm.getP1().getW().clone() ),
+						new Point( pm.getP2().getL().clone(), pm.getP2().getW().clone() ),
+						pm.getWeight() );
+				
+				matches.putIfAbsent( connectedFakeTile, new ArrayList<PointMatch>() );
+				matches.get( connectedFakeTile ).add( newPM );
+			}
+		
+			final Tile< TranslationModel2D > fakeTile = tilesToFaketiles.get( tile );
+
+			for ( final Tile< TranslationModel2D > connectedFakeTile : matches.keySet() )
+			{
+				final ArrayList< PointMatch > newMatches = matches.get( connectedFakeTile ); 
+				fakeTile.connect( connectedFakeTile, newMatches );
+			}
+			
+			alreadyVisited.add( tile );
+		}
+
+		final TileConfiguration tileConfig = new TileConfiguration();
+		tileConfig.addTiles( tilesToFaketiles.values() );
+
+		try
+		{
+			double[] errors = computeErrors( tileConfig.getTiles() );
+			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
+
+			final Map< Tile< ? >, Integer > tileToZ = new HashMap<>();
+
+			for ( final Tile< ? > tile : tilesToFaketiles.keySet() )
+			{
+				final Tile< TranslationModel2D > fakeTile = tilesToFaketiles.get( tile );
+				tileToZ.put( fakeTile, (int)Math.round( solveItem.idToTileSpec().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).get( 0 ) ) ).getZ() ) );
+			}
+
+			preAlignByLayerDistance( tileConfig, tileToZ );
+			//tileConfig.preAlign();
+			
+			errors = computeErrors( tileConfig.getTiles() );
+			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
+		}
+		catch (NotEnoughDataPointsException | IllDefinedDataPointsException e)
+		{
+			LOG.info( "prealign failed: " + e );
+			e.printStackTrace();
+		}
+
+		return zToTiles;
+	}
+
+	protected static double[] layerMinBounds( final Pair< Tile< ? >, Tile< TranslationModel2D > > tiles, final SolveItem< ?,?,? > solveItem )
+	{
+		final Tile< ? > groupedTile = tiles.getA();
+		final Tile< TranslationModel2D > fakeAlignedGroupedTile = tiles.getB();
+		
+		final AffineModel2D groupedModel = SolveTools.createAffine( fakeAlignedGroupedTile.getModel() );
+		
+		double minX = Double.MAX_VALUE;
+		double minY = Double.MAX_VALUE;
+
+		for ( final Tile< ? > tile : solveItem.groupedTileToTiles().get( groupedTile ) )
+		{
+			final String tileId = solveItem.tileToIdMap().get( tile );
+			final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
+
+			final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
+			affine.preConcatenate( groupedModel );
+
+			double[] tmp = new double[ 2 ];
+			
+			tmp[ 0 ] = 0;
+			tmp[ 1 ] = tileSpec.getHeight() / 2.0;
+
+			affine.applyInPlace( tmp );
+			
+			minX = Math.min( minX, tmp[ 0 ] );
+			minY = Math.min( minY, tmp[ 1 ] );
+			
+
+			tmp[ 0 ] = tileSpec.getWidth() / 2;
+			tmp[ 1 ] = 0;
+
+			affine.applyInPlace( tmp );
+			
+			minX = Math.min( minX, tmp[ 0 ] );
+			minY = Math.min( minY, tmp[ 1 ] );
+
+		}
+		
+		return new double[] { minX, minY };
+	}
 
 	protected static double[] computeErrors( final Collection< ? extends Tile< ? > > tiles )
 	{
