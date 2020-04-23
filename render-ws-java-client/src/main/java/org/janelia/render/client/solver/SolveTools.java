@@ -1,72 +1,194 @@
 package org.janelia.render.client.solver;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
-import java.util.TreeMap;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.ModelType;
-import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
-import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackMetaData.StackState;
-import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ScriptUtil;
-import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ij.IJ;
-import ij.ImagePlus;
-import ij.io.FileSaver;
-import ij.measure.Calibration;
-import ij.process.FloatProcessor;
-import ij.process.ImageProcessor;
-import imglib.ops.operator.binary.Min;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
+import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
-import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
-import net.imglib2.Cursor;
-import net.imglib2.IterableInterval;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.RealRandomAccessible;
-import net.imglib2.img.imageplus.ImagePlusImg;
-import net.imglib2.img.imageplus.ImagePlusImgFactory;
-import net.imglib2.img.imageplus.ImagePlusImgs;
-import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
-import net.imglib2.realtransform.AffineTransform2D;
-import net.imglib2.realtransform.RealViews;
-import net.imglib2.type.numeric.integer.UnsignedByteType;
-import net.imglib2.type.numeric.real.FloatType;
+import mpicbg.models.TileConfiguration;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
-import net.imglib2.view.Views;
 
 public class SolveTools
 {
 	private SolveTools() {}
+
+	protected static double[] computeErrors( final Collection< ? extends Tile< ? > > tiles )
+	{
+		double cd = 0.0;
+		double minError = Double.MAX_VALUE;
+		double maxError = 0.0;
+
+		for ( final Tile< ? > t : tiles )
+			t.update();
+		
+		for ( final Tile< ? > t : tiles )
+		{
+			t.update();
+			final double d = t.getDistance();
+			if ( d < minError ) minError = d;
+			if ( d > maxError ) maxError = d;
+			cd += d;
+		}
+		cd /= tiles.size();
+		
+		return new double[] { minError, cd, maxError };
+	}
+
+	public static List< Tile< ? > > preAlignByLayerDistance(
+			final TileConfiguration tileConfig,
+			final Map<String, MinimalTileSpec> idToTileSpec,
+			final Map<? extends Tile<?>, String > tileToIdMap,
+			final Map<? extends Tile< ? >, ? extends List< ? extends Tile< ? > > > groupedTileToTiles )
+					throws NotEnoughDataPointsException, IllDefinedDataPointsException
+	{
+		// first get order all tiles by
+		// a) unaligned
+		// b) aligned - which initially only contains the fixed ones
+		final ArrayList< Tile< ? > > unAlignedTiles = new ArrayList< Tile< ? > >();
+		final ArrayList< Tile< ? > > alignedTiles = new ArrayList< Tile< ? > >();
+
+		// if no tile is fixed, take another */
+		if ( tileConfig.getFixedTiles().size() == 0 )
+		{
+			final Iterator< Tile< ? > > it = tileConfig.getTiles().iterator();
+			alignedTiles.add( it.next() );
+			while ( it.hasNext() )
+				unAlignedTiles.add( it.next() );
+		}
+		else
+		{
+			for ( final Tile< ? > tile : tileConfig.getTiles() )
+			{
+				if ( tileConfig.getFixedTiles().contains( tile ) )
+					alignedTiles.add( tile );
+				else
+					unAlignedTiles.add( tile );
+			}
+		}
+
+		// we go through each fixed/aligned tile and try to find a pre-alignment
+		// for all other unaligned tiles
+		for ( final ListIterator< Tile< ?> > referenceIterator = alignedTiles.listIterator(); referenceIterator.hasNext(); )
+		{
+			// once all tiles are aligned we can quit this loop
+			if ( unAlignedTiles.size() == 0 )
+				break;
+
+			// get the next reference tile (either a fixed or an already aligned one
+			final Tile< ? > referenceTile = referenceIterator.next();
+
+			// transform all reference points into the reference coordinate system
+			// so that we get the direct model even if we are not anymore at the
+			// level of the fixed tile
+			referenceTile.apply();
+
+			//
+			// NEW: we sort the unaligned by distance to the reference
+			//
+			Collections.sort( unAlignedTiles, new Comparator<Tile< ? >>()
+			{
+				@Override
+				public int compare( final Tile< ? > o1, final Tile< ? > o2 )
+				{	
+					return deltaZ( o2, referenceTile ) - deltaZ( o1, referenceTile );
+				}
+
+				public int deltaZ( final Tile<?> tile1, final Tile<?> tile2 )
+				{
+					if ( groupedTileToTiles == null )
+					{
+						return Math.abs(
+								(int)Math.round( idToTileSpec.get( tileToIdMap.get( tile1 ) ).getZ() ) -
+								(int)Math.round( idToTileSpec.get( tileToIdMap.get( tile2 ) ).getZ() ) );
+					}
+					else
+					{
+						return Math.abs(
+								(int)Math.round( idToTileSpec.get( tileToIdMap.get( groupedTileToTiles.get( tile1 ).get( 0 ) ) ).getZ() ) -
+								(int)Math.round( idToTileSpec.get( tileToIdMap.get( groupedTileToTiles.get( tile2 ).get( 0 ) ) ).getZ() ) );
+					}
+				}
+			});
+			//sort( referenceTile, unAlignedTiles );
+			
+			// now we go through the unaligned tiles to see if we can align it to the current reference tile one
+			for ( final ListIterator< Tile< ?> > targetIterator = unAlignedTiles.listIterator(); targetIterator.hasNext(); )
+			{
+				// get the tile that we want to preregister
+				final Tile< ? > targetTile = targetIterator.next();
+
+				// target tile is connected to reference tile
+				if ( referenceTile.getConnectedTiles().contains( targetTile ) )
+				{
+					// extract all PointMatches between reference and target tile and fit a model only on these
+					final ArrayList< PointMatch > pm = tileConfig.getConnectingPointMatches( targetTile, referenceTile );
+
+					// are there enough matches?
+					if ( pm.size() > targetTile.getModel().getMinNumMatches() )
+					{
+						// fit the model of the targetTile to the subset of matches
+						// mapping its local coordinates target.p.l into the world
+						// coordinates reference.p.w
+						// this will give us an approximation for the global optimization
+						targetTile.getModel().fit( pm );
+
+						// now that we managed to fit the model we remove the
+						// Tile from unaligned tiles and add it to aligned tiles
+						targetIterator.remove();
+
+						// now add the aligned target tile to the end of the reference list
+						int countFwd = 0;
+
+						while ( referenceIterator.hasNext() )
+						{
+							referenceIterator.next();
+							++countFwd;
+						}
+						referenceIterator.add( targetTile );
+
+						// move back to the current position
+						// (+1 because it add just behind the current position)
+						for ( int j = 0; j < countFwd + 1; ++j )
+							referenceIterator.previous();
+					}
+				}
+
+			}
+		}
+
+		return unAlignedTiles;
+	}
 
 	protected static AffineModel2D createAffine( final Affine2D< ? > model )
 	{
