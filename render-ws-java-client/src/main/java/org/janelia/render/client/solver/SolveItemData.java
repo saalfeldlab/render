@@ -56,11 +56,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 
 		this.globalSolveModel = globalSolveModel.copy();
 		this.blockSolveModel = blockSolveModel.copy();
-
-		if ( stitchingModel == null )
-			this.stitchingModel = null;
-		else
-			this.stitchingModel = stitchingModel.copy();
+		this.stitchingModel = stitchingModel.copy();
 	}
 
 	public int getId() { return id; }
@@ -70,8 +66,6 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	public G globalSolveModelInstance() { return globalSolveModel.copy(); }
 	public B blockSolveModelInstance() { return blockSolveModel.copy(); }
 	public S stitchingSolveModelInstance() { return stitchingModel.copy(); }
-
-	public boolean hasStitchingModel() { return stitchingModel != null; }
 
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return idToPreviousModel; }
 	public HashMap<String, MinimalTileSpec> idToTileSpec() { return idToTileSpec; }
