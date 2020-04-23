@@ -36,9 +36,9 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	public List< SolveItemData< G, B, S > > distributedSolve()
 	{
 		final long time = System.currentTimeMillis();
-		/*
+
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 9 ), //43 49 ),
+				this.solveSet.leftItems.get( 9 ), //9, 43 49 ),
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
 				parameters.renderWeb.baseDataUrl,
@@ -76,7 +76,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		}
 
 		SimpleMultiThreading.threadHaltUnClean();
-		*/
+
 		final ArrayList< SolveItemData< G, B, S > > allItems;
 
 		// set up executor service
@@ -164,7 +164,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             
                             "--blockOptimizerLambdasRigid",       "1.0,1.0,0.5,0.1,0.01",
                             "--blockOptimizerLambdasTranslation", "1.0,0.5,0.0,0.0,0.0",
-                            "--blockOptimizerIterations", "1000,200,100,40,20",
+                            "--blockOptimizerIterations", "200,200,100,40,20",
                             "--blockMaxPlateauWidth", "200,50,50,40,20",
 
                             //"--blockSize", "100",
