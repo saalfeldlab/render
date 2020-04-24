@@ -177,7 +177,7 @@ public class SolveTools
 
 		for ( final Tile< ? > tile : tiles )
 		{
-			LOG.info( "tile z " + Math.round( solveItem.idToTileSpec().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).get( 0 ) ) ).getZ() ) + " (" + tile.getMatches().size() + " matches). " );
+			//LOG.info( "tile z " + Math.round( solveItem.idToTileSpec().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).get( 0 ) ) ).getZ() ) + " (" + tile.getMatches().size() + " matches). " );
 			
 			final HashMap< Tile< TranslationModel2D >, ArrayList< PointMatch > > matches = new HashMap<>();
 
