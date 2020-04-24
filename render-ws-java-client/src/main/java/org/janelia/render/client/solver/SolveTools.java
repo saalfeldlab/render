@@ -318,11 +318,19 @@ public class SolveTools
 		final ArrayList< Tile< ? > > unAlignedTiles = new ArrayList< Tile< ? > >();
 		final ArrayList< Tile< ? > > alignedTiles = new ArrayList< Tile< ? > >();
 
+		final Tile< ? > firstTile;
+
 		// if no tile is fixed, take another */
 		if ( tileConfig.getFixedTiles().size() == 0 )
 		{
 			final Iterator< Tile< ? > > it = tileConfig.getTiles().iterator();
 			alignedTiles.add( it.next() );
+			
+			if ( alignedTiles.size() > 0 )
+				firstTile = alignedTiles.get( 0 );
+			else
+				firstTile = null;
+			
 			while ( it.hasNext() )
 				unAlignedTiles.add( it.next() );
 		}
@@ -335,6 +343,7 @@ public class SolveTools
 				else
 					unAlignedTiles.add( tile );
 			}
+			firstTile = null;
 		}
 
 		// we go through each fixed/aligned tile and try to find a pre-alignment
@@ -415,6 +424,20 @@ public class SolveTools
 			}
 		}
 
+		if ( firstTile != null )
+		{
+			for ( final Tile< ? > templateTile : firstTile.getConnectedTiles() )
+			{
+				final ArrayList< PointMatch > pm = tileConfig.getConnectingPointMatches( firstTile, templateTile );
+			
+				if ( pm.size() > firstTile.getModel().getMinNumMatches() )
+				{
+					firstTile.getModel().fit( pm );
+					break;
+				}
+			}
+		}
+	
 		return unAlignedTiles;
 	}
 
