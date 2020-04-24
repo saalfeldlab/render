@@ -35,7 +35,6 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel2D;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -55,6 +54,14 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final List< Pair< String, Double > > pGroupList;
 	final Map<String, ArrayList<Double>> sectionIdToZMap;
 
+	// we store tile pairs and pointmatches here first, as we need to do stitching per section first if possible (if connected)
+	// filled in assembleMatchData()
+	final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs;
+
+	// maps from the z section to an entry in the above pairs list
+	// filled in assembleMatchData()
+	final HashMap< Integer, List< Integer > > zToPairs;
+
 	final int numThreads;
 
 	final double maxAllowedErrorStitching;
@@ -65,7 +72,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final double blockMaxAllowedError;
 
 	final SolveItem< G, B, S > inputSolveItem;
-	final ArrayList< SolveItem< G, B, S > > solveItems;
+	List< SolveItem< G, B, S > > solveItems;
 
 	public DistributedSolveWorker(
 			final SolveItemData< G, B, S > solveItemData,
@@ -106,7 +113,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		this.numThreads = numThreads;
 
-		this.solveItems = new ArrayList<>();
+		// used locally
+		this.pairs = new ArrayList<>();
+		this.zToPairs = new HashMap<>();
 	}
 
 	public List< SolveItemData< G, B, S > > getSolveItemDataList()
@@ -116,24 +125,22 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
-		assembleMatchData();
-		split(); // splits
+		assembleMatchData( pairs, zToPairs );
+		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, numThreads );
+		connectGroupedTiles( pairs, inputSolveItem );
+		this.solveItems = splitSolveItem( inputSolveItem );
 
 		for ( final SolveItem< G, B, S > solveItem : solveItems )
 			solve( solveItem, numThreads );
 	}
 
-	protected void assembleMatchData() throws IOException
+	protected void assembleMatchData(
+			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
+			final HashMap< Integer, List< Integer > > zToPairs ) throws IOException
 	{
 		final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap = new HashMap<>();
 
 		LOG.info( "block " + inputSolveItem.getId() + ": Loading transforms and matches from " + inputSolveItem.minZ() + " to layer " + inputSolveItem.maxZ() );
-
-		// we store tile pairs and pointmatches here first, as we need to do stitching per section first if possible (if connected)
-		final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs = new ArrayList<>();
-
-		// maps from the z section to an entry in the above pairs list
-		final HashMap< Integer, List< Integer > > zToPairs = new HashMap<>();
 
 		for ( final Pair< String, Double > pGroupPair : pGroupList )
 		{
@@ -235,19 +242,17 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				}
 			}
 		}
-
-		// stitching
-		stitchSections(
-				inputSolveItem,
-				pairs,
-				zToPairs,
-				numThreads );
-
+	}
+	
+	protected void connectGroupedTiles(
+			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
+			final SolveItem<G, B, S> solveItem )
+	{
 		// next, group the stitched tiles together
 		for ( final Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > pair : pairs )
 		{
-			final Tile< ? > p = inputSolveItem.tileToGroupedTile().get( pair.getA().getA() );
-			final Tile< ? > q = inputSolveItem.tileToGroupedTile().get( pair.getA().getB() );
+			final Tile< ? > p = solveItem.tileToGroupedTile().get( pair.getA().getA() );
+			final Tile< ? > q = solveItem.tileToGroupedTile().get( pair.getA().getB() );
 
 			if ( p == q )
 				continue;
@@ -267,17 +272,17 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 //			TileId 19-07-31_120407_0-0-0.24501.0 Model=     [3,3](AffineTransform[[0.999999730969417, -6.35252550002E-4, 369.469292002579], [6.35252550002E-4, 0.999999730969417, 403.522028590144]]) 1.7976931348623157E308
 //			TileId 19-07-31_120407_0-0-0.24501.0 prev Model=[3,3](AffineTransform[[1.0, 0.0, 400.0], [0.0, 1.0, 400.0]]) 1.7976931348623157E308
 
-			final String pTileId = inputSolveItem.tileToIdMap().get( pair.getA().getA() );
-			final String qTileId = inputSolveItem.tileToIdMap().get( pair.getA().getB() );
+			final String pTileId = solveItem.tileToIdMap().get( pair.getA().getA() );
+			final String qTileId = solveItem.tileToIdMap().get( pair.getA().getB() );
 
-			final AffineModel2D pModel = inputSolveItem.idToStitchingModel().get( pTileId ); // ST for p
-			final AffineModel2D qModel = inputSolveItem.idToStitchingModel().get( qTileId ); // ST for q
+			final AffineModel2D pModel = solveItem.idToStitchingModel().get( pTileId ); // ST for p
+			final AffineModel2D qModel = solveItem.idToStitchingModel().get( qTileId ); // ST for q
 
 			p.connect(q, SolveTools.createRelativePointMatches( pair.getB(), pModel, qModel ) );
 		}
 	}
 
-	protected void stitchSections(
+	protected void stitchSectionsAndCreateGroupedTiles(
 			final SolveItem< G,B,S > solveItem,
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
 			final HashMap< Integer, List< Integer > > zToPairs,
@@ -363,7 +368,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			{
 				LOG.info( "block " + solveItem.getId() + ": Set=" + setCount++ );
 
-				// the grouped tile for this set
+				//
+				// the grouped tile for this set of one layer
+				//
 				final Tile< B > groupedTile = new Tile<>( solveItem.blockSolveModelInstance() );
 
 				if ( set.size() > 1 )
@@ -469,8 +476,10 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		}
 	}
 
-	protected void split()
+	protected List< SolveItem< G, B, S > > splitSolveItem( final SolveItem<G, B, S> inputSolveItem )
 	{
+		final ArrayList< SolveItem< G, B, S > > solveItems = new ArrayList<>();
+
 		final ArrayList< Set< Tile< ? > > > graphs = Tile.identifyConnectedGraphs( inputSolveItem.tileToGroupedTile().values() );
 
 		LOG.info( "block " + inputSolveItem.getId() + ": Graph of SolveItem " + inputSolveItem.getId() + " consists of " + graphs.size() + " subgraphs." );
@@ -566,7 +575,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				// cannot update overlapping items here due to multithreading and the fact that the other solveitems are also being split up
 			}
 		}
-		//System.exit( 0 );
+		return solveItems;
 	}
 
 	protected void solve(
