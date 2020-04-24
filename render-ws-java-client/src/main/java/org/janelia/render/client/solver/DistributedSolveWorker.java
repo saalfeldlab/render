@@ -728,7 +728,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		{
 			((InterpolatedAffineModel2D)((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).getA()).setLambda( blockOptimizerLambdasRigid.get( 0 )); // irrelevant
 			((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( blockOptimizerLambdasTranslation.get( 0 )); // 1.0
-			((InterpolatedAffineModel2D) tile.getModel()).setLambda( 1.0 /*tileToDynamicLambda.get( tile )*/ ); // dynamic lambda of the constant model
+			((InterpolatedAffineModel2D) tile.getModel()).setLambda( tileToDynamicLambda.get( tile ) ); // dynamic lambda of the constant model
 
 			//((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( blockOptimizerLambdasRigid.get( 0 )); // 1.0
 			//((InterpolatedAffineModel2D) tile.getModel()).setLambda( blockOptimizerLambdasTranslation.get( 0 ) ); // dynamic
@@ -763,7 +763,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			LOG.info( "block " + solveItem.getId() + ": l=" + blockOptimizerLambdasRigid.get( l ) + ", " + blockOptimizerLambdasTranslation.get( l ) );
 		}
 
-		/*
 		for ( int s = 0; s < blockOptimizerLambdasRigid.size(); ++s )
 		{
 			final double lambdaRigid = blockOptimizerLambdasRigid.get( s );
@@ -798,7 +797,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					tileConfig.getFixedTiles(),
 					numThreads );
 		}
-		*/
+
 		double[] errors = SolveTools.computeErrors( tileConfig.getTiles() );
 		LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
 
