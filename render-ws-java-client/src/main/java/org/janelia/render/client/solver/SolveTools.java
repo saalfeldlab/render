@@ -54,7 +54,8 @@ public class SolveTools
 
 	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas( final Collection< Tile< ? > > tiles, final SolveItem< ?,?,? > solveItem )
 	{
-		final HashMap< Integer, Pair< Tile< ? >, Tile< TranslationModel2D > > > zToTiles = fakePreAlign( tiles, solveItem );
+		// a z-section can have more than one grouped tile if they are connected from above and below
+		final HashMap< Integer, List< Pair< Tile< ? >, Tile< TranslationModel2D > > > > zToTiles = fakePreAlign( tiles, solveItem );
 
 		final ArrayList< Integer > allZ = new ArrayList<Integer>( zToTiles.keySet() );
 		Collections.sort( allZ );
@@ -69,8 +70,8 @@ public class SolveTools
 		{
 			final double[] offset = layerMinBounds( zToTiles.get( allZ.get( z ) ), solveItem);
 			
-			rX.setPosition( new int[] { z } );
-			rY.setPosition( new int[] { z } );
+			rX.setPosition( z, 0 );
+			rY.setPosition( z, 0 );
 
 			rX.get().set( offset[ 0 ] );
 			rY.get().set( offset[ 1 ] );
@@ -87,8 +88,8 @@ public class SolveTools
 
 		for ( int z = 0; z < allZ.size(); ++z )
 		{
-			rxIn.setPosition( new int[] { z - 1 } );
-			ryIn.setPosition( new int[] { z - 1 } );
+			rxIn.setPosition( z - 1, 0 );
+			ryIn.setPosition( z - 1, 0 );
 
 			double x = rxIn.get().get();
 			double y = ryIn.get().get();
@@ -114,14 +115,14 @@ public class SolveTools
 		
 		for ( int i = 0; i < allZ.size(); ++i )
 		{
-			rX.setPosition(new int[] { i } );
-			rY.setPosition(new int[] { i } );
+			rX.setPosition( i, 0 );
+			rY.setPosition( i, 0 );
 		
-			double lambda = (rX.get().get() + rY.get().get() );
+			final double sum = (rX.get().get() + rY.get().get() );
 
-			rY.get().set( lambda );
+			rY.get().set( sum );
 
-			lambda = Math.max( 0, lambda < 115 ? ( 0.000023333*lambda*lambda - 0.005233333*lambda + 0.3 ) / 2.0 : 0.00674563 / 2.0 );
+			final double lambda = Math.max( 0, sum < 115 ? ( 0.000023333*sum*sum - 0.005233333*sum + 0.3 ) / 2.0 : 0.00674563 / 2.0 );
 
 			rX.get().set( lambda );
 		}
@@ -138,7 +139,8 @@ public class SolveTools
 			final double lambda = rX.get().get();
 					
 			solveItem.zToDynamicLambda().put( z, lambda );
-			tileToDynamicLambda.put( zToTiles.get( z ).getA(), lambda );
+			for ( final Pair< Tile< ? >, Tile< TranslationModel2D > > tilePair : zToTiles.get( z ) )
+				tileToDynamicLambda.put( tilePair.getA(), lambda );
 		}
 
 //		new ImageJ();
@@ -147,11 +149,11 @@ public class SolveTools
 		return tileToDynamicLambda;
 	}
 
-	protected static HashMap< Integer, Pair< Tile< ? >, Tile< TranslationModel2D > > > fakePreAlign( final Collection< Tile< ? > > tiles, final SolveItem<?, ?, ?> solveItem )
+	protected static HashMap< Integer, List< Pair< Tile< ? >, Tile< TranslationModel2D > > > > fakePreAlign( final Collection< Tile< ? > > tiles, final SolveItem<?, ?, ?> solveItem )
 	{
 		LOG.info( "Pre-aligning with Translation to compute dynamic lambdas..." );
 		
-		final HashMap< Integer, Pair< Tile< ? >, Tile< TranslationModel2D > > > zToTiles = new HashMap<>();
+		final HashMap< Integer, List< Pair< Tile< ? >, Tile< TranslationModel2D > > > > zToTiles = new HashMap<>();
 
 		final HashMap< Tile< ? >, Tile< TranslationModel2D > > tilesToFaketiles = new HashMap<>();
 		final HashMap< Point, Tile< ? > > p1ToTile = new HashMap<>(); // to efficiently find a tile associated with a pointmatch
@@ -167,7 +169,8 @@ public class SolveTools
 			final Tile< ? > aTile = solveItem.groupedTileToTiles().get( tile ).get( 0 ); 
 			final String tileId = solveItem.tileToIdMap().get( aTile );
 			final int z = (int)Math.round( solveItem.idToTileSpec().get( tileId ).getZ() );
-			zToTiles.put( z, new ValuePair<>( tile, fakeTile ) );
+			zToTiles.putIfAbsent( z, new ArrayList<>() ); 
+			zToTiles.get( z ).add( new ValuePair<>( tile, fakeTile ) );
 		}
 
 		final HashSet< Tile<?> > alreadyVisited = new HashSet<>();
@@ -238,45 +241,47 @@ public class SolveTools
 		return zToTiles;
 	}
 
-	protected static double[] layerMinBounds( final Pair< Tile< ? >, Tile< TranslationModel2D > > tiles, final SolveItem< ?,?,? > solveItem )
+	protected static double[] layerMinBounds( final List< Pair< Tile< ? >, Tile< TranslationModel2D > > > tilesList, final SolveItem< ?,?,? > solveItem )
 	{
-		final Tile< ? > groupedTile = tiles.getA();
-		final Tile< TranslationModel2D > fakeAlignedGroupedTile = tiles.getB();
-		
-		final AffineModel2D groupedModel = SolveTools.createAffine( fakeAlignedGroupedTile.getModel() );
-		
 		double minX = Double.MAX_VALUE;
 		double minY = Double.MAX_VALUE;
 
-		for ( final Tile< ? > tile : solveItem.groupedTileToTiles().get( groupedTile ) )
+		// a z-section can have more than one grouped tile if they are connected from above and below
+		for ( final Pair< Tile< ? >, Tile< TranslationModel2D > > tiles : tilesList )
 		{
-			final String tileId = solveItem.tileToIdMap().get( tile );
-			final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
+			final Tile< ? > groupedTile = tiles.getA();
+			final Tile< TranslationModel2D > fakeAlignedGroupedTile = tiles.getB();
 
-			final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
-			affine.preConcatenate( groupedModel );
+			final AffineModel2D groupedModel = SolveTools.createAffine( fakeAlignedGroupedTile.getModel() );
 
-			double[] tmp = new double[ 2 ];
-			
-			tmp[ 0 ] = 0;
-			tmp[ 1 ] = tileSpec.getHeight() / 2.0;
+			for ( final Tile< ? > tile : solveItem.groupedTileToTiles().get( groupedTile ) )
+			{
+				final String tileId = solveItem.tileToIdMap().get( tile );
+				final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
 
-			affine.applyInPlace( tmp );
-			
-			minX = Math.min( minX, tmp[ 0 ] );
-			minY = Math.min( minY, tmp[ 1 ] );
-			
+				final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
+				affine.preConcatenate( groupedModel );
 
-			tmp[ 0 ] = tileSpec.getWidth() / 2;
-			tmp[ 1 ] = 0;
+				double[] tmp = new double[ 2 ];
 
-			affine.applyInPlace( tmp );
-			
-			minX = Math.min( minX, tmp[ 0 ] );
-			minY = Math.min( minY, tmp[ 1 ] );
+				tmp[ 0 ] = 0;
+				tmp[ 1 ] = tileSpec.getHeight() / 2.0;
 
+				affine.applyInPlace( tmp );
+
+				minX = Math.min( minX, tmp[ 0 ] );
+				minY = Math.min( minY, tmp[ 1 ] );
+
+				tmp[ 0 ] = tileSpec.getWidth() / 2;
+				tmp[ 1 ] = 0;
+
+				affine.applyInPlace( tmp );
+
+				minX = Math.min( minX, tmp[ 0 ] );
+				minY = Math.min( minY, tmp[ 1 ] );
+			}
 		}
-		
+
 		return new double[] { minX, minY };
 	}
 
