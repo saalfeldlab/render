@@ -261,7 +261,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		final HashMap< Integer, List<Tile<B>> > zToGroupedTileList = new HashMap<>();
 
-		for ( final Tile< B > groupedTile : solveItem.tileToGroupedTile().values() )
+		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
+		for ( final Tile< B > groupedTile : new HashSet<>( solveItem.tileToGroupedTile().values() ) )
 		{
 			final int z =
 					(int)Math.round(
@@ -280,14 +281,15 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		{
 			final List<Tile<B>> groupedTiles = zToGroupedTileList.get( z );
 
-			LOG.info( "z=" + z + " contains of  " + groupedTiles.size() + " grouped tiles." );
+			LOG.info( "z=" + z + " contains " + groupedTiles.size() + " grouped tiles." );
 
 			// find out where the Tile sits in average (given the n tiles it is grouped from)
 			for ( final Tile< B > groupedTile : groupedTiles )
 			{
 				final List< Tile<B> > imageTiles = solveItem.groupedTileToTiles().get( groupedTile );
 
-				LOG.info( "z=" + z + " grouped tile contains " + imageTiles.size() + " image tiles." );
+				if ( groupedTiles.size() > 1 )
+					LOG.info( "z=" + z + " grouped tile [" + groupedTile + "] contains " + imageTiles.size() + " image tiles." );
 
 				// regularization
 				
@@ -315,8 +317,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					final AffineModel2D stitchingTransform = solveItem.idToStitchingModel().get( tileId );
 					final AffineModel2D metaDataTransform = getMetaDataTransformation( solveItem, tileId );
 
-					LOG.info( "z=" + z + " stitching model: " + stitchingTransform );
-					LOG.info( "z=" + z + " metaData model : " + metaDataTransform );
+					//LOG.info( "z=" + z + " stitching model: " + stitchingTransform );
+					//LOG.info( "z=" + z + " metaData model : " + metaDataTransform );
 
 					final double sampleWidth = (tileSpec.getWidth() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
 					final double sampleHeight = (tileSpec.getHeight() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
@@ -345,9 +347,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				try
 				{
 					regularizationModel.fit( matches );
-					
-					LOG.info( "z=" + z + " regularization model: " + regularizationModel );
-					
+										
 					double sumError = 0;
 					
 					for ( final PointMatch pm : matches )
@@ -366,7 +366,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					e.printStackTrace();
 				}
 			}
-			System.exit( 0 );			
 		}
 	}
 
@@ -603,7 +602,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	{
 		final ArrayList< SolveItem< G, B, S > > solveItems = new ArrayList<>();
 
-		final ArrayList< Set< Tile< ? > > > graphs = Tile.identifyConnectedGraphs( inputSolveItem.tileToGroupedTile().values() );
+		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
+		final ArrayList< Set< Tile< ? > > > graphs = Tile.identifyConnectedGraphs( new HashSet<>( inputSolveItem.tileToGroupedTile().values() ) );
 
 		LOG.info( "block " + inputSolveItem.getId() + ": Graph of SolveItem " + inputSolveItem.getId() + " consists of " + graphs.size() + " subgraphs." );
 
@@ -708,7 +708,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	{
 		final TileConfiguration tileConfig = new TileConfiguration();
 
-		tileConfig.addTiles(solveItem.tileToGroupedTile().values());
+		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
+		tileConfig.addTiles( new HashSet<>( solveItem.tileToGroupedTile().values() ) );
+
 		LOG.info("block " + solveItem.getId() + ": run: optimizing {} tiles", solveItem.groupedTileToTiles().keySet().size() );
 
 		final HashMap< Tile< ? >, Double > tileToDynamicLambda = SolveTools.computeMetaDataLambdas( tileConfig.getTiles(), solveItem );
