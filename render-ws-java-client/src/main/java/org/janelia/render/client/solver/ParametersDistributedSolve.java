@@ -18,15 +18,13 @@ import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
-import org.janelia.render.client.solver.RunParameters;
-import org.janelia.render.client.solver.SerializableValuePair;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.IdentityModel;
+import mpicbg.models.ConstantModel;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.TranslationModel2D;
@@ -257,13 +255,13 @@ public class ParametersDistributedSolve extends CommandLineParameters
 			throw new RuntimeException( "Number of entries for blockOptimizerIterations, blockMaxPlateauWidth, blockOptimizerLambdasTranslation and blockOptimizerLambdasRigid not identical." );
 
 		return (B)(Object)
-				//new InterpolatedAffineModel2D(
+				new InterpolatedAffineModel2D(
 						new InterpolatedAffineModel2D(
 								new InterpolatedAffineModel2D(
 										new AffineModel2D(),
 										new RigidModel2D(), blockOptimizerLambdasRigid.get( 0 ) ),
-								new TranslationModel2D(), blockOptimizerLambdasTranslation.get( 0 ) )/*,
-						new IdentityModel(), 0.0 )*/;
+								new TranslationModel2D(), blockOptimizerLambdasTranslation.get( 0 ) ),
+						new ConstantModel( stitchingModel() ), 0.0 );
 	}
 
 	public < S extends Model< S > & Affine2D< S > > S stitchingModel()
