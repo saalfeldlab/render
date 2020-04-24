@@ -261,7 +261,7 @@ public class ParametersDistributedSolve extends CommandLineParameters
 										new AffineModel2D(),
 										new RigidModel2D(), blockOptimizerLambdasRigid.get( 0 ) ),
 								new TranslationModel2D(), blockOptimizerLambdasTranslation.get( 0 ) ),
-						new ConstantModel( stitchingModel() ), 0.0 );
+						new ConstantAffineModel2D( stitchingModel() ), 0.0 );
 	}
 
 	public < S extends Model< S > & Affine2D< S > > S stitchingModel()
