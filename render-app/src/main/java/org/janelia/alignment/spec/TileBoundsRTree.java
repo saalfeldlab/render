@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.MontageRelativePosition;
@@ -64,6 +65,13 @@ public class TileBoundsRTree {
      */
     public List<TileBounds> getTileBoundsList() {
         return tileBoundsList;
+    }
+
+    /**
+     * @return set of ids for all tiles in this tree.
+     */
+    public Set<String> getTileIds() {
+        return tileBoundsList.stream().map(TileBounds::getTileId).collect(Collectors.toSet());
     }
 
     /**
