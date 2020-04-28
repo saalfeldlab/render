@@ -15,17 +15,20 @@ public class VisualizingRandomAccess extends AbstractLocalizable implements Rand
 {
 	final HashMap<String, AffineModel2D> idToInvertedRenderModels;
 	final HashMap<Integer, ArrayList< Pair<String,MinimalTileSpec> > > zToTileSpec; // at full resolution
+	final HashMap<String, Float> idToValue;
 	final double[] scale, tmp;
 	final FloatType type;
 
 	public VisualizingRandomAccess(
 			final HashMap<String, AffineModel2D> idToInvertedRenderModels,
 			final HashMap<Integer, ArrayList< Pair<String,MinimalTileSpec> > > zToTileSpec,
+			final HashMap<String, Float> idToValue,
 			final double[] scale )
 	{
 		// dimensionality
 		super( 3 );
 
+		this.idToValue = idToValue;
 		this.idToInvertedRenderModels = idToInvertedRenderModels;
 		this.zToTileSpec = zToTileSpec;
 		this.scale = scale;
@@ -62,7 +65,7 @@ public class VisualizingRandomAccess extends AbstractLocalizable implements Rand
 
 			if ( tmp[ 0 ] >= 0 && tmp[ 1 ] >= 0 && tmp[ 0 ] <= w - 1 && tmp[ 1 ] <= h - 1 )
 			{
-				value += 1;
+				value += idToValue.get( tileId ); //1
 			}
 		}
 
@@ -142,7 +145,7 @@ public class VisualizingRandomAccess extends AbstractLocalizable implements Rand
 	@Override
 	public RandomAccess<FloatType> copyRandomAccess()
 	{
-		final VisualizingRandomAccess r = new VisualizingRandomAccess( idToInvertedRenderModels, zToTileSpec, scale );
+		final VisualizingRandomAccess r = new VisualizingRandomAccess( idToInvertedRenderModels, zToTileSpec, idToValue, scale );
 		r.setPosition( this );
 		return r;
 	}

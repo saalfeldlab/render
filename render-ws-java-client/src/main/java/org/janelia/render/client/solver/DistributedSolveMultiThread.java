@@ -2,6 +2,7 @@ package org.janelia.render.client.solver;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -9,12 +10,18 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.spim.io.IOFunctions;
+import net.imglib2.multithreading.SimpleMultiThreading;
+import net.imglib2.util.Pair;
 
 import org.janelia.render.client.ClientRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import ij.ImageJ;
+import ij.ImagePlus;
 
 public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
 {
@@ -33,9 +40,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	{
 		final long time = System.currentTimeMillis();
 
-		/*
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 9 ),
+				this.solveSet.leftItems.get( 49 ), //9, 43 49 ),
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
 				parameters.renderWeb.baseDataUrl,
@@ -57,7 +63,19 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		{
 			w.run();
 
-			VisualizeTools.visualizeMultiRes( VisualizeTools.visualizeInfo( w.getSolveItemDataList() ) );
+			final HashMap<String, Float> idToValue = new HashMap<>();
+
+			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
+			{
+				for ( final String tileId : s.idToTileSpec().keySet() )
+				{
+					final int z = (int)Math.round( s.idToTileSpec().get( tileId ).getZ() );
+					idToValue.put( tileId, s.zToDynamicLambda().get( z ).floatValue() + 1 ); // between 1 and 1.2
+				}
+			}
+
+			final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > visualizeInfo = VisualizeTools.visualizeInfo( w.getSolveItemDataList() );
+			VisualizeTools.visualizeMultiRes( visualizeInfo.getA(), visualizeInfo.getB(), idToValue );
 
 			new ImageJ();
 			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
@@ -73,7 +91,6 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		}
 
 		SimpleMultiThreading.threadHaltUnClean();
-		*/
 
 		final ArrayList< SolveItemData< G, B, S > > allItems;
 
@@ -157,12 +174,12 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--project", "Sec10",
                             "--matchCollection", "Sec10_multi",
                             "--stack", "v2_acquire_merged",
-                            "--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_v4",
+                            //"--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_v4",
                             "--completeTargetStack",
                             
                             "--blockOptimizerLambdasRigid",       "1.0,1.0,0.5,0.1,0.01",
                             "--blockOptimizerLambdasTranslation", "1.0,0.5,0.0,0.0,0.0",
-                            "--blockOptimizerIterations", "1000,200,100,40,20",
+                            "--blockOptimizerIterations", "200,200,100,40,20",
                             "--blockMaxPlateauWidth", "200,50,50,40,20",
 
                             //"--blockSize", "100",
@@ -175,7 +192,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-							"--serializerPath", "."
+							"--serializerDirectory", "."
                     };
                     parameters.parse(testArgs);
                 } else {

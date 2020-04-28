@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.janelia.alignment.spec.TileSpec;
-
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
@@ -20,7 +18,8 @@ import mpicbg.models.NoninvertibleModelException;
  */
 public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > implements Serializable
 {
-	private static final long serialVersionUID = 7906661364559084872L;
+	private static final long serialVersionUID = -4933629169992559913L;
+
 	final public static AtomicInteger idGenerator = new AtomicInteger( 0 );
 
 	final private int id;
@@ -37,6 +36,9 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 
 	// contains the model as loaded from renderer (can go right now except for debugging)
 	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
+
+	// stores the per-z dynamic lambdas
+	final private HashMap<Integer, Double > zToDynamicLambda = new HashMap<>();
 
 	final private G globalSolveModel;
 	final private B blockSolveModel;
@@ -56,11 +58,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 
 		this.globalSolveModel = globalSolveModel.copy();
 		this.blockSolveModel = blockSolveModel.copy();
-
-		if ( stitchingModel == null )
-			this.stitchingModel = null;
-		else
-			this.stitchingModel = stitchingModel.copy();
+		this.stitchingModel = stitchingModel.copy();
 	}
 
 	public int getId() { return id; }
@@ -71,12 +69,11 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	public B blockSolveModelInstance() { return blockSolveModel.copy(); }
 	public S stitchingSolveModelInstance() { return stitchingModel.copy(); }
 
-	public boolean hasStitchingModel() { return stitchingModel != null; }
-
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return idToPreviousModel; }
 	public HashMap<String, MinimalTileSpec> idToTileSpec() { return idToTileSpec; }
 	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
 	public HashMap<String, AffineModel2D> idToNewModel() { return idToNewModel; }
+	public HashMap<Integer, Double> zToDynamicLambda() { return zToDynamicLambda; }
 
 	public double getWeight( final int z )
 	{

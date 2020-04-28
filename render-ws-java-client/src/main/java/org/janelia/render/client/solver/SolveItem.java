@@ -71,6 +71,7 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	public HashMap<String, MinimalTileSpec> idToTileSpec() { return solveItemData.idToTileSpec(); }
 	public HashMap<Integer, HashSet<String>> zToTileId() { return solveItemData.zToTileId(); }
 	public HashMap<String, AffineModel2D> idToNewModel() { return solveItemData.idToNewModel(); }
+	public HashMap<Integer, Double> zToDynamicLambda() { return solveItemData.zToDynamicLambda(); }
 
 	public HashMap<Tile<B>, String > tileToIdMap() { return tileToIdMap; }
 

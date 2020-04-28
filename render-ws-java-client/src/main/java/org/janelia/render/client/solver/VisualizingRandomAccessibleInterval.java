@@ -21,14 +21,17 @@ public class VisualizingRandomAccessibleInterval implements RandomAccessibleInte
 
 	final HashMap<String, AffineModel2D> idToInvertedRenderModels;
 	final HashMap<Integer, ArrayList< Pair<String,MinimalTileSpec> > > zToTileSpec; // at full resolution
+	final HashMap<String, Float> idToValue;
 	final double[] scale;
 
 	public VisualizingRandomAccessibleInterval(
 			final HashMap<String, AffineModel2D> idToModels,
 			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, Float> idToValue,
 			final double[] scale)
 	{
 		this.scale = scale;
+		this.idToValue = idToValue;
 
 		final double[] min = new double[] { Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE };
 		final double[] max = new double[] { -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE };
@@ -108,7 +111,7 @@ public class VisualizingRandomAccessibleInterval implements RandomAccessibleInte
 	@Override
 	public RandomAccess<FloatType> randomAccess()
 	{
-		return new VisualizingRandomAccess(idToInvertedRenderModels, zToTileSpec, scale);
+		return new VisualizingRandomAccess(idToInvertedRenderModels, zToTileSpec, idToValue, scale);
 	}
 
 	@Override
