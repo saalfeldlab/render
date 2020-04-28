@@ -31,7 +31,7 @@ import mpicbg.models.PointMatch;
  * We use this to let models influence each other combining them in an
  * {@link InterpolatedModel}.
  *
- * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
+ * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org> and Stephan Preibisch
  */
 
 public class ConstantAffineModel2D< A extends Model< A > & Affine2D< A >, M extends ConstantAffineModel2D< A, M > > extends AbstractModel< M > implements Affine2D< M >
@@ -140,6 +140,9 @@ public class ConstantAffineModel2D< A extends Model< A > & Affine2D< A >, M exte
 	@Override
 	public M createInverse()
 	{
-		throw new RuntimeException( "Constant Model cannot create inverse" );
+		@SuppressWarnings( "unchecked" )
+		final M inverse = ( M )new ConstantAffineModel2D< A, M >( model.createInverse() );
+		inverse.cost = cost;
+		return inverse;
 	}
 }
