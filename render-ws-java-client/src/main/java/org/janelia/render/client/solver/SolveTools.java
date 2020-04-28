@@ -52,6 +52,16 @@ public class SolveTools
 {
 	private SolveTools() {}
 
+	protected static String getTileIdentifier( final String tileId )
+	{
+		if ( !tileId.matches("[0-9]{2,4}-[0-9]{2}-[0-9]{2}_[0-9]+_[0]-[0]-[0-9][.][0-9]+[.].*") )
+			return null;
+
+		final int start = tileId.indexOf("_0-0-" );
+		final int end = tileId.indexOf(".", start );
+		return tileId.substring( start, end );
+	}
+
 	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas( final Collection< Tile< ? > > tiles, final SolveItem< ?,?,? > solveItem )
 	{
 		// a z-section can have more than one grouped tile if they are connected from above and below

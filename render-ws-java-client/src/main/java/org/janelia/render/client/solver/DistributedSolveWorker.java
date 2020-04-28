@@ -136,7 +136,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		for ( final SolveItem< G, B, S > solveItem : solveItems )
 		{
-			assignRegularizationModel( solveItem );
+			if ( !assignRegularizationModel( solveItem ) )
+				throw new RuntimeException( "Couldn't regularize. Please check." );
 			solve( solveItem, numThreads );
 		}
 	}
@@ -256,7 +257,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	 * 
 	 * @param solveItem - the input solve item
 	 */
-	protected void assignRegularizationModel( final SolveItem<G, B, S> solveItem )
+	protected boolean assignRegularizationModel( final SolveItem<G, B, S> solveItem )
 	{
 		LOG.info( "Assigning regularization models." );
 
@@ -278,101 +279,218 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		final ArrayList< Integer > allZ = new ArrayList<>( zToGroupedTileList.keySet() );
 		Collections.sort( allZ );
 
-		for ( final int z : allZ )
+		if ( ConstantAffineModel2D.class.isInstance( ((InterpolatedAffineModel2D)zToGroupedTileList.get( allZ.get( 0 ) ).get( 0 ).getModel()).getB() ) )
 		{
-			final List<Tile<B>> groupedTiles = zToGroupedTileList.get( z );
-
-			LOG.info( "z=" + z + " contains " + groupedTiles.size() + " grouped tiles." );
-
-			// find out where the Tile sits in average (given the n tiles it is grouped from)
-			for ( final Tile< B > groupedTile : groupedTiles )
+			//
+			// it is based on ConstantAffineModels, meaning we extract metadata and use that as regularizer
+			//
+			for ( final int z : allZ )
 			{
-				final List< Tile<B> > imageTiles = solveItem.groupedTileToTiles().get( groupedTile );
-
-				if ( groupedTiles.size() > 1 )
-					LOG.info( "z=" + z + " grouped tile [" + groupedTile + "] contains " + imageTiles.size() + " image tiles." );
-
-				// regularization
-				
-				// ST (Stitching Transform)
-				// PT (Previous Transform - from Render) -- that is what we want to regularize against
-				
-				// we should maybe decide for one of tiles, ideally the first that is present
-				// what happens if only the second or third one is?
-				
-//				TileId 19-07-31_120407_0-0-1.24501.0 Model=     [3,3](AffineTransform[[0.99999999990711, 1.180403435E-5, 8232.974854394946], [-1.180403435E-5, 0.99999999990711, 400.03365816280945]]) 1.7976931348623157E308
-//				TileId 19-07-31_120407_0-0-1.24501.0 prev Model=[3,3](AffineTransform[[1.0, 0.0, 8233.0], [0.0, 1.0, 400.0]]) 1.7976931348623157E308
-//				TileId 19-07-31_120407_0-0-2.24501.0 Model=     [3,3](AffineTransform[[0.999999260486421, 0.001053218791066, 16099.665150771456], [-0.001053218791066, 0.999999260486421, 401.52729791016964]]) 1.7976931348623157E308
-//				TileId 19-07-31_120407_0-0-2.24501.0 prev Model=[3,3](AffineTransform[[1.0, 0.0, 16066.0], [0.0, 1.0, 400.0]]) 1.7976931348623157E308
-//				TileId 19-07-31_120407_0-0-0.24501.0 Model=     [3,3](AffineTransform[[0.999999730969417, -6.35252550002E-4, 369.469292002579], [6.35252550002E-4, 0.999999730969417, 403.522028590144]]) 1.7976931348623157E308
-//				TileId 19-07-31_120407_0-0-0.24501.0 prev Model=[3,3](AffineTransform[[1.0, 0.0, 400.0], [0.0, 1.0, 400.0]]) 1.7976931348623157E308
-
-				// create pointmatches from the edges of each image in the grouped tile to the respective edges in the metadata
-				final List< PointMatch > matches = new ArrayList<>();
-
-				for ( final Tile<B> imageTile : imageTiles )
+				final List<Tile<B>> groupedTiles = zToGroupedTileList.get( z );
+	
+				LOG.info( "z=" + z + " contains " + groupedTiles.size() + " grouped tiles (ConstantAffineModel2D)" );
+	
+				// find out where the Tile sits in average (given the n tiles it is grouped from)
+				for ( final Tile< B > groupedTile : groupedTiles )
 				{
-					final String tileId = solveItem.tileToIdMap().get( imageTile );
-					final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
+					final List< Tile<B> > imageTiles = solveItem.groupedTileToTiles().get( groupedTile );
+	
+					if ( groupedTiles.size() > 1 )
+						LOG.info( "z=" + z + " grouped tile [" + groupedTile + "] contains " + imageTiles.size() + " image tiles." );
+	
+					// regularization
 					
-					if ( !tileId.contains("_0-0-0") )
-						continue;
-
-					final AffineModel2D stitchingTransform = solveItem.idToStitchingModel().get( tileId );
-					final AffineModel2D metaDataTransform = getMetaDataTransformation( solveItem, tileId );
-
-					//LOG.info( "z=" + z + " stitching model: " + stitchingTransform );
-					//LOG.info( "z=" + z + " metaData model : " + metaDataTransform );
-
-					final double sampleWidth = (tileSpec.getWidth() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-					final double sampleHeight = (tileSpec.getHeight() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-
-					// ALTERNATIVELY: ONLY SELECT ONE OF THE TILES
-					for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
+					// ST (Stitching Transform)
+					// PT (Previous Transform - from Render) -- that is what we want to regularize against
+					
+					// we should maybe decide for one of tiles, ideally the first that is present
+					// what happens if only the second or third one is?
+					
+	//				TileId 19-07-31_120407_0-0-1.24501.0 Model=     [3,3](AffineTransform[[0.99999999990711, 1.180403435E-5, 8232.974854394946], [-1.180403435E-5, 0.99999999990711, 400.03365816280945]]) 1.7976931348623157E308
+	//				TileId 19-07-31_120407_0-0-1.24501.0 prev Model=[3,3](AffineTransform[[1.0, 0.0, 8233.0], [0.0, 1.0, 400.0]]) 1.7976931348623157E308
+	//				TileId 19-07-31_120407_0-0-2.24501.0 Model=     [3,3](AffineTransform[[0.999999260486421, 0.001053218791066, 16099.665150771456], [-0.001053218791066, 0.999999260486421, 401.52729791016964]]) 1.7976931348623157E308
+	//				TileId 19-07-31_120407_0-0-2.24501.0 prev Model=[3,3](AffineTransform[[1.0, 0.0, 16066.0], [0.0, 1.0, 400.0]]) 1.7976931348623157E308
+	//				TileId 19-07-31_120407_0-0-0.24501.0 Model=     [3,3](AffineTransform[[0.999999730969417, -6.35252550002E-4, 369.469292002579], [6.35252550002E-4, 0.999999730969417, 403.522028590144]]) 1.7976931348623157E308
+	//				TileId 19-07-31_120407_0-0-0.24501.0 prev Model=[3,3](AffineTransform[[1.0, 0.0, 400.0], [0.0, 1.0, 400.0]]) 1.7976931348623157E308
+	
+					// create pointmatches from the edges of each image in the grouped tile to the respective edges in the metadata
+					final List< PointMatch > matches = new ArrayList<>();
+	
+					for ( final Tile<B> imageTile : imageTiles )
 					{
-						final double sampleY = y * sampleHeight;
-						for (int x = 0; x < SolveItem.samplesPerDimension; ++x)
+						final String tileId = solveItem.tileToIdMap().get( imageTile );
+						final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
+						
+						//if ( !tileId.contains("_0-0-0") )
+						//	continue;
+	
+						final AffineModel2D stitchingTransform = solveItem.idToStitchingModel().get( tileId );
+						final AffineModel2D metaDataTransform = getMetaDataTransformation( solveItem, tileId );
+	
+						//LOG.info( "z=" + z + " stitching model: " + stitchingTransform );
+						//LOG.info( "z=" + z + " metaData model : " + metaDataTransform );
+	
+						final double sampleWidth = (tileSpec.getWidth() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
+						final double sampleHeight = (tileSpec.getHeight() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
+	
+						// ALTERNATIVELY: ONLY SELECT ONE OF THE TILES
+						for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
 						{
-							final double[] p = new double[] { x * sampleWidth, sampleY };
-							final double[] q = new double[] { x * sampleWidth, sampleY };
-
-							stitchingTransform.applyInPlace( p );
-							metaDataTransform.applyInPlace( q );
-
-							matches.add(new PointMatch( new Point(p), new Point(q) ));
-						}
-					}					
-				}
-
-				//final RigidModel2D regularizationModel = new RigidModel2D();
-				//final TranslationModel2D regularizationModel = new TranslationModel2D();
-				//final S regularizationModel = solveItem.stitchingSolveModelInstance();
-				
-				final ConstantAffineModel2D cModel = (ConstantAffineModel2D)((InterpolatedAffineModel2D) groupedTile.getModel()).getB();
-				final Model< ? > regularizationModel = cModel.getModel();
-				
-				try
-				{
-					regularizationModel.fit( matches );
-										
-					double sumError = 0;
-					
-					for ( final PointMatch pm : matches )
-					{
-						pm.getP1().apply( regularizationModel );
-						
-						final double distance = Point.distance(pm.getP1(), pm.getP2() );
-						sumError += distance;
-						
-						//LOG.info( "P1: " + Util.printCoordinates( pm.getP1().getW() ) + ", P2: " + Util.printCoordinates( pm.getP2().getW() ) + ", d=" + distance );
+							final double sampleY = y * sampleHeight;
+							for (int x = 0; x < SolveItem.samplesPerDimension; ++x)
+							{
+								final double[] p = new double[] { x * sampleWidth, sampleY };
+								final double[] q = new double[] { x * sampleWidth, sampleY };
+	
+								stitchingTransform.applyInPlace( p );
+								metaDataTransform.applyInPlace( q );
+	
+								matches.add(new PointMatch( new Point(p), new Point(q) ));
+							}
+						}					
 					}
-					LOG.info( "Error=" + (sumError / matches.size()) );
-				}
-				catch ( Exception e)
-				{
-					e.printStackTrace();
+	
+					//final RigidModel2D regularizationModel = new RigidModel2D();
+					//final TranslationModel2D regularizationModel = new TranslationModel2D();
+					//final S regularizationModel = solveItem.stitchingSolveModelInstance();
+					
+					final ConstantAffineModel2D cModel = (ConstantAffineModel2D)((InterpolatedAffineModel2D) groupedTile.getModel()).getB();
+					final Model< ? > regularizationModel = cModel.getModel();
+					
+					try
+					{
+						regularizationModel.fit( matches );
+											
+						double sumError = 0;
+						
+						for ( final PointMatch pm : matches )
+						{
+							pm.getP1().apply( regularizationModel );
+							
+							final double distance = Point.distance(pm.getP1(), pm.getP2() );
+							sumError += distance;
+							
+							//LOG.info( "P1: " + Util.printCoordinates( pm.getP1().getW() ) + ", P2: " + Util.printCoordinates( pm.getP2().getW() ) + ", d=" + distance );
+						}
+						LOG.info( "Error=" + (sumError / matches.size()) );
+					}
+					catch ( Exception e)
+					{
+						e.printStackTrace();
+					}
 				}
 			}
+			return true;
+		}
+		else
+		{
+			//
+			// it is based on StabilizingAffineModel2Ds, meaning each image wants to sit where its corresponding one in the above layer sits
+			//
+			for ( int i = 1; i < allZ.size(); ++i )
+			{
+				// first get all tiles from previous layer and the associated grouped tile
+				final ArrayList< Pair< Pair< String, String>, Tile<B> > > prevTiles = new ArrayList<>();
+				
+				for ( final Tile< B > prevGroupedTile : zToGroupedTileList.get( allZ.get( i - 1 ) ) )
+					for ( final Tile< B > imageTile : solveItem.groupedTileToTiles().get( prevGroupedTile ) )
+					{
+						final String tileId = solveItem.tileToIdMap().get( imageTile );
+						final String tileIdentifier = SolveTools.getTileIdentifier( tileId );
+						
+						if ( tileIdentifier == null )
+						{
+							LOG.info( "tile id that does not meet expectations. Stopping: " + tileId );
+							return false;
+						}
+
+						prevTiles.add( new ValuePair<>( new ValuePair<>( tileIdentifier, tileId ), prevGroupedTile ) );
+					}
+
+				// now go over all tiles of the current z
+				final int z = allZ.get( i ); 
+
+				final List<Tile<B>> groupedTiles = zToGroupedTileList.get( z );
+
+				LOG.info( "z=" + z + " contains " + groupedTiles.size() + " grouped tiles (StabilizingAffineModel2D)" );
+				
+				// find out where the Tile sits in average (given the n tiles it is grouped from)
+				for ( final Tile< B > groupedTile : groupedTiles )
+				{
+					final List< Tile<B> > imageTiles = solveItem.groupedTileToTiles().get( groupedTile );
+	
+					if ( groupedTiles.size() > 1 )
+						LOG.info( "z=" + z + " grouped tile [" + groupedTile + "] contains " + imageTiles.size() + " image tiles." );
+					
+					// create pointmatches from the edges of each image in the grouped tile to the respective edges in the metadata
+					final List< Pair< List< PointMatch >, Tile< B > > > matchesList = new ArrayList<>();
+
+					for ( final Tile<B> imageTile : imageTiles )
+					{
+						final String tileId = solveItem.tileToIdMap().get( imageTile );
+						final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
+
+						final String tileIdentifier = SolveTools.getTileIdentifier( tileId );
+						
+						if ( tileIdentifier == null )
+						{
+							LOG.info( "tile id that does not meet expectations. Stopping: " + tileId );
+							return false;
+						}
+						
+						Pair< Pair< String, String>, Tile<B> > prev = null;
+						
+						for ( final Pair< Pair< String, String>, Tile<B> > prevTile : prevTiles )
+						{
+							if ( prevTile.getA().getA().equals( tileIdentifier ) )
+							{
+								prev = prevTile;
+								break;
+							}
+						}
+
+						if ( prev == null )
+						{
+							// this can happen when number of tiles per layer changes for example
+							LOG.info( "could not find corresponding tile for: " + tileId );
+							continue;
+						}
+
+						final AffineModel2D stitchingTransform = solveItem.idToStitchingModel().get( tileId );
+						final AffineModel2D stitchingTransformPrev = solveItem.idToStitchingModel().get( prev.getA().getB() );
+
+						final List< PointMatch > matches = new ArrayList<>();
+
+						final double sampleWidth = (tileSpec.getWidth() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
+						final double sampleHeight = (tileSpec.getHeight() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
+	
+						// ALTERNATIVELY: ONLY SELECT ONE OF THE TILES
+						for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
+						{
+							final double sampleY = y * sampleHeight;
+							for (int x = 0; x < SolveItem.samplesPerDimension; ++x)
+							{
+								final double[] p = new double[] { x * sampleWidth, sampleY };
+								final double[] q = new double[] { x * sampleWidth, sampleY };
+	
+								stitchingTransform.applyInPlace( p );
+								stitchingTransformPrev.applyInPlace( q );
+	
+								matches.add(new PointMatch( new Point(p), new Point(q) ));
+							}
+						}					
+
+						matchesList.add( new ValuePair<>( matches, prev.getB() ) );
+					}
+					
+					
+					// in every iteration, update q with the current group tile transformation(s), the fit p to q for regularization
+					final StabilizingAffineModel2D cModel = (StabilizingAffineModel2D)((InterpolatedAffineModel2D) groupedTile.getModel()).getB();
+					
+					cModel.setFitData( matchesList );
+				}
+			}
+			return true;
 		}
 	}
 
