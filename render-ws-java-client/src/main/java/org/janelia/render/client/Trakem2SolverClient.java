@@ -201,28 +201,22 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                 // TODO: remove testing hack ...
                 if (args.length == 0) {
                     final String[] testArgs = {
-                            "--baseDataUrl", "http://renderer-dev:8080/render-ws/v1",
-                            "--owner", "Z1217_19m",
-                            "--project", "Sec07",
+                            "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+                            "--owner", "Z1217_33m_BR",
+                            "--project", "Sec10",
 
-                            "--stack", "affine_pm_test_matlab_2",
-                            "--minZ", "26000",
-                            "--maxZ", "26300",
+                            "--stack", "v2_acquire_merged",
+                            "--minZ", "4157",
+                            "--maxZ", "4158",
 
-                            "--targetStack", "bad_spot_trakem2_rigid_4_pass_1K",
+                            "--targetStack", "test_restart_2",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0,0.5,0.1,0.01",
                             "--maxIterations", "1000",
 
-                            // only went 223 iterations ...
-//                            "--targetStack", "bad_spot_trakem2_rigid_025_10K",
-//                            "--regularizerModelType", "RIGID",
-//                            "--optimizerLambdas", "0.25",
-//                            "--maxIterations", "10000",
-
-                            "--threads", "4",
+                            "--threads", "1",
                             "--completeTargetStack",
-                            "--matchCollection", "gd_test_3_Sec07_v1"
+                            "--matchCollection", "Sec10_multi"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -363,11 +357,15 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
                 final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p =
                         idToTileMap.computeIfAbsent(pId,
-                                                    pTile -> buildTileFromSpec(pTileSpec));
+                                                    pTile -> buildTileFromSpec(pTileSpec,
+                                                                               parameters.samplesPerDimension,
+                                                                               parameters.regularizerModelType));
 
                 final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> q =
                         idToTileMap.computeIfAbsent(qId,
-                                                    qTile -> buildTileFromSpec(qTileSpec));
+                                                    qTile -> buildTileFromSpec(qTileSpec,
+                                                                               parameters.samplesPerDimension,
+                                                                               parameters.regularizerModelType));
 
                 p.connect(q,
                           CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()));
@@ -428,20 +426,23 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
         LOG.info("run: exit");
     }
 
-    private Tile<InterpolatedAffineModel2D<AffineModel2D, B>> buildTileFromSpec(final TileSpec tileSpec) {
+    public static <T extends Model<T> & Affine2D<T>> Tile<InterpolatedAffineModel2D<AffineModel2D, T>>
+    buildTileFromSpec(final TileSpec tileSpec,
+                      final int samplesPerDimension,
+                      final ModelType regularizerModelType) {
 
         final CoordinateTransformList<CoordinateTransform> transformList = tileSpec.getTransformList();
         final AffineModel2D lastTransform = (AffineModel2D)
                 transformList.get(transformList.getList(null).size() - 1);
         final AffineModel2D lastTransformCopy = lastTransform.copy();
 
-        final double sampleWidth = (tileSpec.getWidth() - 1.0) / (parameters.samplesPerDimension - 1.0);
-        final double sampleHeight = (tileSpec.getHeight() - 1.0) / (parameters.samplesPerDimension - 1.0);
+        final double sampleWidth = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
+        final double sampleHeight = (tileSpec.getHeight() - 1.0) / (samplesPerDimension - 1.0);
 
-        final B regularizer = parameters.regularizerModelType.getInstance();
+        final T regularizer = regularizerModelType.getInstance();
 
         try {
-            ScriptUtil.fit(regularizer, lastTransformCopy, sampleWidth, sampleHeight, parameters.samplesPerDimension);
+            ScriptUtil.fit(regularizer, lastTransformCopy, sampleWidth, sampleHeight, samplesPerDimension);
         } catch (final Throwable t) {
             throw new IllegalArgumentException(regularizer.getClass() + " model derivation failed for tile '" +
                                                tileSpec.getTileId() + "', cause: " + t.getMessage(),
@@ -450,7 +451,7 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
         return new Tile<>(new InterpolatedAffineModel2D<>(lastTransformCopy,
                                                           regularizer,
-                                                          parameters.startLambda)); // note: lambda gets reset during optimization loops
+                                                          1.0)); // note: lambda gets reset during optimization loops
     }
 
     private void saveTargetStackTiles(final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap)
@@ -503,7 +504,7 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
         LOG.info("saveTargetStackTiles: exit");
     }
 
-    private LeafTransformSpec getTransformSpec(final InterpolatedAffineModel2D forModel) {
+    public static LeafTransformSpec getTransformSpec(final InterpolatedAffineModel2D forModel) {
         final double[] m = new double[6];
         forModel.createAffineModel2D().toArray(m);
         final String data = String.valueOf(m[0]) + ' ' + m[1] + ' ' + m[2] + ' ' + m[3] + ' ' + m[4] + ' ' + m[5];
