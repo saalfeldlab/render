@@ -161,11 +161,11 @@ public class SolveTools
 
 			final double lambda;
 
-			if ( exemptLayers.contains( z ) )
+			/*if ( exemptLayers.contains( z ) )
 			{
 				lambda = 0;
 			}
-			else
+			else*/
 			{
 				rX.setPosition(new int[] { i } );
 				lambda = rX.get().get();

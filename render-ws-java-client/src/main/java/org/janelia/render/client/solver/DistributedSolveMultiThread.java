@@ -40,6 +40,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	{
 		final long time = System.currentTimeMillis();
 
+		this.solveSet.leftItems.get( 8 ).maxZ = 4157;
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 				this.solveSet.leftItems.get( 8 ), //9, 43 49 ),
 				runParams.pGroupList,

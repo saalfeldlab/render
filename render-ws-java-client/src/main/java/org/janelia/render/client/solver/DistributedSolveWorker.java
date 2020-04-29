@@ -50,7 +50,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	// sections, but can be solved easily later using non-rigid alignment.
 
 	final protected static int visualizeZSection = 0;//10000;
-	final private static int zRadiusRestarts = 6;
+	final private static int zRadiusRestarts = 100;
 
 	final RenderDataClient renderDataClient;
 	final RenderDataClient matchDataClient;

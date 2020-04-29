@@ -23,7 +23,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	final public static AtomicInteger idGenerator = new AtomicInteger( 0 );
 
 	final private int id;
-	final private int minZ, maxZ;
+	int minZ, maxZ;
 
 	// used for global solve outside
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
