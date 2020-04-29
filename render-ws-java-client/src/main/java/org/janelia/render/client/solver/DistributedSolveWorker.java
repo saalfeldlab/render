@@ -50,6 +50,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	// sections, but can be solved easily later using non-rigid alignment.
 
 	final protected static int visualizeZSection = 0;//10000;
+	final private static int zRadiusRestarts = 6;
 
 	final RenderDataClient renderDataClient;
 	final RenderDataClient matchDataClient;
@@ -138,7 +139,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		{
 			if ( !assignRegularizationModel( solveItem ) )
 				throw new RuntimeException( "Couldn't regularize. Please check." );
-			solve( solveItem, numThreads );
+			solve( solveItem, zRadiusRestarts, numThreads );
 		}
 	}
 
@@ -206,9 +207,14 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					p = pairP.getA();
 					inputSolveItem.idToTileMap().put( pId, p );
 					inputSolveItem.idToPreviousModel().put( pId, pairP.getB() );
-					inputSolveItem.idToTileSpec().put( pId, new MinimalTileSpec( pTileSpec ) );
+
+					final MinimalTileSpec pTileSpecMin = new MinimalTileSpec( pTileSpec );
+					inputSolveItem.idToTileSpec().put( pId, pTileSpecMin );
 
 					inputSolveItem.tileToIdMap().put( p, pId );
+
+					if ( pTileSpecMin.isRestart() )
+						inputSolveItem.restarts().add( (int)Math.round( pTileSpecMin.getZ() ) );
 				}
 				else
 				{
@@ -221,9 +227,14 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					q = pairQ.getA();
 					inputSolveItem.idToTileMap().put( qId, q );
 					inputSolveItem.idToPreviousModel().put( qId, pairQ.getB() );
-					inputSolveItem.idToTileSpec().put( qId, new MinimalTileSpec( qTileSpec ) );
+
+					final MinimalTileSpec qTileSpecMin = new MinimalTileSpec( qTileSpec );
+					inputSolveItem.idToTileSpec().put( qId, qTileSpecMin );
 
 					inputSolveItem.tileToIdMap().put( q, qId );
+
+					if ( qTileSpecMin.isRestart() )
+						inputSolveItem.restarts().add( (int)Math.round( qTileSpecMin.getZ() ) );
 				}
 				else
 				{
@@ -412,13 +423,13 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 				final List<Tile<B>> groupedTiles = zToGroupedTileList.get( z );
 
-				LOG.info( "z=" + z + " contains " + groupedTiles.size() + " grouped tiles (StabilizingAffineModel2D)" );
-				
+				LOG.info( "z=" + z + " contains " + groupedTiles.size() + " grouped tiles (StabilizingAffineModel2D) " );
+
 				// find out where the Tile sits in average (given the n tiles it is grouped from)
 				for ( final Tile< B > groupedTile : groupedTiles )
 				{
 					final List< Tile<B> > imageTiles = solveItem.groupedTileToTiles().get( groupedTile );
-	
+
 					if ( groupedTiles.size() > 1 )
 						LOG.info( "z=" + z + " grouped tile [" + groupedTile + "] contains " + imageTiles.size() + " image tiles." );
 					
@@ -794,6 +805,11 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					}
 				}
 
+				// add the restart lookup
+				for ( final int z : inputSolveItem.restarts() )
+					if ( z >= newMin && z <= newMax )
+						solveItem.restarts().add( z );
+
 				// used for global solve outside
 				for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
 				{
@@ -820,7 +836,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				}
 
 				solveItems.add( solveItem );
-				// cannot update overlapping items here due to multithreading and the fact that the other solveitems are also being split up
 			}
 		}
 		return solveItems;
@@ -828,6 +843,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 	protected void solve(
 			final SolveItem< G,B,S > solveItem,
+			final int zRadiusRestarts,
 			final int numThreads
 			) throws InterruptedException, ExecutionException
 	{
@@ -838,7 +854,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		LOG.info("block " + solveItem.getId() + ": run: optimizing {} tiles", solveItem.groupedTileToTiles().keySet().size() );
 
-		final HashMap< Tile< ? >, Double > tileToDynamicLambda = SolveTools.computeMetaDataLambdas( tileConfig.getTiles(), solveItem );
+		final HashMap< Tile< ? >, Double > tileToDynamicLambda = SolveTools.computeMetaDataLambdas( tileConfig.getTiles(), solveItem, zRadiusRestarts );
 
 		LOG.info( "block " + solveItem.getId() + ": prealigning with translation and dynamic lambda" );
 

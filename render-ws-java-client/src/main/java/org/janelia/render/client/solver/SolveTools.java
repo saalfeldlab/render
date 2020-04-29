@@ -62,7 +62,7 @@ public class SolveTools
 		return tileId.substring( start, end );
 	}
 
-	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas( final Collection< Tile< ? > > tiles, final SolveItem< ?,?,? > solveItem )
+	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas( final Collection< Tile< ? > > tiles, final SolveItem< ?,?,? > solveItem, final int zRadiusRestarts )
 	{
 		// a z-section can have more than one grouped tile if they are connected from above and below
 		final HashMap< Integer, List< Pair< Tile< ? >, Tile< TranslationModel2D > > > > zToTiles = fakePreAlign( tiles, solveItem );
@@ -139,16 +139,41 @@ public class SolveTools
 
 		Gauss3.gauss( 5, Views.extendMirrorSingle( filterX ), filterX );
 
+		final HashSet< Integer > exemptLayers = new HashSet<>();
+
+		LOG.info( "Following restarts (+-z=" + zRadiusRestarts + ") will have lambda=0: " );
+
+		for ( final int z : solveItem.restarts() )
+		{
+			LOG.info( "z=" + z );
+			
+			for ( int zR = z - zRadiusRestarts; zR <= z + zRadiusRestarts; ++zR )
+				exemptLayers.add( zR );
+		}
+
 		final HashMap< Tile< ? >, Double > tileToDynamicLambda = new HashMap<>();
 
+		LOG.info( "Lambdas:" );
+		
 		for ( int i = 0; i < allZ.size(); ++i )
 		{
 			final int z = allZ.get( i );
 
-			rX.setPosition(new int[] { i } );
-			final double lambda = rX.get().get();
-					
+			final double lambda;
+
+			if ( exemptLayers.contains( z ) )
+			{
+				lambda = 0;
+			}
+			else
+			{
+				rX.setPosition(new int[] { i } );
+				lambda = rX.get().get();
+			}
+
 			solveItem.zToDynamicLambda().put( z, lambda );
+			LOG.info( "z=" + z + ", lambda=" + lambda );
+
 			for ( final Pair< Tile< ? >, Tile< TranslationModel2D > > tilePair : zToTiles.get( z ) )
 				tileToDynamicLambda.put( tilePair.getA(), lambda );
 		}

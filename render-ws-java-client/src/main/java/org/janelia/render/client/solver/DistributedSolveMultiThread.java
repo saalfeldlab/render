@@ -41,7 +41,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		final long time = System.currentTimeMillis();
 
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 49 ), //9, 43 49 ),
+				this.solveSet.leftItems.get( 8 ), //9, 43 49 ),
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
 				parameters.renderWeb.baseDataUrl,
@@ -173,14 +173,14 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--owner", "Z1217_33m_BR",
                             "--project", "Sec10",
                             "--matchCollection", "Sec10_multi",
-                            "--stack", "v2_acquire_merged",
-                            //"--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_v4",
+                            "--stack", "v3_acquire",
+                            //"--targetStack", "v3_acquire_sp0",
                             "--completeTargetStack",
                             
                             "--blockOptimizerLambdasRigid",       "1.0,1.0,0.5,0.1,0.01",
                             "--blockOptimizerLambdasTranslation", "1.0,0.5,0.0,0.0,0.0",
-                            "--blockOptimizerIterations", "200,200,100,40,20",
-                            "--blockMaxPlateauWidth", "200,50,50,40,20",
+                            "--blockOptimizerIterations", "1000,1000,500,200,100",
+                            "--blockMaxPlateauWidth", "250,250,150,100,50",
 
                             //"--blockSize", "100",
                             //"--noStitching", // do not stitch first

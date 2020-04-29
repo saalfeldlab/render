@@ -52,6 +52,9 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	final private HashMap< Tile< B >, Tile< B > > tileToGroupedTile = new HashMap<>();
 	final private HashMap< Tile< B >, List< Tile< B > > > groupedTileToTiles = new HashMap<>();
 
+	// which z layers are restarts
+	final private HashSet< Integer > restarts = new HashSet<Integer>();
+
 	public SolveItem( final SolveItemData< G, B, S > solveItemData )
 	{
 		this.solveItemData = solveItemData;
@@ -78,6 +81,7 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	public HashMap<String, AffineModel2D> idToStitchingModel() { return idToStitchingModel; }
 	public HashMap< Tile< B >, Tile< B > > tileToGroupedTile() { return tileToGroupedTile; }
 	public HashMap< Tile< B >, List< Tile< B > > > groupedTileToTiles() { return groupedTileToTiles; }
+	public HashSet< Integer > restarts() { return restarts; }
 
 	public double getWeight( final int z )
 	{
