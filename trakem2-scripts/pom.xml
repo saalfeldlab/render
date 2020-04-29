@@ -125,16 +125,6 @@
         </dependency>
 
         <dependency>
-            <groupId>net.imagej</groupId>
-            <artifactId>ij</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>mpicbg</groupId>
-            <artifactId>mpicbg</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>sc.fiji</groupId>
             <artifactId>TrakEM2_</artifactId>
             <version>1.0j</version>
