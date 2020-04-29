@@ -57,6 +57,7 @@
                                <excludes>
                                    <exclude>jama:*</exclude>
                                    <exclude>*hadoop*</exclude>
+                                   <exclude>xml-apis:*</exclude>
                                    <exclude>*spark*</exclude>
                                 </excludes>
                             </artifactSet>
