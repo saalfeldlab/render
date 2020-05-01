@@ -52,6 +52,35 @@ public class SolveTools
 {
 	private SolveTools() {}
 
+	protected static <B extends Model<B> & Affine2D< B >> ArrayList< Pair< Pair< String, String>, Tile<B> > > layerDetails(
+			final ArrayList< Integer > allZ,
+			HashMap< Integer, List<Tile<B>> > zToGroupedTileList,
+			final SolveItem<?,B,?> solveItem,
+			final int i )
+	{
+		final ArrayList< Pair< Pair< String, String>, Tile<B> > > prevTiles = new ArrayList<>();
+
+		if ( i < 0 || i >= allZ.size() )
+			return prevTiles;
+
+		for ( final Tile< B > prevGroupedTile : zToGroupedTileList.get( allZ.get( i ) ) )
+			for ( final Tile< B > imageTile : solveItem.groupedTileToTiles().get( prevGroupedTile ) )
+			{
+				final String tileId = solveItem.tileToIdMap().get( imageTile );
+				final String tileIdentifier = SolveTools.getTileIdentifier( tileId );
+
+				if ( tileIdentifier == null )
+				{
+					LOG.info( "tile id that does not meet expectations. Stopping: " + tileId );
+					return null;
+				}
+
+				prevTiles.add( new ValuePair<>( new ValuePair<>( tileIdentifier, tileId ), prevGroupedTile ) );
+			}
+
+		return prevTiles;
+	}
+
 	protected static String getTileIdentifier( final String tileId )
 	{
 		if ( !tileId.matches("[0-9]{2,4}-[0-9]{2}-[0-9]{2}_[0-9]+_[0]-[0]-[0-9][.][0-9]+[.].*") )
@@ -161,11 +190,11 @@ public class SolveTools
 
 			final double lambda;
 
-			/*if ( exemptLayers.contains( z ) )
+			if ( exemptLayers.contains( z ) )
 			{
 				lambda = 0;
 			}
-			else*/
+			else
 			{
 				rX.setPosition(new int[] { i } );
 				lambda = rX.get().get();
