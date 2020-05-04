@@ -17,6 +17,7 @@ import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -214,8 +215,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                 */
                
                 DistributedSolve.visualizeOutput = false;
-                DistributedSolve.visMinZ = 1223;
-                DistributedSolve.visMaxZ = 1285;
+                //DistributedSolve.visMinZ = 1223;
+                //DistributedSolve.visMaxZ = 1285;
                 
                 @SuppressWarnings({ "rawtypes", "unchecked" })
                 final DistributedSolve solve =
@@ -226,6 +227,13 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                 				parameters );
 
                 solve.run();
+
+                final GlobalSolve gs = solve.globalSolve();
+
+                // visualize the layers
+                VisualizeTools.visualizeMultiRes( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, 1, 128, 2, parameters.threadsGlobal );
+
+                	SimpleMultiThreading.threadHaltUnClean();
             }
         };
         clientRunner.run();

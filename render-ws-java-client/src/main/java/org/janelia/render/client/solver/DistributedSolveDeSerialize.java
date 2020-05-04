@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -175,10 +176,14 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 
                 final GlobalSolve gs = solve.globalSolve();
 
-    			//VisualizeTools.visualize( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, new double[] { 1.0/64.0, 1.0/64.0, 1.0/64.0 }, parameters.threadsGlobal );
-                VisualizeTools.visualizeMultiRes( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, 1, 128, 2, parameters.threadsGlobal );
- 			
-    			SimpleMultiThreading.threadHaltUnClean();
+                // visualize the layers
+				final HashMap<String, Float> idToValue = new HashMap<>();
+				for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
+					idToValue.put( tileId, gs.zToDynamicLambdaGlobal.get( (int)Math.round( gs.idToTileSpecGlobal.get( tileId ).getZ() ) ).floatValue() + 1 ); // between 1 and 1.2
+
+                VisualizeTools.visualizeMultiRes( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToValue, 1, 128, 2, parameters.threadsGlobal );
+
+            	SimpleMultiThreading.threadHaltUnClean();
             }
         };
         clientRunner.run();

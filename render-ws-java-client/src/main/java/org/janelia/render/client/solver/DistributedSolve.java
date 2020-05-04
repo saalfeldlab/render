@@ -1,8 +1,5 @@
 package org.janelia.render.client.solver;
 
-import ij.ImageJ;
-import ij.ImagePlus;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -12,6 +9,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import ij.ImageJ;
+import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
@@ -25,12 +28,6 @@ import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
-
-import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -48,6 +45,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		final HashMap<String, AffineModel2D> idToFinalModelGlobal = new HashMap<>();
 		final HashMap<String, MinimalTileSpec> idToTileSpecGlobal = new HashMap<>();
 		final HashMap<Integer, HashSet<String> > zToTileIdGlobal = new HashMap<>();
+		final HashMap<Integer, Double> zToDynamicLambdaGlobal = new HashMap<>();
 	}
 
 	final G globalSolveModel;
@@ -157,9 +155,9 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		{
 			// visualize new result
 			new ImageJ();
-			ImagePlus imp1 = VisualizeTools.render( solve.idToFinalModelGlobal, solve.idToTileSpecGlobal, 0.15, visMinZ, visMaxZ );
-			imp1.setTitle( "final" );
-			SimpleMultiThreading.threadHaltUnClean();
+			final ImagePlus imp = VisualizeTools.render( solve.idToFinalModelGlobal, solve.idToTileSpecGlobal, 0.15, visMinZ, visMaxZ );
+			imp.setTitle( "final" );
+			VisualizeTools.renderBDV( imp, 0.15 );
 		}
 	}
 
@@ -412,7 +410,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 					final double wB = solveItemB.getWeight( z );
 
 					// if one of them is zero the model stays at it is
-					final double regularizeB;
+					final double regularizeB, dynamicLambda;
 					final AffineModel2D tileModel;
 
 					if ( wA == 0 && wB == 0 )
@@ -421,21 +419,24 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 					{
 						tileModel = modelB.copy();
 						regularizeB = 1;
+						dynamicLambda = solveItemB.zToDynamicLambda().get( z );
 					}
 					else if ( wB == 0 )
 					{
 						tileModel = modelA.copy();
 						regularizeB = 0;
+						dynamicLambda = solveItemA.zToDynamicLambda().get( z );
 					}
 					else
 					{
 						regularizeB = wB / (wA + wB);
 						tileModel = new InterpolatedAffineModel2D<>( modelA, modelB, regularizeB ).createAffineModel2D();
+						dynamicLambda = solveItemA.zToDynamicLambda().get( z ) *  (1 - regularizeB) + solveItemB.zToDynamicLambda().get( z ) * regularizeB;
 					}
 
 					LOG.info( "z=" + z + ": " + solveItemA.getId() + "-" + wA + " ----- " + solveItemB.getId() + "-" + wB + " ----regB=" + regularizeB );
 
-
+					gs.zToDynamicLambdaGlobal.put( z, dynamicLambda );
 					gs.idToFinalModelGlobal.put( tileId, tileModel );
 				}
 			}
