@@ -398,7 +398,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			//
 			// it is based on StabilizingAffineModel2Ds, meaning each image wants to sit where its corresponding one in the above layer sits
 			//
-			for ( int i = 1; i < allZ.size(); ++i )
+			for ( int i = 0; i < allZ.size(); ++i )
 			{
 				// first get all tiles from adjacent layers and the associated grouped tile
 				final ArrayList< Pair< Pair< String, String>, Tile<B> > > neighboringTiles = new ArrayList<>();
@@ -623,7 +623,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			// solve each set (if size > 1)
 			int setCount = 0;
-			for ( final Set< Tile< ? > > set : sets ) // TODO: type sets correctly
+			for ( final Set< Tile< ? > > set : sets )
 			{
 				LOG.info( "block " + solveItem.getId() + ": Set=" + setCount++ );
 
@@ -632,7 +632,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				//
 				final Tile< B > groupedTile = new Tile<>( solveItem.blockSolveModelInstance() );
 
-				
+				// TODO: Remove
 				if ( firstTile == null )
 				{
 					LOG.info( "assigning first tile z=" + z );
