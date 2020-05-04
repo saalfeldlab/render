@@ -539,6 +539,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		}
 	}
 
+	protected static Tile< ? > firstTile = null;
+	
 	protected void stitchSectionsAndCreateGroupedTiles(
 			final SolveItem< G,B,S > solveItem,
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
@@ -629,6 +631,13 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				// the grouped tile for this set of one layer
 				//
 				final Tile< B > groupedTile = new Tile<>( solveItem.blockSolveModelInstance() );
+
+				
+				if ( firstTile == null )
+				{
+					LOG.info( "assigning first tile z=" + z );
+					firstTile = groupedTile;
+				}
 
 				if ( set.size() > 1 )
 				{
@@ -923,6 +932,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					tileConfig.getTiles(),
 					tileConfig.getFixedTiles(),
 					numThreads );
+			
+			LOG.info( "A: " + SolveTools.createAffine( (Affine2D< ? >)((InterpolatedAffineModel2D) firstTile.getModel()).getA() ) );
+			LOG.info( "B: " + SolveTools.createAffine( (Affine2D< ? >)((InterpolatedAffineModel2D) firstTile.getModel()).getB() ) );
 		}
 
 		double[] errors = SolveTools.computeErrors( tileConfig.getTiles() );

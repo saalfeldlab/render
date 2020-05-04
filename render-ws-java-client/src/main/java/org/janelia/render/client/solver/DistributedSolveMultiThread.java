@@ -64,19 +64,19 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		{
 			w.run();
 
-			final HashMap<String, Float> idToValue = new HashMap<>();
-
 			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
 			{
+				final HashMap<String, Float> idToValue = new HashMap<>();
 				for ( final String tileId : s.idToTileSpec().keySet() )
 				{
 					final int z = (int)Math.round( s.idToTileSpec().get( tileId ).getZ() );
 					idToValue.put( tileId, s.zToDynamicLambda().get( z ).floatValue() + 1 ); // between 1 and 1.2
 				}
-			}
 
-			final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > visualizeInfo = VisualizeTools.visualizeInfo( w.getSolveItemDataList() );
-			VisualizeTools.visualizeMultiRes( visualizeInfo.getA(), visualizeInfo.getB(), idToValue );
+				final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > visualizeInfo = 
+						VisualizeTools.visualizeInfo( s );
+				VisualizeTools.visualizeMultiRes( visualizeInfo.getA(), visualizeInfo.getB(), idToValue );
+			}
 
 			new ImageJ();
 			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
