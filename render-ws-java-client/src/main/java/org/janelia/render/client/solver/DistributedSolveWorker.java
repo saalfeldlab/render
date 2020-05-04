@@ -23,7 +23,6 @@ import ij.ImageJ;
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.ConstantModel;
 import mpicbg.models.ErrorStatistic;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.InterpolatedAffineModel2D;
@@ -37,9 +36,7 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel2D;
-import net.imglib2.realtransform.AffineTransform;
 import net.imglib2.util.Pair;
-import net.imglib2.util.Util;
 import net.imglib2.util.ValuePair;
 
 public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
@@ -51,6 +48,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 	final protected static int visualizeZSection = 0;//10000;
 	final private static int zRadiusRestarts = 10;
+	final private static int stabilizationRadius = 25;
 
 	final RenderDataClient renderDataClient;
 	final RenderDataClient matchDataClient;
@@ -403,7 +401,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				// first get all tiles from adjacent layers and the associated grouped tile
 				final ArrayList< Pair< Pair< String, String>, Tile<B> > > neighboringTiles = new ArrayList<>();
 
-				for ( int d = 1; d <= 50 && i + d < allZ.size(); ++d )
+				for ( int d = 1; d <= stabilizationRadius && i + d < allZ.size(); ++d )
 				{
 					if ( solveItem.restarts().contains( allZ.get( i + d ) ) )
 						break;
@@ -411,7 +409,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 						neighboringTiles.addAll( SolveTools.layerDetails( allZ, zToGroupedTileList, solveItem, i + d ) );
 				}
 
-				for ( int d = 1; d <= 50 && i - d >= 0; ++d )
+				for ( int d = 1; d <= stabilizationRadius && i - d >= 0; ++d )
 				{
 					if ( solveItem.restarts().contains( allZ.get( i - d ) ) )
 						break;
