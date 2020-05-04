@@ -40,6 +40,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	{
 		final long time = System.currentTimeMillis();
 
+		/*
 		//this.solveSet.leftItems.get( 8 ).maxZ = 4158;
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 				this.solveSet.leftItems.get( 66 ), //8, 9, 43, 49, 66 ),
@@ -92,6 +93,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		}
 
 		SimpleMultiThreading.threadHaltUnClean();
+		*/
 
 		final ArrayList< SolveItemData< G, B, S > > allItems;
 
@@ -175,7 +177,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--project", "Sec10",
                             "--matchCollection", "Sec10_multi",
                             "--stack", "v3_acquire",
-                            //"--targetStack", "v3_acquire_sp0",
+                            "--targetStack", "v3_acquire_sp0",
                             "--completeTargetStack",
                             
                             "--blockOptimizerLambdasRigid",       "1.0,1.0,0.5,0.1,0.01",
