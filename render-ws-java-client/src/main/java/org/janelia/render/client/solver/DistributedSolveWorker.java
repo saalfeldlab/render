@@ -259,6 +259,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				}
 			}
 		}
+		System.exit(0);
 	}
 	/**
 	 * The goal is to map the grouped tile to the averaged metadata coordinate transform
@@ -399,7 +400,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			for ( int i = 0; i < allZ.size(); ++i )
 			{
 				// first get all tiles from adjacent layers and the associated grouped tile
-				final ArrayList< Pair< Pair< String, String>, Tile<B> > > neighboringTiles = new ArrayList<>();
+				final ArrayList< Pair< Pair< Integer, String>, Tile<B> > > neighboringTiles = new ArrayList<>();
 
 				for ( int d = 1; d <= stabilizationRadius && i + d < allZ.size(); ++d )
 				{
@@ -440,21 +441,15 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 						final String tileId = solveItem.tileToIdMap().get( imageTile );
 						final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
 
-						final String tileIdentifier = SolveTools.getTileIdentifier( tileId );
-						
-						if ( tileIdentifier == null )
-						{
-							LOG.info( "tile id that does not meet expectations. Stopping: " + tileId );
-							return false;
-						}
-						
-//						if ( !tileId.contains("_0-0-0") )
+						final int tileCol = tileSpec.getImageCol();
+
+//						if ( tileCol != 0 )
 //							continue;
 		
-						final ArrayList< Pair< Pair< String, String>, Tile<B> > > neighbors = new ArrayList<>();
+						final ArrayList< Pair< Pair< Integer, String>, Tile<B> > > neighbors = new ArrayList<>();
 						
-						for ( final Pair< Pair< String, String>, Tile<B> > neighboringTile : neighboringTiles )
-							if ( neighboringTile.getA().getA().equals( tileIdentifier ) )
+						for ( final Pair< Pair< Integer, String>, Tile<B> > neighboringTile : neighboringTiles )
+							if ( neighboringTile.getA().getA() == tileCol )
 								neighbors.add( neighboringTile );
 
 						if ( neighbors.size() == 0 )
@@ -464,7 +459,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 							continue;
 						}
 
-						for ( final Pair< Pair< String, String>, Tile<B> >  neighbor : neighbors )
+						for ( final Pair< Pair< Integer, String>, Tile<B> >  neighbor : neighbors )
 						{
 							final AffineModel2D stitchingTransform = solveItem.idToStitchingModel().get( tileId );
 							final AffineModel2D stitchingTransformPrev = solveItem.idToStitchingModel().get( neighbor.getA().getB() );

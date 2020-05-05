@@ -6,14 +6,14 @@ import org.janelia.alignment.spec.TileSpec;
 
 public class MinimalTileSpec implements Serializable
 {
-	private static final long serialVersionUID = -8341003911065576799L;
+	private static final long serialVersionUID = 8519999698273174416L;
 
 	final private String fileName;
 	final private String fileNameMask;
 
 	final private String tileId;
 
-	final private int width, height;
+	final private int width, height, row, col;
 	final private double z;
 
 	final private boolean isRestart;
@@ -28,6 +28,9 @@ public class MinimalTileSpec implements Serializable
 		this.width = tileSpec.getWidth();
 		this.height = tileSpec.getHeight();
 
+		this.row = tileSpec.getLayout().getImageRow();
+		this.col = tileSpec.getLayout().getImageCol();
+
 		this.z = tileSpec.getZ();
 		this.isRestart = tileSpec.hasLabel( "restart" );
 	}
@@ -38,5 +41,7 @@ public class MinimalTileSpec implements Serializable
 	public double getZ() { return z; }
 	public int getWidth() { return width; }
 	public int getHeight() { return height; }
+	public int getImageRow() { return row; }
+	public int getImageCol() { return col; }
 	public boolean isRestart() { return isRestart; }
 }
