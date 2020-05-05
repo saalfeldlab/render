@@ -52,13 +52,13 @@ public class SolveTools
 {
 	private SolveTools() {}
 
-	protected static <B extends Model<B> & Affine2D< B >> ArrayList< Pair< Pair< String, String>, Tile<B> > > layerDetails(
+	protected static <B extends Model<B> & Affine2D< B >> ArrayList< Pair< Pair< Integer, String>, Tile<B> > > layerDetails(
 			final ArrayList< Integer > allZ,
 			HashMap< Integer, List<Tile<B>> > zToGroupedTileList,
 			final SolveItem<?,B,?> solveItem,
 			final int i )
 	{
-		final ArrayList< Pair< Pair< String, String>, Tile<B> > > prevTiles = new ArrayList<>();
+		final ArrayList< Pair< Pair< Integer, String>, Tile<B> > > prevTiles = new ArrayList<>();
 
 		if ( i < 0 || i >= allZ.size() )
 			return prevTiles;
@@ -67,28 +67,12 @@ public class SolveTools
 			for ( final Tile< B > imageTile : solveItem.groupedTileToTiles().get( prevGroupedTile ) )
 			{
 				final String tileId = solveItem.tileToIdMap().get( imageTile );
-				final String tileIdentifier = SolveTools.getTileIdentifier( tileId );
+				final int tileCol = solveItem.idToTileSpec().get( tileId ).getImageCol();
 
-				if ( tileIdentifier == null )
-				{
-					LOG.info( "tile id that does not meet expectations. Stopping: " + tileId );
-					return null;
-				}
-
-				prevTiles.add( new ValuePair<>( new ValuePair<>( tileIdentifier, tileId ), prevGroupedTile ) );
+				prevTiles.add( new ValuePair<>( new ValuePair<>( tileCol, tileId ), prevGroupedTile ) );
 			}
 
 		return prevTiles;
-	}
-
-	protected static String getTileIdentifier( final String tileId )
-	{
-		if ( !tileId.matches("[0-9]{2,4}-[0-9]{2}-[0-9]{2}_[0-9]+_[0]-[0]-[0-9][.][0-9]+[.].*") )
-			return null;
-
-		final int start = tileId.indexOf("_0-0-" );
-		final int end = tileId.indexOf(".", start );
-		return tileId.substring( start, end );
 	}
 
 	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas( final Collection< Tile< ? > > tiles, final SolveItem< ?,?,? > solveItem, final int zRadiusRestarts )
