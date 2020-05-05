@@ -229,9 +229,13 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                 final GlobalSolve gs = solve.globalSolve();
 
                 // visualize the layers
-                VisualizeTools.visualizeMultiRes( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, 1, 128, 2, parameters.threadsGlobal );
+				final HashMap<String, Float> idToValue = new HashMap<>();
+				for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
+					idToValue.put( tileId, gs.zToDynamicLambdaGlobal.get( (int)Math.round( gs.idToTileSpecGlobal.get( tileId ).getZ() ) ).floatValue() + 1 ); // between 1 and 1.2
 
-                	SimpleMultiThreading.threadHaltUnClean();
+                VisualizeTools.visualizeMultiRes( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToValue, 1, 128, 2, parameters.threadsGlobal );
+
+                SimpleMultiThreading.threadHaltUnClean();
             }
         };
         clientRunner.run();
