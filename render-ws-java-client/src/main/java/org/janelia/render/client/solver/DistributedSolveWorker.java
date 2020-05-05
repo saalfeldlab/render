@@ -259,7 +259,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				}
 			}
 		}
-		System.exit(0);
 	}
 	/**
 	 * The goal is to map the grouped tile to the averaged metadata coordinate transform
