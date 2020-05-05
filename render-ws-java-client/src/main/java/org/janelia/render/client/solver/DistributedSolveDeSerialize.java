@@ -11,35 +11,12 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import bdv.util.Bdv;
-import bdv.util.BdvFunctions;
-import bdv.util.BdvOptions;
-import bdv.util.BdvStackSource;
-import bdv.util.volatiles.VolatileViews;
 import mpicbg.models.Affine2D;
-import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
-import net.imglib2.Cursor;
-import net.imglib2.Interval;
-import net.imglib2.RandomAccess;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.cache.img.CellLoader;
-import net.imglib2.cache.img.ReadOnlyCachedCellImgFactory;
-import net.imglib2.cache.img.ReadOnlyCachedCellImgOptions;
-import net.imglib2.cache.img.SingleCellArrayImg;
 import net.imglib2.multithreading.SimpleMultiThreading;
-import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.type.NativeType;
-import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.type.volatiles.VolatileFloatType;
-import net.imglib2.util.Pair;
-import net.imglib2.util.ValuePair;
-import net.imglib2.view.Views;
-
 
 public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
 {
@@ -49,13 +26,18 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 			final G globalSolveModel,
 			final B blockSolveModel,
 			final S stitchingModel,
-			final ParametersDistributedSolve parameters,
-			final File path ) throws IOException
+			final ParametersDistributedSolve parameters ) throws IOException
 
 	{
 		super( globalSolveModel, blockSolveModel, stitchingModel, parameters );
 
-		this.path = path;
+		this.path = new File( parameters.serializerDirectory );
+
+		if ( !this.path.exists() )
+			throw new IOException( "Path '" + this.path.getAbsoluteFile() + "' does not exist." );
+
+		// we do not want to serialize here
+		this.serializer = null;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -133,7 +115,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             "--owner", "Z1217_33m_BR",
                             "--project", "Sec10",
                             "--matchCollection", "Sec10_multi",
-                            "--stack", "v2_acquire_merged",
+                            "--stack", "v3_acquire",
                             //"--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_fix_prealign",
                             //"--completeTargetStack",
                             
@@ -150,7 +132,8 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             //"--threadsLocal", "1", 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
-                            "--maxIterationsGlobal", "10000"
+                            "--maxIterationsGlobal", "10000",
+                            "--serializerDirectory", "/groups/flyem/data/sema/spark_example/ser"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -169,8 +152,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                 				parameters.globalModel(),
                 				parameters.blockModel(),
                 				parameters.stitchingModel(),
-                				parameters,
-                				new File(".") );
+                				parameters );
                 
                 solve.run();
 
