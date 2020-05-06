@@ -308,12 +308,15 @@ public class PointMatchClient {
             final CanvasData pData = canvasDataValues.get(0);
             final Bounds pBounds = pData.getBounds();
 
-            final CanvasData qData = canvasDataValues.get(1);
-            final Bounds qBounds = qData.getBounds();
-
             if (parameters.firstCanvasPosition == null) {
                 throw new IllegalArgumentException("--firstCanvasPosition must be specified for clipping");
             }
+            pData.canvasId = new CanvasId(pData.canvasId.getGroupId(),
+                                          pData.canvasId.getId(),
+                                          parameters.firstCanvasPosition);
+
+            final CanvasData qData = canvasDataValues.get(1);
+            final Bounds qBounds = qData.getBounds();
 
             MontageRelativePosition secondCanvasPosition = null;
             switch (parameters.firstCanvasPosition) {
@@ -322,8 +325,9 @@ public class PointMatchClient {
                 case LEFT: secondCanvasPosition = MontageRelativePosition.RIGHT; break;
                 case RIGHT: secondCanvasPosition = MontageRelativePosition.LEFT; break;
             }
-            pData.canvasId.setRelativePosition(parameters.firstCanvasPosition);
-            qData.canvasId.setRelativePosition(secondCanvasPosition);
+            qData.canvasId = new CanvasId(qData.canvasId.getGroupId(),
+                                          qData.canvasId.getId(),
+                                          secondCanvasPosition);
 
             pData.clipForMontagePair(pBounds, parameters.clip.clipWidth, parameters.clip.clipHeight);
             qData.clipForMontagePair(qBounds, parameters.clip.clipWidth, parameters.clip.clipHeight);
@@ -488,7 +492,7 @@ public class PointMatchClient {
 
         private final RenderParameters renderParameters;
         private final double renderScale;
-        private final CanvasId canvasId;
+        private CanvasId canvasId;
         private List<Feature> featureList;
 
         CanvasData(final String canvasUrl,

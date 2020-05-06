@@ -26,7 +26,7 @@ public class CanvasId
     private final String id;
 
     /** Position of this canvas relative to a paired montage canvas (or null if not applicable). */
-    private MontageRelativePosition relativePosition;
+    private final MontageRelativePosition relativePosition;
 
     /** Full scale x[0] and y[1] offset for all matches derived from clipped canvases. */
     private double[] clipOffsets;
@@ -34,10 +34,8 @@ public class CanvasId
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private CanvasId() {
-        this.groupId = null;
-        this.id = null;
-        this.relativePosition = null;
-        this.clipOffsets = null;
+        //noinspection ConstantConditions
+        this(null, null);
     }
 
     /**
@@ -76,10 +74,6 @@ public class CanvasId
 
     public MontageRelativePosition getRelativePosition() {
         return relativePosition;
-    }
-
-    public void setRelativePosition(final MontageRelativePosition relativePosition) {
-        this.relativePosition = relativePosition;
     }
 
     public double[] getClipOffsets() {
@@ -122,6 +116,10 @@ public class CanvasId
         }
     }
 
+    public CanvasId withoutRelativePosition() {
+        return new CanvasId(groupId, id);
+    }
+
     @Override
     public boolean equals(final Object that) {
         if (this == that) {
@@ -141,7 +139,6 @@ public class CanvasId
         return java.util.Objects.hash(id, groupId, relativePosition);
     }
 
-    @SuppressWarnings("ConstantConditions")
     @Override
     public int compareTo(@Nonnull final CanvasId that) {
         int result = this.groupId.compareTo(that.groupId);

@@ -11,7 +11,7 @@ import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.match.CanvasId;
-import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,20 +28,20 @@ public class CanvasFileLoader
     private final File rootDirectory;
 
     /**
-     * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
      * @param  canvasFormat                 image format for all rendered canvas files.
      * @param  parentDirectory              parent directory for all rendered canvas files.
      */
-    public CanvasFileLoader(final CanvasRenderParametersUrlTemplate urlTemplate,
-                            final String canvasFormat,
+    public CanvasFileLoader(final String canvasFormat,
                             final File parentDirectory) {
-        super(urlTemplate, CachedCanvasFile.class);
+        super(CachedCanvasFile.class);
         this.canvasFormat = canvasFormat;
         this.rootDirectory = new File(parentDirectory, FILE_CACHE_DIRECTORY_NAME);
     }
 
     @Override
-    public CachedCanvasFile load(@Nonnull final CanvasId canvasId) throws Exception {
+    public CachedCanvasFile load(@Nonnull final CanvasIdWithRenderContext canvasIdWithRenderContext) throws Exception {
+
+        final CanvasId canvasId = canvasIdWithRenderContext.getCanvasId();
 
         File groupDirectory = rootDirectory;
         if (canvasId.getGroupId() != null) {
@@ -50,7 +50,7 @@ public class CanvasFileLoader
 
         final File renderFile = new File(groupDirectory, canvasId.getId() + "." + canvasFormat);
 
-        final RenderParameters renderParameters = getRenderParameters(canvasId);
+        final RenderParameters renderParameters = canvasIdWithRenderContext.loadRenderParameters();
 
         final BufferedImage bufferedImage = renderParameters.openTargetImage();
 

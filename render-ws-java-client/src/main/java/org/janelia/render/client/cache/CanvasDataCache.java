@@ -14,7 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +27,8 @@ import org.slf4j.LoggerFactory;
  */
 public class CanvasDataCache {
 
-    private static final Map<Class, CanvasDataCache> SHARED_DATA_CLASS_TO_CACHE_MAP = new HashMap<>();
+    private static final Map<Class<? extends CachedCanvasData>, CanvasDataCache> SHARED_DATA_CLASS_TO_CACHE_MAP =
+            new HashMap<>();
 
     /**
      * @param  kilobyteCapacity  expected capacity of the shared cache.
@@ -42,7 +43,7 @@ public class CanvasDataCache {
                                                  final CanvasDataLoader canvasDataLoader)
             throws IllegalArgumentException {
 
-        final Class dataClass = canvasDataLoader.getDataClass();
+        final Class<? extends CachedCanvasData> dataClass = canvasDataLoader.getDataClass();
         CanvasDataCache sharedCache = SHARED_DATA_CLASS_TO_CACHE_MAP.get(dataClass);
 
         if (sharedCache == null) {
@@ -61,7 +62,7 @@ public class CanvasDataCache {
     private static synchronized CanvasDataCache setSharedCache(final long kilobyteCapacity,
                                                                final CanvasDataLoader canvasDataLoader) {
 
-        final Class dataClass = canvasDataLoader.getDataClass();
+        final Class<? extends CachedCanvasData> dataClass = canvasDataLoader.getDataClass();
         CanvasDataCache sharedCache = SHARED_DATA_CLASS_TO_CACHE_MAP.get(dataClass);
 
         if (sharedCache == null) {
@@ -75,11 +76,11 @@ public class CanvasDataCache {
 
     private final long kilobyteCapacity;
 
-    private final Weigher<CanvasId, CachedCanvasData> weigher;
-    private final RemovalListener<CanvasId, CachedCanvasData> asyncRemovalListener;
+    private final Weigher<CanvasIdWithRenderContext, CachedCanvasData> weigher;
+    private final RemovalListener<CanvasIdWithRenderContext, CachedCanvasData> asyncRemovalListener;
     private final CanvasDataLoader canvasDataLoader;
 
-    private LoadingCache<CanvasId, CachedCanvasData> canvasIdToDataCache;
+    private LoadingCache<CanvasIdWithRenderContext, CachedCanvasData> canvasIdToDataCache;
 
     /**
      * Creates a new cache.
@@ -123,7 +124,7 @@ public class CanvasDataCache {
         // separate thread pool for removing data that expires from the cache
         final ExecutorService removalService = Executors.newFixedThreadPool(4);
 
-        final RemovalListener<CanvasId, CachedCanvasData> removalListener =
+        final RemovalListener<CanvasIdWithRenderContext, CachedCanvasData> removalListener =
                 removal -> {
                     final CachedCanvasData cachedCanvasData = removal.getValue();
                     if (cachedCanvasData != null) {
@@ -158,22 +159,22 @@ public class CanvasDataCache {
      * If data for the canvas is not in the cache, the data is built (on the current thread of execution)
      * and is added to the cache before being returned.
      *
-     * @param  canvasId  canvas identifier.
+     * @param  canvasIdWithRenderContext  canvas identifier.
      *
      * @return the cached data for the specified canvas.
      *
      * @throws IllegalStateException
      *   if the data cannot be cached.
      */
-    private CachedCanvasData getData(final CanvasId canvasId)
+    private CachedCanvasData getData(final CanvasIdWithRenderContext canvasIdWithRenderContext)
             throws IllegalStateException {
 
         final CachedCanvasData cachedCanvasData;
         try {
             // get call should load (build) data if it is not already present
-            cachedCanvasData = canvasIdToDataCache.get(canvasId);
+            cachedCanvasData = canvasIdToDataCache.get(canvasIdWithRenderContext);
         } catch (final Exception e) {
-            throw new IllegalStateException("failed to load data for " + canvasId, e);
+            throw new IllegalStateException("failed to load data for " + canvasIdWithRenderContext, e);
         }
         return cachedCanvasData;
     }
@@ -187,9 +188,9 @@ public class CanvasDataCache {
      * @throws ClassCastException
      *   if this cache is not managing {@link CachedCanvasFile} data.
      */
-    public File getRenderedImage(final CanvasId canvasId)
+    public File getRenderedImage(final CanvasIdWithRenderContext canvasIdWithRenderContext)
             throws IllegalStateException, ClassCastException {
-        final CachedCanvasFile cachedCanvasFile = (CachedCanvasFile) getData(canvasId);
+        final CachedCanvasFile cachedCanvasFile = (CachedCanvasFile) getData(canvasIdWithRenderContext);
         return cachedCanvasFile.getRenderedImage();
     }
 
@@ -202,9 +203,9 @@ public class CanvasDataCache {
      * @throws ClassCastException
      *   if this cache is not managing {@link CachedCanvasFile} data.
      */
-    public RenderParameters getRenderParameters(final CanvasId canvasId)
+    public RenderParameters getRenderParameters(final CanvasIdWithRenderContext canvasIdWithRenderContext)
             throws IllegalStateException, ClassCastException {
-        final CachedCanvasFile cachedCanvasFile = (CachedCanvasFile) getData(canvasId);
+        final CachedCanvasFile cachedCanvasFile = (CachedCanvasFile) getData(canvasIdWithRenderContext);
         return cachedCanvasFile.getRenderParameters();
     }
 
@@ -217,9 +218,9 @@ public class CanvasDataCache {
      * @throws ClassCastException
      *   if this cache is not managing {@link CachedCanvasFeatures} data.
      */
-    public CachedCanvasFeatures getCanvasFeatures(final CanvasId canvasId)
+    public CachedCanvasFeatures getCanvasFeatures(final CanvasIdWithRenderContext canvasIdWithRenderContext)
             throws IllegalStateException, ClassCastException {
-        return (CachedCanvasFeatures) getData(canvasId);
+        return (CachedCanvasFeatures) getData(canvasIdWithRenderContext);
     }
 
     /**
@@ -231,9 +232,9 @@ public class CanvasDataCache {
      * @throws ClassCastException
      *   if this cache is not managing {@link CachedCanvasPeaks} data.
      */
-    public CachedCanvasPeaks getCanvasPeaks(final CanvasId canvasId)
+    public CachedCanvasPeaks getCanvasPeaks(final CanvasIdWithRenderContext canvasIdWithRenderContext)
             throws IllegalStateException, ClassCastException {
-        return (CachedCanvasPeaks) getData(canvasId);
+        return (CachedCanvasPeaks) getData(canvasIdWithRenderContext);
     }
 
     @Override
@@ -255,7 +256,7 @@ public class CanvasDataCache {
         // The "penalty" for this appears to be serialized put of the object
         // AFTER it has been loaded - which should not be a problem.
 
-        final CacheBuilder<CanvasId, CachedCanvasData> cacheBuilder =
+        final CacheBuilder<CanvasIdWithRenderContext, CachedCanvasData> cacheBuilder =
                 CacheBuilder.newBuilder()
                         .concurrencyLevel(1)
                         .maximumWeight(getKilobyteCapacity())

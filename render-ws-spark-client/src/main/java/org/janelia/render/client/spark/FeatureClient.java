@@ -22,6 +22,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureList;
 import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
@@ -174,8 +175,7 @@ public class FeatureClient
                                            featureExtractionParameters.minScale,
                                            featureExtractionParameters.maxScale);
 
-        final CanvasFeatureListLoader featureLoader = new CanvasFeatureListLoader(urlTemplateForRun,
-                                                                                  featureExtractor);
+        final CanvasFeatureListLoader featureLoader = new CanvasFeatureListLoader(featureExtractor);
 
         final double renderScale = featureRenderParameters.renderScale;
 
@@ -190,13 +190,16 @@ public class FeatureClient
                     LogUtilities.setupExecutorLog4j(canvasId.getGroupId());
 
                     final CanvasFeatureListLoader localFeatureLoader = broadcastFeatureLoader.getValue();
-                    final CachedCanvasFeatures canvasFeatures = localFeatureLoader.load(canvasId);
+                    final CanvasIdWithRenderContext canvasIdWithRenderContext =
+                            CanvasIdWithRenderContext.build(canvasId, urlTemplateForRun);
+
+                    final CachedCanvasFeatures canvasFeatures = localFeatureLoader.load(canvasIdWithRenderContext);
                     final CanvasFeatureList canvasFeatureList =
                             new CanvasFeatureList(canvasId,
-                                                  localFeatureLoader.getRenderParametersUrl(canvasId),
+                                                  canvasIdWithRenderContext.getUrl(),
                                                   renderScale,
-                                                  localFeatureLoader.getClipWidth(),
-                                                  localFeatureLoader.getClipHeight(),
+                                                  canvasIdWithRenderContext.getClipWidth(),
+                                                  canvasIdWithRenderContext.getClipHeight(),
                                                   canvasFeatures.getFeatureList());
                     CanvasFeatureList.writeToStorage(rootDirectory, canvasFeatureList);
                     return 1;

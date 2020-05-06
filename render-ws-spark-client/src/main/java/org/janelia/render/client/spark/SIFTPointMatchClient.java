@@ -15,6 +15,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.broadcast.Broadcast;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
@@ -179,7 +180,6 @@ public class SIFTPointMatchClient
         final long cacheMaxKilobytes = featureStorageParameters.maxFeatureCacheGb * 1000000;
         final CanvasFeatureListLoader featureLoader =
                 new CanvasFeatureListLoader(
-                        urlTemplateForRun,
                         getCanvasFeatureExtractor(featureExtractionParameters),
                         featureStorageParameters.getRootFeatureDirectory(),
                         featureStorageParameters.requireStoredFeatures);
@@ -224,8 +224,8 @@ public class SIFTPointMatchClient
                         p = pair.getP();
                         q = pair.getQ();
 
-                        pFeatures = dataCache.getCanvasFeatures(p);
-                        qFeatures = dataCache.getCanvasFeatures(q);
+                        pFeatures = dataCache.getCanvasFeatures(CanvasIdWithRenderContext.build(p, urlTemplateForRun));
+                        qFeatures = dataCache.getCanvasFeatures(CanvasIdWithRenderContext.build(q, urlTemplateForRun));
 
                         log.info("derive matches between {} and {}", p, q);
 

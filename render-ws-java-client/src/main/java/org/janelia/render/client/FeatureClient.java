@@ -19,6 +19,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureList;
 import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
@@ -184,19 +185,15 @@ public class FeatureClient
 
         for (final CanvasId canvasId : canvasIdList) {
 
-            final String renderParametersUrl = urlTemplateForRun.getRenderParametersUrl(canvasId);
-            final RenderParameters renderParameters = urlTemplateForRun.getRenderParameters(canvasId,
-                                                                                            renderParametersUrl);
-            final double[] offsets = canvasId.getClipOffsets(); // HACK WARNING: offsets get applied by getRenderParameters call
-
-            LOG.info("generateFeatureListsForCanvases: extracting features for {} with offsets ({}, {})",
-                     canvasId, offsets[0], offsets[1]);
+            final CanvasIdWithRenderContext canvasIdWithRenderContext =
+                    CanvasIdWithRenderContext.build(canvasId, urlTemplateForRun);
+            final RenderParameters renderParameters = canvasIdWithRenderContext.loadRenderParameters();
 
             final List<Feature> featureList = featureExtractor.extractFeatures(renderParameters, null);
 
             final CanvasFeatureList canvasFeatureList =
                     new CanvasFeatureList(canvasId,
-                                          renderParametersUrl,
+                                          canvasIdWithRenderContext.getUrl(),
                                           renderScale,
                                           urlTemplateForRun.getClipWidth(),
                                           urlTemplateForRun.getClipHeight(),
@@ -204,7 +201,6 @@ public class FeatureClient
 
             CanvasFeatureList.writeToStorage(rootDirectory, canvasFeatureList);
         }
-
 
         LOG.info("generateFeatureListsForCanvases: saved features for {} canvases", canvasIdList.size());
     }

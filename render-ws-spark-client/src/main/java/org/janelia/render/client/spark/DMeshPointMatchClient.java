@@ -20,6 +20,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.Matches;
@@ -151,7 +152,6 @@ public class DMeshPointMatchClient
 
         final CanvasFileLoader fileLoader =
                 new CanvasFileLoader(
-                        urlTemplateForRun,
                         parameters.format,
                         new File(parameters.imageCacheParentDirectory));
 
@@ -205,11 +205,15 @@ public class DMeshPointMatchClient
                         p = pair.getP();
                         q = pair.getQ();
 
-                        pFile = dataCache.getRenderedImage(p);
-                        pRenderParameters = dataCache.getRenderParameters(p);
+                        final CanvasIdWithRenderContext pWithRenderContext =
+                                CanvasIdWithRenderContext.build(p, urlTemplateForRun);
+                        pFile = dataCache.getRenderedImage(pWithRenderContext);
+                        pRenderParameters = dataCache.getRenderParameters(pWithRenderContext);
 
-                        qFile = dataCache.getRenderedImage(q);
-                        qRenderParameters = dataCache.getRenderParameters(q);
+                        final CanvasIdWithRenderContext qWithRenderContext =
+                                CanvasIdWithRenderContext.build(q, urlTemplateForRun);
+                        qFile = dataCache.getRenderedImage(qWithRenderContext);
+                        qRenderParameters = dataCache.getRenderParameters(qWithRenderContext);
 
                         pairMatches = dMeshTool1.run(p, pFile, pRenderParameters, q, qFile, qRenderParameters);
 

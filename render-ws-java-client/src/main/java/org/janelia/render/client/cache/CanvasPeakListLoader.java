@@ -8,9 +8,8 @@ import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.type.numeric.real.FloatType;
 
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.match.CanvasPeakExtractor;
-import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,30 +24,27 @@ public class CanvasPeakListLoader
     private final CanvasPeakExtractor peakExtractor;
 
     /**
-     * @param  urlTemplate               template for deriving render parameters URL for each canvas.
      * @param  peakExtractor             configured peak extractor.
      */
-    public CanvasPeakListLoader(final CanvasRenderParametersUrlTemplate urlTemplate,
-                                final CanvasPeakExtractor peakExtractor) {
-        super(urlTemplate, CachedCanvasPeaks.class);
+    public CanvasPeakListLoader(final CanvasPeakExtractor peakExtractor) {
+        super(CachedCanvasPeaks.class);
         this.peakExtractor = peakExtractor;
     }
 
     @Override
-    public CachedCanvasPeaks load(@Nonnull final CanvasId canvasId) {
+    public CachedCanvasPeaks load(@Nonnull final CanvasIdWithRenderContext canvasIdWithRenderContext) {
 
-        final RenderParameters renderParameters = getRenderParameters(canvasId);
-        final double[] offsets = canvasId.getClipOffsets(); // HACK WARNING: offsets get applied by getRenderParameters call
+        final RenderParameters renderParameters = canvasIdWithRenderContext.loadRenderParameters();
 
-        LOG.info("load: extracting peaks for {} with offsets ({}, {})", canvasId, offsets[0], offsets[1]);
-        final List<DifferenceOfGaussianPeak<FloatType>> peakList = peakExtractor.extractPeaks(renderParameters, null);
+        final List<DifferenceOfGaussianPeak<FloatType>> peakList = peakExtractor.extractPeaks(renderParameters,
+                                                                                              null);
 
         final List<DifferenceOfGaussianPeak<FloatType>> filteredPeakList =
                 peakExtractor.nonMaximalSuppression(peakList, renderParameters.getScale());
 
         LOG.info("load: exit");
 
-        return new CachedCanvasPeaks(filteredPeakList, offsets);
+        return new CachedCanvasPeaks(filteredPeakList, canvasIdWithRenderContext.getClipOffsets());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasPeakListLoader.class);

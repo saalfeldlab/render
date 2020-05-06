@@ -13,7 +13,7 @@ import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureExtractor.FeaturesWithSourceData;
 import org.janelia.alignment.match.CanvasFeatureList;
 import org.janelia.alignment.match.CanvasId;
-import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,17 +32,13 @@ public class CanvasFeatureListLoader
     private transient boolean isSourceDataCachingEnabled;
 
     /**
-     * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
      * @param  featureExtractor             configured feature extractor.
      */
-    public CanvasFeatureListLoader(final CanvasRenderParametersUrlTemplate urlTemplate,
-                                   final CanvasFeatureExtractor featureExtractor) {
-        this(urlTemplate, featureExtractor, null, false);
+    public CanvasFeatureListLoader(final CanvasFeatureExtractor featureExtractor) {
+        this(featureExtractor, null, false);
     }
 
     /**
-     * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
-     *
      * @param  featureExtractor             configured feature extractor.
      *
      * @param  rootFeatureStorageDirectory  root directory for persisted feature list data
@@ -54,11 +50,10 @@ public class CanvasFeatureListLoader
      *                                      if false, stored features will be loaded from disk
      *                                      but missing features will be extracted from a dynamically rendered canvas.
      */
-    public CanvasFeatureListLoader(final CanvasRenderParametersUrlTemplate urlTemplate,
-                                   final CanvasFeatureExtractor featureExtractor,
+    public CanvasFeatureListLoader(final CanvasFeatureExtractor featureExtractor,
                                    final File rootFeatureStorageDirectory,
                                    final boolean requireStoredFeatures) {
-        super(urlTemplate, CachedCanvasFeatures.class);
+        super(CachedCanvasFeatures.class);
         this.featureExtractor = featureExtractor;
         this.rootFeatureStorageDirectory =rootFeatureStorageDirectory;
         this.requireStoredFeatures = requireStoredFeatures;
@@ -71,19 +66,21 @@ public class CanvasFeatureListLoader
     }
 
     @Override
-    public CachedCanvasFeatures load(@Nonnull final CanvasId canvasId) {
+    public CachedCanvasFeatures load(@Nonnull final CanvasIdWithRenderContext canvasIdWithRenderContext) {
 
         List<Feature> featureList = null;
         double[] offsets = null;
 
         if (rootFeatureStorageDirectory != null) {
 
-            final Path storagePath = CanvasFeatureList.getStoragePath(rootFeatureStorageDirectory, canvasId);
+            final Path storagePath = CanvasFeatureList.getStoragePath(rootFeatureStorageDirectory,
+                                                                      canvasIdWithRenderContext.getCanvasId());
 
             CanvasFeatureList canvasFeatureList = null;
             try {
 
-                canvasFeatureList = CanvasFeatureList.readFromStorage(rootFeatureStorageDirectory, canvasId);
+                canvasFeatureList = CanvasFeatureList.readFromStorage(rootFeatureStorageDirectory,
+                                                                      canvasIdWithRenderContext.getCanvasId());
 
                 LOG.info("loaded {} features from {}", canvasFeatureList.size(), storagePath);
 
@@ -101,12 +98,22 @@ public class CanvasFeatureListLoader
             if (canvasFeatureList != null) {
 
                 final CanvasId storedCanvasId = canvasFeatureList.getCanvasId();
-                checkCompatibility("canvas ids", canvasId, storedCanvasId, storagePath);
-
-                final String storedUrl = canvasFeatureList.getRenderParametersUrl();
-                checkCompatibility("render parameters URLs", getRenderParametersUrl(canvasId), storedUrl, storagePath);
-                checkCompatibility("clip width", getClipWidth(), canvasFeatureList.getClipWidth(), storagePath);
-                checkCompatibility("clip height", getClipHeight(), canvasFeatureList.getClipHeight(), storagePath);
+                checkCompatibility("canvas ids",
+                                   canvasIdWithRenderContext.getCanvasId(),
+                                   storedCanvasId,
+                                   storagePath);
+                checkCompatibility("render parameters URLs",
+                                   canvasIdWithRenderContext.getUrl(),
+                                   canvasFeatureList.getRenderParametersUrl(),
+                                   storagePath);
+                checkCompatibility("clip width",
+                                   canvasIdWithRenderContext.getClipWidth(),
+                                   canvasFeatureList.getClipWidth(),
+                                   storagePath);
+                checkCompatibility("clip height",
+                                   canvasIdWithRenderContext.getClipHeight(),
+                                   canvasFeatureList.getClipHeight(),
+                                   storagePath);
 
                 featureList = canvasFeatureList.getFeatureList();
                 offsets = storedCanvasId.getClipOffsets();
@@ -117,10 +124,8 @@ public class CanvasFeatureListLoader
         final CachedCanvasFeatures cachedCanvasFeatures;
         if (featureList == null) {
 
-            final RenderParameters renderParameters = getRenderParameters(canvasId);
-            offsets = canvasId.getClipOffsets(); // HACK WARNING: offsets get applied by getRenderParameters call
-
-            LOG.info("load: extracting features for {} with offsets ({}, {})", canvasId, offsets[0], offsets[1]);
+            final RenderParameters renderParameters = canvasIdWithRenderContext.loadRenderParameters();
+            offsets = canvasIdWithRenderContext.getClipOffsets(); // warning: must call this after loadRenderParameters
 
             if (isSourceDataCachingEnabled) {
                 final FeaturesWithSourceData featuresWithSourceData =

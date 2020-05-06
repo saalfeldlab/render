@@ -211,13 +211,13 @@ public class ExampleMatchVisualizationClient {
                                                                false,
                                                                false)
                             .stream()
-                            .peek(pair -> {
+                            .map(pair -> {
                                 // Minor Hack: Remove same layer relative position data inserted by
                                 //             getCircleNeighbors for tile pair client.
                                 //             This allows later comparisons with retrieved match pairs
                                 //             (which do not have position data) to work as intended.
-                                pair.getP().setRelativePosition(null);
-                                pair.getQ().setRelativePosition(null);
+                                return new OrderedCanvasIdPair(pair.getP().withoutRelativePosition(),
+                                                               pair.getQ().withoutRelativePosition());
                             })
                             .sorted()
                             .collect(Collectors.toList());

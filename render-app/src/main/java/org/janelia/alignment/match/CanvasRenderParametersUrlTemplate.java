@@ -6,7 +6,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.http.client.utils.URIBuilder;
-import org.janelia.alignment.RenderParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,26 +97,6 @@ public class CanvasRenderParametersUrlTemplate
         }
 
         return url;
-    }
-
-    public RenderParameters getRenderParameters(final CanvasId canvasId)
-            throws IllegalArgumentException {
-        return getRenderParameters(canvasId, getRenderParametersUrl(canvasId));
-    }
-
-    public RenderParameters getRenderParameters(final CanvasId canvasId,
-                                                final String renderParametersUrl)
-            throws IllegalArgumentException {
-
-        final RenderParameters renderParameters = RenderParameters.loadFromUrl(renderParametersUrl);
-
-        if ((clipWidth != null) || (clipHeight != null)) {
-            // TODO: setting the canvas offsets here is hack-y, probably want a cleaner way
-            canvasId.setClipOffsets(renderParameters.getWidth(), renderParameters.getHeight(), clipWidth, clipHeight);
-            renderParameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
-        }
-
-        return renderParameters;
     }
 
     /**
