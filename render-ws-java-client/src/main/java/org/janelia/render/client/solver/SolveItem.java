@@ -138,7 +138,7 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	public static void main( String[] args )
 	{
 		SolveItem< TranslationModel2D, TranslationModel2D, TranslationModel2D > s = new SolveItem<>(
-				new SolveItemData< TranslationModel2D, TranslationModel2D, TranslationModel2D >( null, null, null, 100, 102 ) );
+				new SolveItemData< TranslationModel2D, TranslationModel2D, TranslationModel2D >( 0, null, null, null, 100, 102 ) );
 
 		for ( int z = s.minZ(); z <= s.maxZ(); ++z )
 		{

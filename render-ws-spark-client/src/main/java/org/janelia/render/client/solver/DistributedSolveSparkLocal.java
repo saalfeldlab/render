@@ -45,6 +45,8 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 		final List< Pair< String, Double > > pGroupList = runParams.pGroupList;
 		final Map<String, ArrayList<Double>> sectionIdToZMap = runParams.sectionIdToZMap;
 
+		final int startId = solveSet.getMaxId() + 1;
+
 		final String baseDataUrl = parameters.renderWeb.baseDataUrl;
 		final String owner = parameters.renderWeb.owner;
 		final String project = parameters.renderWeb.project;
@@ -66,6 +68,7 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 				solveItemData -> {
 					final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 							solveItemData,
+							startId,
 							pGroupList,
 							sectionIdToZMap,
 							baseDataUrl,

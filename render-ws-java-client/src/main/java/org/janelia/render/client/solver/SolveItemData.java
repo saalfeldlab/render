@@ -3,7 +3,6 @@ package org.janelia.render.client.solver;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
@@ -20,9 +19,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 {
 	private static final long serialVersionUID = -4933629169992559913L;
 
-	final public static AtomicInteger idGenerator = new AtomicInteger( 0 );
-
-	final private int id;
+	private int id;
 	int minZ, maxZ;
 
 	// used for global solve outside
@@ -45,13 +42,14 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	final private S stitchingModel;
 
 	public SolveItemData(
+			final int id,
 			final G globalSolveModel,
 			final B blockSolveModel,
 			final S stitchingModel,
 			final int minZ,
 			final int maxZ )
 	{
-		this.id = idGenerator.getAndIncrement();
+		this.id = id;
 
 		this.minZ = minZ;
 		this.maxZ = maxZ;
@@ -61,6 +59,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 		this.stitchingModel = stitchingModel.copy();
 	}
 
+	protected void assignUpdatedId( final int id ) { this.id = id; }
 	public int getId() { return id; }
 	public int minZ() { return minZ; }
 	public int maxZ() { return maxZ; }

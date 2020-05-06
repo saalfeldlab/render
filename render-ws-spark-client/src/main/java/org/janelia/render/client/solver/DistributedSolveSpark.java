@@ -40,6 +40,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 
 		final JavaRDD< SolveItemData< G, B, S > > rddJobs = sparkContext.parallelize( solveSet.allItems() );
 
+		final int startId = solveSet.getMaxId() + 1;
 		final List< Pair< String, Double > > pGroupList = runParams.pGroupList;
 		final Map<String, ArrayList<Double>> sectionIdToZMap = runParams.sectionIdToZMap;
 
@@ -64,6 +65,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 				solveItemData -> {
 					final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 							solveItemData,
+							startId,
 							pGroupList,
 							sectionIdToZMap,
 							baseDataUrl,

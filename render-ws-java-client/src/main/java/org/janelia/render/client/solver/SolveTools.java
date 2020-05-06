@@ -25,6 +25,8 @@ import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.esotericsoftware.minlog.Log;
+
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
@@ -51,6 +53,45 @@ import net.imglib2.view.Views;
 public class SolveTools
 {
 	private SolveTools() {}
+
+	protected static int fixIds( final List<? extends SolveItemData<?, ?, ?>> allItems, final int maxId )
+	{
+		final HashSet<Integer> existingIds = new HashSet<>();
+
+		for ( final SolveItemData<?, ?, ?> item : allItems )
+		{
+			final int id = item.getId();
+
+			if ( existingIds.contains( id ) )
+			{
+				// duplicate id
+				if ( id <= maxId )
+					throw new RuntimeException( "Id: " + id + " exists, but is <= maxId=" + maxId + ", this should never happen." );
+
+				final int newId = Math.max( maxId, max( existingIds ) ) + 1;
+				item.assignUpdatedId( newId );
+
+				Log.info( "Assigning new id " + newId + " to block " + id);
+			}
+			else
+			{
+				Log.info( "Keeping id " + id);
+				existingIds.add( id );
+			}
+		}
+
+		return max( existingIds );
+	}
+
+	protected static int max( final Collection< Integer > ids )
+	{
+		int max = Integer.MIN_VALUE;
+
+		for ( final int i : ids )
+			max = Math.max( i, max );
+
+		return max;
+	}
 
 	protected static <B extends Model<B> & Affine2D< B >> ArrayList< Pair< Pair< Integer, String>, Tile<B> > > layerDetails(
 			final ArrayList< Integer > allZ,

@@ -77,8 +77,12 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final SolveItem< G, B, S > inputSolveItem;
 	List< SolveItem< G, B, S > > solveItems;
 
+	// for assigning new id's when splitting solveItemData
+	final int startId;
+
 	public DistributedSolveWorker(
 			final SolveItemData< G, B, S > solveItemData,
+			final int startId,
 			final List< Pair< String, Double > > pGroupList,
 			final Map<String, ArrayList<Double>> sectionIdToZMap,
 			final String baseDataUrl,
@@ -101,6 +105,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		this.matchDataClient = new RenderDataClient( baseDataUrl, matchOwner, matchCollection );
 		this.stack = stack;
 		this.inputSolveItem = new SolveItem<>( solveItemData );
+		this.startId = startId;
 		this.pGroupList = pGroupList;
 		this.sectionIdToZMap = sectionIdToZMap;
 
@@ -131,7 +136,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		assembleMatchData( pairs, zToPairs );
 		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, numThreads );
 		connectGroupedTiles( pairs, inputSolveItem );
-		this.solveItems = splitSolveItem( inputSolveItem );
+		this.solveItems = splitSolveItem( inputSolveItem, startId );
 
 		for ( final SolveItem< G, B, S > solveItem : solveItems )
 		{
@@ -725,8 +730,11 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		}
 	}
 
-	protected List< SolveItem< G, B, S > > splitSolveItem( final SolveItem<G, B, S> inputSolveItem )
+	protected List< SolveItem< G, B, S > > splitSolveItem( final SolveItem<G, B, S> inputSolveItem, final int startId )
 	{
+		// assigning new id's to the solve items (they collide for now with other workers, fix upon merging)
+		int id = startId + 1;
+
 		final ArrayList< SolveItem< G, B, S > > solveItems = new ArrayList<>();
 
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
@@ -765,11 +773,14 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 				final SolveItem< G,B,S > solveItem = new SolveItem<>(
 						new SolveItemData< G, B, S >(
+							id,
 							inputSolveItem.globalSolveModelInstance(),
 							inputSolveItem.blockSolveModelInstance(),
 							inputSolveItem.stitchingSolveModelInstance(),
 							newMin,
 							newMax ) );
+
+				++id;
 
 				LOG.info( "block " + solveItem.getId() + ": old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
 				LOG.info( "block " + solveItem.getId() + ": min: " + newMin + " > max: " + newMax );

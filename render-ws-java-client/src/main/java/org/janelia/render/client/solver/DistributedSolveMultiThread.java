@@ -45,6 +45,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		//this.solveSet.leftItems.get( 8 ).maxZ = 4158;
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 				this.solveSet.leftItems.get( 1 ), //8, 9, 43, 49, 66 ),
+				this.solveSet.getMaxId() + 1,
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
 				parameters.renderWeb.baseDataUrl,
@@ -112,6 +113,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 				{
 					final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 							solveItemData,
+							solveSet.getMaxId() + 1,
 							runParams.pGroupList,
 							runParams.sectionIdToZMap,
 							parameters.renderWeb.baseDataUrl,

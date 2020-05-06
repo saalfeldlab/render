@@ -3,6 +3,7 @@ package org.janelia.render.client.solver;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,6 +13,8 @@ import java.util.concurrent.ExecutionException;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.esotericsoftware.minlog.Log;
 
 import ij.ImageJ;
 import ij.ImagePlus;
@@ -102,6 +105,10 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 			return;
 		}
 
+		// avoid duplicate id assigned while splitting solveitems in the workers
+		// but do keep ids that are smaller or equal to the maxId of the initial solveset
+		final int maxId = SolveTools.fixIds( this.allItems, solveSet.getMaxId() );
+
 		try
 		{
 			if ( serializer != null )
@@ -115,7 +122,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 		try
 		{
-			this.solve = globalSolve( this.allItems );
+			this.solve = globalSolve( this.allItems, maxId + 1 );
 		}
 		catch ( Exception e )
 		{
@@ -198,8 +205,10 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		}
 	}
 
-	protected GlobalSolve globalSolve( final List< SolveItemData< G, B, S > > allSolveItems ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException, NoninvertibleModelException
+	protected GlobalSolve globalSolve( final List< SolveItemData< G, B, S > > allSolveItems, final int startId ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException, NoninvertibleModelException
 	{
+		int id = startId;
+
 		final GlobalSolve gs = new GlobalSolve();
 
 		// local structures required for solvig
@@ -336,10 +345,13 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 	
 						// remember which solveItems defined which tileIds of this z section
 						
-						final SolveItemData< G, B, S > solveItemB = new DummySolveItemData< G, B, S >( solveItemA.globalSolveModelInstance(), solveItemA.blockSolveModelInstance(), solveItemA.stitchingSolveModelInstance(), z );
+						final SolveItemData< G, B, S > solveItemB = new DummySolveItemData< G, B, S >(
+								id, solveItemA.globalSolveModelInstance(), solveItemA.blockSolveModelInstance(), solveItemA.stitchingSolveModelInstance(), z );
 						zToSolveItemPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
 						solveItemDataToTile.putIfAbsent( solveItemB, new Tile<>( solveItemB.globalSolveModelInstance() ) );
 	
+						++id;
+
 						for ( final String tileId : tileIds )
 						{
 							solveItemB.idToNewModel().put( tileId, new AffineModel2D() );
@@ -454,15 +466,19 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		final ArrayList< SolveItemData< G, B, S > > leftSets = new ArrayList<>();
 		final ArrayList< SolveItemData< G, B, S > > rightSets = new ArrayList<>();
 
+		int id = 0;
+
 		for ( int i = 0; i < numSetsLeft; ++i )
 		{
 			leftSets.add(
 					new SolveItemData< G, B, S >(
+							id,
 							this.globalSolveModel,
 							this.blockSolveModel,
 							this.stitchingModel,
 							minZ + i * setSize,
 							Math.min( minZ + (i + 1) * setSize - 1, maxZ ) ) );
+			++id;
 		}
 
 		for ( int i = 0; i < numSetsLeft - 1; ++i )
@@ -472,11 +488,13 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 			rightSets.add(
 					new SolveItemData< G, B, S >(
+							id,
 							this.globalSolveModel,
 							this.blockSolveModel,
 							this.stitchingModel,
 							( set0.minZ() + set0.maxZ() ) / 2,
 							( set1.minZ() + set1.maxZ() ) / 2 - 1 ) );
+			++id;
 		}
 
 		return new SolveSet< G, B, S >( leftSets, rightSets );
