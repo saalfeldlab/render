@@ -133,7 +133,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-                            "--serializerDirectory", "/groups/flyem/data/sema/spark_example/ser"
+                            "--serializerDirectory", "/groups/scicompsoft/home/preibischs/Documents/FIB-SEM/test1"//"/groups/flyem/data/sema/spark_example/ser"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -143,8 +143,8 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                 LOG.info("runClient: entry, parameters={}", parameters);
                
                 DistributedSolve.visualizeOutput = false;
-                DistributedSolve.visMinZ = 1223;
-                DistributedSolve.visMaxZ = 1285	;
+                DistributedSolve.visMinZ = 3500;
+                DistributedSolve.visMaxZ = 5000;
                 
                 @SuppressWarnings({ "rawtypes", "unchecked" })
                 final DistributedSolve solve =
