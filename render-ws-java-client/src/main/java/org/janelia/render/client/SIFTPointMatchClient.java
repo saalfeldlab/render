@@ -37,6 +37,7 @@ import org.janelia.alignment.match.PointMatchQualityStats;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.alignment.match.parameters.GeometricDescriptorAndMatchFilterParameters;
 import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
@@ -48,7 +49,6 @@ import org.janelia.render.client.cache.CanvasDataCache;
 import org.janelia.render.client.cache.CanvasFeatureListLoader;
 import org.janelia.render.client.cache.CanvasPeakListLoader;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.render.client.parameter.FeatureStorageParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
@@ -87,6 +87,11 @@ public class SIFTPointMatchClient
         @ParametersDelegate
         GeometricDescriptorAndMatchFilterParameters geometricDescriptorAndMatch =
                 new GeometricDescriptorAndMatchFilterParameters();
+
+        @Parameter(
+                names = { "--gdMaxPeakCacheGb" },
+                description = "Maximum number of gigabytes of peaks to cache")
+        public Integer maxPeakCacheGb = 2;
 
         @Parameter(
                 names = "--failedPairsDir",
@@ -269,7 +274,7 @@ public class SIFTPointMatchClient
 
             final CanvasPeakListLoader peakLoader = new CanvasPeakListLoader(peakExtractor);
 
-            final long peakCacheMaxKilobytes = gdam.maxPeakCacheGb * 1000000;
+            final long peakCacheMaxKilobytes = parameters.maxPeakCacheGb * 1000000;
             peakDataCache = CanvasDataCache.getSharedCache(peakCacheMaxKilobytes, peakLoader);
 
         } else {

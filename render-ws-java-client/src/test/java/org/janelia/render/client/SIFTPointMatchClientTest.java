@@ -63,7 +63,7 @@ public class SIFTPointMatchClientTest {
         final SIFTPointMatchClient.Parameters parameters = getParameters(testIndex);
 
         // must manually set peak cache size since that is a command line only parameter
-        parameters.geometricDescriptorAndMatch.maxPeakCacheGb = 1;
+        parameters.maxPeakCacheGb = 1;
 
         // HACK: set up match client with invalid collection name so that nothing actually gets saved
         parameters.matchClient.baseDataUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";

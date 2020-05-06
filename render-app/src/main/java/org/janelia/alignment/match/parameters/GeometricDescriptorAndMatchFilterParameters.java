@@ -40,12 +40,6 @@ public class GeometricDescriptorAndMatchFilterParameters
     )
     public String renderFilterListName;
 
-    @Parameter(
-            names = { "--gdMaxPeakCacheGb" },
-            description = "Maximum number of gigabytes of peaks to cache")
-    @JsonIgnore
-    public Integer maxPeakCacheGb;
-
     @ParametersDelegate
     public GeometricDescriptorParameters geometricDescriptorParameters = new GeometricDescriptorParameters();
 
@@ -94,10 +88,6 @@ public class GeometricDescriptorAndMatchFilterParameters
     }
 
     public void validateAndSetDefaults() throws IllegalArgumentException {
-
-        if (maxPeakCacheGb == null) {
-            maxPeakCacheGb = 2;
-        }
 
         geometricDescriptorParameters.setDefaults();
 
