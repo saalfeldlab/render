@@ -403,8 +403,12 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			//
 			for ( int i = 0; i < allZ.size(); ++i )
 			{
+				final int z = allZ.get( i );
+
 				// first get all tiles from adjacent layers and the associated grouped tile
 				final ArrayList< Pair< Pair< Integer, String>, Tile<B> > > neighboringTiles = new ArrayList<>();
+
+				int from = i, to = i;
 
 				for ( int d = 1; d <= stabilizationRadius && i + d < allZ.size(); ++d )
 				{
@@ -412,24 +416,33 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 						break;
 					else
 						neighboringTiles.addAll( SolveTools.layerDetails( allZ, zToGroupedTileList, solveItem, i + d ) );
+
+					to = i + d;
 				}
 
-				for ( int d = 1; d <= stabilizationRadius && i - d >= 0; ++d )
+				// if this z section is a restart we only go down from here
+				if ( !solveItem.restarts().contains( z ) )
 				{
-					if ( solveItem.restarts().contains( allZ.get( i - d ) ) )
-						break;
-					else
+					for ( int d = 1; d <= stabilizationRadius && i - d >= 0; ++d )
+					{
+						// always connect up, even if it is a restart, then break afterwards
 						neighboringTiles.addAll( SolveTools.layerDetails( allZ, zToGroupedTileList, solveItem, i - d ) );
-				}
 
-				// now go over all tiles of the current z
-				final int z = allZ.get( i ); 
+						from = i - d;
+
+						if ( solveItem.restarts().contains( allZ.get( i - d ) ) )
+							break;
+					}
+				}
 
 				final List<Tile<B>> groupedTiles = zToGroupedTileList.get( z );
 
-				LOG.info( "z=" + z + " contains " + groupedTiles.size() + " grouped tiles (StabilizingAffineModel2D) " );
+				if ( solveItem.restarts().contains( z ) )
+					LOG.info( "z=" + z + " is a RESTART" );
 
-				// find out where the Tile sits in average (given the n tiles it is grouped from)
+				LOG.info( "z=" + z + " contains " + groupedTiles.size() + " grouped tiles (StabilizingAffineModel2D), connected from " + allZ.get( from ) + " to " + allZ.get( to ) );
+
+				// now go over all tiles of the current z
 				for ( final Tile< B > groupedTile : groupedTiles )
 				{
 					final List< Tile<B> > imageTiles = solveItem.groupedTileToTiles().get( groupedTile );
