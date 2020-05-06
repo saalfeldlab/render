@@ -29,7 +29,7 @@ import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
-import org.janelia.render.client.parameter.FeatureRenderParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.render.client.cache.CachedCanvasFeatures;
 import org.janelia.render.client.cache.CanvasFeatureListLoader;

@@ -28,7 +28,7 @@ import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.FeatureRenderParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.janelia.render.client.cache.CanvasDataCache;
 import org.janelia.render.client.cache.CanvasFileLoader;

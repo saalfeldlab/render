@@ -1,4 +1,4 @@
-package org.janelia.render.client.parameter;
+package org.janelia.alignment.match.parameters;
 
 import com.beust.jcommander.Parameter;
 

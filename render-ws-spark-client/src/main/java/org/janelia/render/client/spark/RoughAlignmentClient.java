@@ -39,7 +39,7 @@ import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.render.client.parameter.FeatureStorageParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
-import org.janelia.render.client.parameter.FeatureRenderParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

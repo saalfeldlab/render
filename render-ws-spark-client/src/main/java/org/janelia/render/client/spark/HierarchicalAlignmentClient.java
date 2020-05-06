@@ -43,7 +43,7 @@ import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
-import org.janelia.render.client.parameter.FeatureRenderParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.render.client.parameter.FeatureStorageParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
