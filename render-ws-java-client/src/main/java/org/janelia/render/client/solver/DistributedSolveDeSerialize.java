@@ -126,7 +126,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-                            "--serializerDirectory", "/groups/scicompsoft/home/preibischs/Documents/FIB-SEM/test1"//"/groups/flyem/data/sema/spark_example/ser"
+                            "--serializerDirectory", "/groups/flyem/data/sema/spark_example/ser"
                     };
                     parameters.parse(testArgs);
                 } else {

@@ -41,10 +41,9 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	{
 		final long time = System.currentTimeMillis();
 
-		/*
 		//this.solveSet.leftItems.get( 8 ).maxZ = 4158;
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 1 ), //8, 9, 43, 49, 66 ),
+				this.solveSet.leftItems.get( 8 ), //8, 9, 43, 49, 66 ),
 				this.solveSet.getMaxId() + 1,
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
@@ -95,7 +94,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		}
 
 		SimpleMultiThreading.threadHaltUnClean();
-		*/
+
 		final ArrayList< SolveItemData< G, B, S > > allItems;
 
 		// set up executor service
@@ -182,8 +181,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--targetStack", "v3_acquire_sp1",
                             "--completeTargetStack",
                             
-                            "--blockOptimizerLambdasRigid",       "1.0,1.0,0.5,0.1,0.01",
-                            "--blockOptimizerLambdasTranslation", "1.0,0.5,0.0,0.0,0.0",
+                            "--blockOptimizerLambdasRigid",       /*"1.0,1.0,0.5,0.1,0.01",*/"1.0,1.0,0.5,0.1,0.01",
+                            "--blockOptimizerLambdasTranslation", /*"0.5,0.0,0.0,0.0,0.0",*/"1.0,0.5,0.0,0.0,0.0",
                             "--blockOptimizerIterations", "1000,1000,500,200,100",
                             "--blockMaxPlateauWidth", "250,250,150,100,50",
 
