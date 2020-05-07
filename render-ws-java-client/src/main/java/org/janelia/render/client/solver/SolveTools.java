@@ -70,6 +70,7 @@ public class SolveTools
 
 				final int newId = Math.max( maxId, max( existingIds ) ) + 1;
 				item.assignUpdatedId( newId );
+				existingIds.add( newId );
 
 				Log.info( "Assigning new id " + newId + " to block " + id);
 			}
