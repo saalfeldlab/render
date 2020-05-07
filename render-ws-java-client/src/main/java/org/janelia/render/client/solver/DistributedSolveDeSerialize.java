@@ -116,20 +116,13 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             "--project", "Sec10",
                             "--matchCollection", "Sec10_multi",
                             "--stack", "v3_acquire",
-                            //"--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_fix_prealign",
+                            //"--targetStack", "v3_acquire_sp1",
                             //"--completeTargetStack",
-                            
-                            //"--blockOptimizerLambdasRigid", "1.0,0.5,0.1,0.01",
-                            "--blockOptimizerIterations", "200,100,40,20",
-                            "--blockMaxPlateauWidth", "50,50,40,20",
-
-                            //"--blockSize", "100",
-                            //"--noStitching", // do not stitch first
                             
                             "--minZ", "1",
                             "--maxZ", "34022",
 
-                            //"--threadsLocal", "1", 
+                            //"--threadsWorker", "1", 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
