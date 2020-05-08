@@ -60,7 +60,7 @@ public class SolveSet< G extends Model< G > & Affine2D< G >, B extends Model< B 
 				out += "\n\t" + rightItems.get( i ).getId() + ": " + rightItems.get( i ).minZ() + " >> " + rightItems.get( i ).maxZ() + "\n";
 		}
 
-		out += "maxId = " + maxId;
+		out += "\nmaxId = " + maxId;
 
 		return out;
 	}
