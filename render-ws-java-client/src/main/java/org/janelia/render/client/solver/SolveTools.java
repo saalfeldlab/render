@@ -54,6 +54,44 @@ public class SolveTools
 {
 	private SolveTools() {}
 
+	final static public double distance( final double px, final double py, final double qx, final double qy )
+	{
+		double sum = 0.0;
+		
+		final double dx = px - qx;
+		sum += dx * dx;
+
+		final double dy = py - qy;
+		sum += dy * dy;
+
+		return Math.sqrt( sum );
+	}
+
+	protected static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel )
+	{
+		final List< PointMatch > matches = new ArrayList<>();
+		
+		final double sampleWidth = (w - 1.0) / (SolveItem.samplesPerDimension - 1.0);
+		final double sampleHeight = (h - 1.0) / (SolveItem.samplesPerDimension - 1.0);
+
+		for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
+		{
+			final double sampleY = y * sampleHeight;
+			for (int x = 0; x < SolveItem.samplesPerDimension; ++x)
+			{
+				final double[] p = new double[] { x * sampleWidth, sampleY };
+				final double[] q = new double[] { x * sampleWidth, sampleY };
+
+				pModel.applyInPlace( p );
+				qModel.applyInPlace( q );
+
+				matches.add(new PointMatch( new Point(p), new Point(q) ));
+			}
+		}					
+
+		return matches;
+	}
+
 	protected static int fixIds( final List<? extends SolveItemData<?, ?, ?>> allItems, final int maxId )
 	{
 		final HashSet<Integer> existingIds = new HashSet<>();

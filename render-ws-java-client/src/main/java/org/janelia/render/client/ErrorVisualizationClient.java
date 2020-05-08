@@ -17,6 +17,7 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.LayerBoundsParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
+import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -305,7 +306,7 @@ public class ErrorVisualizationClient {
 			        	//System.out.println( "vGlobal: " + Util.printCoordinates( pGlobal ) );
 			        	//System.out.println( "vLocal: " + Util.printCoordinates( pLocal ) );
 		
-			        	final double vDiff = distance( pLocal[ 0 ], pLocal[ 1 ], pGlobal[ 0 ], pGlobal[ 1 ] );
+			        	final double vDiff = SolveTools.distance( pLocal[ 0 ], pLocal[ 1 ], pGlobal[ 0 ], pGlobal[ 1 ] );
 			        	//System.out.println( "diff: " + vDiff );
 		
 			        	avgDiff += vDiff;
@@ -557,19 +558,6 @@ public class ErrorVisualizationClient {
     	pos[ 0 ] = x;
     	pos[ 1 ] = z;
     }
-
-	final static public double distance( final double px, final double py, final double qx, final double qy )
-	{
-		double sum = 0.0;
-		
-		final double dx = px - qx;
-		sum += dx * dx;
-
-		final double dy = py - qy;
-		sum += dy * dy;
-
-		return Math.sqrt( sum );
-	}
 
     // Fetches match data.
     private List< CanvasMatches > getMatchedPairsForLayer(final double z)

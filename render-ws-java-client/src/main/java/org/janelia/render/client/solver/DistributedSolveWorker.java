@@ -27,6 +27,7 @@ import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
+import mpicbg.models.IdentityModel;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
@@ -85,6 +86,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 	// to filter matches
 	final MatchFilter matchFilter;
+
+	// for error computation (local)
+	final ArrayList< CanvasMatches > canvasMatches = new ArrayList<>();
 
 	public DistributedSolveWorker(
 			final SolveItemData< G, B, S > solveItemData,
@@ -156,6 +160,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				throw new RuntimeException( "Couldn't regularize. Please check." );
 			solve( solveItem, zRadiusRestarts, numThreads );
 		}
+
+		for ( final SolveItem< G, B, S > solveItem : solveItems )
+			computeErrors( solveItem, canvasMatches );
 	}
 
 	protected void assembleMatchData(
@@ -257,7 +264,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				}
 
 				// remember the entries, need to perform section-based stitching before running global optimization
-				pairs.add( new ValuePair<>( new ValuePair<>( p, q ), matchFilter.filter(match.getMatches(), pTileSpec, qTileSpec) ) );//CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()) ) );
+				pairs.add( new ValuePair<>( new ValuePair<>( p, q ), matchFilter.filter( match.getMatches(), pTileSpec, qTileSpec ) ) );//CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()) ) );
 
 				final int pZ = (int)Math.round( pTileSpec.getZ() );
 				final int qZ = (int)Math.round( qTileSpec.getZ() );
@@ -274,6 +281,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					zToPairs.putIfAbsent( pZ, new ArrayList<>() );
 					zToPairs.get( pZ ).add( pairs.size() - 1 );
 				}
+
+				// for error computation
+				this.canvasMatches.add( match );
 			}
 		}
 	}
@@ -493,25 +503,12 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 							final AffineModel2D stitchingTransform = solveItem.idToStitchingModel().get( tileId );
 							final AffineModel2D stitchingTransformPrev = solveItem.idToStitchingModel().get( neighbor.getA().getB() );
 	
-							final List< PointMatch > matches = new ArrayList<>();
-	
-							final double sampleWidth = (tileSpec.getWidth() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-							final double sampleHeight = (tileSpec.getHeight() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-		
-							for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
-							{
-								final double sampleY = y * sampleHeight;
-								for (int x = 0; x < SolveItem.samplesPerDimension; ++x)
-								{
-									final double[] p = new double[] { x * sampleWidth, sampleY };
-									final double[] q = new double[] { x * sampleWidth, sampleY };
-		
-									stitchingTransform.applyInPlace( p );
-									stitchingTransformPrev.applyInPlace( q );
-		
-									matches.add(new PointMatch( new Point(p), new Point(q) ));
-								}
-							}					
+							final List< PointMatch > matches = SolveTools.createFakeMatches(
+									tileSpec.getWidth(),
+									tileSpec.getHeight(),
+									stitchingTransform, // p
+									stitchingTransformPrev ); // q
+
 							matchesList.add( new ValuePair<>( matches, neighbor.getB() ) );
 						}
 					}
@@ -994,6 +991,77 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			solveItem.idToNewModel().put( tileId, affine );
 			LOG.info("block " + solveItem.getId() + ": tile {} model from grouped tile is {}", tileId, affine);
+		}
+	}
+
+	protected void computeErrors( final SolveItem< G,B,S > solveItem, final ArrayList< CanvasMatches > canvasMatches )
+	{
+		LOG.info( "Computing errors for " + solveItem.idToTileSpec().keySet().size() + " tiles using " + canvasMatches.size() + " pairs of images ..." );
+
+        // for local fits
+        final InterpolatedAffineModel2D< AffineModel2D, RigidModel2D > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
+        final S montageLayerModel = solveItem.stitchingSolveModelInstance();
+
+		for ( final CanvasMatches match : canvasMatches )
+		{
+			final String pTileId = match.getpId();
+			final String qTileId = match.getqId();
+
+			final MinimalTileSpec pTileSpec = solveItem.idToTileSpec().get( pTileId );
+			final MinimalTileSpec qTileSpec = solveItem.idToTileSpec().get( qTileId );
+
+			final List< PointMatch > global = SolveTools.createFakeMatches(
+					pTileSpec.getWidth(),
+					pTileSpec.getHeight(),
+					solveItem.idToNewModel().get( pTileId ), // p
+					solveItem.idToNewModel().get( qTileId ) ); // q
+
+        	// the actual matches, local solve
+        	final List< PointMatch > pms = CanvasMatchResult.convertMatchesToPointMatchList( match.getMatches() );
+        	
+        	final Model< ? > model;
+
+        	if ( pTileSpec.getZ() == qTileSpec.getZ() )
+        		model = montageLayerModel;
+        	else
+        		model = crossLayerModel;
+
+        	try
+			{
+				model.fit( pms );
+			}
+        	catch ( Exception e )
+			{
+				e.printStackTrace();
+			}
+
+			final List< PointMatch > local = SolveTools.createFakeMatches(
+					pTileSpec.getWidth(),
+					pTileSpec.getHeight(),
+					new IdentityModel(), // p
+					model ); // q
+
+			double vDiff = 0;
+
+			for ( int i = 0; i < global.size(); ++i )
+			{
+	        	// vectors
+				final double dGx = global.get( i ).getP2().getL()[ 0 ] - global.get( i ).getP1().getL()[ 0 ];
+				final double dGy = global.get( i ).getP2().getL()[ 1 ] - global.get( i ).getP1().getL()[ 1 ];
+
+				final double dLx = local.get( i ).getP2().getL()[ 0 ] - local.get( i ).getP1().getL()[ 0 ];
+				final double dLy = local.get( i ).getP2().getL()[ 1 ] - local.get( i ).getP1().getL()[ 1 ];
+	
+	        	vDiff += SolveTools.distance( dLx, dLy, dGx, dGy );
+			}
+
+			vDiff /= (double)global.size();
+
+			solveItem.idToErrorMap().putIfAbsent( pTileId, new ArrayList<>() );
+			solveItem.idToErrorMap().putIfAbsent( qTileId, new ArrayList<>() );
+
+			solveItem.idToErrorMap().get( pTileId ).add( new SerializableValuePair<>( qTileId, vDiff ) );
+			solveItem.idToErrorMap().get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
 		}
 	}
 

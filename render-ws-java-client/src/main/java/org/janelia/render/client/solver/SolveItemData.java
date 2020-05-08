@@ -3,12 +3,14 @@ package org.janelia.render.client.solver;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
+import net.imglib2.util.Pair;
 
 /**
  * This is the data that will be serialized and shipped through Spark
@@ -36,6 +38,9 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 
 	// stores the per-z dynamic lambdas
 	final private HashMap<Integer, Double > zToDynamicLambda = new HashMap<>();
+
+	// the errors per tile
+	final HashMap< String, List< Pair< String, Double > > > idToErrorMap = new HashMap<>();
 
 	final private G globalSolveModel;
 	final private B blockSolveModel;
@@ -73,6 +78,17 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
 	public HashMap<String, AffineModel2D> idToNewModel() { return idToNewModel; }
 	public HashMap<Integer, Double> zToDynamicLambda() { return zToDynamicLambda; }
+	public HashMap< String, List< Pair< String, Double > > > idToErrorMap() { return idToErrorMap; }
+
+	public double maxError( final String tileId )
+	{
+		double maxError = -1;
+
+		for ( final Pair< String, Double > error : idToErrorMap().get( tileId ) )
+			maxError = Math.max( maxError, error.getB() );
+
+		return maxError;
+	}
 
 	public double getWeight( final int z )
 	{

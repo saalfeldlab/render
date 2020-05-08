@@ -10,6 +10,7 @@ import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import mpicbg.models.TranslationModel2D;
+import net.imglib2.util.Pair;
 
 public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
@@ -75,6 +76,7 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	public HashMap<Integer, HashSet<String>> zToTileId() { return solveItemData.zToTileId(); }
 	public HashMap<String, AffineModel2D> idToNewModel() { return solveItemData.idToNewModel(); }
 	public HashMap<Integer, Double> zToDynamicLambda() { return solveItemData.zToDynamicLambda(); }
+	public HashMap< String, List< Pair< String, Double > > > idToErrorMap() { return solveItemData.idToErrorMap(); }
 
 	public HashMap<Tile<B>, String > tileToIdMap() { return tileToIdMap; }
 

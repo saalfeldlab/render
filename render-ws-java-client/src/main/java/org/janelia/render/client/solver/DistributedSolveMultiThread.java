@@ -40,7 +40,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	public List< SolveItemData< G, B, S > > distributedSolve()
 	{
 		final long time = System.currentTimeMillis();
-		/*
+
 		//this.solveSet.leftItems.get( 8 ).maxZ = 4158;
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 				this.solveSet.leftItems.get( 8 ), //8, 9, 43, 49, 66 ),
@@ -53,6 +53,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 				parameters.matchOwner,
 				parameters.matchCollection,
 				parameters.stack,
+				25,
 				parameters.maxAllowedErrorStitching,
 				parameters.maxIterationsStitching,
 				parameters.maxPlateauWidthStitching,
@@ -69,12 +70,18 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
 			{
 				final HashMap<String, Float> idToValue = new HashMap<>();
-				for ( final String tileId : s.idToTileSpec().keySet() )
-				{
-					final int z = (int)Math.round( s.idToTileSpec().get( tileId ).getZ() );
-					idToValue.put( tileId, s.zToDynamicLambda().get( z ).floatValue() + 1 ); // between 1 and 1.2
-				}
 
+				// visualize dynamic lambda
+//				for ( final String tileId : s.idToTileSpec().keySet() )
+//				{
+//					final int z = (int)Math.round( s.idToTileSpec().get( tileId ).getZ() );
+//					idToValue.put( tileId, s.zToDynamicLambda().get( z ).floatValue() + 1 ); // between 1 and 1.2
+//				}
+
+				// visualize maxError
+				for ( final String tileId : s.idToTileSpec().keySet() )
+					idToValue.put( tileId, (float)s.maxError( tileId ) );
+				
 				final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > visualizeInfo = 
 						VisualizeTools.visualizeInfo( s );
 				VisualizeTools.visualizeMultiRes( visualizeInfo.getA(), visualizeInfo.getB(), idToValue );
@@ -94,7 +101,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		}
 
 		SimpleMultiThreading.threadHaltUnClean();
-		*/
+
 		final ArrayList< SolveItemData< G, B, S > > allItems;
 
 		// set up executor service
