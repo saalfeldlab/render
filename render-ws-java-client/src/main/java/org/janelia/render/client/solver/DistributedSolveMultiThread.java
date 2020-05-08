@@ -40,7 +40,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	public List< SolveItemData< G, B, S > > distributedSolve()
 	{
 		final long time = System.currentTimeMillis();
-
+		/*
 		//this.solveSet.leftItems.get( 8 ).maxZ = 4158;
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 				this.solveSet.leftItems.get( 8 ), //8, 9, 43, 49, 66 ),
@@ -94,7 +94,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		}
 
 		SimpleMultiThreading.threadHaltUnClean();
-
+		*/
 		final ArrayList< SolveItemData< G, B, S > > allItems;
 
 		// set up executor service
@@ -121,6 +121,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 							parameters.matchOwner,
 							parameters.matchCollection,
 							parameters.stack,
+							parameters.maxNumMatches,
 							parameters.maxAllowedErrorStitching,
 							parameters.maxIterationsStitching,
 							parameters.maxPlateauWidthStitching,
@@ -178,8 +179,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--project", "Sec10",
                             "--matchCollection", "Sec10_multi",
                             "--stack", "v3_acquire",
-                            "--targetStack", "v3_acquire_sp1",
-                            "--completeTargetStack",
+                            //"--targetStack", "v3_acquire_sp1",
+                            //"--completeTargetStack",
                             
                             "--blockOptimizerLambdasRigid",       /*"1.0,1.0,0.5,0.1,0.01",*/"1.0,1.0,0.5,0.1,0.01",
                             "--blockOptimizerLambdasTranslation", /*"0.5,0.0,0.0,0.0,0.0",*/"1.0,0.5,0.0,0.0,0.0",
@@ -192,6 +193,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--minZ", "1",
                             "--maxZ", "34022",
 
+                            "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",

@@ -53,6 +53,7 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 		final String matchOwner = parameters.matchOwner;
 		final String matchCollection = parameters.matchCollection;
 
+		final int maxNumMatches = parameters.maxNumMatches;
 		final double maxAllowedErrorStitching = parameters.maxAllowedErrorStitching;
 		final int maxIterationsStitching = parameters.maxIterationsStitching;
 		final int maxPlateauWidthStitching = parameters.maxPlateauWidthStitching;
@@ -77,6 +78,7 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 							matchOwner,
 							matchCollection,
 							stack,
+							maxNumMatches,
 							maxAllowedErrorStitching,
 							maxIterationsStitching,
 							maxPlateauWidthStitching,

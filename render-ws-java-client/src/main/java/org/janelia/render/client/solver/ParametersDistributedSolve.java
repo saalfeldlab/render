@@ -214,11 +214,14 @@ public class ParametersDistributedSolve extends CommandLineParameters
             arity = 0)
     public boolean completeTargetStack = false;
 
-    @Parameter(names = "--threadsWorker", description = "Number of threads to be used within each worker job (default:1) ")
+    @Parameter(names = "--threadsWorker", description = "Number of threads to be used within each worker job (default:1)")
     public int threadsWorker = 1;
 
     @Parameter(names = "--threadsGlobal", description = "Number of threads to be used for aligning all blocks (default: numProcessors/2)")
     public int threadsGlobal = Math.max( 1, Runtime.getRuntime().availableProcessors() / 2 );
+
+    @Parameter(names = "--maxNumMatches", description = "Limit maximum number of matches in between tile pairs (default:0, no limit)")
+    public int maxNumMatches = 0;
 
 	@Parameter(
 			names = "--serializerDirectory",

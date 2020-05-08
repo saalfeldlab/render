@@ -16,6 +16,9 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.solver.matchfilter.MatchFilter;
+import org.janelia.render.client.solver.matchfilter.NoMatchFilter;
+import org.janelia.render.client.solver.matchfilter.RandomMaxAmountFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +83,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	// for assigning new id's when splitting solveItemData
 	final int startId;
 
+	// to filter matches
+	final MatchFilter matchFilter;
+
 	public DistributedSolveWorker(
 			final SolveItemData< G, B, S > solveItemData,
 			final int startId,
@@ -91,6 +97,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final String matchOwner,
 			final String matchCollection,
 			final String stack,
+			final int maxNumMatches,
 			final double maxAllowedErrorStitching,
 			final int maxIterationsStitching,
 			final int maxPlateauWidthStitching,
@@ -120,6 +127,11 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		this.blockMaxAllowedError = blockMaxAllowedError;
 
 		this.numThreads = numThreads;
+
+		if ( maxNumMatches <= 0 )
+			this.matchFilter = new NoMatchFilter();
+		else
+			this.matchFilter = new RandomMaxAmountFilter( maxNumMatches );
 
 		// used locally
 		this.pairs = new ArrayList<>();
@@ -245,7 +257,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				}
 
 				// remember the entries, need to perform section-based stitching before running global optimization
-				pairs.add( new ValuePair<>( new ValuePair<>( p, q ), CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()) ) );
+				pairs.add( new ValuePair<>( new ValuePair<>( p, q ), matchFilter.filter(match.getMatches(), pTileSpec, qTileSpec) ) );//CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()) ) );
 
 				final int pZ = (int)Math.round( pTileSpec.getZ() );
 				final int qZ = (int)Math.round( qTileSpec.getZ() );
