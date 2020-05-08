@@ -1043,6 +1043,15 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			double vDiff = 0;
 
+        	if ( pTileSpec.getZ() == qTileSpec.getZ() )
+        	{
+			LOG.info( "global1: "+ SolveTools.createAffine( (Affine2D)solveItem.idToNewModel().get( pTileId ) ) );
+			LOG.info( "global2: "+ SolveTools.createAffine( (Affine2D)solveItem.idToNewModel().get( qTileId ) ) );
+
+			LOG.info( "local: "+ SolveTools.createAffine( (Affine2D)model ) );
+			System.exit( 0 );
+        	}
+
 			for ( int i = 0; i < global.size(); ++i )
 			{
 	        	// vectors

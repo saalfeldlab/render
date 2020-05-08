@@ -85,7 +85,10 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 		double maxError = -1;
 
 		for ( final Pair< String, Double > error : idToErrorMap().get( tileId ) )
+		{
+			System.out.println( error.getA() + "=" + error.getB() );
 			maxError = Math.max( maxError, error.getB() );
+		}
 
 		return maxError;
 	}

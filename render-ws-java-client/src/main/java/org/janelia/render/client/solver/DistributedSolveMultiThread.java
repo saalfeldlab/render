@@ -80,7 +80,10 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 
 				// visualize maxError
 				for ( final String tileId : s.idToTileSpec().keySet() )
+				{
+					System.out.println( tileId );
 					idToValue.put( tileId, (float)s.maxError( tileId ) );
+				}
 				
 				final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > visualizeInfo = 
 						VisualizeTools.visualizeInfo( s );
