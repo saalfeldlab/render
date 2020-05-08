@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.type.CollectionType;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -54,11 +55,12 @@ public class JsonUtils {
     public static class Helper<T> {
 
         private final Class<T> valueType;
-        private final TypeReference<List<T>> listTypeReference;
+        private final CollectionType collectionType;
 
         public Helper(final Class<T> valueType) {
             this.valueType = valueType;
-            this.listTypeReference = new TypeReference<List<T>>(){};
+            // see https://www.baeldung.com/jackson-collection-array
+            this.collectionType = MAPPER.getTypeFactory().constructCollectionType(List.class, valueType);
         }
 
         public String toJson(final T value)
@@ -91,7 +93,7 @@ public class JsonUtils {
         public List<T> fromJsonArray(final String json)
                 throws IllegalArgumentException {
             try {
-                return MAPPER.readValue(json, listTypeReference);
+                return MAPPER.readValue(json, collectionType);
             } catch (final IOException e) {
                 throw new IllegalArgumentException(e);
             }
@@ -100,7 +102,7 @@ public class JsonUtils {
         public List<T> fromJsonArray(final Reader json)
                 throws IllegalArgumentException {
             try {
-                return MAPPER.readValue(json, listTypeReference);
+                return MAPPER.readValue(json, collectionType);
             } catch (final IOException e) {
                 throw new IllegalArgumentException(e);
             }
@@ -110,9 +112,9 @@ public class JsonUtils {
 
     public static class GenericHelper<T> {
 
-        private final TypeReference typeReference;
+        private final TypeReference<T> typeReference;
 
-        public GenericHelper(final TypeReference typeReference) {
+        public GenericHelper(final TypeReference<T> typeReference) {
             this.typeReference = typeReference;
         }
 
