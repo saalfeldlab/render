@@ -3,7 +3,6 @@ package org.janelia.render.client.solver;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,8 +12,6 @@ import java.util.concurrent.ExecutionException;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.esotericsoftware.minlog.Log;
 
 import ij.ImageJ;
 import ij.ImagePlus;
@@ -49,6 +46,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		final HashMap<String, MinimalTileSpec> idToTileSpecGlobal = new HashMap<>();
 		final HashMap<Integer, HashSet<String> > zToTileIdGlobal = new HashMap<>();
 		final HashMap<Integer, Double> zToDynamicLambdaGlobal = new HashMap<>();
+		final HashMap< String, List< Pair< String, Double > > > idToErrorMapGlobal = new HashMap<>();
 	}
 
 	final G globalSolveModel;
@@ -450,6 +448,10 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 					gs.zToDynamicLambdaGlobal.put( z, dynamicLambda );
 					gs.idToFinalModelGlobal.put( tileId, tileModel );
+					if ( regularizeB < 0.5 )
+						gs.idToErrorMapGlobal.put( tileId, solveItemA.idToErrorMap.get( tileId ) );
+					else
+						gs.idToErrorMapGlobal.put( tileId, solveItemB.idToErrorMap.get( tileId ) );
 				}
 			}
 		}
