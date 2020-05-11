@@ -1013,6 +1013,10 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final MinimalTileSpec pTileSpec = solveItem.idToTileSpec().get( pTileId );
 			final MinimalTileSpec qTileSpec = solveItem.idToTileSpec().get( qTileId );
 
+			// it is from a different solveitem
+			if ( pTileSpec == null || qTileSpec == null )
+				continue;
+
 			final List< PointMatch > global = SolveTools.createFakeMatches(
 					pTileSpec.getWidth(),
 					pTileSpec.getHeight(),
