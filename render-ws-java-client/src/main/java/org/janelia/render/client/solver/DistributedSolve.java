@@ -7,8 +7,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
+import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,6 +123,17 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		try
 		{
 			this.solve = globalSolve( this.allItems, maxId + 1 );
+		}
+		catch ( Exception e )
+		{
+			LOG.info("FAILED to compute global solve (STOPPING): " + e );
+			e.printStackTrace();
+			return;
+		}
+
+		try
+		{
+			computeGlobalErrors( this.solve, this.allItems );
 		}
 		catch ( Exception e )
 		{
@@ -459,6 +472,43 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		}
 
 		return gs;
+	}
+
+	protected void computeGlobalErrors( final GlobalSolve gs, final List< SolveItemData< G, B, S > > allSolveItems )
+	{
+		// pTileId >> qTileId, Matches
+		final HashMap< String, HashMap< String, Matches > > allMatches = new HashMap<>();
+
+		// combine all matches from all solveitems
+		for ( final SolveItemData<G, B, S> sid : allSolveItems )
+		{
+			for ( final Pair< Pair< String, String>, Matches > matchPair : sid.matches )
+			{
+				final String pTileId = matchPair.getA().getA();
+				final String qTileId = matchPair.getA().getB();
+				final Matches matches = matchPair.getB();
+
+				allMatches.putIfAbsent( pTileId, new HashMap<String, Matches>() );
+				final HashMap<String, Matches> qTileIdToMatches = allMatches.get( pTileId );
+
+				if ( !qTileIdToMatches.containsKey( qTileId ) )
+					qTileIdToMatches.put( qTileId, matches );
+			}
+		}
+
+		for ( final String pTileId : allMatches.keySet() )
+		{
+			final HashMap<String, Matches> qTileIdToMatches = allMatches.get( pTileId );
+
+			for ( final String qTileId : qTileIdToMatches.keySet() )
+			{
+				final Matches matches = qTileIdToMatches.get( qTileId );
+
+				final MinimalTileSpec pTileSpec = gs.idToTileSpecGlobal.get( pTileId );
+				final MinimalTileSpec qTileSpec = gs.idToTileSpecGlobal.get( qTileId );
+
+			}
+		}
 	}
 
 	protected SolveSet< G, B, S > defineSolveSet( final int minZ, final int maxZ, final int setSize )
