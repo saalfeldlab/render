@@ -82,15 +82,32 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 
 	public double maxError( final String tileId )
 	{
+		return maxError( idToErrorMap().get( tileId ) );
+	}
+
+	public double avgError( final String tileId )
+	{
+		return avgError( idToErrorMap().get( tileId ) );
+	}
+
+	public static double maxError( final List< Pair< String, Double > > errors )
+	{
 		double maxError = -1;
 
-		for ( final Pair< String, Double > error : idToErrorMap().get( tileId ) )
-		{
-			System.out.println( error.getA() + "=" + error.getB() );
+		for ( final Pair< String, Double > error : errors )
 			maxError = Math.max( maxError, error.getB() );
-		}
 
 		return maxError;
+	}
+
+	public static double avgError( final List< Pair< String, Double > > errors )
+	{
+		double avgError = 0;
+
+		for ( final Pair< String, Double > error : errors )
+			avgError += error.getB();
+
+		return avgError / (double)errors.size();
 	}
 
 	public double getWeight( final int z )

@@ -14,6 +14,7 @@ import org.janelia.render.client.ClientRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import bdv.util.BdvStackSource;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 import net.imglib2.multithreading.SimpleMultiThreading;
@@ -123,10 +124,10 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             "--maxZ", "34022",
 
                             //"--threadsWorker", "1", 
-                            "--threadsGlobal", "65",
+                            "--threadsGlobal", "8",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-                            "--serializerDirectory", "/groups/flyem/data/sema/spark_example/ser"
+                            "--serializerDirectory", "/Users/spreibi/Documents/Janelia/Projects/Male CNS+VNC Alignment/distributed solve/serialize 500 with errors"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -151,14 +152,31 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 
                 final GlobalSolve gs = solve.globalSolve();
 
-                // visualize the layers
+				//visualize the layers
+				double minError = Double.MAX_VALUE;
+				double maxError = -Double.MAX_VALUE;
+
 				final HashMap<String, Float> idToValue = new HashMap<>();
 				for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
-					idToValue.put( tileId, gs.zToDynamicLambdaGlobal.get( (int)Math.round( gs.idToTileSpecGlobal.get( tileId ).getZ() ) ).floatValue() + 1 ); // between 1 and 1.2
+				{
+					final double error = SolveItemData.maxError( gs.idToErrorMapGlobal.get( tileId ) );
+					idToValue.put( tileId, (float)error );
+					minError = Math.min( minError, error );
+					maxError = Math.max( maxError, error );
 
-                VisualizeTools.visualizeMultiRes( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToValue, 1, 128, 2, parameters.threadsGlobal );
+					//idToValue.put( tileId, gs.zToDynamicLambdaGlobal.get( (int)Math.round( gs.idToTileSpecGlobal.get( tileId ).getZ() ) ).floatValue() + 1 ); // between 1 and 1.2
+				}
 
-            	SimpleMultiThreading.threadHaltUnClean();
+				BdvStackSource< ? > vis = VisualizeTools.visualizeMultiRes(
+						gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToValue, 1, 128, 2, parameters.threadsGlobal );
+
+				LOG.info( "Min err=" + minError );
+				LOG.info( "Max err=" + maxError );
+
+				vis.setDisplayRange( 0, maxError );
+				vis.setDisplayRangeBounds( 0, maxError );
+
+				SimpleMultiThreading.threadHaltUnClean();
             }
         };
         clientRunner.run();
