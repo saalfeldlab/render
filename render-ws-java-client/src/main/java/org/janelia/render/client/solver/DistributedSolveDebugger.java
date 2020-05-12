@@ -94,7 +94,7 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 
 				LOG.info( "Min err=" + minError + ", Max err=" + maxError  + " (" + maxTileId + ")" );
 
-				for ( final Pair< String, Double > error : s.idToErrorMap.get( maxTileId ) )
+				for ( final Pair< String, Double > error : s.idToSolveItemErrorMap.get( maxTileId ) )
 					LOG.info( error.getA() + ": " + error.getB() );
 			}
 

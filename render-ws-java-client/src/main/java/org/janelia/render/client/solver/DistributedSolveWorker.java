@@ -162,7 +162,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		}
 
 		for ( final SolveItem< G, B, S > solveItem : solveItems )
-			computeErrors( solveItem, canvasMatches );
+			computeSolveItemErrors( solveItem, canvasMatches );
 	}
 
 	protected void assembleMatchData(
@@ -994,9 +994,10 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		}
 	}
 
-	protected void computeErrors( final SolveItem< G,B,S > solveItem, final ArrayList< CanvasMatches > canvasMatches )
+	// note: these are local errors of a single block only
+	protected void computeSolveItemErrors( final SolveItem< G,B,S > solveItem, final ArrayList< CanvasMatches > canvasMatches )
 	{
-		LOG.info( "Computing errors for " + solveItem.idToTileSpec().keySet().size() + " tiles using " + canvasMatches.size() + " pairs of images ..." );
+		LOG.info( "Computing per-block errors for " + solveItem.idToTileSpec().keySet().size() + " tiles using " + canvasMatches.size() + " pairs of images ..." );
 
 		// for local fits
 		final InterpolatedAffineModel2D< AffineModel2D, RigidModel2D > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
@@ -1016,6 +1017,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			// it is from a different solveitem
 			if ( pTileSpec == null || qTileSpec == null )
 				continue;
+
+			// for a correct computation of errors after global alignment
+			solveItem.matches().add( new SerializableValuePair<>( new SerializableValuePair<>( pTileId, qTileId ), match.getMatches() ) );
 
 			final List< PointMatch > global = SolveTools.createFakeMatches(
 					pTileSpec.getWidth(),
@@ -1086,11 +1090,11 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			// Stitching error is almost zero (vdiff = 0.0271) if all points are used (NoMatchFilter).
 			vDiff /= (double)global.size();
 
-			solveItem.idToErrorMap().putIfAbsent( pTileId, new ArrayList<>() );
-			solveItem.idToErrorMap().putIfAbsent( qTileId, new ArrayList<>() );
+			solveItem.idToSolveItemErrorMap().putIfAbsent( pTileId, new ArrayList<>() );
+			solveItem.idToSolveItemErrorMap().putIfAbsent( qTileId, new ArrayList<>() );
 
-			solveItem.idToErrorMap().get( pTileId ).add( new SerializableValuePair<>( qTileId, vDiff ) );
-			solveItem.idToErrorMap().get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
+			solveItem.idToSolveItemErrorMap().get( pTileId ).add( new SerializableValuePair<>( qTileId, vDiff ) );
+			solveItem.idToSolveItemErrorMap().get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
 		}
 	}
 

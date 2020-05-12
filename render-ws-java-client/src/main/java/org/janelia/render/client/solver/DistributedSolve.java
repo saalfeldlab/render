@@ -448,10 +448,12 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 					gs.zToDynamicLambdaGlobal.put( z, dynamicLambda );
 					gs.idToFinalModelGlobal.put( tileId, tileModel );
+
+					// TODO: proper error computation using the matches that are now stored in the SolveItemData object
 					if ( regularizeB < 0.5 )
-						gs.idToErrorMapGlobal.put( tileId, solveItemA.idToErrorMap.get( tileId ) );
+						gs.idToErrorMapGlobal.put( tileId, solveItemA.idToSolveItemErrorMap.get( tileId ) );
 					else
-						gs.idToErrorMapGlobal.put( tileId, solveItemB.idToErrorMap.get( tileId ) );
+						gs.idToErrorMapGlobal.put( tileId, solveItemB.idToSolveItemErrorMap.get( tileId ) );
 				}
 			}
 		}

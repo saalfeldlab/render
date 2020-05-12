@@ -1,9 +1,12 @@
 package org.janelia.render.client.solver;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+
+import org.janelia.alignment.match.Matches;
 
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
@@ -40,7 +43,10 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	final private HashMap<Integer, Double > zToDynamicLambda = new HashMap<>();
 
 	// the errors per tile
-	final HashMap< String, List< Pair< String, Double > > > idToErrorMap = new HashMap<>();
+	final HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap = new HashMap<>();
+
+	// matches for error computation
+	final List< Pair< Pair< String, String>, Matches > > matches = new ArrayList<>();
 
 	final private G globalSolveModel;
 	final private B blockSolveModel;
@@ -78,16 +84,17 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
 	public HashMap<String, AffineModel2D> idToNewModel() { return idToNewModel; }
 	public HashMap<Integer, Double> zToDynamicLambda() { return zToDynamicLambda; }
-	public HashMap< String, List< Pair< String, Double > > > idToErrorMap() { return idToErrorMap; }
+	public HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap() { return idToSolveItemErrorMap; }
+	public List< Pair< Pair< String, String>, Matches > > matches() { return matches; }
 
 	public double maxError( final String tileId )
 	{
-		return maxError( idToErrorMap().get( tileId ) );
+		return maxError( idToSolveItemErrorMap().get( tileId ) );
 	}
 
 	public double avgError( final String tileId )
 	{
-		return avgError( idToErrorMap().get( tileId ) );
+		return avgError( idToSolveItemErrorMap().get( tileId ) );
 	}
 
 	public static double maxError( final List< Pair< String, Double > > errors )

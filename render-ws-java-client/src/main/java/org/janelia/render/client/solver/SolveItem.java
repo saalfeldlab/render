@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
+import org.janelia.alignment.match.Matches;
+
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
@@ -76,7 +78,8 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	public HashMap<Integer, HashSet<String>> zToTileId() { return solveItemData.zToTileId(); }
 	public HashMap<String, AffineModel2D> idToNewModel() { return solveItemData.idToNewModel(); }
 	public HashMap<Integer, Double> zToDynamicLambda() { return solveItemData.zToDynamicLambda(); }
-	public HashMap< String, List< Pair< String, Double > > > idToErrorMap() { return solveItemData.idToErrorMap(); }
+	public HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap() { return solveItemData.idToSolveItemErrorMap(); }
+	public List< Pair< Pair< String, String>, Matches > > matches() { return solveItemData.matches(); }
 
 	public HashMap<Tile<B>, String > tileToIdMap() { return tileToIdMap; }
 

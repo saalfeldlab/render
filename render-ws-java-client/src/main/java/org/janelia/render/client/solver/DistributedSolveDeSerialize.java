@@ -161,7 +161,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 				final HashMap<String, Float> idToValue = new HashMap<>();
 				for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
 				{
-					final double error = SolveItemData.maxError( gs.idToErrorMapGlobal.get( tileId ) );
+					final double error = SolveItemData.avgError( gs.idToErrorMapGlobal.get( tileId ) );
 					idToValue.put( tileId, (float)error );
 					minError = Math.min( minError, error );
 
