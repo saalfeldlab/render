@@ -195,14 +195,14 @@ public class SolveTools
 
 		for ( int z = 0; z < allZ.size(); ++z )
 		{
-			rxIn.setPosition( z - 4, 0 );
-			ryIn.setPosition( z - 4, 0 );
+			rxIn.setPosition( z - 5, 0 );
+			ryIn.setPosition( z - 5, 0 );
 
 			double x = rxIn.get().get();
 			double y = ryIn.get().get();
 
-			rxIn.setPosition( z + 4, 0 );
-			ryIn.setPosition( z + 4, 0 );
+			rxIn.setPosition( z + 5, 0 );
+			ryIn.setPosition( z + 5, 0 );
 
 			rxIn.fwd( 0 );
 			ryIn.fwd( 0 );
