@@ -1080,9 +1080,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				final double dLx = l2.getW()[ 0 ] - l1.getW()[ 0 ];
 				final double dLy = l2.getW()[ 1 ] - l1.getW()[ 1 ];
 
-				if ( pTileSpec.getZ() == qTileSpec.getZ() )
-					LOG.info( "dist: " + SolveTools.distance( dLx, dLy, dGx, dGy ) );
-
 				vDiff += SolveTools.distance( dLx, dLy, dGx, dGy );
 			}
 
