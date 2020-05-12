@@ -180,6 +180,10 @@ public class SolveTools
 			rY.get().set( offset[ 1 ] );
 		}
 
+		//new ImageJ();
+		//ImageJFunctions.show( valueX ).setTitle( "valueX" );
+		//ImageJFunctions.show( valueY ).setTitle( "valueY" );
+
 		RandomAccess< DoubleType > rxIn = Views.extendMirrorSingle( valueX ).randomAccess();
 		RandomAccess< DoubleType > ryIn = Views.extendMirrorSingle( valueY ).randomAccess();
 
@@ -191,27 +195,36 @@ public class SolveTools
 
 		for ( int z = 0; z < allZ.size(); ++z )
 		{
-			rxIn.setPosition( z - 1, 0 );
-			ryIn.setPosition( z - 1, 0 );
+			rxIn.setPosition( z - 4, 0 );
+			ryIn.setPosition( z - 4, 0 );
 
 			double x = rxIn.get().get();
 			double y = ryIn.get().get();
-			
+
+			rxIn.setPosition( z + 4, 0 );
+			ryIn.setPosition( z + 4, 0 );
+
 			rxIn.fwd( 0 );
 			ryIn.fwd( 0 );
-			
-			rxOut.setPosition( rxIn );
-			ryOut.setPosition( ryIn );
+
+			rxOut.setPosition( z, 0 );
+			ryOut.setPosition( z, 0 );
 
 			rxOut.get().set( Math.pow( x - rxIn.get().get(), 2 ) );
 			ryOut.get().set( Math.pow( y - ryIn.get().get(), 2 ) );
 		}
+
+		//ImageJFunctions.show( derX ).setTitle( "derX" );
+		//ImageJFunctions.show( derY ).setTitle( "derY" );
 
 		final Img< DoubleType > filterX = ArrayImgs.doubles( allZ.size() );
 		final Img< DoubleType > filterY = ArrayImgs.doubles( allZ.size() );
 
 		Gauss3.gauss( 20, Views.extendMirrorSingle( derX ), filterX );
 		Gauss3.gauss( 20, Views.extendMirrorSingle( derY ), filterY );
+
+		//ImageJFunctions.show( filterX ).setTitle( "filterX" );
+		//ImageJFunctions.show( filterY ).setTitle( "filterY" );
 
 		rX = filterX.randomAccess();
 		rY = filterY.randomAccess();
@@ -272,8 +285,10 @@ public class SolveTools
 		}
 
 //		new ImageJ();
-//		ImageJFunctions.show( filterX );
-//		ImageJFunctions.show( filterY );
+		//ImageJFunctions.show( filterX ).setTitle( "lambda" );
+		//ImageJFunctions.show( filterY ).setTitle( "sum" );
+		//SimpleMultiThreading.threadHaltUnClean();
+
 		return tileToDynamicLambda;
 	}
 
