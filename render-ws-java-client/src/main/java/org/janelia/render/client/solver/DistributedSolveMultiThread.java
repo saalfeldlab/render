@@ -72,18 +72,18 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 				final HashMap<String, Float> idToValue = new HashMap<>();
 
 				// visualize dynamic lambda
-//				for ( final String tileId : s.idToTileSpec().keySet() )
-//				{
-//					final int z = (int)Math.round( s.idToTileSpec().get( tileId ).getZ() );
-//					idToValue.put( tileId, s.zToDynamicLambda().get( z ).floatValue() + 1 ); // between 1 and 1.2
-//				}
-
-				// visualize maxError
 				for ( final String tileId : s.idToTileSpec().keySet() )
 				{
-					System.out.println( tileId );
-					idToValue.put( tileId, (float)s.maxError( tileId ) );
+					final int z = (int)Math.round( s.idToTileSpec().get( tileId ).getZ() );
+					idToValue.put( tileId, s.zToDynamicLambda().get( z ).floatValue() + 1 ); // between 1 and 1.2
 				}
+
+				// visualize maxError
+//				for ( final String tileId : s.idToTileSpec().keySet() )
+//				{
+//					System.out.println( tileId );
+//					idToValue.put( tileId, (float)s.maxError( tileId ) );
+//				}
 				
 				final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > visualizeInfo = 
 						VisualizeTools.visualizeInfo( s );
