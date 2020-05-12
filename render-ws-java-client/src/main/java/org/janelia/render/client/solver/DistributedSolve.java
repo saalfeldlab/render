@@ -27,6 +27,7 @@ import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
+import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
@@ -496,6 +497,10 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 			}
 		}
 
+		// for local fits
+		final InterpolatedAffineModel2D< AffineModel2D, RigidModel2D > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
+		final S montageLayerModel = this.stitchingModel.copy();
+
 		for ( final String pTileId : allMatches.keySet() )
 		{
 			final HashMap<String, Matches> qTileIdToMatches = allMatches.get( pTileId );
@@ -507,6 +512,14 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 				final MinimalTileSpec pTileSpec = gs.idToTileSpecGlobal.get( pTileId );
 				final MinimalTileSpec qTileSpec = gs.idToTileSpecGlobal.get( qTileId );
 
+				final double vDiff = SolveTools.computeAlignmentError(
+						crossLayerModel, montageLayerModel, pTileSpec, qTileSpec, gs.idToFinalModelGlobal.get( pTileId ), gs.idToFinalModelGlobal.get( qTileId ), matches );
+
+				gs.idToErrorMapGlobal.putIfAbsent( pTileId, new ArrayList<>() );
+				gs.idToErrorMapGlobal.putIfAbsent( qTileId, new ArrayList<>() );
+
+				gs.idToErrorMapGlobal.get( pTileId ).add( new SerializableValuePair<>( qTileId, vDiff ) );
+				gs.idToErrorMapGlobal.get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
 			}
 		}
 	}

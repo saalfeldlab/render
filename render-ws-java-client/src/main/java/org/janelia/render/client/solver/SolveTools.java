@@ -13,6 +13,8 @@ import java.util.ListIterator;
 import java.util.Map;
 
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.match.CanvasMatchResult;
+import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
@@ -31,6 +33,7 @@ import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
+import mpicbg.models.IdentityModel;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
@@ -53,6 +56,90 @@ import net.imglib2.view.Views;
 public class SolveTools
 {
 	private SolveTools() {}
+
+	public static double computeAlignmentError(
+			final Model< ? > crossLayerModel,
+			final Model< ? > montageLayerModel,
+			final MinimalTileSpec pTileSpec,
+			final MinimalTileSpec qTileSpec,
+			final Model< ? > pAlignmentModel, // solveItem.idToNewModel().get( pTileId ), // p
+			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
+			final Matches matches )
+	{
+		// for fitting local to global pair
+		final RigidModel2D rigidModel = new RigidModel2D();
+
+		final List< PointMatch > global = SolveTools.createFakeMatches(
+				pTileSpec.getWidth(),
+				pTileSpec.getHeight(),
+				pAlignmentModel, // p
+				qAlignmentModel ); // q
+
+		// the actual matches, local solve
+		final List< PointMatch > pms = CanvasMatchResult.convertMatchesToPointMatchList( matches );
+
+		final Model< ? > model;
+
+		if ( pTileSpec.getZ() == qTileSpec.getZ() )
+			model = montageLayerModel;
+		else
+			model = crossLayerModel;
+
+		try
+		{
+			model.fit( pms );
+		}
+		catch ( Exception e )
+		{
+			e.printStackTrace();
+		}
+
+		final List< PointMatch > local = SolveTools.createFakeMatches(
+				pTileSpec.getWidth(),
+				pTileSpec.getHeight(),
+				model, // p
+				new IdentityModel() ); // q
+
+		// match the local solve to the global solve rigidly, as the entire stack is often slightly rotated
+		// but do not change the transformations relative to each other (in local, global)
+		final ArrayList< PointMatch > relativeMatches = new ArrayList<>();
+
+		for ( int i = 0; i < global.size(); ++i )
+		{
+			relativeMatches.add( new PointMatch( new Point( local.get( i ).getP1().getL().clone() ), new Point( global.get( i ).getP1().getL().clone() ) ) );
+			relativeMatches.add( new PointMatch( new Point( local.get( i ).getP2().getL().clone() ), new Point( global.get( i ).getP2().getL().clone() ) ) );
+		}
+
+		try
+		{
+			rigidModel.fit( relativeMatches );
+		}
+		catch (Exception e){}
+
+		double vDiff = 0;
+
+		for ( int i = 0; i < global.size(); ++i )
+		{
+			final double dGx = global.get( i ).getP2().getL()[ 0 ] - global.get( i ).getP1().getL()[ 0 ];
+			final double dGy = global.get( i ).getP2().getL()[ 1 ] - global.get( i ).getP1().getL()[ 1 ];
+
+			final Point l1 = local.get( i ).getP1();
+			final Point l2 = local.get( i ).getP2();
+
+			l1.apply( rigidModel );
+			l2.apply( rigidModel );
+
+			final double dLx = l2.getW()[ 0 ] - l1.getW()[ 0 ];
+			final double dLy = l2.getW()[ 1 ] - l1.getW()[ 1 ];
+
+			vDiff += SolveTools.distance( dLx, dLy, dGx, dGy );
+		}
+
+		// Stitching error is almost zero (vdiff = 0.0271) if all points are used (NoMatchFilter).
+		vDiff /= (double)global.size();
+
+		return vDiff;
+	}
 
 	final static public double distance( final double px, final double py, final double qx, final double qy )
 	{
