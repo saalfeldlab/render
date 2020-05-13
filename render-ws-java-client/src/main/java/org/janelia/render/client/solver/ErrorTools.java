@@ -14,9 +14,9 @@ import net.imglib2.util.Pair;
 
 public class ErrorTools
 {
-	public static enum ErrorType{ ALL, CROSS_LAYER_ONLY, MONTAGE_LAYER_ONLY };
+	public static enum ErrorFilter{ ALL, CROSS_LAYER_ONLY, MONTAGE_LAYER_ONLY };
 
-	public static double avgError( final String tileId, final Map< String, List< Pair< String, Double > > > errors, final Map<String, MinimalTileSpec> idToTileSpec, final ErrorType errorType )
+	public static double avgError( final String tileId, final Map< String, List< Pair< String, Double > > > errors, final Map<String, MinimalTileSpec> idToTileSpec, final ErrorFilter errorType )
 	{
 		final int z = (int)Math.round( idToTileSpec.get( tileId ).getZ() );
 
@@ -25,7 +25,7 @@ public class ErrorTools
 
 		for ( final Pair< String, Double > error : errors.get( tileId ) )
 		{
-			if ( errorType == ErrorType.CROSS_LAYER_ONLY )
+			if ( errorType == ErrorFilter.CROSS_LAYER_ONLY )
 			{
 				if ( z != (int)Math.round( idToTileSpec.get( error.getA() ).getZ() ) )
 				{
@@ -33,7 +33,7 @@ public class ErrorTools
 					++count;
 				}
 			}
-			else if ( errorType == ErrorType.MONTAGE_LAYER_ONLY )
+			else if ( errorType == ErrorFilter.MONTAGE_LAYER_ONLY )
 			{
 				if ( z == (int)Math.round( idToTileSpec.get( error.getA() ).getZ() ) )
 				{
@@ -59,14 +59,14 @@ public class ErrorTools
 		final RealSum avgErrorSum = new RealSum();
 
 		for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
-			avgErrorSum.add( avgError( tileId, gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorType.CROSS_LAYER_ONLY ) );
+			avgErrorSum.add( avgError( tileId, gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorFilter.CROSS_LAYER_ONLY ) );
 
 		final double avgError = avgErrorSum.getSum() / gs.idToTileSpecGlobal.keySet().size();
 
 		final RealSum stDevErrorSum = new RealSum();
 
 		for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
-			stDevErrorSum.add( Math.pow( avgError( tileId, gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorType.CROSS_LAYER_ONLY ) - avgError, 2 ) );
+			stDevErrorSum.add( Math.pow( avgError( tileId, gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorFilter.CROSS_LAYER_ONLY ) - avgError, 2 ) );
 
 		final double stDev = Math.sqrt( stDevErrorSum.getSum() / gs.idToTileSpecGlobal.keySet().size() );
 
@@ -80,7 +80,7 @@ public class ErrorTools
 		for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
 		{
 			final double minErr = SolveItemData.minError( gs.idToErrorMapGlobal.get( tileId ) );
-			final double avgErr = avgError( tileId, gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorType.CROSS_LAYER_ONLY );
+			final double avgErr = avgError( tileId, gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorFilter.CROSS_LAYER_ONLY );
 			final double maxErr = SolveItemData.maxError( gs.idToErrorMapGlobal.get( tileId ) );
 
 			idToMinError.put( tileId, (float)minErr );
