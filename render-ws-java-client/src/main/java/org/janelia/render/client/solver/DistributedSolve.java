@@ -138,7 +138,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		}
 		catch ( Exception e )
 		{
-			LOG.info("FAILED to compute global solve (STOPPING): " + e );
+			LOG.info("FAILED to compute global errors: " + e );
 			e.printStackTrace();
 			return;
 		}

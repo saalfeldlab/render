@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import bdv.util.BdvStackSource;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
+import mpicbg.util.RealSum;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 
@@ -128,7 +129,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             "--threadsGlobal", "8",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-                            "--serializerDirectory", "/Users/spreibi/Documents/Janelia/Projects/Male CNS+VNC Alignment/distributed solve/ser500-errors"
+                            "--serializerDirectory", "/groups/scicompsoft/home/preibischs/Documents/FIB-SEM/ser500_50pm"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -155,6 +156,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 
 				//visualize the layers
 				double minError = Double.MAX_VALUE;
+				RealSum avgError = new RealSum();
 				double maxError = -Double.MAX_VALUE;
 				String maxTileId = "";
 
@@ -164,6 +166,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 					final double error = SolveItemData.avgError( gs.idToErrorMapGlobal.get( tileId ) );
 					idToValue.put( tileId, (float)error );
 					minError = Math.min( minError, error );
+					avgError.add( error );
 
 					if ( error > maxError )
 					{
@@ -177,7 +180,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 				BdvStackSource< ? > vis = VisualizeTools.visualizeMultiRes(
 						gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToValue, 1, 128, 2, parameters.threadsGlobal );
 
-				LOG.info( "Min err=" + minError +", max err=" + maxError  + " (" + maxTileId + ")" );
+				LOG.info( "Min err=" + minError + ", avg err=" + (avgError.getSum()/gs.idToTileSpecGlobal.keySet().size()) + ", max err=" + maxError  + " (" + maxTileId + ")" );
 				for ( final Pair< String, Double > error : gs.idToErrorMapGlobal.get( maxTileId ) )
 					LOG.info( error.getA() + ": " + error.getB() );
 
