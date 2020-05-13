@@ -223,6 +223,12 @@ public class ParametersDistributedSolve extends CommandLineParameters
     @Parameter(names = "--maxNumMatches", description = "Limit maximum number of matches in between tile pairs (default:0, no limit)")
     public int maxNumMatches = 0;
 
+    @Parameter(
+            names = "--serializeMatches",
+            description = "Serialize matches for precise global error ",
+            arity = 0)
+    public boolean serializeMatches = false;
+
 	@Parameter(
 			names = "--serializerDirectory",
 			description = "Directory for storing serialized data (omit to skip serialization)")

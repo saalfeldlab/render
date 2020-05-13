@@ -477,6 +477,8 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 	protected void computeGlobalErrors( final GlobalSolve gs, final List< SolveItemData< G, B, S > > allSolveItems )
 	{
+		LOG.info( "Computing global errors ... " );
+
 		// pTileId >> qTileId, Matches
 		final HashMap< String, HashMap< String, Matches > > allMatches = new HashMap<>();
 
@@ -495,6 +497,17 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 				if ( !qTileIdToMatches.containsKey( qTileId ) )
 					qTileIdToMatches.put( qTileId, matches );
 			}
+		}
+
+		if ( allMatches.size() == 0 )
+		{
+			LOG.info( "Matches were not saved, using a combination of local errors." );
+			return;
+		}
+		else
+		{
+			LOG.info( "Clearing local block errors." );
+			gs.idToErrorMapGlobal.clear();
 		}
 
 		// for local fits
@@ -522,6 +535,8 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 				gs.idToErrorMapGlobal.get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
 			}
 		}
+
+		LOG.info( "Done computing global errors." );
 	}
 
 	protected SolveSet< G, B, S > defineSolveSet( final int minZ, final int maxZ, final int setSize )

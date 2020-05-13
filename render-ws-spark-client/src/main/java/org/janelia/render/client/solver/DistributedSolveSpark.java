@@ -51,6 +51,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 		final String matchCollection = parameters.matchCollection;
 
 		final int maxNumMatches = parameters.maxNumMatches;
+		final boolean serializeMatches = parameters.serializeMatches;
 		final double maxAllowedErrorStitching = parameters.maxAllowedErrorStitching;
 		final int maxIterationsStitching = parameters.maxIterationsStitching;
 		final int maxPlateauWidthStitching = parameters.maxPlateauWidthStitching;
@@ -76,6 +77,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 							matchCollection,
 							stack,
 							maxNumMatches,
+							serializeMatches,
 							maxAllowedErrorStitching,
 							maxIterationsStitching,
 							maxPlateauWidthStitching,

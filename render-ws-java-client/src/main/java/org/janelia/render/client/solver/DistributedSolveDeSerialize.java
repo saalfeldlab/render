@@ -125,10 +125,10 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             "--maxZ", "34022",
 
                             //"--threadsWorker", "1", 
-                            "--threadsGlobal", "65",
+                            "--threadsGlobal", "8",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-                            "--serializerDirectory", "/groups/flyem/data/sema/spark_example/ser"//"/Users/spreibi/Documents/Janelia/Projects/Male CNS+VNC Alignment/distributed solve/serialize 500 with errors"
+                            "--serializerDirectory", "/Users/spreibi/Documents/Janelia/Projects/Male CNS+VNC Alignment/distributed solve/ser500-errors"
                     };
                     parameters.parse(testArgs);
                 } else {

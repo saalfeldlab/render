@@ -45,6 +45,7 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 				parameters.matchCollection,
 				parameters.stack,
 				50,
+				parameters.serializeMatches,
 				parameters.maxAllowedErrorStitching,
 				parameters.maxIterationsStitching,
 				parameters.maxPlateauWidthStitching,

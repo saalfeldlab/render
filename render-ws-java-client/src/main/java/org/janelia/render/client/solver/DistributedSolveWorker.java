@@ -70,6 +70,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final HashMap< Integer, List< Integer > > zToPairs;
 
 	final int numThreads;
+	final boolean serializeMatches;
 
 	final double maxAllowedErrorStitching;
 	final int maxIterationsStitching, maxPlateauWidthStitching;
@@ -102,6 +103,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final String matchCollection,
 			final String stack,
 			final int maxNumMatches,
+			final boolean serializeMatches,
 			final double maxAllowedErrorStitching,
 			final int maxIterationsStitching,
 			final int maxPlateauWidthStitching,
@@ -131,6 +133,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		this.blockMaxAllowedError = blockMaxAllowedError;
 
 		this.numThreads = numThreads;
+		this.serializeMatches = serializeMatches;
 
 		if ( maxNumMatches <= 0 )
 			this.matchFilter = new NoMatchFilter();
@@ -999,6 +1002,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	{
 		LOG.info( "Computing per-block errors for " + solveItem.idToTileSpec().keySet().size() + " tiles using " + canvasMatches.size() + " pairs of images ..." );
 
+		LOG.info( "Serializing all matches=" + serializeMatches );
+
 		// for local fits
 		final InterpolatedAffineModel2D< AffineModel2D, RigidModel2D > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
 		final S montageLayerModel = solveItem.stitchingSolveModelInstance();
@@ -1016,7 +1021,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				continue;
 
 			// for a correct computation of errors after global alignment
-			solveItem.matches().add( new SerializableValuePair<>( new SerializableValuePair<>( pTileId, qTileId ), match.getMatches() ) );
+			if ( serializeMatches )
+				solveItem.matches().add( new SerializableValuePair<>( new SerializableValuePair<>( pTileId, qTileId ), match.getMatches() ) );
 
 			final double vDiff = SolveTools.computeAlignmentError(
 					crossLayerModel, montageLayerModel, pTileSpec, qTileSpec, solveItem.idToNewModel().get( pTileId ), solveItem.idToNewModel().get( qTileId ), match.getMatches() );
