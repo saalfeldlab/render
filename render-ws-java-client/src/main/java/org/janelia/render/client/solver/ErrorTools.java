@@ -1,6 +1,8 @@
 package org.janelia.render.client.solver;
 
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
 import org.slf4j.Logger;
@@ -12,21 +14,63 @@ import net.imglib2.util.Pair;
 
 public class ErrorTools
 {
+	public static enum ErrorType{ ALL, CROSS_LAYER_ONLY, MONTAGE_LAYER_ONLY };
+
+	public static double avgError( final String tileId, final Map< String, List< Pair< String, Double > > > errors, final Map<String, MinimalTileSpec> idToTileSpec, final ErrorType errorType )
+	{
+		final int z = (int)Math.round( idToTileSpec.get( tileId ).getZ() );
+
+		double avgError = 0;
+		int count = 0;
+
+		for ( final Pair< String, Double > error : errors.get( tileId ) )
+		{
+			if ( errorType == ErrorType.CROSS_LAYER_ONLY )
+			{
+				if ( z != (int)Math.round( idToTileSpec.get( error.getA() ).getZ() ) )
+				{
+					avgError += error.getB();
+					++count;
+				}
+			}
+			else if ( errorType == ErrorType.MONTAGE_LAYER_ONLY )
+			{
+				if ( z == (int)Math.round( idToTileSpec.get( error.getA() ).getZ() ) )
+				{
+					avgError += error.getB();
+					++count;
+				}
+			}
+			else
+			{
+				avgError += error.getB();
+				++count;
+			}
+		}
+
+		if ( count > 0 )
+			return avgError / (double)count;
+		else
+			return 0;
+	}
+
 	public static void errorAnalysis( final GlobalSolve gs, final double significance, final int numThreads )
 	{
 		final RealSum avgErrorSum = new RealSum();
 
 		for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
-			avgErrorSum.add( SolveItemData.avgError( gs.idToErrorMapGlobal.get( tileId ) ) );
+			avgErrorSum.add( avgError( tileId, gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorType.CROSS_LAYER_ONLY ) );
 
 		final double avgError = avgErrorSum.getSum() / gs.idToTileSpecGlobal.keySet().size();
 
 		final RealSum stDevErrorSum = new RealSum();
 
 		for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
-			stDevErrorSum.add( Math.pow( SolveItemData.avgError( gs.idToErrorMapGlobal.get( tileId ) ) - avgError, 2 ) );
+			stDevErrorSum.add( Math.pow( avgError( tileId, gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorType.CROSS_LAYER_ONLY ) - avgError, 2 ) );
 
 		final double stDev = Math.sqrt( stDevErrorSum.getSum() / gs.idToTileSpecGlobal.keySet().size() );
+
+		LOG.info( "avg err=" + avgError + ", stdev=" + stDev );
 
 		final HashMap<String, Float> idToMinError = new HashMap<>();
 		final HashMap<String, Float> idToAvgError = new HashMap<>();
@@ -36,11 +80,11 @@ public class ErrorTools
 		for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
 		{
 			final double minErr = SolveItemData.minError( gs.idToErrorMapGlobal.get( tileId ) );
-			final double avgErr = SolveItemData.avgError( gs.idToErrorMapGlobal.get( tileId ) );
+			final double avgErr = avgError( tileId, gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorType.CROSS_LAYER_ONLY );
 			final double maxErr = SolveItemData.maxError( gs.idToErrorMapGlobal.get( tileId ) );
 
 			idToMinError.put( tileId, (float)minErr );
-			idToAvgError.put( tileId, (float)avgErr );
+			idToAvgError.put( tileId, (float)avgErr ); // TODO: ignore same layer matches
 			idToMaxError.put( tileId, (float)maxErr );
 
 			if ( avgErr > avgError + significance * stDev )
@@ -55,8 +99,13 @@ public class ErrorTools
 		source = VisualizeTools.visualizeMultiRes(
 				source, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToMinError, 1, 128, 2, numThreads );
 		
-		VisualizeTools.visualizeMultiRes(
+		source = VisualizeTools.visualizeMultiRes(
 				source, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToMaxError, 1, 128, 2, numThreads );
+
+		source = VisualizeTools.visualizeMultiRes(
+				source, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToRegion, 1, 128, 2, numThreads );
+
+		//LOG.info( "Min err=" + minError + ", avg err=" + (avgError.getSum()/gs.idToTileSpecGlobal.keySet().size()) + ", max err=" + maxError  + " (" + maxTileId + ")" );
 	}
 
 	public static void errorVisualization( final GlobalSolve gs, final int numThreads )

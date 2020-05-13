@@ -127,10 +127,10 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             "--blockSize", "500",
 
                             //"--threadsWorker", "1", 
-                            "--threadsGlobal", "8",
+                            "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-                            "--serializerDirectory", "/groups/scicompsoft/home/preibischs/Documents/FIB-SEM/ser500_50pm"
+                            "--serializerDirectory", "/groups/scicompsoft/home/preibischs/Documents/FIB-SEM/ser500_full"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -156,7 +156,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                 final GlobalSolve gs = solve.globalSolve();
 
 				//visualize the layers
-				ErrorTools.errorVisualization( gs, parameters.threadsGlobal );
+				ErrorTools.errorAnalysis( gs, 2, parameters.threadsGlobal );
 
 				SimpleMultiThreading.threadHaltUnClean();
             }
