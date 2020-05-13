@@ -1,12 +1,5 @@
 package org.janelia.render.client.solver;
 
-import ij.IJ;
-import ij.ImagePlus;
-import ij.io.FileSaver;
-import ij.measure.Calibration;
-import ij.process.FloatProcessor;
-import ij.process.ImageProcessor;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,10 +10,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.NoninvertibleModelException;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +18,15 @@ import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvStackSource;
 import bdv.util.volatiles.VolatileViews;
+import ij.IJ;
+import ij.ImagePlus;
+import ij.io.FileSaver;
+import ij.measure.Calibration;
+import ij.process.FloatProcessor;
+import ij.process.ImageProcessor;
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.NoninvertibleModelException;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
 import net.imglib2.IterableInterval;
@@ -215,6 +213,17 @@ public class VisualizeTools
 			final int minDS, final int maxDS, final int dsInc,
 			final int numThreads )
 	{
+		return visualizeMultiRes( null, idToModels, idToTileSpec, idToValue, minDS, maxDS, dsInc, numThreads );
+	}
+
+	public static BdvStackSource< ? > visualizeMultiRes(
+			BdvStackSource< ? > source,
+			final HashMap<String, AffineModel2D> idToModels,
+			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, Float> idToValue,
+			final int minDS, final int maxDS, final int dsInc,
+			final int numThreads )
+	{
 		final ArrayList< Pair< RandomAccessibleInterval< FloatType >, AffineTransform3D > > multiRes = new ArrayList<>();
 
 		for ( int downsampling = minDS; downsampling <= maxDS; downsampling *= dsInc )
@@ -231,11 +240,21 @@ public class VisualizeTools
 			multiRes.add( new ValuePair<>( ra, t )  );
 		}
 
-		BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( "Preview" ).numRenderingThreads( numThreads );
-		BdvStackSource< ? > preview = BdvFunctions.show( new MultiResolutionSource( createVolatileRAIs( multiRes ), "preview" ), options );
-		preview.setDisplayRange( 0, 3 );
+		BdvStackSource< ? > source1;
 
-		return preview;
+		if ( source == null )
+		{
+			BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( "Preview" ).numRenderingThreads( numThreads );
+			source1 = BdvFunctions.show( new MultiResolutionSource( createVolatileRAIs( multiRes ), "preview" ), options );
+		}
+		else
+		{
+			source1 = BdvFunctions.show( new MultiResolutionSource( createVolatileRAIs( multiRes ), "preview" ), Bdv.options().addTo( source ).numRenderingThreads( numThreads ) );
+		}
+
+		source1.setDisplayRange( 0, 3 );
+
+		return source1;
 	}
 
 	public static ArrayList< Pair< RandomAccessibleInterval< VolatileFloatType >, AffineTransform3D > > createVolatileRAIs(

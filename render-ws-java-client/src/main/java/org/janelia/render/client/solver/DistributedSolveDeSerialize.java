@@ -156,37 +156,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                 final GlobalSolve gs = solve.globalSolve();
 
 				//visualize the layers
-				double minError = Double.MAX_VALUE;
-				RealSum avgError = new RealSum();
-				double maxError = -Double.MAX_VALUE;
-				String maxTileId = "";
-
-				final HashMap<String, Float> idToValue = new HashMap<>();
-				for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
-				{
-					final double error = SolveItemData.avgError( gs.idToErrorMapGlobal.get( tileId ) );
-					idToValue.put( tileId, (float)error );
-					minError = Math.min( minError, error );
-					avgError.add( error );
-
-					if ( error > maxError )
-					{
-						maxTileId = tileId;
-						maxError = error;
-					}
-
-					//idToValue.put( tileId, gs.zToDynamicLambdaGlobal.get( (int)Math.round( gs.idToTileSpecGlobal.get( tileId ).getZ() ) ).floatValue() + 1 ); // between 1 and 1.2
-				}
-
-				BdvStackSource< ? > vis = VisualizeTools.visualizeMultiRes(
-						gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToValue, 1, 128, 2, parameters.threadsGlobal );
-
-				LOG.info( "Min err=" + minError + ", avg err=" + (avgError.getSum()/gs.idToTileSpecGlobal.keySet().size()) + ", max err=" + maxError  + " (" + maxTileId + ")" );
-				for ( final Pair< String, Double > error : gs.idToErrorMapGlobal.get( maxTileId ) )
-					LOG.info( error.getA() + ": " + error.getB() );
-
-				vis.setDisplayRange( 0, maxError );
-				vis.setDisplayRangeBounds( 0, maxError );
+				ErrorTools.errorVisualization( gs, parameters.threadsGlobal );
 
 				SimpleMultiThreading.threadHaltUnClean();
             }

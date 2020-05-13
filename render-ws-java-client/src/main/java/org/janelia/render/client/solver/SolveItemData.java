@@ -92,9 +92,24 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 		return maxError( idToSolveItemErrorMap().get( tileId ) );
 	}
 
+	public double minError( final String tileId )
+	{
+		return minError( idToSolveItemErrorMap().get( tileId ) );
+	}
+
 	public double avgError( final String tileId )
 	{
 		return avgError( idToSolveItemErrorMap().get( tileId ) );
+	}
+
+	public static double minError( final List< Pair< String, Double > > errors )
+	{
+		double minError = Double.MAX_VALUE;
+
+		for ( final Pair< String, Double > error : errors )
+			minError = Math.min( minError, error.getB() );
+
+		return minError;
 	}
 
 	public static double maxError( final List< Pair< String, Double > > errors )
