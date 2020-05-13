@@ -124,6 +124,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             
                             "--minZ", "1",
                             "--maxZ", "34022",
+                            "--blockSize", "500",
 
                             //"--threadsWorker", "1", 
                             "--threadsGlobal", "8",
