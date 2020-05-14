@@ -34,7 +34,7 @@ public class CanvasRenderParametersUrlTemplateTest {
                         false);
         Assert.assertEquals("invalid template derived for basic run",
                             baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters?" +
-                            "normalizeForMatching=true",
+                            "scale=1.0&normalizeForMatching=true",
                             templateForRun.getTemplateString());
 
         templateForRun =
