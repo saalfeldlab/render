@@ -233,13 +233,15 @@ public class ErrorTools
 
 				for ( int d = 1; d < problematicRegionRange; ++d )
 				{
-					for ( final MinimalTileSpec ts2 : zToTileSpec.get( z + d ) )
-						if ( ts2 != null && ts2.getImageCol() == col )
-							idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (problematicRegionRange - d) / (float)problematicRegionRange ) );
+					if ( zToTileSpec.containsKey( z + d ))
+						for ( final MinimalTileSpec ts2 : zToTileSpec.get( z + d ) )
+							if ( ts2 != null && ts2.getImageCol() == col )
+								idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (problematicRegionRange - d) / (float)problematicRegionRange ) );
 
-					for ( final MinimalTileSpec ts2 : zToTileSpec.get( z - d ) )
-						if ( ts2 != null && ts2.getImageCol() == col )
-							idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (problematicRegionRange - d) / (float)problematicRegionRange ) );
+					if ( zToTileSpec.containsKey( z - d ))
+						for ( final MinimalTileSpec ts2 : zToTileSpec.get( z - d ) )
+							if ( ts2 != null && ts2.getImageCol() == col )
+								idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (problematicRegionRange - d) / (float)problematicRegionRange ) );
 				}
 			}
 		}
