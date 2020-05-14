@@ -46,6 +46,7 @@ import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.RealViews;
+import net.imglib2.realtransform.Translation3D;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
@@ -60,41 +61,26 @@ public class VisualizeTools
 	public static int[] cellDim = new int[]{ 10, 10, 10 };
 	public static int maxCacheSize = Integer.MAX_VALUE;
 
-	public static Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > visualizeInfo(
-			final Collection< ? extends SolveItemData< ?, ?, ? > > solveItems )
+	public static BdvStackSource< ? > renderDynamicLambda(
+			BdvStackSource< ? > source,
+			final HashMap<Integer, Double> zToDynamicLambda,
+			final HashMap< String, AffineModel2D > idToModel,
+			final HashMap< String, MinimalTileSpec > idToTileSpec )
 	{
-		final HashMap<String, AffineModel2D> idToModels = new HashMap<>();
-		final HashMap<String, MinimalTileSpec> idToTileSpec = new HashMap<>();
+		final HashMap<String, Float> idToValue = new HashMap<>();
 
-		for ( final SolveItemData< ?, ?, ? > solveItem : solveItems )
+		// visualize dynamic lambda
+		for ( final String tileId : idToTileSpec.keySet() )
 		{
-			idToTileSpec.putAll( solveItem.idToTileSpec() );
-			idToModels.putAll( solveItem.idToNewModel() );
+			final int z = (int)Math.round( idToTileSpec.get( tileId ).getZ() );
+			idToValue.put( tileId, zToDynamicLambda.get( z ).floatValue() + 1 ); // between 1 and 1.2
 		}
 
-		return new ValuePair<>( idToModels, idToTileSpec );
-	}
+		source = VisualizeTools.visualizeMultiRes( source, "dynamic lambda", idToModel, idToTileSpec, idToValue, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
+		source.setDisplayRange( 0, 1.2 );
+		source.setDisplayRangeBounds( 0, 2 );
 
-	public static Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > visualizeInfo(
-			final SolveItemData< ?, ?, ? > solveItem )
-	{
-		final HashMap<String, AffineModel2D> idToModels = new HashMap<>();
-		final HashMap<String, MinimalTileSpec> idToTileSpec = new HashMap<>();
-
-		idToTileSpec.putAll( solveItem.idToTileSpec() );
-		idToModels.putAll( solveItem.idToNewModel() );
-
-		return new ValuePair<>( idToModels, idToTileSpec );
-	}
-
-	public static BdvStackSource< ? > visualize( final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > data )
-	{
-		return visualize( data.getA(), data.getB(), constantIdToValue( data.getA().keySet() ) );
-	}
-
-	public static BdvStackSource< ? > visualizeMultiRes( final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > data )
-	{
-		return visualizeMultiRes( data.getA(), data.getB(), constantIdToValue( data.getA().keySet() ) );
+		return source;
 	}
 
 	public static BdvStackSource< ? > visualize(
@@ -141,25 +127,34 @@ public class VisualizeTools
 	}
 
 	public static BdvStackSource< ? > visualizeMultiRes(
+			final BdvStackSource< ? > source,
+			final String name,
 			final HashMap<String, AffineModel2D> idToModels,
 			final HashMap<String, MinimalTileSpec> idToTileSpec,
 			final HashMap<String, Float> idToValue )
 	{
-		return visualizeMultiRes( idToModels, idToTileSpec, idToValue, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
+		return visualizeMultiRes( source, name, idToModels, idToTileSpec, idToValue, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
 	}
 
 	public static BdvStackSource< ? > renderBDV( final ImagePlus imp, final double scale )
+	{
+		return renderBDV( null, imp, scale );
+	}
+
+	public static BdvStackSource< ? > renderBDV( BdvStackSource< ? > source, final ImagePlus imp, final double scale )
 	{
 		final AffineTransform3D t = new AffineTransform3D();
 		t.set( 1 / scale, 0, 0 );
 		t.set( 1 / scale, 1, 1 );
 		t.set( 1.0, 2, 2 );
 
-		BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( "Preview" ).numRenderingThreads( Runtime.getRuntime().availableProcessors() );
-		options.sourceTransform( t );
+		final Translation3D m = new Translation3D();
+		m.set( -imp.getCalibration().xOrigin / scale, -imp.getCalibration().yOrigin / scale, -imp.getCalibration().zOrigin );
+		t.preConcatenate( m );
 
-		final RandomAccessibleInterval cachedImg;
-		BdvStackSource< ? > preview;
+		LOG.info( "Correcting location of renderer data: " + -imp.getCalibration().xOrigin / scale + ", "  + -imp.getCalibration().yOrigin / scale + ", " + -imp.getCalibration().zOrigin );
+
+		final RandomAccessibleInterval<?> cachedImg;
 
 		if ( imp.getBitDepth() == 8  )
 		{
@@ -191,10 +186,17 @@ public class VisualizeTools
 			return null;
 		}
 
-		preview = BdvFunctions.show( VolatileViews.wrapAsVolatile( cachedImg ), "weights", options );
-		preview.setDisplayRange( 0, 255 );
+		BdvOptions options = Bdv.options().sourceTransform( t );
 
-		return preview;
+		if ( source == null )
+			options = options.frameTitle( "data" ).numRenderingThreads( Runtime.getRuntime().availableProcessors() );
+		else
+			options = options.addTo( source );
+		
+		source = BdvFunctions.show( VolatileViews.wrapAsVolatile( cachedImg ), "data", options );
+		source.setDisplayRange( 0, 255 );
+
+		return source;
 	}
 
 	public static BdvStackSource< ? > visualizeMultiRes(
@@ -386,7 +388,7 @@ public class VisualizeTools
 		}
 		else
 		{
-			LOG.info( "Rendering " + count + " tiles." );			
+			LOG.info( "Rendering " + count + " tiles." );
 		}
 
 		final double[] min = new double[] { Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE };
