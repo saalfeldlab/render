@@ -119,7 +119,7 @@ public class CanvasRenderParametersUrlTemplate
      *
      * @return render parameters URL template with specifics for the current run.
      *
-     * @throws URISyntaxException
+     * @throws IllegalArgumentException
      *   if the template cannot be converted into a valid URL.
      */
     public static CanvasRenderParametersUrlTemplate getTemplateForRun(final String generalTemplateString,
@@ -129,7 +129,7 @@ public class CanvasRenderParametersUrlTemplate
                                                                       final Boolean renderWithFilter,
                                                                       final String renderFilterListName,
                                                                       final Boolean renderWithoutMask)
-            throws URISyntaxException {
+            throws IllegalArgumentException {
 
         final String canvasGroupIdToken = "canvasGroupIdToken";
         final String canvasIdToken = "canvasIdToken";
@@ -138,7 +138,12 @@ public class CanvasRenderParametersUrlTemplate
         final CanvasRenderParametersUrlTemplate generalTemplate = new CanvasRenderParametersUrlTemplate(generalTemplateString);
         final String populatedTemplateString = generalTemplate.getRenderParametersUrl(canvasId);
 
-        final URIBuilder uriBuilder = new URIBuilder(populatedTemplateString);
+        final URIBuilder uriBuilder;
+        try {
+            uriBuilder = new URIBuilder(populatedTemplateString);
+        } catch (final URISyntaxException e) {
+            throw new IllegalArgumentException("invalid base URL", e);
+        }
 
         if (renderFullScaleWidth != null) {
             uriBuilder.addParameter("width", renderFullScaleWidth.toString());
@@ -148,7 +153,7 @@ public class CanvasRenderParametersUrlTemplate
             uriBuilder.addParameter("height", renderFullScaleHeight.toString());
         }
 
-        if ((renderScale != null) && (renderScale != 1.0)) {
+        if (renderScale != null) {
             uriBuilder.addParameter("scale", renderScale.toString());
         }
 
@@ -167,7 +172,13 @@ public class CanvasRenderParametersUrlTemplate
         // assume all canvases should be normalized for matching
         uriBuilder.addParameter("normalizeForMatching", "true");
 
-        final String populatedRunTemplate = uriBuilder.build().toString();
+        final String populatedRunTemplate;
+        try {
+            populatedRunTemplate = uriBuilder.build().toString();
+        } catch (final URISyntaxException e) {
+            throw new IllegalArgumentException("invalid parameterized URL", e);
+        }
+
         String runTemplate = populatedRunTemplate.replaceAll(canvasGroupIdToken,
                                                              RenderableCanvasIdPairs.TEMPLATE_GROUP_ID_TOKEN);
         runTemplate = runTemplate.replaceAll(canvasIdToken,
