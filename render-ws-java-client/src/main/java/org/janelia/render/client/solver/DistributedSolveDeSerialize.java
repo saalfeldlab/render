@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.ErrorTools.ErrorFilter;
+import org.janelia.render.client.solver.ErrorTools.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -155,8 +157,11 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 
                 final GlobalSolve gs = solve.globalSolve();
 
-				//visualize the layers
-				ErrorTools.errorAnalysis( gs, 2, parameters.threadsGlobal );
+				// visualize maxError
+				final Errors errors = ErrorTools.computeErrors( gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorFilter.CROSS_LAYER_ONLY );
+				BdvStackSource<?> vis = ErrorTools.renderErrors( errors, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal );
+
+				vis = VisualizeTools.renderDynamicLambda( vis, gs.zToDynamicLambdaGlobal, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal );
 
 				SimpleMultiThreading.threadHaltUnClean();
             }

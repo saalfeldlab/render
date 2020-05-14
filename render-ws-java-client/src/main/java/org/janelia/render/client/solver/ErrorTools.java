@@ -169,18 +169,16 @@ public class ErrorTools
 	public static BdvStackSource< ? > renderErrors(
 			final Errors err,
 			final HashMap< String, AffineModel2D > idToModel,
-			final HashMap< String, MinimalTileSpec > idToTileSpec,
-			final int numThreads )
+			final HashMap< String, MinimalTileSpec > idToTileSpec )
 	{
-		return renderErrors( null, err, idToModel, idToTileSpec, numThreads );
+		return renderErrors( null, err, idToModel, idToTileSpec );
 	}
 
 	public static BdvStackSource< ? > renderErrors(
 			BdvStackSource< ? > source,
 			final Errors err,
 			final HashMap< String, AffineModel2D > idToModel,
-			final HashMap< String, MinimalTileSpec > idToTileSpec,
-			final int numThreads )
+			final HashMap< String, MinimalTileSpec > idToTileSpec )
 	{
 		/*
 		for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
@@ -194,15 +192,15 @@ public class ErrorTools
 
 		final double maxRange = Math.max( err.maxMinError, Math.max( err.maxAvgError, err.maxMaxError ) );
 
-		source = VisualizeTools.visualizeMultiRes( source, "avg Error", idToModel, idToTileSpec, err.idToAvgError, 1, 128, 2, numThreads );
+		source = VisualizeTools.visualizeMultiRes( source, "avg Error", idToModel, idToTileSpec, err.idToAvgError, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
 		source.setDisplayRange( 0, err.maxAvgError );
 		source.setDisplayRangeBounds( 0, maxRange );
 
-		source = VisualizeTools.visualizeMultiRes( source, "min Error", idToModel, idToTileSpec, err.idToMinError, 1, 128, 2, numThreads );
+		source = VisualizeTools.visualizeMultiRes( source, "min Error", idToModel, idToTileSpec, err.idToMinError, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
 		source.setDisplayRange( 0, err.maxMinError );
 		source.setDisplayRangeBounds( 0, maxRange );
 
-		source = VisualizeTools.visualizeMultiRes( source, "max Error", idToModel, idToTileSpec, err.idToMaxError, 1, 128, 2, numThreads );
+		source = VisualizeTools.visualizeMultiRes( source, "max Error", idToModel, idToTileSpec, err.idToMaxError, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
 		source.setDisplayRange( 0, err.maxMaxError );
 		source.setDisplayRangeBounds( 0, maxRange );
 
