@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.solver.ErrorTools.ErrorFilter;
+import org.janelia.render.client.solver.ErrorTools.ErrorType;
 import org.janelia.render.client.solver.ErrorTools.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +35,7 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 	@Override
 	public List< SolveItemData< G, B, S > > distributedSolve()
 	{
-		this.solveSet.leftItems.get( 44 ).maxZ = 22100;
+		//this.solveSet.leftItems.get( 44 ).maxZ = 22100;
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 				this.solveSet.leftItems.get( 44 ), //8, 9, 43, 44, 49, 66 ),
 				this.solveSet.getMaxId() + 1,
@@ -68,6 +69,8 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 				// visualize maxError
 				final Errors errors = ErrorTools.computeErrors( s.idToSolveItemErrorMap(), s.idToTileSpec(), ErrorFilter.CROSS_LAYER_ONLY );
 				BdvStackSource<?> vis = ErrorTools.renderErrors( errors, s.idToNewModel(), s.idToTileSpec() );
+
+				vis = ErrorTools.renderPotentialProblemAreas( vis, errors, ErrorType.AVG, 2.0, s.idToNewModel(), s.idToTileSpec() );
 
 				vis = VisualizeTools.renderDynamicLambda( vis, s.zToDynamicLambda(), s.idToNewModel(), s.idToTileSpec() );
 

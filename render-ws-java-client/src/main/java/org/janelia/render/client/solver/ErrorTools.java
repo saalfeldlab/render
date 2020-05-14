@@ -17,6 +17,7 @@ import net.imglib2.util.Pair;
 public class ErrorTools
 {
 	public static enum ErrorFilter{ ALL, CROSS_LAYER_ONLY, MONTAGE_LAYER_ONLY };
+	public static enum ErrorType{ MIN, AVG, MAX };
 
 	public static class Errors
 	{
@@ -166,6 +167,52 @@ public class ErrorTools
 		return err;
 	}
 
+	public static BdvStackSource< ? > renderPotentialProblemAreas(
+			BdvStackSource< ? > source,
+			final Errors err,
+			final ErrorType errorType,
+			final double significance,
+			final HashMap< String, AffineModel2D > idToModel,
+			final HashMap< String, MinimalTileSpec > idToTileSpec )
+	{
+		final HashMap< String, Float > idToRegion = new HashMap<>();
+
+		for ( final String tileId : idToTileSpec.keySet() )
+		{
+			final double avgError, stDevError, error;
+			
+			switch ( errorType )
+			{
+			case MIN:
+				error = err.idToMinError.get( tileId );
+				avgError = err.avgMinError;
+				stDevError = err.stdDevMinError;
+				break;
+			case MAX:
+				error = err.idToMaxError.get( tileId );
+				avgError = err.avgMaxError;
+				stDevError = err.stdDevMaxError;
+				break;
+			default:
+				error = err.idToAvgError.get( tileId );
+				avgError = err.avgAvgError;
+				stDevError = err.stdDevAvgError;
+				break;
+			}
+
+			if ( error > avgError + significance * stDevError )
+				idToRegion.put( tileId, 1.0f );
+			else
+				idToRegion.put( tileId, 0.0f );
+		}
+
+		source = VisualizeTools.visualizeMultiRes( source, "potential problem regions (" + significance + ")", idToModel, idToTileSpec, idToRegion, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
+		source.setDisplayRange( 0, 1 );
+		source.setDisplayRangeBounds( 0, 1 );
+
+		return source;
+	}
+
 	public static BdvStackSource< ? > renderErrors(
 			final Errors err,
 			final HashMap< String, AffineModel2D > idToModel,
@@ -180,16 +227,6 @@ public class ErrorTools
 			final HashMap< String, AffineModel2D > idToModel,
 			final HashMap< String, MinimalTileSpec > idToTileSpec )
 	{
-		/*
-		for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
-		{
-			if ( avgErr > avgError + significance * stDev )
-				idToRegion.put( tileId, 1.0f );
-			else
-				idToRegion.put( tileId, 0.0f );
-		}
-		*/
-
 		final double maxRange = Math.max( err.maxMinError, Math.max( err.maxAvgError, err.maxMaxError ) );
 
 		source = VisualizeTools.visualizeMultiRes( source, "avg Error", idToModel, idToTileSpec, err.idToAvgError, 1, 128, 2, Runtime.getRuntime().availableProcessors() );

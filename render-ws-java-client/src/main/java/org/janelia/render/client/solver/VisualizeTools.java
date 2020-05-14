@@ -250,7 +250,7 @@ public class VisualizeTools
 
 		for ( int downsampling = minDS; downsampling <= maxDS; downsampling *= dsInc )
 		{
-			LOG.info( "Assembling Multiresolution pyramid for downsampling=" + downsampling );
+			//LOG.info( "Assembling Multiresolution pyramid for downsampling=" + downsampling );
 
 			// the virtual image is zeroMin, this transformation puts it into the global coordinate system
 			final AffineTransform3D t = new AffineTransform3D();
