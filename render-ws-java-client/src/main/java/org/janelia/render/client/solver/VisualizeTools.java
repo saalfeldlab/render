@@ -213,11 +213,23 @@ public class VisualizeTools
 			final int minDS, final int maxDS, final int dsInc,
 			final int numThreads )
 	{
-		return visualizeMultiRes( null, idToModels, idToTileSpec, idToValue, minDS, maxDS, dsInc, numThreads );
+		return visualizeMultiRes( null, "preview", idToModels, idToTileSpec, idToValue, minDS, maxDS, dsInc, numThreads );
+	}
+
+	public static BdvStackSource< ? > visualizeMultiRes(
+			final String name,
+			final HashMap<String, AffineModel2D> idToModels,
+			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, Float> idToValue,
+			final int minDS, final int maxDS, final int dsInc,
+			final int numThreads )
+	{
+		return visualizeMultiRes( null, name, idToModels, idToTileSpec, idToValue, minDS, maxDS, dsInc, numThreads );
 	}
 
 	public static BdvStackSource< ? > visualizeMultiRes(
 			BdvStackSource< ? > source,
+			final String name,
 			final HashMap<String, AffineModel2D> idToModels,
 			final HashMap<String, MinimalTileSpec> idToTileSpec,
 			final HashMap<String, Float> idToValue,
@@ -240,21 +252,19 @@ public class VisualizeTools
 			multiRes.add( new ValuePair<>( ra, t )  );
 		}
 
-		BdvStackSource< ? > source1;
-
 		if ( source == null )
 		{
-			BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( "Preview" ).numRenderingThreads( numThreads );
-			source1 = BdvFunctions.show( new MultiResolutionSource( createVolatileRAIs( multiRes ), "preview" ), options );
+			BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( "MultiResolution" ).numRenderingThreads( numThreads );
+			source = BdvFunctions.show( new MultiResolutionSource( createVolatileRAIs( multiRes ), name ), options );
 		}
 		else
 		{
-			source1 = BdvFunctions.show( new MultiResolutionSource( createVolatileRAIs( multiRes ), "preview" ), Bdv.options().addTo( source ).numRenderingThreads( numThreads ) );
+			source = BdvFunctions.show( new MultiResolutionSource( createVolatileRAIs( multiRes ), name ), Bdv.options().addTo( source ).numRenderingThreads( numThreads ) );
 		}
 
-		source1.setDisplayRange( 0, 3 );
+		source.setDisplayRange( 0, 3 );
 
-		return source1;
+		return source;
 	}
 
 	public static ArrayList< Pair< RandomAccessibleInterval< VolatileFloatType >, AffineTransform3D > > createVolatileRAIs(
