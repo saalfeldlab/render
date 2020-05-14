@@ -1,6 +1,7 @@
 package org.janelia.alignment.match.parameters;
 
 import com.beust.jcommander.Parameter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serializable;
 
@@ -53,6 +54,7 @@ public class FeatureRenderParameters
             description = "This deprecated option is left here to prevent legacy scripts from breaking, but it is ignored.  " +
                           "Features in masked areas are now excluded, so it is no longer necessary to fill canvases with noise.",
             arity = 1)
+    @JsonIgnore
     public Boolean deprecatedFillWithNoise;
 
 }
