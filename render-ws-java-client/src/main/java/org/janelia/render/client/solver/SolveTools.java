@@ -13,6 +13,8 @@ import java.util.ListIterator;
 import java.util.Map;
 
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.match.CanvasMatchResult;
+import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
@@ -25,10 +27,13 @@ import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.esotericsoftware.minlog.Log;
+
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
+import mpicbg.models.IdentityModel;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
@@ -51,6 +56,168 @@ import net.imglib2.view.Views;
 public class SolveTools
 {
 	private SolveTools() {}
+
+	public static double computeAlignmentError(
+			final Model< ? > crossLayerModel,
+			final Model< ? > montageLayerModel,
+			final MinimalTileSpec pTileSpec,
+			final MinimalTileSpec qTileSpec,
+			final Model< ? > pAlignmentModel, // solveItem.idToNewModel().get( pTileId ), // p
+			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
+			final Matches matches )
+	{
+		// for fitting local to global pair
+		final RigidModel2D rigidModel = new RigidModel2D();
+
+		final List< PointMatch > global = SolveTools.createFakeMatches(
+				pTileSpec.getWidth(),
+				pTileSpec.getHeight(),
+				pAlignmentModel, // p
+				qAlignmentModel ); // q
+
+		// the actual matches, local solve
+		final List< PointMatch > pms = CanvasMatchResult.convertMatchesToPointMatchList( matches );
+
+		final Model< ? > model;
+
+		if ( pTileSpec.getZ() == qTileSpec.getZ() )
+			model = montageLayerModel;
+		else
+			model = crossLayerModel;
+
+		try
+		{
+			model.fit( pms );
+		}
+		catch ( Exception e )
+		{
+			e.printStackTrace();
+		}
+
+		final List< PointMatch > local = SolveTools.createFakeMatches(
+				pTileSpec.getWidth(),
+				pTileSpec.getHeight(),
+				model, // p
+				new IdentityModel() ); // q
+
+		// match the local solve to the global solve rigidly, as the entire stack is often slightly rotated
+		// but do not change the transformations relative to each other (in local, global)
+		final ArrayList< PointMatch > relativeMatches = new ArrayList<>();
+
+		for ( int i = 0; i < global.size(); ++i )
+		{
+			relativeMatches.add( new PointMatch( new Point( local.get( i ).getP1().getL().clone() ), new Point( global.get( i ).getP1().getL().clone() ) ) );
+			relativeMatches.add( new PointMatch( new Point( local.get( i ).getP2().getL().clone() ), new Point( global.get( i ).getP2().getL().clone() ) ) );
+		}
+
+		try
+		{
+			rigidModel.fit( relativeMatches );
+		}
+		catch (Exception e){}
+
+		double vDiff = 0;
+
+		for ( int i = 0; i < global.size(); ++i )
+		{
+			final double dGx = global.get( i ).getP2().getL()[ 0 ] - global.get( i ).getP1().getL()[ 0 ];
+			final double dGy = global.get( i ).getP2().getL()[ 1 ] - global.get( i ).getP1().getL()[ 1 ];
+
+			final Point l1 = local.get( i ).getP1();
+			final Point l2 = local.get( i ).getP2();
+
+			l1.apply( rigidModel );
+			l2.apply( rigidModel );
+
+			final double dLx = l2.getW()[ 0 ] - l1.getW()[ 0 ];
+			final double dLy = l2.getW()[ 1 ] - l1.getW()[ 1 ];
+
+			vDiff += SolveTools.distance( dLx, dLy, dGx, dGy );
+		}
+
+		// Stitching error is almost zero (vdiff = 0.0271) if all points are used (NoMatchFilter).
+		vDiff /= (double)global.size();
+
+		return vDiff;
+	}
+
+	final static public double distance( final double px, final double py, final double qx, final double qy )
+	{
+		double sum = 0.0;
+		
+		final double dx = px - qx;
+		sum += dx * dx;
+
+		final double dy = py - qy;
+		sum += dy * dy;
+
+		return Math.sqrt( sum );
+	}
+
+	protected static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel )
+	{
+		final List< PointMatch > matches = new ArrayList<>();
+		
+		final double sampleWidth = (w - 1.0) / (SolveItem.samplesPerDimension - 1.0);
+		final double sampleHeight = (h - 1.0) / (SolveItem.samplesPerDimension - 1.0);
+
+		for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
+		{
+			final double sampleY = y * sampleHeight;
+			for (int x = 0; x < SolveItem.samplesPerDimension; ++x)
+			{
+				final double[] p = new double[] { x * sampleWidth, sampleY };
+				final double[] q = new double[] { x * sampleWidth, sampleY };
+
+				pModel.applyInPlace( p );
+				qModel.applyInPlace( q );
+
+				matches.add(new PointMatch( new Point(p), new Point(q) ));
+			}
+		}					
+
+		return matches;
+	}
+
+	protected static int fixIds( final List<? extends SolveItemData<?, ?, ?>> allItems, final int maxId )
+	{
+		final HashSet<Integer> existingIds = new HashSet<>();
+
+		for ( final SolveItemData<?, ?, ?> item : allItems )
+		{
+			final int id = item.getId();
+
+			if ( existingIds.contains( id ) )
+			{
+				// duplicate id
+				if ( id <= maxId )
+					throw new RuntimeException( "Id: " + id + " exists, but is <= maxId=" + maxId + ", this should never happen." );
+
+				final int newId = Math.max( maxId, max( existingIds ) ) + 1;
+				item.assignUpdatedId( newId );
+				existingIds.add( newId );
+
+				Log.info( "Assigning new id " + newId + " to block " + id);
+			}
+			else
+			{
+				Log.info( "Keeping id " + id);
+				existingIds.add( id );
+			}
+		}
+
+		return max( existingIds );
+	}
+
+	protected static int max( final Collection< Integer > ids )
+	{
+		int max = Integer.MIN_VALUE;
+
+		for ( final int i : ids )
+			max = Math.max( i, max );
+
+		return max;
+	}
 
 	protected static <B extends Model<B> & Affine2D< B >> ArrayList< Pair< Pair< Integer, String>, Tile<B> > > layerDetails(
 			final ArrayList< Integer > allZ,
@@ -100,6 +267,10 @@ public class SolveTools
 			rY.get().set( offset[ 1 ] );
 		}
 
+		//new ImageJ();
+		//ImageJFunctions.show( valueX ).setTitle( "valueX" );
+		//ImageJFunctions.show( valueY ).setTitle( "valueY" );
+
 		RandomAccess< DoubleType > rxIn = Views.extendMirrorSingle( valueX ).randomAccess();
 		RandomAccess< DoubleType > ryIn = Views.extendMirrorSingle( valueY ).randomAccess();
 
@@ -111,27 +282,36 @@ public class SolveTools
 
 		for ( int z = 0; z < allZ.size(); ++z )
 		{
-			rxIn.setPosition( z - 1, 0 );
-			ryIn.setPosition( z - 1, 0 );
+			rxIn.setPosition( z - 5, 0 );
+			ryIn.setPosition( z - 5, 0 );
 
 			double x = rxIn.get().get();
 			double y = ryIn.get().get();
-			
+
+			rxIn.setPosition( z + 5, 0 );
+			ryIn.setPosition( z + 5, 0 );
+
 			rxIn.fwd( 0 );
 			ryIn.fwd( 0 );
-			
-			rxOut.setPosition( rxIn );
-			ryOut.setPosition( ryIn );
+
+			rxOut.setPosition( z, 0 );
+			ryOut.setPosition( z, 0 );
 
 			rxOut.get().set( Math.pow( x - rxIn.get().get(), 2 ) );
 			ryOut.get().set( Math.pow( y - ryIn.get().get(), 2 ) );
 		}
+
+		//ImageJFunctions.show( derX ).setTitle( "derX" );
+		//ImageJFunctions.show( derY ).setTitle( "derY" );
 
 		final Img< DoubleType > filterX = ArrayImgs.doubles( allZ.size() );
 		final Img< DoubleType > filterY = ArrayImgs.doubles( allZ.size() );
 
 		Gauss3.gauss( 20, Views.extendMirrorSingle( derX ), filterX );
 		Gauss3.gauss( 20, Views.extendMirrorSingle( derY ), filterY );
+
+		//ImageJFunctions.show( filterX ).setTitle( "filterX" );
+		//ImageJFunctions.show( filterY ).setTitle( "filterY" );
 
 		rX = filterX.randomAccess();
 		rY = filterY.randomAccess();
@@ -192,8 +372,10 @@ public class SolveTools
 		}
 
 //		new ImageJ();
-//		ImageJFunctions.show( filterX );
-//		ImageJFunctions.show( filterY );
+		//ImageJFunctions.show( filterX ).setTitle( "lambda" );
+		//ImageJFunctions.show( filterY ).setTitle( "sum" );
+		//SimpleMultiThreading.threadHaltUnClean();
+
 		return tileToDynamicLambda;
 	}
 

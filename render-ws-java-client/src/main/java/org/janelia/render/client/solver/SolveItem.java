@@ -4,12 +4,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
+import org.janelia.alignment.match.Matches;
+
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import mpicbg.models.TranslationModel2D;
+import net.imglib2.util.Pair;
 
 public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
@@ -75,6 +78,8 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	public HashMap<Integer, HashSet<String>> zToTileId() { return solveItemData.zToTileId(); }
 	public HashMap<String, AffineModel2D> idToNewModel() { return solveItemData.idToNewModel(); }
 	public HashMap<Integer, Double> zToDynamicLambda() { return solveItemData.zToDynamicLambda(); }
+	public HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap() { return solveItemData.idToSolveItemErrorMap(); }
+	public List< Pair< Pair< String, String>, Matches > > matches() { return solveItemData.matches(); }
 
 	public HashMap<Tile<B>, String > tileToIdMap() { return tileToIdMap; }
 
@@ -138,7 +143,7 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	public static void main( String[] args )
 	{
 		SolveItem< TranslationModel2D, TranslationModel2D, TranslationModel2D > s = new SolveItem<>(
-				new SolveItemData< TranslationModel2D, TranslationModel2D, TranslationModel2D >( null, null, null, 100, 102 ) );
+				new SolveItemData< TranslationModel2D, TranslationModel2D, TranslationModel2D >( 0, null, null, null, 100, 102 ) );
 
 		for ( int z = s.minZ(); z <= s.maxZ(); ++z )
 		{

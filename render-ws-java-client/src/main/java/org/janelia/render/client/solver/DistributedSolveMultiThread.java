@@ -9,20 +9,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import mpicbg.models.Affine2D;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.Model;
-import mpicbg.spim.io.IOFunctions;
-import net.imglib2.multithreading.SimpleMultiThreading;
-import net.imglib2.util.Pair;
-
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ij.ImageJ;
-import ij.ImagePlus;
+import mpicbg.models.Affine2D;
+import mpicbg.models.Model;
+import mpicbg.spim.io.IOFunctions;
+import net.imglib2.multithreading.SimpleMultiThreading;
 
 public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
 {
@@ -41,59 +35,6 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 	{
 		final long time = System.currentTimeMillis();
 
-		//this.solveSet.leftItems.get( 8 ).maxZ = 4158;
-		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 8 ), //8, 9, 43, 49, 66 ),
-				runParams.pGroupList,
-				runParams.sectionIdToZMap,
-				parameters.renderWeb.baseDataUrl,
-				parameters.renderWeb.owner,
-				parameters.renderWeb.project,
-				parameters.matchOwner,
-				parameters.matchCollection,
-				parameters.stack,
-				parameters.maxAllowedErrorStitching,
-				parameters.maxIterationsStitching,
-				parameters.maxPlateauWidthStitching,
-				parameters.blockOptimizerLambdasRigid,
-				parameters.blockOptimizerLambdasTranslation,
-				parameters.blockOptimizerIterations,
-				parameters.blockMaxPlateauWidth,
-				parameters.blockMaxAllowedError,
-				parameters.threadsGlobal );
-		try
-		{
-			w.run();
-
-			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
-			{
-				final HashMap<String, Float> idToValue = new HashMap<>();
-				for ( final String tileId : s.idToTileSpec().keySet() )
-				{
-					final int z = (int)Math.round( s.idToTileSpec().get( tileId ).getZ() );
-					idToValue.put( tileId, s.zToDynamicLambda().get( z ).floatValue() + 1 ); // between 1 and 1.2
-				}
-
-				final Pair< HashMap<String, AffineModel2D>, HashMap<String, MinimalTileSpec> > visualizeInfo = 
-						VisualizeTools.visualizeInfo( s );
-				VisualizeTools.visualizeMultiRes( visualizeInfo.getA(), visualizeInfo.getB(), idToValue );
-			}
-
-			new ImageJ();
-			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
-			{
-				final ImagePlus imp = s.visualizeAligned();
-				VisualizeTools.renderBDV( imp, 0.15 );
-			}
-
-		} catch ( Exception e1 )
-		{
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-
-		SimpleMultiThreading.threadHaltUnClean();
-
 		final ArrayList< SolveItemData< G, B, S > > allItems;
 
 		// set up executor service
@@ -111,6 +52,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 				{
 					final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 							solveItemData,
+							solveSet.getMaxId() + 1,
 							runParams.pGroupList,
 							runParams.sectionIdToZMap,
 							parameters.renderWeb.baseDataUrl,
@@ -119,6 +61,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 							parameters.matchOwner,
 							parameters.matchCollection,
 							parameters.stack,
+							parameters.maxNumMatches,
+							parameters.serializeMatches,
 							parameters.maxAllowedErrorStitching,
 							parameters.maxIterationsStitching,
 							parameters.maxPlateauWidthStitching,
@@ -176,11 +120,11 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--project", "Sec10",
                             "--matchCollection", "Sec10_multi",
                             "--stack", "v3_acquire",
-                            "--targetStack", "v3_acquire_sp0",
-                            "--completeTargetStack",
+                            //"--targetStack", "v3_acquire_sp1",
+                            //"--completeTargetStack",
                             
-                            "--blockOptimizerLambdasRigid",       "1.0,1.0,0.5,0.1,0.01",
-                            "--blockOptimizerLambdasTranslation", "1.0,0.5,0.0,0.0,0.0",
+                            "--blockOptimizerLambdasRigid",       /*"1.0,1.0,0.5,0.1,0.01",*/"1.0,1.0,0.5,0.1,0.01",
+                            "--blockOptimizerLambdasTranslation", /*"0.5,0.0,0.0,0.0,0.0",*/"1.0,0.5,0.0,0.0,0.0",
                             "--blockOptimizerIterations", "1000,1000,500,200,100",
                             "--blockMaxPlateauWidth", "250,250,150,100,50",
 
@@ -190,7 +134,8 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                             "--minZ", "1",
                             "--maxZ", "34022",
 
-                            //"--threadsLocal", "1", 
+                            "--maxNumMatches", "0", // no limit, default
+                            "--threadsWorker", "1", 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",

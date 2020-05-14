@@ -16,6 +16,9 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.solver.matchfilter.MatchFilter;
+import org.janelia.render.client.solver.matchfilter.NoMatchFilter;
+import org.janelia.render.client.solver.matchfilter.RandomMaxAmountFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +27,7 @@ import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
+import mpicbg.models.IdentityModel;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
@@ -66,6 +70,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final HashMap< Integer, List< Integer > > zToPairs;
 
 	final int numThreads;
+	final boolean serializeMatches;
 
 	final double maxAllowedErrorStitching;
 	final int maxIterationsStitching, maxPlateauWidthStitching;
@@ -77,8 +82,18 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final SolveItem< G, B, S > inputSolveItem;
 	List< SolveItem< G, B, S > > solveItems;
 
+	// for assigning new id's when splitting solveItemData
+	final int startId;
+
+	// to filter matches
+	final MatchFilter matchFilter;
+
+	// for error computation (local)
+	final ArrayList< CanvasMatches > canvasMatches = new ArrayList<>();
+
 	public DistributedSolveWorker(
 			final SolveItemData< G, B, S > solveItemData,
+			final int startId,
 			final List< Pair< String, Double > > pGroupList,
 			final Map<String, ArrayList<Double>> sectionIdToZMap,
 			final String baseDataUrl,
@@ -87,6 +102,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final String matchOwner,
 			final String matchCollection,
 			final String stack,
+			final int maxNumMatches,
+			final boolean serializeMatches,
 			final double maxAllowedErrorStitching,
 			final int maxIterationsStitching,
 			final int maxPlateauWidthStitching,
@@ -101,6 +118,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		this.matchDataClient = new RenderDataClient( baseDataUrl, matchOwner, matchCollection );
 		this.stack = stack;
 		this.inputSolveItem = new SolveItem<>( solveItemData );
+		this.startId = startId;
 		this.pGroupList = pGroupList;
 		this.sectionIdToZMap = sectionIdToZMap;
 
@@ -115,6 +133,12 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		this.blockMaxAllowedError = blockMaxAllowedError;
 
 		this.numThreads = numThreads;
+		this.serializeMatches = serializeMatches;
+
+		if ( maxNumMatches <= 0 )
+			this.matchFilter = new NoMatchFilter();
+		else
+			this.matchFilter = new RandomMaxAmountFilter( maxNumMatches );
 
 		// used locally
 		this.pairs = new ArrayList<>();
@@ -131,7 +155,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		assembleMatchData( pairs, zToPairs );
 		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, numThreads );
 		connectGroupedTiles( pairs, inputSolveItem );
-		this.solveItems = splitSolveItem( inputSolveItem );
+		this.solveItems = splitSolveItem( inputSolveItem, startId );
 
 		for ( final SolveItem< G, B, S > solveItem : solveItems )
 		{
@@ -139,6 +163,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				throw new RuntimeException( "Couldn't regularize. Please check." );
 			solve( solveItem, zRadiusRestarts, numThreads );
 		}
+
+		for ( final SolveItem< G, B, S > solveItem : solveItems )
+			computeSolveItemErrors( solveItem, canvasMatches );
 	}
 
 	protected void assembleMatchData(
@@ -240,7 +267,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				}
 
 				// remember the entries, need to perform section-based stitching before running global optimization
-				pairs.add( new ValuePair<>( new ValuePair<>( p, q ), CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()) ) );
+				pairs.add( new ValuePair<>( new ValuePair<>( p, q ), matchFilter.filter( match.getMatches(), pTileSpec, qTileSpec ) ) );//CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()) ) );
 
 				final int pZ = (int)Math.round( pTileSpec.getZ() );
 				final int qZ = (int)Math.round( qTileSpec.getZ() );
@@ -257,6 +284,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					zToPairs.putIfAbsent( pZ, new ArrayList<>() );
 					zToPairs.get( pZ ).add( pairs.size() - 1 );
 				}
+
+				// for error computation
+				this.canvasMatches.add( match );
 			}
 		}
 	}
@@ -398,8 +428,12 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			//
 			for ( int i = 0; i < allZ.size(); ++i )
 			{
+				final int z = allZ.get( i );
+
 				// first get all tiles from adjacent layers and the associated grouped tile
 				final ArrayList< Pair< Pair< Integer, String>, Tile<B> > > neighboringTiles = new ArrayList<>();
+
+				int from = i, to = i;
 
 				for ( int d = 1; d <= stabilizationRadius && i + d < allZ.size(); ++d )
 				{
@@ -407,24 +441,33 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 						break;
 					else
 						neighboringTiles.addAll( SolveTools.layerDetails( allZ, zToGroupedTileList, solveItem, i + d ) );
+
+					to = i + d;
 				}
 
-				for ( int d = 1; d <= stabilizationRadius && i - d >= 0; ++d )
+				// if this z section is a restart we only go down from here
+				if ( !solveItem.restarts().contains( z ) )
 				{
-					if ( solveItem.restarts().contains( allZ.get( i - d ) ) )
-						break;
-					else
+					for ( int d = 1; d <= stabilizationRadius && i - d >= 0; ++d )
+					{
+						// always connect up, even if it is a restart, then break afterwards
 						neighboringTiles.addAll( SolveTools.layerDetails( allZ, zToGroupedTileList, solveItem, i - d ) );
-				}
 
-				// now go over all tiles of the current z
-				final int z = allZ.get( i ); 
+						from = i - d;
+
+						if ( solveItem.restarts().contains( allZ.get( i - d ) ) )
+							break;
+					}
+				}
 
 				final List<Tile<B>> groupedTiles = zToGroupedTileList.get( z );
 
-				LOG.info( "z=" + z + " contains " + groupedTiles.size() + " grouped tiles (StabilizingAffineModel2D) " );
+				if ( solveItem.restarts().contains( z ) )
+					LOG.info( "z=" + z + " is a RESTART" );
 
-				// find out where the Tile sits in average (given the n tiles it is grouped from)
+				LOG.info( "z=" + z + " contains " + groupedTiles.size() + " grouped tiles (StabilizingAffineModel2D), connected from " + allZ.get( from ) + " to " + allZ.get( to ) );
+
+				// now go over all tiles of the current z
 				for ( final Tile< B > groupedTile : groupedTiles )
 				{
 					final List< Tile<B> > imageTiles = solveItem.groupedTileToTiles().get( groupedTile );
@@ -463,25 +506,12 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 							final AffineModel2D stitchingTransform = solveItem.idToStitchingModel().get( tileId );
 							final AffineModel2D stitchingTransformPrev = solveItem.idToStitchingModel().get( neighbor.getA().getB() );
 	
-							final List< PointMatch > matches = new ArrayList<>();
-	
-							final double sampleWidth = (tileSpec.getWidth() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-							final double sampleHeight = (tileSpec.getHeight() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-		
-							for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
-							{
-								final double sampleY = y * sampleHeight;
-								for (int x = 0; x < SolveItem.samplesPerDimension; ++x)
-								{
-									final double[] p = new double[] { x * sampleWidth, sampleY };
-									final double[] q = new double[] { x * sampleWidth, sampleY };
-		
-									stitchingTransform.applyInPlace( p );
-									stitchingTransformPrev.applyInPlace( q );
-		
-									matches.add(new PointMatch( new Point(p), new Point(q) ));
-								}
-							}					
+							final List< PointMatch > matches = SolveTools.createFakeMatches(
+									tileSpec.getWidth(),
+									tileSpec.getHeight(),
+									stitchingTransform, // p
+									stitchingTransformPrev ); // q
+
 							matchesList.add( new ValuePair<>( matches, neighbor.getB() ) );
 						}
 					}
@@ -725,8 +755,11 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		}
 	}
 
-	protected List< SolveItem< G, B, S > > splitSolveItem( final SolveItem<G, B, S> inputSolveItem )
+	protected List< SolveItem< G, B, S > > splitSolveItem( final SolveItem<G, B, S> inputSolveItem, final int startId )
 	{
+		// assigning new id's to the solve items (they collide for now with other workers, fix upon merging)
+		int id = startId + 1;
+
 		final ArrayList< SolveItem< G, B, S > > solveItems = new ArrayList<>();
 
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
@@ -765,11 +798,14 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 				final SolveItem< G,B,S > solveItem = new SolveItem<>(
 						new SolveItemData< G, B, S >(
+							id,
 							inputSolveItem.globalSolveModelInstance(),
 							inputSolveItem.blockSolveModelInstance(),
 							inputSolveItem.stitchingSolveModelInstance(),
 							newMin,
 							newMax ) );
+
+				++id;
 
 				LOG.info( "block " + solveItem.getId() + ": old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
 				LOG.info( "block " + solveItem.getId() + ": min: " + newMin + " > max: " + newMax );
@@ -851,8 +887,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		for (final Tile< ? > tile : tileConfig.getTiles() )
 		{
-			((InterpolatedAffineModel2D)((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).getA()).setLambda( blockOptimizerLambdasRigid.get( 0 )); // irrelevant
-			((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( blockOptimizerLambdasTranslation.get( 0 )); // 1.0
+			((InterpolatedAffineModel2D)((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).getA()).setLambda( 1.0 ); // rigid vs affine
+			((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( 0.0 ); // translation
 			((InterpolatedAffineModel2D) tile.getModel()).setLambda( 0.0 ); // prealign without regularization
 		}
 		
@@ -958,6 +994,44 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			solveItem.idToNewModel().put( tileId, affine );
 			LOG.info("block " + solveItem.getId() + ": tile {} model from grouped tile is {}", tileId, affine);
+		}
+	}
+
+	// note: these are local errors of a single block only
+	protected void computeSolveItemErrors( final SolveItem< G,B,S > solveItem, final ArrayList< CanvasMatches > canvasMatches )
+	{
+		LOG.info( "Computing per-block errors for " + solveItem.idToTileSpec().keySet().size() + " tiles using " + canvasMatches.size() + " pairs of images ..." );
+
+		LOG.info( "Serializing all matches=" + serializeMatches );
+
+		// for local fits
+		final InterpolatedAffineModel2D< AffineModel2D, RigidModel2D > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
+		final S montageLayerModel = solveItem.stitchingSolveModelInstance();
+
+		for ( final CanvasMatches match : canvasMatches )
+		{
+			final String pTileId = match.getpId();
+			final String qTileId = match.getqId();
+
+			final MinimalTileSpec pTileSpec = solveItem.idToTileSpec().get( pTileId );
+			final MinimalTileSpec qTileSpec = solveItem.idToTileSpec().get( qTileId );
+
+			// it is from a different solveitem
+			if ( pTileSpec == null || qTileSpec == null )
+				continue;
+
+			// for a correct computation of errors after global alignment
+			if ( serializeMatches )
+				solveItem.matches().add( new SerializableValuePair<>( new SerializableValuePair<>( pTileId, qTileId ), match.getMatches() ) );
+
+			final double vDiff = SolveTools.computeAlignmentError(
+					crossLayerModel, montageLayerModel, pTileSpec, qTileSpec, solveItem.idToNewModel().get( pTileId ), solveItem.idToNewModel().get( qTileId ), match.getMatches() );
+
+			solveItem.idToSolveItemErrorMap().putIfAbsent( pTileId, new ArrayList<>() );
+			solveItem.idToSolveItemErrorMap().putIfAbsent( qTileId, new ArrayList<>() );
+
+			solveItem.idToSolveItemErrorMap().get( pTileId ).add( new SerializableValuePair<>( qTileId, vDiff ) );
+			solveItem.idToSolveItemErrorMap().get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
 		}
 	}
 

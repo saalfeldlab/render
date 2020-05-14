@@ -1,6 +1,5 @@
 package org.janelia.render.client.solver;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,7 +10,6 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,12 +43,16 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 		final List< Pair< String, Double > > pGroupList = runParams.pGroupList;
 		final Map<String, ArrayList<Double>> sectionIdToZMap = runParams.sectionIdToZMap;
 
+		final int startId = solveSet.getMaxId() + 1;
+
 		final String baseDataUrl = parameters.renderWeb.baseDataUrl;
 		final String owner = parameters.renderWeb.owner;
 		final String project = parameters.renderWeb.project;
 		final String matchOwner = parameters.matchOwner;
 		final String matchCollection = parameters.matchCollection;
 
+		final int maxNumMatches = parameters.maxNumMatches;
+		final boolean serializeMatches = parameters.serializeMatches;
 		final double maxAllowedErrorStitching = parameters.maxAllowedErrorStitching;
 		final int maxIterationsStitching = parameters.maxIterationsStitching;
 		final int maxPlateauWidthStitching = parameters.maxPlateauWidthStitching;
@@ -66,6 +68,7 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 				solveItemData -> {
 					final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
 							solveItemData,
+							startId,
 							pGroupList,
 							sectionIdToZMap,
 							baseDataUrl,
@@ -74,6 +77,8 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 							matchOwner,
 							matchCollection,
 							stack,
+							maxNumMatches,
+							serializeMatches,
 							maxAllowedErrorStitching,
 							maxIterationsStitching,
 							maxPlateauWidthStitching,

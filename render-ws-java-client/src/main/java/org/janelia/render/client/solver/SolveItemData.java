@@ -1,15 +1,19 @@
 package org.janelia.render.client.solver;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.List;
+
+import org.janelia.alignment.match.Matches;
 
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
+import net.imglib2.util.Pair;
 
 /**
  * This is the data that will be serialized and shipped through Spark
@@ -20,9 +24,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 {
 	private static final long serialVersionUID = -4933629169992559913L;
 
-	final public static AtomicInteger idGenerator = new AtomicInteger( 0 );
-
-	final private int id;
+	private int id;
 	int minZ, maxZ;
 
 	// used for global solve outside
@@ -40,18 +42,25 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	// stores the per-z dynamic lambdas
 	final private HashMap<Integer, Double > zToDynamicLambda = new HashMap<>();
 
+	// the errors per tile
+	final HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap = new HashMap<>();
+
+	// matches for error computation
+	final List< Pair< Pair< String, String>, Matches > > matches = new ArrayList<>();
+
 	final private G globalSolveModel;
 	final private B blockSolveModel;
 	final private S stitchingModel;
 
 	public SolveItemData(
+			final int id,
 			final G globalSolveModel,
 			final B blockSolveModel,
 			final S stitchingModel,
 			final int minZ,
 			final int maxZ )
 	{
-		this.id = idGenerator.getAndIncrement();
+		this.id = id;
 
 		this.minZ = minZ;
 		this.maxZ = maxZ;
@@ -61,6 +70,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 		this.stitchingModel = stitchingModel.copy();
 	}
 
+	protected void assignUpdatedId( final int id ) { this.id = id; }
 	public int getId() { return id; }
 	public int minZ() { return minZ; }
 	public int maxZ() { return maxZ; }
@@ -74,6 +84,8 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
 	public HashMap<String, AffineModel2D> idToNewModel() { return idToNewModel; }
 	public HashMap<Integer, Double> zToDynamicLambda() { return zToDynamicLambda; }
+	public HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap() { return idToSolveItemErrorMap; }
+	public List< Pair< Pair< String, String>, Matches > > matches() { return matches; }
 
 	public double getWeight( final int z )
 	{

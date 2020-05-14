@@ -11,35 +11,17 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
+import org.janelia.render.client.solver.ErrorTools.ErrorFilter;
+import org.janelia.render.client.solver.ErrorTools.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import bdv.util.Bdv;
-import bdv.util.BdvFunctions;
-import bdv.util.BdvOptions;
 import bdv.util.BdvStackSource;
-import bdv.util.volatiles.VolatileViews;
 import mpicbg.models.Affine2D;
-import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
-import net.imglib2.Cursor;
-import net.imglib2.Interval;
-import net.imglib2.RandomAccess;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.cache.img.CellLoader;
-import net.imglib2.cache.img.ReadOnlyCachedCellImgFactory;
-import net.imglib2.cache.img.ReadOnlyCachedCellImgOptions;
-import net.imglib2.cache.img.SingleCellArrayImg;
+import mpicbg.util.RealSum;
 import net.imglib2.multithreading.SimpleMultiThreading;
-import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.type.NativeType;
-import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.type.volatiles.VolatileFloatType;
 import net.imglib2.util.Pair;
-import net.imglib2.util.ValuePair;
-import net.imglib2.view.Views;
-
 
 public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
 {
@@ -49,13 +31,18 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 			final G globalSolveModel,
 			final B blockSolveModel,
 			final S stitchingModel,
-			final ParametersDistributedSolve parameters,
-			final File path ) throws IOException
+			final ParametersDistributedSolve parameters ) throws IOException
 
 	{
 		super( globalSolveModel, blockSolveModel, stitchingModel, parameters );
 
-		this.path = path;
+		this.path = new File( parameters.serializerDirectory );
+
+		if ( !this.path.exists() )
+			throw new IOException( "Path '" + this.path.getAbsoluteFile() + "' does not exist." );
+
+		// we do not want to serialize here
+		this.serializer = null;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -133,24 +120,19 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             "--owner", "Z1217_33m_BR",
                             "--project", "Sec10",
                             "--matchCollection", "Sec10_multi",
-                            "--stack", "v2_acquire_merged",
-                            //"--targetStack", "v2_acquire_merged_mpicbg_stitchfirst_fix_prealign",
+                            "--stack", "v3_acquire",
+                            //"--targetStack", "v3_acquire_sp1",
                             //"--completeTargetStack",
-                            
-                            //"--blockOptimizerLambdasRigid", "1.0,0.5,0.1,0.01",
-                            "--blockOptimizerIterations", "200,100,40,20",
-                            "--blockMaxPlateauWidth", "50,50,40,20",
-
-                            //"--blockSize", "100",
-                            //"--noStitching", // do not stitch first
                             
                             "--minZ", "1",
                             "--maxZ", "34022",
+                            "--blockSize", "500",
 
-                            //"--threadsLocal", "1", 
+                            //"--threadsWorker", "1", 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
-                            "--maxIterationsGlobal", "10000"
+                            "--maxIterationsGlobal", "10000",
+                            "--serializerDirectory", "/groups/scicompsoft/home/preibischs/Documents/FIB-SEM/ser500_full"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -160,8 +142,8 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                 LOG.info("runClient: entry, parameters={}", parameters);
                
                 DistributedSolve.visualizeOutput = false;
-                DistributedSolve.visMinZ = 1223;
-                DistributedSolve.visMaxZ = 1285	;
+                DistributedSolve.visMinZ = 3500;
+                DistributedSolve.visMaxZ = 5000;
                 
                 @SuppressWarnings({ "rawtypes", "unchecked" })
                 final DistributedSolve solve =
@@ -169,21 +151,19 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                 				parameters.globalModel(),
                 				parameters.blockModel(),
                 				parameters.stitchingModel(),
-                				parameters,
-                				new File(".") );
+                				parameters );
                 
                 solve.run();
 
                 final GlobalSolve gs = solve.globalSolve();
 
-                // visualize the layers
-				final HashMap<String, Float> idToValue = new HashMap<>();
-				for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
-					idToValue.put( tileId, gs.zToDynamicLambdaGlobal.get( (int)Math.round( gs.idToTileSpecGlobal.get( tileId ).getZ() ) ).floatValue() + 1 ); // between 1 and 1.2
+				// visualize maxError
+				final Errors errors = ErrorTools.computeErrors( gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorFilter.CROSS_LAYER_ONLY );
+				BdvStackSource<?> vis = ErrorTools.renderErrors( errors, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal );
 
-                VisualizeTools.visualizeMultiRes( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToValue, 1, 128, 2, parameters.threadsGlobal );
+				vis = VisualizeTools.renderDynamicLambda( vis, gs.zToDynamicLambdaGlobal, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal );
 
-            	SimpleMultiThreading.threadHaltUnClean();
+				SimpleMultiThreading.threadHaltUnClean();
             }
         };
         clientRunner.run();

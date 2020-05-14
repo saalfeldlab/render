@@ -7,8 +7,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
+import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +27,7 @@ import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
+import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
@@ -46,6 +49,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		final HashMap<String, MinimalTileSpec> idToTileSpecGlobal = new HashMap<>();
 		final HashMap<Integer, HashSet<String> > zToTileIdGlobal = new HashMap<>();
 		final HashMap<Integer, Double> zToDynamicLambdaGlobal = new HashMap<>();
+		final HashMap< String, List< Pair< String, Double > > > idToErrorMapGlobal = new HashMap<>();
 	}
 
 	final G globalSolveModel;
@@ -102,6 +106,10 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 			return;
 		}
 
+		// avoid duplicate id assigned while splitting solveitems in the workers
+		// but do keep ids that are smaller or equal to the maxId of the initial solveset
+		final int maxId = SolveTools.fixIds( this.allItems, solveSet.getMaxId() );
+
 		try
 		{
 			if ( serializer != null )
@@ -115,11 +123,22 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 		try
 		{
-			this.solve = globalSolve( this.allItems );
+			this.solve = globalSolve( this.allItems, maxId + 1 );
 		}
 		catch ( Exception e )
 		{
 			LOG.info("FAILED to compute global solve (STOPPING): " + e );
+			e.printStackTrace();
+			return;
+		}
+
+		try
+		{
+			computeGlobalErrors( this.solve, this.allItems );
+		}
+		catch ( Exception e )
+		{
+			LOG.info("FAILED to compute global errors: " + e );
 			e.printStackTrace();
 			return;
 		}
@@ -198,8 +217,10 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		}
 	}
 
-	protected GlobalSolve globalSolve( final List< SolveItemData< G, B, S > > allSolveItems ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException, NoninvertibleModelException
+	protected GlobalSolve globalSolve( final List< SolveItemData< G, B, S > > allSolveItems, final int startId ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException, NoninvertibleModelException
 	{
+		int id = startId;
+
 		final GlobalSolve gs = new GlobalSolve();
 
 		// local structures required for solvig
@@ -336,10 +357,13 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 	
 						// remember which solveItems defined which tileIds of this z section
 						
-						final SolveItemData< G, B, S > solveItemB = new DummySolveItemData< G, B, S >( solveItemA.globalSolveModelInstance(), solveItemA.blockSolveModelInstance(), solveItemA.stitchingSolveModelInstance(), z );
+						final SolveItemData< G, B, S > solveItemB = new DummySolveItemData< G, B, S >(
+								id, solveItemA.globalSolveModelInstance(), solveItemA.blockSolveModelInstance(), solveItemA.stitchingSolveModelInstance(), z );
 						zToSolveItemPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
 						solveItemDataToTile.putIfAbsent( solveItemB, new Tile<>( solveItemB.globalSolveModelInstance() ) );
 	
+						++id;
+
 						for ( final String tileId : tileIds )
 						{
 							solveItemB.idToNewModel().put( tileId, new AffineModel2D() );
@@ -438,11 +462,81 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 					gs.zToDynamicLambdaGlobal.put( z, dynamicLambda );
 					gs.idToFinalModelGlobal.put( tileId, tileModel );
+
+					// TODO: proper error computation using the matches that are now stored in the SolveItemData object
+					if ( regularizeB < 0.5 )
+						gs.idToErrorMapGlobal.put( tileId, solveItemA.idToSolveItemErrorMap.get( tileId ) );
+					else
+						gs.idToErrorMapGlobal.put( tileId, solveItemB.idToSolveItemErrorMap.get( tileId ) );
 				}
 			}
 		}
 
 		return gs;
+	}
+
+	protected void computeGlobalErrors( final GlobalSolve gs, final List< SolveItemData< G, B, S > > allSolveItems )
+	{
+		LOG.info( "Computing global errors ... " );
+
+		// pTileId >> qTileId, Matches
+		final HashMap< String, HashMap< String, Matches > > allMatches = new HashMap<>();
+
+		// combine all matches from all solveitems
+		for ( final SolveItemData<G, B, S> sid : allSolveItems )
+		{
+			for ( final Pair< Pair< String, String>, Matches > matchPair : sid.matches )
+			{
+				final String pTileId = matchPair.getA().getA();
+				final String qTileId = matchPair.getA().getB();
+				final Matches matches = matchPair.getB();
+
+				allMatches.putIfAbsent( pTileId, new HashMap<String, Matches>() );
+				final HashMap<String, Matches> qTileIdToMatches = allMatches.get( pTileId );
+
+				if ( !qTileIdToMatches.containsKey( qTileId ) )
+					qTileIdToMatches.put( qTileId, matches );
+			}
+		}
+
+		if ( allMatches.size() == 0 )
+		{
+			LOG.info( "Matches were not saved, using a combination of local errors." );
+			return;
+		}
+		else
+		{
+			LOG.info( "Clearing local block errors." );
+			gs.idToErrorMapGlobal.clear();
+		}
+
+		// for local fits
+		final InterpolatedAffineModel2D< AffineModel2D, RigidModel2D > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
+		final S montageLayerModel = this.stitchingModel.copy();
+
+		for ( final String pTileId : allMatches.keySet() )
+		{
+			final HashMap<String, Matches> qTileIdToMatches = allMatches.get( pTileId );
+
+			for ( final String qTileId : qTileIdToMatches.keySet() )
+			{
+				final Matches matches = qTileIdToMatches.get( qTileId );
+
+				final MinimalTileSpec pTileSpec = gs.idToTileSpecGlobal.get( pTileId );
+				final MinimalTileSpec qTileSpec = gs.idToTileSpecGlobal.get( qTileId );
+
+				final double vDiff = SolveTools.computeAlignmentError(
+						crossLayerModel, montageLayerModel, pTileSpec, qTileSpec, gs.idToFinalModelGlobal.get( pTileId ), gs.idToFinalModelGlobal.get( qTileId ), matches );
+
+				gs.idToErrorMapGlobal.putIfAbsent( pTileId, new ArrayList<>() );
+				gs.idToErrorMapGlobal.putIfAbsent( qTileId, new ArrayList<>() );
+
+				gs.idToErrorMapGlobal.get( pTileId ).add( new SerializableValuePair<>( qTileId, vDiff ) );
+				gs.idToErrorMapGlobal.get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
+			}
+		}
+
+		LOG.info( "Done computing global errors." );
 	}
 
 	protected SolveSet< G, B, S > defineSolveSet( final int minZ, final int maxZ, final int setSize )
@@ -454,15 +548,19 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		final ArrayList< SolveItemData< G, B, S > > leftSets = new ArrayList<>();
 		final ArrayList< SolveItemData< G, B, S > > rightSets = new ArrayList<>();
 
+		int id = 0;
+
 		for ( int i = 0; i < numSetsLeft; ++i )
 		{
 			leftSets.add(
 					new SolveItemData< G, B, S >(
+							id,
 							this.globalSolveModel,
 							this.blockSolveModel,
 							this.stitchingModel,
 							minZ + i * setSize,
 							Math.min( minZ + (i + 1) * setSize - 1, maxZ ) ) );
+			++id;
 		}
 
 		for ( int i = 0; i < numSetsLeft - 1; ++i )
@@ -472,11 +570,13 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 			rightSets.add(
 					new SolveItemData< G, B, S >(
+							id,
 							this.globalSolveModel,
 							this.blockSolveModel,
 							this.stitchingModel,
 							( set0.minZ() + set0.maxZ() ) / 2,
 							( set1.minZ() + set1.maxZ() ) / 2 - 1 ) );
+			++id;
 		}
 
 		return new SolveSet< G, B, S >( leftSets, rightSets );

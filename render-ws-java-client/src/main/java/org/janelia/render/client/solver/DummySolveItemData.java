@@ -7,9 +7,9 @@ public class DummySolveItemData< G extends Model< G > & Affine2D< G >, B extends
 {
 	private static final long serialVersionUID = 343262523978772499L;
 
-	public DummySolveItemData( final G g, final B b, final S s, final int z )
+	public DummySolveItemData( final int id, final G g, final B b, final S s, final int z )
 	{
-		super( g, b, s, z, z );
+		super( id, g, b, s, z, z );
 	}
 
 	@Override
