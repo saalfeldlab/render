@@ -1,8 +1,10 @@
 package org.janelia.alignment.match;
 
-import com.google.common.base.Objects;
-
 import java.io.Serializable;
+import java.util.Objects;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import org.janelia.alignment.RenderParameters;
 import org.slf4j.Logger;
@@ -19,15 +21,18 @@ public class CanvasIdWithRenderContext
         implements Serializable {
 
     private final CanvasId canvasId;
+    private final String loaderName;
     private final String url;
     private final Integer clipWidth;
     private final Integer clipHeight;
 
-    public CanvasIdWithRenderContext(final CanvasId canvasId,
-                                     final String url,
-                                     final Integer clipWidth,
-                                     final Integer clipHeight) {
+    public CanvasIdWithRenderContext(@Nonnull final CanvasId canvasId,
+                                     @Nullable final String loaderName,
+                                     @Nonnull final String url,
+                                     @Nullable final Integer clipWidth,
+                                     @Nullable final Integer clipHeight) {
         this.canvasId = canvasId;
+        this.loaderName = loaderName;
         this.url = url;
         this.clipWidth = clipWidth;
         this.clipHeight = clipHeight;
@@ -35,6 +40,10 @@ public class CanvasIdWithRenderContext
 
     public CanvasId getCanvasId() {
         return canvasId;
+    }
+
+    public String getLoaderName() {
+        return loaderName;
     }
 
     public String getUrl() {
@@ -82,22 +91,28 @@ public class CanvasIdWithRenderContext
             return false;
         }
         final CanvasIdWithRenderContext canvasIdWithRenderContext = (CanvasIdWithRenderContext) that;
-        return Objects.equal(url, canvasIdWithRenderContext.url) &&
-               Objects.equal(clipWidth, canvasIdWithRenderContext.clipWidth) &&
-               Objects.equal(clipHeight, canvasIdWithRenderContext.clipHeight);
+        return url.equals(canvasIdWithRenderContext.url) &&
+               Objects.equals(loaderName, canvasIdWithRenderContext.loaderName) &&
+               Objects.equals(clipWidth, canvasIdWithRenderContext.clipWidth) &&
+               Objects.equals(clipHeight, canvasIdWithRenderContext.clipHeight);
     }
 
     @Override
     public int hashCode() {
         // ignore clipWidth and clipHeight for hashCode since those values
         // should rarely (if ever) differ for canvases with the same URL
-        return url.hashCode();
+        int result = url.hashCode();
+        if (loaderName != null) {
+            result = (31 * result) + loaderName.hashCode();
+        }
+        return result;
     }
 
     @Override
     public String toString() {
         return "{" +
                "canvasId: '" + canvasId +
+               (loaderName == null ? "" : ", stageName: " + loaderName) +
                "', url: '" + url + '\'' +
                (clipWidth == null ? "" : ", clipWidth: " + clipWidth) +
                (clipHeight == null ? "" : ", clipHeight: " + clipHeight) +
@@ -107,7 +122,14 @@ public class CanvasIdWithRenderContext
 
     public static CanvasIdWithRenderContext build(final CanvasId canvasId,
                                                   final CanvasRenderParametersUrlTemplate urlTemplate) {
+        return build(canvasId, null, urlTemplate);
+    }
+
+    public static CanvasIdWithRenderContext build(final CanvasId canvasId,
+                                                  final String stageName,
+                                                  final CanvasRenderParametersUrlTemplate urlTemplate) {
         return new CanvasIdWithRenderContext(canvasId,
+                                             stageName,
                                              urlTemplate.getRenderParametersUrl(canvasId),
                                              urlTemplate.getClipWidth(),
                                              urlTemplate.getClipHeight());

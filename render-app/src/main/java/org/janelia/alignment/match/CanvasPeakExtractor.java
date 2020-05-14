@@ -9,6 +9,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.annotation.Nonnull;
+
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
@@ -48,7 +50,7 @@ public class CanvasPeakExtractor
      *
      * @param  gdParameters              core descriptor parameters for peak extraction.
      */
-    public CanvasPeakExtractor(final GeometricDescriptorParameters gdParameters) {
+    public CanvasPeakExtractor(@Nonnull final GeometricDescriptorParameters gdParameters) {
 
         this.gdParameters = gdParameters;
         this.imageProcessorCache = ImageProcessorCache.DISABLED_CACHE;
@@ -56,6 +58,25 @@ public class CanvasPeakExtractor
 
     public void setImageProcessorCache(final ImageProcessorCache imageProcessorCache) {
         this.imageProcessorCache = imageProcessorCache;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        final CanvasPeakExtractor that = (CanvasPeakExtractor) o;
+
+        return gdParameters.equals(that.gdParameters);
+    }
+
+    @Override
+    public int hashCode() {
+        return gdParameters.hashCode();
     }
 
     /**

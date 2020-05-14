@@ -137,7 +137,8 @@ public class CanvasDataCache {
 
         this.buildCache(recordStats);
 
-        LOG.info("<init>: exit");
+        LOG.info("<init>: exit, created {} kilobyte cache for {} data",
+                 kilobyteCapacity, canvasDataLoader.getDataClass());
     }
 
     /**

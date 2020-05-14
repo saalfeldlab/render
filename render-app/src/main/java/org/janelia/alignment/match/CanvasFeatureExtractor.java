@@ -6,6 +6,9 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+
+import javax.annotation.Nonnull;
 
 import mpicbg.ij.SIFT;
 import mpicbg.imagefeatures.Feature;
@@ -41,7 +44,7 @@ public class CanvasFeatureExtractor implements Serializable {
      * @param  minScale            SIFT minimum scale (minSize * minScale < size < maxSize * maxScale).
      * @param  maxScale            SIFT maximum scale (minSize * minScale < size < maxSize * maxScale).
      */
-    public CanvasFeatureExtractor(final FloatArray2DSIFT.Param coreSiftParameters,
+    public CanvasFeatureExtractor(@Nonnull final FloatArray2DSIFT.Param coreSiftParameters,
                                   final double minScale,
                                   final double maxScale) {
 
@@ -55,6 +58,38 @@ public class CanvasFeatureExtractor implements Serializable {
 
     public void setImageProcessorCache(final ImageProcessorCache imageProcessorCache) {
         this.imageProcessorCache = imageProcessorCache;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        final CanvasFeatureExtractor that = (CanvasFeatureExtractor) o;
+
+        if (Double.compare(that.minScale, minScale) != 0) {
+            return false;
+        }
+        if (Double.compare(that.maxScale, maxScale) != 0) {
+            return false;
+        }
+        return coreSiftParameters.equals(that.coreSiftParameters);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(coreSiftParameters.fdSize,
+                            coreSiftParameters.fdBins,
+                            coreSiftParameters.maxOctaveSize,
+                            coreSiftParameters.minOctaveSize,
+                            coreSiftParameters.steps,
+                            coreSiftParameters.initialSigma,
+                            minScale,
+                            maxScale);
     }
 
     /**
