@@ -62,6 +62,14 @@ public class VisualizeTools
 	public static int maxCacheSize = Integer.MAX_VALUE;
 
 	public static BdvStackSource< ? > renderDynamicLambda(
+			final HashMap<Integer, Double> zToDynamicLambda,
+			final HashMap< String, AffineModel2D > idToModel,
+			final HashMap< String, MinimalTileSpec > idToTileSpec )
+	{
+		return renderDynamicLambda( null, zToDynamicLambda, idToModel, idToTileSpec );
+	}
+
+	public static BdvStackSource< ? > renderDynamicLambda(
 			BdvStackSource< ? > source,
 			final HashMap<Integer, Double> zToDynamicLambda,
 			final HashMap< String, AffineModel2D > idToModel,
