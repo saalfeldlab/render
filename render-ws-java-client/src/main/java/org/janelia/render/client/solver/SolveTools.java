@@ -67,7 +67,7 @@ public class SolveTools
 			final Matches matches )
 	{
 		// for fitting local to global pair
-		final RigidModel2D rigidModel = new RigidModel2D();
+		final Model<?> relativeModel = new RigidModel2D();
 
 		final List< PointMatch > global = SolveTools.createFakeMatches(
 				pTileSpec.getWidth(),
@@ -112,7 +112,7 @@ public class SolveTools
 
 		try
 		{
-			rigidModel.fit( relativeMatches );
+			relativeModel.fit( relativeMatches );
 		}
 		catch (Exception e){}
 
@@ -120,14 +120,15 @@ public class SolveTools
 
 		for ( int i = 0; i < global.size(); ++i )
 		{
+			// TODO: just subtract points
 			final double dGx = global.get( i ).getP2().getL()[ 0 ] - global.get( i ).getP1().getL()[ 0 ];
 			final double dGy = global.get( i ).getP2().getL()[ 1 ] - global.get( i ).getP1().getL()[ 1 ];
 
 			final Point l1 = local.get( i ).getP1();
 			final Point l2 = local.get( i ).getP2();
 
-			l1.apply( rigidModel );
-			l2.apply( rigidModel );
+			l1.apply( relativeModel );
+			l2.apply( relativeModel );
 
 			final double dLx = l2.getW()[ 0 ] - l1.getW()[ 0 ];
 			final double dLy = l2.getW()[ 1 ] - l1.getW()[ 1 ];
