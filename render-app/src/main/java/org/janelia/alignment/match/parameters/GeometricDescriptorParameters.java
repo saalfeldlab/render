@@ -3,6 +3,7 @@ package org.janelia.alignment.match.parameters;
 import com.beust.jcommander.Parameter;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 import mpicbg.spim.segmentation.InteractiveDoG;
 
@@ -156,5 +157,48 @@ public class GeometricDescriptorParameters
         dp.similarOrientation = similarOrientation;
 
         return dp;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        final GeometricDescriptorParameters that = (GeometricDescriptorParameters) o;
+
+        return (lookForMinima == that.lookForMinima) &&
+               (lookForMaxima == that.lookForMaxima) &&
+               (similarOrientation == that.similarOrientation) &&
+               Objects.equals(numberOfNeighbors, that.numberOfNeighbors) &&
+               Objects.equals(redundancy, that.redundancy) &&
+               Objects.equals(significance, that.significance) &&
+               Objects.equals(sigma, that.sigma) &&
+               Objects.equals(threshold, that.threshold) &&
+               (localization == that.localization) &&
+               Objects.equals(fullScaleBlockRadius, that.fullScaleBlockRadius) &&
+               Objects.equals(fullScaleNonMaxSuppressionRadius, that.fullScaleNonMaxSuppressionRadius) &&
+               Objects.equals(gdStoredMatchWeight, that.gdStoredMatchWeight);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = numberOfNeighbors != null ? numberOfNeighbors.hashCode() : 0;
+        result = 31 * result + (redundancy != null ? redundancy.hashCode() : 0);
+        result = 31 * result + (significance != null ? significance.hashCode() : 0);
+        result = 31 * result + (sigma != null ? sigma.hashCode() : 0);
+        result = 31 * result + (threshold != null ? threshold.hashCode() : 0);
+        result = 31 * result + (localization != null ? localization.hashCode() : 0);
+        result = 31 * result + (lookForMinima ? 1 : 0);
+        result = 31 * result + (lookForMaxima ? 1 : 0);
+        result = 31 * result + (similarOrientation ? 1 : 0);
+        result = 31 * result + (fullScaleBlockRadius != null ? fullScaleBlockRadius.hashCode() : 0);
+        result = 31 * result +
+                 (fullScaleNonMaxSuppressionRadius != null ? fullScaleNonMaxSuppressionRadius.hashCode() : 0);
+        result = 31 * result + (gdStoredMatchWeight != null ? gdStoredMatchWeight.hashCode() : 0);
+        return result;
     }
 }
