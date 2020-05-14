@@ -1,6 +1,8 @@
 package org.janelia.render.client.solver;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -175,10 +177,18 @@ public class ErrorTools
 			final HashMap< String, AffineModel2D > idToModel,
 			final HashMap< String, MinimalTileSpec > idToTileSpec )
 	{
+		// the actual values to display
 		final HashMap< String, Float > idToRegion = new HashMap<>();
+
+		// to later find the neighbors
+		final HashMap< Integer, List< MinimalTileSpec > > zToTileSpec = new HashMap<>();
+		final HashMap< Integer, List< MinimalTileSpec > > zWithOutliers = new HashMap<>();
 
 		for ( final String tileId : idToTileSpec.keySet() )
 		{
+			final MinimalTileSpec ts = idToTileSpec.get( tileId );
+			final int z = (int)Math.round( ts.getZ() );
+
 			final double avgError, stDevError, error;
 			
 			switch ( errorType )
@@ -201,9 +211,37 @@ public class ErrorTools
 			}
 
 			if ( error > avgError + significance * stDevError )
+			{
 				idToRegion.put( tileId, 1.0f );
+				zWithOutliers.putIfAbsent( z, new ArrayList<>() );
+				zWithOutliers.get( z ).add( ts );
+			}
 			else
+			{
 				idToRegion.put( tileId, 0.0f );
+			}
+
+			zToTileSpec.putIfAbsent( z, new ArrayList<>() );
+			zToTileSpec.get( z ).add( ts );
+		}
+
+		for ( final int z : zWithOutliers.keySet() )
+		{
+			for ( final MinimalTileSpec ts : zWithOutliers.get( z ) )
+			{
+				final int col = ts.getImageCol();
+
+				for ( int d = 1; d < 10; ++d )
+				{
+					for ( final MinimalTileSpec ts2 : zToTileSpec.get( z + d ) )
+						if ( ts2 != null && ts2.getImageCol() == col )
+							idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (10.0f - d) / 10.0f ) );
+
+					for ( final MinimalTileSpec ts2 : zToTileSpec.get( z - d ) )
+						if ( ts2 != null && ts2.getImageCol() == col )
+							idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (10.0f - d) / 10.0f ) );
+				}
+			}
 		}
 
 		source = VisualizeTools.visualizeMultiRes( source, "potential problem regions (" + significance + ")", idToModel, idToTileSpec, idToRegion, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
