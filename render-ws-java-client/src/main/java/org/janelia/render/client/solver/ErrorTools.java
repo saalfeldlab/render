@@ -2,11 +2,9 @@ package org.janelia.render.client.solver;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
-import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +18,8 @@ public class ErrorTools
 {
 	public static enum ErrorFilter{ ALL, CROSS_LAYER_ONLY, MONTAGE_LAYER_ONLY };
 	public static enum ErrorType{ MIN, AVG, MAX };
+
+	public static int problematicRegionRange = 50;
 
 	public static class Errors
 	{
@@ -231,15 +231,15 @@ public class ErrorTools
 			{
 				final int col = ts.getImageCol();
 
-				for ( int d = 1; d < 10; ++d )
+				for ( int d = 1; d < problematicRegionRange; ++d )
 				{
 					for ( final MinimalTileSpec ts2 : zToTileSpec.get( z + d ) )
 						if ( ts2 != null && ts2.getImageCol() == col )
-							idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (10.0f - d) / 10.0f ) );
+							idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (problematicRegionRange - d) / (float)problematicRegionRange ) );
 
 					for ( final MinimalTileSpec ts2 : zToTileSpec.get( z - d ) )
 						if ( ts2 != null && ts2.getImageCol() == col )
-							idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (10.0f - d) / 10.0f ) );
+							idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (problematicRegionRange - d) / (float)problematicRegionRange ) );
 				}
 			}
 		}
