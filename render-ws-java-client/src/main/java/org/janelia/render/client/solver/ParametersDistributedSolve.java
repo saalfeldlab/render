@@ -117,15 +117,15 @@ public class ParametersDistributedSolve extends CommandLineParameters
     // stitching align model, by default RIGID, regularized with Translation (0.25)
     @Parameter(
             names = "--modelTypeStitching",
-            description = "Type of transformation model for section stitching, if null no stitching first"
+            description = "Type of transformation model for section stitching (default: Translation2D)"
     )
-    public ModelType modelTypeStitching = ModelType.RIGID;
+    public ModelType modelTypeStitching = ModelType.TRANSLATION;
 
     @Parameter(
             names = "--modelTypeStitchingRegularizer",
-            description = "Type of transformation model for regularization for section stitching"
+            description = "Type of transformation model for regularization for section stitching (default: Rigid2D)"
     )
-    public ModelType modelTypeStitchingRegularizer = ModelType.TRANSLATION;
+    public ModelType modelTypeStitchingRegularizer = ModelType.RIGID;
 
     @Parameter(
             names = "--lambdaStitching",
