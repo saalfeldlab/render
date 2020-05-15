@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -13,6 +14,7 @@ import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
@@ -735,8 +737,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 							e.printStackTrace();
 						}
 					}
-
-					//System.exit( 0 );
 				}
 				else
 				{
@@ -1005,8 +1005,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		LOG.info( "Serializing all matches=" + serializeMatches );
 
 		// for local fits
-		final InterpolatedAffineModel2D< AffineModel2D, RigidModel2D > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
-		final S montageLayerModel = solveItem.stitchingSolveModelInstance();
+		final Model< ? > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
+		final Model< ? > montageLayerModel = solveItem.stitchingSolveModelInstance();
 
 		for ( final CanvasMatches match : canvasMatches )
 		{
