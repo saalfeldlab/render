@@ -50,7 +50,6 @@ import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.util.Pair;
-import net.imglib2.util.Util;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
 
@@ -67,6 +66,19 @@ public class SolveTools
 			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
 			final Matches matches )
 	{
+		return computeAlignmentError( crossLayerModel, montageLayerModel, pTileSpec, qTileSpec, pAlignmentModel, qAlignmentModel, matches, 10 );
+	}
+
+	public static double computeAlignmentError(
+			final Model< ? > crossLayerModel,
+			final Model< ? > montageLayerModel,
+			final MinimalTileSpec pTileSpec,
+			final MinimalTileSpec qTileSpec,
+			final Model< ? > pAlignmentModel, // solveItem.idToNewModel().get( pTileId ), // p
+			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
+			final Matches matches,
+			final int samplesPerDimension )
+	{
 		// for fitting local to global pair
 		final Model<?> relativeModel = new RigidModel2D();
 
@@ -75,7 +87,7 @@ public class SolveTools
 				pTileSpec.getHeight(),
 				pAlignmentModel, // p
 				qAlignmentModel,
-				100 ); // q
+				samplesPerDimension ); // q
 
 		// the actual matches, local solve
 		final List< PointMatch > pms = CanvasMatchResult.convertMatchesToPointMatchList( matches );
@@ -101,7 +113,7 @@ public class SolveTools
 				pTileSpec.getHeight(),
 				model, // p
 				new IdentityModel(),
-				100 ); // q
+				samplesPerDimension ); // q
 
 		// match the local solve to the global solve rigidly, as the entire stack is often slightly rotated
 		// but do not change the transformations relative to each other (in local, global)
