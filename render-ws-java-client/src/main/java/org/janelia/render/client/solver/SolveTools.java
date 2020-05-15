@@ -50,6 +50,7 @@ import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.util.Pair;
+import net.imglib2.util.Util;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
 
@@ -73,7 +74,8 @@ public class SolveTools
 				pTileSpec.getWidth(),
 				pTileSpec.getHeight(),
 				pAlignmentModel, // p
-				qAlignmentModel ); // q
+				qAlignmentModel,
+				100 ); // q
 
 		// the actual matches, local solve
 		final List< PointMatch > pms = CanvasMatchResult.convertMatchesToPointMatchList( matches );
@@ -98,7 +100,8 @@ public class SolveTools
 				pTileSpec.getWidth(),
 				pTileSpec.getHeight(),
 				model, // p
-				new IdentityModel() ); // q
+				new IdentityModel(),
+				100 ); // q
 
 		// match the local solve to the global solve rigidly, as the entire stack is often slightly rotated
 		// but do not change the transformations relative to each other (in local, global)
@@ -120,7 +123,6 @@ public class SolveTools
 
 		for ( int i = 0; i < global.size(); ++i )
 		{
-			// TODO: just subtract points
 			final double dGx = global.get( i ).getP2().getL()[ 0 ] - global.get( i ).getP1().getL()[ 0 ];
 			final double dGy = global.get( i ).getP2().getL()[ 1 ] - global.get( i ).getP1().getL()[ 1 ];
 
@@ -134,10 +136,12 @@ public class SolveTools
 			final double dLy = l2.getW()[ 1 ] - l1.getW()[ 1 ];
 
 			vDiff += SolveTools.distance( dLx, dLy, dGx, dGy );
+
+			//vDiff += SolveTools.distance( l1.getW()[ 0 ], l1.getW()[ 1 ], global.get( i ).getP1().getL()[ 0 ], global.get( i ).getP1().getL()[ 1 ] );
+			//vDiff += SolveTools.distance( l2.getW()[ 0 ], l2.getW()[ 1 ], global.get( i ).getP2().getL()[ 0 ], global.get( i ).getP2().getL()[ 1 ] );
 		}
 
-		// Stitching error is almost zero (vdiff = 0.0271) if all points are used (NoMatchFilter).
-		vDiff /= (double)global.size();
+		vDiff /= (double)global.size(); 
 
 		return vDiff;
 	}
@@ -157,15 +161,20 @@ public class SolveTools
 
 	protected static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel )
 	{
+		return createFakeMatches( w, h, pModel, qModel, SolveItem.samplesPerDimension );
+	}
+
+	protected static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel, final int samplesPerDimension )
+	{
 		final List< PointMatch > matches = new ArrayList<>();
 		
-		final double sampleWidth = (w - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-		final double sampleHeight = (h - 1.0) / (SolveItem.samplesPerDimension - 1.0);
+		final double sampleWidth = (w - 1.0) / (samplesPerDimension - 1.0);
+		final double sampleHeight = (h - 1.0) / (samplesPerDimension - 1.0);
 
-		for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
+		for (int y = 0; y < samplesPerDimension; ++y)
 		{
 			final double sampleY = y * sampleHeight;
-			for (int x = 0; x < SolveItem.samplesPerDimension; ++x)
+			for (int x = 0; x < samplesPerDimension; ++x)
 			{
 				final double[] p = new double[] { x * sampleWidth, sampleY };
 				final double[] q = new double[] { x * sampleWidth, sampleY };
@@ -175,7 +184,7 @@ public class SolveTools
 
 				matches.add(new PointMatch( new Point(p), new Point(q) ));
 			}
-		}					
+		}
 
 		return matches;
 	}
