@@ -133,7 +133,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-                            "--serializerDirectory", "/groups/scicompsoft/home/preibischs/Documents/FIB-SEM/ser"//500_full"
+                            "--serializerDirectory", "/groups/scicompsoft/home/preibischs/Documents/FIB-SEM/ser_global"//500_full"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -159,7 +159,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                 final GlobalSolve gs = solve.globalSolve();
 
 				// visualize maxError
-				final Errors errors = ErrorTools.computeErrors( gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorFilter.MONTAGE_LAYER_ONLY );
+				final Errors errors = ErrorTools.computeErrors( gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorFilter.CROSS_LAYER_ONLY );
 				BdvStackSource<?> vis = ErrorTools.renderErrors( errors, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal );
 
 				vis = ErrorTools.renderPotentialProblemAreas( vis, errors, ErrorType.AVG, 4.0, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal );

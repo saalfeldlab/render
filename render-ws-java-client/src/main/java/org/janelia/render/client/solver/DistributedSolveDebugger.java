@@ -37,7 +37,7 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 	{
 		//this.solveSet.leftItems.get( 44 ).maxZ = 22100;
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 63 ), //8, 9, 43, 44, 49, 66 ),
+				this.solveSet.leftItems.get( 49 ), //8, 9, 43, 44, 49, 66 ),
 				this.solveSet.getMaxId() + 1,
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
@@ -66,10 +66,10 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 
 			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
 			{
-				if ( s.idToNewModel().keySet().size() <= 500 )
-					continue;
+				//if ( s.idToNewModel().keySet().size() <= 500 )
+				//	continue;
 				// visualize maxError
-				final Errors errors = ErrorTools.computeErrors( s.idToSolveItemErrorMap(), s.idToTileSpec(), ErrorFilter.MONTAGE_LAYER_ONLY );
+				final Errors errors = ErrorTools.computeErrors( s.idToSolveItemErrorMap(), s.idToTileSpec(), ErrorFilter.CROSS_LAYER_ONLY );
 				BdvStackSource<?> vis = ErrorTools.renderErrors( errors, s.idToNewModel(), s.idToTileSpec() );
 
 				vis = ErrorTools.renderPotentialProblemAreas( vis, errors, ErrorType.AVG, 2.0, s.idToNewModel(), s.idToTileSpec() );
