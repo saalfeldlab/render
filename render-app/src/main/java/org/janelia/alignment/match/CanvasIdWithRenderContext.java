@@ -83,28 +83,29 @@ public class CanvasIdWithRenderContext
     }
 
     @Override
-    public boolean equals(final Object that) {
-        if (this == that) {
+    public boolean equals(final Object obj) {
+        if (this == obj) {
             return true;
         }
-        if (that == null || getClass() != that.getClass()) {
+        if (obj == null || getClass() != obj.getClass()) {
             return false;
         }
-        final CanvasIdWithRenderContext canvasIdWithRenderContext = (CanvasIdWithRenderContext) that;
-        return url.equals(canvasIdWithRenderContext.url) &&
-               Objects.equals(loaderName, canvasIdWithRenderContext.loaderName) &&
-               Objects.equals(clipWidth, canvasIdWithRenderContext.clipWidth) &&
-               Objects.equals(clipHeight, canvasIdWithRenderContext.clipHeight);
+        final CanvasIdWithRenderContext that = (CanvasIdWithRenderContext) obj;
+        return url.equals(that.url) &&
+               Objects.equals(loaderName, that.loaderName) &&
+               Objects.equals(canvasId.getRelativePosition(), that.canvasId.getRelativePosition()) &&
+               Objects.equals(clipWidth, that.clipWidth) &&
+               Objects.equals(clipHeight, that.clipHeight);
     }
 
     @Override
     public int hashCode() {
-        // ignore clipWidth and clipHeight for hashCode since those values
-        // should rarely (if ever) differ for canvases with the same URL
+        final MontageRelativePosition relativePosition = canvasId.getRelativePosition();
         int result = url.hashCode();
-        if (loaderName != null) {
-            result = (31 * result) + loaderName.hashCode();
-        }
+        result = (31 * result) + (loaderName == null ? 0 : loaderName.hashCode());
+        result = (31 * result) + (relativePosition == null ? 0 : relativePosition.hashCode());
+        // ignore clipWidth and clipHeight for hashCode since those values
+        // should rarely (if ever) differ for canvases with the same URL and relative position
         return result;
     }
 
