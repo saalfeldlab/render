@@ -80,6 +80,16 @@ public class MultiStagePointMatchClient
         public Integer maxPeakCacheGb = 2;
 
         @Parameter(
+                names = "--cacheFullScaleSourcePixels",
+                description = "Indicates that full scale source images should also be cached " +
+                              "for dynamically down-sampled images.  This is useful for stacks without " +
+                              "down-sampled mipmaps since it avoids reloading the full scale images when " +
+                              "different scales of the same image are rendered.  " +
+                              "This should not be used for stacks with mipmaps since that would waste cache space.",
+                arity = 0)
+        public boolean cacheFullScaleSourcePixels = false;
+
+        @Parameter(
                 names = "--failedPairsDir",
                 description = "Write failed pairs (ones that did not have matches) to a JSON file in this directory",
                 arity = 1)
@@ -137,7 +147,7 @@ public class MultiStagePointMatchClient
                 parameters.featureStorage.maxFeatureSourceCacheGb * 1_000_000_000;
         sourceImageProcessorCache = new ImageProcessorCache(maximumNumberOfCachedSourcePixels,
                                                             true,
-                                                            false);
+                                                            parameters.cacheFullScaleSourcePixels);
 
         this.stageNameToPairCountsMap = new HashMap<>();
 
@@ -239,7 +249,14 @@ public class MultiStagePointMatchClient
         for (final OrderedCanvasIdPair pair : renderableCanvasIdPairs.getNeighborPairs()) {
             final CanvasId p = pair.getP();
             final CanvasId q = pair.getQ();
+            // TODO: calculate pair's neighbor distance using template to get section to z data
+            final double neighborDistance = 0;
             for (final StageResources stageResources : stageResourcesList) {
+                if (stageResources.stageParameters.exceedsMaxNeighborDistance(neighborDistance)) {
+                    LOG.info("skipping stage {} for pair {} with neighborDistance {}",
+                             stageResources.stageParameters.getStageName(), pair, neighborDistance);
+                    break;
+                }
                 final List<CanvasMatches> pairMatchListForStage =
                         generateStageMatchesForPair(stageResources, featureDataCache, peakDataCache, p, q);
                 if (pairMatchListForStage.size() > 0) {
@@ -342,13 +359,6 @@ public class MultiStagePointMatchClient
                                               q,
                                               matchResult,
                                               pairCounts);
-        }
-
-        // TODO: remove these cache stats logs
-        LOG.info("generateMatchesForPairs: source cache stats are {}", sourceImageProcessorCache.getStats());
-        LOG.info("generateMatchesForPairs: feature cache stats are {}", featureDataCache.stats());
-        if (peakDataCache != null) {
-            LOG.info("generateMatchesForPairs: peak cache stats are {}", peakDataCache.stats());
         }
 
         LOG.info("generateStageMatchesForPair: exit, returning list with {} element(s) for pair {} and {} in stage {}",
@@ -861,58 +871,4 @@ public class MultiStagePointMatchClient
 
     }
 
-    // TODO: remove this
-//    private static final String MONTAGE_STAGE_JSON =
-//            "[\n" +
-//            "{\n" +
-//            "  \"stageName\": \"montagePass5\",\n" +
-//            "  \"featureRender\" : { \"renderScale\" : 0.05, \"renderWithFilter\" : true, \"renderWithoutMask\" : false },\n" +
-//            "  \"featureRenderClip\" : { \"clipWidth\" : 500, \"clipHeight\" : 500 },\n" +
-//            "  \"featureExtraction\" : { \"fdSize\" : 4, \"minScale\" : 0.25, \"maxScale\" : 1.0, \"steps\" : 5 },\n" +
-//            "  \"featureMatchDerivation\" : {\n" +
-//            "    \"matchRod\" : 0.92, \"matchModelType\" : \"RIGID\", \"matchRegularizerModelType\" : \"TRANSLATION\", \"matchInterpolatedModelLambda\" : 0.25,\n" +
-//            "    \"matchIterations\" : 1000, \"matchMaxEpsilon\" : 20.0, \"matchMinInlierRatio\" : 0.0, \"matchMinNumInliers\" : 10,\n" +
-//            "    \"matchMaxTrust\" : 4.0, \"matchFilter\" : \"SINGLE_SET\", \"matchFullScaleCoverageRadius\" : 300.0, \"matchMinCoveragePercentage\" : 50.0\n" +
-//            "  },\n" +
-//            "  \"geometricDescriptorAndMatch\" : {\n" +
-//            "    \"gdEnabled\" : true, \"renderScale\" : 1.0, \"renderWithFilter\" : false,\n" +
-//            "    \"geometricDescriptorParameters\" : {\n" +
-//            "      \"numberOfNeighbors\" : 3, \"redundancy\" : 2, \"significance\" : 1.2, \"sigma\" : 6.04,\n" +
-//            "      \"threshold\" : 0.008, \"localization\" : \"THREE_D_QUADRATIC\", \"lookForMinima\" : true, \"lookForMaxima\" : false,\n" +
-//            "      \"similarOrientation\" : true, \"fullScaleBlockRadius\" : 100.0, \"fullScaleNonMaxSuppressionRadius\" : 6.0, \"gdStoredMatchWeight\" : 0.36\n" +
-//            "    },\n" +
-//            "    \"matchDerivationParameters\" : {\n" +
-//            "      \"matchRod\" : 0.92, \"matchModelType\" : \"TRANSLATION\", \"matchIterations\" : 10000, \"matchMaxEpsilon\" : 3.0,\n" +
-//            "      \"matchMinInlierRatio\" : 0.0, \"matchMinNumInliers\" : 10, \"matchMaxTrust\" : 3.0, \"matchFilter\" : \"SINGLE_SET\",\n" +
-//            "      \"matchFullScaleCoverageRadius\" : 300.0\n" +
-//            "    },\n" +
-//            "    \"runGeoRegardlessOfSiftResults\" : false, \"minCombinedInliers\" : 0, \"minCombinedCoveragePercentage\" : 50.0\n" +
-//            "  }\n" +
-//            "},\n" +
-//            "{\n" +
-//            "  \"stageName\": \"montagePass6\",\n" +
-//            "  \"featureRender\" : { \"renderScale\" : 0.05, \"renderWithFilter\" : true, \"renderWithoutMask\" : false },\n" +
-//            "  \"featureRenderClip\" : { \"clipWidth\" : 500, \"clipHeight\" : 500 },\n" +
-//            "  \"featureExtraction\" : { \"fdSize\" : 4, \"minScale\" : 0.25, \"maxScale\" : 1.0, \"steps\" : 5 },\n" +
-//            "  \"featureMatchDerivation\" : {\n" +
-//            "    \"matchRod\" : 0.92, \"matchModelType\" : \"RIGID\", \"matchRegularizerModelType\" : \"TRANSLATION\", \"matchInterpolatedModelLambda\" : 0.25,\n" +
-//            "    \"matchIterations\" : 1000, \"matchMaxEpsilon\" : 20.0, \"matchMinInlierRatio\" : 0.0, \"matchMinNumInliers\" : 10,\n" +
-//            "    \"matchMaxTrust\" : 4.0, \"matchFilter\" : \"SINGLE_SET\", \"matchFullScaleCoverageRadius\" : 300.0, \"matchMinCoveragePercentage\" : 50.0\n" +
-//            "  },\n" +
-//            "  \"geometricDescriptorAndMatch\" : {\n" +
-//            "    \"gdEnabled\" : true, \"renderScale\" : 1.0, \"renderWithFilter\" : false,\n" +
-//            "    \"geometricDescriptorParameters\" : {\n" +
-//            "      \"numberOfNeighbors\" : 3, \"redundancy\" : 2, \"significance\" : 1.2, \"sigma\" : 6.04,\n" +
-//            "      \"threshold\" : 0.008, \"localization\" : \"THREE_D_QUADRATIC\", \"lookForMinima\" : true, \"lookForMaxima\" : false,\n" +
-//            "      \"similarOrientation\" : true, \"fullScaleBlockRadius\" : 100.0, \"fullScaleNonMaxSuppressionRadius\" : 6.0, \"gdStoredMatchWeight\" : 0.36\n" +
-//            "    },\n" +
-//            "    \"matchDerivationParameters\" : {\n" +
-//            "      \"matchRod\" : 0.92, \"matchModelType\" : \"TRANSLATION\", \"matchIterations\" : 10000, \"matchMaxEpsilon\" : 3.0,\n" +
-//            "      \"matchMinInlierRatio\" : 0.0, \"matchMinNumInliers\" : 10, \"matchMaxTrust\" : 3.0, \"matchFilter\" : \"SINGLE_SET\",\n" +
-//            "      \"matchFullScaleCoverageRadius\" : 300.0\n" +
-//            "    },\n" +
-//            "    \"runGeoRegardlessOfSiftResults\" : false, \"minCombinedInliers\" : 0, \"minCombinedCoveragePercentage\" : 10.0\n" +
-//            "  }\n" +
-//            "}\n" +
-//            "]";
 }
