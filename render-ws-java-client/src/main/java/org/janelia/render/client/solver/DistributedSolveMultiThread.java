@@ -71,6 +71,7 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 							parameters.blockOptimizerIterations,
 							parameters.blockMaxPlateauWidth,
 							parameters.blockMaxAllowedError,
+							parameters.dynamicLambdaFactor,
 							parameters.threadsWorker );
 					w.run();
 	

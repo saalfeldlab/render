@@ -61,6 +61,7 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 		final List<Integer> blockOptimizerIterations = parameters.blockOptimizerIterations;
 		final List<Integer> blockMaxPlateauWidth = parameters.blockMaxPlateauWidth;
 		final double blockMaxAllowedError = parameters.blockMaxAllowedError;
+		final double dynamicLambdaFactor = parameters.dynamicLambdaFactor;
 		final int numThreads = parameters.threadsWorker;
 		final String stack = parameters.stack;
 
@@ -87,6 +88,7 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 							blockOptimizerIterations,
 							blockMaxPlateauWidth,
 							blockMaxAllowedError,
+							dynamicLambdaFactor,
 							numThreads );
 					w.run();
 	

@@ -151,6 +151,12 @@ public class ParametersDistributedSolve extends CommandLineParameters
     )
     public Integer maxPlateauWidthStitching = 50;
 
+    @Parameter(
+            names = "--dynamicLambdaFactor",
+            description = "Dynamic lambda varies between 1 (straight sample) and 0 (jitter), this factor scales the dynamic lambda (default: 0.3)"
+    )
+    public Double dynamicLambdaFactor = 0.3;
+
     // alignment of the actual blocks that is performed in parallel
     // models are hardcoded: AFFINE, regularized with RIGID, regularized with Translation and a set of decreasing lambdas (see below)
     @Parameter(

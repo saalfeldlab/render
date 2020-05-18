@@ -72,6 +72,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final HashMap< Integer, List< Integer > > zToPairs;
 
 	final int numThreads;
+	final double dynamicLambdaFactor;
 	final boolean serializeMatches;
 
 	final double maxAllowedErrorStitching;
@@ -114,6 +115,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final List<Integer> blockOptimizerIterations,
 			final List<Integer> blockMaxPlateauWidth,
 			final double blockMaxAllowedError,
+			final double dynamicLambdaFactor,
 			final int numThreads )
 	{
 		this.renderDataClient = new RenderDataClient( baseDataUrl, owner, project );
@@ -135,6 +137,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		this.blockMaxAllowedError = blockMaxAllowedError;
 
 		this.numThreads = numThreads;
+		this.dynamicLambdaFactor = dynamicLambdaFactor;
 		this.serializeMatches = serializeMatches;
 
 		if ( maxNumMatches <= 0 )
@@ -163,7 +166,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		{
 			if ( !assignRegularizationModel( solveItem ) )
 				throw new RuntimeException( "Couldn't regularize. Please check." );
-			solve( solveItem, zRadiusRestarts, numThreads );
+			solve( solveItem, zRadiusRestarts, dynamicLambdaFactor, numThreads );
 		}
 
 		for ( final SolveItem< G, B, S > solveItem : solveItems )
@@ -871,6 +874,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	protected void solve(
 			final SolveItem< G,B,S > solveItem,
 			final int zRadiusRestarts,
+			final double dynamicLambdaFactor,
 			final int numThreads
 			) throws InterruptedException, ExecutionException
 	{
@@ -881,7 +885,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		LOG.info("block " + solveItem.getId() + ": run: optimizing {} tiles", solveItem.groupedTileToTiles().keySet().size() );
 
-		final HashMap< Tile< ? >, Double > tileToDynamicLambda = SolveTools.computeMetaDataLambdas( tileConfig.getTiles(), solveItem, zRadiusRestarts );
+		final HashMap< Tile< ? >, Double > tileToDynamicLambda = SolveTools.computeMetaDataLambdas( tileConfig.getTiles(), solveItem, zRadiusRestarts, dynamicLambdaFactor );
 
 		LOG.info( "block " + solveItem.getId() + ": prealigning with translation and dynamic lambda" );
 

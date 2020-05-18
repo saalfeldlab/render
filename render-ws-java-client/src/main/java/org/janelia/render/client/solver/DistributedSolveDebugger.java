@@ -57,6 +57,7 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 				parameters.blockOptimizerIterations,
 				parameters.blockMaxPlateauWidth,
 				parameters.blockMaxAllowedError,
+				parameters.dynamicLambdaFactor,
 				parameters.threadsGlobal );
 		try
 		{

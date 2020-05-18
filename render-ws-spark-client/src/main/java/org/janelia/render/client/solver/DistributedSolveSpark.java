@@ -61,6 +61,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 		final List<Integer> blockMaxPlateauWidth = parameters.blockMaxPlateauWidth;
 		final double blockMaxAllowedError = parameters.blockMaxAllowedError;
 		final int numThreads = parameters.threadsWorker;
+		final double dynamicLambdaFactor = parameters.dynamicLambdaFactor;
 		final String stack = parameters.stack;
 
 		final JavaRDD< List< SolveItemData< G, B, S > > > solvedItems = rddJobs.map(
@@ -86,6 +87,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 							blockOptimizerIterations,
 							blockMaxPlateauWidth,
 							blockMaxAllowedError,
+							dynamicLambdaFactor,
 							numThreads );
 					LogUtilities.setupExecutorLog4j("z " + solveItemData.minZ() + " to " + solveItemData.maxZ());
 					w.run();

@@ -264,7 +264,7 @@ public class SolveTools
 		return prevTiles;
 	}
 
-	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas( final Collection< Tile< ? > > tiles, final SolveItem< ?,?,? > solveItem, final int zRadiusRestarts )
+	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas( final Collection< Tile< ? > > tiles, final SolveItem< ?,?,? > solveItem, final int zRadiusRestarts, final double dynamicFactor )
 	{
 		// a z-section can have more than one grouped tile if they are connected from above and below
 		final HashMap< Integer, List< Pair< Tile< ? >, Tile< TranslationModel2D > > > > zToTiles = fakePreAlign( tiles, solveItem );
@@ -347,7 +347,8 @@ public class SolveTools
 
 			rY.get().set( sum );
 
-			final double lambda = Math.max( 0, sum < 115 ? ( 0.000023333*sum*sum - 0.005233333*sum + 0.3 ) / 2.0 : 0.00674563 / 2.0 );
+			// the quadratic function is between f(0.0)=1 and f(114)=3.4293999999879254E-5
+			final double lambda = Math.min( 1, Math.max( 0, sum < 115 ? ( 0.000076667*sum*sum - 0.017511667*sum + 1.0 ) * dynamicFactor : 3.4293999999879254E-5 * dynamicFactor ) );
 
 			rX.get().set( lambda );
 		}
