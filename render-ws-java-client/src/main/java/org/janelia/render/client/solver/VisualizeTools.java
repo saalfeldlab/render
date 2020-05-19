@@ -64,16 +64,18 @@ public class VisualizeTools
 	public static BdvStackSource< ? > renderDynamicLambda(
 			final HashMap<Integer, Double> zToDynamicLambda,
 			final HashMap< String, AffineModel2D > idToModel,
-			final HashMap< String, MinimalTileSpec > idToTileSpec )
+			final HashMap< String, MinimalTileSpec > idToTileSpec,
+			final double dynamicLambdaFactor )
 	{
-		return renderDynamicLambda( null, zToDynamicLambda, idToModel, idToTileSpec );
+		return renderDynamicLambda( null, zToDynamicLambda, idToModel, idToTileSpec, dynamicLambdaFactor );
 	}
 
 	public static BdvStackSource< ? > renderDynamicLambda(
 			BdvStackSource< ? > source,
 			final HashMap<Integer, Double> zToDynamicLambda,
 			final HashMap< String, AffineModel2D > idToModel,
-			final HashMap< String, MinimalTileSpec > idToTileSpec )
+			final HashMap< String, MinimalTileSpec > idToTileSpec,
+			final double dynamicLambdaFactor )
 	{
 		final HashMap<String, Float> idToValue = new HashMap<>();
 
@@ -84,8 +86,8 @@ public class VisualizeTools
 			idToValue.put( tileId, zToDynamicLambda.get( z ).floatValue() + 1 ); // between 1 and 1.2
 		}
 
-		source = VisualizeTools.visualizeMultiRes( source, "dynamic lambda", idToModel, idToTileSpec, idToValue, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
-		source.setDisplayRange( 0, 1.2 );
+		source = VisualizeTools.visualizeMultiRes( source, "dynamic lambda (f=" + dynamicLambdaFactor + ")", idToModel, idToTileSpec, idToValue, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
+		source.setDisplayRange( 1, Math.max( 1.05, Math.min( 2, 1.05 + dynamicLambdaFactor ) ) );
 		source.setDisplayRangeBounds( 0, 2 );
 
 		return source;

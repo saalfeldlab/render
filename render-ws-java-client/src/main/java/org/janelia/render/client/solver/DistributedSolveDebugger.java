@@ -75,7 +75,7 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 
 				vis = ErrorTools.renderPotentialProblemAreas( vis, errors, ErrorType.AVG, 2.0, s.idToNewModel(), s.idToTileSpec() );
 
-				vis = VisualizeTools.renderDynamicLambda( vis, s.zToDynamicLambda(), s.idToNewModel(), s.idToTileSpec() );
+				vis = VisualizeTools.renderDynamicLambda( vis, s.zToDynamicLambda(), s.idToNewModel(), s.idToTileSpec(), parameters.dynamicLambdaFactor );
 
 				final ImagePlus imp = s.visualizeAligned();
 				VisualizeTools.renderBDV( vis, imp, 0.15 );
