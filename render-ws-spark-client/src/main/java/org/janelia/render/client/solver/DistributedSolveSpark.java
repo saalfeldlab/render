@@ -2,6 +2,7 @@ package org.janelia.render.client.solver;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -62,6 +63,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 		final double blockMaxAllowedError = parameters.blockMaxAllowedError;
 		final int numThreads = parameters.threadsWorker;
 		final double dynamicLambdaFactor = parameters.dynamicLambdaFactor;
+		final HashSet<Integer> excludeFromRegularization = parameters.excludeSet();
 		final String stack = parameters.stack;
 
 		final JavaRDD< List< SolveItemData< G, B, S > > > solvedItems = rddJobs.map(
@@ -88,6 +90,7 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 							blockMaxPlateauWidth,
 							blockMaxAllowedError,
 							dynamicLambdaFactor,
+							excludeFromRegularization,
 							numThreads );
 					LogUtilities.setupExecutorLog4j("z " + solveItemData.minZ() + " to " + solveItemData.maxZ());
 					w.run();

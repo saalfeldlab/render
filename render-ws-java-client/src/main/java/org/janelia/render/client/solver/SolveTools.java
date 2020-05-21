@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasMatchResult;
@@ -264,7 +265,12 @@ public class SolveTools
 		return prevTiles;
 	}
 
-	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas( final Collection< Tile< ? > > tiles, final SolveItem< ?,?,? > solveItem, final int zRadiusRestarts, final double dynamicFactor )
+	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas(
+			final Collection< Tile< ? > > tiles,
+			final SolveItem< ?,?,? > solveItem,
+			final int zRadiusRestarts,
+			final Set<Integer> excludeFromRegularization,
+			final double dynamicFactor )
 	{
 		// a z-section can have more than one grouped tile if they are connected from above and below
 		final HashMap< Integer, List< Pair< Tile< ? >, Tile< TranslationModel2D > > > > zToTiles = fakePreAlign( tiles, solveItem );
@@ -362,9 +368,18 @@ public class SolveTools
 		for ( final int z : solveItem.restarts() )
 		{
 			LOG.info( "z=" + z );
-			
+
 			for ( int zR = z - zRadiusRestarts; zR <= z + zRadiusRestarts; ++zR )
 				exemptLayers.add( zR );
+		}
+
+		LOG.info( "Following layers (arguments provided) have lambda=0: " );
+
+		for ( final int z : excludeFromRegularization )
+		{
+			LOG.info( "z=" + z );
+
+			exemptLayers.add( z );
 		}
 
 		final HashMap< Tile< ? >, Double > tileToDynamicLambda = new HashMap<>();

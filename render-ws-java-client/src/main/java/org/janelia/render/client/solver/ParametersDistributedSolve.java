@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.TreeMap;
 
@@ -19,12 +20,12 @@ import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 
+import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.ConstantModel;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.TranslationModel2D;
@@ -34,6 +35,23 @@ import net.imglib2.util.Pair;
 public class ParametersDistributedSolve extends CommandLineParameters
 {
 	private static final long serialVersionUID = 6845718387096692785L;
+
+	public static class RangeConverter implements IStringConverter<SerializableValuePair<Integer, Integer>>
+	{
+		@Override
+		public SerializableValuePair<Integer, Integer> convert( final String value )
+		{
+			final String[] values = value.split( "-" );
+
+			int a = Integer.parseInt( values[ 0 ] );
+			int b = Integer.parseInt( values[ 1 ] );
+
+			if ( b >= a )
+				return new SerializableValuePair<>( a, b );
+			else
+				return new SerializableValuePair<>( b, a );
+		}
+	}
 
 	@ParametersDelegate
     public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
@@ -240,6 +258,12 @@ public class ParametersDistributedSolve extends CommandLineParameters
 			description = "Directory for storing serialized data (omit to skip serialization)")
 	public String serializerDirectory;
 
+	@Parameter(
+			names = "--excludeFromRegularization",
+			converter = RangeConverter.class,
+			description = "Exclude certain z sections (including from-to) from dynamic lambda regularization, e.g. 500-550,1000-1100 (default: none)" )
+	public List<SerializableValuePair<Integer, Integer>> excludeFromRegularization = new ArrayList<>();
+
 	public ParametersDistributedSolve() {}
 
 	public void initDefaultValues()
@@ -252,6 +276,17 @@ public class ParametersDistributedSolve extends CommandLineParameters
 
 		if ( this.targetProject == null )
 			this.targetProject = renderWeb.project;
+	}
+
+	public HashSet< Integer > excludeSet()
+	{
+		final HashSet< Integer > toExclude = new HashSet<>();
+
+		for ( final Pair<Integer, Integer> range : excludeFromRegularization )
+			for ( int i = range.getA(); i <= range.getB(); ++i )
+				toExclude.add( i );
+
+		return toExclude;
 	}
 
 	public < G extends Model< G > & Affine2D< G > > G globalModel()

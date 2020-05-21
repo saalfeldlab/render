@@ -58,6 +58,7 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 				parameters.blockMaxPlateauWidth,
 				parameters.blockMaxAllowedError,
 				parameters.dynamicLambdaFactor,
+				parameters.excludeSet(),
 				parameters.threadsGlobal );
 		try
 		{
@@ -122,6 +123,7 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
                             "--minZ", "1",
                             "--maxZ", "34022",
 
+                            "--excludeFromRegularization", "1-5,35-534",
                             "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
                             "--threadsGlobal", "65",
@@ -144,7 +146,7 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
                 				parameters.stitchingModel(),
                 				parameters );
 
-                solve.run();
+                //solve.run();
             }
         };
         clientRunner.run();

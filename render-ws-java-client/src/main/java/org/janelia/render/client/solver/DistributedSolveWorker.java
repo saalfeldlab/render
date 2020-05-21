@@ -73,6 +73,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 	final int numThreads;
 	final double dynamicLambdaFactor;
+	final Set<Integer> excludeFromRegularization;
 	final boolean serializeMatches;
 
 	final double maxAllowedErrorStitching;
@@ -116,6 +117,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final List<Integer> blockMaxPlateauWidth,
 			final double blockMaxAllowedError,
 			final double dynamicLambdaFactor,
+			final Set<Integer> excludeFromRegularization,
 			final int numThreads )
 	{
 		this.renderDataClient = new RenderDataClient( baseDataUrl, owner, project );
@@ -138,6 +140,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		this.numThreads = numThreads;
 		this.dynamicLambdaFactor = dynamicLambdaFactor;
+		this.excludeFromRegularization = excludeFromRegularization;
 		this.serializeMatches = serializeMatches;
 
 		if ( maxNumMatches <= 0 )
@@ -885,7 +888,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		LOG.info("block " + solveItem.getId() + ": run: optimizing {} tiles", solveItem.groupedTileToTiles().keySet().size() );
 
-		final HashMap< Tile< ? >, Double > tileToDynamicLambda = SolveTools.computeMetaDataLambdas( tileConfig.getTiles(), solveItem, zRadiusRestarts, dynamicLambdaFactor );
+		final HashMap< Tile< ? >, Double > tileToDynamicLambda = SolveTools.computeMetaDataLambdas( tileConfig.getTiles(), solveItem, zRadiusRestarts, excludeFromRegularization, dynamicLambdaFactor );
 
 		LOG.info( "block " + solveItem.getId() + ": prealigning with translation and dynamic lambda" );
 
