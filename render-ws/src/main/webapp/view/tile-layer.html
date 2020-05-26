@@ -86,7 +86,7 @@
             } else if ((optionIndex === 1)) {
                 tileLayer.viewSelectedTileNeighbors("&renderScale=0.06&neighborSizeFactor=1.7");
             } else if ((optionIndex > 1) && (optionIndex < 5)) {
-                tileLayer.viewSelectedTileInCATMAID(optionIndex);
+                tileLayer.viewSelectedTileInCATMAID(optionIndex - 1);
             } else if (optionIndex === 5) {
                 tileLayer.viewSelectedTileInPointMatchExplorer();
             }
