@@ -74,7 +74,7 @@
     <script type="text/javascript" src="../script/rbush-3.0.0.min.js"></script>
 
     <script type="text/javascript" src="../script/janelia-render.js?v=20180611_001"></script>
-    <script type="text/javascript" src="../script/janelia-tile-layer.js?v=20190306_003"></script>
+    <script type="text/javascript" src="../script/janelia-tile-layer.js?v=20200526_001"></script>
     <script type="text/javascript">
 
         let tileLayer;
@@ -82,9 +82,13 @@
         const selectTileDropdownOption = function(optionIndex) {
             $('#selectedTileDropdown').css('display', 'none');
             if (optionIndex === 0) {
-                tileLayer.viewSelectedTileNeighbors();
-            } else if ((optionIndex > 0) && (optionIndex < 4)) {
+                tileLayer.viewSelectedTileNeighbors("&renderScale=0.1");
+            } else if ((optionIndex === 1)) {
+                tileLayer.viewSelectedTileNeighbors("&renderScale=0.06&neighborSizeFactor=1.7");
+            } else if ((optionIndex > 1) && (optionIndex < 5)) {
                 tileLayer.viewSelectedTileInCATMAID(optionIndex);
+            } else if (optionIndex === 5) {
+                tileLayer.viewSelectedTileInPointMatchExplorer();
             }
             return false;
         };
@@ -121,6 +125,8 @@
 
             $("#renderOwner").html(owner);
             $("#renderProject").html(project);
+            $("#matchOwner").html(matchOwner);
+            $("#matchCollection").html(matchCollection);
 
             const stackLinkHtml = '<a href="' + tileLayer.stackUrl + '" target="_blank">' + stack + '</a>';
             $("#renderStack").html(stackLinkHtml);
@@ -152,6 +158,14 @@
             // Firefox
             selectionCanvas.addEventListener("DOMMouseScroll", zScrollEventHandler, false);
 
+            $(document).keydown(function(e) {
+                if (e.which === 38) { // up arrow
+                    tileLayer.scrollZ(1);
+                } else if (e.which === 40) {  // down arrow
+                    tileLayer.scrollZ(-1);
+                }
+            });
+            
             selectionCanvasSelector.click(function(event) {
                 const dropdownSelector = $("#selectedTileDropdown");
                 dropdownSelector.css("display", "none");
@@ -213,10 +227,12 @@
         <canvas id="theCanvasSelectionLayer"></canvas>
         <div id="selectedTileDropdown" class="dropdown-content">
             <p id="selectedTileId"></p>
-            <a onclick="return selectTileDropdownOption(0);">view neighbors</a>
-            <a onclick="return selectTileDropdownOption(1);">view in CATMAID (level 1)</a>
-            <a onclick="return selectTileDropdownOption(2);">view in CATMAID (level 2)</a>
-            <a onclick="return selectTileDropdownOption(3);">view in CATMAID (level 3)</a>
+            <a onclick="return selectTileDropdownOption(0);">view immediate neighbors</a>
+            <a onclick="return selectTileDropdownOption(1);">view neighborhood</a>
+            <a onclick="return selectTileDropdownOption(2);">view in CATMAID (level 1)</a>
+            <a onclick="return selectTileDropdownOption(3);">view in CATMAID (level 2)</a>
+            <a onclick="return selectTileDropdownOption(4);">view in CATMAID (level 3)</a>
+            <a onclick="return selectTileDropdownOption(5);">view in Point Match Explorer</a>
         </div>
     </div>
     <table id="controlsTable" class="data_table">
@@ -238,7 +254,10 @@
         <tr><td>Box Scale:</td>
             <td><label>0.1 <input id="boxScale" type="range" min="10" max="100" value="100" class="slider"> 1.0</label></td>
         </tr>
-        <tr><td>Tile Stats:</td>                  <td><span id="clusterInfo"></span></td></tr>
+        <tr><td colspan="2"><hr/></td></tr>
+        <tr><td>Match Owner:</td>       <td><span id="matchOwner"></span></td></tr>
+        <tr><td>Collection:</td>        <td><span id="matchCollection"></span></td></tr>
+        <tr><td>Tile Stats:</td>        <td><span id="clusterInfo"></span></td></tr>
         <tr><td>&nbsp;&nbsp;Widths:</td>          <td><span id="tileWidthInfo"></span></td></tr>
         <tr><td>&nbsp;&nbsp;Heights:</td>         <td><span id="tileHeightInfo"></span></td></tr>
         <tr><td>Missing Connections:</td>
