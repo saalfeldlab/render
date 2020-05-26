@@ -6,7 +6,6 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -26,13 +25,13 @@ import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
-import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
-import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderParameters;
+import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.cache.CachedCanvasFeatures;
 import org.janelia.render.client.cache.CanvasFeatureListLoader;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,7 +102,7 @@ public class FeatureClient
         this.parameters = parameters;
     }
 
-    public void run(final SparkConf conf) throws IOException, URISyntaxException {
+    public void run(final SparkConf conf) throws IOException {
 
         final JavaSparkContext sparkContext = new JavaSparkContext(conf);
 
@@ -121,7 +120,7 @@ public class FeatureClient
 
     private void generateFeatureListsForPairFile(final JavaSparkContext sparkContext,
                                                  final String pairJsonFileName)
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         LOG.info("generateFeatureListsForPairFile: pairJsonFileName is {}", pairJsonFileName);
 
@@ -151,20 +150,13 @@ public class FeatureClient
                                                         final FeatureRenderParameters featureRenderParameters,
                                                         final FeatureRenderClipParameters featureRenderClipParameters,
                                                         final FeatureExtractionParameters featureExtractionParameters,
-                                                        final File rootDirectory)
-            throws URISyntaxException {
+                                                        final File rootDirectory) {
 
         final CanvasRenderParametersUrlTemplate urlTemplateForRun =
                 CanvasRenderParametersUrlTemplate.getTemplateForRun(
                         renderParametersUrlTemplate,
-                        featureRenderParameters.renderFullScaleWidth,
-                        featureRenderParameters.renderFullScaleHeight,
-                        featureRenderParameters.renderScale,
-                        featureRenderParameters.renderWithFilter,
-                        featureRenderParameters.renderFilterListName,
-                        featureRenderParameters.renderWithoutMask);
-
-        urlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth, featureRenderClipParameters.clipHeight);
+                        featureRenderParameters,
+                        featureRenderClipParameters);
 
         final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
         siftParameters.fdSize = featureExtractionParameters.fdSize;

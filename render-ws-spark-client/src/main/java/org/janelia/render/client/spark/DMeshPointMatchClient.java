@@ -6,7 +6,6 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -26,12 +25,13 @@ import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
-import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderParameters;
-import org.janelia.render.client.parameter.MatchWebServiceParameters;
+import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.cache.CanvasDataCache;
 import org.janelia.render.client.cache.CanvasFileLoader;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,8 +124,7 @@ public class DMeshPointMatchClient
         this.parameters = parameters;
     }
 
-    public void run()
-            throws IOException, URISyntaxException {
+    public void run() throws IOException {
 
         final SparkConf conf = new SparkConf().setAppName("DMeshPointMatchClient");
         final JavaSparkContext sparkContext = new JavaSparkContext(conf);
@@ -141,12 +140,8 @@ public class DMeshPointMatchClient
         final CanvasRenderParametersUrlTemplate urlTemplateForRun =
                 CanvasRenderParametersUrlTemplate.getTemplateForRun(
                         renderableCanvasIdPairs.getRenderParametersUrlTemplate(parameters.matchClient.baseDataUrl),
-                        parameters.featureRender.renderFullScaleWidth,
-                        parameters.featureRender.renderFullScaleHeight,
-                        parameters.featureRender.renderScale,
-                        parameters.featureRender.renderWithFilter,
-                        parameters.featureRender.renderFilterListName,
-                        parameters.featureRender.renderWithoutMask);
+                        parameters.featureRender,
+                        new FeatureRenderClipParameters());
 
         final long cacheMaxKilobytes = parameters.maxImageCacheGb * 1000000;
 

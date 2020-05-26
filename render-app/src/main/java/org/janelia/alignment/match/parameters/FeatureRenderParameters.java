@@ -4,6 +4,7 @@ import com.beust.jcommander.Parameter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * Parameters for rendering canvases for feature extraction.
@@ -57,5 +58,28 @@ public class FeatureRenderParameters
     @JsonIgnore
     public Boolean deprecatedFillWithNoise;
 
+    @JsonIgnore
+    public FeatureRenderParameters copy(final Double renderScaleForCopy,
+                                        final boolean renderWithFilterForCopy,
+                                        final String renderFilterListNameForCopy) {
+        final FeatureRenderParameters copiedParameters = new FeatureRenderParameters();
+        copiedParameters.renderScale = renderScaleForCopy;
+        copiedParameters.renderWithFilter = renderWithFilterForCopy;
+        copiedParameters.renderFilterListName = renderFilterListNameForCopy;
+        copiedParameters.renderWithoutMask = this.renderWithoutMask;
+        copiedParameters.renderFullScaleWidth = this.renderFullScaleWidth;
+        copiedParameters.renderFullScaleHeight = this.renderFullScaleHeight;
+        copiedParameters.deprecatedFillWithNoise = this.deprecatedFillWithNoise;
+        return copiedParameters;
+    }
+
+    public boolean matchesExceptForScale(final FeatureRenderParameters that) {
+        return this.renderWithFilter == that.renderWithFilter &&
+               Objects.equals(this.renderFilterListName, that.renderFilterListName) &&
+               this.renderWithoutMask == that.renderWithoutMask &&
+               Objects.equals(this.renderFullScaleWidth, that.renderFullScaleWidth) &&
+               Objects.equals(this.renderFullScaleHeight, that.renderFullScaleHeight) &&
+               Objects.equals(this.deprecatedFillWithNoise, that.deprecatedFillWithNoise);
+    }
 }
 

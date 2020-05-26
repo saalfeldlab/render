@@ -5,7 +5,6 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -15,23 +14,23 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.broadcast.Broadcast;
-import org.janelia.alignment.match.CanvasIdWithRenderContext;
-import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
+import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.cache.CachedCanvasFeatures;
 import org.janelia.render.client.cache.CanvasDataCache;
 import org.janelia.render.client.cache.CanvasFeatureListLoader;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.render.client.parameter.FeatureStorageParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
@@ -107,7 +106,7 @@ public class SIFTPointMatchClient
         this.parameters = parameters;
     }
 
-    public void run() throws IOException, URISyntaxException {
+    public void run() throws IOException {
 
         final SparkConf conf = new SparkConf().setAppName("SIFTPointMatchClient");
         final JavaSparkContext sparkContext = new JavaSparkContext(conf);
@@ -134,7 +133,7 @@ public class SIFTPointMatchClient
 
     private void generateMatchesForPairFile(final JavaSparkContext sparkContext,
                                             final String pairJsonFileName)
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         LOG.info("generateMatchesForPairFile: pairJsonFileName is {}", pairJsonFileName);
 
@@ -162,20 +161,13 @@ public class SIFTPointMatchClient
                                         final FeatureExtractionParameters featureExtractionParameters,
                                         final FeatureStorageParameters featureStorageParameters,
                                         final MatchDerivationParameters matchDerivationParameters,
-                                        final MatchStorageFunction matchStorageFunction)
-            throws URISyntaxException {
+                                        final MatchStorageFunction matchStorageFunction) {
 
         final CanvasRenderParametersUrlTemplate urlTemplateForRun =
                 CanvasRenderParametersUrlTemplate.getTemplateForRun(
                         renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl),
-                        featureRenderParameters.renderFullScaleWidth,
-                        featureRenderParameters.renderFullScaleHeight,
-                        featureRenderParameters.renderScale,
-                        featureRenderParameters.renderWithFilter,
-                        featureRenderParameters.renderFilterListName,
-                        featureRenderParameters.renderWithoutMask);
-
-        urlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth, featureRenderClipParameters.clipHeight);
+                        featureRenderParameters,
+                        featureRenderClipParameters);
 
         final long cacheMaxKilobytes = featureStorageParameters.maxFeatureCacheGb * 1000000;
         final CanvasFeatureListLoader featureLoader =

@@ -6,7 +6,6 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -152,7 +151,7 @@ public class SIFTPointMatchClient
     }
 
     private void generateMatchesForPairFile(final String pairJsonFileName)
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         LOG.info("generateMatchesForPairFile: pairJsonFileName is {}", pairJsonFileName);
 
@@ -210,20 +209,13 @@ public class SIFTPointMatchClient
                                                 final FeatureExtractionParameters featureExtractionParameters,
                                                 final FeatureStorageParameters featureStorageParameters,
                                                 final MatchDerivationParameters matchDerivationParameters)
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         final CanvasRenderParametersUrlTemplate siftUrlTemplateForRun =
                 CanvasRenderParametersUrlTemplate.getTemplateForRun(
                         renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl),
-                        featureRenderParameters.renderFullScaleWidth,
-                        featureRenderParameters.renderFullScaleHeight,
-                        featureRenderParameters.renderScale,
-                        featureRenderParameters.renderWithFilter,
-                        featureRenderParameters.renderFilterListName,
-                        featureRenderParameters.renderWithoutMask);
-
-        siftUrlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth,
-                                          featureRenderClipParameters.clipHeight);
+                        featureRenderParameters,
+                        featureRenderClipParameters);
 
         final CanvasFeatureListLoader featureLoader =
                 new CanvasFeatureListLoader(
@@ -259,15 +251,10 @@ public class SIFTPointMatchClient
             gdUrlTemplateForRun =
                     CanvasRenderParametersUrlTemplate.getTemplateForRun(
                             renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl),
-                            featureRenderParameters.renderFullScaleWidth,
-                            featureRenderParameters.renderFullScaleHeight,
-                            gdam.renderScale,
-                            gdam.renderWithFilter,
-                            gdam.renderFilterListName,
-                            featureRenderParameters.renderWithoutMask);
-
-            gdUrlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth,
-                                            featureRenderClipParameters.clipHeight);
+                            featureRenderParameters.copy(gdam.renderScale,
+                                                         gdam.renderWithFilter,
+                                                         gdam.renderFilterListName),
+                            featureRenderClipParameters);
 
             peakExtractor = new CanvasPeakExtractor(gdam.geometricDescriptorParameters);
             peakExtractor.setImageProcessorCache(sourceImageProcessorCache);

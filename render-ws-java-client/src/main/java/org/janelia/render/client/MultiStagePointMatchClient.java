@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import javax.annotation.Nullable;
+
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
@@ -137,6 +139,11 @@ public class MultiStagePointMatchClient
     private final ImageProcessorCache sourceImageProcessorCache;
     private final Map<String, MatchPairCounts> stageNameToPairCountsMap;
 
+    private CanvasIdWithRenderContext pFeatureContextCanvasId;
+    private CanvasIdWithRenderContext qFeatureContextCanvasId;
+    private CanvasIdWithRenderContext pPeakContextCanvasId;
+    private CanvasIdWithRenderContext qPeakContextCanvasId;
+
     MultiStagePointMatchClient(final Parameters parameters) throws IllegalArgumentException {
         this.parameters = parameters;
         this.matchStorageClient = new RenderDataClient(parameters.matchClient.baseDataUrl,
@@ -251,6 +258,12 @@ public class MultiStagePointMatchClient
             final CanvasId q = pair.getQ();
             // TODO: calculate pair's neighbor distance using template to get section to z data
             final double neighborDistance = 0;
+
+            this.pFeatureContextCanvasId = null;
+            this.qFeatureContextCanvasId = null;
+            this.pPeakContextCanvasId = null;
+            this.qPeakContextCanvasId = null;
+
             for (final StageResources stageResources : stageResourcesList) {
                 if (stageResources.stageParameters.exceedsMaxNeighborDistance(neighborDistance)) {
                     LOG.info("skipping stage {} for pair {} with neighborDistance {}",
@@ -293,10 +306,13 @@ public class MultiStagePointMatchClient
         final MatchPairCounts pairCounts = stageNameToPairCountsMap.computeIfAbsent(stageName,
                                                                                     n -> new MatchPairCounts());
 
-        final CachedCanvasFeatures pFeatures =
-                featureDataCache.getCanvasFeatures(stageResources.getFeatureContextCanvasId(p));
-        final CachedCanvasFeatures
-                qFeatures = featureDataCache.getCanvasFeatures(stageResources.getFeatureContextCanvasId(q));
+        pFeatureContextCanvasId = stageResources.getFeatureContextCanvasId(p,
+                                                                           pFeatureContextCanvasId);
+        qFeatureContextCanvasId = stageResources.getFeatureContextCanvasId(q,
+                                                                           qFeatureContextCanvasId);
+
+        final CachedCanvasFeatures pFeatures = featureDataCache.getCanvasFeatures(pFeatureContextCanvasId);
+        final CachedCanvasFeatures qFeatures = featureDataCache.getCanvasFeatures(qFeatureContextCanvasId);
 
         final CanvasMatchResult matchResult = stageResources.featureMatcher.deriveMatchResult(pFeatures.getFeatureList(),
                                                                       qFeatures.getFeatureList());
@@ -490,10 +506,13 @@ public class MultiStagePointMatchClient
         final GeometricDescriptorParameters gdParameters = gdam.geometricDescriptorParameters;
         final double peakRenderScale = gdam.renderScale;
 
-        final CachedCanvasPeaks pCanvasPeaks =
-                peakDataCache.getCanvasPeaks(stageResources.getPeakContextCanvasId(p));
-        final CachedCanvasPeaks qCanvasPeaks =
-                peakDataCache.getCanvasPeaks(stageResources.getPeakContextCanvasId(q));
+        pPeakContextCanvasId = stageResources.getPeakContextCanvasId(p,
+                                                                     pPeakContextCanvasId);
+        qPeakContextCanvasId = stageResources.getPeakContextCanvasId(q,
+                                                                     qPeakContextCanvasId);
+
+        final CachedCanvasPeaks pCanvasPeaks = peakDataCache.getCanvasPeaks(pPeakContextCanvasId);
+        final CachedCanvasPeaks qCanvasPeaks = peakDataCache.getCanvasPeaks(qPeakContextCanvasId);
 
         final List<DifferenceOfGaussianPeak<FloatType>> pCanvasPeakList = pCanvasPeaks.getPeakList();
         final List<DifferenceOfGaussianPeak<FloatType>> qCanvasPeakList = qCanvasPeaks.getPeakList();
@@ -644,27 +663,29 @@ public class MultiStagePointMatchClient
 
     }
 
-    private List<StageResources> buildStageResourcesList(final RenderableCanvasIdPairs renderableCanvasIdPairs,
-                                                         final String baseDataUrl,
-                                                         final List<MatchStageParameters> stageParametersList) {
+    public List<StageResources> buildStageResourcesList(final RenderableCanvasIdPairs renderableCanvasIdPairs,
+                                                        final String baseDataUrl,
+                                                        final List<MatchStageParameters> stageParametersList) {
 
         LOG.info("buildStageResourcesList: entry, setting up resources for {} stages", stageParametersList.size());
 
         final String urlTemplateString = renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl);
 
-        final List<StageResources> stageResourcesList =
-                stageParametersList
-                        .stream()
-                        .map(stageParameters -> new StageResources(stageParameters,
-                                                                   urlTemplateString,
-                                                                   parameters.featureStorage,
-                                                                   sourceImageProcessorCache))
-                        .collect(Collectors.toList());
+        StageResources stageResources = null;
+        final List<StageResources> stageResourcesList = new ArrayList<>();
+        for (final MatchStageParameters stageParameters : stageParametersList) {
+            stageResources = new StageResources(stageParameters,
+                                                urlTemplateString,
+                                                parameters.featureStorage,
+                                                sourceImageProcessorCache,
+                                                stageResources);
+            stageResourcesList.add(stageResources);
+        }
 
         final Map<CanvasFeatureExtractor, List<Integer>> featureExtractorToIndexMap = new HashMap<>();
         final Map<CanvasPeakExtractor, List<Integer>> peakExtractorToIndexMap = new HashMap<>();
         for (int i = 0; i < stageResourcesList.size(); i++) {
-            final StageResources stageResources = stageResourcesList.get(i);
+            stageResources = stageResourcesList.get(i);
             final List<Integer> indexesForFeatureExtractor =
                     featureExtractorToIndexMap.computeIfAbsent(stageResources.featureExtractor,
                                                                fe -> new ArrayList<>());
@@ -732,14 +753,16 @@ public class MultiStagePointMatchClient
         return new Point(reScaledLocal);
     }
 
-    private static class StageResources {
+    public static class StageResources {
 
         public final MatchStageParameters stageParameters;
-        public final CanvasRenderParametersUrlTemplate siftUrlTemplateForRun;
+        public final CanvasRenderParametersUrlTemplate siftUrlTemplateForStage;
+        public final boolean siftUrlTemplateMatchesPriorStageTemplate;
         public final CanvasFeatureExtractor featureExtractor;
         public final CanvasFeatureListLoader featureLoader;
         public final CanvasFeatureMatcher featureMatcher;
-        public final CanvasRenderParametersUrlTemplate gdUrlTemplateForRun;
+        public final CanvasRenderParametersUrlTemplate gdUrlTemplateForStage;
+        public final boolean gdUrlTemplateMatchesPriorStageTemplate;
         public final CanvasPeakExtractor peakExtractor;
         public final CanvasPeakListLoader peakLoader;
 
@@ -749,7 +772,8 @@ public class MultiStagePointMatchClient
         public StageResources(final MatchStageParameters stageParameters,
                               final String urlTemplateString,
                               final FeatureStorageParameters featureStorageParameters,
-                              final ImageProcessorCache sourceImageProcessorCache) {
+                              final ImageProcessorCache sourceImageProcessorCache,
+                              @Nullable final StageResources priorStageResources) {
 
             this.stageParameters = stageParameters;
 
@@ -769,18 +793,13 @@ public class MultiStagePointMatchClient
             final GeometricDescriptorAndMatchFilterParameters gdam =
                     stageParameters.getGeometricDescriptorAndMatch();
 
-            this.siftUrlTemplateForRun =
-                    CanvasRenderParametersUrlTemplate.getTemplateForRun(
-                            urlTemplateString,
-                            featureRenderParameters.renderFullScaleWidth,
-                            featureRenderParameters.renderFullScaleHeight,
-                            featureRenderParameters.renderScale,
-                            featureRenderParameters.renderWithFilter,
-                            featureRenderParameters.renderFilterListName,
-                            featureRenderParameters.renderWithoutMask);
-
-            this.siftUrlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth,
-                                                   featureRenderClipParameters.clipHeight);
+            this.siftUrlTemplateForStage =
+                    CanvasRenderParametersUrlTemplate.getTemplateForRun(urlTemplateString,
+                                                                        featureRenderParameters,
+                                                                        featureRenderClipParameters);
+            this.siftUrlTemplateMatchesPriorStageTemplate =
+                    (priorStageResources != null) &&
+                    this.siftUrlTemplateForStage.matchesExceptForScale(priorStageResources.siftUrlTemplateForStage);
 
             this.featureExtractor = SIFTPointMatchClient.getCanvasFeatureExtractor(featureExtractionParameters);
             this.featureLoader =
@@ -800,18 +819,18 @@ public class MultiStagePointMatchClient
                             "Geometric Descriptor matching is not supported when SIFT matches are grouped into CONSENSUS_SETS");
                 }
 
-                this.gdUrlTemplateForRun =
+                this.gdUrlTemplateForStage =
                         CanvasRenderParametersUrlTemplate.getTemplateForRun(
                                 urlTemplateString,
-                                featureRenderParameters.renderFullScaleWidth,
-                                featureRenderParameters.renderFullScaleHeight,
-                                gdam.renderScale,
-                                gdam.renderWithFilter,
-                                gdam.renderFilterListName,
-                                featureRenderParameters.renderWithoutMask);
+                                featureRenderParameters.copy(gdam.renderScale,
+                                                             gdam.renderWithFilter,
+                                                             gdam.renderFilterListName),
+                                featureRenderClipParameters);
 
-                this.gdUrlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth,
-                                                     featureRenderClipParameters.clipHeight);
+                this.gdUrlTemplateMatchesPriorStageTemplate =
+                        (priorStageResources != null) &&
+                        (priorStageResources.gdUrlTemplateForStage != null) &&
+                        this.gdUrlTemplateForStage.matchesExceptForScale(priorStageResources.gdUrlTemplateForStage);
 
                 this.peakExtractor = new CanvasPeakExtractor(gdam.geometricDescriptorParameters);
                 this.peakExtractor.setImageProcessorCache(sourceImageProcessorCache);
@@ -820,7 +839,8 @@ public class MultiStagePointMatchClient
 
             } else {
 
-                this.gdUrlTemplateForRun = null;
+                this.gdUrlTemplateForStage = null;
+                this.gdUrlTemplateMatchesPriorStageTemplate = false;
                 this.peakExtractor = null;
                 this.peakLoader = null;
 
@@ -828,12 +848,24 @@ public class MultiStagePointMatchClient
 
         }
 
-        public CanvasIdWithRenderContext getFeatureContextCanvasId(final CanvasId canvasId) {
-            return CanvasIdWithRenderContext.build(canvasId, featureLoaderName, siftUrlTemplateForRun);
+        public CanvasIdWithRenderContext getFeatureContextCanvasId(final CanvasId canvasId,
+                                                                   final CanvasIdWithRenderContext priorStageCanvasId) {
+            final CanvasIdWithRenderContext matchingPriorStageCanvasId =
+                    siftUrlTemplateMatchesPriorStageTemplate ? priorStageCanvasId : null;
+            return CanvasIdWithRenderContext.build(canvasId,
+                                                   siftUrlTemplateForStage,
+                                                   featureLoaderName,
+                                                   matchingPriorStageCanvasId);
         }
 
-        public CanvasIdWithRenderContext getPeakContextCanvasId(final CanvasId canvasId) {
-            return CanvasIdWithRenderContext.build(canvasId, peakLoaderName, gdUrlTemplateForRun);
+        public CanvasIdWithRenderContext getPeakContextCanvasId(final CanvasId canvasId,
+                                                                final CanvasIdWithRenderContext priorStageCanvasId) {
+            final CanvasIdWithRenderContext matchingPriorStageCanvasId =
+                    gdUrlTemplateMatchesPriorStageTemplate ? priorStageCanvasId : null;
+            return CanvasIdWithRenderContext.build(canvasId,
+                                                   gdUrlTemplateForStage,
+                                                   peakLoaderName,
+                                                   matchingPriorStageCanvasId);
         }
     }
 

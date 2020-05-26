@@ -26,6 +26,8 @@ public class CanvasIdWithRenderContext
     private final Integer clipWidth;
     private final Integer clipHeight;
 
+    private transient RenderParameters originalRenderParameters;
+
     public CanvasIdWithRenderContext(@Nonnull final CanvasId canvasId,
                                      @Nullable final String loaderName,
                                      @Nonnull final String url,
@@ -65,21 +67,35 @@ public class CanvasIdWithRenderContext
     public RenderParameters loadRenderParameters()
             throws IllegalArgumentException {
 
-        final RenderParameters renderParameters = RenderParameters.loadFromUrl(url);
+        if (originalRenderParameters == null) {
+            this.originalRenderParameters = RenderParameters.loadFromUrl(url);
+        }
+
+        // always clone loaded parameters so that changes (made for clipping or made later by clients)
+        // don't affect cached original
+        final RenderParameters renderParametersForRun = cloneRenderParameters(originalRenderParameters);
 
         if ((clipWidth != null) || (clipHeight != null)) {
+
             // TODO: setting the canvas offsets here is hack-y, probably want a cleaner way
-            canvasId.setClipOffsets(renderParameters.getWidth(), renderParameters.getHeight(), clipWidth, clipHeight);
-            renderParameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
+            canvasId.setClipOffsets(originalRenderParameters.getWidth(),
+                                    originalRenderParameters.getHeight(),
+                                    clipWidth,
+                                    clipHeight);
+
+            clipRenderParameters(canvasId,
+                                 clipWidth,
+                                 clipHeight,
+                                 renderParametersForRun);
 
             final double[] offsets = canvasId.getClipOffsets();
             LOG.info("loadRenderParameters: loaded {} with offsets ({}, {})", canvasId, offsets[0], offsets[1]);
+
         } else {
             LOG.info("loadRenderParameters: loaded {}", canvasId);
         }
 
-
-        return renderParameters;
+        return renderParametersForRun;
     }
 
     @Override
@@ -123,17 +139,89 @@ public class CanvasIdWithRenderContext
 
     public static CanvasIdWithRenderContext build(final CanvasId canvasId,
                                                   final CanvasRenderParametersUrlTemplate urlTemplate) {
-        return build(canvasId, null, urlTemplate);
+        return build(canvasId, urlTemplate, null, null);
     }
 
     public static CanvasIdWithRenderContext build(final CanvasId canvasId,
+                                                  final CanvasRenderParametersUrlTemplate urlTemplate,
                                                   final String stageName,
-                                                  final CanvasRenderParametersUrlTemplate urlTemplate) {
-        return new CanvasIdWithRenderContext(canvasId,
-                                             stageName,
-                                             urlTemplate.getRenderParametersUrl(canvasId),
-                                             urlTemplate.getClipWidth(),
-                                             urlTemplate.getClipHeight());
+                                                  final CanvasIdWithRenderContext matchingPriorStageCanvasId) {
+
+        final CanvasIdWithRenderContext canvasIdWithRenderContext =
+                new CanvasIdWithRenderContext(canvasId,
+                                              stageName,
+                                              urlTemplate.getRenderParametersUrl(canvasId),
+                                              urlTemplate.getClipWidth(),
+                                              urlTemplate.getClipHeight());
+
+        if ((matchingPriorStageCanvasId != null) &&
+            (matchingPriorStageCanvasId.originalRenderParameters != null)) {
+
+            canvasIdWithRenderContext.originalRenderParameters =
+                    cloneRenderParameters(matchingPriorStageCanvasId.originalRenderParameters);
+            canvasIdWithRenderContext.originalRenderParameters.setScale(urlTemplate.getRenderScale());
+
+            LOG.info("build: cloned render parameters from scale {} to scale {} for {}",
+                     matchingPriorStageCanvasId.originalRenderParameters.getScale(),
+                     canvasIdWithRenderContext.originalRenderParameters.getScale(),
+                     canvasId);
+        }
+
+        return canvasIdWithRenderContext;
+    }
+
+    /**
+     * Clips the bounds of the specified parameters for montage pair point match rendering.
+     *
+     * @param  canvasId          canvas information.
+     * @param  clipWidth         number of full scale pixels to include in clipped members of left/right pairs.
+     * @param  clipHeight        number of full scale pixels to include in clipped members of top/bottom pairs.
+     * @param  renderParameters  parameters to copy.
+     */
+    public static void clipRenderParameters(final CanvasId canvasId,
+                                            final Integer clipWidth,
+                                            final Integer clipHeight,
+                                            final RenderParameters renderParameters) {
+
+        final MontageRelativePosition relativePosition = canvasId.getRelativePosition();
+
+        if (relativePosition != null) {
+
+            final double[] clipOffsets = canvasId.getClipOffsets();
+
+            switch (relativePosition) {
+                case TOP:
+                case BOTTOM:
+                    if (clipHeight != null) {
+                        renderParameters.y = renderParameters.y + clipOffsets[1];
+                        renderParameters.height = clipHeight;
+                    }
+                    break;
+                case LEFT:
+                case RIGHT:
+                    if (clipWidth != null) {
+                        renderParameters.x = renderParameters.x + clipOffsets[0];
+                        renderParameters.width = clipWidth;
+                    }
+                    break;
+            }
+        }
+
+    }
+
+    private static RenderParameters cloneRenderParameters(final RenderParameters fromParameters)
+            throws IllegalArgumentException {
+
+        final RenderParameters clonedParameters;
+        try {
+            // although this is not the most efficient way clone the parameters,
+            // it is easy to read, "correct", and should be sufficient for now
+            clonedParameters = RenderParameters.parseJson(fromParameters.toJson());
+            clonedParameters.initializeDerivedValues();
+        } catch (final Exception e) {
+            throw new IllegalArgumentException("failed to clone render parameters", e);
+        }
+        return clonedParameters;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasIdWithRenderContext.class);

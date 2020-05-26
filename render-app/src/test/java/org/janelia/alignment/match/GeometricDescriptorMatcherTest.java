@@ -246,12 +246,19 @@ public class GeometricDescriptorMatcherTest {
         final String baseTileUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/" + owner +
                                    "/project/" + project + "/stack/" + stack + "/tile/";
         final String urlSuffix = "/render-parameters?scale=" + renderScale;
+        final String filterParam = filter ? "&filter=true" : "";
         // TODO: add &fillWithNoise=true ?
         // TODO: add &excludeMask=true ?
-        final String url = baseTileUrl + tileId + urlSuffix;
+        final String url = baseTileUrl + tileId + urlSuffix + filterParam;
 
-        final RenderParameters renderParameters = RenderParameters.loadFromUrl(url);
-        renderParameters.setDoFilter( filter );
+        final CanvasIdWithRenderContext canvasIdWithRenderContext =
+                new CanvasIdWithRenderContext(new CanvasId("GROUP_ID", tileId, relativePosition),
+                                              "peak_0",
+                                              url,
+                                              clipSize,
+                                              clipSize);
+
+        final RenderParameters renderParameters = canvasIdWithRenderContext.loadRenderParameters();
         renderParameters.initializeDerivedValues();
 
         renderParameters.validate();
@@ -259,12 +266,6 @@ public class GeometricDescriptorMatcherTest {
         // remove mipmapPathBuilder so that we don't get exceptions when /nrs is not mounted
         renderParameters.setMipmapPathBuilder(null);
         renderParameters.applyMipmapPathBuilderToTileSpecs();
-
-        if ((clipSize != null) && (relativePosition != null)) {
-            final CanvasId canvasId = new CanvasId("GROUP_ID", tileId, relativePosition);
-            canvasId.setClipOffsets(renderParameters.getWidth(), renderParameters.getHeight(), clipSize, clipSize);
-            renderParameters.clipForMontagePair(canvasId, clipSize, clipSize);
-        }
 
         return renderParameters;
     }

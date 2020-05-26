@@ -10,6 +10,8 @@ import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.MontageRelativePosition;
+import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.render.client.cache.CachedCanvasFeatures;
 import org.janelia.render.client.cache.CanvasDataCache;
 import org.janelia.render.client.cache.CanvasFeatureListLoader;
@@ -33,13 +35,19 @@ public class CanvasDataCacheTest {
         final CanvasFeatureExtractor featureExtractor = new CanvasFeatureExtractor(siftParameters, 0.38, 0.82);
 
         final String templateString = "src/test/resources/canvas-render-parameters.json";
-        final CanvasRenderParametersUrlTemplate template = new CanvasRenderParametersUrlTemplate(templateString);
+
+        final FeatureRenderClipParameters clipParameters = new FeatureRenderClipParameters();
+        final int clipSize = 800;
+        clipParameters.clipWidth = clipSize;
+        clipParameters.clipHeight = clipSize;
+
+        final CanvasRenderParametersUrlTemplate template =
+                new CanvasRenderParametersUrlTemplate(templateString,
+                                                      new FeatureRenderParameters(),
+                                                      clipParameters);
 
         final long cacheMaxKilobytes = 100;
         final CanvasFeatureListLoader featureLoader = new CanvasFeatureListLoader(featureExtractor);
-
-        final int clipSize = 800;
-        template.setClipInfo(clipSize, clipSize);
 
         final CanvasDataCache dataCache = CanvasDataCache.getSharedCache(cacheMaxKilobytes, featureLoader);
 

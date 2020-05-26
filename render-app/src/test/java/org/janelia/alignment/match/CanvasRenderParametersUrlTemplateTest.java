@@ -1,5 +1,7 @@
 package org.janelia.alignment.match;
 
+import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -23,29 +25,32 @@ public class CanvasRenderParametersUrlTemplateTest {
         Assert.assertEquals("incorrect number of pairs loaded", 4722, renderableCanvasIdPairs.size());
 
         final String baseDataUrl = "http://render/render-ws/v1";
+        final FeatureRenderParameters featureRenderParameters = new FeatureRenderParameters();
+        featureRenderParameters.renderWithFilter = false;
+        featureRenderParameters.renderWithoutMask = false;
+        final FeatureRenderClipParameters clipParameters = new FeatureRenderClipParameters();
         CanvasRenderParametersUrlTemplate templateForRun =
                 CanvasRenderParametersUrlTemplate.getTemplateForRun(
                         renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl),
-                        null,
-                        null,
-                        1.0,
-                        false,
-                        null,
-                        false);
+                        featureRenderParameters,
+                        clipParameters);
         Assert.assertEquals("invalid template derived for basic run",
                             baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters?" +
                             "scale=1.0&normalizeForMatching=true",
                             templateForRun.getTemplateString());
 
+        featureRenderParameters.renderFullScaleWidth = 2760;
+        featureRenderParameters.renderFullScaleHeight = 2330;
+        featureRenderParameters.renderScale = 0.8;
+        featureRenderParameters.renderWithFilter = true;
+        featureRenderParameters.renderFilterListName = "fav";
+        featureRenderParameters.renderWithoutMask = true;
+
         templateForRun =
                 CanvasRenderParametersUrlTemplate.getTemplateForRun(
                         renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl),
-                        2760,
-                        2330,
-                        0.8,
-                        true,
-                        "fav",
-                        true);
+                        featureRenderParameters,
+                        clipParameters);
         Assert.assertEquals("invalid template derived for scaled run",
                             baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters?" +
                             "width=2760&height=2330&scale=0.8&filter=true&filterListName=fav&excludeMask=true&normalizeForMatching=true",
@@ -73,7 +78,10 @@ public class CanvasRenderParametersUrlTemplateTest {
     private void testTemplate(final String templateString,
                               final String expectedResult) {
 
-        final CanvasRenderParametersUrlTemplate template = new CanvasRenderParametersUrlTemplate(templateString);
+        final CanvasRenderParametersUrlTemplate template =
+                new CanvasRenderParametersUrlTemplate(templateString,
+                                                      new FeatureRenderParameters(),
+                                                      new FeatureRenderClipParameters());
         final CanvasId canvasId = new CanvasId("99.0", tileId);
         Assert.assertEquals("failed to parse template " + template,
                             expectedResult,

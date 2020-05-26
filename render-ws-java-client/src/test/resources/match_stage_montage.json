@@ -1,0 +1,72 @@
+[
+  {
+    "stageName": "montagePass0",
+    "featureRender": { "renderScale": 0.3, "renderWithFilter": true, "renderWithoutMask": false },
+    "featureRenderClip": { "clipWidth": 1000, "clipHeight": 600 },
+    "featureExtraction": { "fdSize": 4, "minScale": 0.8, "maxScale": 1.0, "steps": 3 },
+    "featureMatchDerivation": {
+      "matchRod": 0.92, "matchModelType": "TRANSLATION", "matchIterations": 1000,
+      "matchMinInlierRatio": 0.0, "matchMaxTrust": 4.0, "matchFilter": "SINGLE_SET", "matchFullScaleCoverageRadius": 100.0,
+      "matchMaxEpsilon": 3.0,
+      "matchMinNumInliers": 7,
+      "matchMinCoveragePercentage": 90.0
+    },
+    "geometricDescriptorAndMatch": { "gdEnabled": false }
+  },
+  {
+    "stageName": "montagePass1",
+    "featureRender": { "renderScale": 0.4, "renderWithFilter": true, "renderWithoutMask": false },
+    "featureRenderClip": { "clipWidth": 1000, "clipHeight": 600 },
+    "featureExtraction": { "fdSize": 4, "minScale": 0.8, "maxScale": 1.0, "steps": 3 },
+    "featureMatchDerivation": {
+      "matchRod": 0.92, "matchModelType": "TRANSLATION", "matchIterations": 1000,
+      "matchMinInlierRatio": 0.0, "matchMaxTrust": 4.0, "matchFilter": "SINGLE_SET", "matchFullScaleCoverageRadius": 100.0,
+      "matchMaxEpsilon": 4.0,
+      "matchMinNumInliers": 7,
+      "matchMinCoveragePercentage": 80.0
+    },
+    "geometricDescriptorAndMatch": { "gdEnabled": false }
+  },
+  {
+    "stageName": "montagePass2",
+    "featureRender": { "renderScale": 0.6, "renderWithFilter": true, "renderWithoutMask": false },
+    "featureRenderClip": { "clipWidth": 1000, "clipHeight": 600 },
+    "featureExtraction": { "fdSize": 4, "minScale": 0.8, "maxScale": 1.0, "steps": 3 },
+    "featureMatchDerivation": {
+      "matchRod": 0.92, "matchModelType": "TRANSLATION", "matchIterations": 1000,
+      "matchMinInlierRatio": 0.0, "matchMaxTrust": 4.0, "matchFilter": "SINGLE_SET", "matchFullScaleCoverageRadius": 100.0,
+      "matchMaxEpsilon": 6.0,
+      "matchMinNumInliers": 7,
+      "matchMinCoveragePercentage": 60.0
+    },
+    "geometricDescriptorAndMatch": { "gdEnabled": false }
+  },
+  {
+    "stageName": "montagePass3",
+    "featureRender": { "renderScale": 0.8, "renderWithFilter": true, "renderWithoutMask": false },
+    "featureRenderClip": { "clipWidth": 1000, "clipHeight": 600 },
+    "featureExtraction": { "fdSize": 4, "minScale": 0.8, "maxScale": 1.0, "steps": 3 },
+    "featureMatchDerivation": {
+      "matchRod": 0.92, "matchModelType": "TRANSLATION", "matchIterations": 1000,
+      "matchMinInlierRatio": 0.0, "matchMaxTrust": 4.0, "matchFilter": "SINGLE_SET", "matchFullScaleCoverageRadius": 100.0,
+      "matchMaxEpsilon": 8.0,
+      "matchMinNumInliers": 7,
+      "matchMinCoveragePercentage": 30.0
+    },
+    "geometricDescriptorAndMatch": { "gdEnabled": false }
+  },
+  {
+    "stageName": "montagePass4",
+    "featureRender": { "renderScale": 1.0, "renderWithFilter": true, "renderWithoutMask": true },
+    "featureRenderClip": { "clipWidth": 1000, "clipHeight": 600 },
+    "featureExtraction": { "fdSize": 4, "minScale": 0.25, "maxScale": 1.0, "steps": 5 },
+    "featureMatchDerivation": {
+      "matchRod": 0.92, "matchModelType": "TRANSLATION", "matchIterations": 1000,
+      "matchMinInlierRatio": 0.0, "matchMaxTrust": 4.0, "matchFilter": "SINGLE_SET", "matchFullScaleCoverageRadius": 100.0,
+      "matchMaxEpsilon": 10.0,
+      "matchMinNumInliers": 7,
+      "matchMinCoveragePercentage": 0.0
+    },
+    "geometricDescriptorAndMatch": { "gdEnabled": false }
+  }
+]

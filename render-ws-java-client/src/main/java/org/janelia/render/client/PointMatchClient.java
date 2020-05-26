@@ -20,18 +20,18 @@ import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
-import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
+import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MontageRelativePosition;
-import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.LayoutData;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -286,6 +286,18 @@ public class PointMatchClient {
             }
         }
 
+        if (parameters.clip.hasValue()) {
+
+            if (clientParameters.renderParameterUrls.size() != 2) {
+                throw new IllegalArgumentException("clipping is only supported for single pair runs");
+            }
+
+            if (parameters.firstCanvasPosition == null) {
+                throw new IllegalArgumentException("--firstCanvasPosition must be specified for clipping");
+            }
+
+        }
+
         this.canvasUrlToDataMap = new LinkedHashMap<>(clientParameters.renderParameterUrls.size() * 2);
 
         for (final String canvasUrlString : clientParameters.renderParameterUrls) {
@@ -295,43 +307,6 @@ public class PointMatchClient {
                                                                             canvasUrlToDataMap.size(),
                                                                             clientParameters));
             }
-        }
-
-        if ((parameters.clip.clipWidth != null) || (parameters.clip.clipHeight != null)) {
-
-            if (canvasUrlToDataMap.size() != 2) {
-                throw new IllegalArgumentException("clipping is only supported for single pair runs");
-            }
-
-            final List<CanvasData> canvasDataValues = new ArrayList<>(canvasUrlToDataMap.values());
-
-            final CanvasData pData = canvasDataValues.get(0);
-            final Bounds pBounds = pData.getBounds();
-
-            if (parameters.firstCanvasPosition == null) {
-                throw new IllegalArgumentException("--firstCanvasPosition must be specified for clipping");
-            }
-            pData.canvasId = new CanvasId(pData.canvasId.getGroupId(),
-                                          pData.canvasId.getId(),
-                                          parameters.firstCanvasPosition);
-
-            final CanvasData qData = canvasDataValues.get(1);
-            final Bounds qBounds = qData.getBounds();
-
-            MontageRelativePosition secondCanvasPosition = null;
-            switch (parameters.firstCanvasPosition) {
-                case TOP: secondCanvasPosition = MontageRelativePosition.BOTTOM; break;
-                case BOTTOM: secondCanvasPosition = MontageRelativePosition.TOP; break;
-                case LEFT: secondCanvasPosition = MontageRelativePosition.RIGHT; break;
-                case RIGHT: secondCanvasPosition = MontageRelativePosition.LEFT; break;
-            }
-            qData.canvasId = new CanvasId(qData.canvasId.getGroupId(),
-                                          qData.canvasId.getId(),
-                                          secondCanvasPosition);
-
-            pData.clipForMontagePair(pBounds, parameters.clip.clipWidth, parameters.clip.clipHeight);
-            qData.clipForMontagePair(qBounds, parameters.clip.clipWidth, parameters.clip.clipHeight);
-
         }
 
         this.renderDataClient = new RenderDataClient(clientParameters.matchClient.baseDataUrl,
@@ -492,7 +467,7 @@ public class PointMatchClient {
 
         private final RenderParameters renderParameters;
         private final double renderScale;
-        private CanvasId canvasId;
+        private final CanvasId canvasId;
         private List<Feature> featureList;
 
         CanvasData(final String canvasUrl,
@@ -500,28 +475,35 @@ public class PointMatchClient {
                    final int canvasIndex,
                    final Parameters clientParameters) {
 
-            this.renderParameters = RenderParameters.loadFromUrl(canvasUrl);
+            final MontageRelativePosition relativePosition;
+            if (clientParameters.clip.hasValue()) {
+                relativePosition = canvasIndex == 0 ?
+                                   clientParameters.firstCanvasPosition :
+                                   clientParameters.firstCanvasPosition.getOpposite();
+            } else {
+                relativePosition = null;
+            }
+
+            final CanvasId loaderCanvasId = new CanvasId("canvas",
+                                                         String.valueOf(canvasIndex),
+                                                         relativePosition);
+
+            final CanvasIdWithRenderContext canvasIdWithRenderContext =
+                    new CanvasIdWithRenderContext(loaderCanvasId,
+                                                  "feature_0",
+                                                  canvasUrl,
+                                                  clientParameters.clip.clipWidth,
+                                                  clientParameters.clip.clipHeight);
+
+            this.renderParameters = canvasIdWithRenderContext.loadRenderParameters();
             this.renderParameters.setScale(renderScale);
             this.renderScale = renderScale;
+
             final String groupId = clientParameters.getCanvasGroupId(this.renderParameters);
             final String canvasName = "c_" + String.format("%05d", canvasIndex);
             final String id = clientParameters.getCanvasId(this.renderParameters, canvasName);
-            this.canvasId = new CanvasId(groupId, id);
+            this.canvasId = new CanvasId(groupId, id, relativePosition);
             this.featureList = null;
-        }
-
-        public Bounds getBounds() {
-            return new Bounds(renderParameters.x,
-                              renderParameters.y,
-                              renderParameters.x + renderParameters.width,
-                              renderParameters.y + renderParameters.height);
-        }
-
-        void clipForMontagePair(final Bounds bounds,
-                                final Integer clipWidth,
-                                final Integer clipHeight) {
-            canvasId.setClipOffsets((int) bounds.getDeltaX(), (int) bounds.getDeltaY(), clipWidth, clipHeight);
-            renderParameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
         }
 
         void setFeatureList(final List<Feature> featureList) {
