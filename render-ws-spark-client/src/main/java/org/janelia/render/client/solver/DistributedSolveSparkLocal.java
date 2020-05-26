@@ -118,6 +118,17 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
             @Override
             public void runClient(final String[] args) throws Exception {
 
+				// System property for spark has to be set, e.g. -Dspark.master=local[4]
+				final String sparkLocal = System.getProperty( "spark.master" );
+
+				if ( sparkLocal == null || sparkLocal.trim().length() == 0 )
+				{
+					LOG.info( "Spark System property not set: " + sparkLocal );
+					System.setProperty( "spark.master", "local[" + Math.max( 1, Runtime.getRuntime().availableProcessors() / 2 ) + "]" );
+				}
+
+				LOG.info( "Spark System property is: " + System.getProperty( "spark.master" ) );
+
                 final ParametersDistributedSolve parameters = new ParametersDistributedSolve();
 
                 // TODO: remove testing hack ...
