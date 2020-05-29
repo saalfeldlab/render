@@ -11,9 +11,9 @@
     <script type="text/javascript" src="../script/janelia-tile-neighbors.js?v=20191114_001"></script>
     <script type="text/javascript">
 
-        var tileWithNeighbors;
+        let tileWithNeighbors;
 
-        var clearSelectedTileInfo = function() {
+        const clearSelectedTileInfo = function () {
             $("#selectedTileId").html('');
             $("#selectedTileRenderParameters").html('');
         };
@@ -25,34 +25,34 @@
             
             const errorMessageSelector = $('#message');
 
-            var util = new JaneliaScriptUtilities();
-            var queryParameters = new JaneliaQueryParameters();
+            const util = new JaneliaScriptUtilities();
+            const queryParameters = new JaneliaQueryParameters();
 
-            var baseUrl = util.getServicesBaseUrl();
+            const baseUrl = util.getServicesBaseUrl();
 
             // TODO: remove this when done debugging on localhost
             //var baseUrl = "http://renderer-dev:8080/render-ws/v1";
 
-            var owner = queryParameters.get('renderStackOwner');
-            var project = queryParameters.get('renderStackProject');
-            var stack = queryParameters.get('renderStack');
-            var tileId = queryParameters.get('tileId');
+            const owner = queryParameters.get('renderStackOwner');
+            const project = queryParameters.get('renderStackProject');
+            const stack = queryParameters.get('renderStack');
+            const tileId = queryParameters.get('tileId');
 
-            var matchOwner = queryParameters.get('matchOwner');
-            var matchCollection = queryParameters.get('matchCollection');
+            const matchOwner = queryParameters.get('matchOwner');
+            const matchCollection = queryParameters.get('matchCollection');
 
             // Until we've stored the point match render context properly, hack these parameters to match your setup.
             // The parameters here are for the FAFB00 project.
             // The SPC parameters used in Fall 2016 were simply 'normalizeForMatching=true&filter=true'.
-            var defaultRenderQueryParameters = "excludeMask=true&normalizeForMatching=true&width=2760&height=2330";
+            let defaultRenderQueryParameters = "excludeMask=true&normalizeForMatching=true&width=2760&height=2330";
             if (owner !== 'flyTEM') {
                 defaultRenderQueryParameters = "normalizeForMatching=true&filter=true";
             }
 
-            var defaultRenderScale = 0.15;
-            var renderScale = queryParameters.get('renderScale', defaultRenderScale);
+            const defaultRenderScale = 0.15;
+            const renderScale = queryParameters.get('renderScale', defaultRenderScale);
 
-            var canvas = document.getElementById("theCanvas");
+            const canvas = document.getElementById("theCanvas");
 
             tileWithNeighbors = new JaneliaTileWithNeighbors(
                     baseUrl, owner, project, stack,
@@ -65,21 +65,21 @@
                 tileWithNeighbors.setTileId(tileId);
             }
 
-            var sep = '&nbsp;&nbsp;&nbsp;&nbsp;';
+            const sep = '&nbsp;&nbsp;&nbsp;&nbsp;';
 
             $("#tileId").html(tileWithNeighbors.tileId);
             $("#renderStack").html(tileWithNeighbors.owner + sep + tileWithNeighbors.project + sep + tileWithNeighbors.stack);
 
-            var stackLinkHtml = '(<a href="' + tileWithNeighbors.stackUrl + '" target="_blank">stack metadata</a>)';
+            const stackLinkHtml = '(<a href="' + tileWithNeighbors.stackUrl + '" target="_blank">stack metadata</a>)';
             $("#renderStackLink").html(stackLinkHtml);
             $("#matchCollection").html(tileWithNeighbors.matchOwner + sep + tileWithNeighbors.matchCollection);
 
-            var originalSelectedTile = undefined;
+            let originalSelectedTile = undefined;
 
             $('#theCanvas').click(function (e) {
-                var canvasX = e.pageX - this.offsetLeft;
-                var canvasY = e.pageY - this.offsetTop;
-                var selectedTile = tileWithNeighbors.selectTile(canvasX, canvasY, e.shiftKey);
+                const canvasX = e.pageX - this.offsetLeft;
+                const canvasY = e.pageY - this.offsetTop;
+                const selectedTile = tileWithNeighbors.selectTile(canvasX, canvasY, e.shiftKey);
 
                 if (e.shiftKey) {
 
@@ -100,12 +100,12 @@
                     if (typeof selectedTile == "undefined") {
                         clearSelectedTileInfo();
                     } else {
-                        var tileIdHtml = '<a href=\"' + selectedTile.specUrl + '" target="_blank"">' +
-                                         selectedTile.tileSpec.tileId + '</a>';
+                        const tileIdHtml = '<a href=\"' + selectedTile.specUrl + '" target="_blank"">' +
+                                           selectedTile.tileSpec.tileId + '</a>';
                         $("#selectedTileId").html(tileIdHtml);
 
-                        var renderHtml = '(<a href=\"' + selectedTile.renderUrl +
-                                         '" target="_blank"">normalized render parameters</a>)';
+                        const renderHtml = '(<a href=\"' + selectedTile.renderUrl +
+                                           '" target="_blank"">normalized render parameters</a>)';
                         $("#selectedTileRenderParameters").html(renderHtml);
                     }
 
