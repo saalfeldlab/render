@@ -879,7 +879,53 @@ JaneliaTileWithNeighbors.prototype.savePairToCollection = function() {
     return false;
 };
 
-JaneliaTileWithNeighbors.prototype.runTrial = function(tileA, tileB, trialRunningSelector, errorMessageSelector) {
+JaneliaTileWithNeighbors.prototype.getMatchTrialConfig = function(matchTrialKey) {
+
+    const matchTrialConfigs = {
+        "default": {
+            description: "0.7 scale, exclude mask, default filter, single set",
+            queryParameters: "?excludeMask=true&normalizeForMatching=true&width=2760&height=2330&filter=true&scale=0.7",
+            matchMaxEpsilon: 7,
+            matchFilter: "SINGLE_SET"
+        },
+        "a": {
+            description: "0.3 scale, exclude mask, default filter, aggregate consensus sets",
+            queryParameters: "?excludeMask=true&normalizeForMatching=true&width=2760&height=2330&filter=true&scale=0.3",
+            matchMaxEpsilon: 3,
+            matchFilter: "AGGREGATED_CONSENSUS_SETS"
+        },
+        "b": {
+            description: "0.5 scale, exclude mask, default filter, aggregate consensus sets",
+            queryParameters: "?excludeMask=true&normalizeForMatching=true&width=2760&height=2330&filter=true&scale=0.5",
+            matchMaxEpsilon: 5,
+            matchFilter: "AGGREGATED_CONSENSUS_SETS"
+        },
+        "c": {
+            description: "1.0 scale, exclude mask, default filter, aggregate consensus sets",
+            queryParameters: "?excludeMask=true&normalizeForMatching=true&width=2760&height=2330&filter=true&scale=1.0",
+            matchMaxEpsilon: 10,
+            matchFilter: "AGGREGATED_CONSENSUS_SETS"
+        },
+        "d": {
+            description: "0.7 scale, exclude mask, fixStripe filter, aggregate consensus sets",
+            queryParameters: "?excludeMask=true&normalizeForMatching=true&width=2760&height=2330&filterListName=fixStripe&scale=0.7",
+            matchMaxEpsilon: 7,
+            matchFilter: "AGGREGATED_CONSENSUS_SETS"
+        },
+        "e": {
+            description: "1.0 scale, exclude mask, fixStripe filter, aggregate consensus sets",
+            queryParameters: "?excludeMask=true&normalizeForMatching=true&width=2760&height=2330&filterListName=fixStripe&scale=1.0",
+            matchMaxEpsilon: 10,
+            matchFilter: "AGGREGATED_CONSENSUS_SETS"
+        }
+    }
+
+    const effectiveKey = matchTrialConfigs.hasOwnProperty(matchTrialKey) ? matchTrialKey : "default";
+
+    return matchTrialConfigs[effectiveKey];
+}
+
+JaneliaTileWithNeighbors.prototype.runTrial = function(tileA, tileB, trialRunningSelector, errorMessageSelector, matchTrialKey) {
 
     const orderedPair = this.getOrderedTileSpecPair(tileA.tileSpec, tileB.tileSpec);
 
@@ -888,11 +934,15 @@ JaneliaTileWithNeighbors.prototype.runTrial = function(tileA, tileB, trialRunnin
 
     const baseRenderUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/flyTEM/project/FAFB00/stack/" +
                           trialSourceStack + "/tile/";
-    const renderUrlSuffix = "/render-parameters?excludeMask=true&normalizeForMatching=true&width=2760&height=2330&filter=true&scale=0.7";
+
+    const trialConfig = this.getMatchTrialConfig(matchTrialKey);
+    const renderUrlSuffix = "/render-parameters" + trialConfig.queryParameters;
+
     const pRenderUrl = baseRenderUrl + orderedPair.pTileSpec.tileId + renderUrlSuffix;
     const qRenderUrl = baseRenderUrl + orderedPair.qTileSpec.tileId + renderUrlSuffix;
 
     let pClipPosition = "TOP";
+    let clipSize = 600;
     let deltaX = orderedPair.qTileSpec.minX - orderedPair.pTileSpec.minX;
     let deltaY = orderedPair.qTileSpec.minY - orderedPair.pTileSpec.minY;
 
@@ -905,6 +955,7 @@ JaneliaTileWithNeighbors.prototype.runTrial = function(tileA, tileB, trialRunnin
     // noinspection JSSuspiciousNameCombination
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
         pClipPosition = deltaX > 0 ? "LEFT" : "RIGHT";
+        clipSize = 1000;
     } else if (deltaY < 0) {
         pClipPosition = "BOTTOM";
     }
@@ -920,14 +971,15 @@ JaneliaTileWithNeighbors.prototype.runTrial = function(tileA, tileB, trialRunnin
             "matchRod": 0.92,
             "matchModelType": "TRANSLATION",
             "matchIterations": 1000,
-            "matchMaxEpsilon": 7,
+            "matchMaxEpsilon": trialConfig.matchMaxEpsilon,
             "matchMinInlierRatio": 0.0,
             "matchMinNumInliers": 7,
             "matchMaxTrust": 4,
-            "matchFilter": "SINGLE_SET"
+            "matchFilter": trialConfig.matchFilter,
+            "matchFullScaleCoverageRadius": 100
         },
         "pClipPosition": pClipPosition,
-        "clipPixels": 600
+        "clipPixels": clipSize
     };
 
     const requestData = {

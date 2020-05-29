@@ -8,7 +8,7 @@
 
     <script type="text/javascript" src="../script/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="../script/janelia-render.js?v=20180611_001"></script>
-    <script type="text/javascript" src="../script/janelia-tile-neighbors.js?v=20191114_001"></script>
+    <script type="text/javascript" src="../script/janelia-tile-neighbors.js?v=20200529_001"></script>
     <script type="text/javascript">
 
         let tileWithNeighbors;
@@ -20,6 +20,8 @@
 
         $( document ).ready(function() {
 
+            const trialConfigKeySelector = $('#trialConfigKey');
+            trialConfigKeySelector.hide();
             const trialRunningSelector = $('#trialRunning');
             trialRunningSelector.hide();
             
@@ -74,6 +76,17 @@
             $("#renderStackLink").html(stackLinkHtml);
             $("#matchCollection").html(tileWithNeighbors.matchOwner + sep + tileWithNeighbors.matchCollection);
 
+            let matchTrialKey = "default";
+            $(window).keydown(function (event) {
+                // if pressed key is "a" to "z" ...
+                if ((event.which >= 65) && (event.which <= 90)) {
+                    matchTrialKey = event.key;
+                    const trialConfig = tileWithNeighbors.getMatchTrialConfig(matchTrialKey);
+                    trialConfigKeySelector.html("  Match Trial: " + trialConfig.description);
+                    trialConfigKeySelector.show();
+                }
+            });
+
             let originalSelectedTile = undefined;
 
             $('#theCanvas').click(function (e) {
@@ -90,7 +103,7 @@
                 } else if (e.altKey) {
 
                     if (typeof originalSelectedTile != 'undefined' && typeof selectedTile != "undefined") {
-                        tileWithNeighbors.runTrial(originalSelectedTile, selectedTile, trialRunningSelector, errorMessageSelector);
+                        tileWithNeighbors.runTrial(originalSelectedTile, selectedTile, trialRunningSelector, errorMessageSelector, matchTrialKey);
                     }
 
                 } else {
@@ -150,6 +163,8 @@
 <h3>Neighbor Matches for <span id="tileId"></span></h3>
 
 <span id="message" class="error"></span>
+
+<span id="trialConfigKey"></span>
 
 <span id="trialRunning" class="trialSpinner"></span>
 
