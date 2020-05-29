@@ -2,8 +2,13 @@ package org.janelia.alignment;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.janelia.alignment.filter.EqualizeHistogram;
+import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
@@ -58,6 +63,12 @@ public class RenderParametersTest {
 
         parameters.addTileSpec(tileSpec1);
 
+        final Map<String, String> filterSpecParameters = new HashMap<>();
+        filterSpecParameters.put("saturatedPixels", "99");
+        final List<FilterSpec> filterSpecs =
+                Collections.singletonList(new FilterSpec(EqualizeHistogram.class.getName(), filterSpecParameters)) ;
+        parameters.setFilterSpecs(filterSpecs);
+
         final String json = parameters.toJson();
 
         Assert.assertNotNull("json not generated", json);
@@ -72,6 +83,8 @@ public class RenderParametersTest {
         Assert.assertEquals("invalid number of tileSpecs parsed", 2, parsedTileSpecs.size());
 
         Assert.assertFalse("mipmapPathBuilder should NOT be defined", parsedParameters.hasMipmapPathBuilder());
+
+        Assert.assertTrue("filter spec is missing", parsedParameters.hasFilters());
     }
 
     @Test
