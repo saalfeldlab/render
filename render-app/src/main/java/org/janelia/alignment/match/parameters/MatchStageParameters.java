@@ -81,6 +81,10 @@ public class MatchStageParameters
         return geometricDescriptorAndMatch;
     }
 
+    public boolean hasMaxNeighborDistance() {
+        return (maxNeighborDistance != null);
+    }
+
     public boolean exceedsMaxNeighborDistance(final Double neighborDistance) {
         return (maxNeighborDistance != null) && (neighborDistance > maxNeighborDistance);
     }
