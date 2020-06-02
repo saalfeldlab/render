@@ -50,11 +50,11 @@ public class CanvasRenderParametersUrlTemplate
     }
 
     public Integer getClipWidth() {
-        return featureRenderClipParameters.clipWidth;
+        return featureRenderClipParameters == null ? null : featureRenderClipParameters.clipWidth;
     }
 
     public Integer getClipHeight() {
-        return featureRenderClipParameters.clipHeight;
+        return featureRenderClipParameters == null ? null : featureRenderClipParameters.clipHeight;
     }
 
     public String getRenderParametersUrl(final CanvasId canvasId) {
