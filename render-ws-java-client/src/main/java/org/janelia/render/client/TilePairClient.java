@@ -387,7 +387,7 @@ public class TilePairClient {
 
             z = zValues.get(zIndex);
 
-            if (parameters.zNeighborDistance == 0) {
+            if ((parameters.zNeighborDistance == 0) || (! zToTreeMap.containsKey(z))) {
                 zToTreeMap.put(z, buildRTree(z));
             }
 
