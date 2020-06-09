@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasMatchResult;
@@ -66,14 +67,28 @@ public class SolveTools
 			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
 			final Matches matches )
 	{
+		return computeAlignmentError( crossLayerModel, montageLayerModel, pTileSpec, qTileSpec, pAlignmentModel, qAlignmentModel, matches, 10 );
+	}
+
+	public static double computeAlignmentError(
+			final Model< ? > crossLayerModel,
+			final Model< ? > montageLayerModel,
+			final MinimalTileSpec pTileSpec,
+			final MinimalTileSpec qTileSpec,
+			final Model< ? > pAlignmentModel, // solveItem.idToNewModel().get( pTileId ), // p
+			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
+			final Matches matches,
+			final int samplesPerDimension )
+	{
 		// for fitting local to global pair
-		final RigidModel2D rigidModel = new RigidModel2D();
+		final Model<?> relativeModel = new RigidModel2D();
 
 		final List< PointMatch > global = SolveTools.createFakeMatches(
 				pTileSpec.getWidth(),
 				pTileSpec.getHeight(),
 				pAlignmentModel, // p
-				qAlignmentModel ); // q
+				qAlignmentModel,
+				samplesPerDimension ); // q
 
 		// the actual matches, local solve
 		final List< PointMatch > pms = CanvasMatchResult.convertMatchesToPointMatchList( matches );
@@ -98,7 +113,8 @@ public class SolveTools
 				pTileSpec.getWidth(),
 				pTileSpec.getHeight(),
 				model, // p
-				new IdentityModel() ); // q
+				new IdentityModel(),
+				samplesPerDimension ); // q
 
 		// match the local solve to the global solve rigidly, as the entire stack is often slightly rotated
 		// but do not change the transformations relative to each other (in local, global)
@@ -112,7 +128,7 @@ public class SolveTools
 
 		try
 		{
-			rigidModel.fit( relativeMatches );
+			relativeModel.fit( relativeMatches );
 		}
 		catch (Exception e){}
 
@@ -126,17 +142,19 @@ public class SolveTools
 			final Point l1 = local.get( i ).getP1();
 			final Point l2 = local.get( i ).getP2();
 
-			l1.apply( rigidModel );
-			l2.apply( rigidModel );
+			l1.apply( relativeModel );
+			l2.apply( relativeModel );
 
 			final double dLx = l2.getW()[ 0 ] - l1.getW()[ 0 ];
 			final double dLy = l2.getW()[ 1 ] - l1.getW()[ 1 ];
 
 			vDiff += SolveTools.distance( dLx, dLy, dGx, dGy );
+
+			//vDiff += SolveTools.distance( l1.getW()[ 0 ], l1.getW()[ 1 ], global.get( i ).getP1().getL()[ 0 ], global.get( i ).getP1().getL()[ 1 ] );
+			//vDiff += SolveTools.distance( l2.getW()[ 0 ], l2.getW()[ 1 ], global.get( i ).getP2().getL()[ 0 ], global.get( i ).getP2().getL()[ 1 ] );
 		}
 
-		// Stitching error is almost zero (vdiff = 0.0271) if all points are used (NoMatchFilter).
-		vDiff /= (double)global.size();
+		vDiff /= (double)global.size(); 
 
 		return vDiff;
 	}
@@ -156,15 +174,20 @@ public class SolveTools
 
 	protected static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel )
 	{
+		return createFakeMatches( w, h, pModel, qModel, SolveItem.samplesPerDimension );
+	}
+
+	protected static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel, final int samplesPerDimension )
+	{
 		final List< PointMatch > matches = new ArrayList<>();
 		
-		final double sampleWidth = (w - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-		final double sampleHeight = (h - 1.0) / (SolveItem.samplesPerDimension - 1.0);
+		final double sampleWidth = (w - 1.0) / (samplesPerDimension - 1.0);
+		final double sampleHeight = (h - 1.0) / (samplesPerDimension - 1.0);
 
-		for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
+		for (int y = 0; y < samplesPerDimension; ++y)
 		{
 			final double sampleY = y * sampleHeight;
-			for (int x = 0; x < SolveItem.samplesPerDimension; ++x)
+			for (int x = 0; x < samplesPerDimension; ++x)
 			{
 				final double[] p = new double[] { x * sampleWidth, sampleY };
 				final double[] q = new double[] { x * sampleWidth, sampleY };
@@ -174,7 +197,7 @@ public class SolveTools
 
 				matches.add(new PointMatch( new Point(p), new Point(q) ));
 			}
-		}					
+		}
 
 		return matches;
 	}
@@ -242,7 +265,12 @@ public class SolveTools
 		return prevTiles;
 	}
 
-	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas( final Collection< Tile< ? > > tiles, final SolveItem< ?,?,? > solveItem, final int zRadiusRestarts )
+	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas(
+			final Collection< Tile< ? > > tiles,
+			final SolveItem< ?,?,? > solveItem,
+			final int zRadiusRestarts,
+			final Set<Integer> excludeFromRegularization,
+			final double dynamicFactor )
 	{
 		// a z-section can have more than one grouped tile if they are connected from above and below
 		final HashMap< Integer, List< Pair< Tile< ? >, Tile< TranslationModel2D > > > > zToTiles = fakePreAlign( tiles, solveItem );
@@ -325,7 +353,8 @@ public class SolveTools
 
 			rY.get().set( sum );
 
-			final double lambda = Math.max( 0, sum < 115 ? ( 0.000023333*sum*sum - 0.005233333*sum + 0.3 ) / 2.0 : 0.00674563 / 2.0 );
+			// the quadratic function is between f(0.0)=1 and f(114)=3.4293999999879254E-5
+			final double lambda = Math.min( 1, Math.max( 0, sum < 115 ? ( 0.000076667*sum*sum - 0.017511667*sum + 1.0 ) * dynamicFactor : 3.4293999999879254E-5 * dynamicFactor ) );
 
 			rX.get().set( lambda );
 		}
@@ -339,9 +368,18 @@ public class SolveTools
 		for ( final int z : solveItem.restarts() )
 		{
 			LOG.info( "z=" + z );
-			
+
 			for ( int zR = z - zRadiusRestarts; zR <= z + zRadiusRestarts; ++zR )
 				exemptLayers.add( zR );
+		}
+
+		LOG.info( "Following layers (arguments provided) have lambda=0: " );
+
+		for ( final int z : excludeFromRegularization )
+		{
+			LOG.info( "z=" + z );
+
+			exemptLayers.add( z );
 		}
 
 		final HashMap< Tile< ? >, Double > tileToDynamicLambda = new HashMap<>();

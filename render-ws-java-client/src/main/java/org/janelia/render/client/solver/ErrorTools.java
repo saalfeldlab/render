@@ -1,10 +1,10 @@
 package org.janelia.render.client.solver;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.janelia.render.client.solver.DistributedSolve.GlobalSolve;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +17,9 @@ import net.imglib2.util.Pair;
 public class ErrorTools
 {
 	public static enum ErrorFilter{ ALL, CROSS_LAYER_ONLY, MONTAGE_LAYER_ONLY };
+	public static enum ErrorType{ MIN, AVG, MAX };
+
+	public static int problematicRegionRange = 50;
 
 	public static class Errors
 	{
@@ -166,6 +169,90 @@ public class ErrorTools
 		return err;
 	}
 
+	public static BdvStackSource< ? > renderPotentialProblemAreas(
+			BdvStackSource< ? > source,
+			final Errors err,
+			final ErrorType errorType,
+			final double significance,
+			final HashMap< String, AffineModel2D > idToModel,
+			final HashMap< String, MinimalTileSpec > idToTileSpec )
+	{
+		// the actual values to display
+		final HashMap< String, Float > idToRegion = new HashMap<>();
+
+		// to later find the neighbors
+		final HashMap< Integer, List< MinimalTileSpec > > zToTileSpec = new HashMap<>();
+		final HashMap< Integer, List< MinimalTileSpec > > zWithOutliers = new HashMap<>();
+
+		for ( final String tileId : idToTileSpec.keySet() )
+		{
+			final MinimalTileSpec ts = idToTileSpec.get( tileId );
+			final int z = (int)Math.round( ts.getZ() );
+
+			final double avgError, stDevError, error;
+			
+			switch ( errorType )
+			{
+			case MIN:
+				error = err.idToMinError.get( tileId );
+				avgError = err.avgMinError;
+				stDevError = err.stdDevMinError;
+				break;
+			case MAX:
+				error = err.idToMaxError.get( tileId );
+				avgError = err.avgMaxError;
+				stDevError = err.stdDevMaxError;
+				break;
+			default:
+				error = err.idToAvgError.get( tileId );
+				avgError = err.avgAvgError;
+				stDevError = err.stdDevAvgError;
+				break;
+			}
+
+			if ( error > avgError + significance * stDevError )
+			{
+				idToRegion.put( tileId, 1.0f );
+				zWithOutliers.putIfAbsent( z, new ArrayList<>() );
+				zWithOutliers.get( z ).add( ts );
+			}
+			else
+			{
+				idToRegion.put( tileId, 0.0f );
+			}
+
+			zToTileSpec.putIfAbsent( z, new ArrayList<>() );
+			zToTileSpec.get( z ).add( ts );
+		}
+
+		for ( final int z : zWithOutliers.keySet() )
+		{
+			for ( final MinimalTileSpec ts : zWithOutliers.get( z ) )
+			{
+				final int col = ts.getImageCol();
+
+				for ( int d = 1; d < problematicRegionRange; ++d )
+				{
+					if ( zToTileSpec.containsKey( z + d ))
+						for ( final MinimalTileSpec ts2 : zToTileSpec.get( z + d ) )
+							if ( ts2 != null && ts2.getImageCol() == col )
+								idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (problematicRegionRange - d) / (float)problematicRegionRange ) );
+
+					if ( zToTileSpec.containsKey( z - d ))
+						for ( final MinimalTileSpec ts2 : zToTileSpec.get( z - d ) )
+							if ( ts2 != null && ts2.getImageCol() == col )
+								idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (problematicRegionRange - d) / (float)problematicRegionRange ) );
+				}
+			}
+		}
+
+		source = VisualizeTools.visualizeMultiRes( source, "potential problem regions (" + significance + ")", idToModel, idToTileSpec, idToRegion, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
+		source.setDisplayRange( 0, 1 );
+		source.setDisplayRangeBounds( 0, 1 );
+
+		return source;
+	}
+
 	public static BdvStackSource< ? > renderErrors(
 			final Errors err,
 			final HashMap< String, AffineModel2D > idToModel,
@@ -180,16 +267,6 @@ public class ErrorTools
 			final HashMap< String, AffineModel2D > idToModel,
 			final HashMap< String, MinimalTileSpec > idToTileSpec )
 	{
-		/*
-		for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
-		{
-			if ( avgErr > avgError + significance * stDev )
-				idToRegion.put( tileId, 1.0f );
-			else
-				idToRegion.put( tileId, 0.0f );
-		}
-		*/
-
 		final double maxRange = Math.max( err.maxMinError, Math.max( err.maxAvgError, err.maxMaxError ) );
 
 		source = VisualizeTools.visualizeMultiRes( source, "avg Error", idToModel, idToTileSpec, err.idToAvgError, 1, 128, 2, Runtime.getRuntime().availableProcessors() );

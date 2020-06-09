@@ -511,8 +511,8 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		}
 
 		// for local fits
-		final InterpolatedAffineModel2D< AffineModel2D, RigidModel2D > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
-		final S montageLayerModel = this.stitchingModel.copy();
+		final Model<?> crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
+		final Model<?> montageLayerModel = this.stitchingModel.copy();
 
 		for ( final String pTileId : allMatches.keySet() )
 		{

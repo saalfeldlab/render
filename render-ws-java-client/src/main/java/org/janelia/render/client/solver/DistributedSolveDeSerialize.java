@@ -12,6 +12,7 @@ import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.solver.ErrorTools.ErrorFilter;
+import org.janelia.render.client.solver.ErrorTools.ErrorType;
 import org.janelia.render.client.solver.ErrorTools.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,7 +133,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-                            "--serializerDirectory", "/groups/scicompsoft/home/preibischs/Documents/FIB-SEM/ser500_full"
+                            "--serializerDirectory", "/groups/flyem/data/sema/spark_example/ser-0.3new"//"/groups/scicompsoft/home/preibischs/Documents/FIB-SEM/ser"//500_full"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -161,7 +162,9 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 				final Errors errors = ErrorTools.computeErrors( gs.idToErrorMapGlobal, gs.idToTileSpecGlobal, ErrorFilter.CROSS_LAYER_ONLY );
 				BdvStackSource<?> vis = ErrorTools.renderErrors( errors, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal );
 
-				vis = VisualizeTools.renderDynamicLambda( vis, gs.zToDynamicLambdaGlobal, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal );
+				vis = ErrorTools.renderPotentialProblemAreas( vis, errors, ErrorType.AVG, 4.0, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal );
+
+				vis = VisualizeTools.renderDynamicLambda( vis, gs.zToDynamicLambdaGlobal, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, parameters.dynamicLambdaFactor );
 
 				SimpleMultiThreading.threadHaltUnClean();
             }

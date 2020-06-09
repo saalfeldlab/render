@@ -75,9 +75,9 @@ public class VisualizingRandomAccessibleInterval implements RandomAccessibleInte
 			idToInvertedRenderModels.put( tileId, model.createInverse() );
 		}
 
-		System.out.println( "x: " + min[ 0 ] + " >>> " + max[ 0 ] );
-		System.out.println( "y: " + min[ 1 ] + " >>> " + max[ 1 ] );
-		System.out.println( "z: " + min[ 2 ] + " >>> " + max[ 2 ] );
+		//System.out.println( "x: " + min[ 0 ] + " >>> " + max[ 0 ] );
+		//System.out.println( "y: " + min[ 1 ] + " >>> " + max[ 1 ] );
+		//System.out.println( "z: " + min[ 2 ] + " >>> " + max[ 2 ] );
 
 		final long[] minI = new long[ 3 ];
 		final long[] maxI = new long[ 3 ];
@@ -90,9 +90,9 @@ public class VisualizingRandomAccessibleInterval implements RandomAccessibleInte
 			dimI[ d ] = maxI[ d ] - minI[ d ] + 1;
 		}
 
-		System.out.println( "BB x: " + minI[ 0 ] + " >>> " + maxI[ 0 ] + ", d=" + dimI[ 0 ] );
-		System.out.println( "BB y: " + minI[ 1 ] + " >>> " + maxI[ 1 ] + ", d=" + dimI[ 1 ]);
-		System.out.println( "BB z: " + minI[ 2 ] + " >>> " + maxI[ 2 ] + ", d=" + dimI[ 2 ]);
+		//System.out.println( "BB x: " + minI[ 0 ] + " >>> " + maxI[ 0 ] + ", d=" + dimI[ 0 ] );
+		//System.out.println( "BB y: " + minI[ 1 ] + " >>> " + maxI[ 1 ] + ", d=" + dimI[ 1 ]);
+		//System.out.println( "BB z: " + minI[ 2 ] + " >>> " + maxI[ 2 ] + ", d=" + dimI[ 2 ]);
 
 		this.interval = new FinalInterval( minI, maxI );
 

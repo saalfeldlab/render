@@ -3,6 +3,7 @@ package org.janelia.render.client.solver;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -61,6 +62,8 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 		final List<Integer> blockOptimizerIterations = parameters.blockOptimizerIterations;
 		final List<Integer> blockMaxPlateauWidth = parameters.blockMaxPlateauWidth;
 		final double blockMaxAllowedError = parameters.blockMaxAllowedError;
+		final double dynamicLambdaFactor = parameters.dynamicLambdaFactor;
+		final HashSet<Integer> excludeFromRegularization = parameters.excludeSet();
 		final int numThreads = parameters.threadsWorker;
 		final String stack = parameters.stack;
 
@@ -87,6 +90,8 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 							blockOptimizerIterations,
 							blockMaxPlateauWidth,
 							blockMaxAllowedError,
+							dynamicLambdaFactor,
+							excludeFromRegularization,
 							numThreads );
 					w.run();
 	
@@ -112,6 +117,17 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
             public void runClient(final String[] args) throws Exception {
+
+				// System property for spark has to be set, e.g. -Dspark.master=local[4]
+				final String sparkLocal = System.getProperty( "spark.master" );
+
+				if ( sparkLocal == null || sparkLocal.trim().length() == 0 )
+				{
+					LOG.info( "Spark System property not set: " + sparkLocal );
+					System.setProperty( "spark.master", "local[" + Math.max( 1, Runtime.getRuntime().availableProcessors() / 2 ) + "]" );
+				}
+
+				LOG.info( "Spark System property is: " + System.getProperty( "spark.master" ) );
 
                 final ParametersDistributedSolve parameters = new ParametersDistributedSolve();
 

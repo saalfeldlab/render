@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.solver.ErrorTools.ErrorFilter;
+import org.janelia.render.client.solver.ErrorTools.ErrorType;
 import org.janelia.render.client.solver.ErrorTools.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,9 +35,9 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 	@Override
 	public List< SolveItemData< G, B, S > > distributedSolve()
 	{
-		this.solveSet.leftItems.get( 44 ).maxZ = 22100;
+		//this.solveSet.leftItems.get( 44 ).maxZ = 22100;
 		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 44 ), //8, 9, 43, 44, 49, 66 ),
+				this.solveSet.leftItems.get( 49 ), //8, 9, 43, 44, 49, 66 ),
 				this.solveSet.getMaxId() + 1,
 				runParams.pGroupList,
 				runParams.sectionIdToZMap,
@@ -46,7 +47,7 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 				parameters.matchOwner,
 				parameters.matchCollection,
 				parameters.stack,
-				25,
+				0,
 				parameters.serializeMatches,
 				parameters.maxAllowedErrorStitching,
 				parameters.maxIterationsStitching,
@@ -56,6 +57,8 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 				parameters.blockOptimizerIterations,
 				parameters.blockMaxPlateauWidth,
 				parameters.blockMaxAllowedError,
+				parameters.dynamicLambdaFactor,
+				parameters.excludeSet(),
 				parameters.threadsGlobal );
 		try
 		{
@@ -65,11 +68,15 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 
 			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
 			{
+				//if ( s.idToNewModel().keySet().size() <= 500 )
+				//	continue;
 				// visualize maxError
 				final Errors errors = ErrorTools.computeErrors( s.idToSolveItemErrorMap(), s.idToTileSpec(), ErrorFilter.CROSS_LAYER_ONLY );
 				BdvStackSource<?> vis = ErrorTools.renderErrors( errors, s.idToNewModel(), s.idToTileSpec() );
 
-				vis = VisualizeTools.renderDynamicLambda( vis, s.zToDynamicLambda(), s.idToNewModel(), s.idToTileSpec() );
+				vis = ErrorTools.renderPotentialProblemAreas( vis, errors, ErrorType.AVG, 2.0, s.idToNewModel(), s.idToTileSpec() );
+
+				vis = VisualizeTools.renderDynamicLambda( vis, s.zToDynamicLambda(), s.idToNewModel(), s.idToTileSpec(), parameters.dynamicLambdaFactor );
 
 				final ImagePlus imp = s.visualizeAligned();
 				VisualizeTools.renderBDV( vis, imp, 0.15 );
@@ -116,6 +123,7 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
                             "--minZ", "1",
                             "--maxZ", "34022",
 
+                            "--excludeFromRegularization", "1-5,35-534",
                             "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
                             "--threadsGlobal", "65",
@@ -138,7 +146,7 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
                 				parameters.stitchingModel(),
                 				parameters );
 
-                solve.run();
+                //solve.run();
             }
         };
         clientRunner.run();
