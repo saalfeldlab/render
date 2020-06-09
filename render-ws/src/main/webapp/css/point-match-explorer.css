@@ -5,6 +5,14 @@ body {
     overflow: hidden;
 }
 
+button, input, optgroup, select, textarea {
+    font-size: 12px;
+}
+
+a {
+    font-size: 14px;
+}
+
 #PMEDataArea {
     float: right;
     vertical-align: top;
