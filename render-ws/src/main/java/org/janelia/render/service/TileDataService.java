@@ -339,9 +339,9 @@ public class TileDataService {
                 // Assume the last transform is an affine that positions the tile in the world and remove it.
                 tileSpec.removeLastTransformSpec();
 
-                // If the tile still has more than 3 transforms, remove all but the last 3.
-                // This assumes that the last 3 transforms are for lens correction.
-                while (tileSpec.getTransforms().size() > 3) {
+                // If the tile still has more than 2 transforms, remove all but the first 2.
+                // This assumes that the first 2 transforms are for lens correction.
+                while (tileSpec.getTransforms().size() > 2) {
                     tileSpec.removeLastTransformSpec();
                 }
             }
