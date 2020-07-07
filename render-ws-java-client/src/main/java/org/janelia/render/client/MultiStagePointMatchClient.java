@@ -195,7 +195,8 @@ public class MultiStagePointMatchClient
                 nonEmptyMatchesSet.add(new OrderedCanvasIdPair(new CanvasId(canvasMatches.getpGroupId(),
                                                                             canvasMatches.getpId()),
                                                                new CanvasId(canvasMatches.getqGroupId(),
-                                                                            canvasMatches.getqId())));
+                                                                            canvasMatches.getqId()),
+                                                               null));
             }
 
             final List<OrderedCanvasIdPair>  failedPairsList = new ArrayList<>(renderableCanvasIdPairs.size());
@@ -206,7 +207,8 @@ public class MultiStagePointMatchClient
                 final OrderedCanvasIdPair pairWithoutPosition = new OrderedCanvasIdPair(new CanvasId(p.getGroupId(),
                                                                                                      p.getId()),
                                                                                         new CanvasId(q.getGroupId(),
-                                                                                                     q.getId()));
+                                                                                                     q.getId()),
+                                                                                        null);
                 if (! nonEmptyMatchesSet.contains(pairWithoutPosition)) {
                     failedPairsList.add(pair);
                 }
@@ -256,8 +258,6 @@ public class MultiStagePointMatchClient
         for (final OrderedCanvasIdPair pair : renderableCanvasIdPairs.getNeighborPairs()) {
             final CanvasId p = pair.getP();
             final CanvasId q = pair.getQ();
-            // TODO: calculate pair's neighbor distance using template to get section to z data
-            final double neighborDistance = 0;
 
             this.pFeatureContextCanvasId = null;
             this.qFeatureContextCanvasId = null;
@@ -265,9 +265,9 @@ public class MultiStagePointMatchClient
             this.qPeakContextCanvasId = null;
 
             for (final StageResources stageResources : stageResourcesList) {
-                if (stageResources.stageParameters.exceedsMaxNeighborDistance(neighborDistance)) {
-                    LOG.info("skipping stage {} for pair {} with neighborDistance {}",
-                             stageResources.stageParameters.getStageName(), pair, neighborDistance);
+                if (stageResources.stageParameters.exceedsMaxNeighborDistance(pair.getAbsoluteDeltaZ())) {
+                    LOG.info("skipping stage {} for pair {} with absoluteDeltaZ {}",
+                             stageResources.stageParameters.getStageName(), pair, pair.getAbsoluteDeltaZ());
                     break;
                 }
                 final List<CanvasMatches> pairMatchListForStage =

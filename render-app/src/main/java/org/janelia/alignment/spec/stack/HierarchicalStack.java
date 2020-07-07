@@ -354,7 +354,7 @@ public class HierarchicalStack implements Serializable {
             for (int k = i + 1; k < n && k <= i + zNeighborDistance; k++) {
                 qz = zValues.get(k);
                 q = new CanvasId(qz.toString(), getTileIdForZ(qz));
-                neighborPairs.add(new OrderedCanvasIdPair(p, q));
+                neighborPairs.add(new OrderedCanvasIdPair(p, q, (pz - qz)));
             }
         }
 

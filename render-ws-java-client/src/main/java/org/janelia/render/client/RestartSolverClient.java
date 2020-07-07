@@ -350,7 +350,8 @@ public class RestartSolverClient<B extends Model< B > & Affine2D< B >> {
             final CanvasId p = pair.getP();
             final CanvasId q = pair.getQ();
             sameLayerPairsWithoutPositions.add(new OrderedCanvasIdPair(new CanvasId(p.getGroupId(), p.getId()),
-                                                                       new CanvasId(q.getGroupId(), q.getId())));
+                                                                       new CanvasId(q.getGroupId(), q.getId()),
+                                                                       null));
 
 
         }
@@ -422,7 +423,8 @@ public class RestartSolverClient<B extends Model< B > & Affine2D< B >> {
                                                                                             false)) {
                 final OrderedCanvasIdPair pair =
                         new OrderedCanvasIdPair(new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),
-                                                new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId()));
+                                                new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId()),
+                                                null);
                 if (sameLayerPairsWithoutPositions.contains(pair) || crossLayerPairs.contains(pair)) {
                     pairToMatchesMap.put(pair, canvasMatches);
                 }

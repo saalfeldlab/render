@@ -175,7 +175,8 @@ public class SIFTPointMatchClient
                 nonEmptyMatchesSet.add(new OrderedCanvasIdPair(new CanvasId(canvasMatches.getpGroupId(),
                                                                             canvasMatches.getpId()),
                                                                new CanvasId(canvasMatches.getqGroupId(),
-                                                                            canvasMatches.getqId())));
+                                                                            canvasMatches.getqId()),
+                                                               null));
             }
 
             final List<OrderedCanvasIdPair>  failedPairsList = new ArrayList<>(renderableCanvasIdPairs.size());
@@ -186,7 +187,8 @@ public class SIFTPointMatchClient
                 final OrderedCanvasIdPair pairWithoutPosition = new OrderedCanvasIdPair(new CanvasId(p.getGroupId(),
                                                                                                      p.getId()),
                                                                                         new CanvasId(q.getGroupId(),
-                                                                                                     q.getId()));
+                                                                                                     q.getId()),
+                                                                                        null);
                 if (! nonEmptyMatchesSet.contains(pairWithoutPosition)) {
                     failedPairsList.add(pair);
                 }

@@ -81,12 +81,8 @@ public class MatchStageParameters
         return geometricDescriptorAndMatch;
     }
 
-    public boolean hasMaxNeighborDistance() {
-        return (maxNeighborDistance != null);
-    }
-
-    public boolean exceedsMaxNeighborDistance(final Double neighborDistance) {
-        return (maxNeighborDistance != null) && (neighborDistance > maxNeighborDistance);
+    public boolean exceedsMaxNeighborDistance(final Double absoluteDeltaZ) {
+        return (maxNeighborDistance != null) && (absoluteDeltaZ != null) && (absoluteDeltaZ > maxNeighborDistance);
     }
 
     public void validateAndSetDefaults() throws IllegalArgumentException {

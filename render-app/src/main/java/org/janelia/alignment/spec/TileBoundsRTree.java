@@ -309,12 +309,15 @@ public class TileBoundsRTree {
                             pairs.add(
                                     new OrderedCanvasIdPair(
                                             new CanvasId(fromTile.getSectionId(), pTileId, relativePositions[0]),
-                                            new CanvasId(toTile.getSectionId(), qTileId, relativePositions[1])));
+                                            new CanvasId(toTile.getSectionId(), qTileId, relativePositions[1]),
+                                            null));
                         } else {
+                            final Double deltaZ = fromTile.getZ() - toTile.getZ();
                             pairs.add(
                                     new OrderedCanvasIdPair(
                                             p,
-                                            new CanvasId(toTile.getSectionId(), qTileId)));
+                                            new CanvasId(toTile.getSectionId(), qTileId),
+                                            deltaZ));
                         }
                     }
 

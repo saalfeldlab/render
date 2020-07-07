@@ -5,6 +5,7 @@ import com.google.common.base.Objects;
 import java.io.Serializable;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /**
  * A pair of canvas identifiers with {@linkplain Comparable natural ordering}.
@@ -20,11 +21,14 @@ public class OrderedCanvasIdPair
     /** Greater canvas identifier. */
     private final CanvasId q;
 
+    private final Double absoluteDeltaZ;
+
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private OrderedCanvasIdPair() {
         this.p = null;
         this.q = null;
+        this.absoluteDeltaZ = null;
     }
 
     /**
@@ -32,12 +36,14 @@ public class OrderedCanvasIdPair
      *
      * @param  oneId      one canvas identifier.
      * @param  anotherId  another canvas identifier.
+     * @param  deltaZ     delta between z values of both canvases (specify null if irrelevant or 0).
      *
      * @throws IllegalArgumentException
      *   if both identifiers are the same.
      */
     public OrderedCanvasIdPair(@Nonnull final CanvasId oneId,
-                               @Nonnull final CanvasId anotherId)
+                               @Nonnull final CanvasId anotherId,
+                               @Nullable final Double deltaZ)
             throws IllegalArgumentException {
 
         final int comparisonResult = oneId.compareTo(anotherId);
@@ -50,6 +56,7 @@ public class OrderedCanvasIdPair
         } else {
             throw new IllegalArgumentException("both IDs are the same: '" + oneId + "'");
         }
+        this.absoluteDeltaZ = deltaZ == null ? null : Math.abs(deltaZ);
     }
 
     public CanvasId getP() {
@@ -58,6 +65,10 @@ public class OrderedCanvasIdPair
 
     public CanvasId getQ() {
         return q;
+    }
+
+    public Double getAbsoluteDeltaZ() {
+        return absoluteDeltaZ;
     }
 
     @Override

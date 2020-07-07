@@ -634,7 +634,8 @@ public class TilePairClient {
 
                         final OrderedCanvasIdPair pair =  new OrderedCanvasIdPair(
                                 new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),
-                                new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId()));
+                                new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId()),
+                                null);
 
                         matchCount = canvasMatches.getMatchCount();
 
@@ -669,7 +670,7 @@ public class TilePairClient {
                 final CanvasId pIdWithoutPosition = new CanvasId(pId.getGroupId(), pId.getId());
                 final CanvasId qIdWithoutPosition = new CanvasId(qId.getGroupId(), qId.getId());
                 
-                if (existingPairs.contains(new OrderedCanvasIdPair(pIdWithoutPosition, qIdWithoutPosition))) {
+                if (existingPairs.contains(new OrderedCanvasIdPair(pIdWithoutPosition, qIdWithoutPosition, null))) {
                     i.remove();
                 }
             }

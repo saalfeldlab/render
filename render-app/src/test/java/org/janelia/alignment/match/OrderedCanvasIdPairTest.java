@@ -13,11 +13,11 @@ public class OrderedCanvasIdPairTest {
     @Test
     public void testNormalization() {
 
-        OrderedCanvasIdPair pair = new OrderedCanvasIdPair(getCanvasId(1), getCanvasId(2));
+        OrderedCanvasIdPair pair = new OrderedCanvasIdPair(getCanvasId(1), getCanvasId(2), null);
         Assert.assertEquals("invalid canvasId for p in pair " + pair, pair.getP(), getCanvasId(1));
         Assert.assertEquals("invalid canvasId for q in pair " + pair, pair.getQ(), getCanvasId(2));
 
-        pair = new OrderedCanvasIdPair(getCanvasId(9), getCanvasId(5));
+        pair = new OrderedCanvasIdPair(getCanvasId(9), getCanvasId(5), null);
         Assert.assertEquals("invalid canvasId for p in pair " + pair, pair.getP(), getCanvasId(5));
         Assert.assertEquals("invalid canvasId for q in pair " + pair, pair.getQ(), getCanvasId(9));
     }

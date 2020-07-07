@@ -217,7 +217,8 @@ public class ExampleMatchVisualizationClient {
                                 //             This allows later comparisons with retrieved match pairs
                                 //             (which do not have position data) to work as intended.
                                 return new OrderedCanvasIdPair(pair.getP().withoutRelativePosition(),
-                                                               pair.getQ().withoutRelativePosition());
+                                                               pair.getQ().withoutRelativePosition(),
+                                                               null);
                             })
                             .sorted()
                             .collect(Collectors.toList());
@@ -325,7 +326,8 @@ public class ExampleMatchVisualizationClient {
                                                                                                 excludeMatchDetails)) {
                     final OrderedCanvasIdPair pair =  new OrderedCanvasIdPair(
                             new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),
-                            new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId()));
+                            new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId()),
+                            null);
 
                     pairs.add(pair);
                 }

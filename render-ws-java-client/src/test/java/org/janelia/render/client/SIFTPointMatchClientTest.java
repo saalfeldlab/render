@@ -55,7 +55,7 @@ public class SIFTPointMatchClientTest {
                                          "/tile/{id}/render-parameters";
         final CanvasId pCanvasId = getCanvasId(testIndex, true);
         final CanvasId qCanvasId = getCanvasId(testIndex, false);
-        final OrderedCanvasIdPair pair = new OrderedCanvasIdPair(pCanvasId, qCanvasId);
+        final OrderedCanvasIdPair pair = new OrderedCanvasIdPair(pCanvasId, qCanvasId, null);
         final List<OrderedCanvasIdPair> pairList = Collections.singletonList(pair);
         final RenderableCanvasIdPairs renderableCanvasIdPairs = new RenderableCanvasIdPairs(urlTemplateString,
                                                                                             pairList);
