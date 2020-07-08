@@ -173,6 +173,16 @@ public class MultiStagePointMatchClient
 
         final List<MatchStageParameters> stageParametersList =
                 MatchStageParameters.fromJsonArrayFile(parameters.stageJson);
+
+        if ((stageParametersList.size() > 1) && (parameters.featureStorage.rootFeatureDirectory != null)) {
+            // CanvasFeatureList writeToStorage and readToStorage methods only support one storage location
+            // for each CanvasId, so different renderings of the same canvas (for different match stages)
+            // are not currently supported.
+            throw new IllegalArgumentException(
+                    "Stored features are not supported for runs with multiple stages.  " +
+                    "Remove the --rootFeatureDirectory parameter or choose a --stageJson list with only one stage.");
+        }
+
         for (final MatchStageParameters stageParameters : stageParametersList) {
             stageParameters.validateAndSetDefaults();
         }
