@@ -30,6 +30,7 @@ import org.janelia.alignment.match.parameters.MatchTrialParameters;
 import org.janelia.render.service.dao.MatchDao;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.util.RenderServiceUtil;
+import org.janelia.render.service.util.SharedImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -726,7 +727,7 @@ public class MatchService {
             }
 
             matchTrial = new MatchTrial(matchTrialParameters);
-            matchTrial.deriveResults();
+            matchTrial.deriveResults(SharedImageProcessorCache.getInstance());
             matchTrial = matchDao.insertMatchTrial(matchTrial);
 
             LOG.info("runMatchTrial: exit, saved trial {}", matchTrial.getId());

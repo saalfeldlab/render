@@ -6,7 +6,6 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -29,6 +28,11 @@ import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.match.SplitCanvasHelper;
+import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderParameters;
+import org.janelia.alignment.match.parameters.FeatureStorageParameters;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.stack.HierarchicalStack;
@@ -41,11 +45,6 @@ import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
-import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
-import org.janelia.alignment.match.parameters.FeatureRenderParameters;
-import org.janelia.render.client.parameter.FeatureStorageParameters;
-import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -245,7 +244,7 @@ public class HierarchicalAlignmentClient
         this.priorTierRegions = null;
     }
 
-    public void run() throws IOException, URISyntaxException {
+    public void run() throws IOException {
 
         this.zValues.addAll(driverRoughRender.getStackZValues(parameters.stack));
 
@@ -442,7 +441,7 @@ public class HierarchicalAlignmentClient
     }
 
     private void generateMatchesForTier()
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         LOG.info("generateMatchesForTier: entry");
 
@@ -533,7 +532,7 @@ public class HierarchicalAlignmentClient
     private void generateTierMatchesInOneBatch(final FeatureRenderParameters featureRenderParameters,
                                                final FeatureRenderClipParameters emptyClipParameters,
                                                final RenderDataClient driverMatchClient)
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         LOG.info("generateTierMatchesInOneBatch: entry");
 
@@ -610,7 +609,7 @@ public class HierarchicalAlignmentClient
 
     private void generateTierMatchesByStack(final FeatureRenderParameters featureRenderParameters,
                                             final FeatureRenderClipParameters emptyClipParameters)
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         LOG.info("generateTierMatchesByStack: entry");
 

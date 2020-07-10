@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import mpicbg.imagefeatures.FloatArray2DSIFT;
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
@@ -34,21 +33,21 @@ import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.PointMatchQualityStats;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
+import org.janelia.alignment.match.cache.CachedCanvasFeatures;
+import org.janelia.alignment.match.cache.CachedCanvasPeaks;
+import org.janelia.alignment.match.cache.CanvasDataCache;
+import org.janelia.alignment.match.cache.CanvasFeatureListLoader;
+import org.janelia.alignment.match.cache.CanvasPeakListLoader;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderParameters;
+import org.janelia.alignment.match.parameters.FeatureStorageParameters;
 import org.janelia.alignment.match.parameters.GeometricDescriptorAndMatchFilterParameters;
 import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.cache.CachedCanvasFeatures;
-import org.janelia.render.client.cache.CachedCanvasPeaks;
-import org.janelia.render.client.cache.CanvasDataCache;
-import org.janelia.render.client.cache.CanvasFeatureListLoader;
-import org.janelia.render.client.cache.CanvasPeakListLoader;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.FeatureStorageParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -221,7 +220,7 @@ public class SIFTPointMatchClient
 
         final CanvasFeatureListLoader featureLoader =
                 new CanvasFeatureListLoader(
-                        getCanvasFeatureExtractor(featureExtractionParameters),
+                        CanvasFeatureExtractor.build(featureExtractionParameters),
                         featureStorageParameters.getRootFeatureDirectory(),
                         featureStorageParameters.requireStoredFeatures);
 
@@ -662,17 +661,6 @@ public class SIFTPointMatchClient
                  pairCounts.combinedPoorCoverage,
                  pairCounts.combinedPoorQuantity,
                  pairCounts.combinedSaved);
-    }
-
-    public static CanvasFeatureExtractor getCanvasFeatureExtractor(final FeatureExtractionParameters featureExtraction) {
-
-        final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
-        siftParameters.fdSize = featureExtraction.fdSize;
-        siftParameters.steps = featureExtraction.steps;
-
-        return new CanvasFeatureExtractor(siftParameters,
-                                          featureExtraction.minScale,
-                                          featureExtraction.maxScale);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(SIFTPointMatchClient.class);

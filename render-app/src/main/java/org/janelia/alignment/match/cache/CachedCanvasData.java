@@ -1,4 +1,4 @@
-package org.janelia.render.client.cache;
+package org.janelia.alignment.match.cache;
 
 /**
  * Base methods required for managing cached canvas data.

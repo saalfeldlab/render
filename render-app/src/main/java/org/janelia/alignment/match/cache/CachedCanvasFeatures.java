@@ -1,4 +1,4 @@
-package org.janelia.render.client.cache;
+package org.janelia.alignment.match.cache;
 
 import ij.process.ImageProcessor;
 
@@ -36,6 +36,10 @@ public class CachedCanvasFeatures implements CachedCanvasData {
 
     public List<Feature> getFeatureList() {
         return featuresWithSourceData.getFeatureList();
+    }
+
+    public int size() {
+        return featuresWithSourceData.getFeatureList().size();
     }
 
     public double[] getClipOffsets() {

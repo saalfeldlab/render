@@ -12,9 +12,9 @@ import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderParameters;
-import org.janelia.render.client.cache.CachedCanvasFeatures;
-import org.janelia.render.client.cache.CanvasDataCache;
-import org.janelia.render.client.cache.CanvasFeatureListLoader;
+import org.janelia.alignment.match.cache.CachedCanvasFeatures;
+import org.janelia.alignment.match.cache.CanvasDataCache;
+import org.janelia.alignment.match.cache.CanvasFeatureListLoader;
 import org.junit.Assert;
 import org.junit.Test;
 

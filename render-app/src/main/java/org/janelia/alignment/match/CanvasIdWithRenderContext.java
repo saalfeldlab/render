@@ -44,6 +44,14 @@ public class CanvasIdWithRenderContext
         return canvasId;
     }
 
+    public String getGroupId() {
+        return canvasId.getGroupId();
+    }
+
+    public String getId() {
+        return canvasId.getId();
+    }
+
     public String getLoaderName() {
         return loaderName;
     }

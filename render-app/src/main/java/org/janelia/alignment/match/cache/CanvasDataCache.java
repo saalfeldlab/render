@@ -1,4 +1,4 @@
-package org.janelia.render.client.cache;
+package org.janelia.alignment.match.cache;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
@@ -25,7 +25,8 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class CanvasDataCache {
+public class CanvasDataCache
+        implements CanvasFeatureProvider, CanvasPeakProvider {
 
     private static final Map<Class<? extends CachedCanvasData>, CanvasDataCache> SHARED_DATA_CLASS_TO_CACHE_MAP =
             new HashMap<>();
@@ -215,13 +216,16 @@ public class CanvasDataCache {
      *
      * @throws IllegalStateException
      *   if the data cannot be cached locally.
-     *
-     * @throws ClassCastException
-     *   if this cache is not managing {@link CachedCanvasFeatures} data.
      */
     public CachedCanvasFeatures getCanvasFeatures(final CanvasIdWithRenderContext canvasIdWithRenderContext)
-            throws IllegalStateException, ClassCastException {
-        return (CachedCanvasFeatures) getData(canvasIdWithRenderContext);
+            throws IllegalStateException {
+        final CachedCanvasFeatures canvasFeatures;
+        try {
+            canvasFeatures = (CachedCanvasFeatures) getData(canvasIdWithRenderContext);
+        } catch (final ClassCastException cce) {
+            throw new IllegalStateException("cache does not manage CachedCanvasFeatures data", cce);
+        }
+        return canvasFeatures;
     }
 
     /**
@@ -229,13 +233,16 @@ public class CanvasDataCache {
      *
      * @throws IllegalStateException
      *   if the data cannot be cached locally.
-     *
-     * @throws ClassCastException
-     *   if this cache is not managing {@link CachedCanvasPeaks} data.
      */
     public CachedCanvasPeaks getCanvasPeaks(final CanvasIdWithRenderContext canvasIdWithRenderContext)
             throws IllegalStateException, ClassCastException {
-        return (CachedCanvasPeaks) getData(canvasIdWithRenderContext);
+        final CachedCanvasPeaks canvasPeaks;
+        try {
+            canvasPeaks = (CachedCanvasPeaks) getData(canvasIdWithRenderContext);
+        } catch (final ClassCastException cce) {
+            throw new IllegalStateException("cache does not manage CachedCanvasPeaks data", cce);
+        }
+        return canvasPeaks;
     }
 
     @Override

@@ -6,12 +6,12 @@ import java.util.List;
 import org.janelia.alignment.json.JsonUtils;
 
 /**
- * Statistics for a match trial run.
+ * Statistics for one stage of matching a single canvas pair.
  *
  * @author Eric Trautman
  */
-@SuppressWarnings("ALL")
-public class MatchTrialStats
+@SuppressWarnings({"FieldCanBeLocal", "unused"})
+public class StageMatchingStats
         implements Serializable {
 
     private final Integer pFeatureCount;
@@ -26,9 +26,11 @@ public class MatchTrialStats
     private final List<Double> consensusSetDeltaYStandardDeviations;
     private final Long overlappingImagePixels;
     private final Long overlappingCoveragePixels;
+    private final Long matchQualityMilliseconds;
 
-    public MatchTrialStats() {
+    public StageMatchingStats() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -37,13 +39,14 @@ public class MatchTrialStats
              null);
     }
 
-    public MatchTrialStats(final Integer pFeatureCount,
-                           final Long pFeatureDerivationMilliseconds,
-                           final Integer qFeatureCount,
-                           final Long qFeatureDerivationMilliseconds,
-                           final List<Integer> consensusSetSizes,
-                           final Long matchDerivationMilliseconds,
-                           final PointMatchQualityStats pointMatchQualityStats) {
+    public StageMatchingStats(final Integer pFeatureCount,
+                              final Long pFeatureDerivationMilliseconds,
+                              final Integer qFeatureCount,
+                              final Long qFeatureDerivationMilliseconds,
+                              final List<Integer> consensusSetSizes,
+                              final Long matchDerivationMilliseconds,
+                              final PointMatchQualityStats pointMatchQualityStats,
+                              final Long matchQualityMilliseconds) {
         this.pFeatureCount = pFeatureCount;
         this.pFeatureDerivationMilliseconds = pFeatureDerivationMilliseconds;
         this.qFeatureCount = qFeatureCount;
@@ -75,13 +78,14 @@ public class MatchTrialStats
             
         }
 
+        this.matchQualityMilliseconds = matchQualityMilliseconds;
     }
 
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }
 
-    private static final JsonUtils.Helper<MatchTrialStats> JSON_HELPER =
-            new JsonUtils.Helper<>(MatchTrialStats.class);
+    private static final JsonUtils.Helper<StageMatchingStats> JSON_HELPER =
+            new JsonUtils.Helper<>(StageMatchingStats.class);
 
 }

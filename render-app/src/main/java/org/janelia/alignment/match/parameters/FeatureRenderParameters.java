@@ -4,7 +4,13 @@ import com.beust.jcommander.Parameter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serializable;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+
+import org.apache.http.client.utils.URLEncodedUtils;
 
 /**
  * Parameters for rendering canvases for feature extraction.
@@ -80,6 +86,38 @@ public class FeatureRenderParameters
                Objects.equals(this.renderFullScaleWidth, that.renderFullScaleWidth) &&
                Objects.equals(this.renderFullScaleHeight, that.renderFullScaleHeight) &&
                Objects.equals(this.deprecatedFillWithNoise, that.deprecatedFillWithNoise);
+    }
+
+    public static FeatureRenderParameters fromUrl(final String urlString)
+            throws IllegalArgumentException {
+
+        final URI uri;
+        try {
+            uri = new URI(urlString);
+        } catch (final URISyntaxException use) {
+            throw new IllegalArgumentException(use);
+        }
+
+        final Map<String, String> queryParameters = new HashMap<>();
+        URLEncodedUtils.parse(uri, "UTF-8")
+                .forEach(pair -> queryParameters.put(pair.getName(), pair.getValue()));
+
+        final FeatureRenderParameters p = new FeatureRenderParameters();
+
+        p.renderScale = Double.parseDouble(queryParameters.getOrDefault("scale","1.0"));
+        p.renderWithFilter = Boolean.parseBoolean(queryParameters.getOrDefault("filter", "true"));
+        p.renderFilterListName = queryParameters.get("filterListName");
+        p.renderWithoutMask = Boolean.parseBoolean(queryParameters.getOrDefault("excludeMask", "true"));
+
+        if (queryParameters.containsKey("width")) {
+            p.renderFullScaleWidth = Integer.parseInt(queryParameters.get("width"));
+        }
+
+        if (queryParameters.containsKey("height")) {
+            p.renderFullScaleHeight = Integer.parseInt(queryParameters.get("height"));
+        }
+
+        return p;
     }
 }
 

@@ -18,6 +18,7 @@ import mpicbg.util.Timer;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
+import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.ImageProcessorUtil;
 import org.slf4j.Logger;
@@ -284,6 +285,17 @@ public class CanvasFeatureExtractor implements Serializable {
                  " features, elapsedTime=" + timer.stop() + "ms");
 
         return featureList;
+    }
+
+    public static CanvasFeatureExtractor build(final FeatureExtractionParameters featureExtraction) {
+
+        final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
+        siftParameters.fdSize = featureExtraction.fdSize;
+        siftParameters.steps = featureExtraction.steps;
+
+        return new CanvasFeatureExtractor(siftParameters,
+                                          featureExtraction.minScale,
+                                          featureExtraction.maxScale);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureExtractor.class);
