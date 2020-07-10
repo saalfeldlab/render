@@ -29,7 +29,7 @@ const JaneliaMatchTrialImage = function (renderParametersUrl, row, column, viewS
 
     const self = this;
     this.image.onload = function () {
-        self.positionImage();
+        self.positionImage(self.image.naturalWidth, self.image.naturalHeight);
     };
 
     this.matches = [];
@@ -41,11 +41,9 @@ JaneliaMatchTrialImage.prototype.loadImage = function() {
     this.image.src = this.imageUrl;
 };
 
-JaneliaMatchTrialImage.prototype.positionImage = function() {
-    const scaledWidth = this.image.naturalWidth;
-    const scaledHeight = this.image.naturalHeight;
-    this.x = (this.column * (scaledWidth + this.cellMargin)) + this.cellMargin;
-    this.y = (this.row * (scaledHeight + this.cellMargin)) + this.cellMargin;
+JaneliaMatchTrialImage.prototype.positionImage = function(scaledCellWidth, scaledCellHeight) {
+    this.x = (this.column * (scaledCellWidth + this.cellMargin)) + this.cellMargin;
+    this.y = (this.row * (scaledCellHeight + this.cellMargin)) + this.cellMargin;
     this.imagePositioned = true;
 };
 
@@ -310,6 +308,7 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
 
     if ($('#includeGeometric').is(':checked')) {
         const p = {
+            "gdEnabled": true,
             "geometricDescriptorParameters": {
                 "numberOfNeighbors": parseInt($('#gdNumberOfNeighbors').val()),
                 "redundancy": parseInt($('#gdRedundancy').val()),
@@ -532,7 +531,7 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
     };
 
     const getMatchStatsHtml = function (matchStats) {
-        const csSizes = matchStats.consensusSetSizes;
+        const csSizes = typeof matchStats.consensusSetSizes !== 'undefined' ? matchStats.consensusSetSizes : [0];
         let csText;
         if (csSizes.length === 1) {
             if (csSizes[0] === 0) {
@@ -608,7 +607,8 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 
     // hack to populate aggregate std dev for older match trials that have only one consensus set ...
     if ((typeof stats.aggregateDeltaXStandardDeviation === 'undefined') &&
-        (mParams.matchFilter !== 'AGGREGATED_CONSENSUS_SETS') &&
+        (data.parameters.featureAndMatchParameters.matchDerivationParameters.matchFilter !== 'AGGREGATED_CONSENSUS_SETS') &&
+        (typeof stats.consensusSetDeltaXStandardDeviations !== 'undefined') &&
         (stats.consensusSetDeltaXStandardDeviations.length === 1)) {
 
         stats.aggregateDeltaXStandardDeviation = stats.consensusSetDeltaXStandardDeviations[0];
@@ -634,6 +634,9 @@ JaneliaMatchTrial.prototype.drawAllMatches = function() {
 JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
 
     if (this.pImage.imagePositioned && this.qImage.imagePositioned) {
+
+        // reposition qImage based upon pImage size
+        this.qImage.positionImage(this.pImage.image.naturalWidth, this.pImage.image.naturalHeight);
 
         const context = this.canvas.getContext("2d");
 
