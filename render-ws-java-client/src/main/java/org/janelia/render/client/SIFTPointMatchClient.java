@@ -33,6 +33,7 @@ import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.PointMatchQualityStats;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
+import org.janelia.alignment.match.StageMatcher;
 import org.janelia.alignment.match.cache.CachedCanvasFeatures;
 import org.janelia.alignment.match.cache.CachedCanvasPeaks;
 import org.janelia.alignment.match.cache.CanvasDataCache;
@@ -573,16 +574,17 @@ public class SIFTPointMatchClient
                 final PointMatchQualityStats combinedQualityStats = new PointMatchQualityStats();
 
                 try {
-                    combinedQualityStats.calculate(siftRenderScale,
-                                                   pCanvasFeatures.getImageProcessorWidth(),
-                                                   pCanvasFeatures.getImageProcessorHeight(),
-                                                   pCanvasFeatures.getMaskProcessor(),
-                                                   qCanvasFeatures.getImageProcessorWidth(),
-                                                   qCanvasFeatures.getImageProcessorHeight(),
-                                                   qCanvasFeatures.getMaskProcessor(),
-                                                   Collections.singletonList(consistentCombinedSiftScaleInliers),
-                                                   siftMatchResult.getAggregateModelForQualityChecks(),
-                                                   siftFullScaleOverlapBlockRadius);
+                    combinedQualityStats.calculate(
+                            siftRenderScale,
+                            StageMatcher.toFullScaleSize(pCanvasFeatures.getImageProcessorWidth(), siftRenderScale),
+                            StageMatcher.toFullScaleSize(pCanvasFeatures.getImageProcessorHeight(), siftRenderScale),
+                            pCanvasFeatures.getMaskProcessor(),
+                            StageMatcher.toFullScaleSize(qCanvasFeatures.getImageProcessorWidth(), siftRenderScale),
+                            StageMatcher.toFullScaleSize(qCanvasFeatures.getImageProcessorHeight(), siftRenderScale),
+                            qCanvasFeatures.getMaskProcessor(),
+                            Collections.singletonList(consistentCombinedSiftScaleInliers),
+                            siftMatchResult.getAggregateModelForQualityChecks(),
+                            siftFullScaleOverlapBlockRadius);
                 } catch (final Exception e) {
                     throw new IllegalArgumentException("failed to fit aggregate model for point match quality calculation", e);
                 }

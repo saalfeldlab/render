@@ -535,11 +535,15 @@ public class StageMatcher {
 
         try {
             combinedQualityStats.calculate(siftRenderScale,
-                                           pCanvasFeatures.getImageProcessorWidth(),
-                                           pCanvasFeatures.getImageProcessorHeight(),
+                                           toFullScaleSize(pCanvasFeatures.getImageProcessorWidth(),
+                                                           siftRenderScale),
+                                           toFullScaleSize(pCanvasFeatures.getImageProcessorHeight(),
+                                                           siftRenderScale),
                                            pCanvasFeatures.getMaskProcessor(),
-                                           qCanvasFeatures.getImageProcessorWidth(),
-                                           qCanvasFeatures.getImageProcessorHeight(),
+                                           toFullScaleSize(qCanvasFeatures.getImageProcessorWidth(),
+                                                           siftRenderScale),
+                                           toFullScaleSize(qCanvasFeatures.getImageProcessorHeight(),
+                                                           siftRenderScale),
                                            qCanvasFeatures.getMaskProcessor(),
                                            Collections.singletonList(consistentCombinedSiftScaleInliers),
                                            siftMatchResult.getAggregateModelForQualityChecks(),
@@ -559,6 +563,11 @@ public class StageMatcher {
                 (point.getL()[1] / fromScale) * toScale
         };
         return new Point(reScaledLocal);
+    }
+
+    public static long toFullScaleSize(final int scaledSize,
+                                       final double renderScale) {
+        return (long) Math.ceil(scaledSize / renderScale);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(StageMatcher.class);
