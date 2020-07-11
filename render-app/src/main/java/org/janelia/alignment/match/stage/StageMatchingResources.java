@@ -1,4 +1,4 @@
-package org.janelia.alignment.match;
+package org.janelia.alignment.match.stage;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -9,6 +9,12 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
+import org.janelia.alignment.match.CanvasFeatureExtractor;
+import org.janelia.alignment.match.CanvasFeatureMatcher;
+import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
+import org.janelia.alignment.match.CanvasPeakExtractor;
+import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.cache.CachedCanvasFeatures;
 import org.janelia.alignment.match.cache.CachedCanvasPeaks;
 import org.janelia.alignment.match.cache.CanvasFeatureListLoader;

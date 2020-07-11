@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.janelia.alignment.match.parameters.FeatureStorageParameters;
 import org.janelia.alignment.match.parameters.MatchStageParameters;
+import org.janelia.alignment.match.stage.StageMatchingResources;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Assert;
 import org.junit.Test;

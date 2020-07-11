@@ -133,23 +133,23 @@ public class PointMatchQualityStats
         }
     }
 
-    List<Double> getConsensusSetDeltaXStandardDeviations() {
+    public List<Double> getConsensusSetDeltaXStandardDeviations() {
         return consensusSetDeltaXStandardDeviations;
     }
 
-    List<Double> getConsensusSetDeltaYStandardDeviations() {
+    public List<Double> getConsensusSetDeltaYStandardDeviations() {
         return consensusSetDeltaYStandardDeviations;
     }
 
-    double[] getAggregateDeltaXAndYStandardDeviation() {
+    public double[] getAggregateDeltaXAndYStandardDeviation() {
         return aggregateDeltaXAndYStandardDeviation;
     }
 
-    Long getOverlappingImagePixels() {
+    public Long getOverlappingImagePixels() {
         return overlappingImagePixels;
     }
 
-    Long getOverlappingCoveragePixels() {
+    public Long getOverlappingCoveragePixels() {
         return overlappingCoveragePixels;
     }
 

@@ -1,4 +1,4 @@
-package org.janelia.alignment.match;
+package org.janelia.alignment.match.stage;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -11,6 +11,14 @@ import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
+import org.janelia.alignment.match.CanvasMatchResult;
+import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.CanvasPeakExtractor;
+import org.janelia.alignment.match.CanvasPeakMatcher;
+import org.janelia.alignment.match.MatchFilter;
+import org.janelia.alignment.match.Matches;
+import org.janelia.alignment.match.PointMatchQualityStats;
 import org.janelia.alignment.match.cache.CachedCanvasFeatures;
 import org.janelia.alignment.match.cache.CachedCanvasPeaks;
 import org.janelia.alignment.match.cache.CanvasFeatureProvider;

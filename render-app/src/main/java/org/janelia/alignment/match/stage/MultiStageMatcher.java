@@ -1,9 +1,13 @@
-package org.janelia.alignment.match;
+package org.janelia.alignment.match.stage;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
+import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

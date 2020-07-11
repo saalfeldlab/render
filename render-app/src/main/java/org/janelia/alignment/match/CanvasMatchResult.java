@@ -73,7 +73,7 @@ public class CanvasMatchResult
         return list;
     }
 
-    List<Integer> getConsensusSetSizes() {
+    public List<Integer> getConsensusSetSizes() {
         final List<Integer> sizes = new ArrayList<>();
         if (consensusSetInliers != null) {
             //noinspection Convert2streamapi

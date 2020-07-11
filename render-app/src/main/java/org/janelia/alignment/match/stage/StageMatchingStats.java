@@ -1,9 +1,10 @@
-package org.janelia.alignment.match;
+package org.janelia.alignment.match.stage;
 
 import java.io.Serializable;
 import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.match.PointMatchQualityStats;
 
 /**
  * Statistics for one stage of matching a single canvas pair.

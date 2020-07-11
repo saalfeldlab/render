@@ -1,4 +1,4 @@
-package org.janelia.alignment.match;
+package org.janelia.alignment.match.stage;
 
 import java.io.Serializable;
 

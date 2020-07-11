@@ -16,11 +16,11 @@ import javax.annotation.Nonnull;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.match.MultiStageMatcher;
+import org.janelia.alignment.match.stage.MultiStageMatcher;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
-import org.janelia.alignment.match.StageMatcher;
-import org.janelia.alignment.match.StageMatchingResources;
+import org.janelia.alignment.match.stage.StageMatcher;
+import org.janelia.alignment.match.stage.StageMatchingResources;
 import org.janelia.alignment.match.cache.CachedCanvasFeatures;
 import org.janelia.alignment.match.cache.CachedCanvasPeaks;
 import org.janelia.alignment.match.cache.CanvasDataCache;

@@ -15,6 +15,10 @@ import org.janelia.alignment.match.parameters.FeatureStorageParameters;
 import org.janelia.alignment.match.parameters.GeometricDescriptorAndMatchFilterParameters;
 import org.janelia.alignment.match.parameters.MatchStageParameters;
 import org.janelia.alignment.match.parameters.MatchTrialParameters;
+import org.janelia.alignment.match.stage.MultiStageMatcher;
+import org.janelia.alignment.match.stage.StageMatcher;
+import org.janelia.alignment.match.stage.StageMatchingResources;
+import org.janelia.alignment.match.stage.StageMatchingStats;
 import org.janelia.alignment.util.ImageProcessorCache;
 
 import static org.janelia.alignment.match.RenderableCanvasIdPairs.TEMPLATE_ID_TOKEN;
