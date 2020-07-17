@@ -1,6 +1,6 @@
 [
   {
-    "stageName": "montagePass0",
+    "stageName": "montagePass1",
     "featureRender": { "renderScale": 0.3, "renderWithFilter": true, "renderWithoutMask": false },
     "featureRenderClip": { "clipWidth": 1000, "clipHeight": 600 },
     "featureExtraction": { "fdSize": 4, "minScale": 0.8, "maxScale": 1.0, "steps": 3 },
@@ -14,7 +14,7 @@
     "geometricDescriptorAndMatch": { "gdEnabled": false }
   },
   {
-    "stageName": "montagePass1",
+    "stageName": "montagePass2",
     "featureRender": { "renderScale": 0.4, "renderWithFilter": true, "renderWithoutMask": false },
     "featureRenderClip": { "clipWidth": 1000, "clipHeight": 600 },
     "featureExtraction": { "fdSize": 4, "minScale": 0.8, "maxScale": 1.0, "steps": 3 },
@@ -28,7 +28,7 @@
     "geometricDescriptorAndMatch": { "gdEnabled": false }
   },
   {
-    "stageName": "montagePass2",
+    "stageName": "montagePass3",
     "featureRender": { "renderScale": 0.6, "renderWithFilter": true, "renderWithoutMask": false },
     "featureRenderClip": { "clipWidth": 1000, "clipHeight": 600 },
     "featureExtraction": { "fdSize": 4, "minScale": 0.8, "maxScale": 1.0, "steps": 3 },
@@ -42,7 +42,7 @@
     "geometricDescriptorAndMatch": { "gdEnabled": false }
   },
   {
-    "stageName": "montagePass3",
+    "stageName": "montagePass4",
     "featureRender": { "renderScale": 0.8, "renderWithFilter": true, "renderWithoutMask": false },
     "featureRenderClip": { "clipWidth": 1000, "clipHeight": 600 },
     "featureExtraction": { "fdSize": 4, "minScale": 0.8, "maxScale": 1.0, "steps": 3 },
@@ -56,7 +56,7 @@
     "geometricDescriptorAndMatch": { "gdEnabled": false }
   },
   {
-    "stageName": "montagePass4",
+    "stageName": "montagePass5",
     "featureRender": { "renderScale": 1.0, "renderWithFilter": true, "renderWithoutMask": true },
     "featureRenderClip": { "clipWidth": 1000, "clipHeight": 600 },
     "featureExtraction": { "fdSize": 4, "minScale": 0.25, "maxScale": 1.0, "steps": 5 },

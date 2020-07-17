@@ -110,8 +110,9 @@ public class MultiStagePointMatchClient
     private final Parameters parameters;
     private final RenderDataClient matchStorageClient;
     private final ImageProcessorCache sourceImageProcessorCache;
+    private final List<MatchStageParameters> stageParametersList;
 
-    MultiStagePointMatchClient(final Parameters parameters) throws IllegalArgumentException {
+    MultiStagePointMatchClient(final Parameters parameters) throws IllegalArgumentException, IOException {
         this.parameters = parameters;
         this.matchStorageClient = new RenderDataClient(parameters.matchClient.baseDataUrl,
                                                        parameters.matchClient.owner,
@@ -122,6 +123,32 @@ public class MultiStagePointMatchClient
         sourceImageProcessorCache = new ImageProcessorCache(maximumNumberOfCachedSourcePixels,
                                                             true,
                                                             parameters.cacheFullScaleSourcePixels);
+
+        final File stageParametersFile = new File(parameters.stageJson);
+        if (! stageParametersFile.exists()) {
+            throw new IllegalArgumentException(
+                    "The --stageJson file " + stageParametersFile.getAbsolutePath() + " does not exist.");
+        }
+        if (! stageParametersFile.canRead()) {
+            throw new IllegalArgumentException(
+                    "The --stageJson file " + stageParametersFile.getAbsolutePath() + " cannot be read.");
+        }
+
+        stageParametersList = MatchStageParameters.fromJsonArrayFile(parameters.stageJson);
+
+        if ((stageParametersList.size() > 1) && (parameters.featureStorage.rootFeatureDirectory != null)) {
+            // CanvasFeatureList writeToStorage and readToStorage methods only support one storage location
+            // for each CanvasId, so different renderings of the same canvas (for different match stages)
+            // are not currently supported.
+            throw new IllegalArgumentException(
+                    "Stored features are not supported for runs with multiple stages.  " +
+                    "Remove the --rootFeatureDirectory parameter or choose a --stageJson list with only one stage.");
+        }
+
+        for (final MatchStageParameters stageParameters : stageParametersList) {
+            stageParameters.validateAndSetDefaults();
+            LOG.info("constructor: loaded stage parameters with slug {}", stageParameters.toSlug());
+        }
 
         // make sure the failed pairs directory exists before we get started
         if (parameters.failedPairsDir != null) {
@@ -136,23 +163,7 @@ public class MultiStagePointMatchClient
 
         final RenderableCanvasIdPairs renderableCanvasIdPairs = RenderableCanvasIdPairs.load(pairJsonFileName);
 
-        final List<MatchStageParameters> stageParametersList =
-                MatchStageParameters.fromJsonArrayFile(parameters.stageJson);
-
-        if ((stageParametersList.size() > 1) && (parameters.featureStorage.rootFeatureDirectory != null)) {
-            // CanvasFeatureList writeToStorage and readToStorage methods only support one storage location
-            // for each CanvasId, so different renderings of the same canvas (for different match stages)
-            // are not currently supported.
-            throw new IllegalArgumentException(
-                    "Stored features are not supported for runs with multiple stages.  " +
-                    "Remove the --rootFeatureDirectory parameter or choose a --stageJson list with only one stage.");
-        }
-
-        for (final MatchStageParameters stageParameters : stageParametersList) {
-            stageParameters.validateAndSetDefaults();
-        }
-
-        final List<CanvasMatches> matchList = generateMatchesForPairs(renderableCanvasIdPairs, stageParametersList);
+        final List<CanvasMatches> matchList = generateMatchesForPairs(renderableCanvasIdPairs);
         final List<CanvasMatches> nonEmptyMatchesList = storeMatches(matchList);
 
         if ((parameters.failedPairsDir != null) &&
@@ -163,8 +174,7 @@ public class MultiStagePointMatchClient
     }
 
     @Nonnull
-    private List<CanvasMatches> generateMatchesForPairs(final RenderableCanvasIdPairs renderableCanvasIdPairs,
-                                                        final List<MatchStageParameters> stageParametersList) {
+    private List<CanvasMatches> generateMatchesForPairs(final RenderableCanvasIdPairs renderableCanvasIdPairs) {
         final String urlTemplateString =
                 renderableCanvasIdPairs.getRenderParametersUrlTemplate(parameters.matchClient.baseDataUrl);
 

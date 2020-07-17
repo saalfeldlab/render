@@ -7,6 +7,8 @@ import org.janelia.alignment.match.parameters.MatchStageParameters;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tests the {@link StageMatchingResources} class.
@@ -22,6 +24,14 @@ public class StageMatchingResourcesTest {
         final String dataFile = "src/test/resources/match-test/match_stage_montage.json";
 
         final List<MatchStageParameters> stageParametersList = MatchStageParameters.fromJsonArrayFile(dataFile);
+
+        Assert.assertEquals("invalid number of stage parameters loaded",
+                            5, stageParametersList.size());
+
+        for (final MatchStageParameters stageParameters : stageParametersList) {
+           LOG.debug("testBuildList: loaded {}", stageParameters.toSlug());
+        }
+
         final List<StageMatchingResources> stageResourcesList =
                 StageMatchingResources.buildList(urlTemplateString,
                                                  new FeatureStorageParameters(),
@@ -39,4 +49,5 @@ public class StageMatchingResourcesTest {
                            stage4.isSiftUrlTemplateMatchesPriorStageTemplate());
     }
 
+    private static final Logger LOG = LoggerFactory.getLogger(StageMatchingResourcesTest.class);
 }
