@@ -1,24 +1,12 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.alignment;
+
+import ij.ImagePlus;
+import ij.io.FileInfo;
+import ij.io.Opener;
+import ij.io.TiffEncoder;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -34,17 +22,6 @@ import javax.imageio.ImageWriter;
 import javax.imageio.stream.FileImageOutputStream;
 import javax.imageio.stream.ImageOutputStream;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import ij.ImagePlus;
-import ij.io.FileInfo;
-import ij.io.Opener;
-import ij.io.TiffEncoder;
-import ij.process.ByteProcessor;
-import ij.process.ColorProcessor;
-import ij.process.ImageProcessor;
-
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.IllDefinedDataPointsException;
@@ -52,6 +29,9 @@ import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.SimilarityModel2D;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Stephan Saalfeld <saalfeld@janelia.hhmi.org>
@@ -213,46 +193,6 @@ public class Utils {
     }
 
     /**
-     * Open an ImagePlus from a URL
-     */
-    public static ImagePlus openImagePlusUrl(final String urlString) {
-        final Opener opener = new Opener();
-        return opener.openURL(urlString);
-    }
-
-//    /**
-//     * Open an Image from a URL.  Try ImageIO first, then ImageJ.
-//     */
-//    public static BufferedImage openImageUrl(final String urlString) {
-//        BufferedImage image;
-//        try {
-//            final URL url = new URL(urlString);
-//            final BufferedImage imageTemp = ImageIO.read(url);
-//
-//            // This gymnastic is necessary to get reproducible gray
-//            // values, just opening a JPG or PNG, even when saved by
-//            // ImageIO, and grabbing its pixels results in gray values
-//            // with a non-matching gamma transfer function, I cannot tell
-//            // why...
-//            image = new BufferedImage(imageTemp.getWidth(), imageTemp.getHeight(), BufferedImage.TYPE_INT_ARGB);
-//            image.createGraphics().drawImage(imageTemp, 0, 0, null);
-//        } catch (final Exception e) {
-//            try {
-//                final ImagePlus imp = openImagePlusUrl(urlString);
-//                if (imp != null) {
-//                    image = imp.getBufferedImage();
-//                } else {
-//                    image = null;
-//                }
-//            } catch (final Exception f) {
-//                image = null;
-//            }
-//        }
-//        return image;
-//    }
-
-
-    /**
      * Open an Image from a file.  Try ImageIO first, then ImageJ.
      */
     public static BufferedImage openImage(final String path) {
@@ -398,40 +338,6 @@ public class Utils {
             }
         }
         return uri;
-    }
-
-    public static BufferedImage toARGBImage(final ImageProcessor ip) {
-
-        final BufferedImage image = new BufferedImage(ip.getWidth(), ip.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        final WritableRaster raster = image.getRaster();
-
-        final ColorProcessor cp;
-        if (ip instanceof ColorProcessor) {
-            cp = (ColorProcessor) ip;
-        } else {
-            cp = ip.convertToColorProcessor();
-        }
-
-        raster.setDataElements(0, 0, ip.getWidth(), ip.getHeight(), cp.getPixels());
-
-        return image;
-    }
-
-    public static BufferedImage toByteGrayImage(final ImageProcessor ip) {
-
-        final BufferedImage image = new BufferedImage(ip.getWidth(), ip.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
-        final WritableRaster raster = image.getRaster();
-
-        final ByteProcessor bp;
-        if (ip instanceof ByteProcessor) {
-            bp = (ByteProcessor) ip;
-        } else {
-            bp = ip.convertToByteProcessor();
-        }
-
-        raster.setDataElements(0, 0, ip.getWidth(), ip.getHeight(), bp.getPixels());
-
-        return image;
     }
 
 }
