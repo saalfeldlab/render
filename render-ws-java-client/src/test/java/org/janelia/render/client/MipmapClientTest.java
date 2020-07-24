@@ -1,19 +1,3 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.render.client;
 
 import ij.process.ImageProcessor;
@@ -28,6 +12,7 @@ import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.FileUtil;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.After;
 import org.junit.Assert;
@@ -49,7 +34,7 @@ public class MipmapClientTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         FileUtil.deleteRecursive(mipmapRootDirectory);
     }
 
@@ -78,7 +63,8 @@ public class MipmapClientTest {
 
         mipmapClient.generateMissingMipmapFiles(tileSpec);
 
-        ImageProcessor imageProcessor = MipmapClient.loadImageProcessor(sourceImageAndMask.getImageUrl());
+        ImageProcessor imageProcessor = loadImageProcessor(sourceImageAndMask.getImageUrl(),
+                                                           false);
         int expectedWidth;
         int expectedHeight;
 
@@ -95,14 +81,14 @@ public class MipmapClientTest {
             imageAndMask = mipmapEntry.getValue();
             url = imageAndMask.getImageUrl();
 
-            imageProcessor = MipmapClient.loadImageProcessor(url);
+            imageProcessor = loadImageProcessor(url, false);
             Assert.assertEquals("invalid width for level " + level + " image " + url,
                                 expectedWidth, imageProcessor.getWidth());
             Assert.assertEquals("invalid height for level " + level + " image " + url,
                                 expectedHeight, imageProcessor.getHeight());
 
             url = imageAndMask.getMaskUrl();
-            imageProcessor = MipmapClient.loadImageProcessor(url);
+            imageProcessor = loadImageProcessor(url, true);
             Assert.assertEquals("invalid width for level " + level + " mask " + url,
                                 expectedWidth, imageProcessor.getWidth());
             Assert.assertEquals("invalid height for level " + level + " mask " + url,
@@ -110,14 +96,12 @@ public class MipmapClientTest {
         }
 
         final Map.Entry<Integer, ImageAndMask> floor3Entry = channelSpec.getFloorMipmapEntry(level);
-        //noinspection ConstantConditions
         Assert.assertEquals("invalid level returned for floor of non-existent level",
                             mipmapEntry.getKey(), floor3Entry.getKey());
 
         // --------------------------------------------------------------------
         // add another level and confirm that originally generated files remain
 
-        //noinspection ConstantConditions
         final File previouslyGeneratedImageFile = new File(imageAndMask.getImageFilePath());
         final long expectedLastModified = previouslyGeneratedImageFile.lastModified();
 
@@ -135,14 +119,14 @@ public class MipmapClientTest {
         imageAndMask = mipmapEntry.getValue();
         url = imageAndMask.getImageUrl();
 
-        imageProcessor = MipmapClient.loadImageProcessor(url);
+        imageProcessor = loadImageProcessor(url, false);
         Assert.assertEquals("invalid width for level " + level + " image " + url,
                             expectedWidth, imageProcessor.getWidth());
         Assert.assertEquals("invalid height for level " + level + " image " + url,
                             expectedHeight, imageProcessor.getHeight());
 
         url = imageAndMask.getMaskUrl();
-        imageProcessor = MipmapClient.loadImageProcessor(url);
+        imageProcessor = loadImageProcessor(url, true);
         Assert.assertEquals("invalid width for level " + level + " mask " + url,
                             expectedWidth, imageProcessor.getWidth());
         Assert.assertEquals("invalid height for level " + level + " mask " + url,
@@ -163,6 +147,14 @@ public class MipmapClientTest {
             throw new IOException("failed to create " + testDirectory.getAbsolutePath());
         }
         return testDirectory;
+    }
+
+    private ImageProcessor loadImageProcessor(final String url,
+                                              final boolean isMask) {
+        return ImageProcessorCache.DISABLED_CACHE.get(url,
+                                                      0,
+                                                      isMask,
+                                                      false);
     }
 
 }

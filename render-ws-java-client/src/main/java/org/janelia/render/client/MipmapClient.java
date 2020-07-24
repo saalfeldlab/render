@@ -3,8 +3,6 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
-import ij.ImagePlus;
-import ij.io.Opener;
 import ij.process.ImageProcessor;
 
 import java.awt.image.BufferedImage;
@@ -27,6 +25,7 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -224,11 +223,18 @@ public class MipmapClient {
 
             if (parameters.forceGeneration || isMissingMipmaps(channelSpec, firstEntry, sourceImageAndMask.hasMask())) {
 
-                ImageProcessor sourceImageProcessor = loadImageProcessor(sourceImageAndMask.getImageUrl());
+                ImageProcessor sourceImageProcessor =
+                        ImageProcessorCache.DISABLED_CACHE.get(sourceImageAndMask.getImageUrl(),
+                                                               0,
+                                                               false,
+                                                               false);
 
                 ImageProcessor sourceMaskProcessor = null;
                 if (sourceImageAndMask.hasMask()) {
-                    sourceMaskProcessor = loadImageProcessor(sourceImageAndMask.getMaskUrl());
+                    sourceMaskProcessor = ImageProcessorCache.DISABLED_CACHE.get(sourceImageAndMask.getMaskUrl(),
+                                                                                 0,
+                                                                                 true,
+                                                                                 false);
                 }
 
                 Map.Entry<Integer, ImageAndMask> derivedEntry;
@@ -418,21 +424,6 @@ public class MipmapClient {
         raster.setDataElements(0, 0, p.getWidth(), p.getHeight(), p.getPixels());
 
         return image;
-    }
-
-    static ImageProcessor loadImageProcessor(final String url)
-            throws IllegalArgumentException {
-
-        // openers keep state about the file being opened, so we need to create a new opener for each load
-        final Opener opener = new Opener();
-        opener.setSilentMode(true);
-
-        final ImagePlus imagePlus = opener.openURL(url);
-        if (imagePlus == null) {
-            throw new IllegalArgumentException("failed to create imagePlus instance for '" + url + "'");
-        }
-
-        return imagePlus.getProcessor();
     }
 
 // This method to calculate a zip file digest was copied here from prior mipmap generator code.
