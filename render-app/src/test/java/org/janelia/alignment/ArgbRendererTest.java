@@ -260,6 +260,34 @@ public class ArgbRendererTest {
     }
 
     @Test
+    public void testCachingWithTiffStack() throws Exception {
+
+        final File expectedFile =
+                new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
+        final String expectedDigestString = getDigestString(expectedFile);
+
+        final String[] args = {
+                "--tile_spec_url", "src/test/resources/stitch-test/test_4_tiles_tiff_stack.json",
+                "--out", outputFile.getAbsolutePath(),
+                "--width", "4576",
+                "--height", "4173",
+                "--scale", "0.05"
+        };
+
+        final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
+        final ImageProcessorCache imageProcessorCache =
+                new ImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
+                                        true, false);
+
+        validateCacheRender("first run with cache",
+                            params, imageProcessorCache, 5, 3, expectedDigestString);
+        validateCacheRender("second run with cache",
+                            params, imageProcessorCache, 5, 11, expectedDigestString);
+        validateCacheRender("third run with NO cache",
+                            params, ImageProcessorCache.DISABLED_CACHE, 0, 0, expectedDigestString);
+    }
+
+    @Test
     public void testSuperDownSample() throws Exception {
 
         final String[] args = {

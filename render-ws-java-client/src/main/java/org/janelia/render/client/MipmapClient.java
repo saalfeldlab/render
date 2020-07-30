@@ -227,14 +227,19 @@ public class MipmapClient {
                         ImageProcessorCache.DISABLED_CACHE.get(sourceImageAndMask.getImageUrl(),
                                                                0,
                                                                false,
-                                                               false);
+                                                               false,
+                                                               sourceImageAndMask.getImageLoaderType(),
+                                                               sourceImageAndMask.getImageSliceNumber());
 
                 ImageProcessor sourceMaskProcessor = null;
                 if (sourceImageAndMask.hasMask()) {
-                    sourceMaskProcessor = ImageProcessorCache.DISABLED_CACHE.get(sourceImageAndMask.getMaskUrl(),
-                                                                                 0,
-                                                                                 true,
-                                                                                 false);
+                    sourceMaskProcessor =
+                            ImageProcessorCache.DISABLED_CACHE.get(sourceImageAndMask.getMaskUrl(),
+                                                                   0,
+                                                                   true,
+                                                                   false,
+                                                                   sourceImageAndMask.getMaskLoaderType(),
+                                                                   sourceImageAndMask.getMaskSliceNumber());
                 }
 
                 Map.Entry<Integer, ImageAndMask> derivedEntry;

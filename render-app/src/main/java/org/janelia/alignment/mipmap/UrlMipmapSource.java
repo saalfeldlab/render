@@ -117,7 +117,9 @@ public class UrlMipmapSource
             final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
                                                                           downSampleLevels,
                                                                           false,
-                                                                          firstChannelSpec.is16Bit());
+                                                                          firstChannelSpec.is16Bit(),
+                                                                          imageAndMask.getImageLoaderType(),
+                                                                          imageAndMask.getImageSliceNumber());
             final long loadMipStop = System.currentTimeMillis();
 
             if (imageProcessor.getWidth() == 0 || imageProcessor.getHeight() == 0) {
@@ -130,8 +132,13 @@ public class UrlMipmapSource
                 // open mask
                 final ImageProcessor maskProcessor;
                 final String maskUrl = imageAndMask.getMaskUrl();
-                if ((maskUrl != null) && (!excludeMask)) {
-                    maskProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true, false);
+                if ((maskUrl != null) && (! excludeMask)) {
+                    maskProcessor = imageProcessorCache.get(maskUrl,
+                                                            downSampleLevels,
+                                                            true,
+                                                            false,
+                                                            imageAndMask.getMaskLoaderType(),
+                                                            imageAndMask.getMaskSliceNumber());
                 } else {
                     maskProcessor = null;
                 }
@@ -206,7 +213,9 @@ public class UrlMipmapSource
             final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
                                                                           downSampleLevels,
                                                                           false,
-                                                                          channelSpec.is16Bit());
+                                                                          channelSpec.is16Bit(),
+                                                                          imageAndMask.getImageLoaderType(),
+                                                                          imageAndMask.getImageSliceNumber());
 
             if (imageProcessor.getWidth() == firstChannelWidth && imageProcessor.getWidth() == firstChannelHeight) {
 
@@ -214,7 +223,12 @@ public class UrlMipmapSource
                 final ImageProcessor maskProcessor;
                 final String maskUrl = imageAndMask.getMaskUrl();
                 if ((maskUrl != null) && (! excludeMask)) {
-                    maskProcessor = imageProcessorCache.get(maskUrl, downSampleLevels, true, false);
+                    maskProcessor = imageProcessorCache.get(maskUrl,
+                                                            downSampleLevels,
+                                                            true,
+                                                            false,
+                                                            imageAndMask.getMaskLoaderType(),
+                                                            imageAndMask.getMaskSliceNumber());
                 } else {
                     maskProcessor = null;
                 }
@@ -253,7 +267,9 @@ public class UrlMipmapSource
         final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
                                                                       0,
                                                                       false,
-                                                                      firstChannelSpec.is16Bit());
+                                                                      firstChannelSpec.is16Bit(),
+                                                                      imageAndMask.getImageLoaderType(),
+                                                                      imageAndMask.getImageSliceNumber());
         fullScaleWidth = imageProcessor.getWidth();
         fullScaleHeight = imageProcessor.getHeight();
     }

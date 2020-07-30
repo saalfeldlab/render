@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import mpicbg.trakem2.util.Downsampler;
 
+import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
@@ -122,7 +123,7 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
      * @param  url               url for the image.
      * @param  downSampleLevels  number of levels to further down sample the image.
      * @param  isMask            indicates whether this image is a mask.
-     * @param  convertTo16Bit    ignored for labels (always false).
+     * @param  imageLoader       loader to use.
      *
      * @return a newly loaded image processor to be cached.
      *
@@ -133,13 +134,13 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
     protected ImageProcessor loadImageProcessor(final String url,
                                                 final int downSampleLevels,
                                                 final boolean isMask,
-                                                final boolean convertTo16Bit)
+                                                final ImageLoader imageLoader)
             throws IllegalArgumentException {
 
         ImageProcessor imageProcessor;
 
         if (isMask) {
-            imageProcessor = super.loadImageProcessor(url, downSampleLevels, true, convertTo16Bit);
+            imageProcessor = super.loadImageProcessor(url, downSampleLevels, true, imageLoader);
         } else {
 
             final Color labelColor = getColorForUrl(url);

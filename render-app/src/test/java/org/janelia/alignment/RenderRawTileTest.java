@@ -7,6 +7,7 @@ import java.awt.image.BufferedImage;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
+import org.janelia.alignment.loader.ImageJDefaultLoader;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -23,14 +24,16 @@ public class RenderRawTileTest {
     @Test
     public void testRender() {
 
-        final ImageAndMask imageWithoutMask = new ImageAndMask("src/test/resources/raw-tile-test/raw-tile.png", null);
-        final ImageProcessorCache imageProcessorCache = new ImageProcessorCache();
+        final ImageAndMask imageWithoutMask = new ImageAndMask("src/test/resources/raw-tile-test/raw-tile.png",
+                                                               null);
 
-        final ImageProcessor rawIp = imageProcessorCache.get(imageWithoutMask.getImageUrl(), 0, false, false);
+        final ImageProcessor rawIp = ImageJDefaultLoader.DEFAULT_LOADER.load(imageWithoutMask.getImageUrl());
         final FloatProcessor floatRawIp = rawIp.convertToFloatProcessor();
         floatRawIp.setMinAndMax(0, 255);
         final BufferedImage rawImage =
-                ArgbRenderer.targetToARGBImage(new TransformMeshMappingWithMasks.ImageProcessorWithMasks(floatRawIp, null, null),
+                ArgbRenderer.targetToARGBImage(new TransformMeshMappingWithMasks.ImageProcessorWithMasks(floatRawIp,
+                                                                                                         null,
+                                                                                                         null),
                                                false);
 
         final ChannelSpec channelSpec = new ChannelSpec();
@@ -50,7 +53,7 @@ public class RenderRawTileTest {
 
         ArgbRenderer.render(tileRenderParameters,
                             renderedImage,
-                            imageProcessorCache);
+                            ImageProcessorCache.DISABLED_CACHE);
 
         Assert.assertEquals("bad rendered image width",
                             rawImage.getWidth(), renderedImage.getWidth());
