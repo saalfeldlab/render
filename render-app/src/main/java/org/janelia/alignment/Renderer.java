@@ -197,7 +197,10 @@ public class Renderer {
         if (renderParameters.displayHelp()) {
             renderParameters.showUsage();
         } else {
-            final Renderer renderer = new Renderer(renderParameters, new ImageProcessorCache());
+            final Renderer renderer = new Renderer(renderParameters,
+                                                   new ImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
+                                                                           true,
+                                                                           true));
             renderer.validateRenderAndSaveImage(imageOpener, converter);
         }
     }

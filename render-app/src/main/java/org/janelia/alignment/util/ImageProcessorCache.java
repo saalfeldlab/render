@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 public class ImageProcessorCache {
 
     /** Cache instance that doesn't cache anything but provides the same API for loading images. */
-    public static final ImageProcessorCache DISABLED_CACHE = new ImageProcessorCache(0, false, false);
+    public static final ImageProcessorCache DISABLED_CACHE = new DisabledCache();
     
     /** Default max number of pixels is 1GB (or 160 full resolution 2500x2500 pixel tiles). */
     public static final long DEFAULT_MAX_CACHED_PIXELS = 1000 * 1000000; // 1GB
@@ -46,10 +46,13 @@ public class ImageProcessorCache {
     private final LoadingCache<CacheKey, ImageProcessor> cache;
 
     /**
-     * Constructs an instance with default parameters.
+     * Constructor for disabled cache.
      */
-    public ImageProcessorCache() {
-        this(DEFAULT_MAX_CACHED_PIXELS, true, true);
+    private ImageProcessorCache() {
+        this.maximumNumberOfCachedKilobytes = 0;
+        this.recordStats = false;
+        this.cacheOriginalsForDownSampledImages = false;
+        this.cache = null;
     }
 
     /**
@@ -178,14 +181,16 @@ public class ImageProcessorCache {
      * @return the number of entries currently in this cache.
      */
     public long size() {
-        return cache.size();
+        return cache == null ? 0 : cache.size();
     }
 
     /**
      * Discards all entries in the cache.
      */
     public void invalidateAll() {
-        cache.invalidateAll();
+        if (cache != null) {
+            cache.invalidateAll();
+        }
     }
 
     /**
@@ -193,7 +198,7 @@ public class ImageProcessorCache {
      *         (will be all zeros if stat recording is not enabled for this cache).
      */
     public CacheStats getStats() {
-        return cache.stats();
+        return cache == null ? EMPTY_STATS : cache.stats();
     }
 
     @Override
@@ -330,6 +335,41 @@ public class ImageProcessorCache {
         }
     }
 
+    /** Cache that doesn't cache anything but provides the same API for loading images. */
+    private static class DisabledCache extends ImageProcessorCache {
+
+        public DisabledCache() {
+            super();
+        }
+
+        @Override
+        public ImageProcessor get(final String url,
+                                  final int downSampleLevels,
+                                  final boolean isMask,
+                                  final boolean convertTo16Bit,
+                                  final LoaderType loaderType,
+                                  final Integer imageSliceNumber) {
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("uncachedGet: entry, urlString={}, downSampleLevels={}", url, downSampleLevels);
+            }
+
+            final ImageLoader imageLoader =  ImageLoader.build(loaderType, imageSliceNumber);
+            ImageProcessor imageProcessor = imageLoader.load(url);
+
+            // down sample the image as needed
+            if (downSampleLevels > 0) {
+                imageProcessor = Downsampler.downsampleImageProcessor(imageProcessor,
+                                                                      downSampleLevels);
+            }
+
+            return imageProcessor;
+        }
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(ImageProcessorCache.class);
 
+    private static final CacheStats EMPTY_STATS = new CacheStats(0,0,
+                                                                 0,0,
+                                                                 0,0);
 }

@@ -208,7 +208,9 @@ public class BoxGenerator implements Serializable {
 
             final List<TileBounds> tileBoundsList = getRenderDataClient().getTileBounds(stack, z);
             tileCount = tileBoundsList.size();
-            imageProcessorCache = new ImageProcessorCache();
+            imageProcessorCache = new ImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
+                                                          true,
+                                                          true);
 
         }
 
