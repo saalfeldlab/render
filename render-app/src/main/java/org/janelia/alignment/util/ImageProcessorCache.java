@@ -271,7 +271,7 @@ public class ImageProcessorCache {
     /**
      * Key that combines an image's url with its down sample levels.
      */
-    private static class CacheKey {
+    protected static class CacheKey {
 
         private final String url;
         private final int downSampleLevels;
