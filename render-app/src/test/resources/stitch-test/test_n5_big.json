@@ -1,0 +1,22 @@
+[
+    {
+        "tileId": "tile_1",
+        "width": 384.0,
+        "height": 640.0,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "n5:///nrs/flyem/tmp/VNC-align.n5?dataSet=/align/slab-26/raw/s0&x=512&y=640&z=1656&w=384&h=1280",
+                "imageLoaderType": "N5_SLICE_UNSIGNED_BYTE"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.TranslationModel2D",
+                    "dataString": "512 640"
+                }
+            ]
+        }
+    }
+]

@@ -12,6 +12,7 @@ import mpicbg.models.TransformMesh;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
+import org.janelia.alignment.loader.ImageJDefaultLoader;
 import org.janelia.alignment.mapper.SingleChannelWithAlphaMapper;
 import org.janelia.alignment.spec.TileSpec;
 import org.junit.Assert;
@@ -20,8 +21,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.janelia.alignment.loader.ImageJDefaultLoader.DEFAULT_LOADER;
 
 /**
  * A test of mesh operations to ensure that performance enhancements do not regress results.
@@ -53,11 +52,11 @@ public class TransformMeshTest {
 
         final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
         final ImageAndMask imageAndMask = mipmapEntry.getValue();
-        ipMipmap = DEFAULT_LOADER.load(imageAndMask.getImageUrl());
+        ipMipmap = ImageJDefaultLoader.INSTANCE.load(imageAndMask.getImageUrl());
 
         tp = ipMipmap.createProcessor(ipMipmap.getWidth(), ipMipmap.getHeight());
 
-        maskSourceProcessor = DEFAULT_LOADER.load(imageAndMask.getMaskUrl());
+        maskSourceProcessor = ImageJDefaultLoader.INSTANCE.load(imageAndMask.getMaskUrl());
         maskTargetProcessor = new ByteProcessor(tp.getWidth(), tp.getHeight());
 
     }

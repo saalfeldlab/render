@@ -16,6 +16,7 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -287,6 +288,36 @@ public class ArgbRendererTest {
                             params, ImageProcessorCache.DISABLED_CACHE, 0, 0, expectedDigestString);
     }
 
+    @Ignore // NOTE: must have /nrs/flyem mounted for this test to work
+    @Test
+    public void testCachingWithN5Slice() throws Exception {
+
+        //
+        final String[] args = {
+                "--tile_spec_url", "src/test/resources/stitch-test/test_n5.json",
+                // "--tile_spec_url", "src/test/resources/stitch-test/test_n5_big.json",   // change expected cache counts
+                // "--tile_spec_url", "src/test/resources/stitch-test/test_n5_small.json", // change expected cache counts
+                "--out", outputFile.getAbsolutePath(),
+                "--x", "512",
+                "--y", "640",
+                "--width", "384",
+                "--height", "640",
+                "--scale", "1.0"
+        };
+
+        final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
+        final ImageProcessorCache imageProcessorCache =
+                new ImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
+                                        true, false);
+
+        validateCacheRender("first run with cache",
+                            params, imageProcessorCache, 2, 0, null);
+        validateCacheRender("second run with cache",
+                            params, imageProcessorCache, 2, 2, null);
+        validateCacheRender("third run with NO cache",
+                            params, ImageProcessorCache.DISABLED_CACHE, 0, 0, null);
+    }
+
     @Test
     public void testSuperDownSample() throws Exception {
 
@@ -394,16 +425,18 @@ public class ArgbRendererTest {
         Assert.assertEquals(context + ": invalid number of cache hits",
                             expectedHitCount, stats.hitCount());
 
-        Utils.saveImage(targetImage,
-                        outputFile.getAbsolutePath(),
-                        Utils.JPEG_FORMAT,
-                        params.isConvertToGray(),
-                        params.getQuality());
+        if (expectedDigestString != null) {
+            Utils.saveImage(targetImage,
+                            outputFile.getAbsolutePath(),
+                            Utils.JPEG_FORMAT,
+                            params.isConvertToGray(),
+                            params.getQuality());
 
-        final String actualDigestString = getDigestString(outputFile);
+            final String actualDigestString = getDigestString(outputFile);
 
-        Assert.assertEquals(context + ": stitched file MD5 hash differs from expected result",
-                            expectedDigestString, actualDigestString);
+            Assert.assertEquals(context + ": stitched file MD5 hash differs from expected result",
+                                expectedDigestString, actualDigestString);
+        }
     }
 
     static String getDigestString(final File file) throws Exception {

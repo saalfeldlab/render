@@ -23,8 +23,8 @@ import javax.imageio.ImageIO;
 public class ImageJDefaultLoader
         implements ImageLoader {
 
-    /** Common shared instance of default ImageJ loader. */
-    public static final ImageJDefaultLoader DEFAULT_LOADER = new ImageJDefaultLoader();
+    /** Shareable instance of this loader. */
+    public static final ImageJDefaultLoader INSTANCE = new ImageJDefaultLoader();
 
     /**
      * @return true (always) because the default ImageJ loader handles 2D sources.

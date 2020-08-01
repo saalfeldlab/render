@@ -9,6 +9,7 @@ import java.util.Date;
 import java.util.Map;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.loader.ImageJDefaultLoader;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.FileUtil;
@@ -17,8 +18,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.janelia.alignment.loader.ImageJDefaultLoader.DEFAULT_LOADER;
 
 /**
  * Tests the {@link MipmapClient} class.
@@ -64,7 +63,7 @@ public class MipmapClientTest {
 
         mipmapClient.generateMissingMipmapFiles(tileSpec);
 
-        ImageProcessor imageProcessor = DEFAULT_LOADER.load(sourceImageAndMask.getImageUrl());
+        ImageProcessor imageProcessor = ImageJDefaultLoader.INSTANCE.load(sourceImageAndMask.getImageUrl());
         int expectedWidth;
         int expectedHeight;
 
@@ -81,14 +80,14 @@ public class MipmapClientTest {
             imageAndMask = mipmapEntry.getValue();
             url = imageAndMask.getImageUrl();
 
-            imageProcessor = DEFAULT_LOADER.load(url);
+            imageProcessor = ImageJDefaultLoader.INSTANCE.load(url);
             Assert.assertEquals("invalid width for level " + level + " image " + url,
                                 expectedWidth, imageProcessor.getWidth());
             Assert.assertEquals("invalid height for level " + level + " image " + url,
                                 expectedHeight, imageProcessor.getHeight());
 
             url = imageAndMask.getMaskUrl();
-            imageProcessor = DEFAULT_LOADER.load(url);
+            imageProcessor = ImageJDefaultLoader.INSTANCE.load(url);
             Assert.assertEquals("invalid width for level " + level + " mask " + url,
                                 expectedWidth, imageProcessor.getWidth());
             Assert.assertEquals("invalid height for level " + level + " mask " + url,
@@ -119,14 +118,14 @@ public class MipmapClientTest {
         imageAndMask = mipmapEntry.getValue();
         url = imageAndMask.getImageUrl();
 
-        imageProcessor = DEFAULT_LOADER.load(url);
+        imageProcessor = ImageJDefaultLoader.INSTANCE.load(url);
         Assert.assertEquals("invalid width for level " + level + " image " + url,
                             expectedWidth, imageProcessor.getWidth());
         Assert.assertEquals("invalid height for level " + level + " image " + url,
                             expectedHeight, imageProcessor.getHeight());
 
         url = imageAndMask.getMaskUrl();
-        imageProcessor = DEFAULT_LOADER.load(url);
+        imageProcessor = ImageJDefaultLoader.INSTANCE.load(url);
         Assert.assertEquals("invalid width for level " + level + " mask " + url,
                             expectedWidth, imageProcessor.getWidth());
         Assert.assertEquals("invalid height for level " + level + " mask " + url,

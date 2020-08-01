@@ -27,7 +27,7 @@ public class RenderRawTileTest {
         final ImageAndMask imageWithoutMask = new ImageAndMask("src/test/resources/raw-tile-test/raw-tile.png",
                                                                null);
 
-        final ImageProcessor rawIp = ImageJDefaultLoader.DEFAULT_LOADER.load(imageWithoutMask.getImageUrl());
+        final ImageProcessor rawIp = ImageJDefaultLoader.INSTANCE.load(imageWithoutMask.getImageUrl());
         final FloatProcessor floatRawIp = rawIp.convertToFloatProcessor();
         floatRawIp.setMinAndMax(0, 255);
         final BufferedImage rawImage =
