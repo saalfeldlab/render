@@ -4,8 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
-import javax.annotation.Nonnull;
-
 import org.apache.commons.io.FileUtils;
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
@@ -44,7 +42,7 @@ public class CanvasFileLoader
     }
 
     @Override
-    public CachedCanvasFile load(@Nonnull final CanvasId canvasId) throws Exception {
+    public CachedCanvasFile load(final CanvasId canvasId) throws Exception {
 
         File groupDirectory = rootDirectory;
         if (canvasId.getGroupId() != null) {

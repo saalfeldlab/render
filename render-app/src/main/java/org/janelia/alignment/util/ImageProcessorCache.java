@@ -10,8 +10,6 @@ import ij.ImagePlus;
 import ij.io.Opener;
 import ij.process.ImageProcessor;
 
-import javax.annotation.Nullable;
-
 import mpicbg.trakem2.util.Downsampler;
 
 import org.janelia.alignment.protocol.s3.S3Opener;
@@ -96,11 +94,9 @@ public class ImageProcessorCache {
                 new CacheLoader<CacheKey, ImageProcessor>() {
 
                     @Override
-                    public ImageProcessor load(@Nullable final CacheKey key) {
+                    public ImageProcessor load(final CacheKey key) {
                         ImageProcessor imageProcessor = null;
-                        if (key != null) {
-                            imageProcessor = loadImageProcessor(key.getUri(), key.getDownSampleLevels(), key.isMask(),key.isConvertTo16Bit());
-                        }
+                        imageProcessor = loadImageProcessor(key.getUri(), key.getDownSampleLevels(), key.isMask(),key.isConvertTo16Bit());
                         return imageProcessor;
                     }
                 };

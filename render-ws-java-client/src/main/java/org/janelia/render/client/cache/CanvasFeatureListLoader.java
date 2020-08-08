@@ -4,8 +4,6 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 
-import javax.annotation.Nonnull;
-
 import mpicbg.imagefeatures.Feature;
 
 import org.janelia.alignment.RenderParameters;
@@ -62,7 +60,7 @@ public class CanvasFeatureListLoader
     }
 
     @Override
-    public CachedCanvasFeatures load(@Nonnull final CanvasId canvasId) {
+    public CachedCanvasFeatures load(final CanvasId canvasId) {
 
         List<Feature> featureList = null;
         double[] offsets = null;
