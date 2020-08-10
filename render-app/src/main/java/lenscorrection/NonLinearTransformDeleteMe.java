@@ -25,4 +25,5 @@ import mpicbg.trakem2.transform.NonLinearCoordinateTransform;
  *             mpicbg.trakem2.transform.NonLinearCoordinateTransform instead
  */
 @Deprecated
-public class NonLinearTransform extends NonLinearCoordinateTransform {}
+public class NonLinearTransformDeleteMe
+        extends NonLinearCoordinateTransform {}

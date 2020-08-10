@@ -6,10 +6,11 @@
     <parent>
         <artifactId>modules-root</artifactId>
         <groupId>org.janelia.render</groupId>
-        <version>2.2.0-SNAPSHOT</version>
+        <version>2.3.0</version>
     </parent>
 
     <name>Render Web Service Java Client</name>
+    <description>Java clients that utilize (remote) render web service APIs.</description>
     <artifactId>render-ws-java-client</artifactId>
 
     <build>
@@ -75,6 +76,23 @@
             <version>${render-version}</version>
         </dependency>
 
+        <!-- SciJava Dependencies -->
+
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+        </dependency>
+
+        <!-- Overridden SciJava Dependencies -->
+
+        <dependency>
+            <groupId>jitk</groupId>
+            <artifactId>jitk-tps</artifactId>
+            <version>${jitk-tps-with-mpicbg.version}</version>
+        </dependency>
+
+        <!-- Dependencies not defined in SciJava -->
+
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
@@ -91,6 +109,12 @@
             <groupId>com.twelvemonkeys.imageio</groupId>
             <artifactId>imageio-tiff</artifactId>
             <version>3.1.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>au.com.bytecode</groupId>
+            <artifactId>opencsv</artifactId>
+            <version>2.4</version>
         </dependency>
 
         <dependency>
@@ -116,5 +140,26 @@
         	<groupId>mpicbg</groupId>
         	<artifactId>mpicbg</artifactId>
         </dependency>
+
     </dependencies>
+
+    <!--
+      Administrative elements required by org.scijava.maven.plugin.enforcer.RequireElements
+      that have to be copied.  Too bad they can't just be taken from parent pom.
+    -->
+    <url>https://github.com/saalfeldlab/render</url>
+    <inceptionYear>2014</inceptionYear>
+    <organization><name>see parent</name></organization>
+    <licenses><license><name>see parent</name></license></licenses>
+    <developers><developer><name>see parent</name></developer></developers>
+    <contributors><contributor><name>see parent</name></contributor></contributors>
+    <mailingLists><mailingList><name>None</name></mailingList></mailingLists>
+    <scm><tag>see parent</tag></scm>
+    <issueManagement><system>see parent</system></issueManagement>
+    <ciManagement><system>see parent</system></ciManagement>
+    <properties>
+        <license.licenseName>gpl_v2</license.licenseName>
+        <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
+    </properties>
+
 </project>

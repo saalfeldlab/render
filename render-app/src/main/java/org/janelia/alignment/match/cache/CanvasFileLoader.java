@@ -4,8 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
-import javax.annotation.Nonnull;
-
 import org.apache.commons.io.FileUtils;
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
@@ -28,6 +26,7 @@ public class CanvasFileLoader
     private final File rootDirectory;
 
     /**
+     * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
      * @param  canvasFormat                 image format for all rendered canvas files.
      * @param  parentDirectory              parent directory for all rendered canvas files.
      */
@@ -39,7 +38,7 @@ public class CanvasFileLoader
     }
 
     @Override
-    public CachedCanvasFile load(@Nonnull final CanvasIdWithRenderContext canvasIdWithRenderContext) throws Exception {
+    public CachedCanvasFile load(final CanvasIdWithRenderContext canvasIdWithRenderContext) throws Exception {
 
         final CanvasId canvasId = canvasIdWithRenderContext.getCanvasId();
 

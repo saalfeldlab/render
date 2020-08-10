@@ -7,9 +7,8 @@ import mpicbg.models.CoordinateTransform;
 
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.junit.Assert;
 import org.junit.Test;
-
-import junit.framework.Assert;
 
 /**
  * Tests the {@link ThinPlateSplineClient} class.

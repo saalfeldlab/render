@@ -14,7 +14,7 @@
         "specList" : [
           {
             "type" : "leaf",
-            "className" : "lenscorrection.NonLinearTransform",
+            "className" : "mpicbg.trakem2.transform.NonLinearCoordinateTransform",
             "dataString" : "5 21 711.4721917133976 -5.589914769754155 ... 2560 2160"
           },
           {
@@ -43,7 +43,7 @@
         "specList" : [
           {
             "type" : "leaf",
-            "className" : "lenscorrection.NonLinearTransform",
+            "className" : "mpicbg.trakem2.transform.NonLinearCoordinateTransform",
             "dataString" : "5 21 711.4721917133976 -5.589914769754155 ... 2560 2160"
           },
           {

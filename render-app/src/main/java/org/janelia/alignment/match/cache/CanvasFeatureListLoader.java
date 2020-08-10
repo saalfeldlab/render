@@ -4,8 +4,6 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 
-import javax.annotation.Nonnull;
-
 import mpicbg.imagefeatures.Feature;
 
 import org.janelia.alignment.RenderParameters;
@@ -32,6 +30,7 @@ public class CanvasFeatureListLoader
     private transient boolean isSourceDataCachingEnabled;
 
     /**
+     * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
      * @param  featureExtractor             configured feature extractor.
      */
     public CanvasFeatureListLoader(final CanvasFeatureExtractor featureExtractor) {
@@ -39,6 +38,8 @@ public class CanvasFeatureListLoader
     }
 
     /**
+     * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
+     *
      * @param  featureExtractor             configured feature extractor.
      *
      * @param  rootFeatureStorageDirectory  root directory for persisted feature list data
@@ -66,7 +67,7 @@ public class CanvasFeatureListLoader
     }
 
     @Override
-    public CachedCanvasFeatures load(@Nonnull final CanvasIdWithRenderContext canvasIdWithRenderContext) {
+    public CachedCanvasFeatures load(final CanvasIdWithRenderContext canvasIdWithRenderContext) {
 
         List<Feature> featureList = null;
         double[] offsets = null;

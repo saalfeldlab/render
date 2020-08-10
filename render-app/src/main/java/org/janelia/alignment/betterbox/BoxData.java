@@ -9,8 +9,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 
-import javax.annotation.Nonnull;
-
 /**
  * Key information about a mipmap pyramid box that can be rendered from stack source data.
  *
@@ -305,7 +303,7 @@ public class BoxData
      *          is less than, equal to, or greater than the specified box.
      */
     @Override
-    public int compareTo(@Nonnull final BoxData that) {
+    public int compareTo(final BoxData that) {
         int result = Integer.compare((int) this.z, (int) that.z);
         if (result == 0) {
             result = Integer.compare(this.level, that.level);

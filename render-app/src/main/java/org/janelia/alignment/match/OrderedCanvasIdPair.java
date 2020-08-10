@@ -4,9 +4,6 @@ import com.google.common.base.Objects;
 
 import java.io.Serializable;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 /**
  * A pair of canvas identifiers with {@linkplain Comparable natural ordering}.
  *
@@ -41,9 +38,9 @@ public class OrderedCanvasIdPair
      * @throws IllegalArgumentException
      *   if both identifiers are the same.
      */
-    public OrderedCanvasIdPair(@Nonnull final CanvasId oneId,
-                               @Nonnull final CanvasId anotherId,
-                               @Nullable final Double deltaZ)
+    public OrderedCanvasIdPair(final CanvasId oneId,
+                               final CanvasId anotherId,
+                               final Double deltaZ)
             throws IllegalArgumentException {
 
         final int comparisonResult = oneId.compareTo(anotherId);
@@ -90,7 +87,7 @@ public class OrderedCanvasIdPair
     }
 
     @Override
-    public int compareTo(@Nonnull final OrderedCanvasIdPair that) {
+    public int compareTo(final OrderedCanvasIdPair that) {
         int result = this.p.compareTo(that.p);
         if (result == 0) {
             result = this.q.compareTo(that.q);

@@ -4,8 +4,6 @@ import com.google.common.base.Objects;
 
 import java.io.Serializable;
 
-import javax.annotation.Nonnull;
-
 import org.janelia.alignment.json.JsonUtils;
 
 import static org.janelia.alignment.match.MontageRelativePosition.LEFT;
@@ -44,8 +42,8 @@ public class CanvasId
      * @param  groupId  group (e.g. section) identifier.
      * @param  id       canvas (e.g. tile) identifier.
      */
-    public CanvasId(@Nonnull final String groupId,
-                    @Nonnull final String id) {
+    public CanvasId(final String groupId,
+                    final String id) {
         this(groupId, id, null);
     }
 
@@ -55,8 +53,8 @@ public class CanvasId
      * @param  groupId  group (e.g. section) identifier.
      * @param  id       canvas (e.g. tile) identifier.
      */
-    public CanvasId(@Nonnull final String groupId,
-                    @Nonnull final String id,
+    public CanvasId(final String groupId,
+                    final String id,
                     final MontageRelativePosition relativePosition) {
         this.groupId = groupId;
         this.id = id;
@@ -92,8 +90,8 @@ public class CanvasId
      *   if the canvas' relative position (within a pair) is not known.
      *
      */
-    public void setClipOffsets(@Nonnull final Integer fullWidth,
-                               @Nonnull final Integer fullHeight,
+    public void setClipOffsets(final Integer fullWidth,
+                               final Integer fullHeight,
                                final Integer clipWidth,
                                final Integer clipHeight)
             throws IllegalArgumentException {
@@ -140,7 +138,7 @@ public class CanvasId
     }
 
     @Override
-    public int compareTo(@Nonnull final CanvasId that) {
+    public int compareTo(final CanvasId that) {
         int result = this.groupId.compareTo(that.groupId);
         if (result == 0) {
             result = this.id.compareTo(that.id);

@@ -22,8 +22,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import javax.annotation.Nonnull;
-
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
@@ -480,7 +478,6 @@ public class TilePairClient {
         LOG.info("deriveAndSaveSortedNeighborPairs: exit, saved {} total pairs", totalSavedPairCount);
     }
 
-    @Nonnull
     public TileBoundsRTree buildRTree(final double z)
             throws IOException {
 

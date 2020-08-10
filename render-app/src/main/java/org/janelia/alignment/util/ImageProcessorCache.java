@@ -8,8 +8,6 @@ import com.google.common.cache.Weigher;
 
 import ij.process.ImageProcessor;
 
-import javax.annotation.Nullable;
-
 import mpicbg.trakem2.util.Downsampler;
 
 import org.janelia.alignment.loader.ImageLoader;
@@ -97,15 +95,11 @@ public class ImageProcessorCache {
                 new CacheLoader<CacheKey, ImageProcessor>() {
 
                     @Override
-                    public ImageProcessor load(@Nullable final CacheKey key) {
-                        ImageProcessor imageProcessor = null;
-                        if (key != null) {
-                            imageProcessor = loadImageProcessor(key.getUri(),
-                                                                key.getDownSampleLevels(),
-                                                                key.isMask(),
-                                                                key.getImageLoader());
-                        }
-                        return imageProcessor;
+                    public ImageProcessor load(final CacheKey key) {
+                        return loadImageProcessor(key.getUri(),
+                                                  key.getDownSampleLevels(),
+                                                  key.isMask(),
+                                                  key.getImageLoader());
                     }
                 };
 
@@ -242,7 +236,7 @@ public class ImageProcessorCache {
 
         // load the image as needed
         if (imageProcessor == null) {
-            
+
             imageProcessor = imageLoader.load(urlString);
 
             // if we're going to down sample and we're supposed to cache originals, do so here

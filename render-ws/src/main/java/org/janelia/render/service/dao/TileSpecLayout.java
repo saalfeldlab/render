@@ -3,8 +3,6 @@ package org.janelia.render.service.dao;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import javax.annotation.Nullable;
-
 import org.bson.Document;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.spec.Bounds;
@@ -164,7 +162,6 @@ public class TileSpecLayout {
 
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
 
-    @Nullable
     private static String getAffineData(final TileSpec tileSpec,
                                         final char delimiter) {
 
@@ -211,7 +208,6 @@ public class TileSpecLayout {
 
     }
 
-    @Nullable
     private static String getRawPath(final TileSpec tileSpec) {
         String rawPath = null;
         final Map.Entry<Integer, ImageAndMask> firstMipmapEntry = tileSpec.getFirstMipmapEntry();
