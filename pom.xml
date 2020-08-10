@@ -112,34 +112,15 @@
     </repositories>
 
     <dependencies>
-
-        <!-- SciJava Dependencies -->
-
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Overridden SciJava Dependencies -->
-
         <!--
-        Use older version of jackson to keep consistent with
-        render-ws jackson-jaxrs-json-provider version.
-        Declaring here to prevent confusing errors when forgetting to
-        override this in sub-module pom.xml files.
+          Removed all direct dependencies from here since apparently pom projects
+          should only "manage" dependencies and not "have" them.
+          This means common dependencies like junit and logback have to be
+          explicitly and repeatedly referenced in sub-module poms (which is unfortunate).
+          However, the absence of dependencies here prevents the enforcer plugin
+          from issuing confusing warnings like "Could not find ... at null".
+          See https://github.com/imagej/imagej-matlab/issues/11 for details.
         -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>${jackson-version}</version>
-        </dependency>
-
     </dependencies>
 
     <properties>

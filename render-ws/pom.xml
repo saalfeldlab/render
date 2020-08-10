@@ -81,6 +81,32 @@
             <version>${render-version}</version>
         </dependency>
 
+        <!-- SciJava Dependencies -->
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Overridden SciJava Dependencies -->
+
+        <!-- override logback dependency with provided scope since it should be installed into jetty directly -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson-version}</version>
+        </dependency>
+
+        <!-- Dependencies not defined in SciJava -->
+
         <dependency>
             <groupId>org.jboss.resteasy</groupId>
             <artifactId>resteasy-jaxrs</artifactId>
@@ -173,13 +199,6 @@
             <groupId>org.mongodb</groupId>
             <artifactId>mongo-java-driver</artifactId>
             <version>3.12.3</version>
-        </dependency>
-
-        <!-- override project dependency with provided scope since logback should be installed into jetty directly -->
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>

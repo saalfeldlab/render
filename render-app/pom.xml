@@ -91,12 +91,30 @@
             <artifactId>guava</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Overridden SciJava Dependencies -->
 
         <dependency>
             <groupId>jitk</groupId>
             <artifactId>jitk-tps</artifactId>
             <version>${jitk-tps-with-mpicbg.version}</version>
+        </dependency>
+
+        <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson-version}</version>
         </dependency>
 
         <!-- Dependencies not defined in SciJava -->
