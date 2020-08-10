@@ -128,6 +128,18 @@
         <dependency>
             <groupId>sc.fiji</groupId>
             <artifactId>TrakEM2_</artifactId>
+            <exclusions>
+                <!-- filter out dependencies that cause duplicate class, module-info, ... failures -->
+                <exclusion>
+                    <groupId>sc.fiji</groupId>
+                    <artifactId>AnalyzeSkeleton_</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.python</groupId>
+                    <artifactId>jython-slim</artifactId>
+                </exclusion>
+            </exclusions>
+
         </dependency>
 
     </dependencies>
