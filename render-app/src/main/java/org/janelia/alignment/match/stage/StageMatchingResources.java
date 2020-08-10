@@ -7,8 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import javax.annotation.Nullable;
-
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
@@ -61,7 +59,7 @@ public class StageMatchingResources
                                   final String urlTemplateString,
                                   final FeatureStorageParameters featureStorageParameters,
                                   final ImageProcessorCache sourceImageProcessorCache,
-                                  @Nullable final StageMatchingResources priorStageResources) {
+                                  final StageMatchingResources priorStageResources) {
 
         this.stageParameters = stageParameters;
 

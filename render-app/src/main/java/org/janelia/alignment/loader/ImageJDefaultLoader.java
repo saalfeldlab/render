@@ -14,7 +14,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.Locale;
 
-import javax.annotation.Nonnull;
 import javax.imageio.ImageIO;
 
 /**
@@ -30,12 +29,12 @@ public class ImageJDefaultLoader
      * @return true (always) because the default ImageJ loader handles 2D sources.
      */
     @Override
-    public boolean hasSame3DContext(final @Nonnull ImageLoader otherLoader) {
+    public boolean hasSame3DContext(final ImageLoader otherLoader) {
         return true;
     }
 
     @SuppressWarnings("UnstableApiUsage")
-    public ImageProcessor load(@Nonnull final String urlString) {
+    public ImageProcessor load(final String urlString) {
 
         final ImagePlus imagePlus;
 

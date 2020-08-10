@@ -3,8 +3,6 @@ package org.janelia.alignment.match.cache;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.annotation.Nonnull;
-
 import org.janelia.alignment.match.CanvasIdWithRenderContext;
 
 /**
@@ -35,7 +33,7 @@ public class MultiStageCanvasDataLoader
     }
 
     @Override
-    public CachedCanvasData load(@Nonnull final CanvasIdWithRenderContext canvasIdWithRenderContext)
+    public CachedCanvasData load(final CanvasIdWithRenderContext canvasIdWithRenderContext)
             throws Exception {
 
         final String loaderName = canvasIdWithRenderContext.getLoaderName();

@@ -11,8 +11,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.annotation.Nonnull;
-
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.match.TileIdsWithMatches;
@@ -164,7 +162,6 @@ public class ClusterCountClient {
 
     }
 
-    @Nonnull
     private SortedConnectedCanvasIdClusters findConnectedClustersForSlab(final RenderDataClient renderDataClient,
                                                                          final RenderDataClient matchDataClient,
                                                                          final Map<Double, Set<String>> zToSectionIdsMap,

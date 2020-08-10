@@ -4,8 +4,6 @@ import ij.ImagePlus;
 import ij.io.Opener;
 import ij.process.ImageProcessor;
 
-import javax.annotation.Nonnull;
-
 /**
  * Uses ImageJ to load individual slices from a 3D TIFF stack.
  * Note that ImageJ assumes that slices are indexed 1 .. N.
@@ -20,7 +18,7 @@ public class ImageJTiffStackLoader
     }
 
     @Override
-    public ImageProcessor load(@Nonnull final String urlString)
+    public ImageProcessor load(final String urlString)
             throws IllegalArgumentException {
 
         // openers keep state about the file being opened, so we need to create a new opener for each load

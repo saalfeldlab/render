@@ -3,9 +3,6 @@ package org.janelia.alignment.match;
 import java.io.Serializable;
 import java.util.Objects;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 import org.janelia.alignment.RenderParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,11 +25,11 @@ public class CanvasIdWithRenderContext
 
     private transient RenderParameters originalRenderParameters;
 
-    public CanvasIdWithRenderContext(@Nonnull final CanvasId canvasId,
-                                     @Nullable final String loaderName,
-                                     @Nonnull final String url,
-                                     @Nullable final Integer clipWidth,
-                                     @Nullable final Integer clipHeight) {
+    public CanvasIdWithRenderContext(final CanvasId canvasId,
+                                     final String loaderName,
+                                     final String url,
+                                     final Integer clipWidth,
+                                     final Integer clipHeight) {
         this.canvasId = canvasId;
         this.loaderName = loaderName;
         this.url = url;

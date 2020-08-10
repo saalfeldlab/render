@@ -15,8 +15,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import javax.annotation.Nonnull;
-
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
@@ -306,7 +304,6 @@ public class RestartSolverClient<B extends Model< B > & Affine2D< B >> {
     /**
      * @return list of z ranges with consistently acquired tiles.
      */
-    @Nonnull
     private List<DoubleRange> getConsistentLayerRanges(final List<Double> orderedZValues) {
         final List<DoubleRange> consistentLayerRanges = new ArrayList<>();
         final Bounds stackBounds = sourceStackMetaData.getStats().getStackBounds();
@@ -325,7 +322,6 @@ public class RestartSolverClient<B extends Model< B > & Affine2D< B >> {
     /**
      * @return "standard" set of montage/same layer tile pairs for all tiles in layers before and after restarts.
      */
-    @Nonnull
     private Set<OrderedCanvasIdPair> getSameLayerPairs(final Map<Double, TileBoundsRTree> zToTileBounds) {
         final Set<OrderedCanvasIdPair> sameLayerPairs = new HashSet<>();
         final List<TileBoundsRTree> emptyNeighborTreeList = new ArrayList<>();
@@ -361,7 +357,6 @@ public class RestartSolverClient<B extends Model< B > & Affine2D< B >> {
     /**
      * @return cross layer tile pairs for cartesian product of tiles in layers before and after restarts.
      */
-    @Nonnull
     private Set<OrderedCanvasIdPair> getCrossLayerPairs(final Map<Double, TileBoundsRTree> zToTileBounds,
                                                         final List<DoubleRange> consistentLayerRanges) {
         final Set<OrderedCanvasIdPair> crossLayerPairs = new HashSet<>();
@@ -402,7 +397,6 @@ public class RestartSolverClient<B extends Model< B > & Affine2D< B >> {
         });
     }
 
-    @Nonnull
     private Map<OrderedCanvasIdPair, CanvasMatches> getMatches(final Map<Double, TileBoundsRTree> zToTileBounds,
                                                                final List<DoubleRange> consistentLayerRanges)
             throws IOException {

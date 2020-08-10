@@ -2,9 +2,6 @@ package org.janelia.alignment.loader;
 
 import ij.process.ImageProcessor;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 /**
  * Describes methods required for all image loaders and
  * provides convenience {@link #build} method to construct loader instances.
@@ -19,9 +16,9 @@ public interface ImageLoader {
         IMAGEJ_DEFAULT, IMAGEJ_TIFF_STACK, N5_SLICE_UNSIGNED_BYTE, N5_SLICE_FLOAT
     }
 
-    boolean hasSame3DContext(@Nonnull final ImageLoader otherLoader);
+    boolean hasSame3DContext(final ImageLoader otherLoader);
 
-    ImageProcessor load(@Nonnull final String urlString) throws IllegalArgumentException;
+    ImageProcessor load(final String urlString) throws IllegalArgumentException;
 
     /**
      * @return loader instance based upon specified parameters.
@@ -29,8 +26,8 @@ public interface ImageLoader {
      * @throws IllegalArgumentException
      *   if a loader instance cannot be constructed for any reason.
      */
-    static ImageLoader build(@Nullable final LoaderType loaderType,
-                             @Nullable final Integer sliceNumber)
+    static ImageLoader build(final LoaderType loaderType,
+                             final Integer sliceNumber)
             throws IllegalArgumentException {
 
         ImageLoader imageLoader = ImageJDefaultLoader.INSTANCE;

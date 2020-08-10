@@ -5,8 +5,6 @@ import ij.process.ImageProcessor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.annotation.Nonnull;
-
 import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
@@ -41,12 +39,12 @@ public abstract class N5SliceLoader<A extends NativeType< A >, B extends ImagePr
     public abstract RandomAccessibleInterval<A> setupTarget(B forImageProcessor);
 
     @Override
-    public boolean hasSame3DContext(@Nonnull final ImageLoader otherLoader) {
+    public boolean hasSame3DContext(final ImageLoader otherLoader) {
         return otherLoader instanceof N5SliceLoader;
     }
 
     @Override
-    public ImageProcessor load(@Nonnull final String urlString)
+    public ImageProcessor load(final String urlString)
             throws IllegalArgumentException {
 
         final B imageProcessor;

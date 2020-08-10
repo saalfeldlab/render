@@ -1,7 +1,5 @@
 package org.janelia.alignment.loader;
 
-import javax.annotation.Nonnull;
-
 /**
  * Common elements for loaders of 3D sources that can be indexed by a slice number.
  *
@@ -20,7 +18,7 @@ public abstract class SliceLoader implements ImageLoader {
     }
 
     @Override
-    public boolean hasSame3DContext(final @Nonnull ImageLoader otherLoader) {
+    public boolean hasSame3DContext(final ImageLoader otherLoader) {
         return (otherLoader instanceof SliceLoader) && (this.sliceNumber == ((SliceLoader) otherLoader).sliceNumber);
     }
 

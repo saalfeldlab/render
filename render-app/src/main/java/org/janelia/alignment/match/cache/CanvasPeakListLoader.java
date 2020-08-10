@@ -2,8 +2,6 @@ package org.janelia.alignment.match.cache;
 
 import java.util.List;
 
-import javax.annotation.Nonnull;
-
 import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.type.numeric.real.FloatType;
 
@@ -32,7 +30,7 @@ public class CanvasPeakListLoader
     }
 
     @Override
-    public CachedCanvasPeaks load(@Nonnull final CanvasIdWithRenderContext canvasIdWithRenderContext) {
+    public CachedCanvasPeaks load(final CanvasIdWithRenderContext canvasIdWithRenderContext) {
 
         final RenderParameters renderParameters = canvasIdWithRenderContext.loadRenderParameters();
 

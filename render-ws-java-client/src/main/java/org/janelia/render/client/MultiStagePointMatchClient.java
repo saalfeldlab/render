@@ -12,21 +12,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.annotation.Nonnull;
-
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.match.stage.MultiStageMatcher;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
-import org.janelia.alignment.match.stage.StageMatcher;
-import org.janelia.alignment.match.stage.StageMatchingResources;
 import org.janelia.alignment.match.cache.CachedCanvasFeatures;
 import org.janelia.alignment.match.cache.CachedCanvasPeaks;
 import org.janelia.alignment.match.cache.CanvasDataCache;
 import org.janelia.alignment.match.cache.MultiStageCanvasDataLoader;
 import org.janelia.alignment.match.parameters.FeatureStorageParameters;
 import org.janelia.alignment.match.parameters.MatchStageParameters;
+import org.janelia.alignment.match.stage.MultiStageMatcher;
+import org.janelia.alignment.match.stage.StageMatcher;
+import org.janelia.alignment.match.stage.StageMatchingResources;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -173,7 +171,6 @@ public class MultiStagePointMatchClient
         }
     }
 
-    @Nonnull
     private List<CanvasMatches> generateMatchesForPairs(final RenderableCanvasIdPairs renderableCanvasIdPairs) {
         final String urlTemplateString =
                 renderableCanvasIdPairs.getRenderParametersUrlTemplate(parameters.matchClient.baseDataUrl);

@@ -8,8 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import javax.annotation.Nonnull;
-
 import mpicbg.ij.SIFT;
 import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
@@ -45,7 +43,7 @@ public class CanvasFeatureExtractor implements Serializable {
      * @param  minScale            SIFT minimum scale (minSize * minScale < size < maxSize * maxScale).
      * @param  maxScale            SIFT maximum scale (minSize * minScale < size < maxSize * maxScale).
      */
-    public CanvasFeatureExtractor(@Nonnull final FloatArray2DSIFT.Param coreSiftParameters,
+    public CanvasFeatureExtractor(final FloatArray2DSIFT.Param coreSiftParameters,
                                   final double minScale,
                                   final double maxScale) {
 
