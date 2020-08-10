@@ -122,7 +122,7 @@
         <dependency>
             <groupId>org.janelia.render</groupId>
             <artifactId>render-ws-java-client</artifactId>
-            <version>${render-version}</version>
+            <version>${project.version}</version>
         </dependency>
 
         <!-- SciJava Dependencies -->

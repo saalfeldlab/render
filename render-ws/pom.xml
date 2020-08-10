@@ -78,7 +78,7 @@
         <dependency>
             <groupId>org.janelia.render</groupId>
             <artifactId>render-app</artifactId>
-            <version>${render-version}</version>
+            <version>${project.version}</version>
         </dependency>
 
         <!-- SciJava Dependencies -->
