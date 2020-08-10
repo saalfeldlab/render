@@ -30,6 +30,7 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ProcessTimer;
+import org.janelia.render.client.parameter.ExcludedColumnParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.LayerBoundsParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -99,6 +100,9 @@ public class CopyStackClient {
                 variableArity = true
         )
         public List<String> excludedTileIds;
+
+        @ParametersDelegate
+        ExcludedColumnParameters excludedColumns = new ExcludedColumnParameters();
 
         @ParametersDelegate
         LayerBoundsParameters layerBounds = new LayerBoundsParameters();
@@ -338,6 +342,21 @@ public class CopyStackClient {
             final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();
             if (numberOfTilesRemoved > 0) {
                 LOG.info("copyLayer: removed {} explicitly excluded tiles", numberOfTilesRemoved);
+            }
+        }
+
+        if (parameters.excludedColumns.isDefined()) {
+            final Set<String> tileIdsToRemove = new HashSet<>();
+            sourceCollection.getTileSpecs().forEach(tileSpec -> {
+                final LayoutData layoutData = tileSpec.getLayout();
+                if (parameters.excludedColumns.isExcludedColumn(layoutData.getImageCol(),
+                                                                tileSpec.getZ())) {
+                    tileIdsToRemove.add(tileSpec.getTileId());
+                }
+            });
+            if (tileIdsToRemove.size() > 0) {
+                sourceCollection.removeTileSpecs(tileIdsToRemove);
+                LOG.info("copyLayer: removed {} tiles in excluded columns", tileIdsToRemove.size());
             }
         }
 
