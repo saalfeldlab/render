@@ -123,7 +123,19 @@ public class CrossCorrelationTest {
         final Integer clipSize = 500;
 
         // setup cross correlation parameters
-        final double renderScale = 0.4;
+        final double renderScale = 1.0;
+
+        final int sizeYFull = 250;
+        final int stepYFull = 5;
+    	final double rThreshold = 0.3;
+
+    	final int sizeY = (int)Math.round( sizeYFull * renderScale );
+    	final int stepY = (int)Math.round( stepYFull * renderScale );;
+
+    	System.out.println( "renderscale: " + renderScale );
+    	System.out.println( "rThreshold: " + rThreshold );
+    	System.out.println( "sizeY: " + sizeY );
+    	System.out.println( "stepY: " + stepY );
 
         final StitchingParameters params = new StitchingParameters();
         params.dimensionality = 2;
@@ -168,8 +180,8 @@ public class CrossCorrelationTest {
         final ImagePlus mask1 =new ImagePlus("mask_" + tileId1, ipm1.mask );
         final ImagePlus mask2 =new ImagePlus("mask_" + tileId2, ipm2.mask );
 
-//        mask1.show();
-//        mask2.show();
+        mask1.show();
+        mask2.show();
 
         final int startY = Math.min( r1.y, r2.y );
         final int endY = Math.max( r1.y + r1.height - 1, r2.y + r2.height - 1 );
@@ -188,7 +200,7 @@ public class CrossCorrelationTest {
         	final int minY = (int)Math.round( i * incY ) + startY;
         	final int maxY =  minY + sizeY - 1;
 
-        	LOG.debug( " " + minY  + " > " + maxY );
+        	// LOG.debug( " " + minY  + " > " + maxY );
 
         	final Rectangle r1PCM = new Rectangle( r1.x, minY, r1.width, maxY - minY + 1 );
         	final Rectangle r2PCM = new Rectangle( r2.x, minY, r2.width, maxY - minY + 1 );
@@ -200,7 +212,7 @@ public class CrossCorrelationTest {
 
         	if ( result.getCrossCorrelation() >= rThreshold )
         	{
-        		LOG.debug( "shift (second relative to first): " + Util.printCoordinates( result.getOffset() ) + " correlation (R)=" + result.getCrossCorrelation() );
+        		LOG.debug( minY  + " > " + maxY + ", shift : " + Util.printCoordinates( result.getOffset() ) + ", correlation (R)=" + result.getCrossCorrelation() );
 
         		double r1X = 0;
         		final double r1Y = minY + sizeY / 2.0;
