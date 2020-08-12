@@ -125,13 +125,6 @@ public class CrossCorrelationTest {
         // setup cross correlation parameters
         final double renderScale = 1.0;
 
-        final int sizeYFull = 250;
-        final int stepYFull = 5;
-    	final double rThreshold = 0.3;
-
-    	final int sizeY = (int)Math.round( sizeYFull * renderScale );
-    	final int stepY = (int)Math.round( stepYFull * renderScale );;
-
     	System.out.println( "renderscale: " + renderScale );
     	System.out.println( "rThreshold: " + rThreshold );
     	System.out.println( "sizeY: " + sizeY );
