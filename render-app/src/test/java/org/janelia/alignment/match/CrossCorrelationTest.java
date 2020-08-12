@@ -96,10 +96,6 @@ public class CrossCorrelationTest {
 
     public static void main(final String[] args) {
 
-    	final int sizeY = 100;
-    	final int stepY = 2;
-    	final double rThreshold = 0.3;
-
     	new ImageJ();
 
        // -------------------------------------------------------------------
@@ -124,7 +120,19 @@ public class CrossCorrelationTest {
         final Integer clipSize = 500;
 
         // TODO: setup cross correlation parameters
-        final double renderScale = 0.4;
+        final double renderScale = 1.0;
+
+        final int sizeYFull = 250;
+        final int stepYFull = 5;
+    	final double rThreshold = 0.3;
+
+    	final int sizeY = (int)Math.round( sizeYFull * renderScale );
+    	final int stepY = (int)Math.round( stepYFull * renderScale );;
+
+    	System.out.println( "renderscale: " + renderScale );
+    	System.out.println( "rThreshold: " + rThreshold );
+    	System.out.println( "sizeY: " + sizeY );
+    	System.out.println( "stepY: " + stepY );
 
         final StitchingParameters params = new StitchingParameters();
         params.dimensionality = 2;
@@ -194,7 +202,7 @@ public class CrossCorrelationTest {
         	final int minY = (int)Math.round( i * incY ) + startY;
         	final int maxY =  minY + sizeY - 1;
 
-        	System.out.println( " " + minY  + " > " + maxY );
+        	//System.out.println( " " + minY  + " > " + maxY );
 
         	final Rectangle r1PCM = new Rectangle( r1.x, minY, r1.width, maxY - minY + 1 );
         	final Rectangle r2PCM = new Rectangle( r2.x, minY, r2.width, maxY - minY + 1 );
@@ -206,7 +214,7 @@ public class CrossCorrelationTest {
 
         	if ( result.getCrossCorrelation() >= rThreshold )
         	{
-        		System.out.println( "shift (second relative to first): " + Util.printCoordinates( result.getOffset() ) + " correlation (R)=" + result.getCrossCorrelation() );
+        		System.out.println( minY  + " > " + maxY + ", shift : " + Util.printCoordinates( result.getOffset() ) + ", correlation (R)=" + result.getCrossCorrelation() );
 
         		double r1X = 0;
         		double r1Y = minY + sizeY / 2.0;
