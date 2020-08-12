@@ -95,10 +95,6 @@ public class CrossCorrelationTest {
 
     public static void main(final String[] args) {
 
-    	final int sizeY = 100;
-    	final int stepY = 2;
-    	final double rThreshold = 0.3;
-
     	new ImageJ();
 
        // -------------------------------------------------------------------
@@ -123,12 +119,16 @@ public class CrossCorrelationTest {
         final Integer clipSize = 500;
 
         // setup cross correlation parameters
-        final double renderScale = 1.0;
+        final double renderScale = 0.4;
 
-    	System.out.println( "renderscale: " + renderScale );
-    	System.out.println( "rThreshold: " + rThreshold );
-    	System.out.println( "sizeY: " + sizeY );
-    	System.out.println( "stepY: " + stepY );
+        final int sizeYFull = 250;
+        final int stepYFull = 5;
+        final double rThreshold = 0.3;
+
+        final int sizeY = (int)Math.round( sizeYFull * renderScale );
+        final int stepY = (int)Math.round( stepYFull * renderScale );
+
+        LOG.debug("renderScale: {}, rThreshold: {}, sizeY: {}, stepY: {}", renderScale, rThreshold, sizeY, stepY);
 
         final StitchingParameters params = new StitchingParameters();
         params.dimensionality = 2;
