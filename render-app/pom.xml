@@ -173,6 +173,10 @@
             <version>0.2.3</version>
         </dependency>
 
+        <dependency>
+        	<groupId>sc.fiji</groupId>
+        	<artifactId>Stitching_</artifactId>
+        </dependency>
     </dependencies>
 
     <!--
