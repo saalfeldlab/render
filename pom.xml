@@ -69,6 +69,11 @@
             <name>Russel Torres</name>
             <properties><id>RussTorres</id></properties>
         </contributor>
+        <contributor>
+            <name>Stephan Preibisch</name>
+            <url>https://imagej.net/User:StephanP</url>
+            <properties><id>StephanPreibisch</id></properties>
+        </contributor>
     </contributors>
 
     <mailingLists>
