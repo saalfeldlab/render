@@ -5,6 +5,11 @@ import ij.ImagePlus;
 import ij.gui.PointRoi;
 import ij.gui.Roi;
 import ij.process.ImageProcessor;
+
+import java.awt.Rectangle;
+import java.util.ArrayList;
+import java.util.List;
+
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
@@ -14,21 +19,18 @@ import mpicbg.stitching.PairWiseStitchingImgLib;
 import mpicbg.stitching.PairWiseStitchingResult;
 import mpicbg.stitching.StitchingParameters;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
-import net.imglib2.util.Util;
-import stitching.utils.Log;
-
-import java.awt.Rectangle;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.janelia.alignment.util.ImageDebugUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import net.imglib2.util.Util;
 
 /**
  * Run cross correlation for two tiles.
@@ -81,14 +83,11 @@ public class CrossCorrelationTest {
     				minX = Math.min( minX, x );
     				maxX = Math.max( maxX, x );
     				minY = Math.min( minY, y );
-    				maxY = Math.max( minY, y );
+    				maxY = Math.max( maxY, y );
 				}
     		}
 
-    	System.out.println( "minX " + minX );
-    	System.out.println( "maxX " + maxX );
-    	System.out.println( "minY " + minY );
-    	System.out.println( "maxY " + maxY );
+    	LOG.debug("minX: {}, maxX: {}, minY: {}, maxY: {}", minX, maxX, minY, maxY);
 
     	return new Rectangle(minX, minY, maxX-minX+1, maxY-minY+1);
     	//ip.setRoi( );
@@ -112,7 +111,7 @@ public class CrossCorrelationTest {
         // -------------------------------------------------------------------
         // setup test parameters ...
 
-        // TODO: change this index (0 - 5) to work with a different tile pair
+        // change this index (0 - 5) to work with a different tile pair
         final int testTilePairIndex = 0;
 
         final String owner = TEST_TILE_PAIRS[testTilePairIndex][0];
@@ -123,7 +122,7 @@ public class CrossCorrelationTest {
 
         final Integer clipSize = 500;
 
-        // TODO: setup cross correlation parameters
+        // setup cross correlation parameters
         final double renderScale = 0.4;
 
         final StitchingParameters params = new StitchingParameters();
@@ -157,12 +156,8 @@ public class CrossCorrelationTest {
         final ImageProcessorWithMasks ipm1 = Renderer.renderImageProcessorWithMasks(renderParametersTile1, ImageProcessorCache.DISABLED_CACHE);
         final ImageProcessorWithMasks ipm2 = Renderer.renderImageProcessorWithMasks(renderParametersTile2, ImageProcessorCache.DISABLED_CACHE);
 
-        // TODO: run cross correlation
-
-        final ImagePlus ip1 = new ImagePlus("peak_" + tileId1, ipm1.ip);
-        final ImagePlus ip2 = new ImagePlus("peak_" + tileId2, ipm2.ip);
-
-        // ImageDebugUtil.setPeakPointRois(canvasPeaks1, ip1);
+        final ImagePlus ip1 = new ImagePlus("tile_" + tileId1, ipm1.ip);
+        final ImagePlus ip2 = new ImagePlus("tile_" + tileId2, ipm2.ip);
 
         ip1.show();
         ip2.show();
@@ -173,28 +168,27 @@ public class CrossCorrelationTest {
         final ImagePlus mask1 =new ImagePlus("mask_" + tileId1, ipm1.mask );
         final ImagePlus mask2 =new ImagePlus("mask_" + tileId2, ipm2.mask );
 
-        mask1.show();
-        mask2.show();
+//        mask1.show();
+//        mask2.show();
 
         final int startY = Math.min( r1.y, r2.y );
         final int endY = Math.max( r1.y + r1.height - 1, r2.y + r2.height - 1 );
 
         final int numTests = (endY-startY-sizeY+stepY+1)/stepY + Math.min( 1, (endY-startY-sizeY+stepY+1)%stepY );
         final double incY = (endY-startY-sizeY+stepY+1) / (double)numTests;
+        LOG.debug( numTests + " " + incY );
 
-        System.out.println( numTests + " " + incY );
+        final List<PointMatch> candidates = new ArrayList<>();
 
-        final List<PointMatch> candidates = new ArrayList<PointMatch>();
-
-        PointRoi p1Candidates = new PointRoi();
-        PointRoi p2Candidates = new PointRoi();
+        final PointRoi p1Candidates = new PointRoi();
+        final PointRoi p2Candidates = new PointRoi();
 
         for ( int i = 0; i < numTests; ++i )
         {
         	final int minY = (int)Math.round( i * incY ) + startY;
         	final int maxY =  minY + sizeY - 1;
 
-        	System.out.println( " " + minY  + " > " + maxY );
+        	LOG.debug( " " + minY  + " > " + maxY );
 
         	final Rectangle r1PCM = new Rectangle( r1.x, minY, r1.width, maxY - minY + 1 );
         	final Rectangle r2PCM = new Rectangle( r2.x, minY, r2.width, maxY - minY + 1 );
@@ -206,13 +200,13 @@ public class CrossCorrelationTest {
 
         	if ( result.getCrossCorrelation() >= rThreshold )
         	{
-        		System.out.println( "shift (second relative to first): " + Util.printCoordinates( result.getOffset() ) + " correlation (R)=" + result.getCrossCorrelation() );
+        		LOG.debug( "shift (second relative to first): " + Util.printCoordinates( result.getOffset() ) + " correlation (R)=" + result.getCrossCorrelation() );
 
         		double r1X = 0;
-        		double r1Y = minY + sizeY / 2.0;
+        		final double r1Y = minY + sizeY / 2.0;
 
         		double r2X = -result.getOffset( 0 );
-        		double r2Y = minY + sizeY / 2.0 - result.getOffset( 1 ); 
+        		final double r2Y = minY + sizeY / 2.0 - result.getOffset( 1 );
 
         		// just to place the points within the overlapping area
         		// (only matters for visualization)
@@ -241,26 +235,22 @@ public class CrossCorrelationTest {
         final CanvasMatchResult result = matchFilter.buildMatchResult(candidates);
         final List<PointMatch> inliers = result.getInlierPointMatchList();
 
-        // TODO: adjust for the 0.4 scaling????
-        System.out.println( "ransac: " + result );
+//        // NOTE: stored matches are converted to full scale using this method:
+//        final List<CanvasMatches> fullScaleMatches = result.getInlierMatchesList(pGroupId, pId,
+//                                                                                 qGroupId, qId,
+//                                                                                 renderScale,
+//                                                                                 pOffsets, qOffsets);
+        LOG.debug( "ransac: " + result );
         try {
             final TranslationModel2D model = new TranslationModel2D();
 			model.fit( inliers );
-			System.out.println( model );
-		} catch (NotEnoughDataPointsException e) {}
-
-        // visualize result
-        PointRoi p1Inliers = new PointRoi();
-        PointRoi p2Inliers = new PointRoi();
-
-        for ( final PointMatch pm : inliers )
-        {
-        	p1Inliers.addPoint( pm.getP1().getL()[ 0 ], pm.getP1().getL()[ 1 ] );
-        	p2Inliers.addPoint( pm.getP2().getL()[ 0 ], pm.getP2().getL()[ 1 ] );
+			LOG.debug( model.toString() );
+		} catch (final NotEnoughDataPointsException e) {
+            LOG.debug("ignoring model fit error", e);
         }
 
-        ip1.setRoi( p1Inliers );
-        ip2.setRoi( p2Inliers );
+        // visualize result
+        ImageDebugUtil.setPointMatchRois(inliers, ip1, ip2);
 
         SimpleMultiThreading.threadHaltUnClean();
 
