@@ -4,6 +4,8 @@ import ij.ImageJ;
 import ij.ImagePlus;
 import ij.gui.PointRoi;
 import ij.gui.Roi;
+import ij.plugin.Duplicator;
+import ij.plugin.filter.GaussianBlur;
 import ij.process.ImageProcessor;
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.models.NotEnoughDataPointsException;
@@ -94,6 +96,22 @@ public class CrossCorrelationTest {
     	//ip.setRoi( );
     }
 
+    public static void blur( final ImagePlus imp, final Rectangle r, final double sigma )
+    {
+    	imp.setRoi( r );
+
+    	// duplicate ROI (avoid artifacts from black areas)
+    	ImagePlus imp2 = (new Duplicator()).run( imp );
+    	ImageProcessor proc2 = imp2.getProcessor();
+
+    	new GaussianBlur().blurGaussian( proc2, sigma );
+    	ImageProcessor proc1 = imp.getProcessor();
+
+    	for ( int y = 0; y < imp2.getHeight(); ++y )
+    		for ( int x = 0; x < imp2.getWidth(); ++x )
+    			proc1.setf( x + r.x, y + r.y, proc2.getf(x, y) );
+    }
+
     public static void main(final String[] args) {
 
     	new ImageJ();
@@ -120,23 +138,27 @@ public class CrossCorrelationTest {
         final Integer clipSize = 500;
 
         // TODO: setup cross correlation parameters
-        final double renderScale = 1.0;
+        final double renderScale = 0.4;
+
+        // initial blurring (no!)
+        final double sigma = 0;
 
         final int sizeYFull = 250;
         final int stepYFull = 5;
-    	final double rThreshold = 0.3;
+    	final double rThreshold = 0.8;
 
-    	final int sizeY = (int)Math.round( sizeYFull * renderScale );
-    	final int stepY = (int)Math.round( stepYFull * renderScale );;
+    	final int sizeY = Math.max( 10, (int)Math.round( sizeYFull * renderScale ) );
+    	final int stepY = Math.max( 1, (int)Math.round( stepYFull * renderScale ) );
 
     	System.out.println( "renderscale: " + renderScale );
+    	System.out.println( "sigma: " + sigma );
     	System.out.println( "rThreshold: " + rThreshold );
     	System.out.println( "sizeY: " + sizeY );
     	System.out.println( "stepY: " + stepY );
 
         final StitchingParameters params = new StitchingParameters();
         params.dimensionality = 2;
-        params.fusionMethod = 0 ;
+        params.fusionMethod = 0;
         params.fusedName = "";
         params.checkPeaks = 5;
         params.addTilesAsRois = false;
@@ -152,7 +174,9 @@ public class CrossCorrelationTest {
         params.yOffset = 0.0;
         params.zOffset = 0.0;
 
-        final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters();
+        final float maxErrorFull = 1f;
+        final float maxError = maxErrorFull * (float)renderScale;
+        final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters( maxError );
 
         // -------------------------------------------------------------------
         // run test ...
@@ -172,14 +196,20 @@ public class CrossCorrelationTest {
 
         // ImageDebugUtil.setPeakPointRois(canvasPeaks1, ip1);
 
-        ip1.show();
-        ip2.show();
-
         final Rectangle r1 = findRectangle( ipm1 );
         final Rectangle r2 = findRectangle( ipm2 );
 
-        final ImagePlus mask1 =new ImagePlus("mask_" + tileId1, ipm1.mask );
-        final ImagePlus mask2 =new ImagePlus("mask_" + tileId2, ipm2.mask );
+    	if ( sigma > 0 )
+    	{
+    		blur( ip1, r1, sigma );
+    		blur( ip2, r2, sigma );
+    	}
+
+        ip1.show();
+        ip2.show();
+
+        final ImagePlus mask1 = new ImagePlus("mask_" + tileId1, ipm1.mask );
+        final ImagePlus mask2 = new ImagePlus("mask_" + tileId2, ipm2.mask );
 
         mask1.show();
         mask2.show();
@@ -274,13 +304,13 @@ public class CrossCorrelationTest {
 
     }
 
-    static MatchDerivationParameters getMatchFilterParameters() {
+    static MatchDerivationParameters getMatchFilterParameters( final float maxError ) {
 
         final MatchDerivationParameters matchFilterParameters = new MatchDerivationParameters();
 
         matchFilterParameters.matchModelType = ModelType.TRANSLATION;
         matchFilterParameters.matchIterations = 1000;
-        matchFilterParameters.matchMaxEpsilon = 1.0f;
+        matchFilterParameters.matchMaxEpsilon = maxError;
         matchFilterParameters.matchMinInlierRatio = 0.0f;
         matchFilterParameters.matchMinNumInliers = 20;
         matchFilterParameters.matchMaxTrust = 3.0;
