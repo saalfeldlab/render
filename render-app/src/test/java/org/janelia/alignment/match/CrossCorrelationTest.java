@@ -6,6 +6,7 @@ import ij.gui.PointRoi;
 import ij.gui.Roi;
 import ij.plugin.Duplicator;
 import ij.plugin.filter.GaussianBlur;
+import ij.plugin.filter.RankFilters;
 import ij.process.ImageProcessor;
 
 import java.awt.Rectangle;
@@ -104,6 +105,25 @@ public class CrossCorrelationTest {
     	ImageProcessor proc2 = imp2.getProcessor();
 
     	new GaussianBlur().blurGaussian( proc2, sigma );
+
+    	ImageProcessor proc1 = imp.getProcessor();
+
+    	for ( int y = 0; y < imp2.getHeight(); ++y )
+    		for ( int x = 0; x < imp2.getWidth(); ++x )
+    			proc1.setf( x + r.x, y + r.y, proc2.getf(x, y) );
+    }
+
+    public static void median( final ImagePlus imp, final Rectangle r, final int radius )
+    {
+    	imp.setRoi( r );
+
+    	// duplicate ROI (avoid artifacts from black areas)
+    	ImagePlus imp2 = (new Duplicator()).run( imp );
+    	ImageProcessor proc2 = imp2.getProcessor();
+
+    	RankFilters filter = new RankFilters();
+    	filter.rank( imp2.getProcessor(), radius, RankFilters.MEDIAN );
+
     	ImageProcessor proc1 = imp.getProcessor();
 
     	for ( int y = 0; y < imp2.getHeight(); ++y )
@@ -134,17 +154,18 @@ public class CrossCorrelationTest {
         final String tileId1 = TEST_TILE_PAIRS[testTilePairIndex][3];
         final String tileId2 = TEST_TILE_PAIRS[testTilePairIndex][4];
 
-        final Integer clipSize = 500;
+        // smaller clipsize is closer to the actual overlap
+        final Integer clipSize = 250;
 
         //setup cross correlation parameters
-        final double renderScale = 0.4;
+        final double renderScale = 1.0;
 
         // initial blurring (no!)
-        final double sigma = 0;
+        // final double sigma = 1;
 
         final int sizeYFull = 250;
         final int stepYFull = 5;
-    	final double rThreshold = 0.8;
+    	final double rThreshold = 0.5;
 
     	final int sizeY = Math.max( 10, (int)Math.round( sizeYFull * renderScale ) );
     	final int stepY = Math.max( 1, (int)Math.round( stepYFull * renderScale ) );
@@ -155,7 +176,7 @@ public class CrossCorrelationTest {
         params.dimensionality = 2;
         params.fusionMethod = 0;
         params.fusedName = "";
-        params.checkPeaks = 5;
+        params.checkPeaks = 50; // important parameter
         params.addTilesAsRois = false;
         params.computeOverlap = true;
         params.subpixelAccuracy = true;
@@ -169,7 +190,7 @@ public class CrossCorrelationTest {
         params.yOffset = 0.0;
         params.zOffset = 0.0;
 
-        final float maxErrorFull = 1f;
+        final float maxErrorFull = 2f;
         final float maxError = maxErrorFull * (float)renderScale;
         final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters( maxError );
 
@@ -190,20 +211,21 @@ public class CrossCorrelationTest {
         final Rectangle r1 = findRectangle( ipm1 );
         final Rectangle r2 = findRectangle( ipm2 );
 
-    	if ( sigma > 0 )
-    	{
-    		blur( ip1, r1, sigma );
-    		blur( ip2, r2, sigma );
-    	}
+    	//if ( sigma > 0 )
+    	//{
+    		//median(ip1, r1, 3 );
+    		//median(ip2, r2, 3 );
+    	//	blur( ip1, r1, sigma );
+    	//	blur( ip2, r2, sigma );
+    	//}
 
         ip1.show();
         ip2.show();
 
-        final ImagePlus mask1 = new ImagePlus("mask_" + tileId1, ipm1.mask );
-        final ImagePlus mask2 = new ImagePlus("mask_" + tileId2, ipm2.mask );
-
-        mask1.show();
-        mask2.show();
+        //final ImagePlus mask1 = new ImagePlus("mask_" + tileId1, ipm1.mask );
+        //final ImagePlus mask2 = new ImagePlus("mask_" + tileId2, ipm2.mask );
+        //mask1.show();
+        //mask2.show();
 
         final int startY = Math.min( r1.y, r2.y );
         final int endY = Math.max( r1.y + r1.height - 1, r2.y + r2.height - 1 );
@@ -227,8 +249,8 @@ public class CrossCorrelationTest {
         	final Rectangle r1PCM = new Rectangle( r1.x, minY, r1.width, maxY - minY + 1 );
         	final Rectangle r2PCM = new Rectangle( r2.x, minY, r2.width, maxY - minY + 1 );
 
-        	mask1.setRoi( r1PCM );
-            mask2.setRoi( r2PCM );
+        	ip1.setRoi( r1PCM );
+        	ip2.setRoi( r2PCM );
 
         	final PairWiseStitchingResult result = PairWiseStitchingImgLib.stitchPairwise( ip1, ip2, new Roi( r1PCM ), new Roi( r2PCM ), 1, 1, params );
 
@@ -284,7 +306,7 @@ public class CrossCorrelationTest {
         }
 
         // visualize result
-        ImageDebugUtil.setPointMatchRois(inliers, ip1, ip2);
+        ImageDebugUtil.setPointMatchRois( inliers, ip1, ip2 );
 
         SimpleMultiThreading.threadHaltUnClean();
 
