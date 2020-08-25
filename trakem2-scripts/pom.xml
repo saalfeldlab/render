@@ -40,6 +40,15 @@
                                     <excludes>
                                         <exclude>org/janelia/acquire/**</exclude>
                                         <exclude>org/python/**</exclude>
+
+                                        <!--
+                                          Exclude manifest signature files (e.g. from org.bouncycastle artifact)
+                                          to prevent invalid signature error when launching fiji.
+                                        -->
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+
                                     </excludes>
                                 </filter>
 
