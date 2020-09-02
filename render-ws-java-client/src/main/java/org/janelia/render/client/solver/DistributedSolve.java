@@ -69,6 +69,9 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 			final ParametersDistributedSolve parameters ) throws IOException
 	{
 		this.parameters = parameters;
+
+		// TODO: return a HashMap< Int, String > where int is the z section, and string is the description (problem, restart, ...)
+		// TODO: (not so important): if minZ & maxZ = Double.NaN in parameters, then use min and max of the stack
 		this.runParams = ParametersDistributedSolve.setupSolve( parameters );
 
 		this.globalSolveModel = globalSolveModel;
