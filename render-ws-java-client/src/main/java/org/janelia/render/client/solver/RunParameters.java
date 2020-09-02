@@ -19,7 +19,7 @@ public class RunParameters
 	public List< Pair< String, Double > > pGroupList;
 	public Map<String, ArrayList<Double>> sectionIdToZMap; // this is a cache
 	public Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
-	public double minZ, maxZ;
+	public Double minZ, maxZ;
 	public int totalTileCount;
 
 	@Override

@@ -3,15 +3,21 @@ package org.janelia.render.client.solver;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
 import org.janelia.alignment.match.Matches;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,10 +75,33 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 			final ParametersDistributedSolve parameters ) throws IOException
 	{
 		this.parameters = parameters;
-
-		// TODO: return a HashMap< Int, String > where int is the z section, and string is the description (problem, restart, ...)
-		// TODO: (not so important): if minZ & maxZ = Double.NaN in parameters, then use min and max of the stack
 		this.runParams = ParametersDistributedSolve.setupSolve( parameters );
+
+		// a HashMap where int is the z section, and string is the description (problem, restart, ...)
+		final Map<Integer, String> zToGroupIdMap = new HashMap<>();
+		for (final String groupId : Arrays.asList("restart", "problem")) { // NOTE: "problem" groupId is for future use
+			final ResolvedTileSpecCollection groupTileSpecs =
+					runParams.renderDataClient.getResolvedTiles(parameters.stack,
+																runParams.minZ,
+																runParams.maxZ,
+																groupId,
+																null,
+																null,
+																null,
+																null);
+			groupTileSpecs.getTileSpecs().forEach(tileSpec -> zToGroupIdMap.put(tileSpec.getZ().intValue(), groupId));
+		}
+
+		// if minZ & maxZ = Double.NaN in parameters, then use min and max of the stack
+		final StackMetaData stackMetaData = runParams.renderDataClient.getStackMetaData(parameters.stack);
+		final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+		final int minZ = runParams.minZ == null ? stackBounds.getMinZ().intValue() : runParams.minZ.intValue();
+		final int maxZ = runParams.maxZ == null ? stackBounds.getMaxZ().intValue() : runParams.maxZ.intValue();
+
+		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}",
+				  minZ,
+				  maxZ,
+				  zToGroupIdMap.keySet().stream().sorted());
 
 		this.globalSolveModel = globalSolveModel;
 		this.blockSolveModel = blockSolveModel;
@@ -80,9 +109,6 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 		// TODO: load matches only once, not for each thread
 		// assembleMatchData( parameters, runParams );
-
-		final int minZ = (int)Math.round( this.runParams.minZ );
-		final int maxZ = (int)Math.round( this.runParams.maxZ );
 
 		this.solveSet = defineSolveSet( minZ, maxZ, parameters.blockSize );
 
