@@ -120,8 +120,8 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
                             //"--blockSize", "100",
                             //"--noStitching", // do not stitch first
                             
-                            "--minZ", "1",
-                            "--maxZ", "34022",
+                            //"--minZ", "1",
+                            //"--maxZ", "34022",
 
                             "--excludeFromRegularization", "1-5,35-534",
                             "--maxNumMatches", "0", // no limit, default
