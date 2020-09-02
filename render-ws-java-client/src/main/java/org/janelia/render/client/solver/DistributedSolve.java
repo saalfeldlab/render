@@ -1,5 +1,8 @@
 package org.janelia.render.client.solver;
 
+import ij.ImageJ;
+import ij.ImagePlus;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -9,20 +12,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
-import org.janelia.alignment.match.Matches;
-import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
-import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.render.client.RenderDataClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import ij.ImageJ;
-import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
@@ -37,6 +29,15 @@ import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
+
+import org.janelia.alignment.match.Matches;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -80,16 +81,21 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		// a HashMap where int is the z section, and string is the description (problem, restart, ...)
 		final Map<Integer, String> zToGroupIdMap = new HashMap<>();
 		for (final String groupId : Arrays.asList("restart", "problem")) { // NOTE: "problem" groupId is for future use
-			final ResolvedTileSpecCollection groupTileSpecs =
-					runParams.renderDataClient.getResolvedTiles(parameters.stack,
-																runParams.minZ,
-																runParams.maxZ,
-																groupId,
-																null,
-																null,
-																null,
-																null);
-			groupTileSpecs.getTileSpecs().forEach(tileSpec -> zToGroupIdMap.put(tileSpec.getZ().intValue(), groupId));
+			try {
+				final ResolvedTileSpecCollection groupTileSpecs =
+						runParams.renderDataClient.getResolvedTiles(parameters.stack,
+																	runParams.minZ,
+																	runParams.maxZ,
+																	groupId,
+																	null,
+																	null,
+																	null,
+																	null);
+				groupTileSpecs.getTileSpecs().forEach(tileSpec -> zToGroupIdMap.put(tileSpec.getZ().intValue(), groupId));
+			} catch (final IOException t) {
+				LOG.info("ignoring failure to retrieve tile specs with groupId '" + groupId +
+						 "' (since it's a good thing), exception is: ", t);
+			}
 		}
 
 		// if minZ & maxZ = Double.NaN in parameters, then use min and max of the stack
@@ -98,10 +104,8 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		final int minZ = runParams.minZ == null ? stackBounds.getMinZ().intValue() : runParams.minZ.intValue();
 		final int maxZ = runParams.maxZ == null ? stackBounds.getMaxZ().intValue() : runParams.maxZ.intValue();
 
-		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}",
-				  minZ,
-				  maxZ,
-				  zToGroupIdMap.keySet().stream().sorted());
+		final List<Integer> challengeListZ = zToGroupIdMap.keySet().stream().sorted().collect(Collectors.toList());
+		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}", minZ, maxZ, challengeListZ);
 
 		this.globalSolveModel = globalSolveModel;
 		this.blockSolveModel = blockSolveModel;
