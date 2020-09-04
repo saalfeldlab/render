@@ -1,7 +1,6 @@
 package org.janelia.alignment.match;
 
 import ij.ImagePlus;
-import ij.gui.PointRoi;
 import ij.gui.Roi;
 import ij.process.ImageProcessor;
 
@@ -95,37 +94,48 @@ public class CanvasCorrelationMatcher
                                                  final ImageProcessor mask2,
                                                  final boolean visualizeSampleRois) {
 
-        final int sizeY = ccParameters.getScaledSampleSize(renderScale);
-        final int stepY = ccParameters.getScaledStepSize(renderScale);
+        final int scaledSampleSize = ccParameters.getScaledSampleSize(renderScale);
+        final int scaledStepSize = ccParameters.getScaledStepSize(renderScale);
 
-        LOG.debug("renderScale: {}, rThreshold: {}, sizeY: {}, stepY: {}",
-                  renderScale, ccParameters.minResultThreshold, sizeY, stepY);
+        final Rectangle unmaskedArea1 = findRectangle(mask1);
+        final Rectangle unmaskedArea2 = findRectangle(mask2);
 
-        final Rectangle r1 = findRectangle(mask1);
-        final Rectangle r2 = findRectangle(mask2);
+        final boolean stepThroughY = mask1.getHeight() > mask1.getWidth();
 
-        final int startY = Math.min(r1.y, r2.y);
-        final int endY = Math.max(r1.y + r1.height - 1, r2.y + r2.height - 1);
+        final int startStep;
+        final int maxHeightOrWidth;
+        if (stepThroughY) {
+            startStep = Math.min(unmaskedArea1.y, unmaskedArea2.y);
+            maxHeightOrWidth = Math.max(unmaskedArea1.y + unmaskedArea1.height - 1,
+                                        unmaskedArea2.y + unmaskedArea2.height - 1);
+        } else {
+            startStep = Math.min(unmaskedArea1.x, unmaskedArea2.x);
+            maxHeightOrWidth = Math.max(unmaskedArea1.x + unmaskedArea1.width - 1,
+                                        unmaskedArea2.x + unmaskedArea2.width - 1);
+        }
+        final int endStep = maxHeightOrWidth - startStep - scaledSampleSize + scaledStepSize + 1;
+        final int numTests = (endStep / scaledStepSize) + Math.min(1, (endStep % scaledStepSize));
+        final double stepIncrement = endStep / (double) numTests;
 
-        final int numTests = (endY - startY - sizeY + stepY + 1) / stepY +
-                             Math.min(1, (endY - startY - sizeY + stepY + 1) % stepY);
-        final double incY = (endY - startY - sizeY + stepY + 1) / (double) numTests;
-
-        LOG.debug(numTests + " " + incY);
+        LOG.debug("getCandidateMatches: renderScale={}, minResultThreshold={}, scaledSampleSize={}, scaledStepSize={}, numTests={}, stepIncrement={}",
+                  renderScale, ccParameters.minResultThreshold, scaledSampleSize, scaledStepSize, numTests, stepIncrement);
 
         final List<PointMatch> candidates = new ArrayList<>();
 
-        final PointRoi p1Candidates = new PointRoi();
-        final PointRoi p2Candidates = new PointRoi();
-
         for (int i = 0; i < numTests; ++i) {
-            final int minY = (int) Math.round(i * incY) + startY;
-            final int maxY = minY + sizeY - 1;
 
-            // LOG.debug( " " + minY  + " > " + maxY );
+            final int minXOrY = (int) Math.round(i * stepIncrement) + startStep;
+            final int maxXOrY = minXOrY + scaledSampleSize - 1;
+            final int sampleWidthOrHeight = maxXOrY - minXOrY + 1;
 
-            final Rectangle r1PCM = new Rectangle(r1.x, minY, r1.width, maxY - minY + 1);
-            final Rectangle r2PCM = new Rectangle(r2.x, minY, r2.width, maxY - minY + 1);
+            final Rectangle r1PCM, r2PCM;
+            if (stepThroughY) {
+                r1PCM = new Rectangle(unmaskedArea1.x, minXOrY, unmaskedArea1.width, sampleWidthOrHeight);
+                r2PCM = new Rectangle(unmaskedArea2.x, minXOrY, unmaskedArea2.width, sampleWidthOrHeight);
+            } else {
+                r1PCM = new Rectangle(minXOrY, unmaskedArea1.y, sampleWidthOrHeight, unmaskedArea1.height);
+                r2PCM = new Rectangle(minXOrY, unmaskedArea2.y, sampleWidthOrHeight, unmaskedArea2.height);
+            }
 
             final Roi roi1 = new Roi(r1PCM);
             final Roi roi2 = new Roi(r2PCM);
@@ -148,35 +158,39 @@ public class CanvasCorrelationMatcher
 
             if (result.getCrossCorrelation() >= ccParameters.minResultThreshold) {
 
-                LOG.debug(minY + " > " + maxY + ", shift : " + Util.printCoordinates(result.getOffset()) +
+                LOG.debug(minXOrY + " > " + maxXOrY + ", shift : " + Util.printCoordinates(result.getOffset()) +
                           ", correlation (R)=" + result.getCrossCorrelation());
 
-                double r1X = 0;
-                final double r1Y = minY + sizeY / 2.0;
+                final int stepDim = stepThroughY ? 1 : 0;
+                final int otherDim = stepThroughY ? 0 : 1;
+                final double r1XOrY = 0;
+                final double center1XorY = minXOrY + scaledSampleSize / 2.0;
 
-                double r2X = -result.getOffset(0);
-                final double r2Y = minY + sizeY / 2.0 - result.getOffset(1);
+                final double r2XOrY = -result.getOffset(otherDim);
+                final double center2XorY = center1XorY - result.getOffset(stepDim);
 
                 // just to place the points within the overlapping area
                 // (only matters for visualization)
-                double shiftX = 0;
+                double shiftXOrY = 0;
 
-                if (r2X < r2.x) {
-                    shiftX += r2.x - r2X;
-                } else if (r2X >= r2.x + r2.width) {
-                    shiftX -= r2X - (r2.x + r2.width);
+                final int unmasked2XOrY = stepThroughY ? unmaskedArea2.x : unmaskedArea2.y;
+                final int unmasked2WidthOrHeight = stepThroughY ? unmaskedArea2.width : unmaskedArea2.height;
+                if (r2XOrY < unmasked2XOrY) {
+                    shiftXOrY += unmasked2XOrY - r2XOrY;
+                } else if (r2XOrY >= unmasked2XOrY + unmasked2WidthOrHeight) {
+                    shiftXOrY -= r2XOrY - (unmasked2XOrY + unmasked2WidthOrHeight);
                 }
 
-                r1X += shiftX;
-                r2X += shiftX;
-
-                final Point p1 = new Point(new double[]{r1X, r1Y});
-                final Point p2 = new Point(new double[]{r2X, r2Y});
+                final Point p1, p2;
+                if (stepThroughY) {
+                    p1 = new Point(new double[]{r1XOrY + shiftXOrY, center1XorY});
+                    p2 = new Point(new double[]{r2XOrY + shiftXOrY, center2XorY});
+                } else {
+                    p1 = new Point(new double[]{center1XorY, r1XOrY + shiftXOrY});
+                    p2 = new Point(new double[]{center2XorY, r2XOrY + shiftXOrY});
+                }
 
                 candidates.add(new PointMatch(p1, p2));
-
-                p1Candidates.addPoint(r1X, r1Y);
-                p2Candidates.addPoint(r2X, r2Y);
             }
         }
 
