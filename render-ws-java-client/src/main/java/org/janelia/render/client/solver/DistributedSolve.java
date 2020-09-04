@@ -78,35 +78,6 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		this.parameters = parameters;
 		this.runParams = ParametersDistributedSolve.setupSolve( parameters );
 
-		// a HashMap where int is the z section, and string is the description (problem, restart, ...)
-		final Map<Integer, String> zToGroupIdMap = new HashMap<>();
-		for (final String groupId : Arrays.asList("restart", "problem")) { // NOTE: "problem" groupId is for future use
-			try {
-				final ResolvedTileSpecCollection groupTileSpecs =
-						runParams.renderDataClient.getResolvedTiles(parameters.stack,
-																	runParams.minZ,
-																	runParams.maxZ,
-																	groupId,
-																	null,
-																	null,
-																	null,
-																	null);
-				groupTileSpecs.getTileSpecs().forEach(tileSpec -> zToGroupIdMap.put(tileSpec.getZ().intValue(), groupId));
-			} catch (final IOException t) {
-				LOG.info("ignoring failure to retrieve tile specs with groupId '" + groupId +
-						 "' (since it's a good thing), exception is: ", t);
-			}
-		}
-
-		// if minZ & maxZ = Double.NaN in parameters, then use min and max of the stack
-		final StackMetaData stackMetaData = runParams.renderDataClient.getStackMetaData(parameters.stack);
-		final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
-		final int minZ = runParams.minZ == null ? stackBounds.getMinZ().intValue() : runParams.minZ.intValue();
-		final int maxZ = runParams.maxZ == null ? stackBounds.getMaxZ().intValue() : runParams.maxZ.intValue();
-
-		final List<Integer> challengeListZ = zToGroupIdMap.keySet().stream().sorted().collect(Collectors.toList());
-		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}", minZ, maxZ, challengeListZ);
-
 		this.globalSolveModel = globalSolveModel;
 		this.blockSolveModel = blockSolveModel;
 		this.stitchingModel = stitchingModel;
@@ -114,11 +85,15 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		// TODO: load matches only once, not for each thread
 		// assembleMatchData( parameters, runParams );
 
-		this.solveSet = defineSolveSet( minZ, maxZ, parameters.blockSize );
+		final int minZ = (int)Math.round( this.runParams.minZ );
+		final int maxZ = (int)Math.round( this.runParams.maxZ );
+
+		this.solveSet = defineSolveSet( minZ, maxZ, parameters.blockSize, runParams.zToGroupIdMap );
 
 		LOG.info( "Defined sets for global solve" );
 		LOG.info( "\n" + solveSet );
 
+		System.exit( 0 );
 		if (parameters.serializerDirectory != null) {
 			this.serializer= new DistributedSolveSerializer( new File(parameters.serializerDirectory) );
 		}
@@ -572,7 +547,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		LOG.info( "Done computing global errors." );
 	}
 
-	protected SolveSet< G, B, S > defineSolveSet( final int minZ, final int maxZ, final int setSize )
+	protected SolveSet< G, B, S > defineSolveSet( final int minZ, final int maxZ, final int setSize, final Map<Integer, String> zToGroupIdMap )
 	{
 		final int modulo = ( maxZ - minZ + 1 ) % setSize;
 

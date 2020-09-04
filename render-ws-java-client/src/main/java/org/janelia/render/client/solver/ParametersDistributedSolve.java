@@ -8,10 +8,13 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
@@ -19,6 +22,8 @@ import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.Parameter;
@@ -401,6 +406,7 @@ public class ParametersDistributedSolve extends CommandLineParameters
 		Double minZForRun = parameters.minZ;
 		Double maxZForRun = parameters.maxZ;
 
+		// if minZ || maxZ == null in parameters, then use min and max of the stack
 		if ((minZForRun == null) || (maxZForRun == null))
 		{
 			final StackMetaData stackMetaData = runParams.renderDataClient.getStackMetaData(parameters.stack);
@@ -420,6 +426,9 @@ public class ParametersDistributedSolve extends CommandLineParameters
 
 			if ( (minZForRun == null) || (maxZForRun == null) )
 				throw new IllegalArgumentException( "Failed to derive min and/or max z values for stack " + parameters.stack + ".  Stack may need to be completed.");
+
+			parameters.minZ = minZForRun;
+			parameters.maxZ = maxZForRun;
 		}
 
 		final Double minZ = minZForRun;
@@ -440,8 +449,31 @@ public class ParametersDistributedSolve extends CommandLineParameters
 			}
 		});
 
+		// a HashMap where int is the z section, and string is the description (problem, restart, ...)
+		runParams.zToGroupIdMap = new HashMap<>();
+		for (final String groupId : Arrays.asList("restart", "problem")) { // NOTE: "problem" groupId is for future use
+			LOG.debug( "Querying: " + groupId );
+			try {
+				final ResolvedTileSpecCollection groupTileSpecs =
+						runParams.renderDataClient.getResolvedTiles(parameters.stack,
+																	runParams.minZ,
+																	runParams.maxZ,
+																	groupId,
+																	null,
+																	null,
+																	null,
+																	null);
+				groupTileSpecs.getTileSpecs().forEach(tileSpec -> runParams.zToGroupIdMap.put(tileSpec.getZ().intValue(), groupId));
+			} catch (final IOException t) {
+				LOG.info("ignoring failure to retrieve tile specs with groupId '" + groupId + "' (since it's a reasonable thing omitting the exception" );
+			}
+		}
+
+		final List<Integer> challengeListZ = runParams.zToGroupIdMap.keySet().stream().sorted().collect(Collectors.toList());
+		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}", (int)Math.round(parameters.minZ), (int)Math.round(parameters.maxZ), challengeListZ);
+
 		return runParams;
 	}
 
-
+	private static final Logger LOG = LoggerFactory.getLogger(ParametersDistributedSolve.class);
 }
