@@ -2,29 +2,18 @@ package org.janelia.alignment.match;
 
 import ij.ImageJ;
 import ij.ImagePlus;
-import ij.gui.PointRoi;
-import ij.gui.Roi;
-import ij.plugin.Duplicator;
-import ij.plugin.filter.GaussianBlur;
-import ij.plugin.filter.RankFilters;
-import ij.process.ImageProcessor;
 
-import java.awt.Rectangle;
-import java.util.ArrayList;
 import java.util.List;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.TranslationModel2D;
-import mpicbg.stitching.PairWiseStitchingImgLib;
-import mpicbg.stitching.PairWiseStitchingResult;
-import mpicbg.stitching.StitchingParameters;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
+import org.janelia.alignment.match.parameters.CrossCorrelationParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.util.ImageDebugUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -32,8 +21,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import net.imglib2.util.Util;
 
 /**
  * Run cross correlation for two tiles.
@@ -66,74 +53,7 @@ public class CrossCorrelationTest {
         Assert.assertTrue(true);
     }
 
-    public static Rectangle findRectangle( final ImageProcessorWithMasks ipm )
-    {
-    	// TODO: assumes it is not rotated
-
-    	final ImageProcessor ip = ipm.mask;
-
-    	int minX = ip.getWidth();
-    	int maxX = 0;
-
-    	int minY = ip.getHeight();
-    	int maxY = 0;
-
-    	for ( int y = 0; y < ip.getHeight(); ++y )
-    		for ( int x = 0; x < ip.getWidth(); ++x )
-    		{
-    			if ( ip.getf(x, y) >= 255 )
-				{
-    				minX = Math.min( minX, x );
-    				maxX = Math.max( maxX, x );
-    				minY = Math.min( minY, y );
-    				maxY = Math.max( maxY, y );
-				}
-    		}
-
-    	LOG.debug("minX: {}, maxX: {}, minY: {}, maxY: {}", minX, maxX, minY, maxY);
-
-    	return new Rectangle(minX, minY, maxX-minX+1, maxY-minY+1);
-    	//ip.setRoi( );
-    }
-
-    public static void blur( final ImagePlus imp, final Rectangle r, final double sigma )
-    {
-    	imp.setRoi( r );
-
-    	// duplicate ROI (avoid artifacts from black areas)
-    	ImagePlus imp2 = (new Duplicator()).run( imp );
-    	ImageProcessor proc2 = imp2.getProcessor();
-
-    	new GaussianBlur().blurGaussian( proc2, sigma );
-
-    	ImageProcessor proc1 = imp.getProcessor();
-
-    	for ( int y = 0; y < imp2.getHeight(); ++y )
-    		for ( int x = 0; x < imp2.getWidth(); ++x )
-    			proc1.setf( x + r.x, y + r.y, proc2.getf(x, y) );
-    }
-
-    public static void median( final ImagePlus imp, final Rectangle r, final int radius )
-    {
-    	imp.setRoi( r );
-
-    	// duplicate ROI (avoid artifacts from black areas)
-    	ImagePlus imp2 = (new Duplicator()).run( imp );
-    	ImageProcessor proc2 = imp2.getProcessor();
-
-    	RankFilters filter = new RankFilters();
-    	filter.rank( imp2.getProcessor(), radius, RankFilters.MEDIAN );
-
-    	ImageProcessor proc1 = imp.getProcessor();
-
-    	for ( int y = 0; y < imp2.getHeight(); ++y )
-    		for ( int x = 0; x < imp2.getWidth(); ++x )
-    			proc1.setf( x + r.x, y + r.y, proc2.getf(x, y) );
-    }
-
     public static void main(final String[] args) {
-
-    	new ImageJ();
 
        // -------------------------------------------------------------------
         // NOTES:
@@ -163,32 +83,10 @@ public class CrossCorrelationTest {
         // initial blurring (no!)
         // final double sigma = 1;
 
-        final int sizeYFull = 250;
-        final int stepYFull = 5;
-    	final double rThreshold = 0.5;
-
-    	final int sizeY = Math.max( 10, (int)Math.round( sizeYFull * renderScale ) );
-    	final int stepY = Math.max( 1, (int)Math.round( stepYFull * renderScale ) );
-
-        LOG.debug("renderScale: {}, rThreshold: {}, sizeY: {}, stepY: {}", renderScale, rThreshold, sizeY, stepY);
-
-        final StitchingParameters params = new StitchingParameters();
-        params.dimensionality = 2;
-        params.fusionMethod = 0;
-        params.fusedName = "";
-        params.checkPeaks = 50; // important parameter
-        params.addTilesAsRois = false;
-        params.computeOverlap = true;
-        params.subpixelAccuracy = true;
-        params.ignoreZeroValuesFusion = false;
-        params.downSample = false;
-        params.displayFusion = false;
-        params.invertX = false;
-        params.invertY = false;
-        params.ignoreZStage = false;
-        params.xOffset = 0.0;
-        params.yOffset = 0.0;
-        params.zOffset = 0.0;
+        final CrossCorrelationParameters crossCorrelationParameters = new CrossCorrelationParameters();
+        crossCorrelationParameters.fullScaleSampleSize = 250;
+        crossCorrelationParameters.fullScaleStepSize = 5;
+        crossCorrelationParameters.minResultThreshold = 0.5; // SP suggests: maybe higher
 
         final float maxErrorFull = 2f;
         final float maxError = maxErrorFull * (float)renderScale;
@@ -202,93 +100,30 @@ public class CrossCorrelationTest {
         final RenderParameters renderParametersTile2 =
                 GeometricDescriptorMatcherTest.getRenderParametersForTile(owner, project, stack, tileId2, renderScale, false, clipSize, MontageRelativePosition.RIGHT);
 
-        final ImageProcessorWithMasks ipm1 = Renderer.renderImageProcessorWithMasks(renderParametersTile1, ImageProcessorCache.DISABLED_CACHE);
-        final ImageProcessorWithMasks ipm2 = Renderer.renderImageProcessorWithMasks(renderParametersTile2, ImageProcessorCache.DISABLED_CACHE);
+        // using cache helps a little with loading large masks over VPN
+        final ImageProcessorCache imageProcessorCache =
+                new ImageProcessorCache(4 * 15000 * 10000, // 4 big images
+                                        true,
+                                        false);
+        final ImageProcessorWithMasks ipm1 = Renderer.renderImageProcessorWithMasks(renderParametersTile1,
+                                                                                    imageProcessorCache);
+        final ImageProcessorWithMasks ipm2 = Renderer.renderImageProcessorWithMasks(renderParametersTile2,
+                                                                                    imageProcessorCache);
 
         final ImagePlus ip1 = new ImagePlus("tile_" + tileId1, ipm1.ip);
         final ImagePlus ip2 = new ImagePlus("tile_" + tileId2, ipm2.ip);
 
-        final Rectangle r1 = findRectangle( ipm1 );
-        final Rectangle r2 = findRectangle( ipm2 );
-
-    	//if ( sigma > 0 )
-    	//{
-    		//median(ip1, r1, 3 );
-    		//median(ip2, r2, 3 );
-    	//	blur( ip1, r1, sigma );
-    	//	blur( ip2, r2, sigma );
-    	//}
-
+        new ImageJ();
         ip1.show();
         ip2.show();
-
-        //final ImagePlus mask1 = new ImagePlus("mask_" + tileId1, ipm1.mask );
-        //final ImagePlus mask2 = new ImagePlus("mask_" + tileId2, ipm2.mask );
-        //mask1.show();
-        //mask2.show();
-
-        final int startY = Math.min( r1.y, r2.y );
-        final int endY = Math.max( r1.y + r1.height - 1, r2.y + r2.height - 1 );
-
-        final int numTests = (endY-startY-sizeY+stepY+1)/stepY + Math.min( 1, (endY-startY-sizeY+stepY+1)%stepY );
-        final double incY = (endY-startY-sizeY+stepY+1) / (double)numTests;
-        LOG.debug( numTests + " " + incY );
-
-        final List<PointMatch> candidates = new ArrayList<>();
-
-        final PointRoi p1Candidates = new PointRoi();
-        final PointRoi p2Candidates = new PointRoi();
-
-        for ( int i = 0; i < numTests; ++i )
-        {
-        	final int minY = (int)Math.round( i * incY ) + startY;
-        	final int maxY =  minY + sizeY - 1;
-
-        	// LOG.debug( " " + minY  + " > " + maxY );
-
-        	final Rectangle r1PCM = new Rectangle( r1.x, minY, r1.width, maxY - minY + 1 );
-        	final Rectangle r2PCM = new Rectangle( r2.x, minY, r2.width, maxY - minY + 1 );
-
-        	ip1.setRoi( r1PCM );
-        	ip2.setRoi( r2PCM );
-
-        	final PairWiseStitchingResult result = PairWiseStitchingImgLib.stitchPairwise( ip1, ip2, new Roi( r1PCM ), new Roi( r2PCM ), 1, 1, params );
-
-        	if ( result.getCrossCorrelation() >= rThreshold )
-        	{
-        		LOG.debug( minY  + " > " + maxY + ", shift : " + Util.printCoordinates( result.getOffset() ) + ", correlation (R)=" + result.getCrossCorrelation() );
-
-        		double r1X = 0;
-        		final double r1Y = minY + sizeY / 2.0;
-
-        		double r2X = -result.getOffset( 0 );
-        		final double r2Y = minY + sizeY / 2.0 - result.getOffset( 1 );
-
-        		// just to place the points within the overlapping area
-        		// (only matters for visualization)
-        		double shiftX = 0;
-
-        		if ( r2X < r2.x )
-        			shiftX += r2.x - r2X;
-        		else if ( r2X >= r2.x + r2.width )
-        			shiftX -= r2X - (r2.x + r2.width);
-
-        		r1X += shiftX;
-        		r2X += shiftX;
-
-        		final Point p1 = new Point( new double[] { r1X, r1Y } );
-        		final Point p2 = new Point( new double[] { r2X, r2Y } );
-
-        		candidates.add( new PointMatch( p1, p2 ) );
-
-        		p1Candidates.addPoint( r1X, r1Y );
-        		p2Candidates.addPoint( r2X, r2Y );
-        	}
-        }
-
-        // Running RANSAC
-        final MatchFilter matchFilter = new MatchFilter( matchDerivationParameters );
-        final CanvasMatchResult result = matchFilter.buildMatchResult(candidates);
+        
+        final CanvasCorrelationMatcher matcher =
+                new CanvasCorrelationMatcher(crossCorrelationParameters,
+                                             matchDerivationParameters,
+                                             renderScale);
+        final CanvasMatchResult result = matcher.deriveMatchResult(ip1, ipm1.mask,
+                                                                   ip2, ipm2.mask,
+                                                                   true);
         final List<PointMatch> inliers = result.getInlierPointMatchList();
 
 //        // NOTE: stored matches are converted to full scale using this method:
