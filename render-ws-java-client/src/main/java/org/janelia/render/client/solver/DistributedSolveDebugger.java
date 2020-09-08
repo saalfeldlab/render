@@ -1,7 +1,6 @@
 package org.janelia.render.client.solver;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
@@ -15,58 +14,52 @@ import bdv.util.BdvStackSource;
 import ij.ImageJ;
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.Model;
 import net.imglib2.multithreading.SimpleMultiThreading;
-import net.imglib2.util.Pair;
 
-public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
+public class DistributedSolveDebugger extends DistributedSolve
 {
 	public DistributedSolveDebugger(
-			final G globalSolveModel,
-			final B blockSolveModel,
-			final S stitchingModel,
+			final SolveSetFactory solveSetFactory,
 			final ParametersDistributedSolve parameters ) throws IOException
-
 	{
-		super( globalSolveModel, blockSolveModel, stitchingModel, parameters );
+		super( solveSetFactory, parameters );
 	}
 
 	@Override
-	public List< SolveItemData< G, B, S > > distributedSolve()
+	public List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > distributedSolve()
 	{
 		//this.solveSet.leftItems.get( 44 ).maxZ = 22100;
-		final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-				this.solveSet.leftItems.get( 49 ), //8, 9, 43, 44, 49, 66 ),
-				this.solveSet.getMaxId() + 1,
-				runParams.pGroupList,
-				runParams.sectionIdToZMap,
-				parameters.renderWeb.baseDataUrl,
-				parameters.renderWeb.owner,
-				parameters.renderWeb.project,
-				parameters.matchOwner,
-				parameters.matchCollection,
-				parameters.stack,
-				0,
-				parameters.serializeMatches,
-				parameters.maxAllowedErrorStitching,
-				parameters.maxIterationsStitching,
-				parameters.maxPlateauWidthStitching,
-				parameters.blockOptimizerLambdasRigid,
-				parameters.blockOptimizerLambdasTranslation,
-				parameters.blockOptimizerIterations,
-				parameters.blockMaxPlateauWidth,
-				parameters.blockMaxAllowedError,
-				parameters.dynamicLambdaFactor,
-				parameters.excludeSet(),
-				parameters.threadsGlobal );
+		final DistributedSolveWorker< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > w =
+				this.solveSet.leftItems.get( 49 ).createWorker(//8, 9, 43, 44, 49, 66 ),
+						this.solveSet.getMaxId() + 1,
+						runParams.pGroupList,
+						runParams.sectionIdToZMap,
+						parameters.renderWeb.baseDataUrl,
+						parameters.renderWeb.owner,
+						parameters.renderWeb.project,
+						parameters.matchOwner,
+						parameters.matchCollection,
+						parameters.stack,
+						0,
+						parameters.serializeMatches,
+						parameters.maxAllowedErrorStitching,
+						parameters.maxIterationsStitching,
+						parameters.maxPlateauWidthStitching,
+						parameters.blockOptimizerLambdasRigid,
+						parameters.blockOptimizerLambdasTranslation,
+						parameters.blockOptimizerIterations,
+						parameters.blockMaxPlateauWidth,
+						parameters.blockMaxAllowedError,
+						parameters.dynamicLambdaFactor,
+						parameters.excludeSet(),
+						parameters.threadsGlobal );
 		try
 		{
 			w.run();
 
 			new ImageJ();
 
-			for ( final SolveItemData< G, B, S > s : w.getSolveItemDataList() )
+			for ( final SolveItemData< ?, ?, ? > s : w.getSolveItemDataList() )
 			{
 				//if ( s.idToNewModel().keySet().size() <= 500 )
 				//	continue;
@@ -138,12 +131,16 @@ public class DistributedSolveDebugger< G extends Model< G > & Affine2D< G >, B e
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
+                final SolveSetFactory solveSetFactory =
+                		new SimpleSolveSetFactory(
+                				parameters.globalModel(),
+                				parameters.blockModel(),
+                				parameters.stitchingModel() );
+
                 @SuppressWarnings({ "rawtypes", "unchecked" })
                 final DistributedSolve solve =
                 		new DistributedSolveDebugger(
-                				parameters.globalModel(),
-                				parameters.blockModel(),
-                				parameters.stitchingModel(),
+                				solveSetFactory,
                 				parameters );
 
                 //solve.run();
