@@ -294,23 +294,22 @@ public class ParametersDistributedSolve extends CommandLineParameters
 		return toExclude;
 	}
 
-	public < G extends Model< G > & Affine2D< G > > G globalModel()
+	public Affine2D< ? > globalModel()
 	{
 		if ( this.modelTypeGlobalRegularizer == null )
 			return this.modelTypeGlobal.getInstance();
 		else
-			return (G)(Object)this.modelTypeGlobal.getInterpolatedInstance( modelTypeGlobalRegularizer, lambdaGlobal );
+			return this.modelTypeGlobal.getInterpolatedInstance( modelTypeGlobalRegularizer, lambdaGlobal );
 	}
 
-	public < B extends Model< B > & Affine2D< B > > B blockModel()
+	public Affine2D< ? > blockModel()
 	{
 		if ( this.blockOptimizerIterations.size() != this.blockMaxPlateauWidth.size() || 
 				this.blockOptimizerIterations.size() != this.blockOptimizerLambdasRigid.size() ||
 				this.blockOptimizerLambdasTranslation.size() != this.blockOptimizerLambdasRigid.size())
 			throw new RuntimeException( "Number of entries for blockOptimizerIterations, blockMaxPlateauWidth, blockOptimizerLambdasTranslation and blockOptimizerLambdasRigid not identical." );
 
-		return (B)(Object)
-				new InterpolatedAffineModel2D(
+		return	new InterpolatedAffineModel2D(
 						new InterpolatedAffineModel2D(
 								new InterpolatedAffineModel2D(
 										new AffineModel2D(),
@@ -321,12 +320,12 @@ public class ParametersDistributedSolve extends CommandLineParameters
 						//new ConstantAffineModel2D( stitchingModel() ), 0.0 );
 	}
 
-	public < S extends Model< S > & Affine2D< S > > S stitchingModel()
+	public Affine2D< ? > stitchingModel()
 	{
 		if ( this.modelTypeStitchingRegularizer == null )
 			return this.modelTypeStitching.getInstance();
 		else
-			return (S)(Object)this.modelTypeStitching.getInterpolatedInstance( modelTypeStitchingRegularizer, lambdaStitching );
+			return this.modelTypeStitching.getInterpolatedInstance( modelTypeStitchingRegularizer, lambdaStitching );
 	}
 
 	public static RunParameters setupSolve( final ParametersDistributedSolve parameters ) throws IOException

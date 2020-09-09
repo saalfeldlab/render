@@ -238,7 +238,7 @@ public abstract class DistributedSolve
 		for ( int a = 0; a < allSolveItems.size() - 1; ++a )
 		{
 			final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemA = allSolveItems.get( a );
-			solveItemDataToTile.putIfAbsent( solveItemA, new Tile<>( solveItemA.globalSolveModelInstance() ) ); //TODO: how comes I can init a Tile with Affine2D???
+			solveItemDataToTile.putIfAbsent( solveItemA, new Tile( solveItemA.globalSolveModelInstance() ) ); //TODO: how comes I can init a Tile with Affine2D???
 
 			for ( int z = solveItemA.minZ(); z <= solveItemA.maxZ(); ++z )
 			{
@@ -248,7 +248,7 @@ public abstract class DistributedSolve
 				for ( int b = a + 1; b < allSolveItems.size(); ++b )
 				{
 					final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemB = allSolveItems.get( b );
-					solveItemDataToTile.putIfAbsent( solveItemB, new Tile<>( solveItemB.globalSolveModelInstance() ) );
+					solveItemDataToTile.putIfAbsent( solveItemB, new Tile( solveItemB.globalSolveModelInstance() ) );
 
 					if ( solveItemA.equals( solveItemB ) )
 						continue;
@@ -363,7 +363,7 @@ public abstract class DistributedSolve
 						final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemB =
 								solveItemA.createCorrespondingDummySolveItem( id, z );
 						zToSolveItemPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
-						solveItemDataToTile.putIfAbsent( solveItemB, new Tile<>( solveItemB.globalSolveModelInstance() ) );
+						solveItemDataToTile.putIfAbsent( solveItemB, new Tile( solveItemB.globalSolveModelInstance() ) );
 	
 						++id;
 

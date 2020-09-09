@@ -57,8 +57,13 @@ public class DistributedSolveSparkTest {
                     .setMaster(master)
                     .setAppName(DistributedSolveSpark.class.getSimpleName());
 
-            @SuppressWarnings({ "rawtypes" })
-            final DistributedSolve client = new DistributedSolveSpark(parameters, sparkConf);
+            final SolveSetFactory solveSetFactory =
+    		new SimpleSolveSetFactory(
+    				parameters.globalModel(),
+    				parameters.blockModel(),
+    				parameters.stitchingModel() );
+
+            final DistributedSolve client = new DistributedSolveSpark(solveSetFactory, parameters, sparkConf);
 
             client.run();
 

@@ -62,7 +62,7 @@ public class SimpleSolveSetFactory extends SolveSetFactory
 	}
 
 	@SuppressWarnings("unchecked")
-	protected static < G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > SolveItemData< G, B, S > instantiateSolveItemData(
+	protected static < G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > instantiateSolveItemData(
 			final int id,
 			final Affine2D<?> globalSolveModel,
 			final Affine2D<?> blockSolveModel,
@@ -72,6 +72,6 @@ public class SimpleSolveSetFactory extends SolveSetFactory
 			)
 	{
 		// it will crash here if the models are not Affine2D AND Model
-		return new SolveItemData< G, B, S >( id, (G)(Object)globalSolveModel, (B)(Object)blockSolveModel, (S)(Object)stitchingModel, minZ, maxZ );
+		return new SolveItemData( id, (G)(Object)globalSolveModel, (B)(Object)blockSolveModel, (S)(Object)stitchingModel, minZ, maxZ );
 	}
 }
