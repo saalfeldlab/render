@@ -58,7 +58,7 @@ public class DistributedSolveSparkTest {
                     .setAppName(DistributedSolveSpark.class.getSimpleName());
 
             final SolveSetFactory solveSetFactory =
-    		new SimpleSolveSetFactory(
+    		new SolveSetFactorySimple(
     				parameters.globalModel(),
     				parameters.blockModel(),
     				parameters.stitchingModel() );
