@@ -14,6 +14,15 @@ import mpicbg.models.Tile;
 import mpicbg.models.TranslationModel2D;
 import net.imglib2.util.Pair;
 
+/**
+ * This is only instantiated inside the DistributedSolveWorker
+ * 
+ * @author spreibi
+ *
+ * @param <G>
+ * @param <B>
+ * @param <S>
+ */
 public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
 	final public static int samplesPerDimension = 2;
@@ -21,23 +30,8 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 
 	final SolveItemData< G, B, S > solveItemData;
 
-	//final private int id;
-	//final private int minZ, maxZ;
-
-	// used for global solve outside
-	// final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
-
-	// used for saving and display
-	// final private HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
-
-	// contains the model as determined by the local solve
-	// final private HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
-
-	// contains the model as loaded from renderer (can go right now except for debugging)
-	// final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
-
 	//
-	// local obly below
+	// local only variables needed for the block solve below
 	//
 
 	// all tiles, used for solving when not grouped

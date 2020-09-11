@@ -22,8 +22,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import javax.annotation.Nonnull;
-
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
@@ -387,7 +385,7 @@ public class TilePairClient {
 
             z = zValues.get(zIndex);
 
-            if (parameters.zNeighborDistance == 0) {
+            if ((parameters.zNeighborDistance == 0) || (! zToTreeMap.containsKey(z))) {
                 zToTreeMap.put(z, buildRTree(z));
             }
 
@@ -480,7 +478,6 @@ public class TilePairClient {
         LOG.info("deriveAndSaveSortedNeighborPairs: exit, saved {} total pairs", totalSavedPairCount);
     }
 
-    @Nonnull
     public TileBoundsRTree buildRTree(final double z)
             throws IOException {
 
@@ -634,7 +631,8 @@ public class TilePairClient {
 
                         final OrderedCanvasIdPair pair =  new OrderedCanvasIdPair(
                                 new CanvasId(canvasMatches.getpGroupId(), canvasMatches.getpId()),
-                                new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId()));
+                                new CanvasId(canvasMatches.getqGroupId(), canvasMatches.getqId()),
+                                null);
 
                         matchCount = canvasMatches.getMatchCount();
 
@@ -669,7 +667,7 @@ public class TilePairClient {
                 final CanvasId pIdWithoutPosition = new CanvasId(pId.getGroupId(), pId.getId());
                 final CanvasId qIdWithoutPosition = new CanvasId(qId.getGroupId(), qId.getId());
                 
-                if (existingPairs.contains(new OrderedCanvasIdPair(pIdWithoutPosition, qIdWithoutPosition))) {
+                if (existingPairs.contains(new OrderedCanvasIdPair(pIdWithoutPosition, qIdWithoutPosition, null))) {
                     i.remove();
                 }
             }

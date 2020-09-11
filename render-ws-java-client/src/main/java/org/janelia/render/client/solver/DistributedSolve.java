@@ -7,7 +7,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
 import org.janelia.alignment.match.Matches;
@@ -34,7 +33,7 @@ import mpicbg.models.TileUtil;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
-public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
+public abstract class DistributedSolve
 {
 	public static boolean visualizeOutput = false;
 	public static int visMinZ = Integer.MIN_VALUE;
@@ -52,28 +51,20 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		final HashMap< String, List< Pair< String, Double > > > idToErrorMapGlobal = new HashMap<>();
 	}
 
-	final G globalSolveModel;
-	final B blockSolveModel;
-	final S stitchingModel;
-
-	final SolveSet< G, B, S > solveSet;
+	final SolveSetFactory solveSetFactory;
+	final SolveSet solveSet;
 	DistributedSolveSerializer serializer = null;
 
-	List< SolveItemData< G, B, S > > allItems = null;
+	List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > allItems = null;
 	GlobalSolve solve = null;
 
 	public DistributedSolve(
-			final G globalSolveModel,
-			final B blockSolveModel,
-			final S stitchingModel,
+			final SolveSetFactory solveSetFactory,
 			final ParametersDistributedSolve parameters ) throws IOException
 	{
+		this.solveSetFactory = solveSetFactory;
 		this.parameters = parameters;
 		this.runParams = ParametersDistributedSolve.setupSolve( parameters );
-
-		this.globalSolveModel = globalSolveModel;
-		this.blockSolveModel = blockSolveModel;
-		this.stitchingModel = stitchingModel;
 
 		// TODO: load matches only once, not for each thread
 		// assembleMatchData( parameters, runParams );
@@ -81,17 +72,18 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		final int minZ = (int)Math.round( this.runParams.minZ );
 		final int maxZ = (int)Math.round( this.runParams.maxZ );
 
-		this.solveSet = defineSolveSet( minZ, maxZ, parameters.blockSize );
+		this.solveSet = solveSetFactory.defineSolveSet( minZ, maxZ, parameters.blockSize, runParams.zToGroupIdMap );
 
 		LOG.info( "Defined sets for global solve" );
 		LOG.info( "\n" + solveSet );
 
+		//System.exit( 0 );
 		if (parameters.serializerDirectory != null) {
 			this.serializer= new DistributedSolveSerializer( new File(parameters.serializerDirectory) );
 		}
 	}
 
-	protected abstract List< SolveItemData< G, B, S > > distributedSolve();
+	protected abstract List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > distributedSolve();
 
 	public void run() throws IOException, NoninvertibleModelException
 	{
@@ -134,7 +126,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 		try
 		{
-			computeGlobalErrors( this.solve, this.allItems );
+			computeGlobalErrors( this.solve, this.allItems, new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 ), (Model<?>)solveSetFactory.defaultStitchingModel );
 		}
 		catch ( Exception e )
 		{
@@ -180,7 +172,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		}
 	}
 
-	public List< SolveItemData< G, B, S > > allItems() { return allItems; }
+	public List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > allItems() { return allItems; }
 	public GlobalSolve globalSolve() { return solve; }
 
 	protected static HashSet< String > commonStrings( final HashSet< String > tileIdsA, final HashSet< String > tileIdsB )
@@ -196,15 +188,15 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 	protected boolean pairExists(
 			final int z,
-			final SolveItemData< G, B, S > solveItemA,
-			final SolveItemData< G, B, S > solveItemB,
-			final HashMap<Integer, ArrayList< Pair< Pair< SolveItemData< G, B, S >, SolveItemData< G, B, S > >, HashSet< String > > > > zToSolveItemPairs )
+			final SolveItemData< ?, ?, ? > solveItemA,
+			final SolveItemData< ?, ?, ? > solveItemB,
+			final HashMap<Integer, ? extends ArrayList< ? extends Pair< ? extends Pair< ? extends SolveItemData< ?, ?, ? >, ? extends SolveItemData< ?, ?, ? > >, HashSet< String > > > > zToSolveItemPairs )
 	{
 		if ( zToSolveItemPairs.containsKey( z ) )
 		{
-			final ArrayList< Pair< Pair< SolveItemData< G, B, S >, SolveItemData< G, B, S > >, HashSet< String > > > entries = zToSolveItemPairs.get( z );
+			final ArrayList< ? extends Pair< ? extends Pair< ? extends SolveItemData< ?, ?, ? >, ? extends SolveItemData< ?, ?, ? > >, HashSet< String > > > entries = zToSolveItemPairs.get( z );
 
-			for ( final Pair< Pair< SolveItemData< G, B, S >, SolveItemData< G, B, S > >, HashSet< String > > entry : entries )
+			for ( final Pair< ? extends Pair< ? extends SolveItemData< ?, ?, ? >, ? extends SolveItemData< ?, ?, ? > >, HashSet< String > > entry : entries )
 				if (entry.getA().getA().equals( solveItemA ) && entry.getA().getB().equals( solveItemB ) ||
 					entry.getA().getA().equals( solveItemB ) && entry.getA().getB().equals( solveItemA ) )
 						return true;
@@ -217,25 +209,36 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		}
 	}
 
-	protected GlobalSolve globalSolve( final List< SolveItemData< G, B, S > > allSolveItems, final int startId ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException, NoninvertibleModelException
+	protected GlobalSolve globalSolve(
+			final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > allSolveItems,
+			final int startId )
+					throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException, NoninvertibleModelException
 	{
 		int id = startId;
 
 		final GlobalSolve gs = new GlobalSolve();
 
 		// local structures required for solvig
-		final HashMap<Integer, ArrayList< Pair< Pair< SolveItemData< G, B, S >, SolveItemData< G, B, S > >, HashSet< String > > > > zToSolveItemPairs = new HashMap<>();
+		final HashMap<
+				Integer,
+				ArrayList<
+					Pair<
+						Pair<
+							SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >,
+							SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > >,
+						HashSet< String > > > > zToSolveItemPairs = new HashMap<>();
+		
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
-		final HashMap< SolveItemData< G, B, S >, Tile< G > > solveItemDataToTile = new HashMap<>();
+		final HashMap< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >, Tile< ? extends Affine2D< ? > > > solveItemDataToTile = new HashMap<>();
 
 		// important: all images within one solveitem must be connected to each other!
 
 		// solve by solveitem, not by z layer
 		for ( int a = 0; a < allSolveItems.size() - 1; ++a )
 		{
-			final SolveItemData< G, B, S > solveItemA = allSolveItems.get( a );
-			solveItemDataToTile.putIfAbsent( solveItemA, new Tile<>( solveItemA.globalSolveModelInstance() ) );
+			final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemA = allSolveItems.get( a );
+			solveItemDataToTile.putIfAbsent( solveItemA, new Tile( solveItemA.globalSolveModelInstance() ) ); //TODO: how comes I can init a Tile with Affine2D???
 
 			for ( int z = solveItemA.minZ(); z <= solveItemA.maxZ(); ++z )
 			{
@@ -244,8 +247,8 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 				for ( int b = a + 1; b < allSolveItems.size(); ++b )
 				{
-					final SolveItemData< G, B, S > solveItemB = allSolveItems.get( b );
-					solveItemDataToTile.putIfAbsent( solveItemB, new Tile<>( solveItemB.globalSolveModelInstance() ) );
+					final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemB = allSolveItems.get( b );
+					solveItemDataToTile.putIfAbsent( solveItemB, new Tile( solveItemB.globalSolveModelInstance() ) );
 
 					if ( solveItemA.equals( solveItemB ) )
 						continue;
@@ -313,8 +316,8 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 							}
 						}
 
-						final Tile< G > tileA = solveItemDataToTile.get( solveItemA );
-						final Tile< G > tileB = solveItemDataToTile.get( solveItemB );
+						final Tile< ? > tileA = solveItemDataToTile.get( solveItemA );
+						final Tile< ? > tileB = solveItemDataToTile.get( solveItemB );
 
 						tileA.connect( tileB, matchesAtoB );
 
@@ -333,7 +336,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 
 					if ( zToSolveItemPairs.containsKey( z ) )
 					{
-						for ( final Pair< Pair< SolveItemData< G, B, S >, SolveItemData< G, B, S > >, HashSet< String > > entry : zToSolveItemPairs.get( z ) )
+						for ( final Pair< ? extends Pair< ? extends SolveItemData< ?, ?, ? >, ? extends SolveItemData< ?, ?, ? > >, HashSet< String > > entry : zToSolveItemPairs.get( z ) )
 						{
 							if ( entry.getA().getA().equals( solveItemA ) || entry.getA().getB().equals( solveItemA ) )
 							{
@@ -357,10 +360,10 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 	
 						// remember which solveItems defined which tileIds of this z section
 						
-						final SolveItemData< G, B, S > solveItemB = new DummySolveItemData< G, B, S >(
-								id, solveItemA.globalSolveModelInstance(), solveItemA.blockSolveModelInstance(), solveItemA.stitchingSolveModelInstance(), z );
+						final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemB =
+								solveItemA.createCorrespondingDummySolveItem( id, z );
 						zToSolveItemPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
-						solveItemDataToTile.putIfAbsent( solveItemB, new Tile<>( solveItemB.globalSolveModelInstance() ) );
+						solveItemDataToTile.putIfAbsent( solveItemB, new Tile( solveItemB.globalSolveModelInstance() ) );
 	
 						++id;
 
@@ -394,9 +397,9 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 				tileConfigBlocks.getFixedTiles(),
 				parameters.threadsGlobal );
 
-		final HashMap< SolveItemData< G, B, S >, AffineModel2D > blockToAffine2d = new HashMap<>();
+		final HashMap< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >, AffineModel2D > blockToAffine2d = new HashMap<>();
 	
-		for ( final SolveItemData< G, B, S > solveItem : solveItemDataToTile.keySet() )
+		for ( final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItem : solveItemDataToTile.keySet() )
 		{
 			blockToAffine2d.put( solveItem, SolveTools.createAffine( solveItemDataToTile.get( solveItem ).getModel() ) );
 
@@ -410,16 +413,17 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		for ( final int z : zSections )
 		{
 			// for every z section, tileIds might be provided from different overlapping blocks if they were not connected and have been split
-			final ArrayList< Pair< Pair< SolveItemData< G, B, S >, SolveItemData < G, B, S >>, HashSet< String > > > entries = zToSolveItemPairs.get( z );
+			final ArrayList< Pair< Pair< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >, SolveItemData < ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >>, HashSet< String > > > entries = zToSolveItemPairs.get( z );
 
-			for ( final Pair< Pair< SolveItemData< G, B, S >, SolveItemData< G, B, S > >, HashSet< String > > entry : entries )
+			for ( final Pair< Pair< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >, SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > >, HashSet< String > > entry : entries )
 			{
 				for ( final String tileId : entry.getB() )
 				{
-					final Pair< SolveItemData< G, B, S >, SolveItemData< G, B, S > > solveItemPair = entry.getA();
+					final Pair< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >, SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > solveItemPair =
+							entry.getA();
 
-					final SolveItemData< G, B, S > solveItemA = solveItemPair.getA();
-					final SolveItemData< G, B, S > solveItemB = solveItemPair.getB();
+					final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemA = solveItemPair.getA();
+					final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemB = solveItemPair.getB();
 
 					final AffineModel2D modelA = solveItemA.idToNewModel().get( tileId );
 					final AffineModel2D modelB = solveItemB.idToNewModel().get( tileId );
@@ -475,7 +479,11 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		return gs;
 	}
 
-	protected void computeGlobalErrors( final GlobalSolve gs, final List< SolveItemData< G, B, S > > allSolveItems )
+	protected void computeGlobalErrors(
+			final GlobalSolve gs,
+			final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > allSolveItems,
+			final Model<?> crossLayerModel,
+			final Model<?> montageLayerModel )
 	{
 		LOG.info( "Computing global errors ... " );
 
@@ -483,7 +491,7 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		final HashMap< String, HashMap< String, Matches > > allMatches = new HashMap<>();
 
 		// combine all matches from all solveitems
-		for ( final SolveItemData<G, B, S> sid : allSolveItems )
+		for ( final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > sid : allSolveItems )
 		{
 			for ( final Pair< Pair< String, String>, Matches > matchPair : sid.matches )
 			{
@@ -511,8 +519,8 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		}
 
 		// for local fits
-		final Model<?> crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
-		final Model<?> montageLayerModel = this.stitchingModel.copy();
+		//final Model<?> crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
+		//final Model<?> montageLayerModel = this.stitchingModel.copy();
 
 		for ( final String pTileId : allMatches.keySet() )
 		{
@@ -537,49 +545,6 @@ public abstract class DistributedSolve< G extends Model< G > & Affine2D< G >, B 
 		}
 
 		LOG.info( "Done computing global errors." );
-	}
-
-	protected SolveSet< G, B, S > defineSolveSet( final int minZ, final int maxZ, final int setSize )
-	{
-		final int modulo = ( maxZ - minZ + 1 ) % setSize;
-
-		final int numSetsLeft = ( maxZ - minZ + 1 ) / setSize + Math.min( 1, modulo );
-
-		final ArrayList< SolveItemData< G, B, S > > leftSets = new ArrayList<>();
-		final ArrayList< SolveItemData< G, B, S > > rightSets = new ArrayList<>();
-
-		int id = 0;
-
-		for ( int i = 0; i < numSetsLeft; ++i )
-		{
-			leftSets.add(
-					new SolveItemData< G, B, S >(
-							id,
-							this.globalSolveModel,
-							this.blockSolveModel,
-							this.stitchingModel,
-							minZ + i * setSize,
-							Math.min( minZ + (i + 1) * setSize - 1, maxZ ) ) );
-			++id;
-		}
-
-		for ( int i = 0; i < numSetsLeft - 1; ++i )
-		{
-			final SolveItemData< G, B, S > set0 = leftSets.get( i );
-			final SolveItemData< G, B, S > set1 = leftSets.get( i + 1 );
-
-			rightSets.add(
-					new SolveItemData< G, B, S >(
-							id,
-							this.globalSolveModel,
-							this.blockSolveModel,
-							this.stitchingModel,
-							( set0.minZ() + set0.maxZ() ) / 2,
-							( set1.minZ() + set1.maxZ() ) / 2 - 1 ) );
-			++id;
-		}
-
-		return new SolveSet< G, B, S >( leftSets, rightSets );
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolve.class);

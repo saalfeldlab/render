@@ -6,7 +6,6 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -19,13 +18,14 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureList;
 import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
-import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
-import org.janelia.render.client.parameter.FeatureRenderParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderParameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,14 +114,14 @@ public class FeatureClient
         this.parameters = parameters;
     }
 
-    public void run() throws IOException, URISyntaxException {
+    public void run() throws IOException {
         for (final String pairJsonFileName : parameters.pairJson) {
             generateFeatureListsForPairFile(pairJsonFileName);
         }
     }
 
     private void generateFeatureListsForPairFile(final String pairJsonFileName)
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         LOG.info("generateFeatureListsForPairFile: pairJsonFileName is {}", pairJsonFileName);
 
@@ -157,19 +157,13 @@ public class FeatureClient
                                                         final FeatureRenderClipParameters featureRenderClipParameters,
                                                         final FeatureExtractionParameters featureExtractionParameters,
                                                         final File rootDirectory)
-            throws IOException, URISyntaxException {
+            throws IOException {
 
         final CanvasRenderParametersUrlTemplate urlTemplateForRun =
                 CanvasRenderParametersUrlTemplate.getTemplateForRun(
                         renderParametersUrlTemplate,
-                        featureRenderParameters.renderFullScaleWidth,
-                        featureRenderParameters.renderFullScaleHeight,
-                        featureRenderParameters.renderScale,
-                        featureRenderParameters.renderWithFilter,
-                        featureRenderParameters.renderFilterListName,
-                        featureRenderParameters.renderWithoutMask);
-
-        urlTemplateForRun.setClipInfo(featureRenderClipParameters.clipWidth, featureRenderClipParameters.clipHeight);
+                        featureRenderParameters,
+                        featureRenderClipParameters);
 
         final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
         siftParameters.fdSize = featureExtractionParameters.fdSize;
@@ -184,19 +178,15 @@ public class FeatureClient
 
         for (final CanvasId canvasId : canvasIdList) {
 
-            final String renderParametersUrl = urlTemplateForRun.getRenderParametersUrl(canvasId);
-            final RenderParameters renderParameters = urlTemplateForRun.getRenderParameters(canvasId,
-                                                                                            renderParametersUrl);
-            final double[] offsets = canvasId.getClipOffsets(); // HACK WARNING: offsets get applied by getRenderParameters call
-
-            LOG.info("generateFeatureListsForCanvases: extracting features for {} with offsets ({}, {})",
-                     canvasId, offsets[0], offsets[1]);
+            final CanvasIdWithRenderContext canvasIdWithRenderContext =
+                    CanvasIdWithRenderContext.build(canvasId, urlTemplateForRun);
+            final RenderParameters renderParameters = canvasIdWithRenderContext.loadRenderParameters();
 
             final List<Feature> featureList = featureExtractor.extractFeatures(renderParameters, null);
 
             final CanvasFeatureList canvasFeatureList =
                     new CanvasFeatureList(canvasId,
-                                          renderParametersUrl,
+                                          canvasIdWithRenderContext.getUrl(),
                                           renderScale,
                                           urlTemplateForRun.getClipWidth(),
                                           urlTemplateForRun.getClipHeight(),
@@ -204,7 +194,6 @@ public class FeatureClient
 
             CanvasFeatureList.writeToStorage(rootDirectory, canvasFeatureList);
         }
-
 
         LOG.info("generateFeatureListsForCanvases: saved features for {} canvases", canvasIdList.size());
     }

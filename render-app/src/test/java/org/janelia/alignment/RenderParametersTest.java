@@ -1,33 +1,20 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.alignment;
 
-import org.janelia.alignment.match.CanvasId;
-import org.janelia.alignment.match.MontageRelativePosition;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.janelia.alignment.filter.EqualizeHistogram;
+import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Tests the {@link RenderParameters} class.
@@ -76,6 +63,12 @@ public class RenderParametersTest {
 
         parameters.addTileSpec(tileSpec1);
 
+        final Map<String, String> filterSpecParameters = new HashMap<>();
+        filterSpecParameters.put("saturatedPixels", "99");
+        final List<FilterSpec> filterSpecs =
+                Collections.singletonList(new FilterSpec(EqualizeHistogram.class.getName(), filterSpecParameters)) ;
+        parameters.setFilterSpecs(filterSpecs);
+
         final String json = parameters.toJson();
 
         Assert.assertNotNull("json not generated", json);
@@ -90,10 +83,12 @@ public class RenderParametersTest {
         Assert.assertEquals("invalid number of tileSpecs parsed", 2, parsedTileSpecs.size());
 
         Assert.assertFalse("mipmapPathBuilder should NOT be defined", parsedParameters.hasMipmapPathBuilder());
+
+        Assert.assertTrue("filter spec is missing", parsedParameters.hasFilters());
     }
 
     @Test
-    public void testMergeParameters() throws Exception {
+    public void testMergeParameters() {
 
         final String overrideOut = "test-out.jpg";
         final String overrideScale = "0.3";
@@ -113,47 +108,9 @@ public class RenderParametersTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testExtraneousComma() throws Exception {
+    public void testExtraneousComma() {
         final File jsonFile = new File("src/test/resources/render-parameters-test/extraneous-comma-render.json");
         RenderParameters.parseJson(jsonFile);
     }
-
-    @Test
-    public void testClipForMontagePair() {
-
-        final int fullWidth = 3840;
-        final int fullHeight = 3840;
-
-        final int clipWidth = 20;
-        final int clipHeight = 10;
-
-        final double leftXOffset = fullWidth - clipWidth;
-        final double topYOffset = fullHeight - clipHeight;
-
-        final Object[][] testData = {
-                // relative position,             expectedWidth, expectedHeight, expectedX,   expectedY
-                { MontageRelativePosition.TOP,    fullWidth,     clipHeight,     0.0,         topYOffset },
-                { MontageRelativePosition.BOTTOM, fullWidth,     clipHeight,     0.0,         0.0        },
-                { MontageRelativePosition.LEFT,   clipWidth,     fullHeight,     leftXOffset, 0.0        },
-                { MontageRelativePosition.RIGHT,  clipWidth,     fullHeight,     0.0,         0.0        }
-        };
-
-        for (final Object[] data : testData) {
-
-            final RenderParameters parameters =
-                    new RenderParameters("renderer-test.json", 0, 0, fullWidth, fullHeight, 1.0);
-
-            final CanvasId canvasId = new CanvasId("groupA", "tileB", (MontageRelativePosition) data[0]);
-            canvasId.setClipOffsets(fullWidth, fullHeight, clipWidth, clipHeight);
-
-            parameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
-
-            Assert.assertEquals("invalid clipped width for " + canvasId, data[1], parameters.getWidth());
-            Assert.assertEquals("invalid clipped height for " + canvasId, data[2], parameters.getHeight());
-            Assert.assertEquals("invalid x for " + canvasId, (Double) data[3], parameters.getX(), 0.001);
-            Assert.assertEquals("invalid y for " + canvasId, (Double) data[4], parameters.getY(), 0.001);
-        }
-    }
-
 
 }

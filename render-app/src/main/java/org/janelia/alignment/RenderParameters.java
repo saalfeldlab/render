@@ -45,8 +45,6 @@ import org.janelia.alignment.filter.Filter;
 import org.janelia.alignment.filter.FilterFactory;
 import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.json.JsonUtils;
-import org.janelia.alignment.match.CanvasId;
-import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.spec.ChannelNamesAndWeights;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
@@ -399,46 +397,6 @@ public class RenderParameters implements Serializable {
         }
 
         return parameters;
-    }
-
-    /**
-     * Adjusts these parameters to clip for montage pair point match rendering.
-     *
-     * @param  canvasId     canvas information.
-     * @param  clipWidth    number of full scale pixels to include in clipped members of left/right pairs.
-     * @param  clipHeight   number of full scale pixels to include in clipped members of top/bottom pairs.
-     */
-    public void clipForMontagePair(final CanvasId canvasId,
-                                   final Integer clipWidth,
-                                   final Integer clipHeight) {
-
-        final MontageRelativePosition relativePosition = canvasId.getRelativePosition();
-
-        if (relativePosition != null) {
-
-            final double[] clipOffsets = canvasId.getClipOffsets();
-
-            // TODO: remove offset debug logging when no longer needed
-            LOG.debug("clipForMontagePair: {} offsets are {}, {}", canvasId, clipOffsets[0], clipOffsets[1]);
-
-            switch (relativePosition) {
-                case TOP:
-                case BOTTOM:
-                    if (clipHeight != null) {
-                        y = y + clipOffsets[1];
-                        height = clipHeight;
-                    }
-                    break;
-                case LEFT:
-                case RIGHT:
-                    if (clipWidth != null) {
-                        x = x + clipOffsets[0];
-                        width = clipWidth;
-                    }
-                    break;
-            }
-        }
-
     }
 
     /**

@@ -1,19 +1,3 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.alignment;
 
 import java.io.File;
@@ -21,6 +5,8 @@ import java.io.Serializable;
 import java.net.URI;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.janelia.alignment.loader.ImageLoader.LoaderType;
 
 /**
  *
@@ -30,26 +16,26 @@ import java.util.regex.Pattern;
 public class ImageAndMask implements Serializable {
 
     private String imageUrl;
+    private LoaderType imageLoaderType;
+    private Integer imageSliceNumber;
+
     private String maskUrl;
+    private LoaderType maskLoaderType;
+    private Integer maskSliceNumber;
 
     // cached full path URL strings (in case relative paths were specified),
     // marked transient to prevent serialization
-    private transient String validatedImageUrl;
-    private transient String validatedMaskUrl;
+    private transient String validatedImageUrl = null;
+    private transient String validatedMaskUrl = null;
 
     public ImageAndMask() {
-        this.imageUrl = null;
-        this.maskUrl = null;
-        this.validatedImageUrl = null;
-        this.validatedMaskUrl = null;
+        this(null, null, null,
+             null, null, null);
     }
 
     public ImageAndMask(final String imageUrl,
                         final String maskUrl) {
-        this.imageUrl = imageUrl;
-        this.maskUrl = maskUrl;
-        this.validatedImageUrl = null;
-        this.validatedMaskUrl = null;
+        this(imageUrl, null, null, maskUrl, null, null);
     }
 
     public ImageAndMask(final File imageFile,
@@ -60,8 +46,20 @@ public class ImageAndMask implements Serializable {
         if (maskFile != null) {
             this.maskUrl = maskFile.toURI().toString();
         }
-        this.validatedImageUrl = null;
-        this.validatedMaskUrl = null;
+    }
+
+    public ImageAndMask(final String imageUrl,
+                        final LoaderType imageLoaderType,
+                        final Integer imageSliceNumber,
+                        final String maskUrl,
+                        final LoaderType maskLoaderType,
+                        final Integer maskSliceNumber) {
+        this.imageUrl = imageUrl;
+        this.imageLoaderType = imageLoaderType;
+        this.imageSliceNumber = imageSliceNumber;
+        this.maskUrl = maskUrl;
+        this.maskLoaderType = maskLoaderType;
+        this.maskSliceNumber = maskSliceNumber;
     }
 
     public boolean hasImage() {
@@ -98,12 +96,32 @@ public class ImageAndMask implements Serializable {
         return m.replaceFirst("/");
     }
 
+    public LoaderType getImageLoaderType() {
+        return imageLoaderType == null ? LoaderType.IMAGEJ_DEFAULT : imageLoaderType;
+    }
+
+    public Integer getImageSliceNumber() {
+        return imageSliceNumber;
+    }
+
+    public LoaderType getMaskLoaderType() {
+        return maskLoaderType == null ? LoaderType.IMAGEJ_DEFAULT : maskLoaderType;
+    }
+
+    public Integer getMaskSliceNumber() {
+        return maskSliceNumber;
+    }
+
     @Override
     public String toString() {
-        return "ImageAndMask{" +
-               "imageUrl='" + imageUrl + '\'' +
-               ", maskUrl='" + maskUrl + '\'' +
-               '}';
+        final String imageLoaderInfo = imageLoaderType == null ? "" :
+                                       ", imageLoaderName: '" + imageLoaderType +
+                                       ", imageSliceNumber: " + imageSliceNumber;
+        final String maskInfo = maskUrl == null ? "" : ", maskUrl: '" + maskUrl + '\'';
+        final String maskLoaderInfo = maskLoaderType == null ? "" :
+                                      ", maskLoaderName: '" + maskLoaderType +
+                                      ", maskSliceNumber: " + maskSliceNumber;
+        return "{imageUrl: '" + imageUrl + '\'' + imageLoaderInfo + maskInfo + maskLoaderInfo + '}';
     }
 
     /**

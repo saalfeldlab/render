@@ -1,17 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <artifactId>modules-root</artifactId>
         <groupId>org.janelia.render</groupId>
-        <version>2.1.1-SNAPSHOT</version>
+        <version>2.3.1-SNAPSHOT</version>
     </parent>
 
     <name>Render Web Service Spark Client</name>
+    <description>Spark clients that utilize (remote) render web service APIs.</description>
     <artifactId>render-ws-spark-client</artifactId>
 
     <build>
@@ -90,21 +89,75 @@
         <dependency>
             <groupId>org.janelia.render</groupId>
             <artifactId>render-ws-java-client</artifactId>
-            <version>${render-version}</version>
+            <version>${project.version}</version>
         </dependency>
+
+        <!-- SciJava Dependencies -->
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Overridden SciJava Dependencies -->
+
+        <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson-version}</version>
+        </dependency>
+
+        <!-- Dependencies not defined in SciJava -->
 
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.11</artifactId>
             <version>2.2.0</version>
             <scope>provided</scope>
+            <exclusions>
+                <!-- filter out dependencies that cause duplicate class failures -->
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>jcl-over-slf4j</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.hk2.external</groupId>
+                    <artifactId>aopalliance-repackaged</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.hk2.external</groupId>
+                    <artifactId>javax.inject</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.jersey.core</groupId>
+                    <artifactId>jersey-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>net.jpountz.lz4</groupId>
+                    <artifactId>lz4</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>net.java.dev.jets3t</groupId>
+                    <artifactId>jets3t</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- explicitly reference desired Guava version here to override older version brought in by hadoop libraries -->
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>${guava-version}</version>
         </dependency>
 
         <!-- explicitly reference newer hadoop libraries to work around Guava version conflict that causes StopWatch.<init> IllegalAccessError -->
@@ -113,6 +166,30 @@
             <artifactId>hadoop-common</artifactId>
             <version>2.7.2</version>
             <scope>provided</scope>
+            <exclusions>
+                <!-- filter out dependencies that cause duplicate class failures -->
+                <exclusion>
+                    <groupId>com.sun.jersey</groupId>
+                    <artifactId>jersey-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.sun.jersey</groupId>
+                    <artifactId>jersey-server</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-configuration</groupId>
+                    <artifactId>commons-configuration</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>javax.servlet</groupId>
+                    <artifactId>servlet-api</artifactId>
+                </exclusion>
+            </exclusions>
+
         </dependency>
 
         <!-- explicitly reference newer hadoop libraries to work around Guava version conflict that causes StopWatch.<init> IllegalAccessError -->
@@ -121,9 +198,46 @@
             <artifactId>hadoop-mapreduce-client-core</artifactId>
             <version>2.7.2</version>
             <scope>provided</scope>
+            <exclusions>
+                <!-- filter out dependencies that cause duplicate class failures -->
+                <exclusion>
+                    <groupId>com.sun.jersey</groupId>
+                    <artifactId>jersey-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.sun.jersey</groupId>
+                    <artifactId>jersey-server</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>javax.servlet</groupId>
+                    <artifactId>servlet-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
     </dependencies>
 
+    <!--
+      Administrative elements required by org.scijava.maven.plugin.enforcer.RequireElements
+      that have to be copied.  Too bad they can't just be taken from parent pom.
+    -->
+    <url>https://github.com/saalfeldlab/render</url>
+    <inceptionYear>2014</inceptionYear>
+    <organization><name>see parent</name></organization>
+    <licenses><license><name>see parent</name></license></licenses>
+    <developers><developer><name>see parent</name></developer></developers>
+    <contributors><contributor><name>see parent</name></contributor></contributors>
+    <mailingLists><mailingList><name>None</name></mailingList></mailingLists>
+    <scm><tag>see parent</tag></scm>
+    <issueManagement><system>see parent</system></issueManagement>
+    <ciManagement><system>see parent</system></ciManagement>
+    <properties>
+        <license.licenseName>gpl_v2</license.licenseName>
+        <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
+    </properties>
 
 </project>

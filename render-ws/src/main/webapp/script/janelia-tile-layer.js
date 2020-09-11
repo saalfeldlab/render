@@ -633,11 +633,11 @@ JaneliaTileLayer.prototype.openNewWindow = function(newWindowUrl) {
     }
 };
 
-JaneliaTileLayer.prototype.viewSelectedTileNeighbors = function() {
+JaneliaTileLayer.prototype.viewSelectedTileNeighbors = function(additionalQueryParameters) {
     if (this.selectedTileBounds) {
         const newWindowUrl = this.janeliaScriptUtilities.getViewBaseUrl() + "/tile-with-neighbors.html" +
                              "?tileId=" + this.selectedTileBounds.tileId +
-                             "&renderScale=0.1" +
+                             additionalQueryParameters +
                              "&renderStackOwner=" + this.stackMetaData.stackId.owner +
                              "&renderStackProject=" + this.stackMetaData.stackId.project +
                              "&renderStack=" + this.stackMetaData.stackId.stack +
@@ -663,3 +663,21 @@ JaneliaTileLayer.prototype.viewSelectedTileInCATMAID = function(catmaidScaleLeve
     }
 };
 
+JaneliaTileLayer.prototype.viewSelectedTileInPointMatchExplorer = function() {
+    if (this.selectedTileBounds) {
+        const catmaidHost = 'renderer-catmaid.int.janelia.org:8000';
+        const dynamicRenderHost = 'renderer.int.janelia.org:8080';
+        const newWindowUrl = this.janeliaScriptUtilities.getViewBaseUrl() + "/point-match-explorer.html" +
+                             "?dynamicRenderHost=" + dynamicRenderHost +
+                             // "&renderDataHost=" + renderDataHost +
+                             "&catmaidHost=" + catmaidHost +
+                             "&renderStackOwner=" + this.stackMetaData.stackId.owner +
+                             "&renderStackProject=" + this.stackMetaData.stackId.project +
+                             "&renderStack=" + this.stackMetaData.stackId.stack +
+                             "&matchOwner=" + this.matchOwner +
+                             "&matchCollection=" + this.matchCollection +
+                             "&startZ=" + this.z +
+                             "&endZ=" + this.z;
+        this.openNewWindow(newWindowUrl);
+    }
+};

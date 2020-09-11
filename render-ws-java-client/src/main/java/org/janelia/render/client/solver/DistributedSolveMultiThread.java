@@ -13,67 +13,65 @@ import org.janelia.render.client.ClientRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import mpicbg.models.AbstractAffineModel2D;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 import mpicbg.spim.io.IOFunctions;
 import net.imglib2.multithreading.SimpleMultiThreading;
 
-public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
+public class DistributedSolveMultiThread extends DistributedSolve
 {
 	public DistributedSolveMultiThread(
-			final G globalSolveModel,
-			final B blockSolveModel,
-			final S stitchingModel,
+			final SolveSetFactory solveSetFactory,
 			final ParametersDistributedSolve parameters ) throws IOException
-
 	{
-		super( globalSolveModel, blockSolveModel, stitchingModel, parameters );
+		super( solveSetFactory, parameters );
 	}
 
 	@Override
-	public List< SolveItemData< G, B, S > > distributedSolve()
+	public List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > distributedSolve()
 	{
 		final long time = System.currentTimeMillis();
 
-		final ArrayList< SolveItemData< G, B, S > > allItems;
+		final ArrayList< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > allItems;
 
 		// set up executor service
 		LOG.info( "Multithreading with thread num=" + parameters.threadsGlobal );
 
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool( parameters.threadsGlobal );
-		final ArrayList< Callable< List< SolveItemData< G, B, S > > > > tasks = new ArrayList<>();
+		final ArrayList< Callable< List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > > > tasks = new ArrayList<>();
 
-		for ( final SolveItemData< G, B, S > solveItemData : this.solveSet.allItems() )
+		for ( final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemData : this.solveSet.allItems() )
 		{
-			tasks.add( new Callable< List< SolveItemData< G, B, S > > >()
+			tasks.add( new Callable< List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > >()
 			{
 				@Override
-				public List< SolveItemData< G, B, S > > call() throws Exception
+				public List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > call() throws Exception
 				{
-					final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-							solveItemData,
-							solveSet.getMaxId() + 1,
-							runParams.pGroupList,
-							runParams.sectionIdToZMap,
-							parameters.renderWeb.baseDataUrl,
-							parameters.renderWeb.owner,
-							parameters.renderWeb.project,
-							parameters.matchOwner,
-							parameters.matchCollection,
-							parameters.stack,
-							parameters.maxNumMatches,
-							parameters.serializeMatches,
-							parameters.maxAllowedErrorStitching,
-							parameters.maxIterationsStitching,
-							parameters.maxPlateauWidthStitching,
-							parameters.blockOptimizerLambdasRigid,
-							parameters.blockOptimizerLambdasTranslation,
-							parameters.blockOptimizerIterations,
-							parameters.blockMaxPlateauWidth,
-							parameters.blockMaxAllowedError,
-							parameters.dynamicLambdaFactor,
-							parameters.excludeSet(),
-							parameters.threadsWorker );
+					final DistributedSolveWorker< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > w = 
+							solveItemData.createWorker(
+								solveSet.getMaxId() + 1,
+								runParams.pGroupList,
+								runParams.sectionIdToZMap,
+								parameters.renderWeb.baseDataUrl,
+								parameters.renderWeb.owner,
+								parameters.renderWeb.project,
+								parameters.matchOwner,
+								parameters.matchCollection,
+								parameters.stack,
+								parameters.maxNumMatches,
+								parameters.serializeMatches,
+								parameters.maxAllowedErrorStitching,
+								parameters.maxIterationsStitching,
+								parameters.maxPlateauWidthStitching,
+								parameters.blockOptimizerLambdasRigid,
+								parameters.blockOptimizerLambdasTranslation,
+								parameters.blockOptimizerIterations,
+								parameters.blockMaxPlateauWidth,
+								parameters.blockMaxAllowedError,
+								parameters.dynamicLambdaFactor,
+								parameters.excludeSet(),
+								parameters.threadsWorker );
 					w.run();
 	
 					return w.getSolveItemDataList();
@@ -86,10 +84,10 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
 		try
 		{
 			// invokeAll() returns when all tasks are complete
-			final List< Future< List< SolveItemData< G, B, S > > > > futures = taskExecutor.invokeAll( tasks );
+			final List< Future< List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > > > futures = taskExecutor.invokeAll( tasks );
 
 			
-			for ( final Future< List< SolveItemData< G, B, S > > > future : futures )
+			for ( final Future< List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > > future : futures )
 				allItems.addAll( future.get() );
 		}
 		catch ( final Exception e )
@@ -163,12 +161,15 @@ public class DistributedSolveMultiThread< G extends Model< G > & Affine2D< G >, 
                 //DistributedSolve.visMinZ = 1223;
                 //DistributedSolve.visMaxZ = 1285;
                 
-                @SuppressWarnings({ "rawtypes", "unchecked" })
+                final SolveSetFactory solveSetFactory =
+        		new SimpleSolveSetFactory(
+        				parameters.globalModel(),
+        				parameters.blockModel(),
+        				parameters.stitchingModel() );
+
                 final DistributedSolve solve =
                 		new DistributedSolveMultiThread(
-                				parameters.globalModel(),
-                				parameters.blockModel(),
-                				parameters.stitchingModel(),
+                				solveSetFactory,
                 				parameters );
 
                 solve.run();

@@ -1,6 +1,7 @@
 package org.janelia.alignment.match.parameters;
 
 import com.beust.jcommander.Parameter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serializable;
 
@@ -24,4 +25,8 @@ public class FeatureRenderClipParameters
     )
     public Integer clipHeight;
 
+    @JsonIgnore
+    public boolean hasValue() {
+        return (clipWidth != null) || (clipHeight != null);
+    }
 }

@@ -6,8 +6,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.ImageProcessorCache.CacheKey;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -76,9 +78,10 @@ public class LabelImageProcessorCacheTest {
 
         for (int i = tileCount - 1; i >= 0; i--) {
             tileSpec = tileSpecsA.get(getTileId(i));
-            imageUrl = tileSpec.getFirstMipmapEntry().getValue().getImageUrl();
+            final ImageAndMask imageAndMask = tileSpec.getFirstMipmapEntry().getValue();
+            final CacheKey key = LabelImageProcessorCache.buildKey(imageAndMask);
             Assert.assertEquals("different label color mapped for second cache instance of " + getTileId(i),
-                                cache1.getColorForUrl(imageUrl), cache2.getColorForUrl(imageUrl));
+                                cache1.getColor(key), cache2.getColor(key));
         }
 
     }

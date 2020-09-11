@@ -2,11 +2,13 @@ package org.janelia.alignment.match;
 
 import java.io.Serializable;
 import java.net.URISyntaxException;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.http.client.utils.URIBuilder;
-import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
+import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,8 +25,8 @@ public class CanvasRenderParametersUrlTemplate
         implements Serializable {
 
     private final String templateString;
-    private Integer clipWidth;
-    private Integer clipHeight;
+    private final FeatureRenderParameters featureRenderParameters;
+    private final FeatureRenderClipParameters featureRenderClipParameters;
 
     private final boolean containsIdReference;
     private final boolean containsGroupIdReference;
@@ -32,13 +34,15 @@ public class CanvasRenderParametersUrlTemplate
     /**
      * @param  templateString  template for deriving render parameters URL for each canvas.
      */
-    public CanvasRenderParametersUrlTemplate(final String templateString) {
+    public CanvasRenderParametersUrlTemplate(final String templateString,
+                                             final FeatureRenderParameters featureRenderParameters,
+                                             final FeatureRenderClipParameters featureRenderClipParameters) {
         this.templateString = templateString;
+        this.featureRenderParameters = featureRenderParameters;
+        this.featureRenderClipParameters = featureRenderClipParameters;
+
         this.containsIdReference = templateString.contains(TEMPLATE_ID_TOKEN);
         this.containsGroupIdReference = templateString.contains(TEMPLATE_GROUP_ID_TOKEN);
-
-        this.clipWidth = null;
-        this.clipHeight = null;
     }
 
     public String getTemplateString() {
@@ -46,31 +50,13 @@ public class CanvasRenderParametersUrlTemplate
     }
 
     public Integer getClipWidth() {
-        return clipWidth;
+        return featureRenderClipParameters == null ? null : featureRenderClipParameters.clipWidth;
     }
 
     public Integer getClipHeight() {
-        return clipHeight;
+        return featureRenderClipParameters == null ? null : featureRenderClipParameters.clipHeight;
     }
 
-    /**
-     * Save information for clipping rendered canvases based upon their relative montage position.
-     *
-     * @param  clipWidth                    number of full scale left/right pixels to include in rendered montage clips
-     *                                      (or null to if entire canvas width is to be rendered).
-     *
-     * @param  clipHeight                   number of full scale top/bottom pixels to include in rendered montage clips
-     *                                      (or null to if entire canvas height is to be rendered).
-     */
-    public void setClipInfo(final Integer clipWidth,
-                            final Integer clipHeight) {
-        this.clipWidth = clipWidth;
-        this.clipHeight = clipHeight;
-    }
-
-    /**
-     * @return the render parameters URL for the specified canvas.
-     */
     public String getRenderParametersUrl(final CanvasId canvasId) {
 
         String url = templateString;
@@ -100,24 +86,18 @@ public class CanvasRenderParametersUrlTemplate
         return url;
     }
 
-    public RenderParameters getRenderParameters(final CanvasId canvasId)
-            throws IllegalArgumentException {
-        return getRenderParameters(canvasId, getRenderParametersUrl(canvasId));
+    public Double getRenderScale() {
+        return featureRenderParameters.renderScale;
     }
 
-    public RenderParameters getRenderParameters(final CanvasId canvasId,
-                                                final String renderParametersUrl)
-            throws IllegalArgumentException {
+    private String getTemplateStringWithoutQueryParameters() {
+        return templateString.substring(0, templateString.indexOf('?'));
+    }
 
-        final RenderParameters renderParameters = RenderParameters.loadFromUrl(renderParametersUrl);
-
-        if ((clipWidth != null) || (clipHeight != null)) {
-            // TODO: setting the canvas offsets here is hack-y, probably want a cleaner way
-            canvasId.setClipOffsets(renderParameters.getWidth(), renderParameters.getHeight(), clipWidth, clipHeight);
-            renderParameters.clipForMontagePair(canvasId, clipWidth, clipHeight);
-        }
-
-        return renderParameters;
+    public boolean matchesExceptForScale(final CanvasRenderParametersUrlTemplate that) {
+        return Objects.equals(this.getTemplateStringWithoutQueryParameters(),
+                              that.getTemplateStringWithoutQueryParameters()) &&
+               this.featureRenderParameters.matchesExceptForScale(that.featureRenderParameters);
     }
 
     /**
@@ -126,69 +106,72 @@ public class CanvasRenderParametersUrlTemplate
      *
      * @param  generalTemplateString    general URL template string.
      *
-     * @param  renderFullScaleWidth     full scale width for all rendered canvases.
-     *
-     * @param  renderFullScaleHeight    full scale height for all rendered canvases.
-     *
-     * @param  renderScale              scale to use when rendering canvases for the current run.
-     *
-     * @param  renderWithFilter         indicates whether intensity filtering should be performed
-     *                                  when rendering canvases for the current run.
-     *
-     * @param  renderWithoutMask        indicates whether masks should be excluded
+     * @param  featureRenderParameters  additional parameters to add to the base template
      *                                  when rendering canvases for the current run.
      *
      * @return render parameters URL template with specifics for the current run.
      *
-     * @throws URISyntaxException
+     * @throws IllegalArgumentException
      *   if the template cannot be converted into a valid URL.
      */
     public static CanvasRenderParametersUrlTemplate getTemplateForRun(final String generalTemplateString,
-                                                                      final Integer renderFullScaleWidth,
-                                                                      final Integer renderFullScaleHeight,
-                                                                      final Double renderScale,
-                                                                      final Boolean renderWithFilter,
-                                                                      final String renderFilterListName,
-                                                                      final Boolean renderWithoutMask)
-            throws URISyntaxException {
+                                                                      final FeatureRenderParameters featureRenderParameters,
+                                                                      final FeatureRenderClipParameters featureRenderClipParameters)
+            throws IllegalArgumentException {
 
         final String canvasGroupIdToken = "canvasGroupIdToken";
         final String canvasIdToken = "canvasIdToken";
 
         final CanvasId canvasId = new CanvasId(canvasGroupIdToken, canvasIdToken);
-        final CanvasRenderParametersUrlTemplate generalTemplate = new CanvasRenderParametersUrlTemplate(generalTemplateString);
+        final CanvasRenderParametersUrlTemplate generalTemplate =
+                new CanvasRenderParametersUrlTemplate(generalTemplateString,
+                                                      featureRenderParameters,
+                                                      featureRenderClipParameters);
         final String populatedTemplateString = generalTemplate.getRenderParametersUrl(canvasId);
 
-        final URIBuilder uriBuilder = new URIBuilder(populatedTemplateString);
-
-        if (renderFullScaleWidth != null) {
-            uriBuilder.addParameter("width", renderFullScaleWidth.toString());
+        final URIBuilder uriBuilder;
+        try {
+            uriBuilder = new URIBuilder(populatedTemplateString);
+        } catch (final URISyntaxException e) {
+            throw new IllegalArgumentException("invalid base URL", e);
         }
 
-        if (renderFullScaleHeight != null) {
-            uriBuilder.addParameter("height", renderFullScaleHeight.toString());
+        if (featureRenderParameters.renderFullScaleWidth != null) {
+            uriBuilder.addParameter("width", featureRenderParameters.renderFullScaleWidth.toString());
         }
 
-        if ((renderScale != null) && (renderScale != 1.0)) {
-            uriBuilder.addParameter("scale", renderScale.toString());
+        if (featureRenderParameters.renderFullScaleHeight != null) {
+            uriBuilder.addParameter("height", featureRenderParameters.renderFullScaleHeight.toString());
         }
 
-        if ((renderWithFilter != null) && renderWithFilter) {
+        if (featureRenderParameters.renderScale != null) {
+            uriBuilder.addParameter("scale", featureRenderParameters.renderScale.toString());
+        } else {
+            uriBuilder.addParameter("scale", "1.0");
+        }
+
+        if (featureRenderParameters.renderWithFilter) {
             uriBuilder.addParameter("filter", "true");
         }
 
-        if (renderFilterListName != null) {
-            uriBuilder.addParameter("filterListName", renderFilterListName);
+        if (featureRenderParameters.renderFilterListName != null) {
+            uriBuilder.addParameter("filterListName", featureRenderParameters.renderFilterListName);
         }
 
-        if ((renderWithoutMask != null) && renderWithoutMask) {
+        if (featureRenderParameters.renderWithoutMask) {
             uriBuilder.addParameter("excludeMask", "true");
         }
 
         // assume all canvases should be normalized for matching
         uriBuilder.addParameter("normalizeForMatching", "true");
 
-        final String populatedRunTemplate = uriBuilder.build().toString();
+        final String populatedRunTemplate;
+        try {
+            populatedRunTemplate = uriBuilder.build().toString();
+        } catch (final URISyntaxException e) {
+            throw new IllegalArgumentException("invalid parameterized URL", e);
+        }
+
         String runTemplate = populatedRunTemplate.replaceAll(canvasGroupIdToken,
                                                              RenderableCanvasIdPairs.TEMPLATE_GROUP_ID_TOKEN);
         runTemplate = runTemplate.replaceAll(canvasIdToken,
@@ -196,7 +179,7 @@ public class CanvasRenderParametersUrlTemplate
 
         LOG.info("getTemplateForRun: returning {}", runTemplate);
 
-        return new CanvasRenderParametersUrlTemplate(runTemplate);
+        return new CanvasRenderParametersUrlTemplate(runTemplate, featureRenderParameters, featureRenderClipParameters);
     }
 
     private static Pattern buildTokenPattern(final String token) {

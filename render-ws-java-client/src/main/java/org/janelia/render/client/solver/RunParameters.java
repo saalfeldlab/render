@@ -17,9 +17,10 @@ public class RunParameters
 	public RenderDataClient targetDataClient;
 	
 	public List< Pair< String, Double > > pGroupList;
+	public Map<Integer, String> zToGroupIdMap; // a HashMap where int is the z section, and string is the description (problem, restart, ...)
 	public Map<String, ArrayList<Double>> sectionIdToZMap; // this is a cache
 	public Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
-	public double minZ, maxZ;
+	public Double minZ, maxZ;
 	public int totalTileCount;
 
 	@Override
@@ -33,6 +34,7 @@ public class RunParameters
 
 		runParams.pGroupList = this.pGroupList;
 		runParams.sectionIdToZMap = this.sectionIdToZMap;
+		runParams.zToGroupIdMap = this.zToGroupIdMap;
 		runParams.zToTileSpecsMap = new HashMap<>(); // otherwise we get synchronization issues, TODO: Reuse
 		runParams.minZ = this.minZ;
 		runParams.maxZ = this.maxZ;

@@ -4,15 +4,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 import mpicbg.models.Affine2D;
-import mpicbg.models.Model;
 
-public class SolveSet< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
+public class SolveSet
 {
-	final List< SolveItemData< G, B, S > > leftItems;
-	final List< SolveItemData< G, B, S > > rightItems;
+	final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > leftItems;
+	final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > rightItems;
 	final int maxId;
 
-	public SolveSet( final List< SolveItemData< G, B, S > > leftItems, final List< SolveItemData< G, B, S > > rightItems )
+	public SolveSet(
+			final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > leftItems,
+			final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > rightItems )
 	{
 		this.leftItems = leftItems;
 		this.rightItems = rightItems;
@@ -25,10 +26,10 @@ public class SolveSet< G extends Model< G > & Affine2D< G >, B extends Model< B 
 		if ( rightItems.size() > 0 )
 			maxId = rightItems.get( 0 ).getId();
 
-		for ( final SolveItemData<G, B, S> sid : leftItems )
+		for ( final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > sid : leftItems )
 			maxId = Math.max( sid.getId(), maxId );
 
-		for ( final SolveItemData<G, B, S> sid : rightItems )
+		for ( final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > sid : rightItems )
 			maxId = Math.max( sid.getId(), maxId );
 
 		this.maxId = maxId;
@@ -36,9 +37,9 @@ public class SolveSet< G extends Model< G > & Affine2D< G >, B extends Model< B 
 
 	public int getMaxId() { return maxId; }
 
-	public ArrayList< SolveItemData< G, B, S > > allItems()
+	public ArrayList< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > allItems()
 	{
-		final ArrayList< SolveItemData< G, B, S > > all = new ArrayList<>();
+		final ArrayList<SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > all = new ArrayList<>();
 		all.addAll( leftItems );
 		all.addAll( rightItems );
 

@@ -6,15 +6,12 @@ import com.google.common.cache.CacheStats;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.Weigher;
 
-import ij.ImagePlus;
-import ij.io.Opener;
 import ij.process.ImageProcessor;
-
-import javax.annotation.Nullable;
 
 import mpicbg.trakem2.util.Downsampler;
 
-import org.janelia.alignment.protocol.s3.S3Opener;
+import org.janelia.alignment.loader.ImageLoader;
+import org.janelia.alignment.loader.ImageLoader.LoaderType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +32,7 @@ import org.slf4j.LoggerFactory;
 public class ImageProcessorCache {
 
     /** Cache instance that doesn't cache anything but provides the same API for loading images. */
-    public static final ImageProcessorCache DISABLED_CACHE = new ImageProcessorCache(0, false, false);
+    public static final ImageProcessorCache DISABLED_CACHE = new DisabledCache();
     
     /** Default max number of pixels is 1GB (or 160 full resolution 2500x2500 pixel tiles). */
     public static final long DEFAULT_MAX_CACHED_PIXELS = 1000 * 1000000; // 1GB
@@ -47,10 +44,13 @@ public class ImageProcessorCache {
     private final LoadingCache<CacheKey, ImageProcessor> cache;
 
     /**
-     * Constructs an instance with default parameters.
+     * Constructor for disabled cache.
      */
-    public ImageProcessorCache() {
-        this(DEFAULT_MAX_CACHED_PIXELS, true, true);
+    private ImageProcessorCache() {
+        this.maximumNumberOfCachedKilobytes = 0;
+        this.recordStats = false;
+        this.cacheOriginalsForDownSampledImages = false;
+        this.cache = null;
     }
 
     /**
@@ -95,12 +95,11 @@ public class ImageProcessorCache {
                 new CacheLoader<CacheKey, ImageProcessor>() {
 
                     @Override
-                    public ImageProcessor load(@Nullable final CacheKey key) {
-                        ImageProcessor imageProcessor = null;
-                        if (key != null) {
-                            imageProcessor = loadImageProcessor(key.getUri(), key.getDownSampleLevels(), key.isMask(),key.isConvertTo16Bit());
-                        }
-                        return imageProcessor;
+                    public ImageProcessor load(final CacheKey key) {
+                        return loadImageProcessor(key.getUri(),
+                                                  key.getDownSampleLevels(),
+                                                  key.isMask(),
+                                                  key.getImageLoader());
                     }
                 };
 
@@ -130,6 +129,10 @@ public class ImageProcessorCache {
      *
      * @param  convertTo16Bit    indicates whether the loaded image processor should be converted to 16-bit.
      *
+     * @param  loaderType        loader for image.
+     *
+     * @param  imageSliceNumber  (optional) slice number for 3D sources.
+     *
      * @return a duplicate instance of the cached image processor for the specified url string.
      *         If the source processor is not already cached, it will be loaded into the cache.
      *         The duplicate instance is returned because the processors are mutable and the cached
@@ -141,31 +144,47 @@ public class ImageProcessorCache {
     public ImageProcessor get(final String url,
                               final int downSampleLevels,
                               final boolean isMask,
-                              final boolean convertTo16Bit)
+                              final boolean convertTo16Bit,
+                              final LoaderType loaderType,
+                              final Integer imageSliceNumber)
             throws IllegalArgumentException {
 
-        final CacheKey key = new CacheKey(url, downSampleLevels, isMask,convertTo16Bit);
-        final ImageProcessor imageProcessor;
+        final ImageLoader imageLoader =  ImageLoader.build(loaderType, imageSliceNumber);
+
+        final CacheKey key = new CacheKey(url, downSampleLevels, isMask, imageLoader);
+        final ImageProcessor cachedImageProcessor;
         try {
-            imageProcessor = cache.get(key);
+            cachedImageProcessor = cache.get(key);
         } catch (final Throwable t) {
             throw new IllegalArgumentException("failed to retrieve " + key + " from cache", t);
         }
-        return imageProcessor.duplicate();
+
+        final ImageProcessor duplicateProcessor;
+        if (convertTo16Bit && (cachedImageProcessor.getBitDepth() == 8)) {
+            // Force images to 16-bit, to allow for testing of mixed 8-bit and 16-bit mipmap levels.
+            duplicateProcessor = cachedImageProcessor.convertToShort(false);
+            duplicateProcessor.multiply(256.0);
+        } else {
+            duplicateProcessor = cachedImageProcessor.duplicate();
+        }
+
+        return duplicateProcessor;
     }
 
     /**
      * @return the number of entries currently in this cache.
      */
     public long size() {
-        return cache.size();
+        return cache == null ? 0 : cache.size();
     }
 
     /**
      * Discards all entries in the cache.
      */
     public void invalidateAll() {
-        cache.invalidateAll();
+        if (cache != null) {
+            cache.invalidateAll();
+        }
     }
 
     /**
@@ -173,7 +192,7 @@ public class ImageProcessorCache {
      *         (will be all zeros if stat recording is not enabled for this cache).
      */
     public CacheStats getStats() {
-        return cache.stats();
+        return cache == null ? EMPTY_STATS : cache.stats();
     }
 
     @Override
@@ -186,84 +205,48 @@ public class ImageProcessorCache {
     }
 
     /**
-     * @param  url               url for the image.
-     * @param  downSampleLevels  number of levels to further down sample the image.
-     * @param  isMask            indicates whether this image is a mask.
-     * @param  convertTo16Bit    indicates whether the loaded image processor should be converted to 16-bit.
-     *
-     * @return a newly loaded (non-cached) image processor.
-     *
-     * @throws IllegalArgumentException
-     *   if the image cannot be loaded.
-     */
-    public static ImageProcessor getNonCachedImage(final String url,
-                                                   final int downSampleLevels,
-                                                   final boolean isMask,
-                                                   final boolean convertTo16Bit)
-            throws IllegalArgumentException {
-        return DISABLED_CACHE.loadImageProcessor(url, downSampleLevels, isMask, convertTo16Bit);
-    }
-
-    /**
      * The core method used to load image processor instances that is called when cache misses occur.
      *
-     * @param  url               url for the image.
+     * @param  urlString               url for the image.
      * @param  downSampleLevels  number of levels to further down sample the image.
      * @param  isMask            indicates whether this image is a mask.
-     * @param  convertTo16Bit    indicates whether the loaded image processor should be converted to 16-bit.
+     * @param  imageLoader       loader to use.
      *
      * @return a newly loaded image processor to be cached.
      *
      * @throws IllegalArgumentException
      *   if the image cannot be loaded.
      */
-    protected ImageProcessor loadImageProcessor(final String url,
+    protected ImageProcessor loadImageProcessor(final String urlString,
                                                 final int downSampleLevels,
                                                 final boolean isMask,
-                                                final boolean convertTo16Bit)
+                                                final ImageLoader imageLoader)
             throws IllegalArgumentException {
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("loadImageProcessor: entry, url={}, downSampleLevels={}, convertTo16Bit={}", url, downSampleLevels,convertTo16Bit);
+            LOG.debug("loadImageProcessor: entry, urlString={}, downSampleLevels={}", urlString, downSampleLevels);
         }
 
         ImageProcessor imageProcessor = null;
 
         // if we need to down sample, see if source image is already cached before trying to load it
         if (downSampleLevels > 0) {
-            imageProcessor = cache.getIfPresent(new CacheKey(url, 0, isMask,convertTo16Bit));
+            imageProcessor = cache.getIfPresent(new CacheKey(urlString, 0, isMask, imageLoader));
         }
 
         // load the image as needed
         if (imageProcessor == null) {
 
-            // TODO: use Bio Formats to load strange formats
-
-            // openers keep state about the file being opened, so we need to create a new opener for each load
-            final Opener opener = new S3Opener();
-            opener.setSilentMode(true);
-
-            final ImagePlus imagePlus = opener.openURL(url);
-            if (imagePlus == null) {
-                throw new IllegalArgumentException("failed to create imagePlus instance for '" + url + "'");
-            }
-
-            imageProcessor = imagePlus.getProcessor();
-
-            // Force images to 16-bit, to allow for testing of mixed 8-bit and 16-bit mipmap levels.
-            if ((! isMask) && (imageProcessor.getBitDepth() == 8) && convertTo16Bit) {
-                imageProcessor = imageProcessor.convertToShort(false);
-                imageProcessor.multiply(256.0);
-            }
+            imageProcessor = imageLoader.load(urlString);
 
             // if we're going to down sample and we're supposed to cache originals, do so here
             if (cacheOriginalsForDownSampledImages && (downSampleLevels > 0)) {
 
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("loadImageProcessor: caching level 0 for {}", url);
+                    LOG.debug("loadImageProcessor: caching level 0 for {}", urlString);
                 }
 
-                cache.put(new CacheKey(url, 0, isMask,convertTo16Bit), imageProcessor);
+                cache.put(new CacheKey(urlString, 0, isMask, imageLoader), imageProcessor);
             }
 
         }
@@ -282,30 +265,28 @@ public class ImageProcessorCache {
     /**
      * Key that combines an image's url with its down sample levels.
      */
-    private static class CacheKey {
+    protected static class CacheKey {
 
         private final String url;
         private final int downSampleLevels;
         private final boolean isMask;
-        private final boolean convertTo16Bit;
+        private final ImageLoader imageLoader;
 
         CacheKey(final String url,
                  final int downSampleLevels,
                  final boolean isMask,
-                 final boolean convertTo16Bit) {
+                 final ImageLoader imageLoader) {
 
             this.url = url;
             this.downSampleLevels = Math.max(downSampleLevels, 0);
             this.isMask = isMask;
-            this.convertTo16Bit = convertTo16Bit;
+            this.imageLoader = imageLoader;
         }
 
         public String getUri() {
             return url;
         }
-        boolean isConvertTo16Bit(){
-            return convertTo16Bit;
-	    }
+
         int getDownSampleLevels() {
             return downSampleLevels;
         }
@@ -314,9 +295,14 @@ public class ImageProcessorCache {
             return isMask;
         }
 
+        public ImageLoader getImageLoader() {
+            return imageLoader;
+        }
+
         @Override
         public String toString() {
-            return "{url: '" + url + "', downSampleLevels: " + downSampleLevels + ", isMask: " + isMask + ", convertTo16Bit:" + convertTo16Bit +  '}';
+            return "{url: '" + url + "', downSampleLevels: " + downSampleLevels + ", isMask: " + isMask +
+                   ", imageLoader: " + imageLoader + '}';
         }
 
         @Override
@@ -327,7 +313,7 @@ public class ImageProcessorCache {
                     final CacheKey that = (CacheKey) o;
                     result = this.url.equals(that.url) &&
                              (this.downSampleLevels == that.downSampleLevels) &&
-                             (this.convertTo16Bit == that.convertTo16Bit);
+                             (this.imageLoader.hasSame3DContext(that.imageLoader));
                 } else {
                     result = false;
                 }
@@ -343,6 +329,41 @@ public class ImageProcessorCache {
         }
     }
 
+    /** Cache that doesn't cache anything but provides the same API for loading images. */
+    private static class DisabledCache extends ImageProcessorCache {
+
+        public DisabledCache() {
+            super();
+        }
+
+        @Override
+        public ImageProcessor get(final String url,
+                                  final int downSampleLevels,
+                                  final boolean isMask,
+                                  final boolean convertTo16Bit,
+                                  final LoaderType loaderType,
+                                  final Integer imageSliceNumber) {
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("uncachedGet: entry, urlString={}, downSampleLevels={}", url, downSampleLevels);
+            }
+
+            final ImageLoader imageLoader =  ImageLoader.build(loaderType, imageSliceNumber);
+            ImageProcessor imageProcessor = imageLoader.load(url);
+
+            // down sample the image as needed
+            if (downSampleLevels > 0) {
+                imageProcessor = Downsampler.downsampleImageProcessor(imageProcessor,
+                                                                      downSampleLevels);
+            }
+
+            return imageProcessor;
+        }
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(ImageProcessorCache.class);
 
+    private static final CacheStats EMPTY_STATS = new CacheStats(0,0,
+                                                                 0,0,
+                                                                 0,0);
 }

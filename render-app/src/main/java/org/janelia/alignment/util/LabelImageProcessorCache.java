@@ -18,6 +18,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import mpicbg.trakem2.util.Downsampler;
 
+import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
@@ -65,8 +67,8 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         return colorList;
     }
 
-    private final Map<String, Color> urlToColor;
-    private final Map<String, TileSpec> urlToTileSpec;
+    private final Map<CacheKey, Color> keyToColor;
+    private final Map<CacheKey, TileSpec> keyToTileSpec;
 
     /**
      * Constructs a cache instance using the specified parameters.
@@ -97,19 +99,19 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         super(maximumNumberOfCachedPixels, recordStats, cacheOriginalsForDownSampledImages);
 
         final int initialCapacity = tileSpecs.size() * 2;
-        this.urlToColor = new HashMap<>(initialCapacity);
-        this.urlToTileSpec = new HashMap<>(initialCapacity);
+        this.keyToColor = new HashMap<>(initialCapacity);
+        this.keyToTileSpec = new HashMap<>(initialCapacity);
 
         buildMaps(tileSpecs);
     }
 
-    Color getColorForUrl(final String url)
+    Color getColor(final CacheKey key)
             throws IllegalArgumentException {
 
-        final Color labelColor = urlToColor.get(url);
+        final Color labelColor = keyToColor.get(key);
 
         if (labelColor == null) {
-            throw new IllegalArgumentException("no label color defined for " + url);
+            throw new IllegalArgumentException("no label color defined for " + key);
         }
 
         return labelColor;
@@ -122,7 +124,7 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
      * @param  url               url for the image.
      * @param  downSampleLevels  number of levels to further down sample the image.
      * @param  isMask            indicates whether this image is a mask.
-     * @param  convertTo16Bit    ignored for labels (always false).
+     * @param  imageLoader       loader to use.
      *
      * @return a newly loaded image processor to be cached.
      *
@@ -133,17 +135,18 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
     protected ImageProcessor loadImageProcessor(final String url,
                                                 final int downSampleLevels,
                                                 final boolean isMask,
-                                                final boolean convertTo16Bit)
+                                                final ImageLoader imageLoader)
             throws IllegalArgumentException {
 
         ImageProcessor imageProcessor;
 
         if (isMask) {
-            imageProcessor = super.loadImageProcessor(url, downSampleLevels, true, convertTo16Bit);
+            imageProcessor = super.loadImageProcessor(url, downSampleLevels, true, imageLoader);
         } else {
 
-            final Color labelColor = getColorForUrl(url);
-            final TileSpec tileSpec = urlToTileSpec.get(url);
+            final CacheKey key = buildKey(url, imageLoader);
+            final Color labelColor = getColor(key);
+            final TileSpec tileSpec = keyToTileSpec.get(key);
             final short[] pixels = new short[tileSpec.getWidth() * tileSpec.getHeight()];
             Arrays.fill(pixels, (short) labelColor.getRGB());
 
@@ -187,12 +190,25 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
                 .sorted(Comparator.comparing(TileSpec::getTileId))
                 .forEach(tileSpec -> {
                     final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().get(0);
-                    final String imageUrl = firstChannelSpec.getFloorMipmapEntry(0).getValue().getImageUrl();
+                    final ImageAndMask imageAndMask = firstChannelSpec.getFloorMipmapEntry(0).getValue();
+                    final CacheKey key = buildKey(imageAndMask);
                     final int colorIndex = tileIndex.getAndIncrement();
-                    urlToTileSpec.put(imageUrl, tileSpec);
-                    urlToColor.put(imageUrl, colorList.get(colorIndex));
+                    keyToTileSpec.put(key, tileSpec);
+                    keyToColor.put(key, colorList.get(colorIndex));
                 });
 
+    }
+
+    protected static CacheKey buildKey(final ImageAndMask imageAndMask) {
+        final ImageLoader imageLoader = ImageLoader.build(imageAndMask.getImageLoaderType(),
+                                                          imageAndMask.getImageSliceNumber());
+        return buildKey(imageAndMask.getImageUrl(), imageLoader);
+    }
+
+    private static CacheKey buildKey(final String urlString,
+                                       final ImageLoader imageLoader) {
+        // keep downSampleLevels and isMask constant for all keys
+        return new CacheKey(urlString, 0, false, imageLoader);
     }
 
     /** Max intensity for 16-bit labels is 2^16 - 1 (unsigned short) */

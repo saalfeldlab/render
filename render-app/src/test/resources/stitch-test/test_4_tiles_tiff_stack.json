@@ -1,0 +1,90 @@
+[
+    {
+        "tileId": "tile_1",
+        "width": 2650.0,
+        "height": 2260.0,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/col_75_76_row_21_22_stack.tif",
+                "imageLoaderType": "IMAGEJ_TIFF_STACK",
+                "imageSliceNumber": 1,
+                "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "0.959851    -0.007319      0.00872     0.923958      47.5933      45.6929"
+                }
+            ]
+        }
+    },
+    {
+        "tileId": "tile_2",
+        "width": 2650.0,
+        "height": 2260.0,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/col_75_76_row_21_22_stack.tif",
+                "imageLoaderType": "IMAGEJ_TIFF_STACK",
+                "imageSliceNumber": 2,
+                "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "0.961479      -0.009077       0.007616       0.920045              0      1866.4334"
+                }
+            ]
+        }
+    },
+    {
+        "tileId": "tile_3",
+        "width": 2650.0,
+        "height": 2260.0,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/col_75_76_row_21_22_stack.tif",
+                "imageLoaderType": "IMAGEJ_TIFF_STACK",
+                "imageSliceNumber": 3,
+                "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "0.961072      -0.011856       0.009729       0.927899      1804.0608              0"
+                }
+            ]
+        }
+    },
+    {
+        "tileId": "tile_4",
+        "width": 2650.0,
+        "height": 2260.0,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/col_75_76_row_21_22_stack.tif",
+                "imageLoaderType": "IMAGEJ_TIFF_STACK",
+                "imageSliceNumber": 4,
+                "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "0.953635      -0.015531       0.012933       0.924585      1877.4222      1821.9698"
+                }
+            ]
+        }
+    }
+]

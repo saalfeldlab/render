@@ -55,7 +55,7 @@ public class SIFTPointMatchClientTest {
                                          "/tile/{id}/render-parameters";
         final CanvasId pCanvasId = getCanvasId(testIndex, true);
         final CanvasId qCanvasId = getCanvasId(testIndex, false);
-        final OrderedCanvasIdPair pair = new OrderedCanvasIdPair(pCanvasId, qCanvasId);
+        final OrderedCanvasIdPair pair = new OrderedCanvasIdPair(pCanvasId, qCanvasId, null);
         final List<OrderedCanvasIdPair> pairList = Collections.singletonList(pair);
         final RenderableCanvasIdPairs renderableCanvasIdPairs = new RenderableCanvasIdPairs(urlTemplateString,
                                                                                             pairList);
@@ -63,7 +63,7 @@ public class SIFTPointMatchClientTest {
         final SIFTPointMatchClient.Parameters parameters = getParameters(testIndex);
 
         // must manually set peak cache size since that is a command line only parameter
-        parameters.geometricDescriptorAndMatch.maxPeakCacheGb = 1;
+        parameters.maxPeakCacheGb = 1;
 
         // HACK: set up match client with invalid collection name so that nothing actually gets saved
         parameters.matchClient.baseDataUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";

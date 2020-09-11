@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.betterbox.BoxData;
+import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.mipmap.BoxMipmapGenerator;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -378,11 +379,11 @@ public class HackLabelEdgesClient {
         protected ImageProcessor loadImageProcessor(final String url,
                                                     final int downSampleLevels,
                                                     final boolean isMask,
-                                                    final boolean convertTo16Bit)
+                                                    final ImageLoader imageLoader)
                 throws IllegalArgumentException {
 
             final ImageProcessor imageProcessor =
-                    super.loadImageProcessor(url, downSampleLevels, isMask, convertTo16Bit);
+                    super.loadImageProcessor(url, downSampleLevels, isMask, imageLoader);
 
             if (! isMask) {
 

@@ -1,19 +1,3 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.alignment;
 
 import ij.process.ByteProcessor;
@@ -28,13 +12,11 @@ import mpicbg.models.TransformMesh;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
+import org.janelia.alignment.loader.ImageJDefaultLoader;
 import org.janelia.alignment.mapper.SingleChannelWithAlphaMapper;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -58,18 +40,8 @@ public class TransformMeshTest {
     private ImageProcessor maskTargetProcessor;
     private ImageProcessor tp;
 
-    @BeforeClass
-    static public void init() {
-//        new ImageJ();
-    }
-
-    @AfterClass
-    static public void buh() throws Exception {
-//        Thread.sleep(100000);
-    }
-
     @Before
-    public void setup() throws Exception {
+    public void setup() {
 
         tileSpec = TileSpec.fromJson(TILE_SPEC_JSON);
 
@@ -78,22 +50,19 @@ public class TransformMeshTest {
             ctlMipmap.add(t);
         }
 
-        final int downSampleLevels = 0;
-
         final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
         final ImageAndMask imageAndMask = mipmapEntry.getValue();
-        ipMipmap = ImageProcessorCache.getNonCachedImage(imageAndMask.getImageUrl(), downSampleLevels, false, false);
+        ipMipmap = ImageJDefaultLoader.INSTANCE.load(imageAndMask.getImageUrl());
 
         tp = ipMipmap.createProcessor(ipMipmap.getWidth(), ipMipmap.getHeight());
 
-        final String maskUrl = imageAndMask.getMaskUrl();
-        maskSourceProcessor = ImageProcessorCache.getNonCachedImage(maskUrl, downSampleLevels, true, false);
+        maskSourceProcessor = ImageJDefaultLoader.INSTANCE.load(imageAndMask.getMaskUrl());
         maskTargetProcessor = new ByteProcessor(tp.getWidth(), tp.getHeight());
 
     }
 
     @Test
-    public void testRenderMeshOperations() throws Exception {
+    public void testRenderMeshOperations() {
 
         for (int i = 0; i < NUMBER_OF_RUNS_PER_TEST; ++i) {
 
@@ -140,7 +109,7 @@ public class TransformMeshTest {
     }
 
     @Test
-    public void testMeshOperations() throws Exception {
+    public void testMeshOperations() {
 
         for (int i = 0; i < NUMBER_OF_RUNS_PER_TEST; ++i) {
             final long start = System.currentTimeMillis();
@@ -157,7 +126,7 @@ public class TransformMeshTest {
             final ImageProcessorWithMasks target = new ImageProcessorWithMasks(tp,
                     maskTargetProcessor, null);
 
-            final TransformMeshMappingWithMasks<TransformMesh> mapping = new TransformMeshMappingWithMasks<TransformMesh>(mesh);
+            final TransformMeshMappingWithMasks<TransformMesh> mapping = new TransformMeshMappingWithMasks<>(mesh);
             mapping.mapInterpolated(source, target, 1);
 
             final long mapInterpolatedStop = System.currentTimeMillis();

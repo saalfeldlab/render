@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.janelia.alignment.match.Matches;
 
@@ -159,9 +161,64 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 		}
 	}
 
+	public DummySolveItemData<G, B, S> createCorrespondingDummySolveItem( final int id, final int z )
+	{
+		return new DummySolveItemData< G, B, S >( id, globalSolveModelInstance(), blockSolveModelInstance(), stitchingSolveModelInstance(), z );
+	}
+
 	@Override
 	public int hashCode()
 	{
 		return getId();
+	}
+
+	public DistributedSolveWorker< G, B, S > createWorker(
+			final int startId,
+			final List< Pair< String, Double > > pGroupList,
+			final Map<String, ArrayList<Double>> sectionIdToZMap,
+			final String baseDataUrl,
+			final String owner,
+			final String project,
+			final String matchOwner,
+			final String matchCollection,
+			final String stack,
+			final int maxNumMatches,
+			final boolean serializeMatches,
+			final double maxAllowedErrorStitching,
+			final int maxIterationsStitching,
+			final int maxPlateauWidthStitching,
+			final List<Double> blockOptimizerLambdasRigid,
+			final List<Double> blockOptimizerLambdasTranslation,
+			final List<Integer> blockOptimizerIterations,
+			final List<Integer> blockMaxPlateauWidth,
+			final double blockMaxAllowedError,
+			final double dynamicLambdaFactor,
+			final Set<Integer> excludeFromRegularization,
+			final int numThreads )
+	{
+		return new DistributedSolveWorker< G, B, S >(
+				this,
+				startId,
+				pGroupList,
+				sectionIdToZMap,
+				baseDataUrl,
+				owner,
+				project,
+				matchOwner,
+				matchCollection,
+				stack,
+				maxNumMatches,
+				serializeMatches,
+				maxAllowedErrorStitching,
+				maxIterationsStitching,
+				maxPlateauWidthStitching,
+				blockOptimizerLambdasRigid,
+				blockOptimizerLambdasTranslation,
+				blockOptimizerIterations,
+				blockMaxPlateauWidth,
+				blockMaxAllowedError,
+				dynamicLambdaFactor,
+				excludeFromRegularization,
+				numThreads );
 	}
 }

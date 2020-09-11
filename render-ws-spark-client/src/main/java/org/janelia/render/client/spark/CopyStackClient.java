@@ -251,7 +251,9 @@ public class CopyStackClient implements Serializable {
                                     ImageProcessorCache.DISABLED_CACHE.get(imageAndMask.getImageUrl(),
                                                                            0,
                                                                            false,
-                                                                           channelSpec.is16Bit());
+                                                                           channelSpec.is16Bit(),
+                                                                           imageAndMask.getImageLoaderType(),
+                                                                           imageAndMask.getImageSliceNumber());
                             final double minIntensity = imageProcessor.getMin();
                             final double maxIntensity = imageProcessor.getMax();
 

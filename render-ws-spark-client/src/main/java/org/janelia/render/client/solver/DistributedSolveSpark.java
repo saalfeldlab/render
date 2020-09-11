@@ -19,15 +19,16 @@ import org.slf4j.LoggerFactory;
 
 import net.imglib2.util.Pair;
 
-public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
+public class DistributedSolveSpark extends DistributedSolve
 {
 	private final JavaSparkContext sparkContext;
 
 	public DistributedSolveSpark(
+			final SolveSetFactory solveSetFactory,
 			final ParametersDistributedSolve parameters,
 			final SparkConf sparkConf ) throws IOException
 	{
-		super( parameters.globalModel(), parameters.blockModel(), parameters.stitchingModel(), parameters );
+		super( solveSetFactory, parameters );
 
 		this.sparkContext = new JavaSparkContext(sparkConf);
 
@@ -35,11 +36,11 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 	}
 
 	@Override
-	public List< SolveItemData< G, B, S > > distributedSolve()
+	public List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > distributedSolve()
 	{
 		final long time = System.currentTimeMillis();
 
-		final JavaRDD< SolveItemData< G, B, S > > rddJobs = sparkContext.parallelize( solveSet.allItems() );
+		final JavaRDD< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > rddJobs = sparkContext.parallelize( solveSet.allItems() );
 
 		final int startId = solveSet.getMaxId() + 1;
 		final List< Pair< String, Double > > pGroupList = runParams.pGroupList;
@@ -66,42 +67,42 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 		final HashSet<Integer> excludeFromRegularization = parameters.excludeSet();
 		final String stack = parameters.stack;
 
-		final JavaRDD< List< SolveItemData< G, B, S > > > solvedItems = rddJobs.map(
+		final JavaRDD< List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > > solvedItems = rddJobs.map(
 				solveItemData -> {
-					final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-							solveItemData,
-							startId,
-							pGroupList,
-							sectionIdToZMap,
-							baseDataUrl,
-							owner,
-							project,
-							matchOwner,
-							matchCollection,
-							stack,
-							maxNumMatches,
-							serializeMatches,
-							maxAllowedErrorStitching,
-							maxIterationsStitching,
-							maxPlateauWidthStitching,
-							blockOptimizerLambdasRigid,
-							blockOptimizerLambdasTranslation,
-							blockOptimizerIterations,
-							blockMaxPlateauWidth,
-							blockMaxAllowedError,
-							dynamicLambdaFactor,
-							excludeFromRegularization,
-							numThreads );
+					final DistributedSolveWorker< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > w = //new DistributedSolveWorker<>(
+							solveItemData.createWorker(
+									startId,
+									pGroupList,
+									sectionIdToZMap,
+									baseDataUrl,
+									owner,
+									project,
+									matchOwner,
+									matchCollection,
+									stack,
+									maxNumMatches,
+									serializeMatches,
+									maxAllowedErrorStitching,
+									maxIterationsStitching,
+									maxPlateauWidthStitching,
+									blockOptimizerLambdasRigid,
+									blockOptimizerLambdasTranslation,
+									blockOptimizerIterations,
+									blockMaxPlateauWidth,
+									blockMaxAllowedError,
+									dynamicLambdaFactor,
+									excludeFromRegularization,
+									numThreads );
 					LogUtilities.setupExecutorLog4j("z " + solveItemData.minZ() + " to " + solveItemData.maxZ());
 					w.run();
 					return w.getSolveItemDataList();
 				});
 
-		final List< List< SolveItemData< G, B, S > > > results = solvedItems.collect();
+		final List< List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > > results = solvedItems.collect();
 
-		final ArrayList< SolveItemData< G, B, S > > allItems = new ArrayList<>();
+		final ArrayList< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > allItems = new ArrayList<>();
 
-		for ( final List< SolveItemData< G, B, S > > items : results )
+		for ( final List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > items : results )
 				allItems.addAll( items );
 
 		sparkContext.close();
@@ -124,8 +125,13 @@ public class DistributedSolveSpark< G extends Model< G > & Affine2D< G >, B exte
 
 				final SparkConf sparkConf = new SparkConf().setAppName(DistributedSolveSpark.class.getSimpleName());
 
-                @SuppressWarnings({ "rawtypes" })
-				final DistributedSolve client = new DistributedSolveSpark(parameters, sparkConf);
+                final SolveSetFactory solveSetFactory =
+        		new SimpleSolveSetFactory(
+        				parameters.globalModel(),
+        				parameters.blockModel(),
+        				parameters.stitchingModel() );
+
+				final DistributedSolve client = new DistributedSolveSpark(solveSetFactory, parameters, sparkConf);
 				client.run();
             }
         };

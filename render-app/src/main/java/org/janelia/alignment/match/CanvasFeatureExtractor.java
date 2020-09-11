@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import mpicbg.ij.SIFT;
 import mpicbg.imagefeatures.Feature;
@@ -15,6 +16,7 @@ import mpicbg.util.Timer;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
+import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.ImageProcessorUtil;
 import org.slf4j.Logger;
@@ -55,6 +57,38 @@ public class CanvasFeatureExtractor implements Serializable {
 
     public void setImageProcessorCache(final ImageProcessorCache imageProcessorCache) {
         this.imageProcessorCache = imageProcessorCache;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        final CanvasFeatureExtractor that = (CanvasFeatureExtractor) o;
+
+        if (Double.compare(that.minScale, minScale) != 0) {
+            return false;
+        }
+        if (Double.compare(that.maxScale, maxScale) != 0) {
+            return false;
+        }
+        return coreSiftParameters.equals(that.coreSiftParameters);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(coreSiftParameters.fdSize,
+                            coreSiftParameters.fdBins,
+                            coreSiftParameters.maxOctaveSize,
+                            coreSiftParameters.minOctaveSize,
+                            coreSiftParameters.steps,
+                            coreSiftParameters.initialSigma,
+                            minScale,
+                            maxScale);
     }
 
     /**
@@ -249,6 +283,17 @@ public class CanvasFeatureExtractor implements Serializable {
                  " features, elapsedTime=" + timer.stop() + "ms");
 
         return featureList;
+    }
+
+    public static CanvasFeatureExtractor build(final FeatureExtractionParameters featureExtraction) {
+
+        final FloatArray2DSIFT.Param siftParameters = new FloatArray2DSIFT.Param();
+        siftParameters.fdSize = featureExtraction.fdSize;
+        siftParameters.steps = featureExtraction.steps;
+
+        return new CanvasFeatureExtractor(siftParameters,
+                                          featureExtraction.minScale,
+                                          featureExtraction.maxScale);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureExtractor.class);

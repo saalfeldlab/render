@@ -19,19 +19,17 @@ import mpicbg.models.Model;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 
-public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
+public class DistributedSolveSparkLocal extends DistributedSolve
 {
 	public DistributedSolveSparkLocal(
-			final G globalSolveModel,
-			final B blockSolveModel,
-			final S stitchingModel,
+			final SolveSetFactory solveSetFactory,
 			final ParametersDistributedSolve parameters ) throws IOException
-
 	{
-		super( globalSolveModel, blockSolveModel, stitchingModel, parameters );
+		super( solveSetFactory, parameters );
 	}
+
 	@Override
-	public List< SolveItemData< G, B, S > > distributedSolve()
+	public List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > distributedSolve()
 	{
 		final long time = System.currentTimeMillis();
 
@@ -39,7 +37,7 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 		final JavaSparkContext sc = new JavaSparkContext(conf);
 		sc.setLogLevel( "ERROR" );
 
-		final JavaRDD< SolveItemData< G, B, S > > rddJobs = sc.parallelize( solveSet.allItems() );
+		final JavaRDD< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > rddJobs = sc.parallelize( solveSet.allItems() );
 
 		final List< Pair< String, Double > > pGroupList = runParams.pGroupList;
 		final Map<String, ArrayList<Double>> sectionIdToZMap = runParams.sectionIdToZMap;
@@ -67,10 +65,10 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 		final int numThreads = parameters.threadsWorker;
 		final String stack = parameters.stack;
 
-		final JavaRDD< List< SolveItemData< G, B, S > > > solvedItems = rddJobs.map(
+		final JavaRDD< List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > > solvedItems = rddJobs.map(
 				solveItemData -> {
-					final DistributedSolveWorker< G, B, S > w = new DistributedSolveWorker<>(
-							solveItemData,
+					final DistributedSolveWorker< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > w = //new DistributedSolveWorker<>(
+							solveItemData.createWorker(
 							startId,
 							pGroupList,
 							sectionIdToZMap,
@@ -98,11 +96,11 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 					return w.getSolveItemDataList();
 				});
 
-		final List< List< SolveItemData< G, B, S > > > results = solvedItems.collect();
+		final List< List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > > results = solvedItems.collect();
 
-		final ArrayList< SolveItemData< G, B, S > > allItems = new ArrayList<>();
+		final ArrayList< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > allItems = new ArrayList<>();
 
-		for ( final List< SolveItemData< G, B, S > > items : results )
+		for ( final List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > items : results )
 				allItems.addAll( items );
 
 		sc.close();
@@ -117,6 +115,17 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
             public void runClient(final String[] args) throws Exception {
+
+				// System property for spark has to be set, e.g. -Dspark.master=local[4]
+				final String sparkLocal = System.getProperty( "spark.master" );
+
+				if ( sparkLocal == null || sparkLocal.trim().length() == 0 )
+				{
+					LOG.info( "Spark System property not set: " + sparkLocal );
+					System.setProperty( "spark.master", "local[" + Math.max( 1, Runtime.getRuntime().availableProcessors() / 2 ) + "]" );
+				}
+
+				LOG.info( "Spark System property is: " + System.getProperty( "spark.master" ) );
 
                 final ParametersDistributedSolve parameters = new ParametersDistributedSolve();
 
@@ -161,12 +170,15 @@ public class DistributedSolveSparkLocal< G extends Model< G > & Affine2D< G >, B
 
                 DistributedSolve.visualizeOutput = true;
                 
-                @SuppressWarnings({ "rawtypes", "unchecked" })
-				final DistributedSolve solve =
+                final SolveSetFactory solveSetFactory =
+        		new SimpleSolveSetFactory(
+        				parameters.globalModel(),
+        				parameters.blockModel(),
+        				parameters.stitchingModel() );
+
+                final DistributedSolve solve =
                 		new DistributedSolveSparkLocal(
-                				parameters.globalModel(),
-                				parameters.blockModel(),
-                				parameters.stitchingModel(),
+                				solveSetFactory,
                 				parameters );
                	solve.run();
 
