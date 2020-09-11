@@ -77,7 +77,7 @@ public abstract class DistributedSolve
 		LOG.info( "Defined sets for global solve" );
 		LOG.info( "\n" + solveSet );
 
-		System.exit( 0 );
+		//System.exit( 0 );
 		if (parameters.serializerDirectory != null) {
 			this.serializer= new DistributedSolveSerializer( new File(parameters.serializerDirectory) );
 		}

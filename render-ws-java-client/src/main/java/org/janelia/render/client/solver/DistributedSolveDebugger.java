@@ -116,7 +116,7 @@ public class DistributedSolveDebugger extends DistributedSolve
                             //"--minZ", "1",
                             //"--maxZ", "34022",
 
-                            "--excludeFromRegularization", "1-5,35-534",
+                            //"--excludeFromRegularization", "1-5,35-534",
                             "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
                             "--threadsGlobal", "65",
@@ -137,13 +137,12 @@ public class DistributedSolveDebugger extends DistributedSolve
                 				parameters.blockModel(),
                 				parameters.stitchingModel() );
 
-                @SuppressWarnings({ "rawtypes", "unchecked" })
                 final DistributedSolve solve =
                 		new DistributedSolveDebugger(
                 				solveSetFactory,
                 				parameters );
 
-                //solve.run();
+                solve.run();
             }
         };
         clientRunner.run();
