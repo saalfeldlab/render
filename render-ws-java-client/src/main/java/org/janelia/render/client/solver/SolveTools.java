@@ -310,14 +310,14 @@ public class SolveTools
 
 		for ( int z = 0; z < allZ.size(); ++z )
 		{
-			rxIn.setPosition( z - 5, 0 );
-			ryIn.setPosition( z - 5, 0 );
+			rxIn.setPosition( z - 1, 0 );
+			ryIn.setPosition( z - 1, 0 );
 
 			double x = rxIn.get().get();
 			double y = ryIn.get().get();
 
-			rxIn.setPosition( z + 5, 0 );
-			ryIn.setPosition( z + 5, 0 );
+			rxIn.setPosition( z + 1, 0 );
+			ryIn.setPosition( z + 1, 0 );
 
 			rxIn.fwd( 0 );
 			ryIn.fwd( 0 );
@@ -409,7 +409,7 @@ public class SolveTools
 				tileToDynamicLambda.put( tilePair.getA(), lambda );
 		}
 
-//		new ImageJ();
+		//new ImageJ();
 		//ImageJFunctions.show( filterX ).setTitle( "lambda" );
 		//ImageJFunctions.show( filterY ).setTitle( "sum" );
 		//SimpleMultiThreading.threadHaltUnClean();
