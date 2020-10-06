@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
@@ -19,23 +18,17 @@ import org.slf4j.LoggerFactory;
 
 import bdv.util.BdvStackSource;
 import mpicbg.models.Affine2D;
-import mpicbg.models.Model;
-import mpicbg.util.RealSum;
 import net.imglib2.multithreading.SimpleMultiThreading;
-import net.imglib2.util.Pair;
 
-public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends DistributedSolve< G, B, S >
+public class DistributedSolveDeSerialize extends DistributedSolve
 {
 	final File path;
 
 	public DistributedSolveDeSerialize(
-			final G globalSolveModel,
-			final B blockSolveModel,
-			final S stitchingModel,
+			final SolveSetFactory solveSetFactory,
 			final ParametersDistributedSolve parameters ) throws IOException
-
 	{
-		super( globalSolveModel, blockSolveModel, stitchingModel, parameters );
+		super( solveSetFactory, parameters );
 
 		this.path = new File( parameters.serializerDirectory );
 
@@ -48,11 +41,11 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public List< SolveItemData< G, B, S > > distributedSolve()
+	public List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > distributedSolve()
 	{
 		final long time = System.currentTimeMillis();
 
-		final ArrayList< SolveItemData< G, B, S > > allItems = new ArrayList<SolveItemData<G,B,S>>();
+		final ArrayList< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > allItems = new ArrayList<>();
 
 		String[] files = path.list( new FilenameFilter() {
 			
@@ -85,7 +78,7 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
 	            ObjectInputStream in = new ObjectInputStream(file); 
 	              
 	            // Method for deserialization of object 
-	            SolveItemData< G, B, S > solveItem = (SolveItemData< G, B, S >)in.readObject(); 
+	            SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItem = (SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >)in.readObject(); 
 
 	            allItems.add( solveItem );
 
@@ -146,12 +139,15 @@ public class DistributedSolveDeSerialize< G extends Model< G > & Affine2D< G >, 
                 DistributedSolve.visMinZ = 3500;
                 DistributedSolve.visMaxZ = 5000;
                 
-                @SuppressWarnings({ "rawtypes", "unchecked" })
+                final SolveSetFactory solveSetFactory =
+        		new SimpleSolveSetFactory(
+        				parameters.globalModel(),
+        				parameters.blockModel(),
+        				parameters.stitchingModel() );
+
                 final DistributedSolve solve =
                 		new DistributedSolveDeSerialize(
-                				parameters.globalModel(),
-                				parameters.blockModel(),
-                				parameters.stitchingModel(),
+                				solveSetFactory,
                 				parameters );
                 
                 solve.run();
