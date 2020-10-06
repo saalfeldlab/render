@@ -148,10 +148,9 @@
         <!-- NOTE: need old version of jitk-tps before John removed mpicbg dependency -->
         <jitk-tps-with-mpicbg.version>1.3.2</jitk-tps-with-mpicbg.version>
 
-        <!-- TODO: see if newer 2.11.0 version specified in scijava will work for render-ws -->
-        <jackson-version>2.6.7</jackson-version>
+        <jackson-version>2.11.0</jackson-version>
 
-        <swagger-version>1.5.12</swagger-version>
+        <swagger-version>1.6.2</swagger-version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
