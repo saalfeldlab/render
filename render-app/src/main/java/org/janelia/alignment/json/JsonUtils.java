@@ -31,10 +31,10 @@ public class JsonUtils {
         return dateFormat;
     }
 
-    public static class ArraysOnNewLinePrettyPrinter extends DefaultPrettyPrinter {
-        public ArraysOnNewLinePrettyPrinter() {
-            _arrayIndenter = DefaultIndenter.SYSTEM_LINEFEED_INSTANCE;
-        }
+    public static DefaultPrettyPrinter getArraysOnNewLinePrettyPrinter() {
+        final DefaultPrettyPrinter printer = new DefaultPrettyPrinter();
+        printer.indentArraysWith(DefaultIndenter.SYSTEM_LINEFEED_INSTANCE);
+        return printer;
     }
 
     public static final ObjectMapper FAST_MAPPER = new ObjectMapper().
@@ -48,7 +48,7 @@ public class JsonUtils {
             setDateFormat(getDateFormat());
 
     public static final ObjectMapper MAPPER = FAST_MAPPER.copy().
-            setDefaultPrettyPrinter(new ArraysOnNewLinePrettyPrinter()).
+            setDefaultPrettyPrinter(getArraysOnNewLinePrettyPrinter()).
             enable(SerializationFeature.INDENT_OUTPUT);
 
     public static class Helper<T> {
@@ -110,9 +110,9 @@ public class JsonUtils {
 
     public static class GenericHelper<T> {
 
-        private final TypeReference typeReference;
+        private final TypeReference<T> typeReference;
 
-        public GenericHelper(final TypeReference typeReference) {
+        public GenericHelper(final TypeReference<T> typeReference) {
             this.typeReference = typeReference;
         }
 
