@@ -128,6 +128,16 @@
                     <groupId>javax.servlet</groupId>
                     <artifactId>servlet-api</artifactId>
                 </exclusion>
+                <!-- covered by jakarta.xml.bind in jackson -->
+                <exclusion>
+                    <groupId>org.jboss.spec.javax.xml.bind</groupId>
+                    <artifactId>jboss-jaxb-api_2.3_spec</artifactId>
+                </exclusion>
+                <!-- covered by javax.validation in swagger and spark -->
+                <exclusion>
+                    <groupId>jakarta.validation</groupId>
+                    <artifactId>jakarta.validation-api</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -165,6 +175,13 @@
             <groupId>com.fasterxml.jackson.jaxrs</groupId>
             <artifactId>jackson-jaxrs-json-provider</artifactId>
             <version>${jackson-version}</version>
+            <exclusions>
+                <!-- covered by javax.activation in swagger, spark, and mock-server -->
+                <exclusion>
+                    <groupId>jakarta.activation</groupId>
+                    <artifactId>jakarta.activation-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -252,7 +269,7 @@
     </dependencies>
 
     <properties>
-        <resteasy.version>3.1.4.Final</resteasy.version>
+        <resteasy.version>3.13.2.Final</resteasy.version>
         <jetty.version>9.4.9.v20180320</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
