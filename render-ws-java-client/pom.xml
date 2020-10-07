@@ -53,7 +53,6 @@
                             <artifactSet>
                                 <excludes>
                                     <exclude>jama:*</exclude>
-                                    <exclude>module-info.class</exclude>
                                 </excludes>
                             </artifactSet>
 
