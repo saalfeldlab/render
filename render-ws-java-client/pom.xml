@@ -38,9 +38,22 @@
                                 </transformer>
                             </transformers>
 
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>module-info.class</exclude>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+
                             <artifactSet>
                                 <excludes>
                                     <exclude>jama:*</exclude>
+                                    <exclude>module-info.class</exclude>
                                 </excludes>
                             </artifactSet>
 
