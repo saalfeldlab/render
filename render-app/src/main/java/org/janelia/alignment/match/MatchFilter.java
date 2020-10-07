@@ -51,12 +51,13 @@ public class MatchFilter
     /**
      * Sets up everything that is needed to derive point matches from the feature lists of two canvases.
      */
-    public MatchFilter(final MatchDerivationParameters matchParameters) {
+    public MatchFilter(final MatchDerivationParameters matchParameters,
+                       final double renderScale) {
         this.modelType = matchParameters.matchModelType;
         this.regularizerModelType = matchParameters.matchRegularizerModelType;
         this.interpolatedModelLambda = matchParameters.matchInterpolatedModelLambda;
         this.iterations = matchParameters.matchIterations;
-        this.maxEpsilon = matchParameters.matchMaxEpsilon;
+        this.maxEpsilon = matchParameters.getMatchMaxEpsilonForRenderScale(renderScale);
         this.minInlierRatio = matchParameters.matchMinInlierRatio;
         this.minNumInliers = matchParameters.matchMinNumInliers;
         this.maxTrust = matchParameters.matchMaxTrust;

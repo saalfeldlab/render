@@ -112,7 +112,7 @@ public class GeometricDescriptorSIFTMatcherTest {
         ransacParam.matchRegularizerModelType = ModelType.RIGID;
         ransacParam.matchInterpolatedModelLambda = 0.25;
 
-        final CanvasFeatureMatcher matcherSIFT = new CanvasFeatureMatcher(ransacParam);
+        final CanvasFeatureMatcher matcherSIFT = new CanvasFeatureMatcher(ransacParam, renderScaleSIFT);
         final CanvasMatchResult resultSIFT = matcherSIFT.deriveMatchResult(f1, f2);
 
         final List<PointMatch> inliersSIFT = resultSIFT.getInlierPointMatchList();
@@ -164,7 +164,8 @@ public class GeometricDescriptorSIFTMatcherTest {
         final CanvasPeakExtractor extractorGeo = new CanvasPeakExtractor(gdParameters);
         final CanvasPeakMatcher matcherGeo =
                 new CanvasPeakMatcher(gdParameters,
-                                      GeometricDescriptorMatcherTest.getMatchFilterParameters());
+                                      GeometricDescriptorMatcherTest.getMatchFilterParameters(renderScaleGeo),
+									  renderScaleGeo);
 
         // -------------------------------------------------------------------
         // run test ...

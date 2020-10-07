@@ -70,11 +70,30 @@ public class MatchDerivationParameters implements Serializable {
     )
     public Integer matchIterations;
 
+    /** Kept for legacy code compatibility.  Use --matchMaxEpsilonFullScale instead. */
     @Parameter(
             names = "--matchMaxEpsilon",
-            description = "Minimal allowed transfer error for match filtering"
+            description = "Minimal allowed transfer error for match filtering in render scale pixels"
     )
-    public Float matchMaxEpsilon;
+    @Deprecated
+    private Float matchMaxEpsilon;
+
+    @Deprecated
+    public void setMatchMaxEpsilon(final Float matchMaxEpsilon) {
+        this.matchMaxEpsilon = matchMaxEpsilon;
+    }
+
+    @Parameter(
+            names = "--matchMaxEpsilonFullScale",
+            description = "Minimal allowed transfer error for match filtering in full scale pixels.  " +
+                          "If specified, will override --matchMaxEpsilon value."
+    )
+    public Float matchMaxEpsilonFullScale;
+
+    public Float getMatchMaxEpsilonForRenderScale(final Double renderScale) {
+        return matchMaxEpsilonFullScale != null ?
+               matchMaxEpsilonFullScale * renderScale.floatValue() : matchMaxEpsilon;
+    }
 
     @Parameter(
             names = "--matchMinInlierRatio",

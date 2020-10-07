@@ -181,7 +181,8 @@ public class SIFTPointMatchClient
         final Broadcast<Long> broadcastCacheMaxKilobytes = sparkContext.broadcast(cacheMaxKilobytes);
         final Broadcast<CanvasFeatureListLoader> broadcastFeatureLoader = sparkContext.broadcast(featureLoader);
         final Broadcast<CanvasFeatureMatcher> broadcastFeatureMatcher =
-                sparkContext.broadcast(new CanvasFeatureMatcher(matchDerivationParameters));
+                sparkContext.broadcast(new CanvasFeatureMatcher(matchDerivationParameters,
+                                                                featureRenderParameters.renderScale));
 
         final JavaRDD<OrderedCanvasIdPair> rddCanvasIdPairs =
                 sparkContext.parallelize(renderableCanvasIdPairs.getNeighborPairs());

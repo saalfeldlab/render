@@ -44,7 +44,7 @@ public class CanvasCorrelationMatcher
                                     final MatchDerivationParameters matchParameters,
                                     final double renderScale) {
         this.ccParameters = ccParameters;
-        this.matchFilter = new MatchFilter(matchParameters);
+        this.matchFilter = new MatchFilter(matchParameters, renderScale);
         this.renderScale = renderScale;
     }
 

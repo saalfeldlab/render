@@ -389,7 +389,9 @@ public class StageMatcher {
         }
 
 
-        final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters, gdam.matchDerivationParameters);
+        final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters,
+                                                                    gdam.matchDerivationParameters,
+                                                                    gdam.renderScale);
         final CanvasMatchResult gdMatchResult = peakMatcher.deriveMatchResult(pCanvasPeakList, qCanvasPeakList);
 
         final List<PointMatch> combinedSiftScaleInliers = new ArrayList<>(siftScaledInliers);

@@ -1,21 +1,15 @@
 package org.janelia.alignment.match;
 
-import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.PointMatch;
 
-import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class CanvasFeatureMatcherTest {
 
@@ -42,35 +36,8 @@ public class CanvasFeatureMatcherTest {
         final CanvasMatches noFoldMatches = CanvasMatches.fromJson(CanvasFeatureMatcherTest.NO_FOLD_MATCH_JSON);
         validateConsensusSets("no fold test",
                               noFoldMatches,
-                              getTestMatcher(5f, 40),
+                              getTestMatcher(40),
                               1);
-    }
-
-    // This test is ignored because it tries to pull data from a remote render web service.
-    // You can comment out the Ignore annotation and update parameters to run the test manually.
-    @Ignore
-    @Test
-    public void findFolds() {
-
-        final String baseDataUrl = "http://renderer-dev:8080/render-ws/v1";
-        // tier 1, gridSize 3, maxEpsilon 5f
-        // tier 2, gridSize 7, maxEpsilon 7f
-        final String matchOwner = "flyTEM";
-        final int tier = 2;
-        final int gridSize = 7;
-        final int cellCount = gridSize * gridSize;
-        final String matchCollectionPrefix = "trautmane_fafb_fold_rough_tiles_i_tier";
-        final float maxEpsilon = 10f;
-
-        for (int i = 0; i < cellCount; i++) {
-            final String matchCollection =
-                    String.format("%s_%d_%04dx%04d_%06d", matchCollectionPrefix, tier, gridSize, gridSize, i);
-            // include following check to see consensus sets for just one split stack (e.g. 16 or 22)
-//            if (i == 22) {
-                findFoldsForMatchCollection(baseDataUrl, matchOwner, maxEpsilon, matchCollection);
-//            }
-        }
-
     }
 
     public static List<List<PointMatch>> findAndValidateFoldTestConsensusSets() {
@@ -78,47 +45,6 @@ public class CanvasFeatureMatcherTest {
                                      getFoldTestMatches(),
                                      getTestMatcher(),
                                      4);
-    }
-
-    /**
-     * Utility to fetch canvas pair matches from web service.
-     *
-     * @param  baseDataUrl      base data URL (e.g. http://renderer-dev:8080/render-ws/v1).
-     * @param  matchOwner       match owner.
-     * @param  matchCollection  match collection.
-     *
-     * @return matches for ALL pairs in the specified collection
-     *
-     * @throws IllegalArgumentException
-     *   if the collection contains more than 100 p groups.
-     */
-    private static List<CanvasMatches> getCanvasMatches(final String baseDataUrl,
-                                                        final String matchOwner,
-                                                        final String matchCollection)
-            throws IllegalArgumentException {
-
-        final List<CanvasMatches> canvasMatchesList = new ArrayList<>();
-
-        final String baseUrlString = baseDataUrl + "/owner/" + matchOwner + "/matchCollection/" + matchCollection;
-
-        final String pGroupIdsUrlString = baseUrlString + "/pGroupIds";
-        try {
-            final String[] pGroupIds = JsonUtils.FAST_MAPPER.readValue(new URL(pGroupIdsUrlString), String[].class);
-
-            if (pGroupIds.length > 100) {
-                throw new IllegalArgumentException(pGroupIds.length + " p groups returned for " + pGroupIdsUrlString);
-            }
-
-            for (final String pGroupId : pGroupIds) {
-                final String matchesUrlString = baseUrlString + "/pGroup/" + pGroupId + "/matches";
-                Collections.addAll(canvasMatchesList, JsonUtils.FAST_MAPPER.readValue(new URL(matchesUrlString),
-                                                                                      CanvasMatches[].class));
-            }
-        } catch (final Exception e) {
-            LOG.warn("failed to retrieve {}", pGroupIdsUrlString);
-        }
-
-        return canvasMatchesList;
     }
 
     private void testRANSACFilterWithMinValue(final List<PointMatch> candidates,
@@ -147,57 +73,26 @@ public class CanvasFeatureMatcherTest {
                             expectedInliersSizeAfterFilter, inliers.size());
     }
 
-    @SuppressWarnings("SameParameterValue")
-    private void findFoldsForMatchCollection(final String baseDataUrl,
-                                             final String matchOwner,
-                                             final float maxEpsilon,
-                                             final String matchCollection) {
-
-        LOG.info("\n----------------------\nChecking {} ...\n", matchCollection);
-
-        for (final CanvasMatches canvasMatches : getCanvasMatches(baseDataUrl,
-                                                                  matchOwner,
-                                                                  matchCollection)) {
-            final double layerDelta = Math.abs(
-                    Double.parseDouble(canvasMatches.getqGroupId()) -
-                    Double.parseDouble(canvasMatches.getpGroupId()));
-            if (layerDelta == 1) {
-                final List<List<PointMatch>> consensusSets =
-                        validateConsensusSets("find",
-                                              canvasMatches,
-                                              getTestMatcher(maxEpsilon, (canvasMatches.size() / 3)),
-                                              null);
-                if (consensusSets.size() != 1) {
-                    LOG.warn("*** found {} sets for {} and {}",
-                             consensusSets.size(), canvasMatches.getpGroupId(), canvasMatches.getqGroupId());
-                }
-            }
-        }
-    }
-
     private static CanvasMatches getFoldTestMatches() {
         return CanvasMatches.fromJson(CanvasFeatureMatcherTest.FOLD_MATCH_JSON);
     }
 
     private static CanvasFeatureMatcher getTestMatcher() {
-        final float maxEpsilon = 5f; // 5f produces 4 sets, 20f produces one big set and one tiny set
-        final int minNumInliers = 6;
-        return getTestMatcher(maxEpsilon, minNumInliers);
+        return getTestMatcher(6);
     }
 
-    private static CanvasFeatureMatcher getTestMatcher(final float maxEpsilon,
-                                                       final int minNumInliers) {
+    private static CanvasFeatureMatcher getTestMatcher(final int minNumInliers) {
         final MatchDerivationParameters matchParameters =
                 new MatchDerivationParameters(0.92f,
                                               ModelType.RIGID,
                                               1000,
-                                              maxEpsilon,
+                                              5.0f, // 5f produces 4 sets, 20f produces one big set and one tiny set
                                               0.0f,
                                               minNumInliers,
                                               3.0,
                                               null,
                                               MatchFilter.FilterType.SINGLE_SET);
-        return new CanvasFeatureMatcher(matchParameters);
+        return new CanvasFeatureMatcher(matchParameters, 1.0);
     }
 
     private static List<List<PointMatch>> validateConsensusSets(final String context,
@@ -217,8 +112,6 @@ public class CanvasFeatureMatcherTest {
 
         return consensusSets;
     }
-
-    private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureMatcherTest.class);
 
     // From http://renderer-dev:8080/render-ws/view/tile-pair.html?pId=z_2214.0_box_40669_41639_4029_4283_0.239085&qId=z_2215.0_box_40669_41639_4029_4283_0.239085&renderStackOwner=flyTEM&renderStackProject=trautmane_fafb_fold_rough_tiles_i_tier_1&renderStack=0003x0003_000004&renderScale=0.5&matchOwner=flyTEM&matchCollection=trautmane_fafb_fold_rough_tiles_i_tier_1_0003x0003_000004
     private static final String FOLD_MATCH_JSON =

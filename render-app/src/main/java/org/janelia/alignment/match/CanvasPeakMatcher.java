@@ -37,9 +37,10 @@ public class CanvasPeakMatcher
      * Sets up everything that is needed to derive geometric descriptor match results from the peak lists of two canvases.
      */
     public CanvasPeakMatcher(final GeometricDescriptorParameters gdParameters,
-                             final MatchDerivationParameters matchParameters) {
+                             final MatchDerivationParameters matchParameters,
+                             final double renderScale) {
         this.gdParameters = gdParameters;
-        this.matchFilter = new MatchFilter(matchParameters);
+        this.matchFilter = new MatchFilter(matchParameters, renderScale);
     }
 
     /**

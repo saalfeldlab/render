@@ -43,11 +43,25 @@ public class GeometricCommandLineMatchDerivationParameters
     )
     public Integer matchIterations;
 
+    /** Kept for legacy code compatibility.  Use --gdMatchMaxEpsilonFullScale instead. */
     @Parameter(
             names = "--gdMatchMaxEpsilon",
             description = "Minimal allowed transfer error for match filtering"
     )
+    @Deprecated
     public Float matchMaxEpsilon;
+
+    @Parameter(
+            names = "--gdMatchMaxEpsilonFullScale",
+            description = "Minimal allowed transfer error for match filtering in full scale pixels.  " +
+                          "If specified, will override --gdMatchMaxEpsilon value."
+    )
+    public Float matchMaxEpsilonFullScale;
+
+    public Float getMatchMaxEpsilonForRenderScale(final Double renderScale) {
+        return matchMaxEpsilonFullScale != null ?
+               matchMaxEpsilonFullScale * renderScale.floatValue() : matchMaxEpsilon;
+    }
 
     @Parameter(
             names = "--gdMatchMinInlierRatio",
@@ -106,7 +120,10 @@ public class GeometricCommandLineMatchDerivationParameters
             matchDerivationParameters.matchIterations = matchIterations;
         }
         if (matchMaxEpsilon != null) {
-            matchDerivationParameters.matchMaxEpsilon = matchMaxEpsilon;
+            matchDerivationParameters.setMatchMaxEpsilon(matchMaxEpsilon);
+        }
+        if (matchMaxEpsilonFullScale != null) {
+            matchDerivationParameters.matchMaxEpsilonFullScale = matchMaxEpsilonFullScale;
         }
         if (matchMinInlierRatio != null) {
             matchDerivationParameters.matchMinInlierRatio = matchMinInlierRatio;

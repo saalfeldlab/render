@@ -88,9 +88,7 @@ public class CrossCorrelationTest {
         crossCorrelationParameters.fullScaleStepSize = 5;
         crossCorrelationParameters.minResultThreshold = 0.5; // SP suggests: maybe higher
 
-        final float maxErrorFull = 2f;
-        final float maxError = maxErrorFull * (float)renderScale;
-        final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters( maxError );
+        final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters();
 
         // -------------------------------------------------------------------
         // run test ...
@@ -147,13 +145,13 @@ public class CrossCorrelationTest {
 
     }
 
-    static MatchDerivationParameters getMatchFilterParameters( final float maxError ) {
+    static MatchDerivationParameters getMatchFilterParameters() {
 
         final MatchDerivationParameters matchFilterParameters = new MatchDerivationParameters();
 
         matchFilterParameters.matchModelType = ModelType.TRANSLATION;
         matchFilterParameters.matchIterations = 1000;
-        matchFilterParameters.matchMaxEpsilon = maxError;
+        matchFilterParameters.matchMaxEpsilonFullScale = 2.0f;
         matchFilterParameters.matchMinInlierRatio = 0.0f;
         matchFilterParameters.matchMinNumInliers = 20;
         matchFilterParameters.matchMaxTrust = 3.0;
