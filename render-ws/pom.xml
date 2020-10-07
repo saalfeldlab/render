@@ -78,6 +78,13 @@
             <groupId>org.janelia.render</groupId>
             <artifactId>render-app</artifactId>
             <version>${project.version}</version>
+            <exclusions>
+                <!-- filter out slf4j jar so that it does not conflict with jetty version -->
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- SciJava Dependencies -->
