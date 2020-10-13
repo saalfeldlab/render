@@ -138,7 +138,24 @@ public class MatchDerivationParameters implements Serializable {
     )
     public Double matchMinCoveragePercentage;
 
-    void setDefaults() {
+    void validateAndSetDefaults(final String context) {
+        this.setDefaults();
+
+        if (this.matchRegularizerModelType == null) {
+            if (this.matchInterpolatedModelLambda != null) {
+                throw new IllegalArgumentException(
+                        context +
+                        " matchRegularizerModelType must be defined since matchInterpolatedModelLambda is defined");
+            }
+        } else if (this.matchInterpolatedModelLambda == null) {
+                throw new IllegalArgumentException(
+                        context +
+                        " matchInterpolatedModelLambda must be defined since matchRegularizerModelType is defined");
+        }
+
+    }
+
+    private void setDefaults() {
         if (matchRod == null) {
             matchRod = 0.92f;
         }

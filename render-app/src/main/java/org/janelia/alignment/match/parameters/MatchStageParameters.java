@@ -91,9 +91,9 @@ public class MatchStageParameters
         }
 
         if (featureMatchDerivation == null) {
-            throw new IllegalArgumentException("featureMatchDerivationParameters must be defined");
+            throw new IllegalArgumentException("feature matchDerivationParameters must be defined");
         } else {
-            featureMatchDerivation.setDefaults();
+            featureMatchDerivation.validateAndSetDefaults("feature");
         }
 
         if (geometricDescriptorAndMatch != null) {

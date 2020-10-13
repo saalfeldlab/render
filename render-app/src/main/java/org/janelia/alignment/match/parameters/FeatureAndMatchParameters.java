@@ -91,7 +91,7 @@ public class FeatureAndMatchParameters implements Serializable {
         if (matchDerivationParameters == null) {
             throw new IllegalArgumentException(context + " matchDerivationParameters must be defined");
         } else {
-            matchDerivationParameters.setDefaults();
+            matchDerivationParameters.validateAndSetDefaults(context);
         }
 
     }

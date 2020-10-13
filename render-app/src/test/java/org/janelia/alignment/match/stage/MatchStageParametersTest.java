@@ -40,6 +40,18 @@ public class MatchStageParametersTest {
                             expectedSlug, p.toSlug());
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testMissingLambda() {
+
+        final List<MatchStageParameters> stageParametersList =
+                MatchStageParameters.fromJsonArray(new StringReader(MISSING_LAMBDA_JSON));
+
+        Assert.assertEquals("invalid number of stage parameters loaded",
+                            1, stageParametersList.size());
+
+        stageParametersList.get(0).validateAndSetDefaults();
+    }
+
     private static final String CROSS_JSON =
             "[\n" +
             "  {\n" +
@@ -331,4 +343,41 @@ public class MatchStageParametersTest {
             "    \"stageName\": \"crossPass6\"\n" +
             "  }\n" +
             "]";
+
+    private static final String MISSING_LAMBDA_JSON =
+            "[\n" +
+            "  {\n" +
+            "    \"featureExtraction\": {\n" +
+            "      \"fdSize\": 4,\n" +
+            "      \"maxScale\": 1.0,\n" +
+            "      \"minScale\": 0.125,\n" +
+            "      \"steps\": 5\n" +
+            "    },\n" +
+            "    \"featureMatchDerivation\": {\n" +
+            "      \"matchFilter\": \"SINGLE_SET\",\n" +
+            "      \"matchFullScaleCoverageRadius\": 300.0,\n" +
+//            "      \"matchInterpolatedModelLambda\": 0.25,\n" +
+            "      \"matchIterations\": 1000,\n" +
+            "      \"matchMaxEpsilon\": 3.0,\n" +
+            "      \"matchMaxTrust\": 4.0,\n" +
+            "      \"matchMinCoveragePercentage\": 50.0,\n" +
+            "      \"matchMinInlierRatio\": 0.0,\n" +
+            "      \"matchMinNumInliers\": 20,\n" +
+            "      \"matchModelType\": \"RIGID\",\n" +
+            "      \"matchRegularizerModelType\": \"TRANSLATION\",\n" +
+            "      \"matchRod\": 0.92\n" +
+            "    },\n" +
+            "    \"featureRender\": {\n" +
+            "      \"renderScale\": 0.05,\n" +
+            "      \"renderWithFilter\": true,\n" +
+            "      \"renderWithoutMask\": false\n" +
+            "    },\n" +
+            "    \"geometricDescriptorAndMatch\": {\n" +
+            "      \"gdEnabled\": false\n" +
+            "    },\n" +
+            "    \"maxNeighborDistance\": 6,\n" +
+            "    \"stageName\": \"missingLambda\"\n" +
+            "  }\n" +
+            "]";
+
 }
