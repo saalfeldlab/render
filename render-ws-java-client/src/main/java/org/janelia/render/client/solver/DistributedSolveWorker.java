@@ -928,8 +928,17 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			LOG.info( "block " + solveItem.getId() + ": l=" + blockOptimizerLambdasRigid.get( l ) + ", " + blockOptimizerLambdasTranslation.get( l ) );
 		}
 
-		for ( int s = 0; s < blockOptimizerLambdasRigid.size(); ++s )
+		for ( int s = 0; s < blockOptimizerIterations.size(); ++s )
 		{
+			// TODO: has to be generic, we do not know how deep the interpolated models are at compile time
+			// TODO: so it also has to be defined by the SolveSetFactory:
+			//		blockOptimizerLambdasRigid, blockOptimizerLambdasTranslation, tileToDynamicLambda
+			//
+			//		blockOptimizerIterations
+			//		blockMaxPlateauWidth
+			//
+			//		length of all arrays needs to be equal
+
 			final double lambdaRigid = blockOptimizerLambdasRigid.get( s );
 			final double lambdaTranslation = blockOptimizerLambdasTranslation.get( s );
 
@@ -939,9 +948,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( lambdaTranslation );
 				((InterpolatedAffineModel2D) tile.getModel()).setLambda( tileToDynamicLambda.get( tile ) ); // dynamic
 			}
-			
-			int numIterations = blockOptimizerIterations.get( s );
 
+			final int numIterations = blockOptimizerIterations.get( s );
 			final int maxPlateauWidth = blockMaxPlateauWidth.get( s );
 
 			LOG.info( "block " + solveItem.getId() + ": l(rigid)=" + lambdaRigid + ", l(translation)=" + lambdaTranslation + ", numIterations=" + numIterations + ", maxPlateauWidth=" + maxPlateauWidth );
