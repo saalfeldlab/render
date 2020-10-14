@@ -69,12 +69,11 @@ public class GeometricDescriptorMatcherTest {
 
         final CanvasPeakExtractor extractor = new CanvasPeakExtractor(gdParameters);
 
-        final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters();
-        final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters,
-                                                                    matchDerivationParameters);
-
         final double peakRenderScale = 0.25;
-
+        final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters(peakRenderScale);
+        final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters,
+                                                                    matchDerivationParameters,
+                                                                    peakRenderScale);
         final int testTilePairIndex = 0;
 
         final String owner = TEST_TILE_PAIRS[testTilePairIndex][0];
@@ -220,13 +219,13 @@ public class GeometricDescriptorMatcherTest {
         return parameters;
     }
 
-    static MatchDerivationParameters getMatchFilterParameters() {
+    static MatchDerivationParameters getMatchFilterParameters(final Double renderScale) {
 
         final MatchDerivationParameters matchFilterParameters = new MatchDerivationParameters();
 
         matchFilterParameters.matchModelType = ModelType.RIGID;
         matchFilterParameters.matchIterations = 1000;
-        matchFilterParameters.matchMaxEpsilon = 20.0f;
+        matchFilterParameters.matchMaxEpsilonFullScale = 20.0f / renderScale.floatValue();
         matchFilterParameters.matchMinInlierRatio = 0.0f;
         matchFilterParameters.matchMinNumInliers = 4;
         matchFilterParameters.matchMaxTrust = 3.0;

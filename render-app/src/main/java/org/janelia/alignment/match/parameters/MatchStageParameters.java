@@ -91,9 +91,9 @@ public class MatchStageParameters
         }
 
         if (featureMatchDerivation == null) {
-            throw new IllegalArgumentException("featureMatchDerivationParameters must be defined");
+            throw new IllegalArgumentException("feature matchDerivationParameters must be defined");
         } else {
-            featureMatchDerivation.setDefaults();
+            featureMatchDerivation.validateAndSetDefaults("feature");
         }
 
         if (geometricDescriptorAndMatch != null) {
@@ -126,7 +126,7 @@ public class MatchStageParameters
 
         final String siftSlug = getMethodSlug("SIFT",
                                               featureRender.renderScale,
-                                              featureMatchDerivation.matchMaxEpsilon,
+                                              featureMatchDerivation.getMatchMaxEpsilonForRenderScale(featureRender.renderScale),
                                               featureMatchDerivation.matchMinNumInliers,
                                               featureMatchDerivation.matchMinCoveragePercentage);
 
@@ -136,7 +136,7 @@ public class MatchStageParameters
             (geometricDescriptorAndMatch.matchDerivationParameters != null)) {
             geoSlug = getMethodSlug("GEO",
                                     geometricDescriptorAndMatch.renderScale,
-                                    geometricDescriptorAndMatch.matchDerivationParameters.matchMaxEpsilon,
+                                    geometricDescriptorAndMatch.matchDerivationParameters.getMatchMaxEpsilonForRenderScale(geometricDescriptorAndMatch.renderScale),
                                     geometricDescriptorAndMatch.minCombinedInliers,
                                     geometricDescriptorAndMatch.minCombinedCoveragePercentage);
         }

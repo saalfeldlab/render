@@ -364,7 +364,8 @@ public class PointMatchClient {
 
         final List<CanvasFeatureMatcherThread> matcherList = new ArrayList<>(parameters.renderParameterUrls.size());
 
-        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(parameters.match);
+        final CanvasFeatureMatcher matcher = new CanvasFeatureMatcher(parameters.match,
+                                                                      parameters.renderScale);
 
         String pUrlString;
         String qUrlString;
