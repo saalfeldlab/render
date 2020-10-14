@@ -45,7 +45,10 @@ public class CrossCorrelationTest {
             { "Z0620_23m_VNC", "Sec25", "v2_acquire", "20-07-19_024208_0-0-1.9500.0",  "20-07-19_024208_0-0-2.9500.0" },
 
             // http://renderer.int.janelia.org:8080/render-ws/view/tile-with-neighbors.html?tileId=20-07-19_184758_0-0-1.10500.0&renderScale=0.05573953808438347&renderStackOwner=Z0620_23m_VNC&renderStackProject=Sec25&renderStack=v2_acquire&matchOwner=Z0620_23m_VNC&matchCollection=Sec25_v2
-            { "Z0620_23m_VNC", "Sec25", "v2_acquire", "20-07-19_184758_0-0-1.10500.0", "20-07-19_184758_0-0-2.10500.0"}
+            { "Z0620_23m_VNC", "Sec25", "v2_acquire", "20-07-19_184758_0-0-1.10500.0", "20-07-19_184758_0-0-2.10500.0"},
+
+            // test pair 6
+            { "Z0620_23m_VNC", "Sec25", "v2_acquire", "20-07-19_230913_0-0-1.10772.0", "20-07-19_230913_0-0-2.10772.0"}
     };
 
     @Test
@@ -66,7 +69,7 @@ public class CrossCorrelationTest {
         // setup test parameters ...
 
         // change this index (0 - 5) to work with a different tile pair
-        final int testTilePairIndex = 0;
+        final int testTilePairIndex = 6;
 
         final String owner = TEST_TILE_PAIRS[testTilePairIndex][0];
         final String project = TEST_TILE_PAIRS[testTilePairIndex][1];
