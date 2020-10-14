@@ -1,20 +1,23 @@
 package org.janelia.alignment.match;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 import ij.ImageJ;
 import ij.ImagePlus;
 
+import java.util.Collections;
 import java.util.List;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
-import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.PointMatch;
-import mpicbg.models.TranslationModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.match.parameters.CrossCorrelationParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageDebugUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Assert;
@@ -134,11 +137,14 @@ public class CrossCorrelationTest {
 //                                                                                 pOffsets, qOffsets);
         LOG.debug( "ransac: " + result );
         try {
-            final TranslationModel2D model = new TranslationModel2D();
+            final mpicbg.trakem2.transform.TranslationModel2D model = new mpicbg.trakem2.transform.TranslationModel2D();
 			model.fit( inliers );
 			LOG.debug( model.toString() );
-		} catch (final NotEnoughDataPointsException e) {
-            LOG.debug("ignoring model fit error", e);
+
+            showStitchedResult(renderParametersTile1, renderParametersTile2, imageProcessorCache, model);
+
+        } catch (final Exception e) {
+            LOG.debug("ignoring error", e);
         }
 
         // visualize result
@@ -146,6 +152,31 @@ public class CrossCorrelationTest {
 
         SimpleMultiThreading.threadHaltUnClean();
 
+    }
+
+    public static void showStitchedResult(final RenderParameters renderParametersTile1,
+                                          final RenderParameters renderParametersTile2,
+                                          final ImageProcessorCache imageProcessorCache,
+                                          final mpicbg.trakem2.transform.TranslationModel2D model)
+            throws JsonProcessingException {
+
+        final TileSpec tileSpec2 = renderParametersTile2.getTileSpecs().get(0);
+        final LeafTransformSpec modelSpec = new LeafTransformSpec(model.getClass().getName(), model.toDataString());
+        tileSpec2.addTransformSpecs(Collections.singletonList(modelSpec));
+
+        final RenderParameters stitchedRenderParameters =
+                RenderParameters.parseJson(renderParametersTile1.toJson());
+        stitchedRenderParameters.addTileSpec(tileSpec2);
+        stitchedRenderParameters.width += renderParametersTile2.width;
+        stitchedRenderParameters.initializeDerivedValues();
+
+        LOG.info(stitchedRenderParameters.toJson());
+
+        final ImageProcessorWithMasks ipm3 = Renderer.renderImageProcessorWithMasks(stitchedRenderParameters,
+                                                                                    imageProcessorCache);
+
+        final ImagePlus ip3 = new ImagePlus("stitched_result", ipm3.ip);
+        ip3.show();
     }
 
     static MatchDerivationParameters getMatchFilterParameters() {
