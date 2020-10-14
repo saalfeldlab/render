@@ -163,6 +163,7 @@ public class CrossCorrelationTest {
         final TileSpec tileSpec2 = renderParametersTile2.getTileSpecs().get(0);
         final LeafTransformSpec modelSpec = new LeafTransformSpec(model.getClass().getName(), model.toDataString());
         tileSpec2.addTransformSpecs(Collections.singletonList(modelSpec));
+        tileSpec2.deriveBoundingBox(tileSpec2.getMeshCellSize(), true);
 
         final RenderParameters stitchedRenderParameters =
                 RenderParameters.parseJson(renderParametersTile1.toJson());
