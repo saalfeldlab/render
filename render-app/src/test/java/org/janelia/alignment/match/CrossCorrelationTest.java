@@ -2,15 +2,23 @@ package org.janelia.alignment.match;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 
+import ij.CompositeImage;
 import ij.ImageJ;
 import ij.ImagePlus;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
+import mpicbg.models.InvertibleBoundable;
 import mpicbg.models.PointMatch;
+import mpicbg.stitching.StitchingParameters;
+import mpicbg.stitching.fusion.OverlayFusion;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.type.numeric.real.FloatType;
+import plugin.Stitching_Pairwise;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -72,7 +80,7 @@ public class CrossCorrelationTest {
         // setup test parameters ...
 
         // change this index (0 - 5) to work with a different tile pair
-        final int testTilePairIndex = 6;
+        final int testTilePairIndex = 0;
 
         final String owner = TEST_TILE_PAIRS[testTilePairIndex][0];
         final String project = TEST_TILE_PAIRS[testTilePairIndex][1];
@@ -84,7 +92,7 @@ public class CrossCorrelationTest {
         final Integer clipSize = 250;
 
         //setup cross correlation parameters
-        final double renderScale = 1.0;
+        final double renderScale = 0.4;
 
         // initial blurring (no!)
         // final double sigma = 1;
@@ -92,7 +100,7 @@ public class CrossCorrelationTest {
         final CrossCorrelationParameters crossCorrelationParameters = new CrossCorrelationParameters();
         crossCorrelationParameters.fullScaleSampleSize = 250;
         crossCorrelationParameters.fullScaleStepSize = 5;
-        crossCorrelationParameters.minResultThreshold = 0.5; // SP suggests: maybe higher
+        crossCorrelationParameters.minResultThreshold = 0.7; // SP suggests: maybe higher
 
         final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters();
 
@@ -135,16 +143,28 @@ public class CrossCorrelationTest {
 //                                                                                 qGroupId, qId,
 //                                                                                 renderScale,
 //                                                                                 pOffsets, qOffsets);
-        LOG.debug( "ransac: " + result );
+        LOG.info( "ransac: " + result );
         try {
             final mpicbg.trakem2.transform.TranslationModel2D model = new mpicbg.trakem2.transform.TranslationModel2D();
 			model.fit( inliers );
-			LOG.debug( model.toString() );
+			LOG.info( model.toString() );
 
-            showStitchedResult(renderParametersTile1, renderParametersTile2, imageProcessorCache, model);
+			final ArrayList<InvertibleBoundable> models = new ArrayList<>();
+			models.add( new mpicbg.trakem2.transform.TranslationModel2D() );
+			models.add( model.createInverse() );
+
+			final ArrayList<ImagePlus> images = new ArrayList< ImagePlus >();
+			images.add( ip1 );
+			images.add( ip2 );
+
+			final CompositeImage overlay = OverlayFusion.createOverlay( new FloatType(), images, models, 2, 1, new NLinearInterpolatorFactory<FloatType>() );
+			overlay.show();
+
+			//Stitching_Pairwise.fuse( new FloatType(), ip1, ip2, models, params );
+            //showStitchedResult(renderParametersTile1, renderParametersTile2, imageProcessorCache, model);
 
         } catch (final Exception e) {
-            LOG.debug("ignoring error", e);
+            LOG.info("ignoring error", e);
         }
 
         // visualize result
