@@ -19,19 +19,22 @@ public class CrossCorrelationParameters
     @Parameter(
             names = "--ccFullScaleSampleSize",
             description = "Full scale pixel height or width for each sample. " +
-                          "Combined with clip size to determine sample area."
+                          "Combined with clip size to determine sample area.",
+            required = true
     )
     public Integer fullScaleSampleSize;
 
     @Parameter(
             names = "--ccFullScaleStepSize",
-            description = "Full scale pixels to offset each sample from the previous sample."
+            description = "Full scale pixels to offset each sample from the previous sample.",
+            required = true
     )
     public Integer fullScaleStepSize;
 
     @Parameter(
             names = "--ccMinResultThreshold",
-            description = "Minimum correlation value for feature candidates."
+            description = "Minimum correlation value for feature candidates.",
+            required = true
     )
     public Double minResultThreshold;
 
