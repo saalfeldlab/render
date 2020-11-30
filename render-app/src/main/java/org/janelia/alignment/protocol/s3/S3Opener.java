@@ -4,6 +4,8 @@ import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.google.common.net.MediaType;
@@ -14,9 +16,14 @@ import java.awt.Image;
 import java.awt.Toolkit;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLDecoder;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 
 import javax.imageio.ImageIO;
 
@@ -53,10 +60,13 @@ public class S3Opener extends ij.io.Opener {
             try {
 
                 if (handler == null) {
-                    buildS3Handler();
+                    final URI uri = new URI(url);
+                    buildS3HandlerUri(uri);
                 }
+                final URI uri = new URI(url);
+                final String newurl = new URI(uri.getScheme(), uri.getAuthority(), uri.getPath(), null, uri.getFragment()).toString();
 
-                final URL u = new URL(null, url, handler);
+                final URL u = new URL(null, newurl, handler);
                 final URLConnection uc = u.openConnection();
 
                 // assumes content type is always available, should be ok
@@ -108,6 +118,53 @@ public class S3Opener extends ij.io.Opener {
         img = ImageIO.read(in);
         return new ImagePlus(title, img);
     }
+
+    public static Map<String, String> splitQuery(URI url) throws UnsupportedEncodingException {
+        Map<String, String> query_pairs = new LinkedHashMap<String, String>();
+        String query = url.getQuery();
+        String[] pairs = query.split("&");
+        for (String pair : pairs) {
+            int idx = pair.indexOf("=");
+            query_pairs.put(URLDecoder.decode(pair.substring(0, idx), "UTF-8"), URLDecoder.decode(pair.substring(idx + 1), "UTF-8"));
+        }
+        return query_pairs;
+    }
+
+    private synchronized void buildS3HandlerUri(URI uri) throws IOException {
+        if (handler == null) {
+            Map<String, String> qparams = splitQuery(uri);
+            if (qparams.isEmpty()) {
+                buildS3Handler();
+            } else {
+                buildS3HandlerParams(qparams);
+            }
+        }
+    }
+
+    private synchronized void buildS3HandlerParams(Map<String, String> qparams) throws IOException {
+        if (handler == null) {
+            final AmazonS3ClientBuilder clientBuilder = AmazonS3ClientBuilder.standard();
+            if (qparams.containsKey("profile")) {
+                final AWSCredentialsProvider credentialsProvider = new ProfileCredentialsProvider(qparams.get("profile"));
+                clientBuilder.setCredentials(credentialsProvider);
+            } else {
+                final AWSCredentialsProvider credentialsProvider = new DefaultAWSCredentialsProviderChain();
+                clientBuilder.setCredentials(credentialsProvider);
+            }
+
+            String region = (String) qparams.getOrDefault("region", clientBuilder.getRegion());
+
+            if (qparams.containsKey("endpoint_url")) {
+              String endpointUrl = (String) qparams.get("endpoint_url");
+              final EndpointConfiguration endpointConfig = new EndpointConfiguration(endpointUrl, region);
+              final AmazonS3 s3Client = clientBuilder.withEndpointConfiguration(endpointConfig).build();
+              handler = new S3Handler(s3Client);
+            } else {
+                final AmazonS3 s3Client = clientBuilder.withRegion(region).build();
+                handler = new S3Handler(s3Client);
+            }
+          }
+      }
 
     private synchronized void buildS3Handler() throws IOException {
         if (handler == null) {
