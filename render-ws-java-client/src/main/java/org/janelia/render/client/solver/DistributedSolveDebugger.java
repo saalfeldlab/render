@@ -132,7 +132,7 @@ public class DistributedSolveDebugger extends DistributedSolve
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final SolveSetFactory solveSetFactory =
-                		new SimpleSolveSetFactory(
+                		new SolveSetFactorySimple(
                 				parameters.globalModel(),
                 				parameters.blockModel(),
                 				parameters.stitchingModel() );

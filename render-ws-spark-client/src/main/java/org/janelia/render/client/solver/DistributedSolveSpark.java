@@ -126,7 +126,7 @@ public class DistributedSolveSpark extends DistributedSolve
 				final SparkConf sparkConf = new SparkConf().setAppName(DistributedSolveSpark.class.getSimpleName());
 
                 final SolveSetFactory solveSetFactory =
-        		new SimpleSolveSetFactory(
+        		new SolveSetFactorySimple(
         				parameters.globalModel(),
         				parameters.blockModel(),
         				parameters.stitchingModel() );

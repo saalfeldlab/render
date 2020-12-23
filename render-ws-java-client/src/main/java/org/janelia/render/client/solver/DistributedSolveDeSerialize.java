@@ -140,7 +140,7 @@ public class DistributedSolveDeSerialize extends DistributedSolve
                 DistributedSolve.visMaxZ = 5000;
                 
                 final SolveSetFactory solveSetFactory =
-        		new SimpleSolveSetFactory(
+        		new SolveSetFactorySimple(
         				parameters.globalModel(),
         				parameters.blockModel(),
         				parameters.stitchingModel() );

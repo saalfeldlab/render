@@ -7,9 +7,9 @@ import java.util.Map;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 
-public class SimpleSolveSetFactory extends SolveSetFactory
+public class SolveSetFactorySimple extends SolveSetFactory
 {
-	public SimpleSolveSetFactory(
+	public SolveSetFactorySimple(
 			final Affine2D<?> defaultGlobalSolveModel,
 			final Affine2D<?> defaultBlockSolveModel,
 			final Affine2D<?> defaultStitchingModel)

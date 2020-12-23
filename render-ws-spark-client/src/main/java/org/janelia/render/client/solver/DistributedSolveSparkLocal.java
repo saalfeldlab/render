@@ -171,7 +171,7 @@ public class DistributedSolveSparkLocal extends DistributedSolve
                 DistributedSolve.visualizeOutput = true;
                 
                 final SolveSetFactory solveSetFactory =
-        		new SimpleSolveSetFactory(
+        		new SolveSetFactorySimple(
         				parameters.globalModel(),
         				parameters.blockModel(),
         				parameters.stitchingModel() );
