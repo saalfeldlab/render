@@ -26,7 +26,7 @@ public class DistributedSolveDeSerialize extends DistributedSolve
 
 	public DistributedSolveDeSerialize(
 			final SolveSetFactory solveSetFactory,
-			final ParametersDistributedSolve parameters ) throws IOException
+			final DistributedSolveParameters parameters ) throws IOException
 	{
 		super( solveSetFactory, parameters );
 
@@ -105,7 +105,7 @@ public class DistributedSolveDeSerialize extends DistributedSolve
             @Override
             public void runClient(final String[] args) throws Exception {
 
-                final ParametersDistributedSolve parameters = new ParametersDistributedSolve();
+                final DistributedSolveParameters parameters = new DistributedSolveParameters();
 
                 // TODO: remove testing hack ...
                 if (args.length == 0) {

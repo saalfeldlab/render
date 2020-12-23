@@ -37,7 +37,7 @@ import mpicbg.models.TranslationModel2D;
 import mpicbg.trakem2.transform.RigidModel2D;
 import net.imglib2.util.Pair;
 
-public class ParametersDistributedSolve extends CommandLineParameters
+public class DistributedSolveParameters extends CommandLineParameters
 {
 	private static final long serialVersionUID = 6845718387096692785L;
 
@@ -269,7 +269,7 @@ public class ParametersDistributedSolve extends CommandLineParameters
 			description = "Exclude certain z sections (including from-to) from dynamic lambda regularization, e.g. 500-550,1000-1100 (default: none)" )
 	public List<SerializableValuePair<Integer, Integer>> excludeFromRegularization = new ArrayList<>();
 
-	public ParametersDistributedSolve() {}
+	public DistributedSolveParameters() {}
 
 	public void initDefaultValues()
 	{
@@ -328,7 +328,7 @@ public class ParametersDistributedSolve extends CommandLineParameters
 			return this.modelTypeStitching.getInterpolatedInstance( modelTypeStitchingRegularizer, lambdaStitching );
 	}
 
-	public static RunParameters setupSolve( final ParametersDistributedSolve parameters ) throws IOException
+	public static RunParameters setupSolve( final DistributedSolveParameters parameters ) throws IOException
 	{
 		final RunParameters runParams = new RunParameters();
 
@@ -474,5 +474,5 @@ public class ParametersDistributedSolve extends CommandLineParameters
 		return runParams;
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(ParametersDistributedSolve.class);
+	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolveParameters.class);
 }

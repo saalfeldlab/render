@@ -25,7 +25,7 @@ public class DistributedSolveSpark extends DistributedSolve
 
 	public DistributedSolveSpark(
 			final SolveSetFactory solveSetFactory,
-			final ParametersDistributedSolve parameters,
+			final DistributedSolveParameters parameters,
 			final SparkConf sparkConf ) throws IOException
 	{
 		super( solveSetFactory, parameters );
@@ -118,7 +118,7 @@ public class DistributedSolveSpark extends DistributedSolve
             @Override
             public void runClient(final String[] args) throws Exception {
 
-				final ParametersDistributedSolve parameters = new ParametersDistributedSolve();
+				final DistributedSolveParameters parameters = new DistributedSolveParameters();
 				parameters.parse(args);
 
 				LOG.info("runClient: entry, parameters={}", parameters);

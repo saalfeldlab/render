@@ -23,7 +23,7 @@ public class DistributedSolveSparkLocal extends DistributedSolve
 {
 	public DistributedSolveSparkLocal(
 			final SolveSetFactory solveSetFactory,
-			final ParametersDistributedSolve parameters ) throws IOException
+			final DistributedSolveParameters parameters ) throws IOException
 	{
 		super( solveSetFactory, parameters );
 	}
@@ -127,7 +127,7 @@ public class DistributedSolveSparkLocal extends DistributedSolve
 
 				LOG.info( "Spark System property is: " + System.getProperty( "spark.master" ) );
 
-                final ParametersDistributedSolve parameters = new ParametersDistributedSolve();
+                final DistributedSolveParameters parameters = new DistributedSolveParameters();
 
                 // TODO: remove testing hack ...
                 if (args.length == 0) {
