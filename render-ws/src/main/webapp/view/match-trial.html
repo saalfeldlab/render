@@ -61,7 +61,9 @@
                 }
             });
 
-            if (matchTrialId === 'TBD') {
+            const createNewTrial = queryParameters.get('createNewTrial', 'n') === 'y';
+
+            if ((matchTrialId === 'TBD') || createNewTrial) {
                 newTrialButtonSelector.hide();
                 $('#headerDiv').hide();
 
@@ -69,7 +71,7 @@
                 gdFormSelector.hide();
 
                 const includeGeometricSelector = $('#includeGeometric');
-                includeGeometricSelector.on('click', function() {
+                includeGeometricSelector.on('click', function () {
                     if (includeGeometricSelector.is(':checked')) {
                         gdFormSelector.show();
                     } else {
@@ -87,7 +89,12 @@
                     $('#qRenderParametersUrl').val(qRenderParametersUrl);
                 }
 
+                if (createNewTrial) {
+                    matchTrial.loadTrial(matchTrialId, createNewTrial);
+                }
+
             } else {
+
                 $('#formDiv').hide();
                 $('#gdHeaderDiv').hide();
                 const trialSuffix = matchTrialId.substring(matchTrialId.length - 7);
@@ -98,7 +105,8 @@
                 const matchTrialDate = new Date(parseInt(matchTrialId.substring(0, 8), 16) * 1000);
                 $('#trialStartTime').html(matchTrialDate.toLocaleString());
 
-                matchTrial.loadTrial(matchTrialId);
+                matchTrial.loadTrial(matchTrialId, createNewTrial);
+
             }
 
             newTrialButtonSelector.on('click', function() {
