@@ -6,9 +6,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
-import mpicbg.models.Affine2D;
-import mpicbg.models.Model;
-
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -17,6 +14,7 @@ import org.janelia.render.client.spark.LogUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import mpicbg.models.Affine2D;
 import net.imglib2.util.Pair;
 
 public class DistributedSolveSpark extends DistributedSolve
@@ -85,12 +83,6 @@ public class DistributedSolveSpark extends DistributedSolve
 									maxAllowedErrorStitching,
 									maxIterationsStitching,
 									maxPlateauWidthStitching,
-									blockOptimizerLambdasRigid,
-									blockOptimizerLambdasTranslation,
-									blockOptimizerIterations,
-									blockMaxPlateauWidth,
-									blockMaxAllowedError,
-									dynamicLambdaFactor,
 									excludeFromRegularization,
 									numThreads );
 					LogUtilities.setupExecutorLog4j("z " + solveItemData.minZ() + " to " + solveItemData.maxZ());
@@ -129,7 +121,13 @@ public class DistributedSolveSpark extends DistributedSolve
         		new SolveSetFactorySimple(
         				parameters.globalModel(),
         				parameters.blockModel(),
-        				parameters.stitchingModel() );
+        				parameters.stitchingModel(),
+        				parameters.blockOptimizerLambdasRigid,
+        				parameters.blockOptimizerLambdasTranslation,
+        				parameters.blockOptimizerIterations,
+        				parameters.blockMaxPlateauWidth,
+        				parameters.blockMaxAllowedError,
+        				parameters.dynamicLambdaFactor );
 
 				final DistributedSolve client = new DistributedSolveSpark(solveSetFactory, parameters, sparkConf);
 				client.run();

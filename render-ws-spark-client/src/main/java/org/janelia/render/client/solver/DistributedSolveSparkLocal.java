@@ -83,12 +83,6 @@ public class DistributedSolveSparkLocal extends DistributedSolve
 							maxAllowedErrorStitching,
 							maxIterationsStitching,
 							maxPlateauWidthStitching,
-							blockOptimizerLambdasRigid,
-							blockOptimizerLambdasTranslation,
-							blockOptimizerIterations,
-							blockMaxPlateauWidth,
-							blockMaxAllowedError,
-							dynamicLambdaFactor,
 							excludeFromRegularization,
 							numThreads );
 					w.run();
@@ -174,7 +168,13 @@ public class DistributedSolveSparkLocal extends DistributedSolve
         		new SolveSetFactorySimple(
         				parameters.globalModel(),
         				parameters.blockModel(),
-        				parameters.stitchingModel() );
+        				parameters.stitchingModel(),
+        				parameters.blockOptimizerLambdasRigid,
+        				parameters.blockOptimizerLambdasTranslation,
+        				parameters.blockOptimizerIterations,
+        				parameters.blockMaxPlateauWidth,
+        				parameters.blockMaxAllowedError,
+        				parameters.dynamicLambdaFactor );
 
                 final DistributedSolve solve =
                 		new DistributedSolveSparkLocal(
