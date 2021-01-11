@@ -52,6 +52,12 @@ public class RansacFilterClient {
         MatchDerivationParameters matchDerivation = new MatchDerivationParameters();
 
         @Parameter(
+                names = "--renderScale",
+                description = "Render scale for match points being filtered",
+                order = 1)
+        public Double renderScale = 1.0;
+
+        @Parameter(
                 names = "--candidateFile",
                 description = "JSON file containing array of pairs with matches to be filtered (.json, .gz, or .zip)",
                 required = true,
@@ -95,7 +101,8 @@ public class RansacFilterClient {
 
     public void run() throws Exception {
 
-        final MatchFilter matchFilter = new MatchFilter(parameters.matchDerivation);
+        final MatchFilter matchFilter = new MatchFilter(parameters.matchDerivation,
+                                                        parameters.renderScale);
 
         final List<CanvasMatches> inlierCanvasMatchesLists = new ArrayList<>();
 

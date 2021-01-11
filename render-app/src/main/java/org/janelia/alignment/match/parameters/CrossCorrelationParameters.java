@@ -19,23 +19,24 @@ public class CrossCorrelationParameters
     @Parameter(
             names = "--ccFullScaleSampleSize",
             description = "Full scale pixel height or width for each sample. " +
-                          "Combined with clip size to determine sample area."
+                          "Combined with clip size to determine sample area.",
+            required = true
     )
     public Integer fullScaleSampleSize;
 
     @Parameter(
             names = "--ccFullScaleStepSize",
-            description = "Full scale pixels to offset each sample from the previous sample."
+            description = "Full scale pixels to offset each sample from the previous sample.",
+            required = true
     )
     public Integer fullScaleStepSize;
 
     @Parameter(
             names = "--ccMinResultThreshold",
-            description = "Minimum correlation value for feature candidates."
+            description = "Minimum correlation value for feature candidates.",
+            required = true
     )
     public Double minResultThreshold;
-
-    // TODO: ask SP what other stitching parameters should be exposed as command line options
 
     @Parameter(
             names = "--ccCheckPeaks",
@@ -43,12 +44,22 @@ public class CrossCorrelationParameters
     )
     public Integer checkPeaks;
 
+    @Parameter(
+            names = "--ccSubpixelAccuracy",
+            description = "Indicates whether subpixel accuracy should be used for correlation.",
+            arity = 1
+    )
+    public Boolean subpixelAccuracy;
+
     void setDefaults() {
 
         if (checkPeaks == null) {
             checkPeaks = 50;
         }
 
+        if (subpixelAccuracy == null) {
+            subpixelAccuracy = true;
+        }
     }
 
     public int getScaledSampleSize(final double renderScale) {
@@ -63,15 +74,12 @@ public class CrossCorrelationParameters
 
         final StitchingParameters params = new StitchingParameters();
 
-        // TODO: move some of these to dynamic parameters after talking with SP
-
         // static parameters
         params.dimensionality = 2;
         params.fusionMethod = 0;
         params.fusedName = "";
         params.addTilesAsRois = false;
         params.computeOverlap = true;
-        params.subpixelAccuracy = true;
         params.ignoreZeroValuesFusion = false;
         params.downSample = false;
         params.displayFusion = false;
@@ -84,6 +92,7 @@ public class CrossCorrelationParameters
 
         // dynamic parameters
         params.checkPeaks = checkPeaks;
+        params.subpixelAccuracy = subpixelAccuracy;
 
         return params;
     }

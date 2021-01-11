@@ -1,26 +1,37 @@
 package org.janelia.alignment.match;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import ij.CompositeImage;
 import ij.ImageJ;
 import ij.ImagePlus;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
-import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.InvertibleBoundable;
 import mpicbg.models.PointMatch;
-import mpicbg.models.TranslationModel2D;
+import mpicbg.stitching.fusion.OverlayFusion;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import mpicbg.trakem2.transform.TranslationModel2D;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.match.parameters.CrossCorrelationParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageDebugUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.type.numeric.real.FloatType;
 
 /**
  * Run cross correlation for two tiles.
@@ -45,7 +56,10 @@ public class CrossCorrelationTest {
             { "Z0620_23m_VNC", "Sec25", "v2_acquire", "20-07-19_024208_0-0-1.9500.0",  "20-07-19_024208_0-0-2.9500.0" },
 
             // http://renderer.int.janelia.org:8080/render-ws/view/tile-with-neighbors.html?tileId=20-07-19_184758_0-0-1.10500.0&renderScale=0.05573953808438347&renderStackOwner=Z0620_23m_VNC&renderStackProject=Sec25&renderStack=v2_acquire&matchOwner=Z0620_23m_VNC&matchCollection=Sec25_v2
-            { "Z0620_23m_VNC", "Sec25", "v2_acquire", "20-07-19_184758_0-0-1.10500.0", "20-07-19_184758_0-0-2.10500.0"}
+            { "Z0620_23m_VNC", "Sec25", "v2_acquire", "20-07-19_184758_0-0-1.10500.0", "20-07-19_184758_0-0-2.10500.0"},
+
+            // test pair 6
+            { "Z0620_23m_VNC", "Sec25", "v2_acquire", "20-07-19_230913_0-0-1.10772.0", "20-07-19_230913_0-0-2.10772.0"}
     };
 
     @Test
@@ -66,7 +80,7 @@ public class CrossCorrelationTest {
         // setup test parameters ...
 
         // change this index (0 - 5) to work with a different tile pair
-        final int testTilePairIndex = 0;
+        final int testTilePairIndex = 6;
 
         final String owner = TEST_TILE_PAIRS[testTilePairIndex][0];
         final String project = TEST_TILE_PAIRS[testTilePairIndex][1];
@@ -88,9 +102,7 @@ public class CrossCorrelationTest {
         crossCorrelationParameters.fullScaleStepSize = 5;
         crossCorrelationParameters.minResultThreshold = 0.5; // SP suggests: maybe higher
 
-        final float maxErrorFull = 2f;
-        final float maxError = maxErrorFull * (float)renderScale;
-        final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters( maxError );
+        final MatchDerivationParameters matchDerivationParameters = getMatchFilterParameters();
 
         // -------------------------------------------------------------------
         // run test ...
@@ -131,13 +143,28 @@ public class CrossCorrelationTest {
 //                                                                                 qGroupId, qId,
 //                                                                                 renderScale,
 //                                                                                 pOffsets, qOffsets);
-        LOG.debug( "ransac: " + result );
+        LOG.info( "ransac: " + result );
         try {
             final TranslationModel2D model = new TranslationModel2D();
 			model.fit( inliers );
-			LOG.debug( model.toString() );
-		} catch (final NotEnoughDataPointsException e) {
-            LOG.debug("ignoring model fit error", e);
+			LOG.info( model.toString() );
+
+			final ArrayList<InvertibleBoundable> models = new ArrayList<>();
+			models.add( new mpicbg.trakem2.transform.TranslationModel2D() );
+			models.add( model.createInverse() );
+
+			final ArrayList<ImagePlus> images = new ArrayList<>();
+			images.add( ip1 );
+			images.add( ip2 );
+
+			final CompositeImage overlay = OverlayFusion.createOverlay( new FloatType(), images, models, 2, 1, new NLinearInterpolatorFactory<>() );
+			overlay.show();
+
+			//Stitching_Pairwise.fuse( new FloatType(), ip1, ip2, models, params );
+            //showStitchedResult(renderParametersTile1, renderParametersTile2, imageProcessorCache, model);
+
+        } catch (final Exception e) {
+            LOG.info("ignoring error", e);
         }
 
         // visualize result
@@ -147,13 +174,44 @@ public class CrossCorrelationTest {
 
     }
 
-    static MatchDerivationParameters getMatchFilterParameters( final float maxError ) {
+    @SuppressWarnings("unused")
+    public static void showStitchedResult(final RenderParameters renderParametersTile1,
+                                          final RenderParameters renderParametersTile2,
+                                          final ImageProcessorCache imageProcessorCache,
+                                          final TranslationModel2D model)
+            throws JsonProcessingException {
+
+        final TranslationModel2D inverseModel = new TranslationModel2D();
+        inverseModel.set(model.createInverse());
+        final LeafTransformSpec modelSpec = new LeafTransformSpec(inverseModel.getClass().getName(),
+                                                                  inverseModel.toDataString());
+
+        final TileSpec tileSpec2 = renderParametersTile2.getTileSpecs().get(0);
+        tileSpec2.addTransformSpecs(Collections.singletonList(modelSpec));
+        tileSpec2.deriveBoundingBox(tileSpec2.getMeshCellSize(), true);
+
+        final RenderParameters stitchedRenderParameters =
+                RenderParameters.parseJson(renderParametersTile1.toJson());
+        stitchedRenderParameters.addTileSpec(tileSpec2);
+        stitchedRenderParameters.width += renderParametersTile2.width;
+        stitchedRenderParameters.initializeDerivedValues();
+
+        LOG.info(stitchedRenderParameters.toJson());
+
+        final ImageProcessorWithMasks ipm3 = Renderer.renderImageProcessorWithMasks(stitchedRenderParameters,
+                                                                                    imageProcessorCache);
+
+        final ImagePlus ip3 = new ImagePlus("stitched_result", ipm3.ip);
+        ip3.show();
+    }
+
+    static MatchDerivationParameters getMatchFilterParameters() {
 
         final MatchDerivationParameters matchFilterParameters = new MatchDerivationParameters();
 
         matchFilterParameters.matchModelType = ModelType.TRANSLATION;
         matchFilterParameters.matchIterations = 1000;
-        matchFilterParameters.matchMaxEpsilon = maxError;
+        matchFilterParameters.matchMaxEpsilonFullScale = 2.0f;
         matchFilterParameters.matchMinInlierRatio = 0.0f;
         matchFilterParameters.matchMinNumInliers = 20;
         matchFilterParameters.matchMaxTrust = 3.0;

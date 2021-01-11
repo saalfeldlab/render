@@ -96,7 +96,8 @@ public class StageMatchingResources
 
         this.featureLoader.enableSourceDataCaching(sourceImageProcessorCache);
 
-        this.featureMatcher = new CanvasFeatureMatcher(matchDerivationParameters);
+        this.featureMatcher = new CanvasFeatureMatcher(matchDerivationParameters,
+                                                       featureRenderParameters.renderScale);
 
         if ((gdam != null) && gdam.isGeometricDescriptorMatchingEnabled()) {
 

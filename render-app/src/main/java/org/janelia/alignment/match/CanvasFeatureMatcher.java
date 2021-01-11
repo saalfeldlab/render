@@ -27,9 +27,10 @@ public class CanvasFeatureMatcher implements Serializable {
     /**
      * Sets up everything that is needed to derive point matches from the feature lists of two canvases.
      */
-    public CanvasFeatureMatcher(final MatchDerivationParameters matchParameters) {
+    public CanvasFeatureMatcher(final MatchDerivationParameters matchParameters,
+                                final double renderScale) {
         this.rod = matchParameters.matchRod;
-        this.matchFilter = new MatchFilter(matchParameters);
+        this.matchFilter = new MatchFilter(matchParameters, renderScale);
     }
 
     public MatchFilter getMatchFilter() {

@@ -39,6 +39,8 @@
                                         <exclude>org/janelia/acquire/**</exclude>
                                         <exclude>org/python/**</exclude>
 
+                                        <exclude>module-info.class</exclude>
+
                                         <!--
                                           Exclude manifest signature files (e.g. from org.bouncycastle artifact)
                                           to prevent invalid signature error when launching fiji.

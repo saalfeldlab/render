@@ -236,7 +236,8 @@ public class SIFTPointMatchClient
                                         false);
         featureLoader.enableSourceDataCaching(sourceImageProcessorCache);
 
-        final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(matchDerivationParameters);
+        final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(matchDerivationParameters,
+                                                                             featureRenderParameters.renderScale);
 
         final GeometricDescriptorAndMatchFilterParameters gdam = parameters.geometricDescriptorAndMatch;
         CanvasRenderParametersUrlTemplate gdUrlTemplateForRun = null;
@@ -517,7 +518,9 @@ public class SIFTPointMatchClient
                                                                          qClipOffsets).get(0);
         }
 
-        final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters, gdam.matchDerivationParameters);
+        final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters,
+                                                                    gdam.matchDerivationParameters,
+                                                                    gdam.renderScale);
         final CanvasMatchResult gdMatchResult = peakMatcher.deriveMatchResult(pCanvasPeakList, qCanvasPeakList);
 
         final List<PointMatch> combinedSiftScaleInliers = new ArrayList<>(siftScaledInliers);

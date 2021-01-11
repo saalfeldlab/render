@@ -44,7 +44,7 @@ public class CanvasCorrelationMatcher
                                     final MatchDerivationParameters matchParameters,
                                     final double renderScale) {
         this.ccParameters = ccParameters;
-        this.matchFilter = new MatchFilter(matchParameters);
+        this.matchFilter = new MatchFilter(matchParameters, renderScale);
         this.renderScale = renderScale;
     }
 
@@ -97,10 +97,12 @@ public class CanvasCorrelationMatcher
         final int scaledSampleSize = ccParameters.getScaledSampleSize(renderScale);
         final int scaledStepSize = ccParameters.getScaledStepSize(renderScale);
 
-        final Rectangle unmaskedArea1 = findRectangle(mask1);
-        final Rectangle unmaskedArea2 = findRectangle(mask2);
+        final Rectangle unmaskedArea1 =
+                mask1 == null ? new Rectangle(ip1.getWidth(), ip1.getHeight()) : findRectangle(mask1);
+        final Rectangle unmaskedArea2 =
+                mask2 == null ? new Rectangle(ip2.getWidth(), ip2.getHeight()) : findRectangle(mask2);
 
-        final boolean stepThroughY = mask1.getHeight() > mask1.getWidth();
+        final boolean stepThroughY = ip1.getHeight() > ip1.getWidth();
 
         final int startStep;
         final int maxHeightOrWidth;
