@@ -64,12 +64,6 @@ public class DistributedSolveMultiThread extends DistributedSolve
 								parameters.maxAllowedErrorStitching,
 								parameters.maxIterationsStitching,
 								parameters.maxPlateauWidthStitching,
-								parameters.blockOptimizerLambdasRigid,
-								parameters.blockOptimizerLambdasTranslation,
-								parameters.blockOptimizerIterations,
-								parameters.blockMaxPlateauWidth,
-								parameters.blockMaxAllowedError,
-								parameters.dynamicLambdaFactor,
 								parameters.excludeSet(),
 								parameters.threadsWorker );
 					w.run();
@@ -167,7 +161,13 @@ public class DistributedSolveMultiThread extends DistributedSolve
         		new SolveSetFactorySimple(
         				parameters.globalModel(),
         				parameters.blockModel(),
-        				parameters.stitchingModel() );
+        				parameters.stitchingModel(),
+        				parameters.blockOptimizerLambdasRigid,
+        				parameters.blockOptimizerLambdasTranslation,
+        				parameters.blockOptimizerIterations,
+        				parameters.blockMaxPlateauWidth,
+        				parameters.blockMaxAllowedError,
+        				parameters.dynamicLambdaFactor );
 
                 final DistributedSolve solve =
                 		new DistributedSolveMultiThread(

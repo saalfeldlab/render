@@ -1,6 +1,7 @@
 package org.janelia.render.client.solver;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -8,24 +9,40 @@ import mpicbg.models.Affine2D;
 
 public class SolveSetFactoryAdaptive extends SolveSetFactory
 {
-	final boolean constantSetSize;
+	public HashMap<Integer, String> additionalIssues = new HashMap<>();
 
 	/**
-	 * 
 	 * @param defaultGlobalSolveModel - the default model for the final global solve (here always used)
 	 * @param defaultBlockSolveModel - the default model (if layer contains no 'restart' or 'problem' tag), otherwise using less stringent model
 	 * @param defaultStitchingModel - the default model when stitching per z slice (here always used)
-	 * @param constantSetSize - if true assign the set size as requested (e.g. 500), and simply use
+	 * @param defaultBlockOptimizerLambdasRigid - the default rigid/affine lambdas for a block (from parameters)
+	 * @param defaultBlockOptimizerLambdasTranslation - the default translation lambdas for a block (from parameters)
+	 * @param defaultBlockOptimizerIterations - the default iterations (from parameters)
+	 * @param defaultBlockMaxPlateauWidth - the default plateau with (from parameters)
+	 * @param defaultBlockMaxAllowedError - the default max error for global opt (from parameters)
+	 * @param defaultDynamicLambdaFactor - the default dynamic lambda factor
 	 */
 	public SolveSetFactoryAdaptive(
 			final Affine2D<?> defaultGlobalSolveModel,
 			final Affine2D<?> defaultBlockSolveModel,
 			final Affine2D<?> defaultStitchingModel,
-			final boolean constantSetSize )
+			final List<Double> defaultBlockOptimizerLambdasRigid,
+			final List<Double> defaultBlockOptimizerLambdasTranslation,
+			final List<Integer> defaultBlockOptimizerIterations,
+			final List<Integer> defaultBlockMaxPlateauWidth,
+			final double defaultBlockMaxAllowedError,
+			final double defaultDynamicLambdaFactor )
 	{
-		super( defaultGlobalSolveModel, defaultBlockSolveModel, defaultStitchingModel );
-
-		this.constantSetSize = constantSetSize;
+		super(
+				defaultGlobalSolveModel,
+				defaultBlockSolveModel,
+				defaultStitchingModel,
+				defaultBlockOptimizerLambdasRigid,
+				defaultBlockOptimizerLambdasTranslation,
+				defaultBlockOptimizerIterations,
+				defaultBlockMaxPlateauWidth,
+				defaultBlockMaxAllowedError,
+				defaultDynamicLambdaFactor );
 	}
 
 	@Override
@@ -45,8 +62,8 @@ public class SolveSetFactoryAdaptive extends SolveSetFactory
 			final int setMinZ = minZ + i * setSize;
 			final int setMaxZ = Math.min( minZ + (i + 1) * setSize - 1, maxZ );
 
-			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap) )
-				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " contains issues." );
+			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
+				throw new RuntimeException( "set " + setMinZ + ">>" + setMaxZ + " contains issues, do something about it." );
 
 			leftSets.add(
 					instantiateSolveItemData(
@@ -54,6 +71,12 @@ public class SolveSetFactoryAdaptive extends SolveSetFactory
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
 							this.defaultStitchingModel,
+							this.defaultBlockOptimizerLambdasRigid,
+							this.defaultBlockOptimizerLambdasTranslation,
+							this.defaultBlockOptimizerIterations,
+							this.defaultBlockMaxPlateauWidth,
+							this.defaultBlockMaxAllowedError,
+							this.defaultDynamicLambdaFactor,
 							setMinZ,
 							setMaxZ ) );
 			++id;
@@ -67,8 +90,8 @@ public class SolveSetFactoryAdaptive extends SolveSetFactory
 			final int setMinZ = ( set0.minZ() + set0.maxZ() ) / 2;
 			final int setMaxZ = ( set1.minZ() + set1.maxZ() ) / 2 - 1;
 
-			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap) )
-				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " contains issues." );
+			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
+				throw new RuntimeException( "set " + setMinZ + ">>" + setMaxZ + " contains issues, do something about it." );
 
 			rightSets.add(
 					instantiateSolveItemData(
@@ -76,6 +99,12 @@ public class SolveSetFactoryAdaptive extends SolveSetFactory
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
 							this.defaultStitchingModel,
+							this.defaultBlockOptimizerLambdasRigid,
+							this.defaultBlockOptimizerLambdasTranslation,
+							this.defaultBlockOptimizerIterations,
+							this.defaultBlockMaxPlateauWidth,
+							this.defaultBlockMaxAllowedError,
+							this.defaultDynamicLambdaFactor,
 							setMinZ,
 							setMaxZ ) );
 			++id;
@@ -84,10 +113,14 @@ public class SolveSetFactoryAdaptive extends SolveSetFactory
 		return new SolveSet( leftSets, rightSets );
 	}
 
-	protected static boolean containsIssue( final int min, final int max, final Map<Integer, String> zToGroupIdMap )
+	protected static boolean containsIssue(
+			final int min,
+			final int max,
+			final Map<Integer, String> zToGroupIdMap,
+			final Map<Integer, String> additionalIssues )
 	{
 		for ( int i = min; i <= max; ++i )
-			if ( zToGroupIdMap.containsKey( i ) )
+			if ( zToGroupIdMap.containsKey( i ) || additionalIssues.containsKey( i ) )
 				return true;
 
 		return false;

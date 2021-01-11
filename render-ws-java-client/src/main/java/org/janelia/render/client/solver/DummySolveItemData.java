@@ -1,5 +1,7 @@
 package org.janelia.render.client.solver;
 
+import java.util.ArrayList;
+
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 
@@ -9,7 +11,7 @@ public class DummySolveItemData< G extends Model< G > & Affine2D< G >, B extends
 
 	public DummySolveItemData( final int id, final G g, final B b, final S s, final int z )
 	{
-		super( id, g, b, s, z, z );
+		super( id, g, b, s, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), 0.0, 0.0, z, z );
 	}
 
 	@Override

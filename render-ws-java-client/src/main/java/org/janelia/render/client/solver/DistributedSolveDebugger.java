@@ -45,12 +45,6 @@ public class DistributedSolveDebugger extends DistributedSolve
 						parameters.maxAllowedErrorStitching,
 						parameters.maxIterationsStitching,
 						parameters.maxPlateauWidthStitching,
-						parameters.blockOptimizerLambdasRigid,
-						parameters.blockOptimizerLambdasTranslation,
-						parameters.blockOptimizerIterations,
-						parameters.blockMaxPlateauWidth,
-						parameters.blockMaxAllowedError,
-						parameters.dynamicLambdaFactor,
 						parameters.excludeSet(),
 						parameters.threadsGlobal );
 		try
@@ -136,7 +130,12 @@ public class DistributedSolveDebugger extends DistributedSolve
                 				parameters.globalModel(),
                 				parameters.blockModel(),
                 				parameters.stitchingModel(),
-                				true );
+                				parameters.blockOptimizerLambdasRigid,
+                				parameters.blockOptimizerLambdasTranslation,
+                				parameters.blockOptimizerIterations,
+                				parameters.blockMaxPlateauWidth,
+                				parameters.blockMaxAllowedError,
+                				parameters.dynamicLambdaFactor );
 
 /*                		new SolveSetFactorySimple(
                 				parameters.globalModel(),

@@ -143,7 +143,13 @@ public class DistributedSolveDeSerialize extends DistributedSolve
         		new SolveSetFactorySimple(
         				parameters.globalModel(),
         				parameters.blockModel(),
-        				parameters.stitchingModel() );
+        				parameters.stitchingModel(),
+        				parameters.blockOptimizerLambdasRigid,
+        				parameters.blockOptimizerLambdasTranslation,
+        				parameters.blockOptimizerIterations,
+        				parameters.blockMaxPlateauWidth,
+        				parameters.blockMaxAllowedError,
+        				parameters.dynamicLambdaFactor );
 
                 final DistributedSolve solve =
                 		new DistributedSolveDeSerialize(

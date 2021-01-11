@@ -95,6 +95,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	// for error computation (local)
 	final ArrayList< CanvasMatches > canvasMatches = new ArrayList<>();
 
+	// created by SolveItemData.createWorker()
 	public DistributedSolveWorker(
 			final SolveItemData< G, B, S > solveItemData,
 			final int startId,
@@ -808,6 +809,12 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 							inputSolveItem.globalSolveModelInstance(),
 							inputSolveItem.blockSolveModelInstance(),
 							inputSolveItem.stitchingSolveModelInstance(),
+							blockOptimizerLambdasRigid,
+							blockOptimizerLambdasTranslation,
+							blockOptimizerIterations,
+							blockMaxPlateauWidth,
+							blockMaxAllowedError,
+							dynamicLambdaFactor,
 							newMin,
 							newMax ) );
 
