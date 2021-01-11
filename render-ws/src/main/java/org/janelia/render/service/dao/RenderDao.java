@@ -1634,6 +1634,7 @@ public class RenderDao {
      * Writes all tileIds for the specified stack to the specified stream (as a JSON array of strings).
      *
      * @param  stackId          stack identifier.
+     * @param  matchPattern     (optional) if specified, only return tileIds that match this pattern.
      * @param  outputStream     stream to which tileIds are to be written.
      *
      * @throws IllegalArgumentException
@@ -1643,6 +1644,7 @@ public class RenderDao {
      *   if the data cannot be written for any reason.
      */
     public void writeTileIds(final StackId stackId,
+                             final String matchPattern,
                              final OutputStream outputStream)
             throws IllegalArgumentException, IOException {
 
@@ -1652,15 +1654,21 @@ public class RenderDao {
 
         final String tileIdKey = "tileId";
         final byte[] commaBytes = ",".getBytes();
-        final byte[] singleQuoteBytes = "'".getBytes();
+        final byte[] doubleQuoteBytes = "\"".getBytes();
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
         // EXAMPLE:   find( { "tileId": { $gt: "" } }, {"_id": 0, "tileId": 1} ).sort( { "tileId": 1} )
 
-        // Add a $gt constraint to ensure that null values aren't included and
-        // that an indexOnly query is possible ($exists is not sufficient).
-        final Document tileQuery = new Document(tileIdKey, new Document("$gt", ""));
+        final Document tileQuery;
+        if (matchPattern == null) {
+            // Add a $gt constraint to ensure that null values aren't included and
+            // that an indexOnly query is possible ($exists is not sufficient).
+            tileQuery = new Document(tileIdKey, new Document("$gt", ""));
+        } else {
+            tileQuery = new Document(tileIdKey, new Document("$regex", matchPattern));
+        }
+
         final Document tileKeys = new Document("_id", 0).append(tileIdKey, 1);
 
         outputStream.write("[".getBytes());
@@ -1681,9 +1689,9 @@ public class RenderDao {
                     outputStream.write(commaBytes);
                 }
 
-                outputStream.write(singleQuoteBytes);
+                outputStream.write(doubleQuoteBytes);
                 outputStream.write(tileId.getBytes());
-                outputStream.write(singleQuoteBytes);
+                outputStream.write(doubleQuoteBytes);
 
                 tileSpecCount++;
 

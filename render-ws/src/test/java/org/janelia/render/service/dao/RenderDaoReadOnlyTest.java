@@ -370,13 +370,17 @@ public class RenderDaoReadOnlyTest {
 
     @Test
     public void testWriteTileIds() throws Exception {
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
 
-        dao.writeTileIds(stackId, outputStream);
+        final String[] matchPatterns =           { null, "with-real" };
+        final int[] expectedMatchingTileCounts = {   14,           2 };
 
-        final String[] tileIds = outputStream.toString().split(",");
-
-        Assert.assertEquals("invalid number of tileIds written for query", 14, tileIds.length);
+        for (int test = 0; test < matchPatterns.length; test++) {
+            final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+            dao.writeTileIds(stackId, matchPatterns[test], outputStream);
+            final String[] tileIds = outputStream.toString().split(",");
+            Assert.assertEquals("invalid number of tileIds written for query test " + test,
+                                expectedMatchingTileCounts[test], tileIds.length);
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDaoReadOnlyTest.class);
