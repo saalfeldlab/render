@@ -1,5 +1,6 @@
 package org.janelia.render.client.solver;
 
+import java.util.List;
 import java.util.Map;
 
 import mpicbg.models.Affine2D;
@@ -11,14 +12,45 @@ public abstract class SolveSetFactory
 	final Affine2D< ? > defaultBlockSolveModel;
 	final Affine2D< ? > defaultStitchingModel;
 
+	final List<Double> defaultBlockOptimizerLambdasRigid;
+	final List<Double> defaultBlockOptimizerLambdasTranslation;
+	final List<Integer> defaultBlockOptimizerIterations;
+	final List<Integer> defaultBlockMaxPlateauWidth;
+	final double defaultBlockMaxAllowedError;
+	final double defaultDynamicLambdaFactor;
+
+	/**
+	 * @param defaultGlobalSolveModel - the default model for the final global solve (here always used)
+	 * @param defaultBlockSolveModel - the default model (if layer contains no 'restart' or 'problem' tag), otherwise using less stringent model
+	 * @param defaultStitchingModel - the default model when stitching per z slice (here always used)
+	 * @param defaultBlockOptimizerLambdasRigid - the default rigid/affine lambdas for a block (from parameters)
+	 * @param defaultBlockOptimizerLambdasTranslation - the default translation lambdas for a block (from parameters)
+	 * @param defaultBlockOptimizerIterations - the default iterations (from parameters)
+	 * @param defaultBlockMaxPlateauWidth - the default plateau with (from parameters)
+	 * @param defaultBlockMaxAllowedError - the default max error for global opt (from parameters)
+	 * @param defaultDynamicLambdaFactor - the default dynamic lambda factor
+	 */
 	public SolveSetFactory(
 			final Affine2D< ? > defaultGlobalSolveModel,
 			final Affine2D< ? > defaultBlockSolveModel,
-			final Affine2D< ? > defaultStitchingModel )
+			final Affine2D< ? > defaultStitchingModel,
+			final List<Double> defaultBlockOptimizerLambdasRigid,
+			final List<Double> defaultBlockOptimizerLambdasTranslation,
+			final List<Integer> defaultBlockOptimizerIterations,
+			final List<Integer> defaultBlockMaxPlateauWidth,
+			final double defaultBlockMaxAllowedError,
+			final double defaultDynamicLambdaFactor )
+
 	{
 		this.defaultGlobalSolveModel = defaultGlobalSolveModel;
 		this.defaultBlockSolveModel = defaultBlockSolveModel;
 		this.defaultStitchingModel = defaultStitchingModel;
+		this.defaultBlockOptimizerLambdasRigid = defaultBlockOptimizerLambdasRigid;
+		this.defaultBlockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
+		this.defaultBlockOptimizerIterations = defaultBlockOptimizerIterations;
+		this.defaultBlockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
+		this.defaultBlockMaxAllowedError = defaultBlockMaxAllowedError;
+		this.defaultDynamicLambdaFactor = defaultDynamicLambdaFactor;
 	}
 
 	/**
@@ -41,10 +73,28 @@ public abstract class SolveSetFactory
 			final Affine2D<?> globalSolveModel,
 			final Affine2D<?> blockSolveModel,
 			final Affine2D<?> stitchingModel,
+			final List<Double> blockOptimizerLambdasRigid,
+			final List<Double> blockOptimizerLambdasTranslation,
+			final List<Integer> blockOptimizerIterations,
+			final List<Integer> blockMaxPlateauWidth,
+			final double blockMaxAllowedError,
+			final double dynamicLambdaFactor,
 			final int minZ,
 			final int maxZ )
 	{
 		// it will crash here if the models are not Affine2D AND Model
-		return new SolveItemData( id, (G)(Object)globalSolveModel, (B)(Object)blockSolveModel, (S)(Object)stitchingModel, minZ, maxZ );
+		return new SolveItemData(
+				id,
+				(G)(Object)globalSolveModel,
+				(B)(Object)blockSolveModel,
+				(S)(Object)stitchingModel,
+				blockOptimizerLambdasRigid,
+				blockOptimizerLambdasTranslation,
+				blockOptimizerIterations,
+				blockMaxPlateauWidth,
+				blockMaxAllowedError,
+				dynamicLambdaFactor,
+				minZ,
+				maxZ );
 	}
 }

@@ -23,7 +23,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
 {
 	public DistributedSolveMultiThread(
 			final SolveSetFactory solveSetFactory,
-			final ParametersDistributedSolve parameters ) throws IOException
+			final DistributedSolveParameters parameters ) throws IOException
 	{
 		super( solveSetFactory, parameters );
 	}
@@ -64,12 +64,6 @@ public class DistributedSolveMultiThread extends DistributedSolve
 								parameters.maxAllowedErrorStitching,
 								parameters.maxIterationsStitching,
 								parameters.maxPlateauWidthStitching,
-								parameters.blockOptimizerLambdasRigid,
-								parameters.blockOptimizerLambdasTranslation,
-								parameters.blockOptimizerIterations,
-								parameters.blockMaxPlateauWidth,
-								parameters.blockMaxAllowedError,
-								parameters.dynamicLambdaFactor,
 								parameters.excludeSet(),
 								parameters.threadsWorker );
 					w.run();
@@ -110,29 +104,31 @@ public class DistributedSolveMultiThread extends DistributedSolve
             @Override
             public void runClient(final String[] args) throws Exception {
 
-                final ParametersDistributedSolve parameters = new ParametersDistributedSolve();
+                final DistributedSolveParameters parameters = new DistributedSolveParameters();
 
                 // TODO: remove testing hack ...
                 if (args.length == 0) {
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                            "--owner", "Z1217_33m_BR",
-                            "--project", "Sec10",
-                            "--matchCollection", "Sec10_multi",
-                            "--stack", "v3_acquire",
-                            //"--targetStack", "v3_acquire_sp1",
-                            //"--completeTargetStack",
+                            "--owner", "cosem", //"Z1217_33m_BR",
+                            "--project", "jrc_hela_2", //"Sec10",
+                            "--matchCollection", "jrc_hela_2_v1", //"Sec10_multi",
+                            "--stack", "v1_acquire", //"v3_acquire",
+                            "--targetStack", "v1_acquire_sp3",
+                            "--completeTargetStack",
                             
-                            "--blockOptimizerLambdasRigid",       /*"1.0,1.0,0.5,0.1,0.01",*/"1.0,1.0,0.5,0.1,0.01",
-                            "--blockOptimizerLambdasTranslation", /*"0.5,0.0,0.0,0.0,0.0",*/"1.0,0.5,0.0,0.0,0.0",
-                            "--blockOptimizerIterations", "1000,1000,500,200,100",
-                            "--blockMaxPlateauWidth", "250,250,150,100,50",
+                            //"--noreg","400, 23434, 23-254",
+                            
+                            "--blockOptimizerLambdasRigid",       /*"1.0,1.0,0.5,0.1,0.01",*/"1.0,1.0,1.0",
+                            "--blockOptimizerLambdasTranslation", /*"0.5,0.0,0.0,0.0,0.0",*/"0.0,0.0,0.0",
+                            "--blockOptimizerIterations", "1000,1000,500",
+                            "--blockMaxPlateauWidth", "250,250,150",
 
                             //"--blockSize", "100",
                             //"--noStitching", // do not stitch first
                             
                             "--minZ", "1",
-                            "--maxZ", "34022",
+                            "--maxZ", "6480",//"34022",
 
                             "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
@@ -165,7 +161,13 @@ public class DistributedSolveMultiThread extends DistributedSolve
         		new SolveSetFactorySimple(
         				parameters.globalModel(),
         				parameters.blockModel(),
-        				parameters.stitchingModel() );
+        				parameters.stitchingModel(),
+        				parameters.blockOptimizerLambdasRigid,
+        				parameters.blockOptimizerLambdasTranslation,
+        				parameters.blockOptimizerIterations,
+        				parameters.blockMaxPlateauWidth,
+        				parameters.blockMaxAllowedError,
+        				parameters.dynamicLambdaFactor );
 
                 final DistributedSolve solve =
                 		new DistributedSolveMultiThread(

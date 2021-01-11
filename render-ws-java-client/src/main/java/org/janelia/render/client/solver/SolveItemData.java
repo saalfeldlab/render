@@ -54,11 +54,24 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	final private B blockSolveModel;
 	final private S stitchingModel;
 
+	final private List<Double> blockOptimizerLambdasRigid;
+	final private List<Double> blockOptimizerLambdasTranslation;
+	final private List<Integer> blockOptimizerIterations;
+	final private List<Integer> blockMaxPlateauWidth;
+	final private double blockMaxAllowedError;
+	final private double dynamicLambdaFactor;
+
 	public SolveItemData(
 			final int id,
 			final G globalSolveModel,
 			final B blockSolveModel,
 			final S stitchingModel,
+			final List<Double> blockOptimizerLambdasRigid,
+			final List<Double> blockOptimizerLambdasTranslation,
+			final List<Integer> blockOptimizerIterations,
+			final List<Integer> blockMaxPlateauWidth,
+			final double blockMaxAllowedError,
+			final double dynamicLambdaFactor,
 			final int minZ,
 			final int maxZ )
 	{
@@ -70,6 +83,13 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 		this.globalSolveModel = globalSolveModel.copy();
 		this.blockSolveModel = blockSolveModel.copy();
 		this.stitchingModel = stitchingModel.copy();
+
+		this.blockOptimizerLambdasRigid = blockOptimizerLambdasRigid;
+		this.blockOptimizerLambdasTranslation = blockOptimizerLambdasTranslation;
+		this.blockOptimizerIterations = blockOptimizerIterations;
+		this.blockMaxPlateauWidth = blockMaxPlateauWidth;
+		this.blockMaxAllowedError = blockMaxAllowedError;
+		this.dynamicLambdaFactor = dynamicLambdaFactor;
 	}
 
 	protected void assignUpdatedId( final int id ) { this.id = id; }
@@ -80,6 +100,13 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	public G globalSolveModelInstance() { return globalSolveModel.copy(); }
 	public B blockSolveModelInstance() { return blockSolveModel.copy(); }
 	public S stitchingSolveModelInstance() { return stitchingModel.copy(); }
+
+	public List<Double> blockOptimizerLambdasRigid() { return blockOptimizerLambdasRigid; }
+	public List<Double> blockOptimizerLambdasTranslation() { return blockOptimizerLambdasTranslation; }
+	public List<Integer> blockOptimizerIterations() { return blockOptimizerIterations; }
+	public List<Integer> blockMaxPlateauWidth() {return blockMaxPlateauWidth; }
+	public double blockMaxAllowedError() { return blockMaxAllowedError; }
+	public double dynamicLambdaFactor() { return dynamicLambdaFactor; }
 
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return idToPreviousModel; }
 	public HashMap<String, MinimalTileSpec> idToTileSpec() { return idToTileSpec; }
@@ -187,12 +214,6 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 			final double maxAllowedErrorStitching,
 			final int maxIterationsStitching,
 			final int maxPlateauWidthStitching,
-			final List<Double> blockOptimizerLambdasRigid,
-			final List<Double> blockOptimizerLambdasTranslation,
-			final List<Integer> blockOptimizerIterations,
-			final List<Integer> blockMaxPlateauWidth,
-			final double blockMaxAllowedError,
-			final double dynamicLambdaFactor,
 			final Set<Integer> excludeFromRegularization,
 			final int numThreads )
 	{

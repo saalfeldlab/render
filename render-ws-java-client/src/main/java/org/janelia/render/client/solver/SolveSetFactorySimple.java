@@ -11,9 +11,24 @@ public class SolveSetFactorySimple extends SolveSetFactory
 	public SolveSetFactorySimple(
 			final Affine2D<?> defaultGlobalSolveModel,
 			final Affine2D<?> defaultBlockSolveModel,
-			final Affine2D<?> defaultStitchingModel)
+			final Affine2D<?> defaultStitchingModel,
+			final List<Double> defaultBlockOptimizerLambdasRigid,
+			final List<Double> defaultBlockOptimizerLambdasTranslation,
+			final List<Integer> defaultBlockOptimizerIterations,
+			final List<Integer> defaultBlockMaxPlateauWidth,
+			final double defaultBlockMaxAllowedError,
+			final double defaultDynamicLambdaFactor )
 	{
-		super( defaultGlobalSolveModel, defaultBlockSolveModel, defaultStitchingModel );
+		super(
+				defaultGlobalSolveModel,
+				defaultBlockSolveModel,
+				defaultStitchingModel,
+				defaultBlockOptimizerLambdasRigid,
+				defaultBlockOptimizerLambdasTranslation,
+				defaultBlockOptimizerIterations,
+				defaultBlockMaxPlateauWidth,
+				defaultBlockMaxAllowedError,
+				defaultDynamicLambdaFactor );
 	}
 
 	@Override
@@ -36,6 +51,12 @@ public class SolveSetFactorySimple extends SolveSetFactory
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
 							this.defaultStitchingModel,
+							this.defaultBlockOptimizerLambdasRigid,
+							this.defaultBlockOptimizerLambdasTranslation,
+							this.defaultBlockOptimizerIterations,
+							this.defaultBlockMaxPlateauWidth,
+							this.defaultBlockMaxAllowedError,
+							this.defaultDynamicLambdaFactor,
 							minZ + i * setSize,
 							Math.min( minZ + (i + 1) * setSize - 1, maxZ ) ) );
 			++id;
@@ -52,6 +73,12 @@ public class SolveSetFactorySimple extends SolveSetFactory
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
 							this.defaultStitchingModel,
+							this.defaultBlockOptimizerLambdasRigid,
+							this.defaultBlockOptimizerLambdasTranslation,
+							this.defaultBlockOptimizerIterations,
+							this.defaultBlockMaxPlateauWidth,
+							this.defaultBlockMaxAllowedError,
+							this.defaultDynamicLambdaFactor,
 							( set0.minZ() + set0.maxZ() ) / 2,
 							( set1.minZ() + set1.maxZ() ) / 2 - 1 ) );
 			++id;

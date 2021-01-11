@@ -20,7 +20,7 @@ public class DistributedSolveDebugger extends DistributedSolve
 {
 	public DistributedSolveDebugger(
 			final SolveSetFactory solveSetFactory,
-			final ParametersDistributedSolve parameters ) throws IOException
+			final DistributedSolveParameters parameters ) throws IOException
 	{
 		super( solveSetFactory, parameters );
 	}
@@ -45,12 +45,6 @@ public class DistributedSolveDebugger extends DistributedSolve
 						parameters.maxAllowedErrorStitching,
 						parameters.maxIterationsStitching,
 						parameters.maxPlateauWidthStitching,
-						parameters.blockOptimizerLambdasRigid,
-						parameters.blockOptimizerLambdasTranslation,
-						parameters.blockOptimizerIterations,
-						parameters.blockMaxPlateauWidth,
-						parameters.blockMaxAllowedError,
-						parameters.dynamicLambdaFactor,
 						parameters.excludeSet(),
 						parameters.threadsGlobal );
 		try
@@ -92,7 +86,7 @@ public class DistributedSolveDebugger extends DistributedSolve
             @Override
             public void runClient(final String[] args) throws Exception {
 
-                final ParametersDistributedSolve parameters = new ParametersDistributedSolve();
+                final DistributedSolveParameters parameters = new DistributedSolveParameters();
 
                 // TODO: remove testing hack ...
                 if (args.length == 0) {
@@ -136,7 +130,12 @@ public class DistributedSolveDebugger extends DistributedSolve
                 				parameters.globalModel(),
                 				parameters.blockModel(),
                 				parameters.stitchingModel(),
-                				true );
+                				parameters.blockOptimizerLambdasRigid,
+                				parameters.blockOptimizerLambdasTranslation,
+                				parameters.blockOptimizerIterations,
+                				parameters.blockMaxPlateauWidth,
+                				parameters.blockMaxAllowedError,
+                				parameters.dynamicLambdaFactor );
 
 /*                		new SolveSetFactorySimple(
                 				parameters.globalModel(),

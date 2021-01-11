@@ -13,7 +13,7 @@ public class DistributedSolveSparkTest {
 
     @Test
     public void testParameterParsing() {
-        CommandLineParameters.parseHelp(new ParametersDistributedSolve());
+        CommandLineParameters.parseHelp(new DistributedSolveParameters());
     }
 
     public static void main(final String[] args) {
@@ -42,7 +42,7 @@ public class DistributedSolveSparkTest {
         };
 
 
-        final ParametersDistributedSolve parameters = new ParametersDistributedSolve();
+        final DistributedSolveParameters parameters = new DistributedSolveParameters();
         parameters.parse(testArgs);
 
         // TODO: change this to a parameter and remove from global scope
@@ -61,7 +61,13 @@ public class DistributedSolveSparkTest {
     		new SolveSetFactorySimple(
     				parameters.globalModel(),
     				parameters.blockModel(),
-    				parameters.stitchingModel() );
+    				parameters.stitchingModel(),
+    				parameters.blockOptimizerLambdasRigid,
+    				parameters.blockOptimizerLambdasTranslation,
+    				parameters.blockOptimizerIterations,
+    				parameters.blockMaxPlateauWidth,
+    				parameters.blockMaxAllowedError,
+    				parameters.dynamicLambdaFactor );
 
             final DistributedSolve client = new DistributedSolveSpark(solveSetFactory, parameters, sparkConf);
 

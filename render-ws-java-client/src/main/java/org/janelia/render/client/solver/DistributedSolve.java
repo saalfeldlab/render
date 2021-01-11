@@ -39,7 +39,7 @@ public abstract class DistributedSolve
 	public static int visMinZ = Integer.MIN_VALUE;
 	public static int visMaxZ = Integer.MAX_VALUE;
 
-	final ParametersDistributedSolve parameters;
+	final DistributedSolveParameters parameters;
 	final RunParameters runParams;
 
 	public static class GlobalSolve
@@ -60,11 +60,11 @@ public abstract class DistributedSolve
 
 	public DistributedSolve(
 			final SolveSetFactory solveSetFactory,
-			final ParametersDistributedSolve parameters ) throws IOException
+			final DistributedSolveParameters parameters ) throws IOException
 	{
 		this.solveSetFactory = solveSetFactory;
 		this.parameters = parameters;
-		this.runParams = ParametersDistributedSolve.setupSolve( parameters );
+		this.runParams = DistributedSolveParameters.setupSolve( parameters );
 
 		// TODO: load matches only once, not for each thread
 		// assembleMatchData( parameters, runParams );
