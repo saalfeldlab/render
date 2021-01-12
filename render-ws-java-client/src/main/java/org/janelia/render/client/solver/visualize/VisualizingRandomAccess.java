@@ -41,6 +41,7 @@ public class VisualizingRandomAccess extends AbstractLocalizable implements Rand
 	@Override
 	public FloatType get()
 	{
+		// the position is in the scaled space and needs to be mapped to full res
 		final int z = (int)Math.round( this.position[ 2 ] / scale[ 2 ] );
 
 		final ArrayList< Pair<String,MinimalTileSpec> > entries = zToTileSpec.get( z );
