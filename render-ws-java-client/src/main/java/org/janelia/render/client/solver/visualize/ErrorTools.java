@@ -1,10 +1,11 @@
-package org.janelia.render.client.solver;
+package org.janelia.render.client.solver.visualize;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.janelia.render.client.solver.MinimalTileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

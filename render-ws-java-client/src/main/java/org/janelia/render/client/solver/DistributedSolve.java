@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutionException;
 
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

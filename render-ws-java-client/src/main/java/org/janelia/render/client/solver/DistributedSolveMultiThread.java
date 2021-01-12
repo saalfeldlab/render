@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,11 +111,11 @@ public class DistributedSolveMultiThread extends DistributedSolve
                 if (args.length == 0) {
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                            "--owner", "cosem", //"Z1217_33m_BR",
-                            "--project", "jrc_hela_2", //"Sec10",
-                            "--matchCollection", "jrc_hela_2_v1", //"Sec10_multi",
+                            "--owner", "flyem", //"cosem", //"Z1217_33m_BR",
+                            "--project", "Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                            "--matchCollection", "Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
                             "--stack", "v1_acquire", //"v3_acquire",
-                            "--targetStack", "v1_acquire_sp3",
+                            "--targetStack", "v1_acquire_sp",
                             "--completeTargetStack",
                             
                             //"--noreg","400, 23434, 23-254",
@@ -128,11 +129,11 @@ public class DistributedSolveMultiThread extends DistributedSolve
                             //"--noStitching", // do not stitch first
                             
                             "--minZ", "1",
-                            "--maxZ", "6480",//"34022",
+                            "--maxZ", "9505", //"6480",//"34022",
 
                             "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
-                            "--threadsGlobal", "65",
+                            "--threadsGlobal", "8",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
 							"--serializerDirectory", "."

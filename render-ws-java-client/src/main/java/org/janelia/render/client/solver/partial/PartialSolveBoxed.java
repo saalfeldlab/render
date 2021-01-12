@@ -19,7 +19,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.RunParameters;
 import org.janelia.render.client.solver.SolveTools;
-import org.janelia.render.client.solver.VisualizeTools;
+import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.janelia.alignment.match.Matches;
+import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 import ij.ImagePlus;
 import mpicbg.models.Affine2D;

@@ -21,6 +21,7 @@ import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.solver.matchfilter.MatchFilter;
 import org.janelia.render.client.solver.matchfilter.NoMatchFilter;
 import org.janelia.render.client.solver.matchfilter.RandomMaxAmountFilter;
+import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

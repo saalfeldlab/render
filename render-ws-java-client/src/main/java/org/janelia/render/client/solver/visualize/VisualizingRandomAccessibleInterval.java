@@ -1,7 +1,9 @@
-package org.janelia.render.client.solver;
+package org.janelia.render.client.solver.visualize;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import org.janelia.render.client.solver.MinimalTileSpec;
 
 import mpicbg.models.AffineModel2D;
 import net.imglib2.FinalInterval;
