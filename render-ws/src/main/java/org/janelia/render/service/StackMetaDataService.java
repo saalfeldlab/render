@@ -919,7 +919,8 @@ public class StackMetaDataService {
             notes = "For stacks with large numbers of tiles, this will produce a large amount of data (e.g. 500MB for 18 million tiles) - use wisely.")
     public Response getStackTileIds(@PathParam("owner") final String owner,
                                     @PathParam("project") final String project,
-                                    @PathParam("stack") final String stack) {
+                                    @PathParam("stack") final String stack,
+                                    @QueryParam("matchPattern") final String matchPattern) {
 
         LOG.info("getStackTileIds: entry, owner={}, project={}, stack={}",
                  owner, project, stack);
@@ -928,7 +929,7 @@ public class StackMetaDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
 
-            final StreamingOutput responseOutput = output -> renderDao.writeTileIds(stackId, output);
+            final StreamingOutput responseOutput = output -> renderDao.writeTileIds(stackId, matchPattern, output);
             response = Response.ok(responseOutput).build();
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
