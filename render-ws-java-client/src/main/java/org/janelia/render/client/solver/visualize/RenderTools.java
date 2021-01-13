@@ -25,6 +25,7 @@ import ij.ImageJ;
 import ij.ImagePlus;
 import mpicbg.models.AffineModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.cache.img.CachedCellImg;
@@ -144,6 +145,7 @@ public class RenderTools
 	}
 
 	public static BdvStackSource< ? > renderMultiRes(
+			final ImageProcessorCache globalIpCache,
 			final String baseUrl,
 			final String owner,
 			final String project,
@@ -153,10 +155,37 @@ public class RenderTools
 			BdvStackSource< ? > source,
 			final int numThreads ) throws IOException
 	{
+		final Interval interval = VisualizingRandomAccessibleInterval.computeInterval(
+				idToModels,
+				idToTileSpec,
+				new double[] { 1.0, 1.0, 1.0 } );
+
+		return renderMultiRes( globalIpCache, baseUrl, owner, project, stack, interval, source, numThreads );
+	}
+
+	public static BdvStackSource< ? > renderMultiRes(
+			final ImageProcessorCache globalIpCache,
+			final String baseUrl,
+			final String owner,
+			final String project,
+			final String stack,
+			final Interval fullResInterval,
+			BdvStackSource< ? > source,
+			final int numThreads ) throws IOException
+	{
 		// one common ImageProcessor cache for all
-		final boolean recordStats = true;
-		final boolean cacheOriginalsForDownSampledImages = true;
-		final ImageProcessorCache ipCache = new ImageProcessorCache( Integer.MAX_VALUE, recordStats, cacheOriginalsForDownSampledImages );
+		final ImageProcessorCache ipCache;
+
+		if ( globalIpCache == null )
+		{
+			final boolean recordStats = true;
+			final boolean cacheOriginalsForDownSampledImages = true;
+			ipCache = new ImageProcessorCache( Integer.MAX_VALUE, recordStats, cacheOriginalsForDownSampledImages );
+		}
+		else
+		{
+			ipCache = globalIpCache;
+		}
 
 		final ArrayList< Pair< RandomAccessibleInterval< VolatileFloatType >, AffineTransform3D > > multiRes = new ArrayList<>();
 
@@ -166,15 +195,18 @@ public class RenderTools
 		{
 			//LOG.info( "Assembling Multiresolution pyramid for downsampling=" + downsampling );
 
-			final Interval interval = VisualizingRandomAccessibleInterval.computeInterval(
-					idToModels,
-					idToTileSpec,
-					new double[] { 1.0/downsampling, 1.0/downsampling, 1.0/downsampling } );
+			final long[] min = new long[ fullResInterval.numDimensions() ];
+			final long[] max = new long[ fullResInterval.numDimensions() ];
+
+			for ( int d = 0; d < min.length; ++d )
+			{
+				min[ d ] = fullResInterval.min( d ) / downsampling;
+				max[ d ] = fullResInterval.max( d ) / downsampling;
+			}
+
+			final Interval interval = new FinalInterval( min, max );
 
 			System.out.println( "ds=" + downsampling + ", interval=" + interval );
-
-			final long[] min = new long[ interval.numDimensions() ];
-			interval.min( min );
 
 			final RenderRA< FloatType > renderer =
 					new RenderRA<>(
@@ -192,7 +224,14 @@ public class RenderTools
 			final int[] blockSize = new int[] { blockSizeXY, blockSizeXY, 1 };
 
 			final RandomAccessibleInterval<FloatType> cachedImg =
-					Views.translate( Lazy.process( interval, blockSize, new FloatType(), AccessFlags.setOf(), renderer ), min );
+					Views.translate(
+							Lazy.process(
+									interval,
+									blockSize,
+									new FloatType(),
+									AccessFlags.setOf( AccessFlags.VOLATILE ),
+									renderer ),
+							min );
 
 			final RandomAccessibleInterval< VolatileFloatType > volatileRA = VolatileViews.wrapAsVolatile( cachedImg );
 
@@ -223,7 +262,7 @@ public class RenderTools
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 		String owner = "flyem";
 		String project = "Z0419_25_Alpha3";
-		String stack = "v1_acquire_sp_translation_nodyn";
+		String stack = "v1_acquire_sp_nodyn_v2";
 
 		final int[] ds = availableDownsamplings( baseUrl, owner, project, stack );
 
@@ -249,5 +288,22 @@ public class RenderTools
 		final ImagePlus imp2 = new ImagePlus("img1 " + ds[ 3 ], img2.ip);
 		imp1.show();
 		imp2.show();
+
+		/*
+		 * ds=1, interval=FinalInterval [(-5152, -5816, 1) -- (5939, 3629, 9505) = 11092x9446x9505]
+		 * ds=2, interval=FinalInterval [(-2576, -2908, 0) -- (2970, 1815, 4753) = 5547x4724x4754]
+		 * ds=4, interval=FinalInterval [(-1288, -1454, 0) -- (1485, 908, 2377) = 2774x2363x2378]
+		 * ds=8, interval=FinalInterval [(-644, -727, 0) -- (743, 454, 1189) = 1388x1182x1190]
+		 * ds=16, interval=FinalInterval [(-322, -364, 0) -- (372, 227, 595) = 695x592x596]
+		 * ds=32, interval=FinalInterval [(-161, -182, 0) -- (186, 114, 298) = 348x297x299]
+		 * ds=64, interval=FinalInterval [(-81, -91, 0) -- (93, 57, 149) = 175x149x150]
+		 * ds=128, interval=FinalInterval [(-41, -46, 0) -- (47, 29, 75) = 89x76x76]
+		 * ds=256, interval=FinalInterval [(-21, -23, 0) -- (24, 15, 38) = 46x39x39]
+		 */
+
+		final Interval interval = new FinalInterval( new long[] {-5152, -5816, 1}, new long[] {5939, 3629, 9505 } );
+
+		BdvStackSource<?> img = RenderTools.renderMultiRes(
+				null, baseUrl, owner, project, stack, interval, null, 72 );
 	}
 }
